@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigExecution;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -51,7 +52,8 @@ public class ConfigExecutionTest {
 
   @Test
   public void normalConfigTaskTest() {
-    IConfigTask task = () -> immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    IConfigTask task =
+        (clientManager) -> immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     ConfigExecution execution =
         new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
     execution.start();
@@ -69,7 +71,7 @@ public class ConfigExecutionTest {
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader("TestValue", TSDataType.INT32)), false);
     IConfigTask task =
-        () ->
+        (clientManager) ->
             immediateFuture(
                 new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock, datasetHeader));
     ConfigExecution execution =
@@ -89,7 +91,7 @@ public class ConfigExecutionTest {
   @Test
   public void exceptionConfigTaskTest() {
     IConfigTask task =
-        () -> {
+        (clientManager) -> {
           throw new RuntimeException("task throw exception when executing");
         };
     ConfigExecution execution =
@@ -110,7 +112,8 @@ public class ConfigExecutionTest {
       }
 
       @Override
-      public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
+      public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskFetcher)
+          throws InterruptedException {
         return result;
       }
     }
@@ -133,7 +136,7 @@ public class ConfigExecutionTest {
   @Test
   public void exceptionAfterInvokeGetStatusTest() {
     IConfigTask task =
-        () -> {
+        (clientManager) -> {
           throw new RuntimeException("task throw exception when executing");
         };
     ConfigExecution execution =

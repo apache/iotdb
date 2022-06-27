@@ -146,6 +146,17 @@ public class StorageGroupManager {
     return getProcessor(storageGroupMNode, dataRegionId);
   }
 
+  /**
+   * get processor from data region id
+   *
+   * @param dataRegionId dataRegionId
+   * @return virtual storage group processor
+   */
+  public DataRegion getProcessor(int dataRegionId, IStorageGroupMNode storageGroupMNode)
+      throws DataRegionException, StorageEngineException {
+    return getProcessor(storageGroupMNode, dataRegionId);
+  }
+
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
   public DataRegion getProcessor(IStorageGroupMNode storageGroupMNode, int dataRegionId)
@@ -385,10 +396,10 @@ public class StorageGroupManager {
   }
 
   /** push deleteStorageGroup operation down to all virtual storage group processors */
-  public void deleteStorageGroupSystemFolder(String path) {
+  public void deleteStorageGroupSystemFolder(String systemDir) {
     for (DataRegion processor : dataRegion) {
       if (processor != null) {
-        processor.deleteFolder(path);
+        processor.deleteFolder(systemDir);
       }
     }
   }
@@ -483,13 +494,17 @@ public class StorageGroupManager {
 
   public void setAllowCompaction(boolean allowCompaction) {
     for (DataRegion processor : dataRegion) {
-      processor.setAllowCompaction(allowCompaction);
+      if (processor != null) {
+        processor.setAllowCompaction(allowCompaction);
+      }
     }
   }
 
   public void abortCompaction() {
     for (DataRegion processor : dataRegion) {
-      processor.abortCompaction();
+      if (processor != null) {
+        processor.abortCompaction();
+      }
     }
   }
 

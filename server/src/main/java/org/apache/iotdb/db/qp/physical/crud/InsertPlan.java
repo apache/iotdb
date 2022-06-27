@@ -123,6 +123,8 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   public abstract long getMinTime();
 
+  public abstract Object getFirstValueOfIndex(int index);
+
   /**
    * This method is overrided in InsertRowPlan and InsertTabletPlan. After marking failed
    * measurements, the failed values or columns would be null as well. We'd better use

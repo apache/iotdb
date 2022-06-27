@@ -98,7 +98,7 @@ public class IoTDBTagAlterIT {
       assertEquals(ret1.length, count);
 
       try {
-        statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME 'tag3' TO 'tagNew3'");
+        statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME tag3 TO 'tagNew3'");
         fail();
       } catch (Exception e) {
         assertTrue(
@@ -290,7 +290,7 @@ public class IoTDBTagAlterIT {
       }
       assertEquals(ret.length, count);
 
-      statement.execute("ALTER timeseries root.turbine.d1.s1 DROP 'attr1','tag1'");
+      statement.execute("ALTER timeseries root.turbine.d1.s1 DROP attr1,'tag1'");
       hasResult = statement.execute("show timeseries");
       assertTrue(hasResult);
       resultSet = statement.getResultSet();

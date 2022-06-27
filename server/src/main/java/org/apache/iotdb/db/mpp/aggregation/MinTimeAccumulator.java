@@ -37,31 +37,47 @@ public class MinTimeAccumulator implements Accumulator {
   // Column should be like: | Time | Value |
   // Value is used to judge isNull()
   @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
+  public int addInput(Column[] column, TimeRange timeRange) {
+    int curPositionCount = column[0].getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = column[0].getLong(i);
-      if (curTime >= timeRange.getMin() && curTime < timeRange.getMax() && !column[1].isNull(i)) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateMinTime(curTime);
-        break;
+        return i;
       }
     }
+    return column[0].getPositionCount();
   }
 
   // partialResult should be like: | partialMinTimeValue |
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of MinTime should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     updateMinTime(partialResult[0].getLong(0));
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
     updateMinTime(statistics.getStartTime());
   }
 
   // finalResult should be single column, like: | finalMinTime |
   @Override
   public void setFinal(Column finalResult) {
+    if (finalResult.isNull(0)) {
+      return;
+    }
     minTime = finalResult.getLong(0);
   }
 
@@ -69,12 +85,20 @@ public class MinTimeAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of MinTime should be 1");
-    columnBuilders[0].writeLong(minTime);
+    if (!hasCandidateResult) {
+      columnBuilders[0].appendNull();
+    } else {
+      columnBuilders[0].writeLong(minTime);
+    }
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeLong(minTime);
+    if (!hasCandidateResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeLong(minTime);
+    }
   }
 
   @Override

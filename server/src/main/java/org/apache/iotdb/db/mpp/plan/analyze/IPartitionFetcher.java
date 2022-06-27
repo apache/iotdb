@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
+import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -32,6 +33,14 @@ public interface IPartitionFetcher {
 
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
 
+  default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
+      PathPatternTree patternTree) {
+    return getSchemaNodeManagementPartitionWithLevel(patternTree, null);
+  }
+
+  SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
+      PathPatternTree patternTree, Integer level);
+
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
@@ -40,4 +49,6 @@ public interface IPartitionFetcher {
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
+
+  void invalidAllCache();
 }

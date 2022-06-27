@@ -19,23 +19,20 @@
 
 package org.apache.iotdb.db.metadata.mtree;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupCollector;
@@ -49,7 +46,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -73,7 +72,8 @@ public class MTreeAboveSG {
   private final Logger logger = LoggerFactory.getLogger(MTreeAboveSG.class);
 
   private IMNode root;
-  private IMTreeStore store;
+  // this store is only used for traverser invoking
+  private MemMTreeStore store;
 
   public MTreeAboveSG() throws MetadataException {
     store = new MemMTreeStore(new PartialPath(PATH_ROOT), false);
@@ -109,7 +109,7 @@ public class MTreeAboveSG {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
-        store.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp.isStorageGroup()) {
         // before set storage group, check whether the storage group already exists
         throw new StorageGroupAlreadySetException(temp.getFullPath());
@@ -136,9 +136,9 @@ public class MTreeAboveSG {
         }
         IStorageGroupMNode storageGroupMNode =
             new StorageGroupMNode(
-                cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+                cur, nodeNames[i], CommonDescriptor.getInstance().getConfig().getDefaultTTL());
 
-        IMNode result = store.addChild(cur, nodeNames[i], storageGroupMNode);
+        IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
 
         if (result != storageGroupMNode) {
           throw new StorageGroupAlreadySetException(path.getFullPath(), true);
@@ -153,11 +153,11 @@ public class MTreeAboveSG {
     IMNode cur = storageGroupMNode.getParent();
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
-    store.deleteChild(cur, storageGroupMNode.getName());
+    cur.deleteChild(storageGroupMNode.getName());
 
     // delete node a while retain root.a.sg2
     while (cur.getParent() != null && cur.getChildren().size() == 0) {
-      store.deleteChild(cur.getParent(), cur.getName());
+      cur.getParent().deleteChild(cur.getName());
       cur = cur.getParent();
     }
   }
@@ -329,19 +329,35 @@ public class MTreeAboveSG {
   }
 
   /**
-   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg,
-   * device], throw exception Get storage group node, if the give path is not a storage group, throw
+   * E.g., root.sg is storage group given [root, sg], if the give path is not a storage group, throw
    * exception
    */
-  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
+  public IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath storageGroupPath)
       throws MetadataException {
-    IStorageGroupMNode node = getStorageGroupNodeByPath(path);
-    if (!node.getPartialPath().equals(path)) {
-      throw new MNodeTypeMismatchException(
-          path.getFullPath(), MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
+    String[] nodes = storageGroupPath.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(storageGroupPath.getFullPath());
+    }
+    IMNode cur = root;
+    for (int i = 1; i < nodes.length - 1; i++) {
+      cur = cur.getChild(nodes[i]);
+      if (cur == null) {
+        throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+      }
+      if (cur.isStorageGroup()) {
+        throw new StorageGroupAlreadySetException(cur.getFullPath());
+      }
     }
 
-    return node;
+    cur = cur.getChild(nodes[nodes.length - 1]);
+    if (cur == null) {
+      throw new StorageGroupNotSetException(storageGroupPath.getFullPath());
+    }
+    if (cur.isStorageGroup()) {
+      return cur.getAsStorageGroupMNode();
+    } else {
+      throw new StorageGroupAlreadySetException(storageGroupPath.getFullPath(), true);
+    }
   }
 
   /**
@@ -421,6 +437,30 @@ public class MTreeAboveSG {
       }
     }
     return true;
+  }
+
+  /**
+   * Check whether the storage group of given path exists. The given path may be a prefix path of
+   * existing storage group. if exists will throw MetaException.
+   *
+   * @param path a full path or a prefix path
+   */
+  public void checkStorageGroupAlreadySet(PartialPath path) throws StorageGroupAlreadySetException {
+    String[] nodeNames = path.getNodes();
+    IMNode cur = root;
+    if (!nodeNames[0].equals(root.getName())) {
+      return;
+    }
+    for (int i = 1; i < nodeNames.length; i++) {
+      if (!cur.hasChild(nodeNames[i])) {
+        return;
+      }
+      cur = cur.getChild(nodeNames[i]);
+      if (cur.isStorageGroup()) {
+        throw new StorageGroupAlreadySetException(cur.getFullPath());
+      }
+    }
+    throw new StorageGroupAlreadySetException(path.getFullPath(), true);
   }
 
   /**
@@ -515,39 +555,41 @@ public class MTreeAboveSG {
     }
   }
 
-  public void serialize(ByteBuffer buffer) {
-    serializeInternalNode((InternalMNode) this.root, buffer);
+  public void serialize(OutputStream outputStream) throws IOException {
+    serializeInternalNode((InternalMNode) this.root, outputStream);
   }
 
-  private void serializeInternalNode(InternalMNode node, ByteBuffer buffer) {
+  private void serializeInternalNode(InternalMNode node, OutputStream outputStream)
+      throws IOException {
     for (IMNode child : node.getChildren().values()) {
       if (child.isStorageGroup()) {
-        serializeStorageGroupNode((StorageGroupMNode) child, buffer);
+        serializeStorageGroupNode((StorageGroupMNode) child, outputStream);
       } else {
-        serializeInternalNode((InternalMNode) child, buffer);
+        serializeInternalNode((InternalMNode) child, outputStream);
       }
     }
 
-    buffer.put(INTERNAL_MNODE_TYPE);
-    ReadWriteIOUtils.write(node.getName(), buffer);
-    ReadWriteIOUtils.write(node.getChildren().size(), buffer);
+    ReadWriteIOUtils.write(INTERNAL_MNODE_TYPE, outputStream);
+    ReadWriteIOUtils.write(node.getName(), outputStream);
+    ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
   }
 
-  private void serializeStorageGroupNode(StorageGroupMNode storageGroupNode, ByteBuffer buffer) {
-    buffer.put(STORAGE_GROUP_MNODE_TYPE);
-    ReadWriteIOUtils.write(storageGroupNode.getName(), buffer);
+  private void serializeStorageGroupNode(
+      StorageGroupMNode storageGroupNode, OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
+    ReadWriteIOUtils.write(storageGroupNode.getName(), outputStream);
     ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(
-        storageGroupNode.getStorageGroupSchema(), buffer);
+        storageGroupNode.getStorageGroupSchema(), outputStream);
   }
 
-  public void deserialize(ByteBuffer buffer) {
-    byte type = buffer.get();
+  public void deserialize(InputStream inputStream) throws IOException {
+    byte type = ReadWriteIOUtils.readByte(inputStream);
     if (type != STORAGE_GROUP_MNODE_TYPE) {
       logger.error("Wrong node type. Cannot deserialize MTreeAboveSG from given buffer");
       return;
     }
 
-    StorageGroupMNode storageGroupMNode = deserializeStorageGroupMNode(buffer);
+    StorageGroupMNode storageGroupMNode = deserializeStorageGroupMNode(inputStream);
     InternalMNode internalMNode;
 
     Stack<InternalMNode> stack = new Stack<>();
@@ -557,11 +599,11 @@ public class MTreeAboveSG {
     int childNum = 0;
 
     while (!PATH_ROOT.equals(name)) {
-      type = buffer.get();
+      type = ReadWriteIOUtils.readByte(inputStream);
       switch (type) {
         case INTERNAL_MNODE_TYPE:
-          internalMNode = deserializeInternalMNode(buffer);
-          childNum = ReadWriteIOUtils.readInt(buffer);
+          internalMNode = deserializeInternalMNode(inputStream);
+          childNum = ReadWriteIOUtils.readInt(inputStream);
           while (childNum > 0) {
             internalMNode.addChild(stack.pop());
             childNum--;
@@ -570,7 +612,7 @@ public class MTreeAboveSG {
           name = internalMNode.getName();
           break;
         case STORAGE_GROUP_MNODE_TYPE:
-          storageGroupMNode = deserializeStorageGroupMNode(buffer);
+          storageGroupMNode = deserializeStorageGroupMNode(inputStream);
           childNum = 0;
           stack.push(storageGroupMNode);
           name = storageGroupMNode.getName();
@@ -583,15 +625,16 @@ public class MTreeAboveSG {
     this.root = stack.peek();
   }
 
-  private InternalMNode deserializeInternalMNode(ByteBuffer buffer) {
-    return new InternalMNode(null, ReadWriteIOUtils.readString(buffer));
+  private InternalMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
+    return new InternalMNode(null, ReadWriteIOUtils.readString(inputStream));
   }
 
-  private StorageGroupMNode deserializeStorageGroupMNode(ByteBuffer buffer) {
+  private StorageGroupMNode deserializeStorageGroupMNode(InputStream inputStream)
+      throws IOException {
     StorageGroupMNode storageGroupMNode =
-        new StorageGroupMNode(null, ReadWriteIOUtils.readString(buffer));
+        new StorageGroupMNode(null, ReadWriteIOUtils.readString(inputStream));
     storageGroupMNode.setStorageGroupSchema(
-        ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(buffer));
+        ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(inputStream));
     return storageGroupMNode;
   }
 }

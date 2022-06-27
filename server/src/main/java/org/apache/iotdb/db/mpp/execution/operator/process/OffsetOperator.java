@@ -53,6 +53,9 @@ public class OffsetOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     TsBlock block = child.next();
+    if (block == null) {
+      return null;
+    }
     if (remainingOffset > 0) {
       int offset = Math.min((int) remainingOffset, block.getPositionCount());
       remainingOffset -= offset;

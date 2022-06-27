@@ -29,22 +29,30 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>iotdb-consensus</artifactId>
     <name>IoTDB Consensus</name>
+    <properties>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
+        <ratis.version>2.3.0</ratis.version>
+        <consensus.test.skip>false</consensus.test.skip>
+        <consensus.it.skip>${consensus.test.skip}</consensus.it.skip>
+        <consensus.ut.skip>${consensus.test.skip}</consensus.ut.skip>
+    </properties>
     <dependencies>
         <!-- https://mvnrepository.com/artifact/org.apache.ratis/ratis-server -->
         <dependency>
             <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-server</artifactId>
-            <version>2.2.0</version>
+            <version>${ratis.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-common</artifactId>
-            <version>2.2.0</version>
+            <version>${ratis.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.ratis</groupId>
             <artifactId>ratis-grpc</artifactId>
-            <version>2.2.0</version>
+            <version>${ratis.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -52,9 +60,64 @@
             <version>${project.version}</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>thrift-multi-leader-consensus</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
-    <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
-    </properties>
+    <build>
+        <plugins>
+            <!-- generate test codes into test-jar-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!--using `mvn test` to run UT, `mvn verify` to run ITs
+                        Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>${consensus.ut.skip}</skipTests>
+                    <forkMode>pertest</forkMode>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+    <profiles>
+        <profile>
+            <id>skipConsensusTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <consensus.test.skip>true</consensus.test.skip>
+                <consensus.ut.skip>true</consensus.ut.skip>
+                <consensus.it.skip>true</consensus.it.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>skipUT_Consensus_Tests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <consensus.ut.skip>true</consensus.ut.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

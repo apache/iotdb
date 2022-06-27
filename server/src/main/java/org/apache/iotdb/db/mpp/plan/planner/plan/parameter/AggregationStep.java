@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -31,53 +33,60 @@ import java.nio.ByteBuffer;
  * <ul>
  *   <li>Raw: raw data, as input only
  *   <li>Partial: intermediate aggregation result
- *   <li>Final: final aggregation result, as output only
+ *   <li>Final: final aggregation result
  * </ul>
  */
 public enum AggregationStep {
 
   // input Raw, output Partial
-  PARTIAL(true, true),
+  PARTIAL(InputType.RAW, true),
   // input Partial, output Final
-  FINAL(false, false),
+  FINAL(InputType.PARTIAL, false),
   // input Partial, output Partial
-  INTERMEDIATE(false, true),
+  INTERMEDIATE(InputType.PARTIAL, true),
   // input Raw, output Final
-  SINGLE(true, false);
+  SINGLE(InputType.RAW, false),
+  // input final, output final
+  STATIC(InputType.FINAL, false);
 
-  private final boolean inputRaw;
+  private enum InputType {
+    RAW,
+    PARTIAL,
+    FINAL
+  }
+
+  private final InputType inputType;
   private final boolean outputPartial;
 
-  AggregationStep(boolean inputRaw, boolean outputPartial) {
-    this.inputRaw = inputRaw;
+  AggregationStep(InputType inputType, boolean outputPartial) {
+    this.inputType = inputType;
     this.outputPartial = outputPartial;
   }
 
   public boolean isInputRaw() {
-    return inputRaw;
+    return inputType == InputType.RAW;
+  }
+
+  public boolean isInputPartial() {
+    return inputType == InputType.PARTIAL;
+  }
+
+  public boolean isInputFinal() {
+    return inputType == InputType.FINAL;
   }
 
   public boolean isOutputPartial() {
     return outputPartial;
   }
 
-  public static AggregationStep partialOutput(AggregationStep step) {
-    if (step.isInputRaw()) {
-      return AggregationStep.PARTIAL;
-    }
-    return AggregationStep.INTERMEDIATE;
-  }
-
-  public static AggregationStep partialInput(AggregationStep step) {
-    if (step.isOutputPartial()) {
-      return AggregationStep.INTERMEDIATE;
-    }
-    return AggregationStep.FINAL;
-  }
-
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(isInputRaw(), byteBuffer);
     ReadWriteIOUtils.write(isOutputPartial(), byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(isInputRaw(), stream);
+    ReadWriteIOUtils.write(isOutputPartial(), stream);
   }
 
   public static AggregationStep deserialize(ByteBuffer byteBuffer) {

@@ -80,9 +80,9 @@ public class MetadataUpgrader {
   private File tagFile = new File(tagFilePath);
 
   private String mtreeSnapshotPath =
-      schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT;
+      schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT_OLD_VERSION;
   private String mtreeSnapshotTmpPath =
-      schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
+      schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP_OLDVERSION;
   private File snapshotFile = new File(mtreeSnapshotPath);
   private File snapshotTmpFile = new File(mtreeSnapshotTmpPath);
 

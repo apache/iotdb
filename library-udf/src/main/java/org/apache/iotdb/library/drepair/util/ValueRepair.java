@@ -18,14 +18,11 @@
  */
 package org.apache.iotdb.library.drepair.util;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowIterator;
 
-import java.io.File;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Scanner;
 
 public abstract class ValueRepair {
 
@@ -41,29 +38,6 @@ public abstract class ValueRepair {
       Row row = dataIterator.next();
       Double v = Util.getValueAsDouble(row);
       timeList.add(row.getTime());
-      if (!Double.isFinite(v)) {
-        originList.add(Double.NaN);
-      } else {
-        originList.add(v);
-      }
-    }
-    time = Util.toLongArray(timeList);
-    original = Util.toDoubleArray(originList);
-    n = time.length;
-    repaired = new double[n];
-    processNaN();
-  }
-
-  public ValueRepair(String filename) throws Exception {
-    Scanner sc = new Scanner(new File(filename));
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    sc.useDelimiter("\\s*(,|\\r|\\n)\\s*");
-    sc.nextLine();
-    ArrayList<Long> timeList = new ArrayList<>();
-    ArrayList<Double> originList = new ArrayList<>();
-    while (sc.hasNext()) {
-      timeList.add(format.parse(sc.next()).getTime());
-      Double v = sc.nextDouble();
       if (!Double.isFinite(v)) {
         originList.add(Double.NaN);
       } else {

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.mpp.execution.datatransfer.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -129,7 +129,7 @@ public class DataDriver extends Driver {
       // when all the selected series are under the same device, the QueryDataSource will be
       // filtered according to timeIndex
       Set<String> selectedDeviceIdSet =
-          pathList.stream().map(PartialPath::getDeviceIdString).collect(Collectors.toSet());
+          pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
 
       QueryDataSource dataSource =
           dataRegion.query(

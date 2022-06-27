@@ -24,16 +24,18 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.role.IRoleManager;
 import org.apache.iotdb.commons.auth.user.IUserManager;
-import org.apache.iotdb.commons.conf.CommonConfig;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.AuthUtils;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -86,9 +88,10 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       try {
         c =
             (Class<BasicAuthorizer>)
-                Class.forName(CommonConfig.getInstance().getAuthorizerProvider());
+                Class.forName(CommonDescriptor.getInstance().getConfig().getAuthorizerProvider());
         logger.info(
-            "Authorizer provider class: {}", CommonConfig.getInstance().getAuthorizerProvider());
+            "Authorizer provider class: {}",
+            CommonDescriptor.getInstance().getConfig().getAuthorizerProvider());
         instance = c.getDeclaredConstructor().newInstance();
       } catch (Exception e) {
         instance = null;
@@ -129,19 +132,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
-    if (path.endsWith(".*")
-        || path.endsWith(".**")
-        || path.contains(".*.")
-        || path.contains(".**.")) {
-      throw new AuthException(
-          "Invalid path, the path wildcard is not allowed in granting privileges");
-    }
     String newPath = path;
     if (isAdmin(username)) {
       throw new AuthException("Invalid operation, administrator already has all privileges");
     }
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = IoTDBConstant.PATH_ROOT;
+      newPath = AuthUtils.ROOT_PATH_PRIVILEGE;
     }
     if (!userManager.grantPrivilegeToUser(username, newPath, privilegeId)) {
       throw new AuthException(
@@ -158,7 +154,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      p = IoTDBConstant.PATH_ROOT;
+      p = AuthUtils.ROOT_PATH_PRIVILEGE;
     }
     if (!userManager.revokePrivilegeFromUser(username, p, privilegeId)) {
       throw new AuthException(
@@ -171,6 +167,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void createRole(String roleName) throws AuthException {
     if (!roleManager.createRole(roleName)) {
+      logger.error("Role {} already exists", roleName);
       throw new AuthException(String.format("Role %s already exists", roleName));
     }
   }
@@ -200,16 +197,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void grantPrivilegeToRole(String roleName, String path, int privilegeId)
       throws AuthException {
-    if (path.endsWith(".*")
-        || path.endsWith(".**")
-        || path.contains(".*.")
-        || path.contains(".**.")) {
-      throw new AuthException(
-          "Invalid path, the path wildcard is not allowed in granting privileges");
-    }
     String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      p = IoTDBConstant.PATH_ROOT;
+      p = AuthUtils.ROOT_PATH_PRIVILEGE;
     }
     if (!roleManager.grantPrivilegeToRole(roleName, p, privilegeId)) {
       throw new AuthException(
@@ -223,7 +213,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throws AuthException {
     String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      p = IoTDBConstant.PATH_ROOT;
+      p = AuthUtils.ROOT_PATH_PRIVILEGE;
     }
     if (!roleManager.revokePrivilegeFromRole(roleName, p, privilegeId)) {
       throw new AuthException(
@@ -416,5 +406,17 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
     roleManager.replaceAllRoles(roles);
+  }
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    return userManager.processTakeSnapshot(snapshotDir)
+        & roleManager.processTakeSnapshot(snapshotDir);
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    userManager.processLoadSnapshot(snapshotDir);
+    roleManager.processLoadSnapshot(snapshotDir);
   }
 }

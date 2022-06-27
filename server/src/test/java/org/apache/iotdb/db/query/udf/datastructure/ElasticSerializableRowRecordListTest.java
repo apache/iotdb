@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.query.udf.datastructure;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.datastructure.row.ElasticSerializableRowRecordList;
+import org.apache.iotdb.db.mpp.transformation.datastructure.SerializableList;
+import org.apache.iotdb.db.mpp.transformation.datastructure.row.ElasticSerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 

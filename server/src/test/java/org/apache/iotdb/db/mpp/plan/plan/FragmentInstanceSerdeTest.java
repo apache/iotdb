@@ -41,13 +41,13 @@ import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Sets;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class FragmentInstanceSerdeTest {
 
@@ -55,10 +55,11 @@ public class FragmentInstanceSerdeTest {
   public void testSerializeAndDeserializeForTree1() throws IllegalPathException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
-    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
     PlanFragmentId planFragmentId = new PlanFragmentId("test", -1);
     FragmentInstance fragmentInstance =
@@ -73,10 +74,12 @@ public class FragmentInstanceSerdeTest {
             ImmutableList.of(dataNodeLocation));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
+    ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
+    assertNull(deserializeFragmentInstance.getRegionReplicaSet());
+    // Because the RegionReplicaSet won't be considered in serialization, we need to set it
+    // from original object before comparison.
+    deserializeFragmentInstance.setRegionReplicaSet(fragmentInstance.getRegionReplicaSet());
     assertEquals(deserializeFragmentInstance, fragmentInstance);
   }
 
@@ -84,10 +87,11 @@ public class FragmentInstanceSerdeTest {
   public void testSerializeAndDeserializeWithNullFilter() throws IllegalPathException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
-    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
     PlanFragmentId planFragmentId = new PlanFragmentId("test2", 1);
     FragmentInstance fragmentInstance =
@@ -102,10 +106,10 @@ public class FragmentInstanceSerdeTest {
             ImmutableList.of(dataNodeLocation));
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    fragmentInstance.serializeRequest(byteBuffer);
-    byteBuffer.flip();
+    ByteBuffer byteBuffer = fragmentInstance.serializeToByteBuffer();
     FragmentInstance deserializeFragmentInstance = FragmentInstance.deserializeFrom(byteBuffer);
+    assertNull(deserializeFragmentInstance.getRegionReplicaSet());
+    deserializeFragmentInstance.setRegionReplicaSet(fragmentInstance.getRegionReplicaSet());
     assertEquals(deserializeFragmentInstance, fragmentInstance);
   }
 
@@ -124,31 +128,13 @@ public class FragmentInstanceSerdeTest {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("TimeJoinNode"), OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode1 =
-        new SeriesScanNode(
-            new PlanNodeId("SeriesScanNode1"),
-            new MeasurementPath("root.sg.d1.s2"),
-            Sets.newHashSet("s2"));
-    seriesScanNode1.setRegionReplicaSet(
-        new TRegionReplicaSet(
-            new TConsensusGroupId(TConsensusGroupType.DataRegion, 1), new ArrayList<>()));
+        new SeriesScanNode(new PlanNodeId("SeriesScanNode1"), new MeasurementPath("root.sg.d1.s2"));
     seriesScanNode1.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode2 =
-        new SeriesScanNode(
-            new PlanNodeId("SeriesScanNode2"),
-            new MeasurementPath("root.sg.d2.s1"),
-            Sets.newHashSet("s1", "s2"));
-    seriesScanNode2.setRegionReplicaSet(
-        new TRegionReplicaSet(
-            new TConsensusGroupId(TConsensusGroupType.DataRegion, 2), new ArrayList<>()));
+        new SeriesScanNode(new PlanNodeId("SeriesScanNode2"), new MeasurementPath("root.sg.d2.s1"));
     seriesScanNode2.setScanOrder(OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode3 =
-        new SeriesScanNode(
-            new PlanNodeId("SeriesScanNode3"),
-            new MeasurementPath("root.sg.d2.s2"),
-            Sets.newHashSet("s1", "s2"));
-    seriesScanNode3.setRegionReplicaSet(
-        new TRegionReplicaSet(
-            new TConsensusGroupId(TConsensusGroupType.DataRegion, 3), new ArrayList<>()));
+        new SeriesScanNode(new PlanNodeId("SeriesScanNode3"), new MeasurementPath("root.sg.d2.s2"));
     seriesScanNode3.setScanOrder(OrderBy.TIMESTAMP_DESC);
 
     // build tree

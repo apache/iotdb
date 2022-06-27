@@ -96,12 +96,12 @@ public class CompactionScheduler {
       innerSpaceCompactionSelector =
           config
               .getInnerSequenceCompactionSelector()
-              .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+              .createInstance(logicalStorageGroupName, dataRegionId, timePartition);
     } else {
       innerSpaceCompactionSelector =
           config
               .getInnerUnsequenceCompactionSelector()
-              .createInstance(logicalStorageGroupName, dataRegionId, timePartition, tsFileManager);
+              .createInstance(logicalStorageGroupName, dataRegionId, timePartition);
     }
     List<List<TsFileResource>> taskList =
         innerSpaceCompactionSelector.selectInnerSpaceTask(
@@ -127,7 +127,8 @@ public class CompactionScheduler {
                   task,
                   sequence,
                   performer,
-                  CompactionTaskManager.currentTaskNum));
+                  CompactionTaskManager.currentTaskNum,
+                  tsFileManager.getNextCompactionTaskId()));
     }
   }
 
@@ -160,7 +161,8 @@ public class CompactionScheduler {
                       .getConfig()
                       .getCrossCompactionPerformer()
                       .createInstance(),
-                  CompactionTaskManager.currentTaskNum));
+                  CompactionTaskManager.currentTaskNum,
+                  tsFileManager.getNextCompactionTaskId()));
     }
   }
 }

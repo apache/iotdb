@@ -175,26 +175,12 @@ and "`antlr/target/generated-sources/antlr4`" need to be added to sources roots 
 **In IDEA, you just need to right click on the root project name and choose "`Maven->Reload Project`" after 
 you run `mvn package` successfully.**
 
-#### Spotless problem
-**NOTE**: IF you are using JDK16+, you have to create a file called `jvm.config`,
-put it under `.mvn/`, before you use `spotless:apply`. The file contains the following content:
-```
---add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-```
-
-This is [an issue of Spotless](https://github.com/diffplug/spotless/issues/834),
-Once the issue is fixed, we can remove this file.
-
 ### Configurations
 
 configuration files are under "conf" folder
 
   * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
-  * system config module (`iotdb-engine.properties`)
+  * system config module (`iotdb-datanode.properties`)
   * log config module (`logback.xml`).
 
 For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Reference/Config-Manual.html).

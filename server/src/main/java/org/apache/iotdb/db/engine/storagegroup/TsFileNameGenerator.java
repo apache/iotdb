@@ -71,7 +71,7 @@ public class TsFileNameGenerator {
             time, version, innerSpaceCompactionCount, crossSpaceCompactionCount);
   }
 
-  private static String generateTsFileDir(
+  public static String generateTsFileDir(
       boolean sequence,
       String logicalStorageGroup,
       String virtualStorageGroup,

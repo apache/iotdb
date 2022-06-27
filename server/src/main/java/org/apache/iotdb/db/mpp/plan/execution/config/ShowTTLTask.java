@@ -19,37 +19,20 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
-import org.apache.iotdb.db.client.ConfigNodeClient;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class ShowTTLTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(ShowTTLTask.class);
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private ShowTTLStatement showTTLStatement;
 
@@ -58,76 +41,25 @@ public class ShowTTLTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    List<PartialPath> storageGroupPaths = showTTLStatement.getPaths();
-    Map<String, Long> storageGroupToTTL = new HashMap<>();
-    if (config.isClusterMode()) {
-      ConfigNodeClient client = null;
-      try {
-        client = new ConfigNodeClient();
-        if (showTTLStatement.isAll()) {
-          List<String> allStorageGroupPathPattern = Arrays.asList("root", "**");
-          TStorageGroupSchemaResp resp =
-              client.getMatchedStorageGroupSchemas(allStorageGroupPathPattern);
-          for (Map.Entry<String, TStorageGroupSchema> entry :
-              resp.getStorageGroupSchemaMap().entrySet()) {
-            storageGroupToTTL.put(entry.getKey(), entry.getValue().getTTL());
-          }
-        } else {
-          for (PartialPath storageGroupPath : storageGroupPaths) {
-            List<String> storageGroupPathPattern = Arrays.asList(storageGroupPath.getNodes());
-            TStorageGroupSchemaResp resp =
-                client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
-            for (Map.Entry<String, TStorageGroupSchema> entry :
-                resp.getStorageGroupSchemaMap().entrySet()) {
-              if (!storageGroupToTTL.containsKey(entry.getKey())) {
-                storageGroupToTTL.put(entry.getKey(), entry.getValue().getTTL());
-              }
-            }
-          }
-        }
-      } catch (IoTDBConnectionException e) {
-        LOGGER.error("Failed to connect to config node.");
-        future.setException(e);
-      } finally {
-        if (client != null) {
-          client.close();
-        }
-      }
-    } else {
-      try {
-        Map<PartialPath, Long> allStorageGroupToTTL =
-            LocalConfigNode.getInstance().getStorageGroupsTTL();
-        for (PartialPath storageGroupPath : storageGroupPaths) {
-          if (showTTLStatement.isAll()) {
-            storageGroupToTTL.put(
-                storageGroupPath.getFullPath(), allStorageGroupToTTL.get(storageGroupPath));
-          } else {
-            List<PartialPath> matchedStorageGroupPaths =
-                LocalConfigNode.getInstance()
-                    .getMatchedStorageGroups(storageGroupPath, showTTLStatement.isPrefixPath());
-            for (PartialPath matchedStorageGroupPath : matchedStorageGroupPaths) {
-              storageGroupToTTL.put(
-                  matchedStorageGroupPath.getFullPath(),
-                  allStorageGroupToTTL.get(matchedStorageGroupPath));
-            }
-          }
-        }
-      } catch (MetadataException e) {
-        future.setException(e);
-      }
-    }
-    // build TSBlock
-    TsBlockBuilder builder = new TsBlockBuilder(Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.showTTL(showTTLStatement);
+  }
+
+  public static void buildTSBlock(
+      Map<String, Long> storageGroupToTTL, SettableFuture<ConfigTaskResult> future) {
+    TsBlockBuilder builder = new TsBlockBuilder(HeaderConstant.showTTLHeader.getRespDataTypes());
     for (Map.Entry<String, Long> entry : storageGroupToTTL.entrySet()) {
       builder.getTimeColumnBuilder().writeLong(0);
       builder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey()));
-      builder.getColumnBuilder(1).writeLong(entry.getValue());
+      if (Long.MAX_VALUE == entry.getValue()) {
+        builder.getColumnBuilder(1).appendNull();
+      } else {
+        builder.getColumnBuilder(1).writeLong(entry.getValue());
+      }
       builder.declarePosition();
     }
     DatasetHeader datasetHeader = HeaderConstant.showTTLHeader;
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
-    return future;
   }
 }

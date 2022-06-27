@@ -22,29 +22,40 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 
 public abstract class ConfigRequest implements IConsensusRequest {
@@ -62,29 +73,18 @@ public abstract class ConfigRequest implements IConsensusRequest {
   }
 
   @Override
-  public void serializeRequest(ByteBuffer buffer) {
-    serialize(buffer);
-  }
-
-  public final void serialize(ByteBuffer buffer) {
-    buffer.mark();
-    try {
-      serializeImpl(buffer);
-    } catch (UnsupportedOperationException e) {
-      // ignore and throw
-      throw e;
-    } catch (BufferOverflowException e) {
-      buffer.reset();
-      throw e;
-    } catch (Exception e) {
-      LOGGER.error(
-          "Rollback buffer entry because error occurs when serializing this physical plan.", e);
-      buffer.reset();
-      throw e;
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serializeImpl(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      LOGGER.error("Unexpected error occurs when serializing this ConfigRequest.", e);
+      throw new SerializationRunTimeException(e);
     }
   }
 
-  protected abstract void serializeImpl(ByteBuffer buffer);
+  protected abstract void serializeImpl(DataOutputStream stream) throws IOException;
 
   protected abstract void deserializeImpl(ByteBuffer buffer) throws IOException;
 
@@ -107,9 +107,6 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case SetStorageGroup:
           req = new SetStorageGroupReq();
           break;
-        case DeleteStorageGroup:
-          req = new DeleteStorageGroupReq();
-          break;
         case SetTTL:
           req = new SetTTLReq();
           break;
@@ -122,13 +119,16 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case SetTimePartitionInterval:
           req = new SetTimePartitionIntervalReq();
           break;
+        case AdjustMaxRegionGroupCount:
+          req = new AdjustMaxRegionGroupCountReq();
+          break;
         case CountStorageGroup:
           req = new CountStorageGroupReq();
           break;
         case GetStorageGroup:
           req = new GetStorageGroupReq();
           break;
-        case CreateRegions:
+        case CreateRegionGroups:
           req = new CreateRegionsReq();
           break;
         case DeleteRegions:
@@ -152,6 +152,18 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case GetOrCreateDataPartition:
           req = new GetOrCreateDataPartitionReq();
           break;
+        case DeleteProcedure:
+          req = new DeleteProcedureReq();
+          break;
+        case UpdateProcedure:
+          req = new UpdateProcedureReq();
+          break;
+        case PreDeleteStorageGroup:
+          req = new PreDeleteStorageGroupReq();
+          break;
+        case DeleteStorageGroup:
+          req = new DeleteStorageGroupReq();
+          break;
         case ListUser:
         case ListRole:
         case ListUserPrivilege:
@@ -173,6 +185,21 @@ public abstract class ConfigRequest implements IConsensusRequest {
           break;
         case ApplyConfigNode:
           req = new ApplyConfigNodeReq();
+          break;
+        case RemoveConfigNode:
+          req = new RemoveConfigNodeReq();
+          break;
+        case CreateFunction:
+          req = new CreateFunctionReq();
+          break;
+        case DropFunction:
+          req = new DropFunctionReq();
+          break;
+        case GetNodePathsPartition:
+          req = new GetNodePathsPartitionReq();
+          break;
+        case GetRegionInfoList:
+          req = new GetRegionInfoListReq();
           break;
         default:
           throw new IOException("unknown PhysicalPlan type: " + typeNum);

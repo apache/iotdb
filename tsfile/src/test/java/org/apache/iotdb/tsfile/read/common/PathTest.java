@@ -18,32 +18,161 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
+import org.apache.iotdb.tsfile.exception.PathParseException;
+
 import org.junit.Assert;
 import org.junit.Test;
 
+import static org.junit.Assert.fail;
+
 public class PathTest {
   @Test
-  public void testPath() {
+  public void testLegalPath() {
+    // empty path
     Path a = new Path("", true);
-    Assert.assertEquals("", a.getDeviceIdString());
+    Assert.assertEquals("", a.getDevice());
     Assert.assertEquals("", a.getMeasurement());
-    Path b = new Path("root.\"sg\".\"d1\".\"s1\"", true);
-    Assert.assertEquals("root.\"sg\".\"d1\"", b.getDeviceIdString());
-    Assert.assertEquals("\"s1\"", b.getMeasurement());
-    Path c = new Path("root.\"sg\".\"d1\".s1", true);
-    Assert.assertEquals("root.\"sg\".\"d1\"", c.getDeviceIdString());
-    Assert.assertEquals("s1", c.getMeasurement());
-    Path d = new Path("s1", true);
-    Assert.assertEquals("s1", d.getMeasurement());
-    Assert.assertEquals("", d.getDeviceIdString());
-    Path e = new Path("root.\"s.g\".d1.\"s..\\\"s1\"", true);
-    Assert.assertEquals("root.\"s.g\".d1", e.getDeviceIdString());
-    Assert.assertEquals("\"s..\\\"s1\"", e.getMeasurement());
+
+    // empty device
+    Path b = new Path("s1", true);
+    Assert.assertEquals("s1", b.getMeasurement());
+    Assert.assertEquals("", b.getDevice());
+
+    // normal node
+    Path c = new Path("root.sg.a", true);
+    Assert.assertEquals("root.sg", c.getDevice());
+    Assert.assertEquals("a", c.getMeasurement());
+
+    // quoted node
+    Path d = new Path("root.sg.`a.b`", true);
+    Assert.assertEquals("root.sg", d.getDevice());
+    Assert.assertEquals("`a.b`", d.getMeasurement());
+
+    Path e = new Path("root.sg.`a.``b`", true);
+    Assert.assertEquals("root.sg", e.getDevice());
+    Assert.assertEquals("`a.``b`", e.getMeasurement());
+
+    Path f = new Path("root.`sg\"`.`a.``b`", true);
+    Assert.assertEquals("root.`sg\"`", f.getDevice());
+    Assert.assertEquals("`a.``b`", f.getMeasurement());
+
+    Path g = new Path("root.sg.`a.b\\\\`", true);
+    Assert.assertEquals("root.sg", g.getDevice());
+    Assert.assertEquals("`a.b\\\\`", g.getMeasurement());
+
+    // quoted node of digits
+    Path h = new Path("root.sg.`111`", true);
+    Assert.assertEquals("root.sg", h.getDevice());
+    Assert.assertEquals("`111`", h.getMeasurement());
+
+    // quoted node of key word
+    Path i = new Path("root.sg.`select`", true);
+    Assert.assertEquals("root.sg", i.getDevice());
+    Assert.assertEquals("select", i.getMeasurement());
+
+    // wildcard
+    Path j = new Path("root.sg.`a*b`", true);
+    Assert.assertEquals("root.sg", j.getDevice());
+    Assert.assertEquals("`a*b`", j.getMeasurement());
+
+    Path k = new Path("root.sg.*", true);
+    Assert.assertEquals("root.sg", k.getDevice());
+    Assert.assertEquals("*", k.getMeasurement());
+
+    Path l = new Path("root.sg.**", true);
+    Assert.assertEquals("root.sg", l.getDevice());
+    Assert.assertEquals("**", l.getMeasurement());
+
+    // raw key word
+    Path m = new Path("root.sg.select", true);
+    Assert.assertEquals("root.sg", m.getDevice());
+    Assert.assertEquals("select", m.getMeasurement());
+
+    Path n = new Path("root.sg.device", true);
+    Assert.assertEquals("root.sg", n.getDevice());
+    Assert.assertEquals("device", n.getMeasurement());
+
+    Path o = new Path("root.sg.drop_trigger", true);
+    Assert.assertEquals("root.sg", o.getDevice());
+    Assert.assertEquals("drop_trigger", o.getMeasurement());
   }
 
-  @Test(expected = IllegalArgumentException.class)
-  public void testWrongPath() {
-    Path c = new Path("root.\"sg\".\"d1\".\"s1\"\"", true);
-    System.out.println(c.getMeasurement());
+  @Test
+  public void tesIllegalPath() {
+    try {
+      new Path("root.sg`", true);
+      fail();
+    } catch (PathParseException ignored) {
+
+    }
+
+    try {
+      new Path("root.sg\na", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.select`", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      // pure digits
+      new Path("root.111", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      // single ` in quoted node
+      new Path("root.`a``", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      // single ` in quoted node
+      new Path("root.``a`", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.a*%", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.a*b", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.and", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.or", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.not", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
+
+    try {
+      new Path("root.contains", true);
+      fail();
+    } catch (PathParseException ignored) {
+    }
   }
 }

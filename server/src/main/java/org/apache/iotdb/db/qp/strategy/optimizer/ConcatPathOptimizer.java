@@ -26,6 +26,9 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -41,9 +44,6 @@ import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.slf4j.Logger;
@@ -146,7 +146,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
             ((TimeSeriesOperand) expression)
                 .setPath(
                     new PartialPath(
-                        PathUtils.splitPathToDetachedPath(
+                        PathUtils.splitPathToDetachedNodes(
                             ((TimeSeriesOperand) expression)
                                 .getPath()
                                 .getFirstNode()))); // split path To nodes
@@ -242,11 +242,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         String groupedPath =
             groupByLevelController.getGroupedPath(expression.getExpressionString());
         if (groupedPath != null) {
-          try {
-            resultExpressions.add(new TimeSeriesOperand(new PartialPath(groupedPath)));
-          } catch (IllegalPathException e) {
-            throw new LogicalOptimizeException(e.getMessage());
-          }
+          resultExpressions.add(new TimeSeriesOperand(new PartialPath(groupedPath, false)));
         } else {
           resultExpressions.add(expression);
         }

@@ -18,10 +18,14 @@
  */
 package org.apache.iotdb.confignode.consensus.statemachine;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
+import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -39,11 +43,25 @@ import java.io.IOException;
 public class PartitionRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionRegionStateMachine.class);
-
   private final ConfigRequestExecutor executor;
+  private ConfigManager configManager;
+  private final TEndPoint currentNode;
 
-  public PartitionRegionStateMachine() {
-    this.executor = new ConfigRequestExecutor();
+  public PartitionRegionStateMachine(ConfigManager configManager, ConfigRequestExecutor executor) {
+    this.executor = executor;
+    this.configManager = configManager;
+    this.currentNode =
+        new TEndPoint()
+            .setIp(ConfigNodeDescriptor.getInstance().getConf().getRpcAddress())
+            .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
+  }
+
+  public ConfigManager getConfigManager() {
+    return configManager;
+  }
+
+  public void setConfigManager(ConfigManager configManager) {
+    this.configManager = configManager;
   }
 
   @Override
@@ -51,9 +69,9 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     ConfigRequest plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = ConfigRequest.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+        plan = ConfigRequest.Factory.create(request.serializeToByteBuffer());
       } catch (IOException e) {
-        LOGGER.error("Deserialization error for write plan : {}", request);
+        LOGGER.error("Deserialization error for write plan : {}", request, e);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
       }
     } else if (request instanceof ConfigRequest) {
@@ -69,7 +87,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   protected TSStatus write(ConfigRequest plan) {
     TSStatus result;
     try {
-      result = executor.executorNonQueryPlan(plan);
+      result = executor.executeNonQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -82,7 +100,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     ConfigRequest plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = ConfigRequest.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+        plan = ConfigRequest.Factory.create(request.serializeToByteBuffer());
       } catch (IOException e) {
         LOGGER.error("Deserialization error for write plan : {}", request);
         return null;
@@ -110,12 +128,24 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   protected DataSet read(ConfigRequest plan) {
     DataSet result;
     try {
-      result = executor.executorQueryPlan(plan);
+      result = executor.executeQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = null;
     }
     return result;
+  }
+
+  @Override
+  public void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {
+    if (currentNode.equals(newLeader)) {
+      LOGGER.info("Current node {} is Leader, start procedure manager.", newLeader);
+      configManager.getProcedureManager().shiftExecutor(true);
+      configManager.getLoadManager().start();
+    } else {
+      configManager.getProcedureManager().shiftExecutor(false);
+      configManager.getLoadManager().stop();
+    }
   }
 
   @Override

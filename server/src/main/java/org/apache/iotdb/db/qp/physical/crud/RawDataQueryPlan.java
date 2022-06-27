@@ -22,9 +22,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -130,7 +130,7 @@ public class RawDataQueryPlan extends QueryPlan {
     if (expression instanceof SingleSeriesExpression) {
       Path path = ((SingleSeriesExpression) expression).getSeriesPath();
       deviceToMeasurements
-          .computeIfAbsent(path.getDeviceIdString(), key -> new HashSet<>())
+          .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
           .add(path.getMeasurement());
     } else if (expression instanceof IBinaryExpression) {
       updateDeviceMeasurementsUsingExpression(((IBinaryExpression) expression).getLeft());
@@ -144,7 +144,7 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public void addDeduplicatedPaths(PartialPath path) {
     deviceToMeasurements
-        .computeIfAbsent(path.getDeviceIdString(), key -> new HashSet<>())
+        .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
         .add(path.getMeasurement());
     this.deduplicatedPaths.add(path);
   }
@@ -162,8 +162,7 @@ public class RawDataQueryPlan extends QueryPlan {
     deduplicatedPaths.forEach(
         path -> {
           Set<String> set =
-              deviceToMeasurements.computeIfAbsent(
-                  path.getDeviceIdString(), key -> new HashSet<>());
+              deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>());
           if (path instanceof AlignedPath) {
             set.addAll(((AlignedPath) path).getMeasurementList());
           } else {
@@ -183,7 +182,7 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public void addFilterPathInDeviceToMeasurements(Path path) {
     deviceToMeasurements
-        .computeIfAbsent(path.getDeviceIdString(), key -> new HashSet<>())
+        .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
         .add(path.getMeasurement());
   }
 

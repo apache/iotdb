@@ -20,7 +20,7 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -191,7 +191,7 @@ public class IoTDBTtlIT {
 
   @Test
   public void testDefaultTTL() throws SQLException {
-    IoTDBDescriptor.getInstance().getConfig().setDefaultTTL(10000);
+    CommonDescriptor.getInstance().getConfig().setDefaultTTL(10000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.group1");
@@ -202,7 +202,7 @@ public class IoTDBTtlIT {
           result.equals("root.group1,10000\n" + "root.group2,10000\n")
               || result.equals("root.group2,10000\n" + "root.group1,10000\n"));
     } finally {
-      IoTDBDescriptor.getInstance().getConfig().setDefaultTTL(Long.MAX_VALUE);
+      CommonDescriptor.getInstance().getConfig().setDefaultTTL(Long.MAX_VALUE);
     }
   }
 

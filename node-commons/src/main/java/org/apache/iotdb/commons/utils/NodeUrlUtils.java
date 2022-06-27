@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.commons.utils;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeLocation;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -122,6 +122,7 @@ public class NodeUrlUtils {
    */
   public static String convertTConfigNodeUrl(TConfigNodeLocation configNodeLocation) {
     StringJoiner url = new StringJoiner(",");
+    url.add(String.valueOf(configNodeLocation.getConfigNodeId()));
     url.add(convertTEndPointUrl(configNodeLocation.getInternalEndPoint()));
     url.add(convertTEndPointUrl(configNodeLocation.getConsensusEndPoint()));
     return url.toString();
@@ -151,11 +152,12 @@ public class NodeUrlUtils {
   public static TConfigNodeLocation parseTConfigNodeUrl(String configNodeUrl)
       throws BadNodeUrlException {
     String[] split = configNodeUrl.split(",");
-    if (split.length != 2) {
+    if (split.length != 3) {
       logger.warn("Bad ConfigNode url: {}", configNodeUrl);
       throw new BadNodeUrlException(String.format("Bad node url: %s", configNodeUrl));
     }
-    return new TConfigNodeLocation(parseTEndPointUrl(split[0]), parseTEndPointUrl(split[1]));
+    return new TConfigNodeLocation(
+        Integer.parseInt(split[0]), parseTEndPointUrl(split[1]), parseTEndPointUrl(split[2]));
   }
 
   /**

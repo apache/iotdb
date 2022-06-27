@@ -51,6 +51,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,6 +100,14 @@ public class MLogWriter implements AutoCloseable {
     logWriter.close();
   }
 
+  public synchronized void copyTo(File targetFile) throws IOException {
+    // flush the mlogBuffer
+    sync();
+    // flush the os buffer
+    force();
+    FileUtils.copyFile(logFile, targetFile);
+  }
+
   private void sync() {
     try {
       logWriter.write(mlogBuffer);
@@ -110,7 +119,7 @@ public class MLogWriter implements AutoCloseable {
     mlogBuffer.clear();
   }
 
-  synchronized void putLog(PhysicalPlan plan) throws IOException {
+  public synchronized void putLog(PhysicalPlan plan) throws IOException {
     try {
       plan.serialize(mlogBuffer);
       sync();

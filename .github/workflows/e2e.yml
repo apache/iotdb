@@ -5,12 +5,12 @@ name: E2E Tests
 
 on:
   push:
-    branches: 
+    branches:
       - test/e2e
     paths-ignore:
       - 'docs/**'
   pull_request:
-    branches: 
+    branches:
       - cluster_new
     paths-ignore:
       - 'docs/**'

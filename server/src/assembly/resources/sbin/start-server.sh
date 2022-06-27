@@ -57,8 +57,14 @@ else
     echo "can't find $IOTDB_CONF/iotdb-env.sh"
 fi
 
+if [ -d ${IOTDB_HOME}/lib ]; then
+LIB_PATH=${IOTDB_HOME}/lib
+else
+LIB_PATH=${IOTDB_HOME}/../lib
+fi
+
 CLASSPATH=""
-for f in ${IOTDB_HOME}/lib/*.jar; do
+for f in ${LIB_PATH}/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 classname=org.apache.iotdb.db.service.IoTDB
@@ -75,6 +81,69 @@ launch_service()
 	exec "$JAVA" $illegal_access_params $iotdb_parms $IOTDB_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
 	return $?
 }
+
+
+# check whether tool 'lsof' exists
+check_tool_env() {
+  if  ! type lsof > /dev/null 2>&1 ; then
+    echo ""
+    echo " Warning: No tool 'lsof', Please install it."
+    echo " Note: Some checking function need 'lsof'."
+    echo ""
+    return 1
+  else
+    return 0
+  fi
+}
+
+# convert path to real full-path.
+# If path has been deleted, return ""
+get_real_path() {
+  local path=$1
+  local real_path=""
+  cd $path > /dev/null 2>&1
+  if [ $? -eq 0 ] ; then
+    real_path=$(pwd -P)
+    cd -  > /dev/null 2>&1
+  fi
+  echo "${real_path}"
+}
+
+# check whether same directory's IotDB server process has been running
+check_running_process() {
+  check_tool_env
+
+  PIDS=$(ps ax | grep "$classname" | grep java | grep DIOTDB_HOME | grep -v grep | awk '{print $1}')
+  for pid in ${PIDS}
+  do
+    run_conf_path=""
+    run_cwd=$(lsof -p $pid 2>/dev/null | awk '$4~/cwd/ {print $NF}')
+    run_home_path=$(ps -fp $pid | sed "s/ /\n/g" | sed -n "s/-DIOTDB_HOME=//p")
+    run_home_path=$(get_real_path "${run_cwd}/${run_home_path}")
+
+    #if dir ${run_home_path} has been deleted
+    if [ "${run_home_path}" == "" ]; then
+      continue
+    fi
+
+    current_home_path=$(get_real_path ${IOTDB_HOME})
+    if [ "${run_home_path}" == "${current_home_path}" ]; then
+      echo ""
+      echo " Found running IoTDB server (PID=$pid)."  >&2
+      echo " Can not run duplicated IoTDB server!"  >&2
+      echo " Exit..."  >&2
+      echo ""
+      exit 1
+    fi
+  done
+}
+
+
+check_tool_env
+# If needed tool is ready, check whether same directory's IotDB server is running
+if [ $? -eq 0 ]; then
+  check_running_process
+fi
 
 # Start up the service
 launch_service "$classname"

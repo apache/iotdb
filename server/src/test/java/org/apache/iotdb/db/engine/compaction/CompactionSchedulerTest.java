@@ -58,7 +58,7 @@ import static org.junit.Assert.fail;
 
 public class CompactionSchedulerTest {
   private static final Logger logger = LoggerFactory.getLogger(CompactionSchedulerTest.class);
-  static final String COMPACTION_TEST_SG = "root.compactionSchedulerTest-";
+  static final String COMPACTION_TEST_SG = "root.compactionSchedulerTest_";
   private static final boolean oldEnableInnerSeqCompaction =
       IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
   private static final boolean oldEnableInnerUnseqCompaction =

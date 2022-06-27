@@ -45,7 +45,7 @@ public class UnsetTemplatePlan extends PhysicalPlan {
   public UnsetTemplatePlan(String prefixPath, String templateName) throws IllegalPathException {
     super(Operator.OperatorType.UNSET_TEMPLATE);
 
-    String[] pathNodes = PathUtils.splitPathToDetachedPath(prefixPath);
+    String[] pathNodes = PathUtils.splitPathToDetachedNodes(prefixPath);
     for (String s : pathNodes) {
       if (s.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
           || s.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {

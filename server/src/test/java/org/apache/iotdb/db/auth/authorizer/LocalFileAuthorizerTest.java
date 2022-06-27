@@ -19,11 +19,11 @@
 package org.apache.iotdb.db.auth.authorizer;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -49,7 +49,7 @@ public class LocalFileAuthorizerTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    authorizer = BasicAuthorizer.getInstance();
+    authorizer = AuthorizerManager.getInstance();
     user = new User("user", "password");
   }
 
@@ -253,10 +253,10 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testListUser() throws AuthException {
-    IAuthorizer authorizer = BasicAuthorizer.getInstance();
+    IAuthorizer authorizer = AuthorizerManager.getInstance();
     List<String> userList = authorizer.listAllUsers();
     assertEquals(1, userList.size());
-    assertEquals(CommonConfig.getInstance().getAdminName(), userList.get(0));
+    assertEquals(CommonDescriptor.getInstance().getConfig().getAdminName(), userList.get(0));
 
     int userCnt = 10;
     for (int i = 0; i < userCnt; i++) {
@@ -284,7 +284,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testListRole() throws AuthException {
-    IAuthorizer authorizer = BasicAuthorizer.getInstance();
+    IAuthorizer authorizer = AuthorizerManager.getInstance();
     List<String> roleList = authorizer.listAllRoles();
     assertEquals(0, roleList.size());
 
@@ -314,7 +314,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testReplaceAllUsers() throws AuthException {
-    IAuthorizer authorizer = BasicAuthorizer.getInstance();
+    IAuthorizer authorizer = AuthorizerManager.getInstance();
     Assert.assertEquals("root", authorizer.listAllUsers().get(0));
     User user = new User("user", "user");
     HashMap<String, User> users = new HashMap<>();
@@ -325,7 +325,7 @@ public class LocalFileAuthorizerTest {
 
   @Test
   public void testReplaceAllRole() throws AuthException {
-    IAuthorizer authorizer = BasicAuthorizer.getInstance();
+    IAuthorizer authorizer = AuthorizerManager.getInstance();
     Role role = new Role("role");
     HashMap<String, Role> roles = new HashMap<>();
     roles.put("role", role);

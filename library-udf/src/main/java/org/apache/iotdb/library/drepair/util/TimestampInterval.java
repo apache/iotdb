@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.library.drepair.util;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class TimestampInterval {
 

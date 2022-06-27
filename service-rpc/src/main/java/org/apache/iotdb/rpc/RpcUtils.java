@@ -35,6 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class RpcUtils {
 
@@ -263,14 +264,27 @@ public class RpcUtils {
     }
   }
 
+  public static String formatDatetimeStr(String datetime, StringBuilder digits) {
+    if (datetime.contains("+")) {
+      String timeZoneStr = datetime.substring(datetime.length() - 6);
+      return datetime.substring(0, datetime.length() - 6) + "." + digits + timeZoneStr;
+    } else if (datetime.contains("Z")) {
+      String timeZoneStr = datetime.substring(datetime.length() - 1);
+      return datetime.substring(0, datetime.length() - 1) + "." + digits + timeZoneStr;
+    } else {
+      String timeZoneStr = "";
+      return datetime + "." + digits + timeZoneStr;
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(
       DateTimeFormatter formatter, long timestamp, ZoneId zoneid, String timestampPrecision) {
     if ("ms".equals(timestampPrecision)) {
-      long integerofDate = timestamp / 1000;
+      long integerOfDate = timestamp / 1000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 3) {
@@ -278,12 +292,12 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+      return formatDatetimeStr(datetime, digits);
     } else if ("us".equals(timestampPrecision)) {
-      long integerofDate = timestamp / 1000_000;
+      long integerOfDate = timestamp / 1000_000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 6) {
@@ -291,12 +305,12 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+      return formatDatetimeStr(datetime, digits);
     } else {
-      long integerofDate = timestamp / 1000_000_000L;
+      long integerOfDate = timestamp / 1000_000_000L;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000_000L));
       ZonedDateTime dateTime =
-          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerofDate), zoneid);
+          ZonedDateTime.ofInstant(Instant.ofEpochSecond(integerOfDate), zoneid);
       String datetime = dateTime.format(formatter);
       int length = digits.length();
       if (length != 9) {
@@ -304,7 +318,18 @@ public class RpcUtils {
           digits.insert(0, "0");
         }
       }
-      return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
+      return formatDatetimeStr(datetime, digits);
     }
+  }
+
+  public static TSStatus squashResponseStatusList(List<TSStatus> responseStatusList) {
+    final List<TSStatus> failedStatus =
+        responseStatusList.stream()
+            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .collect(Collectors.toList());
+    return failedStatus.isEmpty()
+        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        : new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+            .setMessage(failedStatus.toString());
   }
 }

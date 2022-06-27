@@ -19,12 +19,13 @@
 package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.io.IOException;
 import java.util.List;
 
 /** This interface manages the serialization/deserialization of the user objects. */
-public interface IUserAccessor {
+public interface IUserAccessor extends SnapshotProcessor {
 
   /**
    * Deserialize a user from lower storage.
@@ -61,4 +62,11 @@ public interface IUserAccessor {
 
   /** Re-initialize this object. */
   void reset();
+
+  /**
+   * get UserDirPath
+   *
+   * @return userDirPath
+   */
+  public String getDirPath();
 }

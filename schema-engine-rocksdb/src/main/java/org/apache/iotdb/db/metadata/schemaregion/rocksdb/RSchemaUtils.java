@@ -500,7 +500,7 @@ public class RSchemaUtils {
     for (String str : oldArray) {
       stringBuilder.append(PATH_SEPARATOR).append(str);
     }
-    return PathUtils.splitPathToDetachedPath(stringBuilder.substring(1));
+    return PathUtils.splitPathToDetachedNodes(stringBuilder.substring(1));
   }
 
   public static String replaceWildcard(int num) {

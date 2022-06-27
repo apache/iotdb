@@ -44,6 +44,7 @@ public enum ServiceType {
   TVLIST_ALLOCATOR_SERVICE("TVList Allocator", ""),
   UDF_CLASSLOADER_MANAGER_SERVICE("UDF Classloader Manager Service", ""),
   UDF_REGISTRATION_SERVICE("UDF Registration Service", ""),
+  UDF_EXECUTABLE_MANAGER_SERVICE("UDF Executable Manager Service", ""),
   TEMPORARY_QUERY_DATA_FILE_SERVICE("Temporary Query Data File Service", ""),
   TRIGGER_REGISTRATION_SERVICE("Trigger Registration Service", ""),
   CACHE_HIT_RATIO_DISPLAY_SERVICE(
@@ -70,9 +71,9 @@ public enum ServiceType {
   CONFIG_NODE_SERVICE("Config Node service", "ConfigNodeRPCServer"),
   DATA_NODE_MANAGEMENT_SERVICE("Data Node management service", "DataNodeManagementServer"),
   FRAGMENT_INSTANCE_MANAGER_SERVICE("Fragment instance manager", "FragmentInstanceManager"),
-  DATA_BLOCK_MANAGER_SERVICE("Data block manager", "DataBlockManager"),
+  MPP_DATA_EXCHANGE_SERVICE("MPP Data exchange manager", "MPPDataExchangeManager"),
   INTERNAL_SERVICE("Internal Service", "InternalService"),
-  PROCEDURE_SERVICE("Procedure  Service", "ProcedureService");
+  MULTI_LEADER_CONSENSUS_SERVICE("Multi Leader consensus Service", "MultiLeaderRPCService");
 
   private final String name;
   private final String jmxName;

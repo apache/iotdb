@@ -22,6 +22,8 @@ import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -53,12 +55,12 @@ public class CountStorageGroupReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(getType().ordinal());
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(getType().ordinal());
 
-    buffer.putInt(storageGroupPattern.length);
+    stream.writeInt(storageGroupPattern.length);
     for (String node : storageGroupPattern) {
-      BasicStructureSerDeUtil.write(node, buffer);
+      BasicStructureSerDeUtil.write(node, stream);
     }
   }
 

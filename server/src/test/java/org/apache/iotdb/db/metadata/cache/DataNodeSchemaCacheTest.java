@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -64,7 +66,6 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
-                            null,
                             o.isUnderAlignedEntity())));
     Assert.assertEquals(
         TSDataType.INT32,
@@ -92,7 +93,6 @@ public class DataNodeSchemaCacheTest {
                     o ->
                         new SchemaCacheEntry(
                             (MeasurementSchema) o.getMeasurementSchema(),
-                            null,
                             o.isUnderAlignedEntity())));
     Assert.assertEquals(
         TSDataType.BOOLEAN,
@@ -104,6 +104,73 @@ public class DataNodeSchemaCacheTest {
         TSDataType.INT64,
         schemaCacheEntryMap.get(new PartialPath("root.sg1.d1.s5")).getTsDataType());
     Assert.assertEquals(5, dataNodeSchemaCache.estimatedSize());
+  }
+
+  @Test
+  public void testLastCache() throws IllegalPathException {
+    // test no cache
+    PartialPath seriesPath1 = new PartialPath("root.sg1.d1.s1");
+    PartialPath seriesPath2 = new PartialPath("root.sg1.d1.s2");
+    PartialPath seriesPath3 = new PartialPath("root.sg1.d1.s3");
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath1));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
+    // test no last cache
+    dataNodeSchemaCache.put(generateSchemaTree1());
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath1));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
+    // put cache
+    long timestamp = 100;
+    long timestamp2 = 101;
+    TsPrimitiveType value = TsPrimitiveType.getByType(TSDataType.INT32, 101);
+    TsPrimitiveType value2 = TsPrimitiveType.getByType(TSDataType.INT32, 100);
+    TsPrimitiveType value3 = TsPrimitiveType.getByType(TSDataType.INT32, 99);
+
+    // put into last cache when cache not exist
+    TimeValuePair timeValuePair = new TimeValuePair(timestamp, value);
+    dataNodeSchemaCache.updateLastCache(seriesPath1, timeValuePair, false, 99L);
+    TimeValuePair cachedTimeValuePair = dataNodeSchemaCache.getLastCache(seriesPath1);
+    Assert.assertNotNull(cachedTimeValuePair);
+    Assert.assertEquals(timestamp, cachedTimeValuePair.getTimestamp());
+    Assert.assertEquals(value, cachedTimeValuePair.getValue());
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
+
+    // same time but low priority
+    TimeValuePair timeValuePair2 = new TimeValuePair(timestamp, value2);
+    dataNodeSchemaCache.updateLastCache(seriesPath1, timeValuePair2, false, 100L);
+    TimeValuePair cachedTimeValuePair2 = dataNodeSchemaCache.getLastCache(seriesPath1);
+    Assert.assertNotNull(cachedTimeValuePair2);
+    Assert.assertEquals(timestamp, cachedTimeValuePair2.getTimestamp());
+    Assert.assertEquals(value, cachedTimeValuePair2.getValue());
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
+
+    // same time but high priority
+    dataNodeSchemaCache.updateLastCache(seriesPath1, timeValuePair2, true, 100L);
+    cachedTimeValuePair2 = dataNodeSchemaCache.getLastCache(seriesPath1);
+    Assert.assertNotNull(cachedTimeValuePair2);
+    Assert.assertEquals(timestamp, cachedTimeValuePair2.getTimestamp());
+    Assert.assertEquals(value2, cachedTimeValuePair2.getValue());
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
+
+    // put into last cache when cache already exist
+    TimeValuePair timeValuePair3 = new TimeValuePair(timestamp2, value3);
+    dataNodeSchemaCache.updateLastCache(seriesPath1, timeValuePair3, false, 100L);
+    TimeValuePair cachedTimeValuePair3 = dataNodeSchemaCache.getLastCache(seriesPath1);
+    Assert.assertNotNull(cachedTimeValuePair3);
+    Assert.assertEquals(timestamp2, cachedTimeValuePair3.getTimestamp());
+    Assert.assertEquals(value3, cachedTimeValuePair3.getValue());
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
+
+    // invalid cache
+    dataNodeSchemaCache.invalidate(seriesPath1);
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath1));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath2));
+    Assert.assertNull(dataNodeSchemaCache.getLastCache(seriesPath3));
   }
 
   private SchemaTree generateSchemaTree1() throws IllegalPathException {

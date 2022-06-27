@@ -22,8 +22,6 @@ package org.apache.iotdb.consensus.exception;
 public class IllegalPeerNumException extends ConsensusException {
 
   public IllegalPeerNumException(int size) {
-    super(
-        String.format(
-            "Illegal Peer num %d, only support one peer in StandAloneConsensus Mode", size));
+    super(String.format("Illegal peer num %d when adding consensus group", size));
   }
 }

@@ -223,45 +223,13 @@ public abstract class AbstractThriftServiceThread extends Thread {
 
   @SuppressWarnings("java:S2259")
   private TServerTransport openTransport(String bindAddress, int port) throws TTransportException {
-    int maxRetry = 5;
-    long retryIntervalMS = 5000;
-    TTransportException lastExp = null;
-    for (int i = 0; i < maxRetry; i++) {
-      try {
-        return new TServerSocket(new InetSocketAddress(bindAddress, port));
-      } catch (TTransportException e) {
-        lastExp = e;
-        try {
-          Thread.sleep(retryIntervalMS);
-        } catch (InterruptedException interruptedException) {
-          Thread.currentThread().interrupt();
-          break;
-        }
-      }
-    }
-    throw lastExp == null ? new TTransportException() : lastExp;
+    return new TServerSocket(new InetSocketAddress(bindAddress, port));
   }
 
   private TServerTransport openNonblockingTransport(
       String bindAddress, int port, int connectionTimeoutInMS) throws TTransportException {
-    int maxRetry = 5;
-    long retryIntervalMS = 5000;
-    TTransportException lastExp = null;
-    for (int i = 0; i < maxRetry; i++) {
-      try {
-        return new TNonblockingServerSocket(
-            new InetSocketAddress(bindAddress, port), connectionTimeoutInMS);
-      } catch (TTransportException e) {
-        lastExp = e;
-        try {
-          Thread.sleep(retryIntervalMS);
-        } catch (InterruptedException interruptedException) {
-          Thread.currentThread().interrupt();
-          break;
-        }
-      }
-    }
-    throw lastExp == null ? new TTransportException() : lastExp;
+    return new TNonblockingServerSocket(
+        new InetSocketAddress(bindAddress, port), connectionTimeoutInMS);
   }
 
   public void setThreadStopLatch(CountDownLatch threadStopLatch) {

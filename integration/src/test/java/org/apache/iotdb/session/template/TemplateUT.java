@@ -248,13 +248,13 @@ public class TemplateUT {
 
     session.addAlignedMeasurementsInTemplate(
         "template1",
-        Collections.singletonList("append"),
+        Collections.singletonList("append1"),
         Collections.singletonList(TSDataType.INT64),
         Collections.singletonList(TSEncoding.RLE),
         Collections.singletonList(CompressionType.UNCOMPRESSED));
 
     try {
-      session.deleteNodeInTemplate("template1", "append");
+      session.deleteNodeInTemplate("template1", "append1");
       fail();
     } catch (StatementExecutionException e) {
       assertEquals(
@@ -283,7 +283,7 @@ public class TemplateUT {
       session.insertAlignedRecord(
           "root.sg.v1",
           110L,
-          Collections.singletonList("append"),
+          Collections.singletonList("append1"),
           Collections.singletonList(TSDataType.TEXT),
           Collections.singletonList("aaa"));
       fail();
@@ -294,13 +294,13 @@ public class TemplateUT {
     try {
       session.addAlignedMeasurementsInTemplate(
           "template1",
-          Collections.singletonList("append"),
+          Collections.singletonList("append1"),
           Collections.singletonList(TSDataType.TEXT),
           Collections.singletonList(TSEncoding.PLAIN),
           Collections.singletonList(CompressionType.UNCOMPRESSED));
       fail();
     } catch (StatementExecutionException e) {
-      assertEquals("315: Path duplicated: append is not a legal path", e.getMessage());
+      assertEquals("315: Path duplicated: append1 is not a legal path", e.getMessage());
     }
 
     try {
@@ -347,7 +347,7 @@ public class TemplateUT {
     session.insertAlignedRecord(
         "root.sg.v1",
         110L,
-        Collections.singletonList("append"),
+        Collections.singletonList("append1"),
         Collections.singletonList(TSDataType.INT64),
         Collections.singletonList(12345L));
 
@@ -362,7 +362,7 @@ public class TemplateUT {
     session.insertAlignedRecord(
         "root.sg.v1.d0",
         110L,
-        Collections.singletonList("append"),
+        Collections.singletonList("append1"),
         Collections.singletonList(TSDataType.INT64),
         Collections.singletonList(12345L));
 

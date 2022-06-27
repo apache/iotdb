@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.utils;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.query.control.SessionManager;
 
 import java.time.DateTimeException;
@@ -48,7 +47,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WIDTH_1_2 =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NEVER)
             .appendLiteral('-')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('-')
@@ -62,7 +61,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WITH_SLASH =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NEVER)
             .appendLiteral('/')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('/')
@@ -76,7 +75,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WITH_DOT =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NEVER)
             .appendLiteral('.')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('.')
@@ -450,24 +449,22 @@ public class DatetimeUtils {
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE_NS)
           .toFormatter();
 
-  public static long convertDatetimeStrToLong(String str, ZoneId zoneId)
-      throws LogicalOperatorException {
+  public static long convertDatetimeStrToLong(String str, ZoneId zoneId) {
     return convertDatetimeStrToLong(str, toZoneOffset(zoneId), 0);
   }
 
-  public static long getInstantWithPrecision(String str, String timestampPrecision)
-      throws LogicalOperatorException {
+  public static long getInstantWithPrecision(String str, String timestampPrecision) {
     try {
       ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
       Instant instant = zonedDateTime.toInstant();
       if ("us".equals(timestampPrecision)) {
         if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
           // adjustment can reduce the loss of the division
-          long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000);
+          long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000L);
           long adjustment = instant.getNano() / 1000 - 1L;
           return Math.addExact(millis, adjustment);
         } else {
-          long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000);
+          long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000L);
           return Math.addExact(millis, instant.getNano() / 1000);
         }
       } else if ("ns".equals(timestampPrecision)) {
@@ -476,13 +473,12 @@ public class DatetimeUtils {
       }
       return instant.toEpochMilli();
     } catch (DateTimeParseException e) {
-      throw new LogicalOperatorException(e.getMessage());
+      throw new RuntimeException(e.getMessage());
     }
   }
 
   /** convert date time string to millisecond, microsecond or nanosecond. */
-  public static long convertDatetimeStrToLong(String str, ZoneOffset offset, int depth)
-      throws LogicalOperatorException {
+  public static long convertDatetimeStrToLong(String str, ZoneOffset offset, int depth) {
 
     String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
 

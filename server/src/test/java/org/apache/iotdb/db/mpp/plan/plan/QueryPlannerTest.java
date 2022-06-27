@@ -78,6 +78,7 @@ public class QueryPlannerTest {
                 new TEndPoint(),
                 new TEndPoint()),
             IoTDBThreadPoolFactory.newSingleThreadExecutor("test_query"),
+            IoTDBThreadPoolFactory.newSingleThreadExecutor("test_write_operation"),
             IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("test_query_scheduled"),
             new FakePartitionFetcherImpl(),
             new FakeSchemaFetcherImpl(),

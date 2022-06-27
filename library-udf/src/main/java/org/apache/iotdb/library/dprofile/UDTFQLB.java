@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.math3.distribution.ChiSquaredDistribution;
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
@@ -42,8 +42,7 @@ public class UDTFQLB implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE)
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE)
         .validate(
             x -> (int) x >= 0,
             "Parameter $lag$ should be an positive integer, or '0' for default value.",
@@ -53,9 +52,7 @@ public class UDTFQLB implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.DOUBLE);
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     m = parameters.getIntOrDefault("lag", 0);
     valueArrayList.clear();
   }
@@ -89,7 +86,7 @@ public class UDTFQLB implements UDTF {
         }
       }
       correlation = correlation / n;
-      collector.putDouble(n + shift, correlation);
+      collector.putDouble((long) n + shift, correlation);
       qlb += correlation * correlation / (n - shift) * n * (n + 2);
       ChiSquaredDistribution qlbdist = new ChiSquaredDistribution(shift);
       double qlbprob = 1.0 - qlbdist.cumulativeProbability(qlb);

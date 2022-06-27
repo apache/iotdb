@@ -134,7 +134,7 @@ public class Collector {
           pipeDataQueue.commit();
           logger.info("Commit pipeData with serialize number {}", pipeData.getSerialNumber());
         } catch (InterruptedException e) {
-          logger.warn("Be interrupted when waiting for pipe data, because {}", e.getMessage());
+          logger.warn("Be interrupted when waiting for pipe data");
           Thread.currentThread().interrupt();
           break;
         } catch (PipeDataLoadBearableException e) {

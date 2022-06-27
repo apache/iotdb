@@ -42,7 +42,12 @@ public class FragmentSinkNodeSerdeTest {
         new FragmentSinkNode(new PlanNodeId("TestFragmentSinkNode"));
     fragmentSinkNode.addChild(
         new DevicesSchemaScanNode(
-            new PlanNodeId("deviceSchema"), new PartialPath("root.sg.device"), 0, 0, false, false));
+            new PlanNodeId("deviceSchema"),
+            new PartialPath("root.sg.device0"),
+            0,
+            0,
+            false,
+            false));
     fragmentSinkNode.setDownStream(
         new TEndPoint("127.0.0.1", 6666),
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),

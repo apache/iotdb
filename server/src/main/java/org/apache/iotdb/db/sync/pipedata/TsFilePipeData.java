@@ -43,6 +43,7 @@ public class TsFilePipeData extends PipeData {
 
   private String parentDirPath;
   private String tsFileName;
+  private String storageGroupName;
 
   public TsFilePipeData(String tsFilePath, long serialNumber) {
     super(serialNumber);
@@ -56,12 +57,34 @@ public class TsFilePipeData extends PipeData {
     } else {
       parentDirPath = "";
     }
+
+    initStorageGroupName();
   }
 
   public TsFilePipeData(String parentDirPath, String tsFileName, long serialNumber) {
     super(serialNumber);
     this.parentDirPath = parentDirPath;
     this.tsFileName = tsFileName;
+
+    initStorageGroupName();
+  }
+
+  // == get StorageGroup Info from tsFileName
+  private void initStorageGroupName() {
+    if (tsFileName == null) {
+      storageGroupName = null;
+      return;
+    }
+
+    String[] parts = tsFileName.trim().split("-");
+    if (parts.length < 8) {
+      storageGroupName = null;
+      return;
+    }
+    storageGroupName = parts[1];
+    for (int i = 2; i < (parts.length - 6); i++) {
+      storageGroupName += "-" + parts[i];
+    }
   }
 
   public void setParentDirPath(String parentDirPath) {
@@ -74,6 +97,10 @@ public class TsFilePipeData extends PipeData {
 
   public String getTsFilePath() {
     return parentDirPath + File.separator + tsFileName;
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
   }
 
   @Override

@@ -109,8 +109,8 @@ Legend:
 
 * SQL like: 
 
-  * IoTDB and InfluxDB support SQL like language. In addition, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL soon.
-  * OpenTSDB and KairosDB only support Rest API, while IoTDB also supports Rest API (a PR has been submitted).
+  * IoTDB and InfluxDB support SQL like language. 
+  * OpenTSDB and KairosDB only support Rest API, while IoTDB also supports Rest API.
   * TimescaleDB uses the SQL the same as PG.
   
 * Schema:
@@ -263,9 +263,6 @@ I listed some interesting features that these systems may differ.
 
   Now only IoTDB supports a JDBC driver (though not all interfaces are implemented), and makes it possible to integrate many other JDBC driver based softwares.
 
-* Standard SQL:
-
-  As mentioned before, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL.
   
 * Spark and Hive integration:
 

@@ -19,8 +19,13 @@
 package org.apache.iotdb.library.dprofile.util;
 
 import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 public class MADSketch {
 
@@ -36,6 +41,8 @@ public class MADSketch {
   private final UnifiedMap<Integer, Long> negative_buckets;
 
   private static final double MIN_POSITIVE_VALUE = 1e-6;
+
+  private static final Logger logger = LoggerFactory.getLogger(MADSketch.class);
 
   public MADSketch(double alpha) {
     this.alpha = alpha;
@@ -83,7 +90,7 @@ public class MADSketch {
       buckets[i++] =
           new Bucket(
               e.getKey(),
-              Math.pow(gamma, e.getKey() - 1),
+              Math.pow(gamma, (double) e.getKey() - 1.0),
               Math.pow(gamma, e.getKey()),
               e.getValue());
     }
@@ -92,7 +99,7 @@ public class MADSketch {
           new Bucket(
               e.getKey(),
               -Math.pow(gamma, e.getKey()),
-              -Math.pow(gamma, e.getKey() - 1),
+              -Math.pow(gamma, (double) e.getKey() - 1.0),
               e.getValue());
     }
     if (zero_count > 0) {
@@ -258,7 +265,9 @@ public class MADSketch {
 
   public void show(Bucket[] buckets) {
     for (Bucket bucket : buckets) {
-      System.out.println(bucket.index + ": " + bucket.count);
+      if (logger.isDebugEnabled()) {
+        logger.debug(bucket.index + ": " + bucket.count);
+      }
     }
   }
 

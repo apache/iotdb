@@ -93,7 +93,7 @@ set JAVA_OPTS=-ea^
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH="%CONFIGNODE_HOME%\lib\*"
+if EXIST %CONFIGNODE_HOME%\lib (set CLASSPATH="%CONFIGNODE_HOME%\lib\*") else set CLASSPATH="%CONFIGNODE_HOME%\..\lib\*"
 set CLASSPATH=%CLASSPATH%;iotdb.ConfigNode
 goto okClasspath
 

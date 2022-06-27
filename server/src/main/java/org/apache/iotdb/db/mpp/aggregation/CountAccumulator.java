@@ -36,34 +36,54 @@ public class CountAccumulator implements Accumulator {
 
   // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
+  public int addInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
-      long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
-      }
-      if (!column[1].isNull(i)) {
-        countValue++;
+    Column valueColumn = column[1];
+    long minTime = Math.min(timeColumn.getStartTime(), timeColumn.getEndTime());
+    long maxTime = Math.max(timeColumn.getStartTime(), timeColumn.getEndTime());
+    if (!valueColumn.mayHaveNull() && timeRange.contains(minTime, maxTime)) {
+      countValue += timeColumn.getPositionCount();
+    } else {
+      int curPositionCount = timeColumn.getPositionCount();
+      long curMinTime = timeRange.getMin();
+      long curMaxTime = timeRange.getMax();
+      for (int i = 0; i < curPositionCount; i++) {
+        long curTime = timeColumn.getLong(i);
+        if (curTime > curMaxTime || curTime < curMinTime) {
+          return i;
+        }
+        if (!valueColumn.isNull(i)) {
+          countValue++;
+        }
       }
     }
+    return timeColumn.getPositionCount();
   }
 
   // partialResult should be like: | partialCountValue1 |
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of Count should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
     countValue += partialResult[0].getLong(0);
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
     countValue += statistics.getCount();
   }
 
   // finalResult should be single column, like: | finalCountValue |
   @Override
   public void setFinal(Column finalResult) {
+    if (finalResult.isNull(0)) {
+      return;
+    }
     countValue = finalResult.getLong(0);
   }
 

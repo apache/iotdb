@@ -18,18 +18,17 @@
  */
 package org.apache.iotdb.library.dprofile;
 
-import org.apache.iotdb.db.query.udf.api.UDTF;
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
-import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.library.dprofile.util.YuleWalker;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
-import org.apache.commons.math3.linear.*;
 import org.apache.commons.math3.stat.StatUtils;
 
 import java.util.ArrayList;
@@ -46,8 +45,7 @@ public class UDTFPACF implements UDTF {
   public void validate(UDFParameterValidator validator) throws Exception {
     validator
         .validateInputSeriesNumber(1)
-        .validateInputSeriesDataType(
-            0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+        .validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
   }
 
   @Override
@@ -55,9 +53,7 @@ public class UDTFPACF implements UDTF {
       throws Exception {
     value.clear();
     timestamp.clear();
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.DOUBLE);
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
     lag = parameters.getIntOrDefault("lag", -1);
   }
 
@@ -78,7 +74,7 @@ public class UDTFPACF implements UDTF {
     n = value.size();
     if (n > 1) {
       if (lag < 0 || lag > value.size() - 1) {
-        lag = (int) Math.min(10 * Math.log10(value.size()), value.size() - 1);
+        lag = Math.min((int) (10 * Math.log10(value.size())), value.size() - 1);
       }
       double[] x =
           Arrays.stream(value.toArray(new Double[0])).mapToDouble(Double::valueOf).toArray();

@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.wal.checkpoint;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.io.CheckpointReader;
-import org.apache.iotdb.db.wal.io.CheckpointWriter;
 import org.apache.iotdb.db.wal.recover.CheckpointRecoverUtils;
+import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
 
 import org.junit.After;
 import org.junit.Before;
@@ -46,19 +48,24 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class CheckpointManagerTest {
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String identifier = String.valueOf(Integer.MAX_VALUE);
   private static final String logDirectory = TestConstant.BASE_OUTPUT_PATH.concat("wal-test");
   private CheckpointManager checkpointManager;
+  private long prevFileSize;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.cleanDir(logDirectory);
+    prevFileSize = config.getCheckpointFileSizeThresholdInByte();
+    config.setCheckpointFileSizeThresholdInByte(10 * 1024);
     checkpointManager = new CheckpointManager(identifier, logDirectory);
   }
 
   @After
   public void tearDown() throws Exception {
     checkpointManager.close();
+    config.setCheckpointFileSizeThresholdInByte(prevFileSize);
     EnvironmentUtils.cleanDir(logDirectory);
   }
 
@@ -69,8 +76,8 @@ public class CheckpointManagerTest {
     List<Checkpoint> expectedCheckpoints = Collections.singletonList(initCheckpoint);
     CheckpointReader checkpointReader =
         new CheckpointReader(
-            new File(logDirectory + File.separator + CheckpointWriter.getLogFileName(0)));
-    List<Checkpoint> actualCheckpoints = checkpointReader.readAll();
+            new File(logDirectory + File.separator + CheckpointFileUtils.getLogFileName(0)));
+    List<Checkpoint> actualCheckpoints = checkpointReader.getCheckpoints();
     assertEquals(expectedCheckpoints, actualCheckpoints);
   }
 
@@ -80,12 +87,12 @@ public class CheckpointManagerTest {
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    Map<Integer, MemTableInfo> expectedMemTableId2Info = new ConcurrentHashMap<>();
-    Map<Integer, Integer> versionId2memTableId = new ConcurrentHashMap<>();
+    Map<Long, MemTableInfo> expectedMemTableId2Info = new ConcurrentHashMap<>();
+    Map<Long, Long> versionId2memTableId = new ConcurrentHashMap<>();
     // create 10 memTables, and flush the first 5 of them
     int memTablesNum = 10;
     for (int i = 0; i < memTablesNum; ++i) {
-      int versionId = i;
+      long versionId = i;
       Callable<Void> writeTask =
           () -> {
             String tsFilePath = logDirectory + File.separator + versionId + ".tsfile";
@@ -110,8 +117,8 @@ public class CheckpointManagerTest {
     // check first valid version id
     assertEquals(memTablesNum / 2, checkpointManager.getFirstValidWALVersionId());
     // recover info from checkpoint file
-    Map<Integer, MemTableInfo> actualMemTableId2Info =
-        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory));
+    Map<Long, MemTableInfo> actualMemTableId2Info =
+        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
   }
 
@@ -119,10 +126,10 @@ public class CheckpointManagerTest {
   public void testTriggerLogRoller() {
     // create memTables until reach LOG_SIZE_LIMIT, and flush the first 5 of them
     int size = 0;
-    int versionId = 0;
-    Map<Integer, MemTableInfo> expectedMemTableId2Info = new HashMap<>();
-    Map<Integer, Integer> versionId2memTableId = new HashMap<>();
-    while (size < CheckpointManager.LOG_SIZE_LIMIT) {
+    long versionId = 0;
+    Map<Long, MemTableInfo> expectedMemTableId2Info = new HashMap<>();
+    Map<Long, Long> versionId2memTableId = new HashMap<>();
+    while (size < config.getCheckpointFileSizeThresholdInByte()) {
       ++versionId;
       String tsFilePath = logDirectory + File.separator + versionId + ".tsfile";
       MemTableInfo memTableInfo = new MemTableInfo(new PrimitiveMemTable(), tsFilePath, versionId);
@@ -146,12 +153,12 @@ public class CheckpointManagerTest {
     assertEquals(5, checkpointManager.getFirstValidWALVersionId());
     // check checkpoint files
     assertFalse(
-        new File(logDirectory + File.separator + CheckpointWriter.getLogFileName(0)).exists());
+        new File(logDirectory + File.separator + CheckpointFileUtils.getLogFileName(0)).exists());
     assertTrue(
-        new File(logDirectory + File.separator + CheckpointWriter.getLogFileName(1)).exists());
+        new File(logDirectory + File.separator + CheckpointFileUtils.getLogFileName(1)).exists());
     // recover info from checkpoint file
-    Map<Integer, MemTableInfo> actualMemTableId2Info =
-        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory));
+    Map<Long, MemTableInfo> actualMemTableId2Info =
+        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
   }
 }

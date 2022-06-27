@@ -115,7 +115,7 @@ public class ClusterNode {
       clusterConfig.putAll(clusterProperties);
       clusterConfig.store(new FileWriter(clusterConfigPath), null);
 
-      // iotdb-engine.properties part
+      // iotdb-datanode.properties part
       String engineConfigPath =
           this.path
               + File.separator
@@ -123,7 +123,7 @@ public class ClusterNode {
               + File.separator
               + "conf"
               + File.separator
-              + "iotdb-engine.properties";
+              + "iotdb-datanode.properties";
 
       Properties engineConfig = new Properties();
       engineConfig.load(new FileInputStream(engineConfigPath));

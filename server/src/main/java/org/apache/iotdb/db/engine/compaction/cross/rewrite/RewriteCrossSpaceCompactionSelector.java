@@ -33,7 +33,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -89,17 +88,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     }
     long budget = config.getCrossCompactionMemoryBudget();
     long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
-    RewriteCrossSpaceCompactionResource mergeResource =
-        new RewriteCrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
+    CrossSpaceCompactionResource compactionResource =
+        new CrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
 
     ICrossSpaceMergeFileSelector fileSelector =
-        CompactionUtils.getCrossSpaceFileSelector(budget, mergeResource);
+        CompactionUtils.getCrossSpaceFileSelector(budget, compactionResource);
     try {
       List[] mergeFiles = fileSelector.select();
-      // avoid pending tasks holds the metadata and streams
-      mergeResource.clear();
       if (mergeFiles.length == 0) {
-        if (mergeResource.getUnseqFiles().size() > 0) {
+        if (compactionResource.getUnseqFiles().size() > 0) {
           // still have unseq files but cannot be selected
           LOGGER.warn(
               "{} cannot select merge candidates under the budget {}",
@@ -117,12 +114,12 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         LOGGER.info(
             "{} [Compaction] submit a task with {} sequence file and {} unseq files",
             logicalStorageGroupName + "-" + dataRegionId,
-            mergeResource.getSeqFiles().size(),
-            mergeResource.getUnseqFiles().size());
+            compactionResource.getSeqFiles().size(),
+            compactionResource.getUnseqFiles().size());
         return Collections.singletonList(new Pair<>(mergeFiles[0], mergeFiles[1]));
       }
 
-    } catch (MergeException | IOException e) {
+    } catch (MergeException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
     return Collections.emptyList();

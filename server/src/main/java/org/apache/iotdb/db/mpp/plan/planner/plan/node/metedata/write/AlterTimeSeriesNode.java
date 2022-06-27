@@ -34,6 +34,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
@@ -210,7 +212,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.ALTER_TIME_SERIES.serialize(byteBuffer);
     byte[] bytes = path.getFullPath().getBytes();
-    byteBuffer.putInt(bytes.length);
+    ReadWriteIOUtils.write(bytes.length, byteBuffer);
     byteBuffer.put(bytes);
     byteBuffer.put((byte) alterType.ordinal());
 
@@ -254,6 +256,53 @@ public class AlterTimeSeriesNode extends WritePlanNode {
   }
 
   @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.ALTER_TIME_SERIES.serialize(stream);
+    byte[] bytes = path.getFullPath().getBytes();
+    ReadWriteIOUtils.write(bytes.length, stream);
+    stream.write(bytes);
+    stream.write((byte) alterType.ordinal());
+
+    // alias
+    if (alias != null) {
+      stream.write((byte) 1);
+      ReadWriteIOUtils.write(alias, stream);
+    } else {
+      stream.write((byte) 0);
+    }
+
+    // alterMap
+    if (alterMap == null) {
+      stream.write((byte) -1);
+    } else if (alterMap.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      ReadWriteIOUtils.write(alterMap, stream);
+    }
+
+    // tagsMap
+    if (tagsMap == null) {
+      stream.write((byte) -1);
+    } else if (tagsMap.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      ReadWriteIOUtils.write(tagsMap, stream);
+    }
+
+    // attributesMap
+    if (attributesMap == null) {
+      stream.write((byte) -1);
+    } else if (attributesMap.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      ReadWriteIOUtils.write(attributesMap, stream);
+    }
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -291,7 +340,7 @@ public class AlterTimeSeriesNode extends WritePlanNode {
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
     TRegionReplicaSet regionReplicaSet =
-        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDeviceIdString());
+        analysis.getSchemaPartitionInfo().getSchemaRegionReplicaSet(path.getDevice());
     setRegionReplicaSet(regionReplicaSet);
     return ImmutableList.of(this);
   }

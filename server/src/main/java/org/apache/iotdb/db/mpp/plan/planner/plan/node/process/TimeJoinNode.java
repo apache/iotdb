@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,26 +38,19 @@ import java.util.stream.Collectors;
  * timestamp column. It will join two or more TsBlock by Timestamp column. The output result of
  * TimeJoinOperator is sorted by timestamp
  */
-public class TimeJoinNode extends ProcessNode {
+public class TimeJoinNode extends MultiChildNode {
 
   // This parameter indicates the order when executing multiway merge sort.
   private final OrderBy mergeOrder;
 
-  private List<PlanNode> children;
-
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder) {
-    super(id);
+    super(id, new ArrayList<>());
     this.mergeOrder = mergeOrder;
-    this.children = new ArrayList<>();
   }
 
   public TimeJoinNode(PlanNodeId id, OrderBy mergeOrder, List<PlanNode> children) {
-    this(id, mergeOrder);
-    this.children = children;
-  }
-
-  public void setChildren(List<PlanNode> children) {
-    this.children = children;
+    super(id, children);
+    this.mergeOrder = mergeOrder;
   }
 
   public OrderBy getMergeOrder() {
@@ -100,6 +95,12 @@ public class TimeJoinNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.TIME_JOIN.serialize(byteBuffer);
     ReadWriteIOUtils.write(mergeOrder.ordinal(), byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.TIME_JOIN.serialize(stream);
+    ReadWriteIOUtils.write(mergeOrder.ordinal(), stream);
   }
 
   public static TimeJoinNode deserialize(ByteBuffer byteBuffer) {

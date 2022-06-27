@@ -52,7 +52,6 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
-import java.net.InetAddress;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,7 +70,7 @@ public class TransportServiceTest {
 
   @Before
   public void setUp() throws Exception {
-    remoteIp1 = InetAddress.getLocalHost().getHostAddress();
+    remoteIp1 = "127.0.0.1";
     fileDir = new File(SyncPathUtil.getReceiverFileDataDir(pipeName1, remoteIp1, createdTime1));
     pipeDataQueue =
         PipeDataQueueFactory.getBufferedPipeDataQueue(
@@ -131,7 +130,10 @@ public class TransportServiceTest {
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     TransportClient client =
         new TransportClient(
-            pipe, "127.0.0.1", IoTDBDescriptor.getInstance().getConfig().getPipeServerPort());
+            pipe,
+            "127.0.0.1",
+            IoTDBDescriptor.getInstance().getConfig().getPipeServerPort(),
+            "127.0.0.1");
     client.handshake();
     for (PipeData pipeData : pipeDataList) {
       client.senderTransport(pipeData);
