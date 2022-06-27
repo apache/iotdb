@@ -36,7 +36,7 @@ Trigger way: The client sends the command(sql) `load configuration` to the IoTDB
 
 ## Environment Configuration File（datanode-env.sh/bat）
 
-The environment configuration file is mainly used to configure the Java environment related parameters when ConfigNode is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the DataNode starts.
+The environment configuration file is mainly used to configure the Java environment related parameters when DataNode is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the DataNode starts.
 
 The details of each parameter are as follows:
 
