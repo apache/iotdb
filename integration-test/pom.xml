@@ -161,9 +161,9 @@
                             <regex>true</regex>
                             <commentsEnabled>false</commentsEnabled>
                             <includes>
-                                <include>datanode/conf/iotdb-env.sh</include>
+                                <include>datanode/conf/datanode-env.sh</include>
                                 <include>confignode/conf/confignode-env.sh</include>
-                                <include>datanode/conf/iotdb-env.bat</include>
+                                <include>datanode/conf/datanode-env.bat</include>
                                 <include>confignode/conf/confignode-env.bat</include>
                             </includes>
                             <replacements>

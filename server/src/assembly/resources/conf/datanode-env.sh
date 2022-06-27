@@ -260,5 +260,5 @@ IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${MAX_DIRECT_MEMORY_SIZE
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
 
 echo "Maximum memory allocation pool = ${MAX_HEAP_SIZE}B, initial memory allocation pool = ${HEAP_NEWSIZE}B"
-echo "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat)."
+echo "If you want to change this configuration, please check conf/datanode-env.sh."
 
