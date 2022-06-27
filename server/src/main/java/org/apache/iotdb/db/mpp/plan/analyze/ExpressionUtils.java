@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
@@ -81,6 +82,10 @@ public class ExpressionUtils {
     List<Expression> resultExpressions = new ArrayList<>();
     for (Expression childExpression : childExpressions) {
       switch (expression.getExpressionType()) {
+        case IS_NULL:
+          resultExpressions.add(
+              new IsNullExpression(childExpression, ((IsNullExpression) expression).isNot()));
+          break;
         case IN:
           resultExpressions.add(
               new InExpression(

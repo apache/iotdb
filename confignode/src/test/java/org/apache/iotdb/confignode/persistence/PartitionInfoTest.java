@@ -100,24 +100,24 @@ public class PartitionInfoTest {
     partitionInfo.setStorageGroup(new SetStorageGroupReq(new TStorageGroupSchema("root.test")));
 
     // Create a SchemaRegion
-    CreateRegionsReq createRegionsReq = new CreateRegionsReq();
+    CreateRegionsReq createRegionGroupsReq = new CreateRegionsReq();
     TRegionReplicaSet schemaRegionReplicaSet =
         generateTRegionReplicaSet(
             testFlag.SchemaPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion));
-    createRegionsReq.addRegion("root.test", schemaRegionReplicaSet);
-    partitionInfo.createRegions(createRegionsReq);
+    createRegionGroupsReq.addRegionGroup("root.test", schemaRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionGroupsReq);
 
     // Create a DataRegion
-    createRegionsReq = new CreateRegionsReq();
+    createRegionGroupsReq = new CreateRegionsReq();
     TRegionReplicaSet dataRegionReplicaSet =
         generateTRegionReplicaSet(
             testFlag.DataPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
-    createRegionsReq.addRegion("root.test", dataRegionReplicaSet);
-    partitionInfo.createRegions(createRegionsReq);
+    createRegionGroupsReq.addRegionGroup("root.test", dataRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionGroupsReq);
 
     // Create a SchemaPartition
     CreateSchemaPartitionReq createSchemaPartitionReq =
@@ -159,8 +159,8 @@ public class PartitionInfoTest {
             testFlag.SchemaPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.SchemaPartition.getFlag(), TConsensusGroupType.SchemaRegion));
-    createRegionsReq.addRegion("root.test", schemaRegionReplicaSet);
-    partitionInfo.createRegions(createRegionsReq);
+    createRegionsReq.addRegionGroup("root.test", schemaRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionsReq);
 
     // Create a DataRegion
     createRegionsReq = new CreateRegionsReq();
@@ -169,8 +169,8 @@ public class PartitionInfoTest {
             testFlag.DataPartition.getFlag(),
             generateTConsensusGroupId(
                 testFlag.DataPartition.getFlag(), TConsensusGroupType.DataRegion));
-    createRegionsReq.addRegion("root.test", dataRegionReplicaSet);
-    partitionInfo.createRegions(createRegionsReq);
+    createRegionsReq.addRegionGroup("root.test", dataRegionReplicaSet);
+    partitionInfo.createRegionGroups(createRegionsReq);
 
     GetRegionLocationsReq regionReq = new GetRegionLocationsReq();
     regionReq.setRegionType(null);

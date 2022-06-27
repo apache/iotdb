@@ -778,7 +778,8 @@ public class LocalExecutionPlanner {
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
-            context.getTypeProvider());
+            context.getTypeProvider(),
+            node.getScanOrder() == OrderBy.TIMESTAMP_ASC);
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
@@ -805,7 +806,8 @@ public class LocalExecutionPlanner {
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
-            context.getTypeProvider());
+            context.getTypeProvider(),
+            node.getScanOrder() == OrderBy.TIMESTAMP_ASC);
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
@@ -1112,7 +1114,7 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               SchemaFetchMergeOperator.class.getSimpleName());
-      return new SchemaFetchMergeOperator(node.getPlanNodeId(), operatorContext, children);
+      return new SchemaFetchMergeOperator(operatorContext, children);
     }
 
     @Override

@@ -45,13 +45,13 @@ import java.util.Objects;
 public class WALEntry implements SerializedSize {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  /** wal entry type 1 byte, memTable id 4 bytes */
-  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Integer.BYTES;
+  /** wal entry type 1 byte, memTable id 8 bytes */
+  private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + Long.BYTES;
 
   /** type of value */
   private final WALEntryType type;
   /** memTable id */
-  private final int memTableId;
+  private final long memTableId;
   /** value(physical plan or memTable snapshot) */
   private final WALEntryValue value;
   /** extra info for InsertTabletPlan type value */
@@ -63,7 +63,7 @@ public class WALEntry implements SerializedSize {
    */
   private final WALFlushListener walFlushListener;
 
-  public WALEntry(int memTableId, WALEntryValue value) {
+  public WALEntry(long memTableId, WALEntryValue value) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
     if (value instanceof InsertTabletPlan) {
       tabletInfo = new TabletInfo(0, ((InsertTabletPlan) value).getRowCount());
@@ -72,17 +72,17 @@ public class WALEntry implements SerializedSize {
     }
   }
 
-  public WALEntry(int memTableId, InsertTabletPlan value, int tabletStart, int tabletEnd) {
+  public WALEntry(long memTableId, InsertTabletPlan value, int tabletStart, int tabletEnd) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
     tabletInfo = new TabletInfo(tabletStart, tabletEnd);
   }
 
-  public WALEntry(int memTableId, InsertTabletNode value, int tabletStart, int tabletEnd) {
+  public WALEntry(long memTableId, InsertTabletNode value, int tabletStart, int tabletEnd) {
     this(memTableId, value, config.getWalMode() == WALMode.SYNC);
     tabletInfo = new TabletInfo(tabletStart, tabletEnd);
   }
 
-  public WALEntry(int memTableId, WALEntryValue value, boolean wait) {
+  public WALEntry(long memTableId, WALEntryValue value, boolean wait) {
     this.memTableId = memTableId;
     this.value = value;
     if (value instanceof InsertRowPlan) {
@@ -103,7 +103,7 @@ public class WALEntry implements SerializedSize {
     walFlushListener = new WALFlushListener(wait);
   }
 
-  private WALEntry(WALEntryType type, int memTableId, WALEntryValue value) {
+  private WALEntry(WALEntryType type, long memTableId, WALEntryValue value) {
     this.type = type;
     this.memTableId = memTableId;
     this.value = value;
@@ -117,7 +117,7 @@ public class WALEntry implements SerializedSize {
 
   public void serialize(IWALByteBufferView buffer) {
     buffer.put(type.getCode());
-    buffer.putInt(memTableId);
+    buffer.putLong(memTableId);
     switch (type) {
       case INSERT_TABLET_PLAN:
         ((InsertTabletPlan) value)
@@ -144,7 +144,7 @@ public class WALEntry implements SerializedSize {
       throw new IOException("unrecognized wal entry type " + typeNum);
     }
 
-    int memTableId = stream.readInt();
+    long memTableId = stream.readLong();
     WALEntryValue value = null;
     switch (type) {
       case INSERT_ROW_PLAN:
@@ -190,7 +190,7 @@ public class WALEntry implements SerializedSize {
     return type;
   }
 
-  public int getMemTableId() {
+  public long getMemTableId() {
     return memTableId;
   }
 

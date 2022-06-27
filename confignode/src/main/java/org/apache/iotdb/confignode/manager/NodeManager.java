@@ -111,6 +111,9 @@ public class NodeManager {
       req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextNodeId());
       ConsensusWriteResponse resp = getConsensusManager().write(req);
       dataSet.setStatus(resp.getStatus());
+
+      // Adjust the maximum RegionGroup number of each StorageGroup
+      getClusterSchemaManager().adjustMaxRegionGroupCount();
     }
 
     dataSet.setDataNodeId(req.getInfo().getLocation().getDataNodeId());
@@ -174,10 +177,7 @@ public class NodeManager {
     resp.setPartitionRegionId(
         getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
 
-    // Return online ConfigNodes
     resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
-    resp.getConfigNodeList().add(req.getConfigNodeLocation());
-
     return resp;
   }
 
@@ -214,9 +214,14 @@ public class NodeManager {
         }
 
         // Check whether the remove ConfigNode is leader
-        Peer leader = getConsensusManager().getLeader(getOnlineConfigNodes());
+        TConfigNodeLocation leader = getConsensusManager().getLeader();
+        if (leader == null) {
+          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+              .setMessage(
+                  "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.");
+        }
         if (leader
-            .getEndpoint()
+            .getInternalEndPoint()
             .equals(removeConfigNodeReq.getConfigNodeLocation().getInternalEndPoint())) {
           // transfer leader
           return transferLeader(removeConfigNodeReq, getConsensusManager().getConsensusGroupId());
@@ -268,6 +273,10 @@ public class NodeManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
+  }
+
+  private ClusterSchemaManager getClusterSchemaManager() {
+    return configManager.getClusterSchemaManager();
   }
 
   public void registerListener(final ChangeServerListener serverListener) {

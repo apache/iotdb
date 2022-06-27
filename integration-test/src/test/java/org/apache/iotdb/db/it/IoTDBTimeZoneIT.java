@@ -16,20 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.itbase.category.RemoteTest;
-import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.category.RemoteIT;
 
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -38,7 +38,8 @@ import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class, RemoteIT.class})
 public class IoTDBTimeZoneIT {
 
   private static String[] insertSqls =
@@ -99,12 +100,12 @@ public class IoTDBTimeZoneIT {
    * <p>select * from root.**
    */
   @Test
-  public void timezoneTest() throws SQLException, TException {
-    try (IoTDBConnection connection = (IoTDBConnection) EnvFactory.getEnv().getConnection();
+  public void timezoneTest() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       String insertSQLTemplate = "insert into root.timezone(timestamp,tz1) values(%s,%s)";
-      connection.setTimeZone("+08:00");
+      connection.setClientInfo("time_zone", "+08:00");
       // 1514779200000 = 2018-1-1T12:00:00+08:00
       statement.execute(String.format(insertSQLTemplate, "1514779200000", "1"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:01", "2"));
@@ -112,23 +113,20 @@ public class IoTDBTimeZoneIT {
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:03+09:00", "4"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:04+07:00", "5"));
 
-      connection.setTimeZone("+09:00");
+      connection.setClientInfo("time_zone", "+09:00");
       statement.execute(String.format(insertSQLTemplate, "1514789200000", "6"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T14:00:05", "7"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:03+08:00", "8"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:06+07:00", "9"));
 
       // Asia/Almaty +06:00
-      connection.setTimeZone("Asia/Almaty");
+      connection.setClientInfo("time_zone", "Asia/Almaty");
       statement.execute(String.format(insertSQLTemplate, "1514782807000", "10"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T11:00:08", "11"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T13:00:09+08:00", "12"));
       statement.execute(String.format(insertSQLTemplate, "2018-1-1T12:00:10+07:00", "13"));
 
-      boolean hasResultSet = statement.execute("select * from root.**");
-      Assert.assertTrue(hasResultSet);
-
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("select * from root.**");
       int cnt = 0;
       try {
         while (resultSet.next()) {

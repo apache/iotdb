@@ -26,6 +26,8 @@ import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig.RPC;
+import org.apache.iotdb.consensus.config.RatisConfig;
+import org.apache.iotdb.consensus.config.RatisConfig.Snapshot;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.DataRegionStateMachine;
@@ -67,6 +69,13 @@ public class DataRegionConsensusImpl {
                                     .setThriftServerAwaitTimeForStopService(
                                         conf.getThriftServerAwaitTimeForStopService())
                                     .build())
+                            .build())
+                    .setRatisConfig(
+                        RatisConfig.newBuilder()
+                            // An empty log is committed after each restart, even if no data is
+                            // written. This setting ensures that compaction work is not discarded
+                            // even if there are frequent restarts
+                            .setSnapshot(Snapshot.newBuilder().setCreationGap(1).build())
                             .build())
                     .build(),
                 gid ->

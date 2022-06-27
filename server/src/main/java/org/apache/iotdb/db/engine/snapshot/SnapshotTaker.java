@@ -118,6 +118,12 @@ public class SnapshotTaker {
       manager.readUnlock();
     }
 
+    LOGGER.info(
+        "Successfully take snapshot for {}-{}, snapshot directory is {}",
+        dataRegion.getLogicalStorageGroupName(),
+        dataRegion.getDataRegionId(),
+        snapshotDirPath);
+
     return true;
   }
 

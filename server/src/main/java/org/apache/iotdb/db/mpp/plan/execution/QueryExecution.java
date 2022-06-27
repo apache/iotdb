@@ -219,18 +219,22 @@ public class QueryExecution implements IQueryExecution {
   public void doLogicalPlan() {
     LogicalPlanner planner = new LogicalPlanner(this.context, this.planOptimizers);
     this.logicalPlan = planner.plan(this.analysis);
-    logger.info(
-        "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
+    if (isQuery()) {
+      logger.info(
+          "logical plan is: \n {}", PlanNodeUtil.nodeToString(this.logicalPlan.getRootNode()));
+    }
   }
 
   // Generate the distributed plan and split it into fragments
   public void doDistributedPlan() {
     DistributionPlanner planner = new DistributionPlanner(this.analysis, this.logicalPlan);
     this.distributedPlan = planner.planFragments();
-    logger.info(
-        "distribution plan done. Fragment instance count is {}, details is: \n {}",
-        distributedPlan.getInstances().size(),
-        printFragmentInstances(distributedPlan.getInstances()));
+    if (isQuery()) {
+      logger.info(
+          "distribution plan done. Fragment instance count is {}, details is: \n {}",
+          distributedPlan.getInstances().size(),
+          printFragmentInstances(distributedPlan.getInstances()));
+    }
   }
 
   private String printFragmentInstances(List<FragmentInstance> instances) {

@@ -59,4 +59,7 @@ public class Config {
 
   /** key of underlying transport socketTimeout and connectionTimeout */
   public static final String NETWORK_TIMEOUT = "network_timeout";
+
+  /** key of connection's time zone */
+  public static final String TIME_ZONE = "time_zone";
 }

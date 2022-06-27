@@ -26,17 +26,15 @@ import java.util.Properties;
 public class DataNodeWrapper extends AbstractNodeWrapper {
 
   private final String targetConfigNode;
-
   private final int dataBlockManagerPort;
   private final int internalPort;
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
-  private final int[] portList;
 
-  public DataNodeWrapper(String targetConfigNode, String testName) {
-    super(testName);
+  public DataNodeWrapper(
+      String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
+    super(testClassName, testMethodName, portList);
     this.targetConfigNode = targetConfigNode;
-    portList = super.searchAvailablePorts();
     this.dataBlockManagerPort = portList[1];
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
@@ -66,6 +64,14 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
+  protected String getEnvConfigPath() {
+    if (SystemUtils.IS_OS_WINDOWS) {
+      return workDirFilePath("datanode" + File.separator + "conf", "iotdb-env.bat");
+    }
+    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-env.sh");
+  }
+
+  @Override
   protected String getStartScriptPath() {
     String scriptName = "start-datanode.sh";
     if (SystemUtils.IS_OS_WINDOWS) {
@@ -84,22 +90,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected String getLogPath() {
-    return System.getProperty("user.dir")
-        + File.separator
-        + "target"
-        + File.separator
-        + "cluster-logs"
-        + File.separator
-        + testName
-        + File.separator
-        + "Data"
-        + super.getId()
-        + ".log";
-  }
-
-  @Override
-  public int getPort() {
-    return portList[0];
+  public final String getId() {
+    return "DataNode" + getPort();
   }
 }

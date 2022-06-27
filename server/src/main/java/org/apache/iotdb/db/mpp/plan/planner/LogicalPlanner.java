@@ -202,13 +202,15 @@ public class LogicalPlanner {
                     queryFilter,
                     aggregationTransformExpressions,
                     queryStatement.isGroupByTime(),
-                    queryStatement.getSelectComponent().getZoneId());
+                    queryStatement.getSelectComponent().getZoneId(),
+                    queryStatement.getResultOrder());
           } else {
             planBuilder =
                 planBuilder.planTransform(
                     aggregationTransformExpressions,
                     queryStatement.isGroupByTime(),
-                    queryStatement.getSelectComponent().getZoneId());
+                    queryStatement.getSelectComponent().getZoneId(),
+                    queryStatement.getResultOrder());
           }
 
           boolean outputPartial =
@@ -254,7 +256,8 @@ public class LogicalPlanner {
               planBuilder.planTransform(
                   transformExpressions,
                   queryStatement.isGroupByTime(),
-                  queryStatement.getSelectComponent().getZoneId());
+                  queryStatement.getSelectComponent().getZoneId(),
+                  queryStatement.getResultOrder());
         } else {
           if (analysis.hasValueFilter()) {
             planBuilder =
@@ -262,13 +265,15 @@ public class LogicalPlanner {
                     queryFilter,
                     transformExpressions,
                     queryStatement.isGroupByTime(),
-                    queryStatement.getSelectComponent().getZoneId());
+                    queryStatement.getSelectComponent().getZoneId(),
+                    queryStatement.getResultOrder());
           } else {
             planBuilder =
                 planBuilder.planTransform(
                     transformExpressions,
                     queryStatement.isGroupByTime(),
-                    queryStatement.getSelectComponent().getZoneId());
+                    queryStatement.getSelectComponent().getZoneId(),
+                    queryStatement.getResultOrder());
           }
         }
       } else {
@@ -314,7 +319,8 @@ public class LogicalPlanner {
                   .planTransform(
                       transformExpressions,
                       queryStatement.isGroupByTime(),
-                      queryStatement.getSelectComponent().getZoneId());
+                      queryStatement.getSelectComponent().getZoneId(),
+                      queryStatement.getResultOrder());
         }
       }
 

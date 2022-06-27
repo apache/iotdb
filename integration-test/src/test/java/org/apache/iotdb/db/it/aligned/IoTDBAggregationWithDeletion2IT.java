@@ -37,8 +37,7 @@ import static org.junit.Assert.fail;
 /** Let One chunk has more than one page. */
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
-public class IoTDBAggregationWithoutValueFilterWithDeletion2IT
-    extends IoTDBAggregationWithoutValueFilterWithDeletionIT {
+public class IoTDBAggregationWithDeletion2IT extends IoTDBAggregationWithDeletionIT {
 
   private static int numOfPointsPerPage;
 

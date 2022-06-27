@@ -72,8 +72,14 @@ public class SnapshotLoader {
    * @return
    */
   public DataRegion loadSnapshotForStateMachine() {
+    LOGGER.info(
+        "Loading snapshot for {}-{}, source directory is {}",
+        storageGroupName,
+        dataRegionId,
+        snapshotPath);
     try {
       deleteAllFilesInDataDirs();
+      LOGGER.info("Remove all data files in original data dir");
     } catch (IOException e) {
       return null;
     }
@@ -83,6 +89,7 @@ public class SnapshotLoader {
     if (sourceDataDir.exists()) {
       try {
         createLinksFromSnapshotDirToDataDir(sourceDataDir);
+        LOGGER.info("Move data files from snapshot to data directory");
       } catch (IOException | DiskSpaceInsufficientException e) {
         LOGGER.error(
             "Exception occurs when creating links from snapshot directory to data directory", e);

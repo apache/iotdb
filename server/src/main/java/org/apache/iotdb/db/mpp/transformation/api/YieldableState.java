@@ -16,14 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.itbase.runtime;
 
-import java.sql.SQLException;
-import java.util.List;
+package org.apache.iotdb.db.mpp.transformation.api;
 
-public class InconsistentDataException extends SQLException {
-
-  public InconsistentDataException(Object data, List<String> endpoints) {
-    super(String.format("Datasets are inconsistent: %s with data %s", endpoints, data));
-  }
+public enum YieldableState {
+  YIELDABLE,
+  NOT_YIELDABLE_WAITING_FOR_DATA,
+  NOT_YIELDABLE_NO_MORE_DATA,
 }

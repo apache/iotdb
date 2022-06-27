@@ -49,6 +49,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import io.airlift.concurrent.SetThreadName;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -126,8 +128,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           Column column = tsBlock.get().getColumn(0);
           for (int i = 0; i < column.getPositionCount(); i++) {
             binary = column.getBinary(i);
-            fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
-            result.mergeSchemaTree(fetchedSchemaTree);
+            try {
+              fetchedSchemaTree =
+                  SchemaTree.deserialize(new ByteArrayInputStream(binary.getValues()));
+              result.mergeSchemaTree(fetchedSchemaTree);
+            } catch (IOException e) {
+              // Totally memory operation. This case won't happen.
+            }
           }
         }
         return result;
