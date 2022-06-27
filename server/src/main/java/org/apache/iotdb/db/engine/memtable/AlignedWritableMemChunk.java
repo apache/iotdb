@@ -182,20 +182,29 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     putAlignedValues(times, valueList, bitMaps, columnIndexArray, start, end);
   }
 
-  /** @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]] */
+  /**
+   * Check schema of columns and return array that mapping existed schema to index of data column
+   *
+   * @param values all data columns in InsertPlan
+   * @param schemaListInInsertPlan contains existed schema that exists in InsertPlan (without
+   *     timeseries that have been deleted)
+   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
+   */
   private int[] checkColumnsInInsertPlan(
       Object[] values, List<IMeasurementSchema> schemaListInInsertPlan) {
     Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
-    for (int index = 0, i = 0; index < values.length; index++) {
-      if (values[index] != null) {
-        measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), index);
-        if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
+    for (int columnIndex = 0, schemaIndex = 0; columnIndex < values.length; columnIndex++) {
+      if (values[columnIndex] != null) {
+        measurementIdsInInsertPlan.put(
+            schemaListInInsertPlan.get(schemaIndex).getMeasurementId(), columnIndex);
+        if (!containsMeasurement(schemaListInInsertPlan.get(schemaIndex).getMeasurementId())) {
           this.measurementIndexMap.put(
-              schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
-          this.schemaList.add(schemaListInInsertPlan.get(i));
-          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
+              schemaListInInsertPlan.get(schemaIndex).getMeasurementId(),
+              measurementIndexMap.size());
+          this.schemaList.add(schemaListInInsertPlan.get(schemaIndex));
+          this.list.extendColumn(schemaListInInsertPlan.get(schemaIndex).getType());
         }
-        i++;
+        schemaIndex++;
       }
     }
     int[] columnIndexArray = new int[measurementIndexMap.size()];

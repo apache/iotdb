@@ -476,6 +476,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (insertTabletPlan.getDeviceID() == null) {
       insertTabletPlan.setDeviceID(deviceIDFactory.getDeviceID(insertTabletPlan.getDevicePath()));
     }
+
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
