@@ -361,9 +361,29 @@ static_configs:
 
 ![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-Apache IoTDB Dashboard的获取方式：
-
+#### 5.3.1. 获取方式
 1. 您可以在grafana-metrics-example文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
 2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
+
+#### 5.3.2. 单机 Dashboard说明
+1. `Overview`：系统概述
+   1. `The number of entity`：实体数量，目前包含时间序列的数量。
+   2. `write point per minute`：每分钟系统累计写入点数。
+   3. `storage group used memory`：每个存储组使用的内存大小。
+2. `Interface`：接口
+   1. `The QPS of Interface`：系统接口每秒钟访问次数
+   2. `The time consumed of Interface`：系统接口的平均耗时
+   3. `Cache hit rate`：缓存命中率，
+3. `Engine`：引擎
+   1. `Task number(pending and active)`：系统中不同状态的任务个数。
+   2. `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时。
+4. `System`：系统
+   1. `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小。
+   2. `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数。
+   3. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC。
+   4. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC。
+   5. `Heap Memory`：IoTDB的堆内存。
+   6. `Off-heap Memory`：IoTDB的堆外内存。
+   7. `The number of Java Thread`：IoTDB的不同状态线程数。
