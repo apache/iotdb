@@ -29,7 +29,7 @@
 > conf 目录下
 1. iotdb-datanode.properties
 2. logback.xml
-3. iotdb-env.sh
+3. datanode-env.sh
 4. jmx.access
 5. jmx.password
 6. iotdb-sync-client.properties

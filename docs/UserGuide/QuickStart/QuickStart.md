@@ -48,7 +48,7 @@ You can download the binary file from:
 
 configuration files are under "conf" folder
 
-  * environment config module (`iotdb-env.bat`, `iotdb-env.sh`), 
+  * environment config module (`datanode-env.bat`, `datanode-env.sh`), 
   * system config module (`iotdb-datanode.properties`)
   * log config module (`logback.xml`). 
 
@@ -82,7 +82,7 @@ if you want to use JMX to connect IOTDB, you may need to add
 ```
 -Dcom.sun.management.jmxremote.rmi.port=PORT -Djava.rmi.server.hostname=IP 
 ```
-to $IOTDB_JMX_OPTS in iotdb-env.sh. or iotdb-env.bat
+to $IOTDB_JMX_OPTS in datanode-env.sh. or datanode-env.bat
 
 
 ### Use Cli
@@ -234,6 +234,6 @@ The server can be stopped with ctrl-C or the following script:
 
 The configuration files is in the `conf` folder, includes:
 
-* environment configuration (`iotdb-env.bat`, `iotdb-env.sh`),
+* environment configuration (`datanode-env.bat`, `datanode-env.sh`),
 * system configuration (`iotdb-datanode.properties`)
 * log configuration (`logback.xml`).

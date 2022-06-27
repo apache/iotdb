@@ -23,12 +23,12 @@
 
 为方便 IoTDB Server 的配置与管理，IoTDB Server 为用户提供三种配置项，使得用户可以在启动服务或服务运行时对其进行配置。
 
-三种配置项的配置文件均位于 IoTDB 安装目录：`$IOTDB_HOME/conf`文件夹下，其中涉及 server 配置的共有 2 个文件，分别为：`iotdb-env.sh`, `iotdb-datanode.properties`
+三种配置项的配置文件均位于 IoTDB 安装目录：`$IOTDB_HOME/conf`文件夹下，其中涉及 server 配置的共有 2 个文件，分别为：`datanode-env.sh`, `iotdb-datanode.properties`
 。用户可以通过更改其中的配置项对系统运行的相关配置项进行配置。
 
 配置文件的说明如下：
 
-* `iotdb-env.sh`：环境配置项的默认配置文件。用户可以在文件中配置 JAVA-JVM 的相关系统配置项。
+* `datanode-env.sh`：环境配置项的默认配置文件。用户可以在文件中配置 JAVA-JVM 的相关系统配置项。
 
 * `iotdb-datanode.properties`：IoTDB 引擎层系统配置项的默认配置文件。用户可以在文件中配置 IoTDB 引擎运行时的相关参数，如 JDBC 服务监听端口 (`rpc_port`)、overflow
   数据文件存储目录 (`overflow_data_dir`) 等。此外，用户可以在文件中配置 IoTDB 存储时 TsFile 文件的相关信息，如每次将内存中的数据写入到磁盘时的数据大小 (`group_size_in_byte`)
@@ -44,8 +44,8 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 
 ## 环境配置项
 
-环境配置项主要用于对 IoTDB Server 运行的 Java 环境相关参数进行配置，如 JVM 相关配置。IoTDB Server 启动时，此部分配置会被传给 JVM。用户可以通过查看 `iotdb-env.sh`
-（或`iotdb-env.bat`) 文件查看环境配置项内容。详细配置项说明如下：
+环境配置项主要用于对 IoTDB Server 运行的 Java 环境相关参数进行配置，如 JVM 相关配置。IoTDB Server 启动时，此部分配置会被传给 JVM。用户可以通过查看 `datanode-env.sh`
+（或`datanode-env.bat`) 文件查看环境配置项内容。详细配置项说明如下：
 
 * JMX\_LOCAL
 

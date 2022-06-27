@@ -118,8 +118,8 @@
             <destName>tools/grafana/application.properties</destName>
         </file>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf/iotdb-env.sh</source>
-            <destName>datanode/conf/iotdb-env.sh</destName>
+            <source>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf/datanode-env.sh</source>
+            <destName>datanode/conf/datanode-env.sh</destName>
             <fileMode>0755</fileMode>
         </file>
     </files>

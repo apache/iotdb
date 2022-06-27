@@ -179,7 +179,7 @@ you run `mvn package` successfully.**
 
 configuration files are under "conf" folder
 
-  * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
+  * environment config module (`datanode-env.bat`, `datanode-env.sh`),
   * system config module (`iotdb-datanode.properties`)
   * log config module (`logback.xml`).
 
