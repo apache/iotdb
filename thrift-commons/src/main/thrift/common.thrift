@@ -80,19 +80,11 @@ struct TDataNodeLocation {
 struct TRegionInfo {
   1: required TConsensusGroupId consensusGroupId
   2: required string storageGroup
-<<<<<<< HEAD
-  3: required i32 dataNodeId;
-  4: required string clientRpcIp;
-  5: required i32 clientRpcPort;
-  6: required i64 slots;
-  7: optional string status;
-=======
   3: required i32 dataNodeId
   4: required string rpcAddresss
   5: required i32 rpcPort
   6: required i64 slots
   7: optional string status
->>>>>>> 2f52c806c5 (add remove cache and fix name)
 }
 
 struct TDataNodeInfo {
