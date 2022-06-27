@@ -34,6 +34,7 @@ public interface IWritableMemChunkGroup extends WALEntryValue {
       Object[] columns,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
+      int[] columnIndexArray, // schemaList[i] is schema of columns[columnIndexArray[i]]
       int start,
       int end);
 

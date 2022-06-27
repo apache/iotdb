@@ -176,12 +176,16 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       Object[] valueList,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
+      int[] columnIndexArray,
       int start,
       int end) {
-    int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
+    checkColumnsInInsertPlan(schemaList);
     putAlignedValues(times, valueList, bitMaps, columnIndexArray, start, end);
   }
 
+  /**
+   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
+   */
   private int[] checkColumnsInInsertPlan(List<IMeasurementSchema> schemaListInInsertPlan) {
     Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
