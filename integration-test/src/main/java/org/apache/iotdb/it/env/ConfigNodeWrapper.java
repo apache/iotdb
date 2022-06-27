@@ -50,7 +50,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     properties.setProperty("rpc_address", super.getIp());
     properties.setProperty("rpc_port", String.valueOf(getPort()));
     properties.setProperty("consensus_port", String.valueOf(this.consensusPort));
-    properties.setProperty("target_confignode", this.targetConfigNode);
+    properties.setProperty("config_nodes", this.targetConfigNode);
     properties.setProperty(
         "config_node_consensus_protocol_class",
         "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
