@@ -1712,9 +1712,6 @@ public class IoTDBDescriptor {
   // These configurations are received from config node when registering
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
-    conf.setDataRegionConsensusProtocolClass(globalConfig.getDataRegionConsensusProtocolClass());
-    conf.setSchemaRegionConsensusProtocolClass(
-        globalConfig.getSchemaRegionConsensusProtocolClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
   }
