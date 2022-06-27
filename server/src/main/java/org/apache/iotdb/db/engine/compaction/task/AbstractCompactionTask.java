@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -37,29 +36,25 @@ import java.util.concurrent.atomic.AtomicInteger;
  * currentTaskNum in CompactionScheduler when the {@link AbstractCompactionTask#doCompaction()} is
  * finished. The future returns the {@link CompactionTaskSummary} of this task execution.
  */
-public abstract class AbstractCompactionTask implements Callable<CompactionTaskSummary> {
+public abstract class AbstractCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  protected String fullStorageGroupName;
+  protected String regionWithSG;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
   protected final TsFileManager tsFileManager;
-  protected long timeCost = 0L;
-  protected volatile boolean ran = false;
-  protected volatile boolean finished = false;
-  protected volatile boolean cancel = false;
   protected ICompactionPerformer performer;
   protected int hashCode = -1;
   protected CompactionTaskSummary summary = new CompactionTaskSummary();
   protected long serialId;
 
   public AbstractCompactionTask(
-      String fullStorageGroupName,
+      String regionWithSG,
       long timePartition,
       TsFileManager tsFileManager,
       AtomicInteger currentTaskNum,
       long serialId) {
-    this.fullStorageGroupName = fullStorageGroupName;
+    this.regionWithSG = regionWithSG;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
@@ -70,9 +65,7 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
 
   protected abstract void doCompaction() throws Exception;
 
-  @Override
-  public CompactionTaskSummary call() throws Exception {
-    ran = true;
+  public CompactionTaskSummary start() throws Exception {
     long startTime = System.currentTimeMillis();
     currentTaskNum.incrementAndGet();
     boolean isSuccess = false;
@@ -81,22 +74,21 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
       doCompaction();
       isSuccess = true;
     } catch (InterruptedException e) {
-      LOGGER.warn("{} [Compaction] Current task is interrupted", fullStorageGroupName);
+      LOGGER.warn("{} [Compaction] Current task is interrupted", regionWithSG);
     } catch (Throwable e) {
       // Use throwable to catch OOM exception.
-      LOGGER.error("{} [Compaction] Running compaction task failed", fullStorageGroupName, e);
+      LOGGER.error("{} [Compaction] Running compaction task failed", regionWithSG, e);
     } finally {
       this.currentTaskNum.decrementAndGet();
-      timeCost = System.currentTimeMillis() - startTime;
+      long timeCost = System.currentTimeMillis() - startTime;
       summary.finish(isSuccess, timeCost);
-      LOGGER.error("{} finish", this);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
     }
     return summary;
   }
 
-  public String getFullStorageGroupName() {
-    return fullStorageGroupName;
+  public String getRegionWithSG() {
+    return regionWithSG;
   }
 
   public long getTimePartition() {
@@ -124,21 +116,17 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
   public abstract void resetCompactionCandidateStatusForAllSourceFiles();
 
   public long getTimeCost() {
-    return timeCost;
+    return summary.getTimeCost();
   }
 
   protected void checkInterrupted() throws InterruptedException {
     if (Thread.currentThread().isInterrupted()) {
-      throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
+      throw new InterruptedException(String.format("%s [Compaction] abort", regionWithSG));
     }
   }
 
   public boolean isTaskRan() {
     return summary.isRan();
-  }
-
-  public void setCancel(boolean cancel) {
-    this.cancel = cancel;
   }
 
   public void cancel() {

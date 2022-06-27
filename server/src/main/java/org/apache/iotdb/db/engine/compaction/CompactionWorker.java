@@ -56,7 +56,7 @@ public class CompactionWorker implements Runnable {
           CompactionTaskSummary summary = task.getSummary();
           CompactionTaskFuture future = new CompactionTaskFuture(summary);
           CompactionTaskManager.getInstance().recordTask(task, future);
-          task.call();
+          task.start();
         }
       } catch (InterruptedException e) {
         log.error("CompactionThread-{} terminates because interruption", threadId);
@@ -67,7 +67,7 @@ public class CompactionWorker implements Runnable {
     }
   }
 
-  class CompactionTaskFuture implements Future<CompactionTaskSummary> {
+  static class CompactionTaskFuture implements Future<CompactionTaskSummary> {
     CompactionTaskSummary summary;
 
     public CompactionTaskFuture(CompactionTaskSummary summary) {
@@ -101,10 +101,10 @@ public class CompactionWorker implements Runnable {
     @Override
     public CompactionTaskSummary get(long timeout, @NotNull TimeUnit unit)
         throws InterruptedException, ExecutionException, TimeoutException {
-      long perSleepTime = timeout > 100 ? timeout : 100;
+      long perSleepTime = timeout < 100 ? timeout : 100;
       long totalSleepTime = 0L;
       while (!summary.isFinished()) {
-        if (totalSleepTime > timeout) {
+        if (totalSleepTime >= timeout) {
           throw new TimeoutException("Timeout when trying to get compaction task summary");
         }
         unit.sleep(perSleepTime);

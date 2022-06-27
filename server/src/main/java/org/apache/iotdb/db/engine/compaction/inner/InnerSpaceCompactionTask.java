@@ -108,7 +108,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         new ArrayList<>(Collections.singletonList(targetTsFileResource));
     LOGGER.info(
         "{} [Compaction] starting compaction task with {} files",
-        fullStorageGroupName,
+        regionWithSG,
         selectedTsFileResourceList.size());
     File logFile =
         new File(
@@ -119,10 +119,9 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     try (CompactionLogger compactionLogger = new CompactionLogger(logFile)) {
       compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
       compactionLogger.logFiles(targetTsFileList, CompactionLogger.STR_TARGET_FILES);
-      LOGGER.info("{} [InnerSpaceCompactionTask] Close the logger", fullStorageGroupName);
+      LOGGER.info("{} [InnerSpaceCompactionTask] Close the logger", regionWithSG);
       compactionLogger.close();
-      LOGGER.info(
-          "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
+      LOGGER.info("{} [Compaction] compaction with {}", regionWithSG, selectedTsFileResourceList);
 
       // carry out the compaction
       performer.setSourceFiles(selectedTsFileResourceList);
@@ -132,15 +131,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       performer.setSummary(summary);
       performer.perform();
 
-      CompactionUtils.moveTargetFile(targetTsFileList, true, fullStorageGroupName);
+      CompactionUtils.moveTargetFile(targetTsFileList, true, regionWithSG);
 
-      LOGGER.info("{} [InnerSpaceCompactionTask] start to rename mods file", fullStorageGroupName);
+      LOGGER.info("{} [InnerSpaceCompactionTask] start to rename mods file", regionWithSG);
       CompactionUtils.combineModsInInnerCompaction(
           selectedTsFileResourceList, targetTsFileResource);
 
       if (Thread.currentThread().isInterrupted() || summary.isCancel()) {
-        throw new InterruptedException(
-            String.format("%s [Compaction] abort", fullStorageGroupName));
+        throw new InterruptedException(String.format("%s [Compaction] abort", regionWithSG));
       }
 
       // replace the old files with new file, the new is in same position as the old
@@ -162,7 +160,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
       LOGGER.info(
           "{} [Compaction] Compacted target files, try to get the write lock of source files",
-          fullStorageGroupName);
+          regionWithSG);
 
       // release the read lock of all source files, and get the write lock of them to delete them
       for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
@@ -182,18 +180,16 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                 targetTsFileResource));
       }
 
-      LOGGER.info(
-          "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
+      LOGGER.info("{} [Compaction] compaction finish, start to delete old files", regionWithSG);
       // delete the old files
-      CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);
-      CompactionUtils.deleteModificationForSourceFile(
-          selectedTsFileResourceList, fullStorageGroupName);
+      CompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, regionWithSG);
+      CompactionUtils.deleteModificationForSourceFile(selectedTsFileResourceList, regionWithSG);
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(
           "{} [InnerSpaceCompactionTask] all compaction task finish, target file is {},"
               + "time cost is {} s, compaction speed is {} MB/s",
-          fullStorageGroupName,
+          regionWithSG,
           targetTsFileResource.getTsFile().getName(),
           costTime,
           ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
@@ -205,15 +201,13 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
         LOGGER.error(
-            "{} [Compaction] Meet errors in inner space compaction.",
-            fullStorageGroupName,
-            throwable);
+            "{} [Compaction] Meet errors in inner space compaction.", regionWithSG, throwable);
       }
 
       // handle exception
       if (isSequence()) {
         CompactionExceptionHandler.handleException(
-            fullStorageGroupName,
+            regionWithSG,
             logFile,
             targetTsFileList,
             selectedTsFileResourceList,
@@ -224,7 +218,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
             isSequence());
       } else {
         CompactionExceptionHandler.handleException(
-            fullStorageGroupName,
+            regionWithSG,
             logFile,
             targetTsFileList,
             Collections.emptyList(),
@@ -303,7 +297,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public String toString() {
-    return fullStorageGroupName
+    return regionWithSG
         + "-"
         + timePartition
         + " task file num is "

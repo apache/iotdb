@@ -46,6 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
@@ -65,13 +66,13 @@ public class CompactionTaskManager implements IService {
   private WrappedThreadPoolExecutor subCompactionTaskExecutionPool;
 
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
-  private FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
+  private final FixedPriorityBlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new FixedPriorityBlockingQueue<>(1024, new DefaultCompactionTaskComparatorImpl());
-  // <fullStorageGroupName,futureSet>, it is used to store all compaction tasks under each
+  // <StorageGroup-DataRegionId,futureSet>, it is used to store all compaction tasks under each
   // virtualStorageGroup
   private final Map<String, Map<AbstractCompactionTask, Future<CompactionTaskSummary>>>
       storageGroupTasks = new ConcurrentHashMap<>();
-  private AtomicInteger finishTaskNum = new AtomicInteger(0);
+  private final AtomicInteger finishedTaskNum = new AtomicInteger(0);
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
@@ -138,6 +139,8 @@ public class CompactionTaskManager implements IService {
   public void waitAllCompactionFinish() {
     long sleepingStartTime = 0;
     if (taskExecutionPool != null) {
+      WrappedThreadPoolExecutor tmpThreadPool = taskExecutionPool;
+      taskExecutionPool = null;
       candidateCompactionTaskQueue.clear();
       while (true) {
         int totalSize = 0;
@@ -147,8 +150,7 @@ public class CompactionTaskManager implements IService {
         }
         if (totalSize > 0) {
           try {
-            Thread.sleep(10);
-            candidateCompactionTaskQueue.clear();
+            Thread.sleep(100);
           } catch (InterruptedException e) {
             logger.error("Interrupted when waiting all task finish", e);
             break;
@@ -158,7 +160,7 @@ public class CompactionTaskManager implements IService {
         }
       }
       storageGroupTasks.clear();
-      candidateCompactionTaskQueue.clear();
+      taskExecutionPool = tmpThreadPool;
       logger.info("All compaction task finish");
     }
   }
@@ -220,9 +222,9 @@ public class CompactionTaskManager implements IService {
   }
 
   private boolean isTaskRunning(AbstractCompactionTask task) {
-    String storageGroupName = task.getFullStorageGroupName();
+    String regionWithSG = task.getRegionWithSG();
     return storageGroupTasks
-        .computeIfAbsent(storageGroupName, x -> new ConcurrentHashMap<>())
+        .computeIfAbsent(regionWithSG, x -> new ConcurrentHashMap<>())
         .containsKey(task);
   }
 
@@ -254,14 +256,14 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized void removeRunningTaskFuture(AbstractCompactionTask task) {
-    String storageGroupName = task.getFullStorageGroupName();
-    if (storageGroupTasks.containsKey(storageGroupName)) {
-      storageGroupTasks.get(storageGroupName).remove(task);
+    String regionWithSG = task.getRegionWithSG();
+    if (storageGroupTasks.containsKey(regionWithSG)) {
+      storageGroupTasks.get(regionWithSG).remove(task);
     }
     // add metrics
     CompactionMetricsRecorder.recordTaskInfo(
         task, CompactionTaskStatus.FINISHED, currentTaskNum.get());
-    finishTaskNum.incrementAndGet();
+    finishedTaskNum.incrementAndGet();
   }
 
   public synchronized Future<Void> submitSubTask(Callable<Void> subCompactionTask) {
@@ -302,12 +304,12 @@ public class CompactionTaskManager implements IService {
   }
 
   public int getExecutingTaskCount() {
-    int taskCnt = 0;
-    for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> taskMap :
+    int runningTaskCnt = 0;
+    for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> runningTaskMap :
         storageGroupTasks.values()) {
-      taskCnt += taskMap.size();
+      runningTaskCnt += runningTaskMap.size();
     }
-    return taskCnt;
+    return runningTaskCnt;
   }
 
   public int getTotalTaskCount() {
@@ -316,20 +318,20 @@ public class CompactionTaskManager implements IService {
 
   public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {
     List<AbstractCompactionTask> tasks = new ArrayList<>();
-    for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> taskMap :
+    for (Map<AbstractCompactionTask, Future<CompactionTaskSummary>> runningTaskMap :
         storageGroupTasks.values()) {
-      tasks.addAll(taskMap.keySet());
+      tasks.addAll(runningTaskMap.keySet());
     }
     return tasks;
   }
 
-  public long getFinishTaskNum() {
-    return finishTaskNum.get();
+  public long getFinishedTaskNum() {
+    return finishedTaskNum.get();
   }
 
   public void recordTask(AbstractCompactionTask task, Future<CompactionTaskSummary> summary) {
     storageGroupTasks
-        .computeIfAbsent(task.getFullStorageGroupName(), x -> new ConcurrentHashMap<>())
+        .computeIfAbsent(task.getRegionWithSG(), x -> new ConcurrentHashMap<>())
         .put(task, summary);
   }
 
@@ -363,7 +365,7 @@ public class CompactionTaskManager implements IService {
         }
       }
       initThreadPool();
-      finishTaskNum.set(0);
+      finishedTaskNum.set(0);
       candidateCompactionTaskQueue.clear();
     }
     currentTaskNum = new AtomicInteger(0);
@@ -377,15 +379,16 @@ public class CompactionTaskManager implements IService {
 
   @TestOnly
   public Future<CompactionTaskSummary> getCompactionTaskFutureMayBlock(AbstractCompactionTask task)
-      throws InterruptedException {
-    String storageGroup = task.getFullStorageGroupName();
+      throws InterruptedException, TimeoutException {
+    String regionWithSG = task.getRegionWithSG();
     long startTime = System.currentTimeMillis();
-    while (!storageGroupTasks.containsKey(storageGroup)
-        || !storageGroupTasks.get(storageGroup).containsKey(task)) {
+    while (!storageGroupTasks.containsKey(regionWithSG)
+        || !storageGroupTasks.get(regionWithSG).containsKey(task)) {
+      Thread.sleep(10);
       if (System.currentTimeMillis() - startTime > 20_000) {
-        throw new InterruptedException("Timeout when waiting for task future");
+        throw new TimeoutException("Timeout when waiting for task future");
       }
     }
-    return storageGroupTasks.get(storageGroup).get(task);
+    return storageGroupTasks.get(regionWithSG).get(task);
   }
 }

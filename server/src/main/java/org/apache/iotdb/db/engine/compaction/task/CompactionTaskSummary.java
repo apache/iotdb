@@ -21,48 +21,50 @@ package org.apache.iotdb.db.engine.compaction.task;
 /** The summary of one {@link AbstractCompactionTask} execution */
 public class CompactionTaskSummary {
   private long timeCost = 0L;
-  private volatile boolean ran = false;
-  private volatile boolean finished = false;
-  private volatile boolean cancel = false;
-  private volatile boolean success = false;
-
-  public CompactionTaskSummary(boolean success) {
-    this.success = success;
-  }
+  private volatile Status status = Status.NOT_STARTED;
 
   public CompactionTaskSummary() {}
 
   public void start() {
-    this.ran = true;
+    this.status = Status.STARTED;
   }
 
   public void finish(boolean success, long timeCost) {
-    this.success = success;
+    this.status = success ? Status.SUCCESS : Status.FAILED;
     this.timeCost = timeCost;
-    this.finished = true;
   }
 
   public void cancel() {
-    this.cancel = true;
+    if (this.status != Status.SUCCESS && this.status != Status.FAILED) {
+      this.status = Status.CANCELED;
+    }
   }
 
   public boolean isCancel() {
-    return cancel;
+    return this.status == Status.CANCELED;
   }
 
   public boolean isFinished() {
-    return finished;
+    return this.status == Status.SUCCESS || this.status == Status.FAILED;
   }
 
   public boolean isRan() {
-    return ran;
+    return this.status != Status.NOT_STARTED;
   }
 
   public boolean isSuccess() {
-    return success;
+    return this.status == Status.SUCCESS;
   }
 
   public long getTimeCost() {
     return timeCost;
+  }
+
+  enum Status {
+    NOT_STARTED,
+    STARTED,
+    SUCCESS,
+    FAILED,
+    CANCELED
   }
 }

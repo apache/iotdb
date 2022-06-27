@@ -94,8 +94,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           || selectedSequenceFiles.isEmpty()
           || selectedUnsequenceFiles.isEmpty()) {
         LOGGER.info(
-            "{} [Compaction] Cross space compaction file list is empty, end it",
-            fullStorageGroupName);
+            "{} [Compaction] Cross space compaction file list is empty, end it", regionWithSG);
         return;
       }
 
@@ -108,7 +107,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
       LOGGER.info(
           "{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}, total size is {} MB",
-          fullStorageGroupName,
+          regionWithSG,
           selectedSequenceFiles,
           selectedUnsequenceFiles,
           ((double) selectedFileSize) / 1024.0 / 1024.0);
@@ -133,7 +132,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         performer.setSummary(summary);
         performer.perform();
 
-        CompactionUtils.moveTargetFile(targetTsfileResourceList, false, fullStorageGroupName);
+        CompactionUtils.moveTargetFile(targetTsfileResourceList, false, regionWithSG);
         CompactionUtils.combineModsInCrossCompaction(
             selectedSequenceFiles, selectedUnsequenceFiles, targetTsfileResourceList);
 
@@ -158,20 +157,19 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
         LOGGER.info(
             "{} [Compaction] CrossSpaceCompactionTask Costs {} s, compaction speed is {} MB/s",
-            fullStorageGroupName,
+            regionWithSG,
             costTime,
             ((double) selectedFileSize) / 1024.0d / 1024.0d / costTime);
       }
     } catch (Throwable throwable) {
       // catch throwable to handle OOM errors
       if (!(throwable instanceof InterruptedException)) {
-        LOGGER.error(
-            "{} [Compaction] Meet errors in cross space compaction.", fullStorageGroupName);
+        LOGGER.error("{} [Compaction] Meet errors in cross space compaction.", regionWithSG);
       }
 
       // handle exception
       CompactionExceptionHandler.handleException(
-          fullStorageGroupName,
+          regionWithSG,
           logFile,
           targetTsfileResourceList,
           selectedSequenceFiles,
@@ -229,7 +227,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
 
   @Override
   public String toString() {
-    return fullStorageGroupName
+    return regionWithSG
         + "-"
         + timePartition
         + " task seq files are "
@@ -308,6 +306,6 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
   }
 
   public String getStorageGroupName() {
-    return fullStorageGroupName;
+    return regionWithSG;
   }
 }

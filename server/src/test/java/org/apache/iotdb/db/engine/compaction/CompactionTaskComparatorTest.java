@@ -301,7 +301,7 @@ public class CompactionTaskComparatorTest {
     long cnt = 0;
     while (compactionTaskQueue.size() > 0) {
       for (int i = 0; i < 10; ++i) {
-        taskCount.get(compactionTaskQueue.take().getFullStorageGroupName()).incrementAndGet();
+        taskCount.get(compactionTaskQueue.take().getRegionWithSG()).incrementAndGet();
       }
       cnt++;
       for (int i = 0; i < 10; ++i) {
