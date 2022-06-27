@@ -99,9 +99,6 @@ public class ErrorHandlingUtils {
     // ignore logging sg not ready exception
     if (rootCause instanceof StorageGroupNotReadyException) {
       return RpcUtils.getStatus(TSStatusCode.STORAGE_GROUP_NOT_READY, rootCause.getMessage());
-    } else if (rootCause instanceof IoTDBException) {
-      return RpcUtils.getStatus(
-          ((IoTDBException) rootCause).getErrorCode(), rootCause.getMessage());
     }
 
     Throwable t = e instanceof ExecutionException ? e.getCause() : e;
@@ -126,6 +123,12 @@ public class ErrorHandlingUtils {
     } else if (t instanceof SemanticException) {
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
     }
+
+    if (t instanceof RuntimeException && rootCause instanceof IoTDBException) {
+      return RpcUtils.getStatus(
+          ((IoTDBException) rootCause).getErrorCode(), rootCause.getMessage());
+    }
+
     return null;
   }
 
