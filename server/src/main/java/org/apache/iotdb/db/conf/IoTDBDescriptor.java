@@ -184,21 +184,10 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "reject_proportion", Double.toString(conf.getRejectProportion()))));
 
-      conf.setStorageGroupSizeReportThreshold(
-          Long.parseLong(
-              properties.getProperty(
-                  "storage_group_report_threshold",
-                  Long.toString(conf.getStorageGroupSizeReportThreshold()))));
-
       conf.setMetaDataCacheEnable(
           Boolean.parseBoolean(
               properties.getProperty(
                   "meta_data_cache_enable", Boolean.toString(conf.isMetaDataCacheEnable()))));
-
-      conf.setEnableLastCache(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
 
       initMemoryAllocate(properties);
 
@@ -327,24 +316,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "compaction_submission_interval_in_ms",
                   Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
-
-      conf.setEnableCrossSpaceCompaction(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_cross_space_compaction",
-                  Boolean.toString(conf.isEnableCrossSpaceCompaction()))));
-
-      conf.setEnableSeqSpaceCompaction(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_seq_space_compaction",
-                  Boolean.toString(conf.isEnableSeqSpaceCompaction()))));
-
-      conf.setEnableUnseqSpaceCompaction(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_unseq_space_compaction",
-                  Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
       conf.setCrossCompactionStrategy(
           CrossCompactionStrategy.getCrossCompactionStrategy(
@@ -902,9 +873,6 @@ public class IoTDBDescriptor {
     int walBufferSize =
         Integer.parseInt(
             properties.getProperty("wal_buffer_size", Integer.toString(conf.getWalBufferSize())));
-    if (walBufferSize > 0) {
-      conf.setWalBufferSize(walBufferSize);
-    }
 
     int maxWalBytebufferNumForEachPartition =
         Integer.parseInt(
@@ -1104,12 +1072,6 @@ public class IoTDBDescriptor {
       conf.setSeqMemtableFlushCheckInterval(seqMemTableFlushCheckInterval);
     }
 
-    conf.setEnableTimedFlushUnseqMemtable(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_timed_flush_unseq_memtable",
-                Boolean.toString(conf.isEnableTimedFlushUnseqMemtable()))));
-
     long unseqMemTableFlushInterval =
         Long.parseLong(
             properties
@@ -1131,11 +1093,6 @@ public class IoTDBDescriptor {
     if (unseqMemTableFlushCheckInterval > 0) {
       conf.setUnseqMemtableFlushCheckInterval(unseqMemTableFlushCheckInterval);
     }
-
-    conf.setEnableTimedCloseTsFile(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_timed_close_tsfile", Boolean.toString(conf.isEnableTimedCloseTsFile()))));
 
     long closeTsFileIntervalAfterFlushing =
         Long.parseLong(
