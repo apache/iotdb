@@ -3505,17 +3505,6 @@ public class DataRegion {
     }
 
     if (!insertRowsNode.getResults().isEmpty()) {
-      logger.warn("Executing a InsertRowsNode failed");
-      for (Entry<Integer, TSStatus> failedEntry : insertRowsNode.getResults().entrySet()) {
-        InsertRowNode insertRowNode =
-            insertRowsNode.getInsertRowNodeList().get(failedEntry.getKey());
-        logger.warn(
-            "Insert row failed. Device: {}, time:{}, measurement:{}, TSStatus:{}",
-            insertRowNode.getDevicePath(),
-            insertRowNode.getTime(),
-            insertRowNode.getMeasurements(),
-            failedEntry.getValue());
-      }
       throw new BatchProcessException("Partial failed inserting rows");
     }
   }
@@ -3531,7 +3520,7 @@ public class DataRegion {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (TriggerExecutionException | WriteProcessException e) {
+      } catch (TriggerExecutionException | WriteProcessException | BatchProcessException e) {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
