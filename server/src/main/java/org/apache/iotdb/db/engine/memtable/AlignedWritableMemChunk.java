@@ -160,7 +160,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public void writeAlignedValue(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
+    int[] columnIndexArray = checkColumnsInInsertPlan(objectValue, schemaList);
     putAlignedValue(insertTime, objectValue, columnIndexArray);
   }
 
@@ -176,25 +176,27 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       Object[] valueList,
       BitMap[] bitMaps,
       List<IMeasurementSchema> schemaList,
-      int[] columnIndexArray,
+      int[] c,
       int start,
       int end) {
-    checkColumnsInInsertPlan(schemaList);
+    int[] columnIndexArray = checkColumnsInInsertPlan(valueList, schemaList);
     putAlignedValues(times, valueList, bitMaps, columnIndexArray, start, end);
   }
 
-  /**
-   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
-   */
-  private int[] checkColumnsInInsertPlan(List<IMeasurementSchema> schemaListInInsertPlan) {
+  /** @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]] */
+  private int[] checkColumnsInInsertPlan(
+      Object[] values, List<IMeasurementSchema> schemaListInInsertPlan) {
     Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
-    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), i);
-      if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
-        this.measurementIndexMap.put(
-            schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
-        this.schemaList.add(schemaListInInsertPlan.get(i));
-        this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
+    for (int index = 0, i = 0; index < values.length; index++) {
+      if (values[index] != null) {
+        measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), index);
+        if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
+          this.measurementIndexMap.put(
+              schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
+          this.schemaList.add(schemaListInInsertPlan.get(i));
+          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
+        }
+        i++;
       }
     }
     int[] columnIndexArray = new int[measurementIndexMap.size()];

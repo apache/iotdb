@@ -480,7 +480,7 @@ public abstract class AbstractMemTable implements IMemTable {
     int[] columnIndexArray = new int[insertTabletPlan.getColumns().length];
     Arrays.fill(columnIndexArray, -1);
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    for (int i = 0,index=0; i < insertTabletPlan.getMeasurements().length; i++) {
+    for (int i = 0, index = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;
       }
@@ -510,7 +510,7 @@ public abstract class AbstractMemTable implements IMemTable {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     int[] columnIndexArray = new int[insertTabletNode.getColumns().length];
     Arrays.fill(columnIndexArray, -1);
-    for (int i = 0, index=0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
+    for (int i = 0, index = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
         continue;
       }
@@ -540,11 +540,11 @@ public abstract class AbstractMemTable implements IMemTable {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     int[] columnIndexArray = new int[insertTabletPlan.getColumns().length];
     Arrays.fill(columnIndexArray, -1);
-    for (int i = 0,index=0; i < insertTabletPlan.getMeasurements().length; i++) {
+    for (int i = 0, index = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;
       }
-      columnIndexArray[index++]=i;
+      columnIndexArray[index++] = i;
       IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
       schemaList.add(schema);
     }
@@ -573,7 +573,7 @@ public abstract class AbstractMemTable implements IMemTable {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     int[] columnIndexArray = new int[insertTabletNode.getColumns().length];
     Arrays.fill(columnIndexArray, -1);
-    for (int i = 0,index=0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
+    for (int i = 0, index = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
         continue;
       }

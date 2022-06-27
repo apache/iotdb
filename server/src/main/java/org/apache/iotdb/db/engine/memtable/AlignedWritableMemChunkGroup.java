@@ -53,7 +53,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       int[] columnIndexArray,
       int start,
       int end) {
-    memChunk.writeAlignedValues(times, columns, bitMaps, schemaList,  columnIndexArray,start, end);
+    memChunk.writeAlignedValues(times, columns, bitMaps, schemaList, columnIndexArray, start, end);
   }
 
   @Override
