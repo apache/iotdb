@@ -54,7 +54,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1650335659044,
+  "iteration": 1656326628388,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -225,7 +225,7 @@
           },
           "exemplar": true,
           "expr": "rate(quantity_total{instance=~\"$instance\"}[1m])",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "write point per minute",
           "refId": "A"
         }
@@ -307,7 +307,7 @@
           },
           "exemplar": true,
           "expr": "mem{instance=~\"$instance\"}",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "{{name}}",
           "refId": "A"
         }
@@ -401,8 +401,8 @@
           },
           "exemplar": true,
           "expr": "rate(entry_seconds_count{instance=~\"$instance\"}[1m])",
-          "interval": "1m",
-          "legendFormat": "{{instance}}-{{name}}",
+          "interval": "",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -486,9 +486,9 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "avg(rate(entry_seconds_sum{}[1m])/rate(entry_seconds_count{}[1m])) by (name,instance)",
-          "interval": "1m",
-          "legendFormat": "{{instance}}-{{name}}",
+          "expr": "avg(rate(entry_seconds_sum{instance=~\"$instance\"}[1m])/rate(entry_seconds_count{instance=~\"$instance\"}[1m])) by (name,instance)",
+          "interval": "",
+          "legendFormat": "{{name}}",
           "refId": "A"
         }
       ],
@@ -568,7 +568,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "cache_hit",
+          "expr": "cache_hit{instance=~\"$instance\"}",
           "interval": "",
           "legendFormat": "{{name}}",
           "refId": "A"
@@ -667,7 +667,7 @@
           },
           "exemplar": true,
           "expr": "queue{instance=~\"$instance\"}",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "{{name}}-{{status}}",
           "refId": "A"
         }
@@ -749,7 +749,7 @@
           },
           "exemplar": true,
           "expr": "rate(cost_task_seconds_sum{instance=~\"$instance\"}[10m])/rate(cost_task_seconds_count{instance=~\"$instance\"}[10m])",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "{{instance}}-{{name}}",
           "refId": "A"
         }
@@ -844,7 +844,7 @@
           },
           "exemplar": true,
           "expr": "file_size{instance=~\"$instance\"}",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "{{instance}}-{{name}}",
           "refId": "A"
         },
@@ -856,7 +856,7 @@
           "exemplar": true,
           "expr": "sum(file_size{instance=~\"$instance\"})",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "total size of file",
           "refId": "B"
         }
@@ -1030,7 +1030,7 @@
           },
           "exemplar": true,
           "expr": "sum(rate(jvm_gc_pause_seconds_count{instance=~\"$instance\", action=\"end of minor GC\"}[1m]))*60",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Young GC number",
           "refId": "A"
         },
@@ -1042,7 +1042,7 @@
           "exemplar": true,
           "expr": "sum(rate(jvm_gc_pause_seconds_count{instance=~\"$instance\", action=\"end of major GC\"}[1m]))*60",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Full GC number",
           "refId": "B"
         }
@@ -1348,7 +1348,7 @@
           },
           "exemplar": true,
           "expr": "sum(jvm_buffer_memory_used_bytes{instance=~\"$instance\"})",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "off-heap memory",
           "refId": "A"
         }
@@ -1429,7 +1429,7 @@
           },
           "exemplar": true,
           "expr": "jvm_threads_live_threads{instance=~\"$instance\"}",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "The total number of jvm thread",
           "refId": "A"
         },
@@ -1441,7 +1441,7 @@
           "exemplar": true,
           "expr": "jvm_threads_states_threads{instance=~\"$instance\"}",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "{{state}}",
           "refId": "B"
         }
@@ -1506,8 +1506,8 @@
     ]
   },
   "time": {
-    "from": "now-2d",
-    "to": "now"
+    "from": "2022-06-27T10:38:58.019Z",
+    "to": "2022-06-27T10:45:21.910Z"
   },
   "timepicker": {
     "refresh_intervals": [
