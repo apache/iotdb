@@ -179,8 +179,8 @@ you run `mvn package` successfully.**
 
 configuration files are under "conf" folder
 
-  * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
-  * system config module (`iotdb-engine.properties`)
+  * environment config module (`datanode-env.bat`, `datanode-env.sh`),
+  * system config module (`iotdb-datanode.properties`)
   * log config module (`logback.xml`).
 
 For more information, please see [Config Manual](https://iotdb.apache.org/UserGuide/Master/Reference/Config-Manual.html).

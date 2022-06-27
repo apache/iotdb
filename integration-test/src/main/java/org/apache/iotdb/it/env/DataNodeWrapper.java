@@ -60,15 +60,15 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected String getConfigPath() {
-    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-engine.properties");
+    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-datanode.properties");
   }
 
   @Override
   protected String getEnvConfigPath() {
     if (SystemUtils.IS_OS_WINDOWS) {
-      return workDirFilePath("datanode" + File.separator + "conf", "iotdb-env.bat");
+      return workDirFilePath("datanode" + File.separator + "conf", "datanode-env.bat");
     }
-    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-env.sh");
+    return workDirFilePath("datanode" + File.separator + "conf", "datanode-env.sh");
   }
 
   @Override

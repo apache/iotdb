@@ -85,8 +85,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 ## 系统配置项（iotdb-datanode.properties）
 
-系统配置项是 IoTDB DataNode/Standalone 运行的核心配置，它主要用于设置 IoTDB DataNode/Standalone 文件层和引擎层的参数，便于用户根据自身需求调整 Server
-的相关配置，以达到较好的性能表现。系统配置项可分为两大模块：文件层配置项和引擎层配置项。用户可以通过`iotdb-datanode.properties`, 文件查看和修改两种配置项的内容。在 0.7.0 版本中字符串类型的配置项大小写敏感。
+系统配置项是 IoTDB DataNode/Standalone 运行的核心配置，它主要用于设置 DataNode/Standalone 数据库引擎的参数。
 
 ### 客户端 RPC 服务配置
 

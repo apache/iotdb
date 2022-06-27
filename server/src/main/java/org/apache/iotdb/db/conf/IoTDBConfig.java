@@ -59,7 +59,7 @@ public class IoTDBConfig {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
-  static final String CONFIG_NAME = "iotdb-engine.properties";
+  static final String CONFIG_NAME = "iotdb-datanode.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
@@ -780,13 +780,13 @@ public class IoTDBConfig {
 
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
-   * iotdb-engine.properties
+   * iotdb-datanode.properties
    */
   private boolean enableRpcService = true;
 
   /**
    * whether enable the influxdb rpc service. This parameter has no a corresponding field in the
-   * iotdb-engine.properties
+   * iotdb-datanode.properties
    */
   private boolean enableInfluxDBRpcService = false;
 
@@ -896,7 +896,7 @@ public class IoTDBConfig {
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
-  private int partitionCacheSize = 0;
+  private int partitionCacheSize = 100000;
 
   /** Cache size of user and role */
   private int authorCacheSize = 100;
