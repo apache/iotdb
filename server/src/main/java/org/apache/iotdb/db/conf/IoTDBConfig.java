@@ -144,7 +144,7 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /** If storage group increased more than this threshold, report to system. Unit: byte */
-  private long storageGroupSizeReportThreshold = (long)(16 * 1024 * 1024L);
+  private long storageGroupSizeReportThreshold = (long)(1.6 * 1024 * 1024L);
 
   /** When inserting rejected, waiting period to check system again. Unit: millisecond */
   private int checkPeriodWhenInsertBlocked = 50;
