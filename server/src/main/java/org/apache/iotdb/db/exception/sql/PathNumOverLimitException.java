@@ -26,7 +26,8 @@ public class PathNumOverLimitException extends SemanticException {
   public PathNumOverLimitException() {
     super(
         String.format(
-            "Too many paths in one query! Currently allowed max deduplicated path number is %d. Please use slimit or adjust max_deduplicated_path_num in iotdb-engine.properties.",
+            "Too many paths in one query! Currently allowed max deduplicated path number is %d. "
+                + "Please use slimit or adjust max_deduplicated_path_num in iotdb-engine.properties.",
             IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum()));
   }
 }
