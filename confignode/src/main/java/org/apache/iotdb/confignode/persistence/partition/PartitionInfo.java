@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.persistence.partition;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TRegionLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -31,7 +31,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
@@ -40,7 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
-import org.apache.iotdb.confignode.consensus.response.RegionLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
@@ -209,12 +209,17 @@ public class PartitionInfo implements SnapshotProcessor {
     final PreDeleteStorageGroupReq.PreDeleteType preDeleteType =
         preDeleteStorageGroupReq.getPreDeleteType();
     final String storageGroup = preDeleteStorageGroupReq.getStorageGroup();
+    StorageGroupPartitionTable storageGroupPartitionTable =
+        storageGroupPartitionTables.get(storageGroup);
+    if (storageGroupPartitionTable == null) {
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    }
     switch (preDeleteType) {
       case EXECUTE:
-        storageGroupPartitionTables.get(storageGroup).setPredeleted(true);
+        storageGroupPartitionTable.setPredeleted(true);
         break;
       case ROLLBACK:
-        storageGroupPartitionTables.get(storageGroup).setPredeleted(false);
+        storageGroupPartitionTable.setPredeleted(false);
         break;
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -226,12 +231,21 @@ public class PartitionInfo implements SnapshotProcessor {
    * @param req DeleteRegionsReq
    */
   public void deleteStorageGroup(DeleteStorageGroupReq req) {
+    StorageGroupPartitionTable storageGroupPartitionTable =
+        storageGroupPartitionTables.get(req.getName());
+    if (storageGroupPartitionTable == null) {
+      return;
+    }
     // Cache RegionReplicaSets
     synchronized (deletedRegionSet) {
-      deletedRegionSet.addAll(storageGroupPartitionTables.get(req.getName()).getAllReplicaSets());
+      storageGroupPartitionTable = storageGroupPartitionTables.get(req.getName());
+      if (storageGroupPartitionTable == null) {
+        return;
+      }
+      deletedRegionSet.addAll(storageGroupPartitionTable.getAllReplicaSets());
+      // Clean the cache
+      storageGroupPartitionTables.remove(req.getName());
     }
-    // Clean the cache
-    storageGroupPartitionTables.remove(req.getName());
   }
 
   /** @return The Regions that should be deleted among the DataNodes */
@@ -405,20 +419,20 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /** Get region information */
-  public DataSet getRegionLocations(GetRegionLocationsReq regionsInfoReq) {
-    RegionLocationsResp regionResp = new RegionLocationsResp();
-    List<TRegionLocation> regionLocationList = new ArrayList<>();
+  public DataSet getRegionInfoList(GetRegionInfoListReq regionsInfoReq) {
+    RegionInfoListResp regionResp = new RegionInfoListResp();
+    List<TRegionInfo> regionInfoList = new ArrayList<>();
     if (storageGroupPartitionTables.isEmpty()) {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       return regionResp;
     }
     storageGroupPartitionTables.forEach(
         (storageGroup, storageGroupPartitionTable) -> {
-          storageGroupPartitionTable.getRegionInfos(regionsInfoReq, regionLocationList);
+          storageGroupPartitionTable.getRegionInfoList(regionsInfoReq, regionInfoList);
         });
-    regionLocationList.sort(
+    regionInfoList.sort(
         Comparator.comparingInt(regionId -> regionId.getConsensusGroupId().getId()));
-    regionResp.setRegionInfosList(regionLocationList);
+    regionResp.setRegionInfoList(regionInfoList);
     regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return regionResp;
   }
@@ -605,9 +619,9 @@ public class PartitionInfo implements SnapshotProcessor {
       TDataNodeLocation dataNodeLocation = entry.getKey();
       String name =
           "EndPoint("
-              + dataNodeLocation.getExternalEndPoint().ip
+              + dataNodeLocation.getClientRpcEndPoint().ip
               + ":"
-              + dataNodeLocation.getExternalEndPoint().port
+              + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
       MetricsService.getInstance()
           .getMetricManager()

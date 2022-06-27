@@ -236,7 +236,7 @@ struct TShowRegionReq {
 
 struct TShowRegionResp {
   1: required common.TSStatus status
-  2: optional list<common.TRegionLocation> regionInfoList;
+  2: optional list<common.TRegionInfo> regionInfoList;
 }
 
 service ConfigIService {

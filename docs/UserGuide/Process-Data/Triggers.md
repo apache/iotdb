@@ -913,7 +913,7 @@ public class TriggerExample implements Trigger {
 
 You can try this trigger by following the steps below:
 
-* Enable MQTT service by modifying `iotdb-engine.properties`
+* Enable MQTT service by modifying `iotdb-datanode.properties`
 
   ``` properties
   # whether to enable the mqtt service.

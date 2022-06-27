@@ -253,6 +253,29 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
+  protected boolean collectReaderAppendIsNull(LayerPointReader reader, long currentTime)
+      throws QueryProcessException, IOException {
+    final YieldableState yieldableState = reader.yield();
+
+    if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+      return true;
+    }
+
+    if (yieldableState != YieldableState.YIELDABLE) {
+      return false;
+    }
+
+    if (reader.currentTime() != currentTime) {
+      return true;
+    }
+
+    if (reader.isCurrentNull()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   protected YieldableState collectDataPoint(
       LayerPointReader reader, ColumnBuilder writer, long currentTime, int readerIndex)
       throws QueryProcessException, IOException {

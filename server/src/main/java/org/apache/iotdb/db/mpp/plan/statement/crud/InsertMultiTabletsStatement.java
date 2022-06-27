@@ -97,7 +97,7 @@ public class InsertMultiTabletsStatement extends InsertBaseStatement {
               insertTabletStatement.devicePath.getFullPath(),
               StorageEngineV2.getTimePartitionSlot(
                   insertTabletStatement.getTimes()[insertTabletStatement.getTimes().length - 1]));
-      result.add(regionReplicaSet.getDataNodeLocations().get(0).getExternalEndPoint());
+      result.add(regionReplicaSet.getDataNodeLocations().get(0).getClientRpcEndPoint());
     }
     return result;
   }

@@ -26,7 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
-import org.apache.iotdb.confignode.manager.Manager;
+import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.NodeManager;
 import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.CopySetRegionAllocator;
@@ -41,9 +41,9 @@ import java.util.Map;
  */
 public class RegionBalancer {
 
-  private final Manager configManager;
+  private final IManager configManager;
 
-  public RegionBalancer(Manager configManager) {
+  public RegionBalancer(IManager configManager) {
     this.configManager = configManager;
   }
 

@@ -1645,7 +1645,7 @@ public class IoTDBDescriptor {
       }
     }
 
-    conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
+    conf.setInternalIp(properties.getProperty("internal_address", conf.getInternalIp()));
 
     conf.setInternalPort(
         Integer.parseInt(
@@ -1665,25 +1665,25 @@ public class IoTDBDescriptor {
   }
 
   public void loadShuffleProps(Properties properties) {
-    conf.setDataBlockManagerPort(
+    conf.setMppDataExchangePort(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_port", Integer.toString(conf.getDataBlockManagerPort()))));
-    conf.setDataBlockManagerCorePoolSize(
+                "mpp_data_exchange_port", Integer.toString(conf.getMppDataExchangePort()))));
+    conf.setMppDataExchangeCorePoolSize(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_core_pool_size",
-                Integer.toString(conf.getDataBlockManagerCorePoolSize()))));
-    conf.setDataBlockManagerMaxPoolSize(
+                "mpp_data_exchange_core_pool_size",
+                Integer.toString(conf.getMppDataExchangeCorePoolSize()))));
+    conf.setMppDataExchangeMaxPoolSize(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_max_pool_size",
-                Integer.toString(conf.getDataBlockManagerMaxPoolSize()))));
-    conf.setDataBlockManagerKeepAliveTimeInMs(
+                "mpp_data_exchange_max_pool_size",
+                Integer.toString(conf.getMppDataExchangeMaxPoolSize()))));
+    conf.setMppDataExchangeKeepAliveTimeInMs(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_keep_alive_time_in_ms",
-                Integer.toString(conf.getDataBlockManagerKeepAliveTimeInMs()))));
+                "mpp_data_exchange_keep_alive_time_in_ms",
+                Integer.toString(conf.getMppDataExchangeKeepAliveTimeInMs()))));
 
     conf.setPartitionCacheSize(
         Integer.parseInt(

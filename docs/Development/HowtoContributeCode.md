@@ -72,11 +72,11 @@ It is required to use "mvn spotless:apply" to format the code before committing,
 
 Notes
 
-1.The default values need to be consistent between iotdb-engine.properties file and IoTDBConfig file.
+1.The default values need to be consistent between iotdb-datanode.properties file and IoTDBConfig file.
 
 2.To modify the configuration parameters, the following files need to be modified 
 
-a.Configuration file: server/src/assembly/resources/conf/iotdb-engine.properties
+a.Configuration file: server/src/assembly/resources/conf/iotdb-datanode.properties
 
 b. Codes: IoTDBDescriptor, IoTDBConfig
 

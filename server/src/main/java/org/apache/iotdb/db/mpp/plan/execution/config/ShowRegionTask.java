@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TRegionLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
@@ -53,15 +53,15 @@ public class ShowRegionTask implements IConfigTask {
       TShowRegionResp showRegionResp, SettableFuture<ConfigTaskResult> future) {
     TsBlockBuilder builder = new TsBlockBuilder(HeaderConstant.showRegionHeader.getRespDataTypes());
     if (showRegionResp.getRegionInfoList() != null) {
-      for (TRegionLocation regionLocation : showRegionResp.getRegionInfoList()) {
+      for (TRegionInfo regionInfo : showRegionResp.getRegionInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
-        builder.getColumnBuilder(0).writeInt(regionLocation.getConsensusGroupId().getId());
-        if (regionLocation.getConsensusGroupId().getType().ordinal()
+        builder.getColumnBuilder(0).writeInt(regionInfo.getConsensusGroupId().getId());
+        if (regionInfo.getConsensusGroupId().getType().ordinal()
             == TConsensusGroupType.SchemaRegion.ordinal()) {
           builder
               .getColumnBuilder(1)
               .writeBinary(Binary.valueOf(String.valueOf(TConsensusGroupType.SchemaRegion)));
-        } else if (regionLocation.getConsensusGroupId().getType().ordinal()
+        } else if (regionInfo.getConsensusGroupId().getType().ordinal()
             == TConsensusGroupType.DataRegion.ordinal()) {
           builder
               .getColumnBuilder(1)
@@ -70,13 +70,12 @@ public class ShowRegionTask implements IConfigTask {
         builder
             .getColumnBuilder(2)
             .writeBinary(
-                Binary.valueOf(
-                    regionLocation.getStatus() == null ? "" : regionLocation.getStatus()));
-        builder.getColumnBuilder(3).writeBinary(Binary.valueOf(regionLocation.getStorageGroup()));
-        builder.getColumnBuilder(4).writeLong(regionLocation.getSlots());
-        builder.getColumnBuilder(5).writeInt(regionLocation.getDataNodeId());
-        builder.getColumnBuilder(6).writeBinary(Binary.valueOf(regionLocation.getRpcAddresss()));
-        builder.getColumnBuilder(7).writeInt(regionLocation.getRpcPort());
+                Binary.valueOf(regionInfo.getStatus() == null ? "" : regionInfo.getStatus()));
+        builder.getColumnBuilder(3).writeBinary(Binary.valueOf(regionInfo.getStorageGroup()));
+        builder.getColumnBuilder(4).writeLong(regionInfo.getSlots());
+        builder.getColumnBuilder(5).writeInt(regionInfo.getDataNodeId());
+        builder.getColumnBuilder(6).writeBinary(Binary.valueOf(regionInfo.getClientRpcIp()));
+        builder.getColumnBuilder(7).writeInt(regionInfo.getClientRpcPort());
         builder.declarePosition();
       }
     }

@@ -36,7 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
@@ -49,7 +49,7 @@ import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.confignode.consensus.response.RegionLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
@@ -464,12 +464,12 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TShowRegionResp showRegion(TShowRegionReq showRegionReq) throws TException {
-    GetRegionLocationsReq getRegionsinfoReq =
-        new GetRegionLocationsReq(showRegionReq.getConsensusGroupType());
-    RegionLocationsResp dataSet = (RegionLocationsResp) configManager.showRegion(getRegionsinfoReq);
+    GetRegionInfoListReq getRegionsinfoReq =
+        new GetRegionInfoListReq(showRegionReq.getConsensusGroupType());
+    RegionInfoListResp dataSet = (RegionInfoListResp) configManager.showRegion(getRegionsinfoReq);
     TShowRegionResp showRegionResp = new TShowRegionResp();
     showRegionResp.setStatus(dataSet.getStatus());
-    showRegionResp.setRegionInfoList(dataSet.getRegionInfosList());
+    showRegionResp.setRegionInfoList(dataSet.getRegionInfoList());
     return showRegionResp;
   }
 

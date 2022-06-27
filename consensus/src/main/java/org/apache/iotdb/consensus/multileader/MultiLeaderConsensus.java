@@ -124,9 +124,9 @@ public class MultiLeaderConsensus implements IConsensus {
 
   @Override
   public void stop() {
+    clientManager.close();
     stateMachineMap.values().parallelStream().forEach(MultiLeaderServerImpl::stop);
     registerManager.deregisterAll();
-    clientManager.close();
   }
 
   @Override

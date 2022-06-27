@@ -28,13 +28,13 @@ RUN apt update \
   && unzip /apache-iotdb-*-bin.zip -d / \
   && rm /apache-iotdb-*-bin.zip \
   && mv /apache-iotdb-* /iotdb \
-  && sed -i '/^# enable_influxdb_rpc_service=false/a enable_influxdb_rpc_service=true' /iotdb/sbin/../conf/iotdb-engine.properties \
+  && sed -i '/^# enable_influxdb_rpc_service=false/a enable_influxdb_rpc_service=true' /iotdb/sbin/../conf/iotdb-datanode.properties \
   && apt remove unzip -y \
   && apt autoremove -y \
   && apt purge --auto-remove -y \
   && apt clean -y
 RUN dos2unix /iotdb/sbin/start-server.sh
-RUN dos2unix /iotdb/sbin/../conf/iotdb-env.sh
+RUN dos2unix /iotdb/sbin/../conf/datanode-env.sh
 EXPOSE 6667
 EXPOSE 31999
 EXPOSE 5555
