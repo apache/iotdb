@@ -125,6 +125,40 @@ public class IoTDBUDTFHybridQueryIT {
   }
 
   @Test
+  public void testUserDefinedBuiltInHybridAggregationQuery2() {
+    String[] retArray = new String[] {"0,2.0,0.9092974268256817,3.0,-10.0,12.0"};
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select avg(s1), sin(avg(s2)), avg(s1) + 1, -sum(s2), avg(s1) + sum(s2) from root.vehicle.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("avg(root.vehicle.d1.s1)")
+                  + ","
+                  + resultSet.getString("sin(avg(root.vehicle.d1.s2))")
+                  + ","
+                  + resultSet.getString("avg(root.vehicle.d1.s1) + 1")
+                  + ","
+                  + resultSet.getString("-sum(root.vehicle.d1.s2)")
+                  + ","
+                  + resultSet.getString("avg(root.vehicle.d1.s1) + sum(root.vehicle.d1.s2)");
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (SQLException throwable) {
+      throwable.printStackTrace();
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
   @Ignore // TODO fill function incompatible
   public void testUserDefinedFunctionFillFunctionHybridQuery() {
     String[] retArray =
