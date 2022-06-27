@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
@@ -218,12 +217,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "reject_proportion", Double.toString(conf.getRejectProportion()))));
 
-      conf.setStorageGroupSizeReportThreshold(
-          Long.parseLong(
-              properties.getProperty(
-                  "storage_group_report_threshold",
-                  Long.toString(conf.getStorageGroupSizeReportThreshold()))));
-
       conf.setMetaDataCacheEnable(
           Boolean.parseBoolean(
               properties.getProperty(
@@ -350,24 +343,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "compaction_submission_interval_in_ms",
                   Long.toString(conf.getCompactionSubmissionIntervalInMs()))));
-
-      conf.setEnableCrossSpaceCompaction(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_cross_space_compaction",
-                  Boolean.toString(conf.isEnableCrossSpaceCompaction()))));
-
-      conf.setEnableSeqSpaceCompaction(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_seq_space_compaction",
-                  Boolean.toString(conf.isEnableSeqSpaceCompaction()))));
-
-      conf.setEnableUnseqSpaceCompaction(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_unseq_space_compaction",
-                  Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
       conf.setCrossCompactionSelector(
           CrossCompactionSelector.getCrossCompactionSelector(
@@ -747,15 +722,6 @@ public class IoTDBDescriptor {
       conf.setSchemaEngineMode(
           properties.getProperty("schema_engine_mode", String.valueOf(conf.getSchemaEngineMode())));
 
-      conf.setEnableLastCache(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_last_cache", Boolean.toString(conf.isLastCacheEnabled()))));
-
-      if (conf.getSchemaEngineMode().equals("Rocksdb_based")) {
-        conf.setEnableLastCache(false);
-      }
-
       conf.setCachedMNodeSizeInSchemaFileMode(
           Integer.parseInt(
               properties.getProperty(
@@ -925,14 +891,6 @@ public class IoTDBDescriptor {
       conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
     }
 
-    for (TEndPoint configNode : conf.getConfigNodeList()) {
-      boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
-      if (!isInvalidNodeIp) {
-        String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
-        configNode.setIp(newNodeIP);
-      }
-    }
-
     logger.debug(
         "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
         conf.getRpcAddress(),
@@ -958,9 +916,6 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "wal_buffer_size_in_byte", Integer.toString(conf.getWalBufferSize())));
-    if (walBufferSize > 0) {
-      conf.setWalBufferSize(walBufferSize);
-    }
 
     int walBufferEntrySize =
         Integer.parseInt(
@@ -1152,12 +1107,7 @@ public class IoTDBDescriptor {
         .setValueEncoder(
             properties.getProperty(
                 "value_encoder", TSFileDescriptor.getInstance().getConfig().getValueEncoder()));
-    TSFileDescriptor.getInstance()
-        .getConfig()
-        .setCompressor(
-            properties.getProperty(
-                "compressor",
-                TSFileDescriptor.getInstance().getConfig().getCompressor().toString()));
+
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxDegreeOfIndexNode(
@@ -1230,12 +1180,6 @@ public class IoTDBDescriptor {
     if (seqMemTableFlushCheckInterval > 0) {
       conf.setSeqMemtableFlushCheckInterval(seqMemTableFlushCheckInterval);
     }
-
-    conf.setEnableTimedFlushUnseqMemtable(
-        Boolean.parseBoolean(
-            properties.getProperty(
-                "enable_timed_flush_unseq_memtable",
-                Boolean.toString(conf.isEnableTimedFlushUnseqMemtable()))));
 
     long unseqMemTableFlushInterval =
         Long.parseLong(
@@ -1500,7 +1444,6 @@ public class IoTDBDescriptor {
         schemaMemoryTotal * partitionCacheProportion / proportionSum);
     logger.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
 
-    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
     logger.info("allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 

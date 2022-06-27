@@ -112,7 +112,7 @@ public class TSFileConfig implements Serializable {
   /** Default block size for FREQ encoding is 1024. */
   private int freqEncodingBlockSize = 1024;
   /** Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4. */
-  private CompressionType compressor = CompressionType.SNAPPY;
+  private CompressionType compressor = CompressionType.GZIP;
   /** Line count threshold for checking page memory occupied size. */
   private int pageCheckSizeThreshold = 100;
   /** Default endian value is BIG_ENDIAN. */
@@ -282,10 +282,6 @@ public class TSFileConfig implements Serializable {
 
   public CompressionType getCompressor() {
     return compressor;
-  }
-
-  public void setCompressor(String compressor) {
-    this.compressor = CompressionType.valueOf(compressor);
   }
 
   public int getPageCheckSizeThreshold() {

@@ -144,7 +144,7 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /** If storage group increased more than this threshold, report to system. Unit: byte */
-  private long storageGroupSizeReportThreshold = 16 * 1024 * 1024L;
+  private long storageGroupSizeReportThreshold = (long) (1.6 * 1024 * 1024L);
 
   /** When inserting rejected, waiting period to check system again. Unit: millisecond */
   private int checkPeriodWhenInsertBlocked = 50;
@@ -171,7 +171,7 @@ public class IoTDBConfig {
   private volatile long fsyncWalDelayInMs = 3;
 
   /** Buffer size of each wal node. Unit: byte */
-  private int walBufferSize = 16 * 1024 * 1024;
+  private int walBufferSize = (int) 1.6 * 1024 * 1024;
 
   /** Buffer entry size of each wal buffer. Unit: byte */
   private int walBufferEntrySize = 16 * 1024;
@@ -353,7 +353,7 @@ public class IoTDBConfig {
   private long seqMemtableFlushCheckInterval = 10 * 60 * 1000L;
 
   /** Whether to timed flush unsequence tsfiles' memtables. */
-  private boolean enableTimedFlushUnseqMemtable = true;
+  private boolean enableTimedFlushUnseqMemtable = false;
 
   /**
    * If a memTable's created time is older than current time minus this, the memtable will be
@@ -368,13 +368,13 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 100000;
 
   /** Enable inner space compaction for sequence files */
-  private boolean enableSeqSpaceCompaction = true;
+  private boolean enableSeqSpaceCompaction = false;
 
   /** Enable inner space compaction for unsequence files */
-  private boolean enableUnseqSpaceCompaction = true;
+  private boolean enableUnseqSpaceCompaction = false;
 
   /** Compact the unsequence files into the overlapped sequence files */
-  private boolean enableCrossSpaceCompaction = true;
+  private boolean enableCrossSpaceCompaction = false;
 
   /**
    * The strategy of inner space compaction task. There are just one inner space compaction strategy
@@ -466,7 +466,7 @@ public class IoTDBConfig {
   private long allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
 
   /** Whether to enable Last cache */
-  private boolean lastCacheEnable = true;
+  private boolean lastCacheEnable = false;
 
   /** Set true to enable statistics monitor service, false to disable statistics service. */
   private boolean enableStatMonitor = false;
@@ -1522,10 +1522,6 @@ public class IoTDBConfig {
     return walBufferSize;
   }
 
-  public void setWalBufferSize(int walBufferSize) {
-    this.walBufferSize = walBufferSize;
-  }
-
   public int getWalBufferEntrySize() {
     return walBufferEntrySize;
   }
@@ -1648,10 +1644,6 @@ public class IoTDBConfig {
 
   public long getStorageGroupSizeReportThreshold() {
     return storageGroupSizeReportThreshold;
-  }
-
-  public void setStorageGroupSizeReportThreshold(long storageGroupSizeReportThreshold) {
-    this.storageGroupSizeReportThreshold = storageGroupSizeReportThreshold;
   }
 
   public long getAllocateMemoryForWrite() {
@@ -1820,10 +1812,6 @@ public class IoTDBConfig {
     return enableTimedFlushUnseqMemtable;
   }
 
-  public void setEnableTimedFlushUnseqMemtable(boolean enableTimedFlushUnseqMemtable) {
-    this.enableTimedFlushUnseqMemtable = enableTimedFlushUnseqMemtable;
-  }
-
   public long getUnseqMemtableFlushInterval() {
     return unseqMemtableFlushInterval;
   }
@@ -1899,10 +1887,6 @@ public class IoTDBConfig {
 
   public boolean isLastCacheEnabled() {
     return lastCacheEnable;
-  }
-
-  public void setEnableLastCache(boolean lastCacheEnable) {
-    this.lastCacheEnable = lastCacheEnable;
   }
 
   public boolean isEnableWatermark() {
@@ -2469,24 +2453,12 @@ public class IoTDBConfig {
     return enableSeqSpaceCompaction;
   }
 
-  public void setEnableSeqSpaceCompaction(boolean enableSeqSpaceCompaction) {
-    this.enableSeqSpaceCompaction = enableSeqSpaceCompaction;
-  }
-
   public boolean isEnableUnseqSpaceCompaction() {
     return enableUnseqSpaceCompaction;
   }
 
-  public void setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
-    this.enableUnseqSpaceCompaction = enableUnseqSpaceCompaction;
-  }
-
   public boolean isEnableCrossSpaceCompaction() {
     return enableCrossSpaceCompaction;
-  }
-
-  public void setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
-    this.enableCrossSpaceCompaction = enableCrossSpaceCompaction;
   }
 
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
@@ -2971,9 +2943,5 @@ public class IoTDBConfig {
 
   public long getAllocateMemoryForLastCache() {
     return allocateMemoryForLastCache;
-  }
-
-  public void setAllocateMemoryForLastCache(long allocateMemoryForLastCache) {
-    this.allocateMemoryForLastCache = allocateMemoryForLastCache;
   }
 }
