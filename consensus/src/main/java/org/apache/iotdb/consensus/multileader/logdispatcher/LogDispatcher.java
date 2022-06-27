@@ -137,6 +137,9 @@ public class LogDispatcher {
         (ConsensusReqReader) impl.getStateMachine().read(new GetConsensusReqReaderPlan());
     private volatile boolean stopped = false;
 
+    private ConsensusReqReader.ReqIterator walEntryiterator;
+    private long iteratorIndex = 1;
+
     public LogDispatcherThread(Peer peer, MultiLeaderConfig config) {
       this.peer = peer;
       this.config = config;
@@ -146,6 +149,7 @@ public class LogDispatcher {
           new IndexController(
               impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()), false);
       this.syncStatus = new SyncStatus(controller, config);
+      this.walEntryiterator = reader.getReqIterator(iteratorIndex);
     }
 
     public IndexController getController() {
@@ -283,10 +287,22 @@ public class LogDispatcher {
 
     private long constructBatchFromWAL(
         long currentIndex, long maxIndex, List<TLogBatch> logBatches) {
+      if (iteratorIndex != currentIndex) {
+        walEntryiterator.skipTo(currentIndex);
+        iteratorIndex = currentIndex;
+      }
+
       while (currentIndex < maxIndex
           && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
+        try {
+          walEntryiterator.waitForNextReady();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
         // TODO iterator
-        IConsensusRequest data = reader.getReq(currentIndex++);
+        IConsensusRequest data = walEntryiterator.next();
+        iteratorIndex++;
+        currentIndex++;
         if (data != null) {
           logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
         }
