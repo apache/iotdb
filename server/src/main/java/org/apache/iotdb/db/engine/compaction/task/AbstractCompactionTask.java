@@ -65,7 +65,7 @@ public abstract class AbstractCompactionTask {
 
   protected abstract void doCompaction() throws Exception;
 
-  public CompactionTaskSummary start() throws Exception {
+  public void start() throws Exception {
     long startTime = System.currentTimeMillis();
     currentTaskNum.incrementAndGet();
     boolean isSuccess = false;
@@ -84,7 +84,6 @@ public abstract class AbstractCompactionTask {
       summary.finish(isSuccess, timeCost);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
     }
-    return summary;
   }
 
   public String getRegionWithSG() {
