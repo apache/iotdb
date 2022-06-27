@@ -315,8 +315,13 @@ public class LogDispatcher {
         double timeConsumed = (System.nanoTime() * 1.0 - startTime) / 1000_000;
         logger.info(
             String.format(
-                "[DataRegion[%s]->%s]construct batch[%d] time consumed: %.3f",
-                peer.getGroupId().getId(), peer.getEndpoint().ip, count, timeConsumed));
+                "DataRegion[%s]->%s: construct batch time consumed: %.3f. BatchCount: %d, currentIndex: %d, maxIndex: %d",
+                peer.getGroupId().getId(),
+                peer.getEndpoint().ip,
+                timeConsumed,
+                count,
+                currentIndex,
+                maxIndex));
       }
     }
 
