@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -215,6 +216,26 @@ public class DataNode implements DataNodeMBean {
             config.setDataNodeId(dataNodeID);
           }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
+
+          if (!IoTDBStartCheck.getInstance()
+              .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
+            config.setDataRegionConsensusProtocolClass(
+                dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass());
+            IoTDBStartCheck.getInstance()
+                .serializeConsensusProtocol(
+                    dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass(),
+                    TConsensusGroupType.DataRegion);
+          }
+
+          if (!IoTDBStartCheck.getInstance()
+              .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
+            config.setSchemaRegionConsensusProtocolClass(
+                dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
+            IoTDBStartCheck.getInstance()
+                .serializeConsensusProtocol(
+                    dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass(),
+                    TConsensusGroupType.SchemaRegion);
+          }
           logger.info("Register to the cluster successfully");
           return;
         }
