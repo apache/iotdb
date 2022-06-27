@@ -88,18 +88,6 @@
                                     <commandlineArgs>${docker.build.single.argument}</commandlineArgs>
                                 </configuration>
                             </execution>
-                            <!--                            <execution>-->
-                            <!--                                <id>build-cluster-docker-image</id>-->
-                            <!--                                <phase>pre-integration-test</phase>-->
-                            <!--                                <goals>-->
-                            <!--                                    <goal>exec</goal>-->
-                            <!--                                </goals>-->
-                            <!--                                <configuration>-->
-                            <!--                                    <skip>${docker.test.skip}</skip>-->
-                            <!--                                    <executable>${docker.build.executable}</executable>-->
-                            <!--                                    <commandlineArgs>${docker.build.cluster.argument}</commandlineArgs>-->
-                            <!--                                </configuration>-->
-                            <!--                            </execution>-->
                             <execution>
                                 <id>build-sync-docker-image</id>
                                 <phase>pre-integration-test</phase>
