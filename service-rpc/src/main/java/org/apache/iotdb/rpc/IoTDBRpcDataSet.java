@@ -115,9 +115,9 @@ public class IoTDBRpcDataSet {
 
     // deduplicate and map
     if (columnNameIndex != null) {
-      int columnSize = (int) columnNameIndex.values().stream().distinct().count();
-      this.columnTypeDeduplicatedList = new ArrayList<>(columnSize);
-      for (int i = 0; i < columnSize; i++) {
+      int deduplicatedColumnSize = (int) columnNameIndex.values().stream().distinct().count();
+      this.columnTypeDeduplicatedList = new ArrayList<>(deduplicatedColumnSize);
+      for (int i = 0; i < deduplicatedColumnSize; i++) {
         columnTypeDeduplicatedList.add(null);
       }
       for (int i = 0; i < columnNameList.size(); i++) {
