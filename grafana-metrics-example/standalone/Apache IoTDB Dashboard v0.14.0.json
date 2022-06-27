@@ -1498,8 +1498,8 @@
     ]
   },
   "time": {
-    "from": "2022-06-27T10:38:58.019Z",
-    "to": "2022-06-27T10:45:21.910Z"
+    "from": "now-30m",
+    "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
