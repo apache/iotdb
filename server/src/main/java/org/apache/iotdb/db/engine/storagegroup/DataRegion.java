@@ -1123,7 +1123,7 @@ public class DataRegion {
       tryToUpdateBatchInsertLastCache(insertTabletNode, globalLatestFlushedTime);
 
       if (!noFailure) {
-        logger.debug(
+        logger.warn(
             "Executing a InsertTabletNode failed. Device:{}, TimeRange: {}, Measurement:{}, Failing Status:{}",
             insertTabletNode.getDevicePath(),
             insertTabletNode.getTimes(),
@@ -3491,10 +3491,18 @@ public class DataRegion {
       writeUnlock();
     }
     if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
-      logger.debug(
-          "Executing a InsertRowsOfOneDeviceNode failed. RowList:{}, Failing Status:{}",
-          insertRowsOfOneDeviceNode.getInsertRowNodeList(),
-          insertRowsOfOneDeviceNode.getResults());
+      logger.warn("Executing a InsertRowsOfOneDeviceNode failed");
+      for (Entry<Integer, TSStatus> failedEntry :
+          insertRowsOfOneDeviceNode.getResults().entrySet()) {
+        InsertRowNode insertRowNode =
+            insertRowsOfOneDeviceNode.getInsertRowNodeList().get(failedEntry.getKey());
+        logger.warn(
+            "Insert row failed. Device: {}, time:{}, measurement:{}, TSStatus:{}",
+            insertRowNode.getDevicePath(),
+            insertRowNode.getTime(),
+            insertRowNode.getMeasurements(),
+            failedEntry.getValue());
+      }
       throw new WriteProcessException("Partial failed inserting rows of one device");
     }
   }
@@ -3515,10 +3523,17 @@ public class DataRegion {
     }
 
     if (!insertRowsNode.getResults().isEmpty()) {
-      logger.debug(
-          "Executing a InsertRowsNode failed. RowList:{}, Failing Status:{}",
-          insertRowsNode.getInsertRowNodeList(),
-          insertRowsNode.getResults());
+      logger.warn("Executing a InsertRowsNode failed");
+      for (Entry<Integer, TSStatus> failedEntry : insertRowsNode.getResults().entrySet()) {
+        InsertRowNode insertRowNode =
+            insertRowsNode.getInsertRowNodeList().get(failedEntry.getKey());
+        logger.warn(
+            "Insert row failed. Device: {}, time:{}, measurement:{}, TSStatus:{}",
+            insertRowNode.getDevicePath(),
+            insertRowNode.getTime(),
+            insertRowNode.getMeasurements(),
+            failedEntry.getValue());
+      }
       throw new WriteProcessException("Partial failed inserting rows");
     }
   }
@@ -3542,10 +3557,17 @@ public class DataRegion {
     }
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
-      logger.debug(
-          "Executing a InsertMultiTablets failed. TabletList:{}, Failing Status:{}",
-          insertMultiTabletsNode.getInsertTabletNodeList(),
-          insertMultiTabletsNode.getResults());
+      logger.warn("Executing a InsertMultiTablets failed");
+      for (Entry<Integer, TSStatus> failedEntry : insertMultiTabletsNode.getResults().entrySet()) {
+        InsertTabletNode insertTabletNode =
+            insertMultiTabletsNode.getInsertTabletNodeList().get(failedEntry.getKey());
+        logger.warn(
+            "Insert tablet failed. Device: {}, times:{}, measurement:{}, TSStatus:{}",
+            insertTabletNode.getDevicePath(),
+            insertTabletNode.getTimes(),
+            insertTabletNode.getMeasurements(),
+            failedEntry.getValue());
+      }
       throw new WriteProcessException("Partial failed inserting multi tablets");
     }
   }
