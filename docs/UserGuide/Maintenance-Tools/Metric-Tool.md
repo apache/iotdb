@@ -368,7 +368,9 @@ We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as 
 
 When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target data source for Apache IoTDB Dashboard.
 
-#### 5.3.2. Standalone Dashboard Instructions
+#### 5.3.2. StandaAlone Dashboard Instructions
+> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important and above levels.
+
 1. `Overview`:
    1. `The number of entity`: The number of entities, currently including the number of timeseries.
    2. `write point per minute`: the cumulative number of write points per minute.
@@ -388,3 +390,26 @@ When creating Grafana, you can select the json file you just downloaded to `Impo
    5. `Heap Memory`: The heap memory of IoTDB.
    6. `Off-heap Memory`: The off-heap memory of IoTDB.
    7. `The number of Java Thread`: The number of threads in different states of IoTDB.
+
+#### 5.3.3. ConfigNode Dashboard Instructions
+> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important and above levels.
+
+1. `Overview`:
+   1. `Online ConfigNode`: the number of online ConfigNodes
+   2. `Online DataNode`: the number of online DataNodes
+   3. `Storage Group`: the number of storage groups
+   4. `TotalRegion`: The total number of Regions
+   5. `DataRegion`: The total number of DataRegions
+   6. `SchemaRegion`: The total number of SchemaRegions
+2. `Region`:
+   1. `Total Region in Node`: The total number of Regions in different Nodes
+   2. `Region in Node`: The number of Regions in different Nodes, including SchemaRegion, DataRegion
+   3. `Region in Storage Group` (Normal level): The number of Regions in different storage groups, including SchemaRegion, DataRegion
+   4. `Slot in Storage Group` (Normal level): The number of Slots in different storage groups, including the number of DataSlots and the number of SchemaSlots
+3. `System`:
+   1. `The number of GC(per minute)`: The number of GCs per minute of IoTDB, including Young GC and Full GC.
+   2. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC.
+   3. `Heap Memory`: The heap memory of IoTDB.
+   4. `Off-heap Memory`: The off-heap memory of IoTDB.
+   5. `The number of Java Thread`: The number of threads in different states of IoTDB.
+   6. `The time consumed of Interface`: The average time consumed by the system interface
