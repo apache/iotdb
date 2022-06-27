@@ -144,7 +144,7 @@ public class IoTDBConfig {
   private double rejectProportion = 0.8;
 
   /** If storage group increased more than this threshold, report to system. Unit: byte */
-  private long storageGroupSizeReportThreshold = (long) (1.6 * 1024 * 1024L);
+  private long storageGroupSizeReportThreshold = (long)(16 * 1024 * 1024L);
 
   /** When inserting rejected, waiting period to check system again. Unit: millisecond */
   private int checkPeriodWhenInsertBlocked = 50;
@@ -466,7 +466,7 @@ public class IoTDBConfig {
   private long allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
 
   /** Whether to enable Last cache */
-  private boolean lastCacheEnable = false;
+  private boolean lastCacheEnable = true;
 
   /** Set true to enable statistics monitor service, false to disable statistics service. */
   private boolean enableStatMonitor = false;
@@ -1646,6 +1646,7 @@ public class IoTDBConfig {
     return storageGroupSizeReportThreshold;
   }
 
+
   public long getAllocateMemoryForWrite() {
     return allocateMemoryForWrite;
   }
@@ -1812,6 +1813,7 @@ public class IoTDBConfig {
     return enableTimedFlushUnseqMemtable;
   }
 
+
   public long getUnseqMemtableFlushInterval() {
     return unseqMemtableFlushInterval;
   }
@@ -1887,6 +1889,10 @@ public class IoTDBConfig {
 
   public boolean isLastCacheEnabled() {
     return lastCacheEnable;
+  }
+
+  public void setEnableLastCache(boolean lastCacheEnable) {
+    this.lastCacheEnable = lastCacheEnable;
   }
 
   public boolean isEnableWatermark() {
@@ -2453,13 +2459,16 @@ public class IoTDBConfig {
     return enableSeqSpaceCompaction;
   }
 
+
   public boolean isEnableUnseqSpaceCompaction() {
     return enableUnseqSpaceCompaction;
   }
 
+
   public boolean isEnableCrossSpaceCompaction() {
     return enableCrossSpaceCompaction;
   }
+
 
   public InnerSequenceCompactionSelector getInnerSequenceCompactionSelector() {
     return innerSequenceCompactionSelector;
@@ -2943,5 +2952,9 @@ public class IoTDBConfig {
 
   public long getAllocateMemoryForLastCache() {
     return allocateMemoryForLastCache;
+  }
+
+  public void setAllocateMemoryForLastCache(long allocateMemoryForLastCache) {
+    this.allocateMemoryForLastCache = allocateMemoryForLastCache;
   }
 }
