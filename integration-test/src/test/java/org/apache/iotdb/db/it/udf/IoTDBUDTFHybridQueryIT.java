@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.constant.UDFTestConstant;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -36,6 +37,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -67,13 +69,21 @@ public class IoTDBUDTFHybridQueryIT {
   private static void generateData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (int i = 0; i < 4; ++i) {
+      for (int i = 0; i < 5; ++i) {
         statement.execute(
             (String.format(
                 "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
         statement.execute(
             (String.format(
                 "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+      }
+      for (int i = 2; i < 4; ++i) {
+        statement.execute(
+            (String.format("insert into root.vehicle.d1(timestamp,s3) values(%d,%d)", i, i)));
+      }
+      for (int i = 7; i < 10; ++i) {
+        statement.execute(
+            (String.format("insert into root.vehicle.d1(timestamp,s3) values(%d,%d)", i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -115,19 +125,42 @@ public class IoTDBUDTFHybridQueryIT {
   }
 
   @Test
+  @Ignore // TODO fill function incompatible
   public void testUserDefinedFunctionFillFunctionHybridQuery() {
-    String sql =
-        String.format(
-            "select temperature, counter(temperature, '%s'='%s') from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])",
-            UDFTestConstant.ACCESS_STRATEGY_KEY, UDFTestConstant.ACCESS_STRATEGY_ROW_BY_ROW);
+    String[] retArray =
+        new String[] {
+          "0,0.0,1.0,3.14",
+          "1,0.8414709848078965,2.0,3.14",
+          "2,0.9092974268256817,3.0,2.0",
+          "3,0.1411200080598672,4.0,3.0",
+          "4,-0.7568024953079282,5.0,3.14",
+          "7,3.14,3.14,7.0",
+          "8,3.14,3.14,8.0",
+          "9,3.14,3.14,9.0"
+        };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
-      fail();
+      try (ResultSet resultSet =
+          statement.executeQuery("select sin(s1), s1 + 1, s3 from root.vehicle.d1 fill(3.14)")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("sin(root.vehicle.d1.s1)")
+                  + ","
+                  + resultSet.getString("root.vehicle.d1.s1 + 1")
+                  + ","
+                  + resultSet.getString("root.vehicle.d1.s3");
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
     } catch (SQLException throwable) {
-      assertTrue(
-          throwable.getMessage().contains("Fill functions are not supported in UDF queries."));
+      throwable.printStackTrace();
+      fail(throwable.getMessage());
     }
   }
 
@@ -155,7 +188,13 @@ public class IoTDBUDTFHybridQueryIT {
           "0,root.vehicle.d1,1.0,0.0",
           "1,root.vehicle.d1,2.0,0.8414709848078965",
           "2,root.vehicle.d1,3.0,0.9092974268256817",
-          "3,root.vehicle.d1,4.0,0.1411200080598672"
+          "3,root.vehicle.d1,4.0,0.1411200080598672",
+          "4,root.vehicle.d1,5.0,0.1411200080598672",
+          "0,root.vehicle.d2,1.0,0.0",
+          "1,root.vehicle.d2,2.0,0.8414709848078965",
+          "2,root.vehicle.d2,3.0,0.9092974268256817",
+          "3,root.vehicle.d2,4.0,0.1411200080598672",
+          "4,root.vehicle.d2,5.0,0.1411200080598672"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -172,10 +211,10 @@ public class IoTDBUDTFHybridQueryIT {
                   + resultSet.getString("s1 + 1")
                   + ","
                   + resultSet.getString("sin(s2)");
-          System.out.println(ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        // assertEquals(retSet.size(), cnt);
+        assertEquals(retArray.length, cnt);
       }
     } catch (SQLException throwable) {
       throwable.printStackTrace();
