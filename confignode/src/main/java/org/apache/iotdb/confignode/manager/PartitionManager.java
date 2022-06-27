@@ -36,7 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
@@ -72,7 +72,7 @@ public class PartitionManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PartitionManager.class);
 
-  private final Manager configManager;
+  private final IManager configManager;
   private final PartitionInfo partitionInfo;
   private static final int REGION_CLEANER_WORK_INTERVAL = 300;
   private static final int REGION_CLEANER_WORK_INITIAL_DELAY = 10;
@@ -80,7 +80,7 @@ public class PartitionManager {
   private SeriesPartitionExecutor executor;
   private final ScheduledExecutorService regionCleaner;
 
-  public PartitionManager(Manager configManager, PartitionInfo partitionInfo) {
+  public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
     this.regionCleaner =
@@ -521,7 +521,7 @@ public class PartitionManager {
     return executor.getSeriesPartitionSlot(devicePath);
   }
 
-  public DataSet getRetionLocations(GetRegionLocationsReq req) {
+  public DataSet getRegionInfoList(GetRegionInfoListReq req) {
     return getConsensusManager().read(req).getDataset();
   }
 

@@ -41,7 +41,7 @@
 
 然后，将 Hadoop 模块的 target jar 包`hadoop-tsfile-X.X.X-jar-with-dependencies.jar`复制到 server 模块的 target lib 文件夹 `.../server/target/iotdb-server-X.X.X/lib`下。
 
-编辑`iotdb-engine.properties`中的用户配置。相关配置项包括：
+编辑`iotdb-datanode.properties`中的用户配置。相关配置项包括：
 
 * tsfile\_storage\_fs
 

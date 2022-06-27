@@ -55,6 +55,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MultiLeaderConsensusTest {
 
@@ -346,7 +347,7 @@ public class MultiLeaderConsensusTest {
 
   private static class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
 
-    private final Set<IndexedConsensusRequest> requestSet = new HashSet<>();
+    private final Set<IndexedConsensusRequest> requestSet = ConcurrentHashMap.newKeySet();
 
     public Set<IndexedConsensusRequest> getRequestSet() {
       return requestSet;
