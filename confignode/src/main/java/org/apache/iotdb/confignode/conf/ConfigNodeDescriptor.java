@@ -139,7 +139,7 @@ public class ConfigNodeDescriptor {
               conf.getSchemaRegionConsensusProtocolClass()));
 
       conf.setSchemaRegionPerDataNode(
-          Integer.parseInt(
+          Double.parseDouble(
               properties.getProperty(
                   "schema_region_per_data_node",
                   String.valueOf(conf.getSchemaRegionPerDataNode()))));
@@ -149,7 +149,7 @@ public class ConfigNodeDescriptor {
               "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass()));
 
       conf.setDataRegionPerProcessor(
-          Integer.parseInt(
+          Double.parseDouble(
               properties.getProperty(
                   "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))));
 
