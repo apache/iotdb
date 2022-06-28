@@ -270,9 +270,7 @@ public class DataNode implements DataNodeMBean {
       setUp();
     } catch (StartupException | QueryProcessException e) {
       logger.error("meet error while starting up.", e);
-      deactivate();
-      logger.error("IoTDB DataNode exit");
-      return;
+      throw new StartupException("Error in activating IoTDB DataNode.");
     }
     logger.info("IoTDB DataNode has started.");
 
