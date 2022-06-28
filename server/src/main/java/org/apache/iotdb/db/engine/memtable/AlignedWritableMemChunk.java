@@ -160,7 +160,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public void writeAlignedValue(
       long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    int[] columnIndexArray = checkColumnsInInsertPlan(objectValue, schemaList);
+    int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
     putAlignedValue(insertTime, objectValue, columnIndexArray);
   }
 
@@ -178,25 +178,20 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    int[] columnIndexArray = checkColumnsInInsertPlan(valueList, schemaList);
+    int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
     putAlignedValues(times, valueList, bitMaps, columnIndexArray, start, end);
   }
 
   /**
    * Check schema of columns and return array that mapping existed schema to index of data column
    *
-   * @param values all data columns in InsertPlan
-   * @param schemaListInInsertPlan contains existed schema that exists in InsertPlan (without
-   *     timeseries that have been deleted)
+   * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
+   *     have been deleted, there will be null in its slot.
    * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
    */
-  private int[] checkColumnsInInsertPlan(
-      Object[] values, List<IMeasurementSchema> schemaListInInsertPlan) {
+  private int[] checkColumnsInInsertPlan(List<IMeasurementSchema> schemaListInInsertPlan) {
     Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
-    //    for (int columnIndex = 0, schemaIndex = 0; columnIndex < values.length; columnIndex++) {
-    for (int schemaIndex = 0, columnIndex = 0;
-        schemaIndex < schemaListInInsertPlan.size();
-        schemaIndex++) {
+    for (int schemaIndex = 0; schemaIndex < schemaListInInsertPlan.size(); schemaIndex++) {
       if (schemaListInInsertPlan.get(schemaIndex) != null) {
         measurementIdsInInsertPlan.put(
             schemaListInInsertPlan.get(schemaIndex).getMeasurementId(), schemaIndex);
@@ -211,9 +206,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     }
     int[] columnIndexArray = new int[measurementIndexMap.size()];
     measurementIndexMap.forEach(
-        (measurementId, i) -> {
-          columnIndexArray[i] = measurementIdsInInsertPlan.getOrDefault(measurementId, -1);
-        });
+        (measurementId, i) ->
+            columnIndexArray[i] = measurementIdsInInsertPlan.getOrDefault(measurementId, -1));
     return columnIndexArray;
   }
 

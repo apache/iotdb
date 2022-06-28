@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.wal.recover.file;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -75,10 +76,19 @@ public class TsFilePlanRedoerTest {
       TsFileUtilsForRecoverTest.getTestTsFilePath(SG_NAME, 0, 0, 1);
   private TsFileResource tsFileResource;
   private CompressionType compressionType;
+  boolean prevIsAutoCreateSchemaEnabled;
+  boolean prevIsEnablePartialInsert;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
+
+    // set recover config, avoid creating deleted time series when recovering wal
+    prevIsAutoCreateSchemaEnabled =
+        IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    prevIsEnablePartialInsert = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(true);
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     IoTDB.schemaProcessor.setStorageGroup(new PartialPath(SG_NAME));
     IoTDB.schemaProcessor.createTimeseries(
@@ -126,6 +136,11 @@ public class TsFilePlanRedoerTest {
       tsFileResource.close();
     }
     EnvironmentUtils.cleanEnv();
+    // reset config
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(prevIsEnablePartialInsert);
   }
 
   @Test
@@ -537,6 +552,92 @@ public class TsFilePlanRedoerTest {
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, false, null);
     planRedoer.redoDelete(deletePlan);
     assertTrue(modsFile.exists());
+  }
+
+  @Test
+  public void testRedoAlignedInsertAfterDeleteTimeseries() throws Exception {
+    // some timeseries have been deleted
+    IoTDB.schemaProcessor.deleteTimeseries(new PartialPath(DEVICE3_NAME.concat(".s1")));
+    IoTDB.schemaProcessor.deleteTimeseries(new PartialPath(DEVICE3_NAME.concat(".s5")));
+    // generate .tsfile and update resource in memory
+    File file = new File(FILE_NAME);
+    generateCompleteFile(file);
+    tsFileResource = new TsFileResource(file);
+    tsFileResource.updateStartTime(DEVICE3_NAME, 5);
+    tsFileResource.updateStartTime(DEVICE3_NAME, 5);
+
+    // generate InsertTabletPlan
+    long[] times = {6, 7, 8, 9};
+    List<Integer> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32.ordinal());
+    dataTypes.add(TSDataType.INT64.ordinal());
+    dataTypes.add(TSDataType.BOOLEAN.ordinal());
+    dataTypes.add(TSDataType.FLOAT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+
+    Object[] columns = new Object[5];
+    columns[0] = new int[times.length];
+    columns[1] = new long[times.length];
+    columns[2] = new boolean[times.length];
+    columns[3] = new float[times.length];
+    columns[4] = new Binary[times.length];
+
+    for (int r = 0; r < times.length; r++) {
+      ((int[]) columns[0])[r] = (r + 1) * 100;
+      ((long[]) columns[1])[r] = (r + 1) * 100;
+      ((boolean[]) columns[2])[r] = true;
+      ((float[]) columns[3])[r] = (r + 1) * 100;
+      ((Binary[]) columns[4])[r] = Binary.valueOf((r + 1) * 100 + "");
+    }
+    BitMap[] bitMaps = new BitMap[dataTypes.size()];
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if (bitMaps[i] == null) {
+        bitMaps[i] = new BitMap(times.length);
+      }
+      // mark value of time=9 as null
+      bitMaps[i].mark(3);
+    }
+
+    InsertTabletPlan insertTabletPlan =
+        new InsertTabletPlan(
+            new PartialPath(DEVICE3_NAME),
+            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            dataTypes,
+            true);
+    insertTabletPlan.setTimes(times);
+    insertTabletPlan.setColumns(columns);
+    insertTabletPlan.setRowCount(times.length);
+    insertTabletPlan.setBitMaps(bitMaps);
+    // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
+    TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
+    planRedoer.redoInsert(insertTabletPlan);
+    // check data in memTable
+    IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
+    // check d3
+    AlignedPath fullPath =
+        new AlignedPath(
+            DEVICE3_NAME,
+            Arrays.asList("s1", "s2", "s3", "s4", "s5"),
+            Arrays.asList(
+                new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE),
+                new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE),
+                new MeasurementSchema("s3", TSDataType.BOOLEAN, TSEncoding.RLE),
+                new MeasurementSchema("s4", TSDataType.FLOAT, TSEncoding.RLE),
+                new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.PLAIN)));
+    ReadOnlyMemChunk memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
+    IPointReader iterator = memChunk.getPointReader();
+    int time = 6;
+    while (iterator.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+      assertEquals(time, timeValuePair.getTimestamp());
+      assertEquals(null, timeValuePair.getValue().getVector()[0]);
+      assertEquals((time - 5) * 100L, timeValuePair.getValue().getVector()[1].getLong());
+      assertEquals(true, timeValuePair.getValue().getVector()[2].getBoolean());
+      assertEquals((time - 5) * 100, timeValuePair.getValue().getVector()[3].getFloat(), 0.00001);
+      assertEquals(null, timeValuePair.getValue().getVector()[4]);
+      ++time;
+    }
+    assertEquals(9, time);
   }
 
   private void generateCompleteFile(File tsFile) throws IOException, WriteProcessException {
