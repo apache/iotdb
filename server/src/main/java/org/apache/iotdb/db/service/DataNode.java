@@ -171,7 +171,7 @@ public class DataNode implements DataNodeMBean {
     int retry = DEFAULT_JOIN_RETRY;
 
     ConfigNodeInfo.getInstance()
-        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getConfigNodeList());
+        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getTargetConfigNodeList());
     while (retry > 0) {
       logger.info("start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
@@ -346,8 +346,6 @@ public class DataNode implements DataNodeMBean {
   private void activateCurrentDataNode() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
-    ConfigNodeInfo.getInstance()
-        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getConfigNodeList());
     while (retry > 0) {
       logger.info("start joining the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {

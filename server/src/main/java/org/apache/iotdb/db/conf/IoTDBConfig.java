@@ -840,7 +840,7 @@ public class IoTDBConfig {
   private int schemaRegionConsensusPort = 50010;
 
   /** Ip and port of config nodes. */
-  private List<TEndPoint> configNodeList =
+  private List<TEndPoint> targetConfigNodeList =
       Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
   /** The max time of data node waiting to join into the cluster */
@@ -2736,12 +2736,12 @@ public class IoTDBConfig {
     this.schemaRegionConsensusPort = schemaRegionConsensusPort;
   }
 
-  public List<TEndPoint> getConfigNodeList() {
-    return configNodeList;
+  public List<TEndPoint> getTargetConfigNodeList() {
+    return targetConfigNodeList;
   }
 
-  public void setConfigNodeList(List<TEndPoint> configNodeList) {
-    this.configNodeList = configNodeList;
+  public void setTargetConfigNodeList(List<TEndPoint> targetConfigNodeList) {
+    this.targetConfigNodeList = targetConfigNodeList;
   }
 
   public long getJoinClusterTimeOutMs() {
