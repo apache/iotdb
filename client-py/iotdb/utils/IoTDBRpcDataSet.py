@@ -23,7 +23,7 @@ import logging
 import numpy as np
 import pandas as pd
 from thrift.transport import TTransport
-from iotdb.thrift.rpc.TSIService import TSFetchResultsReq, TSCloseOperationReq
+from iotdb.thrift.rpc.IClientRPCService import TSFetchResultsReq, TSCloseOperationReq
 from iotdb.utils.IoTDBConstants import TSDataType
 
 logger = logging.getLogger("IoTDB")
