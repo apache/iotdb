@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
@@ -212,15 +211,9 @@ public class LogDispatcher {
       List<TLogBatch> logBatches = new ArrayList<>();
       long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex = impl.getController().getCurrentIndex() + 1;
-      logger.info("get batch. startIndex: {}, maxIndex: {}", startIndex, maxIndex);
       long endIndex;
       if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
         // Use drainTo instead of poll to reduce lock overhead
-        logger.info(
-            "{} : pendingRequest Size: {}, bufferedRequest size: {}",
-            impl.getThisNode().getGroupId(),
-            pendingRequest.size(),
-            bufferedRequest.size());
         pendingRequest.drainTo(
             bufferedRequest,
             config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
@@ -229,7 +222,8 @@ public class LogDispatcher {
         // only execute this after a restart
         endIndex = constructBatchFromWAL(startIndex, maxIndex, logBatches);
         batch = new PendingBatch(startIndex, endIndex, logBatches);
-        logger.info("Empty {} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
+        logger.debug(
+            "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batch);
       } else {
         Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
         IndexedConsensusRequest prev = iterator.next();
@@ -238,7 +232,7 @@ public class LogDispatcher {
         endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
         if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
           batch = new PendingBatch(startIndex, endIndex, logBatches);
-          logger.info("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
+          logger.debug("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
           return batch;
         }
         constructBatchIndexedFromConsensusRequest(prev, logBatches);
@@ -254,8 +248,8 @@ public class LogDispatcher {
                 constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
             if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
               batch = new PendingBatch(startIndex, endIndex, logBatches);
-              logger.info(
-                  "gap {} : accumulated a {} from queue and wal",
+              logger.debug(
+                  "{} : accumulated a {} from queue and wal when gap",
                   impl.getThisNode().getGroupId(),
                   batch);
               return batch;
@@ -293,45 +287,25 @@ public class LogDispatcher {
 
     private long constructBatchFromWAL(
         long currentIndex, long maxIndex, List<TLogBatch> logBatches) {
-      logger.info(
-          String.format(
-              "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d, iteratorIndex: %d",
-              peer.getGroupId().getId(),
-              peer.getEndpoint().ip,
-              currentIndex,
-              maxIndex,
-              iteratorIndex));
-      long startTime = System.nanoTime();
-      int count = 0;
-      try {
-        if (iteratorIndex != currentIndex) {
-          walEntryiterator.skipTo(currentIndex);
-          iteratorIndex = currentIndex;
-        }
-        while (currentIndex < maxIndex
-            && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
-          try {
-            walEntryiterator.waitForNextReady();
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-          // TODO iterator
-          IConsensusRequest data = walEntryiterator.next();
-          iteratorIndex++;
-          currentIndex++;
-          if (data != null) {
-            logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
-            count++;
-          }
-        }
-        return currentIndex - 1;
-      } finally {
-        double timeConsumed = (System.nanoTime() * 1.0 - startTime) / 1000_000;
-        logger.info(
-            String.format(
-                "DataRegion[%s]->%s: construct batch time consumed: %.3f. BatchCount: %d",
-                peer.getGroupId().getId(), peer.getEndpoint().ip, timeConsumed, count));
+
+      if (iteratorIndex != currentIndex) {
+        walEntryiterator.skipTo(currentIndex);
+        iteratorIndex = currentIndex;
       }
+      while (currentIndex < maxIndex
+          && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
+        try {
+          walEntryiterator.waitForNextReady();
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        // TODO iterator
+        IndexedConsensusRequest data = walEntryiterator.next();
+        currentIndex = data.getSearchIndex();
+        iteratorIndex = currentIndex;
+        logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
+      }
+      return currentIndex - 1;
     }
 
     private void constructBatchIndexedFromConsensusRequest(

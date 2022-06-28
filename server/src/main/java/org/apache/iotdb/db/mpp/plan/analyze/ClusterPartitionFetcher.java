@@ -278,7 +278,6 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         TStorageGroupSchemaResp storageGroupSchemaResp =
             client.getMatchedStorageGroupSchemas(ROOT_PATH);
-        logger.info("fetch sg. target: {}", storageGroupSchemaResp.storageGroupSchemaMap.keySet());
         if (storageGroupSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           Set<String> storageGroupNames =

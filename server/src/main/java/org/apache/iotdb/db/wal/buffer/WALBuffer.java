@@ -223,7 +223,6 @@ public class WALBuffer extends AbstractWALBuffer {
         if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
           currentSearchIndex = insertNode.getSearchIndex();
           currentFileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
-          logger.info("WALEntry searchIndex: {}", currentSearchIndex);
         }
       }
       return true;

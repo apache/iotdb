@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -237,7 +238,7 @@ public class WALNode implements IWALNode {
         }
       }
 
-      logger.info(
+      logger.debug(
           "Start deleting outdated wal files for wal node-{}, the first valid version id is {}, and the safely deleted search index is {}.",
           identifier,
           firstValidVersionId,
@@ -759,7 +760,7 @@ public class WALNode implements IWALNode {
     }
 
     @Override
-    public IConsensusRequest next() {
+    public IndexedConsensusRequest next() {
       if (itr == null && !hasNext()) {
         throw new NoSuchElementException();
       }
@@ -774,14 +775,13 @@ public class WALNode implements IWALNode {
       }
       nextSearchIndex = insertNode.getSearchIndex() + 1;
 
-      return insertNode;
+      return new IndexedConsensusRequest(insertNode.getSearchIndex(), -1, insertNode);
     }
 
     @Override
     public void waitForNextReady() throws InterruptedException {
       while (!hasNext()) {
         buffer.waitForFlush();
-        logger.info("awake from waiting. nextSearchIndex: {}", nextSearchIndex);
       }
     }
 
