@@ -42,20 +42,16 @@ public class ExtremeAccumulator implements Accumulator {
   }
 
   @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
+  public int addInput(Column[] column, TimeRange timeRange) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(column, timeRange);
-        break;
+        return addIntInput(column, timeRange);
       case INT64:
-        addLongInput(column, timeRange);
-        break;
+        return addLongInput(column, timeRange);
       case FLOAT:
-        addFloatInput(column, timeRange);
-        break;
+        return addFloatInput(column, timeRange);
       case DOUBLE:
-        addDoubleInput(column, timeRange);
-        break;
+        return addDoubleInput(column, timeRange);
       case TEXT:
       case BOOLEAN:
       default:
@@ -208,17 +204,21 @@ public class ExtremeAccumulator implements Accumulator {
     return extremeResult.getDataType();
   }
 
-  private void addIntInput(Column[] column, TimeRange timeRange) {
+  private int addIntInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
         updateIntResult(column[1].getInt(i));
       }
     }
+    return timeColumn.getPositionCount();
   }
 
   private void updateIntResult(int extVal) {
@@ -234,17 +234,21 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private void addLongInput(Column[] column, TimeRange timeRange) {
+  private int addLongInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
         updateLongResult(column[1].getLong(i));
       }
     }
+    return timeColumn.getPositionCount();
   }
 
   private void updateLongResult(long extVal) {
@@ -260,17 +264,21 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private void addFloatInput(Column[] column, TimeRange timeRange) {
+  private int addFloatInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
         updateFloatResult(column[1].getFloat(i));
       }
     }
+    return timeColumn.getPositionCount();
   }
 
   private void updateFloatResult(float extVal) {
@@ -286,17 +294,21 @@ public class ExtremeAccumulator implements Accumulator {
     }
   }
 
-  private void addDoubleInput(Column[] column, TimeRange timeRange) {
+  private int addDoubleInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
         updateDoubleResult(column[1].getDouble(i));
       }
     }
+    return timeColumn.getPositionCount();
   }
 
   private void updateDoubleResult(double extVal) {

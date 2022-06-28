@@ -32,8 +32,11 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+
+import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 /**
  * DeviceMergeOperator is responsible for merging tsBlock coming from DeviceViewOperators.
@@ -94,16 +97,17 @@ public class DeviceMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
+    List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && isTsBlockEmpty(i)) {
-        ListenableFuture<Void> blocked = deviceOperators.get(i).isBlocked();
+        ListenableFuture<?> blocked = deviceOperators.get(i).isBlocked();
         if (!blocked.isDone()) {
-          return blocked;
+          listenableFutures.add(blocked);
         }
       }
     }
-    return NOT_BLOCKED;
+    return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
   }
 
   @Override
@@ -112,6 +116,9 @@ public class DeviceMergeOperator implements ProcessOperator {
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && isTsBlockEmpty(i) && deviceOperators.get(i).hasNext()) {
         inputTsBlocks[i] = deviceOperators.get(i).next();
+        if (inputTsBlocks[i] == null || inputTsBlocks[i].isEmpty()) {
+          return null;
+        }
         deviceOfInputTsBlocks[i] = getDeviceNameFromTsBlock(inputTsBlocks[i]);
         tryToAddCurDeviceTsBlockList(i);
       }

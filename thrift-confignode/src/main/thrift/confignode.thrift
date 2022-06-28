@@ -106,8 +106,8 @@ struct TStorageGroupSchema {
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional i32 maximumSchemaRegionCount
-  7: optional i32 maximumDataRegionCount
+  6: optional i32 maxSchemaRegionGroupCount
+  7: optional i32 maxDataRegionGroupCount
 }
 
 // Schema
@@ -236,7 +236,7 @@ struct TShowRegionReq {
 
 struct TShowRegionResp {
   1: required common.TSStatus status
-  2: optional list<common.TRegionLocation> regionInfoList;
+  2: optional list<common.TRegionInfo> regionInfoList;
 }
 
 service ConfigIService {
@@ -302,7 +302,11 @@ service ConfigIService {
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
-  common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
+  common.TSStatus addConsensusGroup(TConfigNodeRegisterResp req)
+
+  common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /* UDF */
 

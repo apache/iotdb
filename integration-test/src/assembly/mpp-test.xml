@@ -20,16 +20,11 @@
 
 -->
 <assembly>
-    <id>cluster-test</id>
+    <id>mpp-test</id>
     <formats>
         <format>dir</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
-    <dependencySets>
-        <dependencySet>
-            <outputDirectory>lib</outputDirectory>
-        </dependencySet>
-    </dependencySets>
     <fileSets>
         <fileSet>
             <outputDirectory>datanode/conf</outputDirectory>
@@ -71,8 +66,8 @@
     </fileSets>
     <files>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf/iotdb-env.sh</source>
-            <destName>datanode/conf/iotdb-env.sh</destName>
+            <source>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf/datanode-env.sh</source>
+            <destName>datanode/conf/datanode-env.sh</destName>
             <fileMode>0755</fileMode>
         </file>
     </files>

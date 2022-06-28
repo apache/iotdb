@@ -56,11 +56,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class AbstractMemTable implements IMemTable {
   /** each memTable node has a unique int value identifier, init when recovering wal */
-  public static final AtomicInteger memTableIdCounter = new AtomicInteger(-1);
+  public static final AtomicLong memTableIdCounter = new AtomicLong(-1);
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
   private static final int FIXED_SERIALIZED_SIZE = Byte.BYTES + 2 * Integer.BYTES + 6 * Long.BYTES;
@@ -97,7 +97,7 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long minPlanIndex = Long.MAX_VALUE;
 
-  private final int memTableId = memTableIdCounter.incrementAndGet();
+  private final long memTableId = memTableIdCounter.incrementAndGet();
 
   private final long createdTime = System.currentTimeMillis();
 
@@ -722,7 +722,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public int getMemTableId() {
+  public long getMemTableId() {
     return memTableId;
   }
 

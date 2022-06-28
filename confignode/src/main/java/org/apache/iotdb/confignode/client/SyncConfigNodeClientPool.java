@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -31,6 +32,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to ConfigNode. See confignode.thrift for more details. */
@@ -38,54 +40,132 @@ public class SyncConfigNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncConfigNodeClientPool.class);
 
-  private static final int retryNum = 5;
+  private static final int retryNum = 6;
 
   private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
+
+  private TEndPoint configNodeLeader;
 
   private SyncConfigNodeClientPool() {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncConfigNodeIServiceClient>()
             .createClientManager(
                 new DataNodeClientPoolFactory.SyncConfigNodeIServiceClientPoolFactory());
+    configNodeLeader = new TEndPoint();
+  }
+
+  private void updateConfigNodeLeader(TSStatus status) {
+    if (status.isSetRedirectNode()) {
+      configNodeLeader = status.getRedirectNode();
+    } else {
+      configNodeLeader = null;
+    }
   }
 
   /** Only use registerConfigNode when the ConfigNode is first startup. */
   public TConfigNodeRegisterResp registerConfigNode(
       TEndPoint endPoint, TConfigNodeRegisterReq req) {
     // TODO: Unified retry logic
+    Throwable lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
         return client.registerConfigNode(req);
       } catch (Exception e) {
-        LOGGER.warn("Register ConfigNode failed, retrying...", e);
-        doRetryWait();
+        lastException = e;
+        LOGGER.warn("Register ConfigNode failed because {}, retrying {}...", e.getMessage(), retry);
+        doRetryWait(retry);
       }
     }
-    LOGGER.error("Register ConfigNode failed");
+    LOGGER.error("Register ConfigNode failed", lastException);
     return new TConfigNodeRegisterResp()
         .setStatus(
             new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
-                .setMessage("All retry failed."));
+                .setMessage("All retry failed due to " + lastException.getMessage()));
   }
 
-  public TSStatus applyConfigNode(TEndPoint endPoint, TConfigNodeLocation configNodeLocation) {
+  public TSStatus addConsensusGroup(
+      TEndPoint endPoint, List<TConfigNodeLocation> configNodeLocation) {
     // TODO: Unified retry logic
+    Throwable lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
-        return client.applyConfigNode(configNodeLocation);
-      } catch (Exception e) {
-        LOGGER.warn("Apply ConfigNode failed, retrying...", e);
-        doRetryWait();
+        TConfigNodeRegisterResp registerResp = new TConfigNodeRegisterResp();
+        registerResp.setConfigNodeList(configNodeLocation);
+        registerResp.setStatus(StatusUtils.OK);
+        return client.addConsensusGroup(registerResp);
+      } catch (Throwable e) {
+        lastException = e;
+        LOGGER.warn(
+            "Add Consensus Group failed because {}, retrying {} ...", e.getMessage(), retry);
+        doRetryWait(retry);
       }
     }
-    LOGGER.error("Apply ConfigNode failed");
+    LOGGER.error("Add ConsensusGroup failed", lastException);
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
-        .setMessage("All retry failed.");
+        .setMessage("All retry failed due to " + lastException.getMessage());
   }
 
-  private void doRetryWait() {
+  /**
+   * ConfigNode Leader stop any ConfigNode in the cluster
+   *
+   * @param configNodeLocations confignode_list of confignode-system.properties
+   * @param configNodeLocation To be removed ConfigNode
+   * @return SUCCESS_STATUS: remove ConfigNode success, other status remove failed
+   */
+  public TSStatus removeConfigNode(
+      List<TConfigNodeLocation> configNodeLocations, TConfigNodeLocation configNodeLocation) {
+    // TODO: Unified retry logic
+    Throwable lastException = null;
+    for (TConfigNodeLocation nodeLocation : configNodeLocations) {
+      for (int retry = 0; retry < retryNum; retry++) {
+        try (SyncConfigNodeIServiceClient client =
+            clientManager.borrowClient(nodeLocation.getInternalEndPoint())) {
+          TSStatus status = client.removeConfigNode(configNodeLocation);
+          while (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+            TimeUnit.MILLISECONDS.sleep(2000);
+            updateConfigNodeLeader(status);
+            try (SyncConfigNodeIServiceClient clientLeader =
+                clientManager.borrowClient(configNodeLeader)) {
+              status = clientLeader.removeConfigNode(configNodeLocation);
+            }
+          }
+          return status;
+        } catch (Throwable e) {
+          lastException = e;
+          LOGGER.warn(
+              "Remove ConfigNode failed because {}, retrying {} ...", e.getMessage(), retry);
+          doRetryWait(retry);
+        }
+      }
+    }
+
+    LOGGER.error("Remove ConfigNode failed", lastException);
+    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+        .setMessage("All retry failed due to " + lastException.getMessage());
+  }
+
+  /** Only use stopConfigNode when the ConfigNode is removed. */
+  public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
+    // TODO: Unified retry logic
+    Throwable lastException = null;
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncConfigNodeIServiceClient client =
+          clientManager.borrowClient(configNodeLocation.getInternalEndPoint())) {
+        return client.stopConfigNode(configNodeLocation);
+      } catch (Exception e) {
+        lastException = e;
+        LOGGER.warn("Stop ConfigNode failed because {}, retrying {}...", e.getMessage(), retry);
+        doRetryWait(retry);
+      }
+    }
+    LOGGER.error("Stop ConfigNode failed", lastException);
+    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+        .setMessage("All retry failed due to" + lastException.getMessage());
+  }
+
+  private void doRetryWait(int retryNum) {
     try {
-      TimeUnit.MILLISECONDS.sleep(100);
+      TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
     }

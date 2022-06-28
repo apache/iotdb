@@ -126,6 +126,20 @@
                             <appendAssemblyId>false</appendAssemblyId>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>cluster-test-assembly-share</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>src/assembly/mpp-share.xml</descriptor>
+                            </descriptors>
+                            <finalName>template-node-share</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
             <!-- If the test starts separate processes, we can set maximum-heap and new-heap size -->
@@ -147,9 +161,9 @@
                             <regex>true</regex>
                             <commentsEnabled>false</commentsEnabled>
                             <includes>
-                                <include>datanode/conf/iotdb-env.sh</include>
+                                <include>datanode/conf/datanode-env.sh</include>
                                 <include>confignode/conf/confignode-env.sh</include>
-                                <include>datanode/conf/iotdb-env.bat</include>
+                                <include>datanode/conf/datanode-env.bat</include>
                                 <include>confignode/conf/confignode-env.bat</include>
                             </includes>
                             <replacements>
@@ -190,7 +204,7 @@
                             <excludedGroups>${integrationTest.excludedGroups}</excludedGroups>
                             <useSystemClassLoader>false</useSystemClassLoader>
                             <parallel>${integrationTest.parallelMode}</parallel>
-                            <useUnlimitedThreads>true</useUnlimitedThreads>
+                            <threadCount>1</threadCount>
                             <forkCount>${integrationTest.forkCount}</forkCount>
                             <reuseForks>false</reuseForks>
                             <systemPropertyVariables>

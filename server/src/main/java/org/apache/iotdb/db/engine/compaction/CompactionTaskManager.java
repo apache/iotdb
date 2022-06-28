@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.comparator.DefaultCompactionTaskComparatorImpl;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
@@ -76,6 +77,8 @@ public class CompactionTaskManager implements IService {
 
   private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
   }
@@ -83,7 +86,10 @@ public class CompactionTaskManager implements IService {
   @Override
   public synchronized void start() {
     if (taskExecutionPool == null
-        && IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
+        && IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0
+        && (config.isEnableSeqSpaceCompaction()
+            || config.isEnableUnseqSpaceCompaction()
+            || config.isEnableCrossSpaceCompaction())) {
       initThreadPool();
       currentTaskNum = new AtomicInteger(0);
       candidateCompactionTaskQueue.regsitPollLastHook(

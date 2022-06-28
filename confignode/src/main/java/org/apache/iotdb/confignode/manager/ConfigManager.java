@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -28,6 +29,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -37,11 +39,11 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -52,7 +54,7 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.confignode.consensus.response.RegionLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
@@ -93,7 +95,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
-public class ConfigManager implements Manager {
+public class ConfigManager implements IManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
@@ -143,7 +145,7 @@ public class ConfigManager implements Manager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
-    this.consensusManager = new ConsensusManager(stateMachine);
+    this.consensusManager = new ConsensusManager(this, stateMachine);
   }
 
   public void close() throws IOException {
@@ -470,12 +472,21 @@ public class ConfigManager implements Manager {
   }
 
   private TSStatus confirmLeader() {
+    TSStatus result = new TSStatus();
+
     if (getConsensusManager().isLeader()) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
-      return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
-          .setMessage(
-              "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
+      result.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+      result.setMessage(
+          "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
+
+      TConfigNodeLocation leaderLocation = consensusManager.getLeader();
+      if (leaderLocation != null) {
+        result.setRedirectNode(leaderLocation.getInternalEndPoint());
+      }
+
+      return result;
     }
   }
 
@@ -554,6 +565,20 @@ public class ConfigManager implements Manager {
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
     // Check global configuration
+    TSStatus status = confirmLeader();
+
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TConfigNodeRegisterResp errorResp1 = checkConfigNodeRegisterResp(req);
+      if (errorResp1 != null) return errorResp1;
+
+      procedureManager.addConfigNode(req);
+      return nodeManager.registerConfigNode(req);
+    }
+
+    return new TConfigNodeRegisterResp().setStatus(status);
+  }
+
+  private TConfigNodeRegisterResp checkConfigNodeRegisterResp(TConfigNodeRegisterReq req) {
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
     errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
@@ -616,13 +641,23 @@ public class ConfigManager implements Manager {
               "Reject register, please ensure that the data_replication_factor are consistent.");
       return errorResp;
     }
-
-    return nodeManager.registerConfigNode(req);
+    return null;
   }
 
   @Override
-  public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
-    return nodeManager.applyConfigNode(applyConfigNodeReq);
+  public TSStatus addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
+    consensusManager.addConsensusGroup(configNodeLocations);
+    return StatusUtils.OK;
+  }
+
+  @Override
+  public TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return nodeManager.removeConfigNode(removeConfigNodeReq);
+    } else {
+      return status;
+    }
   }
 
   @Override
@@ -655,12 +690,12 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet showRegion(GetRegionLocationsReq getRegionsinfoReq) {
+  public DataSet showRegion(GetRegionInfoListReq getRegionsinfoReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getRetionLocations(getRegionsinfoReq);
+      return partitionManager.getRegionInfoList(getRegionsinfoReq);
     } else {
-      RegionLocationsResp regionResp = new RegionLocationsResp();
+      RegionInfoListResp regionResp = new RegionInfoListResp();
       regionResp.setStatus(status);
       return regionResp;
     }

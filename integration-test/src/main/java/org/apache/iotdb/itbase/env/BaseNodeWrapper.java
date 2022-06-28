@@ -38,5 +38,9 @@ public interface BaseNodeWrapper {
 
   int getPort();
 
+  String getId();
+
   String getIpAndPortString();
+
+  void dumpJVMSnapshot(String testCaseName);
 }

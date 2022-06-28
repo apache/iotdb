@@ -38,9 +38,10 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
@@ -49,6 +50,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
@@ -58,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -78,9 +81,9 @@ public class ConfigRequestSerDeTest {
   public void RegisterDataNodeReqTest() throws IOException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(1);
-    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
@@ -158,6 +161,18 @@ public class ConfigRequestSerDeTest {
   }
 
   @Test
+  public void AdjustMaxRegionGroupCountReqTest() throws IOException {
+    AdjustMaxRegionGroupCountReq req0 = new AdjustMaxRegionGroupCountReq();
+    for (int i = 0; i < 3; i++) {
+      req0.putEntry("root.sg" + i, new Pair<>(i, i));
+    }
+
+    AdjustMaxRegionGroupCountReq req1 =
+        (AdjustMaxRegionGroupCountReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
   public void CountStorageGroupReqTest() throws IOException {
     CountStorageGroupReq req0 = new CountStorageGroupReq(Arrays.asList("root", "sg"));
     CountStorageGroupReq req1 =
@@ -182,9 +197,9 @@ public class ConfigRequestSerDeTest {
   public void CreateRegionsPlanTest() throws IOException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
-    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
@@ -192,12 +207,12 @@ public class ConfigRequestSerDeTest {
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
     dataRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, 0));
     dataRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegion("root.sg0", dataRegionSet);
+    req0.addRegionGroup("root.sg0", dataRegionSet);
 
     TRegionReplicaSet schemaRegionSet = new TRegionReplicaSet();
     schemaRegionSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1));
     schemaRegionSet.setDataNodeLocations(Collections.singletonList(dataNodeLocation));
-    req0.addRegion("root.sg1", schemaRegionSet);
+    req0.addRegionGroup("root.sg1", schemaRegionSet);
 
     CreateRegionsReq req1 =
         (CreateRegionsReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
@@ -219,9 +234,9 @@ public class ConfigRequestSerDeTest {
   public void CreateSchemaPartitionPlanTest() throws IOException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
-    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
@@ -275,9 +290,9 @@ public class ConfigRequestSerDeTest {
   public void CreateDataPartitionPlanTest() throws IOException {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
-    dataNodeLocation.setExternalEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
@@ -483,6 +498,17 @@ public class ConfigRequestSerDeTest {
   }
 
   @Test
+  public void removeConfigNodeReqTest() throws IOException {
+    RemoveConfigNodeReq req0 =
+        new RemoveConfigNodeReq(
+            new TConfigNodeLocation(
+                0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
+    RemoveConfigNodeReq req1 =
+        (RemoveConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
   public void updateProcedureTest() throws IOException {
     DeleteStorageGroupProcedure procedure = new DeleteStorageGroupProcedure();
     TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
@@ -521,10 +547,10 @@ public class ConfigRequestSerDeTest {
 
   @Test
   public void GetRegionLocaltionsReqTest() throws IOException {
-    GetRegionLocationsReq req0 = new GetRegionLocationsReq();
+    GetRegionInfoListReq req0 = new GetRegionInfoListReq();
     req0.setRegionType(TConsensusGroupType.DataRegion);
-    GetRegionLocationsReq req1 =
-        (GetRegionLocationsReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    GetRegionInfoListReq req1 =
+        (GetRegionInfoListReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0.getType(), req1.getType());
     Assert.assertEquals(req0.getRegionType(), req1.getRegionType());
   }

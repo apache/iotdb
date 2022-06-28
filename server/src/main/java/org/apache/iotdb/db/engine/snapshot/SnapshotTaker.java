@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * SnapshotTaker takes data snapshot for a DataRegion in one time. It does so by creating hard link
@@ -46,6 +47,8 @@ public class SnapshotTaker {
   private static final Logger LOGGER = LoggerFactory.getLogger(SnapshotTaker.class);
   private final DataRegion dataRegion;
   public static String SNAPSHOT_FILE_INFO_SEP_STR = "_";
+  private File seqBaseDir;
+  private File unseqBaseDir;
 
   public SnapshotTaker(DataRegion dataRegion) {
     this.dataRegion = dataRegion;
@@ -56,11 +59,27 @@ public class SnapshotTaker {
     File snapshotDir = new File(snapshotDirPath);
     if (snapshotDir.exists()
         && snapshotDir.listFiles() != null
-        && snapshotDir.listFiles().length > 0) {
+        && Objects.requireNonNull(snapshotDir.listFiles()).length > 0) {
       // the directory should be empty or not exists
       throw new DirectoryNotLegalException(
           String.format("%s already exists and is not empty", snapshotDirPath));
     }
+    seqBaseDir =
+        new File(
+            snapshotDir,
+            "sequence"
+                + File.separator
+                + dataRegion.getLogicalStorageGroupName()
+                + File.separator
+                + dataRegion.getDataRegionId());
+    unseqBaseDir =
+        new File(
+            snapshotDir,
+            "unsequence"
+                + File.separator
+                + dataRegion.getLogicalStorageGroupName()
+                + File.separator
+                + dataRegion.getDataRegionId());
 
     if (!snapshotDir.exists() && !snapshotDir.mkdirs()) {
       throw new IOException(String.format("Failed to create directory %s", snapshotDir));
@@ -78,7 +97,7 @@ public class SnapshotTaker {
         List<String> seqDataDirs = getAllDataDirOfOnePartition(true, timePartition);
 
         try {
-          createFileSnapshot(seqDataDirs, snapshotDir, true, timePartition);
+          createFileSnapshot(seqDataDirs, true, timePartition);
         } catch (IOException e) {
           LOGGER.error("Fail to create snapshot", e);
           cleanUpWhenFail(snapshotDir);
@@ -88,7 +107,7 @@ public class SnapshotTaker {
         List<String> unseqDataDirs = getAllDataDirOfOnePartition(false, timePartition);
 
         try {
-          createFileSnapshot(unseqDataDirs, snapshotDir, false, timePartition);
+          createFileSnapshot(unseqDataDirs, false, timePartition);
         } catch (IOException e) {
           LOGGER.error("Fail to create snapshot", e);
           cleanUpWhenFail(snapshotDir);
@@ -98,6 +117,12 @@ public class SnapshotTaker {
     } finally {
       manager.readUnlock();
     }
+
+    LOGGER.info(
+        "Successfully take snapshot for {}-{}, snapshot directory is {}",
+        dataRegion.getLogicalStorageGroupName(),
+        dataRegion.getDataRegionId(),
+        snapshotDirPath);
 
     return true;
   }
@@ -124,9 +149,15 @@ public class SnapshotTaker {
     return resultDirs;
   }
 
-  private void createFileSnapshot(
-      List<String> sourceDirPaths, File targetDir, boolean sequence, long timePartition)
+  private void createFileSnapshot(List<String> sourceDirPaths, boolean sequence, long timePartition)
       throws IOException {
+    File timePartitionDir =
+        new File(sequence ? seqBaseDir : unseqBaseDir, String.valueOf(timePartition));
+    if (!timePartitionDir.exists() && !timePartitionDir.mkdirs()) {
+      throw new IOException(
+          String.format("%s not exists and cannot create it", timePartitionDir.getAbsolutePath()));
+    }
+
     for (String sourceDirPath : sourceDirPaths) {
       File sourceDir = new File(sourceDirPath);
       if (!sourceDir.exists()) {
@@ -149,17 +180,7 @@ public class SnapshotTaker {
       }
 
       for (File file : files) {
-        String newFileName =
-            (sequence ? "seq" : "unseq")
-                + SNAPSHOT_FILE_INFO_SEP_STR
-                + dataRegion.getLogicalStorageGroupName()
-                + SNAPSHOT_FILE_INFO_SEP_STR
-                + dataRegion.getDataRegionId()
-                + SNAPSHOT_FILE_INFO_SEP_STR
-                + timePartition
-                + SNAPSHOT_FILE_INFO_SEP_STR
-                + file.getName();
-        File linkFile = new File(targetDir, newFileName);
+        File linkFile = new File(timePartitionDir, file.getName());
         Files.createLink(linkFile.toPath(), file.toPath());
       }
     }
