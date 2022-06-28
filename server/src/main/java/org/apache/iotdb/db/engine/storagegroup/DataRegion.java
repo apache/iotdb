@@ -131,6 +131,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -183,6 +184,10 @@ public class DataRegion {
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
+  /** condition to safely delete data region */
+  private final Condition deletedCondition = insertLock.writeLock().newCondition();
+  /** data region has been deleted or not */
+  private volatile boolean deleted = false;
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
   /**
@@ -556,6 +561,11 @@ public class DataRegion {
   }
 
   private void initCompaction() {
+    if (!config.isEnableSeqSpaceCompaction()
+        && !config.isEnableUnseqSpaceCompaction()
+        && !config.isEnableCrossSpaceCompaction()) {
+      return;
+    }
     timedCompactionScheduleTask =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.COMPACTION_SCHEDULE.getName()
@@ -1043,7 +1053,7 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, TriggerExecutionException, WriteProcessException {
+      throws TriggerExecutionException, BatchProcessException, WriteProcessException {
 
     writeLock("insertTablet");
     try {
@@ -1071,7 +1081,9 @@ public class DataRegion {
       }
       // loc pointing at first legal position
       if (loc == insertTabletNode.getRowCount()) {
-        throw new BatchProcessException(results);
+        throw new OutOfTTLException(
+            insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
+            (System.currentTimeMillis() - dataTTL));
       }
 
       //      TODO(Trigger)// fire trigger before insertion
@@ -3483,7 +3495,7 @@ public class DataRegion {
       writeUnlock();
     }
     if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertRowsOfOneDeviceNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting rows of one device");
     }
   }
 
@@ -3503,7 +3515,7 @@ public class DataRegion {
     }
 
     if (!insertRowsNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertRowsNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting rows");
     }
   }
 
@@ -3518,7 +3530,7 @@ public class DataRegion {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (TriggerExecutionException | BatchProcessException | WriteProcessException e) {
+      } catch (TriggerExecutionException | WriteProcessException | BatchProcessException e) {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -3526,7 +3538,7 @@ public class DataRegion {
     }
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting multi tablets");
     }
   }
 
@@ -3679,6 +3691,32 @@ public class DataRegion {
     // identifier should be same with getTsFileProcessor method
     return WALManager.getInstance()
         .applyForWALNode(logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId);
+  }
+
+  /** Wait for this data region successfully deleted */
+  public void waitForDeleted() {
+    writeLock("waitForDeleted");
+    try {
+      if (!deleted) {
+        deletedCondition.await();
+      }
+    } catch (InterruptedException e) {
+      logger.error("Interrupted When waiting for data region deleted.");
+      Thread.currentThread().interrupt();
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /** Release all threads waiting for this data region successfully deleted */
+  public void markDeleted() {
+    deleted = true;
+    writeLock("markDeleted");
+    try {
+      deletedCondition.signalAll();
+    } finally {
+      writeUnlock();
+    }
   }
 
   @TestOnly

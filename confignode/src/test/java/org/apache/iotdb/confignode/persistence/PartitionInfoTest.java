@@ -29,12 +29,12 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.response.RegionLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
@@ -172,40 +172,40 @@ public class PartitionInfoTest {
     createRegionsReq.addRegionGroup("root.test", dataRegionReplicaSet);
     partitionInfo.createRegionGroups(createRegionsReq);
 
-    GetRegionLocationsReq regionReq = new GetRegionLocationsReq();
+    GetRegionInfoListReq regionReq = new GetRegionInfoListReq();
     regionReq.setRegionType(null);
-    RegionLocationsResp regionLocations1 =
-        (RegionLocationsResp) partitionInfo.getRegionLocations(regionReq);
-    Assert.assertEquals(regionLocations1.getRegionInfosList().size(), 10);
-    regionLocations1
-        .getRegionInfosList()
+    RegionInfoListResp regionInfoList1 =
+        (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
+    Assert.assertEquals(regionInfoList1.getRegionInfoList().size(), 10);
+    regionInfoList1
+        .getRegionInfoList()
         .forEach(
-            (regionLocation) -> {
-              Assert.assertEquals(regionLocation.getRpcAddresss(), "127.0.0.1");
+            (regionInfo) -> {
+              Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1");
             });
 
     regionReq.setRegionType(TConsensusGroupType.SchemaRegion);
-    RegionLocationsResp regionLocations2 =
-        (RegionLocationsResp) partitionInfo.getRegionLocations(regionReq);
-    Assert.assertEquals(regionLocations2.getRegionInfosList().size(), 5);
-    regionLocations2
-        .getRegionInfosList()
+    RegionInfoListResp regionInfoList2 =
+        (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
+    Assert.assertEquals(regionInfoList2.getRegionInfoList().size(), 5);
+    regionInfoList2
+        .getRegionInfoList()
         .forEach(
-            (regionLocation) -> {
+            (regionInfo) -> {
               Assert.assertEquals(
-                  regionLocation.getConsensusGroupId().getType(), TConsensusGroupType.SchemaRegion);
+                  regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.SchemaRegion);
             });
 
     regionReq.setRegionType(TConsensusGroupType.DataRegion);
-    RegionLocationsResp regionLocations3 =
-        (RegionLocationsResp) partitionInfo.getRegionLocations(regionReq);
-    Assert.assertEquals(regionLocations3.getRegionInfosList().size(), 5);
-    regionLocations3
-        .getRegionInfosList()
+    RegionInfoListResp regionInfoList3 =
+        (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
+    Assert.assertEquals(regionInfoList3.getRegionInfoList().size(), 5);
+    regionInfoList3
+        .getRegionInfoList()
         .forEach(
-            (regionLocation) -> {
+            (regionInfo) -> {
               Assert.assertEquals(
-                  regionLocation.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion);
+                  regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion);
             });
   }
 
@@ -218,9 +218,9 @@ public class PartitionInfoTest {
     for (int i = startFlag; i < locationNum + startFlag; i++) {
       TDataNodeLocation tDataNodeLocation = new TDataNodeLocation();
       tDataNodeLocation.setDataNodeId(i);
-      tDataNodeLocation.setExternalEndPoint(new TEndPoint("127.0.0.1", 6000 + i));
+      tDataNodeLocation.setClientRpcEndPoint(new TEndPoint("127.0.0.1", 6000 + i));
       tDataNodeLocation.setInternalEndPoint(new TEndPoint("127.0.0.1", 7000 + i));
-      tDataNodeLocation.setDataBlockManagerEndPoint(new TEndPoint("127.0.0.1", 8000 + i));
+      tDataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("127.0.0.1", 8000 + i));
       tDataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 9000 + i));
       tDataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 10000 + i));
       dataNodeLocations.add(tDataNodeLocation);

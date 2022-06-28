@@ -83,12 +83,12 @@ public class ConfigNodeStartupCheck {
   /** Check whether the global configuration of the cluster is correct */
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to StandAlone,
-    // the target_configNode needs to point to itself
+    // the config_nodes needs to point to itself
     if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
         && (!conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
             || conf.getRpcPort() != conf.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
-          "target_confignode",
+          "config_nodes",
           conf.getTargetConfigNode().getIp() + ":" + conf.getTargetConfigNode().getPort(),
           conf.getRpcAddress() + ":" + conf.getRpcPort());
     }
@@ -160,7 +160,7 @@ public class ConfigNodeStartupCheck {
    * Check if the current ConfigNode is SeedConfigNode. If true, do the SeedConfigNode configuration
    * as well.
    *
-   * @return True if the target_confignode points to itself
+   * @return True if the config_nodes points to itself
    */
   private boolean isSeedConfigNode() {
     boolean result =
@@ -201,6 +201,7 @@ public class ConfigNodeStartupCheck {
           SyncConfigNodeClientPool.getInstance().registerConfigNode(targetConfigNode, req);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
+        conf.setConfigNodeList(resp.getConfigNodeList());
         LOGGER.info("ConfigNode registered successfully.");
         break;
       } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
@@ -383,7 +384,7 @@ public class ConfigNodeStartupCheck {
   /** Only load ConfigNodeList from confignode-system.properties when restart */
   private void loadConfigNodeList() throws StartupException {
     String addresses = systemProperties.getProperty("confignode_list", null);
-    if (addresses != null) {
+    if (addresses != null && !addresses.isEmpty()) {
       try {
         conf.setConfigNodeList(NodeUrlUtils.parseTConfigNodeUrls(addresses));
       } catch (BadNodeUrlException e) {

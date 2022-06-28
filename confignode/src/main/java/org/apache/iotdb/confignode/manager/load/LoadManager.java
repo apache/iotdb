@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager.load;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
@@ -28,21 +29,24 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
+import org.apache.iotdb.confignode.client.AsyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.handlers.HeartbeatHandler;
+import org.apache.iotdb.confignode.client.handlers.ConfigNodeHeartbeatHandler;
+import org.apache.iotdb.confignode.client.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
-import org.apache.iotdb.confignode.manager.Manager;
+import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.NodeManager;
 import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.confignode.manager.load.balancer.PartitionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
-import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IHeartbeatStatistic;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 
@@ -65,12 +69,12 @@ public class LoadManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
-  private final Manager configManager;
+  private final IManager configManager;
 
   private final long heartbeatInterval =
       ConfigNodeDescriptor.getInstance().getConf().getHeartbeatInterval();
-  // Map<NodeId, HeartbeatCache>
-  private final Map<Integer, HeartbeatCache> heartbeatCacheMap;
+  // Map<NodeId, IHeartbeatStatistic>
+  private final Map<Integer, IHeartbeatStatistic> heartbeatCacheMap;
 
   // Balancers
   private final RegionBalancer regionBalancer;
@@ -87,7 +91,7 @@ public class LoadManager {
   private Future<?> currentHeartbeatFuture;
   private int balanceCount = 0;
 
-  public LoadManager(Manager configManager) {
+  public LoadManager(IManager configManager) {
     this.configManager = configManager;
     this.heartbeatCacheMap = new ConcurrentHashMap<>();
 
@@ -201,8 +205,8 @@ public class LoadManager {
     if (getConsensusManager().isLeader()) {
       // Send heartbeat requests to all the online DataNodes
       pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
-      // TODO: Send heartbeat requests to all the online ConfigNodes
-
+      // Send heartbeat requests to all the online ConfigNodes
+      pingOnlineConfigNodes(getNodeManager().getOnlineConfigNodes());
       // Do load balancing
       doLoadBalancing(balanceCount);
       balanceCount += 1;
@@ -232,15 +236,49 @@ public class LoadManager {
   private void pingOnlineDataNodes(List<TDataNodeInfo> onlineDataNodes) {
     // Send heartbeat requests
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
-      HeartbeatHandler handler =
-          new HeartbeatHandler(
+      DataNodeHeartbeatHandler handler =
+          new DataNodeHeartbeatHandler(
               dataNodeInfo.getLocation(),
-              heartbeatCacheMap.computeIfAbsent(
-                  dataNodeInfo.getLocation().getDataNodeId(), empty -> new HeartbeatCache()));
+              (DataNodeHeartbeatCache)
+                  heartbeatCacheMap.computeIfAbsent(
+                      dataNodeInfo.getLocation().getDataNodeId(),
+                      empty -> new DataNodeHeartbeatCache()));
       AsyncDataNodeClientPool.getInstance()
-          .getHeartBeat(
+          .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
     }
+  }
+
+  /**
+   * Send heartbeat requests to all the online ConfigNodes
+   *
+   * @param onlineConfigNodes ConfigNodes that currently online
+   */
+  private void pingOnlineConfigNodes(List<TConfigNodeLocation> onlineConfigNodes) {
+    // Send heartbeat requests
+    for (TConfigNodeLocation configNodeLocation : onlineConfigNodes) {
+      ConfigNodeHeartbeatHandler handler =
+          new ConfigNodeHeartbeatHandler(
+              configNodeLocation,
+              (ConfigNodeHeartbeatCache)
+                  heartbeatCacheMap.computeIfAbsent(
+                      configNodeLocation.getConfigNodeId(),
+                      empty -> new ConfigNodeHeartbeatCache()));
+      AsyncConfigNodeClientPool.getInstance()
+          .getConfigNodeHeartBeat(
+              configNodeLocation.getInternalEndPoint(),
+              genHeartbeatReq().getHeartbeatTimestamp(),
+              handler);
+    }
+  }
+
+  /**
+   * When a node is removed, clear the node's cache
+   *
+   * @param nodeId removed node id
+   */
+  public void removeNodeHeartbeatHandCache(Integer nodeId) {
+    heartbeatCacheMap.remove(nodeId);
   }
 
   private ConsensusManager getConsensusManager() {
@@ -257,5 +295,9 @@ public class LoadManager {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
+  }
+
+  public Map<Integer, IHeartbeatStatistic> getHeartbeatCacheMap() {
+    return heartbeatCacheMap;
   }
 }

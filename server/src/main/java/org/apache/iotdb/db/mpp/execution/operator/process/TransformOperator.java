@@ -84,7 +84,8 @@ public class TransformOperator implements ProcessOperator {
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      TypeProvider typeProvider)
+      TypeProvider typeProvider,
+      boolean isAscending)
       throws QueryProcessException, IOException {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
@@ -94,7 +95,7 @@ public class TransformOperator implements ProcessOperator {
     initUdtfContext(outputExpressions, zoneId);
     initTransformers(inputLocations, outputExpressions, typeProvider);
 
-    timeHeap = new TimeSelector(transformers.length << 1, true);
+    timeHeap = new TimeSelector(transformers.length << 1, isAscending);
     shouldIterateReadersToNextValid = new boolean[outputExpressions.length];
     Arrays.fill(shouldIterateReadersToNextValid, true);
   }
@@ -252,6 +253,29 @@ public class TransformOperator implements ProcessOperator {
     }
   }
 
+  protected boolean collectReaderAppendIsNull(LayerPointReader reader, long currentTime)
+      throws QueryProcessException, IOException {
+    final YieldableState yieldableState = reader.yield();
+
+    if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+      return true;
+    }
+
+    if (yieldableState != YieldableState.YIELDABLE) {
+      return false;
+    }
+
+    if (reader.currentTime() != currentTime) {
+      return true;
+    }
+
+    if (reader.isCurrentNull()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   protected YieldableState collectDataPoint(
       LayerPointReader reader, ColumnBuilder writer, long currentTime, int readerIndex)
       throws QueryProcessException, IOException {
@@ -310,7 +334,7 @@ public class TransformOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return inputOperator.isBlocked();
   }
 

@@ -58,7 +58,7 @@ public class NodeManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeManager.class);
 
-  private final Manager configManager;
+  private final IManager configManager;
   private final NodeInfo nodeInfo;
 
   private final ReentrantLock removeConfigNodeLock;
@@ -66,7 +66,7 @@ public class NodeManager {
   /** TODO:do some operate after add node or remove node */
   private final List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
 
-  public NodeManager(Manager configManager, NodeInfo nodeInfo) {
+  public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
     this.nodeInfo = nodeInfo;
     this.removeConfigNodeLock = new ReentrantLock();
@@ -177,6 +177,7 @@ public class NodeManager {
     resp.setPartitionRegionId(
         getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
 
+    resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
     return resp;
   }
 
@@ -213,9 +214,14 @@ public class NodeManager {
         }
 
         // Check whether the remove ConfigNode is leader
-        Peer leader = getConsensusManager().getLeader(getOnlineConfigNodes());
+        TConfigNodeLocation leader = getConsensusManager().getLeader();
+        if (leader == null) {
+          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+              .setMessage(
+                  "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.");
+        }
         if (leader
-            .getEndpoint()
+            .getInternalEndPoint()
             .equals(removeConfigNodeReq.getConfigNodeLocation().getInternalEndPoint())) {
           // transfer leader
           return transferLeader(removeConfigNodeReq, getConsensusManager().getConsensusGroupId());
@@ -223,6 +229,10 @@ public class NodeManager {
 
         // Execute removePeer
         if (getConsensusManager().removeConfigNodePeer(removeConfigNodeReq)) {
+          configManager
+              .getLoadManager()
+              .removeNodeHeartbeatHandCache(
+                  removeConfigNodeReq.getConfigNodeLocation().getConfigNodeId());
           return getConsensusManager().write(removeConfigNodeReq).getStatus();
         } else {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
@@ -300,6 +310,8 @@ public class NodeManager {
 
     @Override
     public void removeDataNode(TDataNodeLocation dataNodeInfo) {
+      // TODO: When removing a datanode, do the following
+      //  configManager.getLoadManager().removeNodeHeartbeatHandCache(dataNodeId);
       serverChanged();
     }
 

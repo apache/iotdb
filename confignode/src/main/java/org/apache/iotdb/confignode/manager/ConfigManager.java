@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -39,7 +41,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionLocationsReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -54,7 +56,7 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
-import org.apache.iotdb.confignode.consensus.response.RegionLocationsResp;
+import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
@@ -67,6 +69,7 @@ import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
@@ -75,7 +78,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -85,6 +87,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -96,7 +99,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 /** Entry of all management, AssignPartitionManager,AssignRegionManager. */
-public class ConfigManager implements Manager {
+public class ConfigManager implements IManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigManager.class);
 
@@ -146,7 +149,7 @@ public class ConfigManager implements Manager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
-    this.consensusManager = new ConsensusManager(stateMachine);
+    this.consensusManager = new ConsensusManager(this, stateMachine);
   }
 
   public void close() throws IOException {
@@ -182,6 +185,28 @@ public class ConfigManager implements Manager {
       DataNodeInfosResp dataSet = new DataNodeInfosResp();
       dataSet.setStatus(status);
       return dataSet;
+    }
+  }
+
+  @Override
+  public TClusterNodeInfos getAllClusterNodeInfos() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<TConfigNodeLocation> configNodeLocations = getNodeManager().getOnlineConfigNodes();
+      List<TDataNodeLocation> dataNodeInfoLocations =
+          getNodeManager().getOnlineDataNodes(-1).stream()
+              .map(TDataNodeInfo::getLocation)
+              .collect(Collectors.toList());
+      Map<Integer, String> nodeStatus = new HashMap<>();
+      getLoadManager()
+          .getHeartbeatCacheMap()
+          .forEach(
+              (nodeId, heartbeatCache) -> {
+                nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus());
+              });
+      return new TClusterNodeInfos(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
+    } else {
+      return new TClusterNodeInfos(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
     }
   }
 
@@ -269,6 +294,11 @@ public class ConfigManager implements Manager {
       // remove wild
       Map<String, TStorageGroupSchema> deleteStorageSchemaMap =
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
+      if (deleteStorageSchemaMap.isEmpty()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(),
+            String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
+      }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
           new ArrayList<>(deleteStorageSchemaMap.values());
       return procedureManager.deleteStorageGroups(parsedDeleteStorageGroups);
@@ -473,14 +503,21 @@ public class ConfigManager implements Manager {
   }
 
   private TSStatus confirmLeader() {
+    TSStatus result = new TSStatus();
+
     if (getConsensusManager().isLeader()) {
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      return result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } else {
-      Peer leader = consensusManager.getLeader(nodeManager.getOnlineConfigNodes());
-      return new TSStatus(TSStatusCode.NEED_REDIRECTION.getStatusCode())
-          .setRedirectNode(leader.getEndpoint())
-          .setMessage(
-              "The current ConfigNode is not leader. And ConfigNodeGroup is in leader election. Please redirect with a random ConfigNode.");
+      result.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+      result.setMessage(
+          "The current ConfigNode is not leader, please redirect to a new ConfigNode.");
+
+      TConfigNodeLocation leaderLocation = consensusManager.getLeader();
+      if (leaderLocation != null) {
+        result.setRedirectNode(leaderLocation.getInternalEndPoint());
+      }
+
+      return result;
     }
   }
 
@@ -684,12 +721,12 @@ public class ConfigManager implements Manager {
   }
 
   @Override
-  public DataSet showRegion(GetRegionLocationsReq getRegionsinfoReq) {
+  public DataSet showRegion(GetRegionInfoListReq getRegionsinfoReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getRetionLocations(getRegionsinfoReq);
+      return partitionManager.getRegionInfoList(getRegionsinfoReq);
     } else {
-      RegionLocationsResp regionResp = new RegionLocationsResp();
+      RegionInfoListResp regionResp = new RegionInfoListResp();
       regionResp.setStatus(status);
       return regionResp;
     }

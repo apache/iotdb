@@ -315,7 +315,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
+  public THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req) throws TException {
     THeartbeatResp resp = new THeartbeatResp(req.getHeartbeatTimestamp(), getJudgedLeaders());
     Random whetherToGetMetric = new Random();
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()

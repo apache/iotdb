@@ -245,7 +245,7 @@ service InternalService {
   *
   * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
   **/
-  THeartbeatResp getHeartBeat(THeartbeatReq req)
+  THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req)
 
   /**
    * Config node will create a function on a list of data nodes.
@@ -271,7 +271,7 @@ service InternalService {
   common.TSStatus flush(common.TFlushReq req)
 }
 
-service DataBlockService {
+service MPPDataExchangeService {
   TGetDataBlockResponse getDataBlock(TGetDataBlockRequest req);
 
   void onAcknowledgeDataBlockEvent(TAcknowledgeDataBlockEvent e);

@@ -74,57 +74,57 @@ public class ConsensusReqReaderTest {
 
   /**
    * Generate wal files as below: <br>
-   * _0-0.wal: 1,-1 <br>
-   * _1-1.wal: 2,2,2 <br>
-   * _2-2.wal: 3,3 <br>
-   * _3-3.wal: 3,4 <br>
-   * _4-4.wal: 4 <br>
-   * _5-4.wal: 4,4,5 <br>
-   * _6-5.wal: 6 <br>
+   * _0-0-0.wal: 1,-1 <br>
+   * _1-1-0.wal: 2,2,2 <br>
+   * _2-2-0.wal: 3,3 <br>
+   * _3-3-0.wal: 3,4 <br>
+   * _4-4-0.wal: 4 <br>
+   * _5-4-0.wal: 4,4,5 <br>
+   * _6-5-0.wal: 6 <br>
    * 1 - InsertRowNode, 2 - InsertRowsOfOneDeviceNode, 3 - InsertRowsNode, 4 -
    * InsertMultiTabletsNode, 5 - InsertTabletNode, 6 - InsertRowNode
    */
   private void simulateFileScenario01() throws IllegalPathException {
     InsertTabletNode insertTabletNode;
     InsertRowNode insertRowNode;
-    // _0-0.wal
+    // _0-0-0.wal
     insertRowNode = getInsertRowNode(devicePath);
     insertRowNode.setSearchIndex(1);
     walNode.log(0, insertRowNode); // 1
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {2});
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // -1
     walNode.rollWALFile();
-    // _1-1.wal
+    // _1-1-0.wal
     insertRowNode = getInsertRowNode(devicePath);
     insertRowNode.setSearchIndex(2);
     walNode.log(0, insertRowNode); // 2
     walNode.log(0, insertRowNode); // 2
     walNode.log(0, insertRowNode); // 2
     walNode.rollWALFile();
-    // _2-2.wal
+    // _2-2-0.wal
     insertRowNode = getInsertRowNode(devicePath);
     insertRowNode.setSearchIndex(3);
     walNode.log(0, insertRowNode); // 3
     walNode.log(0, insertRowNode); // 3
     walNode.rollWALFile();
-    // _3-3.wal
+    // _3-3-0.wal
     insertRowNode.setDevicePath(new PartialPath(devicePath + "test"));
     walNode.log(0, insertRowNode); // 3
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {4});
     insertTabletNode.setSearchIndex(4);
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
     walNode.rollWALFile();
-    // _4-4.wal
+    // _4-4-0.wal
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
     walNode.rollWALFile();
-    // _5-4.wal
+    // _5-4-0.wal
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {5});
     insertTabletNode.setSearchIndex(5);
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 5
     walNode.rollWALFile();
-    // _6-5.wal
+    // _6-5-0.wal
     insertRowNode = getInsertRowNode(devicePath);
     insertRowNode.setSearchIndex(6);
     WALFlushListener walFlushListener = walNode.log(0, insertRowNode); // 6

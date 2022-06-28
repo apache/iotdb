@@ -184,8 +184,8 @@ public class Util {
   private static TDataNodeLocation genDataNodeLocation(int dataNodeId, String ip) {
     return new TDataNodeLocation()
         .setDataNodeId(dataNodeId)
-        .setExternalEndPoint(new TEndPoint(ip, 9000))
-        .setDataBlockManagerEndPoint(new TEndPoint(ip, 9001))
+        .setClientRpcEndPoint(new TEndPoint(ip, 9000))
+        .setMPPDataExchangeEndPoint(new TEndPoint(ip, 9001))
         .setInternalEndPoint(new TEndPoint(ip, 9002));
   }
 }

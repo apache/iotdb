@@ -74,7 +74,8 @@ public class LogDispatcher {
             .collect(Collectors.toList());
     if (!threads.isEmpty()) {
       this.executorService =
-          IoTDBThreadPoolFactory.newFixedThreadPool(threads.size(), "LogDispatcher");
+          IoTDBThreadPoolFactory.newFixedThreadPool(
+              threads.size(), "LogDispatcher-" + impl.getThisNode().getGroupId());
     }
   }
 
@@ -107,8 +108,15 @@ public class LogDispatcher {
   public void offer(IndexedConsensusRequest request) {
     threads.forEach(
         thread -> {
-          if (!thread.offer(request)) {
-            logger.debug("Log queue of {} is full, ignore the log to this node", thread.getPeer());
+          logger.debug(
+              "{}: Push a log to the queue, where the queue length is {}",
+              impl.getThisNode().getGroupId(),
+              thread.getPendingRequest().size());
+          if (!thread.getPendingRequest().offer(request)) {
+            logger.debug(
+                "{}: Log queue of {} is full, ignore the log to this node",
+                impl.getThisNode().getGroupId(),
+                thread.getPeer());
           }
         });
   }
@@ -156,8 +164,8 @@ public class LogDispatcher {
       return config;
     }
 
-    public boolean offer(IndexedConsensusRequest request) {
-      return pendingRequest.offer(request);
+    public BlockingQueue<IndexedConsensusRequest> getPendingRequest() {
+      return pendingRequest;
     }
 
     public void stop() {
@@ -199,7 +207,7 @@ public class LogDispatcher {
       PendingBatch batch;
       List<TLogBatch> logBatches = new ArrayList<>();
       long startIndex = syncStatus.getNextSendingIndex();
-      long maxIndex = impl.getController().getCurrentIndex();
+      long maxIndex = impl.getController().getCurrentIndex() + 1;
       long endIndex;
       if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
         // Use drainTo instead of poll to reduce lock overhead
@@ -211,7 +219,7 @@ public class LogDispatcher {
         // only execute this after a restart
         endIndex = constructBatchFromWAL(startIndex, maxIndex, logBatches);
         batch = new PendingBatch(startIndex, endIndex, logBatches);
-        logger.debug("accumulated a {} from wal", batch);
+        logger.debug("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
       } else {
         Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
         IndexedConsensusRequest prev = iterator.next();
@@ -220,7 +228,7 @@ public class LogDispatcher {
         endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
         if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
           batch = new PendingBatch(startIndex, endIndex, logBatches);
-          logger.debug("accumulated a {} from wal", batch);
+          logger.debug("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
           return batch;
         }
         constructBatchIndexedFromConsensusRequest(prev, logBatches);
@@ -236,7 +244,10 @@ public class LogDispatcher {
                 constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
             if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
               batch = new PendingBatch(startIndex, endIndex, logBatches);
-              logger.debug("accumulated a {} from queue and wal", batch);
+              logger.debug(
+                  "{} : accumulated a {} from queue and wal",
+                  impl.getThisNode().getGroupId(),
+                  batch);
               return batch;
             }
           }
@@ -249,7 +260,8 @@ public class LogDispatcher {
           iterator.remove();
         }
         batch = new PendingBatch(startIndex, endIndex, logBatches);
-        logger.debug("accumulated a {} from queue and wal", batch);
+        logger.debug(
+            "{} : accumulated a {} from queue and wal", impl.getThisNode().getGroupId(), batch);
       }
       return batch;
     }
@@ -276,8 +288,6 @@ public class LogDispatcher {
         // TODO iterator
         IConsensusRequest data = reader.getReq(currentIndex++);
         if (data != null) {
-          // since WAL can no longer recover FragmentInstance, but only PlanNode, we need to give
-          // special flags to use different deserialization methods in the dataRegion stateMachine
           logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
         }
       }

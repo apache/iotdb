@@ -41,7 +41,7 @@ Build server and Hadoop module by: `mvn clean package -pl server,hadoop -am -Dma
 
 Then, copy the target jar of Hadoop module `hadoop-tsfile-X.X.X-jar-with-dependencies.jar` into server target lib folder `.../server/target/iotdb-server-X.X.X/lib`.
 
-Edit user config in `iotdb-engine.properties`. Related configurations are:
+Edit user config in `iotdb-datanode.properties`. Related configurations are:
 
 * tsfile\_storage\_fs
 

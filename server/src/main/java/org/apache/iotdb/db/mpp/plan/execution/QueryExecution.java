@@ -29,8 +29,8 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.QueryState;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
-import org.apache.iotdb.db.mpp.execution.datatransfer.ISourceHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.Analyzer;
 import org.apache.iotdb.db.mpp.plan.analyze.IPartitionFetcher;
@@ -106,7 +106,7 @@ public class QueryExecution implements IQueryExecution {
   // TODO need to use factory to decide standalone or cluster,
   private final ISchemaFetcher schemaFetcher;
 
-  // The result of QueryExecution will be written to the DataBlockManager in current Node.
+  // The result of QueryExecution will be written to the MPPDataExchangeManager in current Node.
   // We use this SourceHandle to fetch the TsBlock from it.
   private ISourceHandle resultHandle;
 
@@ -281,30 +281,38 @@ public class QueryExecution implements IQueryExecution {
    */
   @Override
   public Optional<TsBlock> getBatchResult() {
-    try {
-      if (resultHandle == null || resultHandle.isAborted() || resultHandle.isFinished()) {
-        // Once the resultHandle is finished, we should transit the state of this query to FINISHED.
-        // So that the corresponding cleanup work could be triggered.
-        logger.info("resultHandle for client is finished");
-        stateMachine.transitionToFinished();
-        return Optional.empty();
+    // iterate until we get a non-nullable TsBlock or result is finished
+    while (true) {
+      try {
+        if (resultHandle == null || resultHandle.isAborted() || resultHandle.isFinished()) {
+          // Once the resultHandle is finished, we should transit the state of this query to
+          // FINISHED.
+          // So that the corresponding cleanup work could be triggered.
+          logger.info("resultHandle for client is finished");
+          stateMachine.transitionToFinished();
+          return Optional.empty();
+        }
+        ListenableFuture<?> blocked = resultHandle.isBlocked();
+        blocked.get();
+        if (!resultHandle.isFinished()) {
+          TsBlock res = resultHandle.receive();
+          if (res == null) {
+            continue;
+          }
+          return Optional.of(res);
+        } else {
+          return Optional.empty();
+        }
+      } catch (ExecutionException | CancellationException e) {
+        stateMachine.transitionToFailed(e);
+        Throwable t = e.getCause() == null ? e : e.getCause();
+        throwIfUnchecked(t);
+        throw new RuntimeException(t);
+      } catch (InterruptedException e) {
+        stateMachine.transitionToFailed(e);
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(new SQLException("ResultSet thread was interrupted", e));
       }
-      ListenableFuture<Void> blocked = resultHandle.isBlocked();
-      blocked.get();
-      if (!resultHandle.isFinished()) {
-        return Optional.of(resultHandle.receive());
-      } else {
-        return Optional.empty();
-      }
-    } catch (ExecutionException | CancellationException e) {
-      stateMachine.transitionToFailed(e);
-      Throwable t = e.getCause() == null ? e : e.getCause();
-      throwIfUnchecked(t);
-      throw new RuntimeException(t);
-    } catch (InterruptedException e) {
-      stateMachine.transitionToFailed(e);
-      Thread.currentThread().interrupt();
-      throw new RuntimeException(new SQLException("ResultSet thread was interrupted", e));
     }
   }
 
@@ -365,15 +373,15 @@ public class QueryExecution implements IQueryExecution {
 
       this.resultHandle =
           isSameNode(upstreamEndPoint)
-              ? DataBlockService.getInstance()
-                  .getDataBlockManager()
+              ? MPPDataExchangeService.getInstance()
+                  .getMPPDataExchangeManager()
                   .createLocalSourceHandle(
                       context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                       context.getResultNodeContext().getVirtualResultNodeId().getId(),
                       context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
                       stateMachine::transitionToFailed)
-              : DataBlockService.getInstance()
-                  .getDataBlockManager()
+              : MPPDataExchangeService.getInstance()
+                  .getMPPDataExchangeManager()
                   .createSourceHandle(
                       context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
                       context.getResultNodeContext().getVirtualResultNodeId().getId(),

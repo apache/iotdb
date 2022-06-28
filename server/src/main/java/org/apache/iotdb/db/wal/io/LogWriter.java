@@ -80,6 +80,11 @@ public abstract class LogWriter implements ILogWriter {
   }
 
   @Override
+  public File getLogFile() {
+    return logFile;
+  }
+
+  @Override
   public void close() throws IOException {
     if (logChannel != null) {
       try {

@@ -199,7 +199,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // be clear first
     if (config.isClusterMode()
         && config.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
-      FileUtils.deleteDirectory(new File(schemaRegionDirPath));
+      File schemaRegionDir = new File(schemaRegionDirPath);
+      if (schemaRegionDir.exists()) {
+        FileUtils.deleteDirectory(schemaRegionDir);
+      }
     }
 
     init();
