@@ -193,7 +193,9 @@ public class ConfigNodeStartupCheck {
             CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
             conf.getTimePartitionInterval(),
             conf.getSchemaReplicationFactor(),
-            conf.getDataReplicationFactor());
+            conf.getSchemaRegionPerDataNode(),
+            conf.getDataReplicationFactor(),
+            conf.getDataRegionPerProcessor());
 
     TEndPoint targetConfigNode = conf.getTargetConfigNode();
     while (true) {
