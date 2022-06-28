@@ -60,7 +60,7 @@ import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeTSIServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeTSServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -163,7 +163,7 @@ public class DataNode implements DataNodeMBean {
 
     // start InternalService first so that it can respond to configNode's heartbeat before joining
     // cluster
-    registerManager.register(InternalService.getInstance());
+    registerManager.register(ClientRPCService.getInstance());
   }
 
   /** register DataNode with ConfigNode */
@@ -171,7 +171,7 @@ public class DataNode implements DataNodeMBean {
     int retry = DEFAULT_JOIN_RETRY;
 
     ConfigNodeInfo.getInstance()
-        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getConfigNodeList());
+        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getTargetConfigNodeList());
     while (retry > 0) {
       logger.info("start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
@@ -346,8 +346,6 @@ public class DataNode implements DataNodeMBean {
   private void activateCurrentDataNode() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
-    ConfigNodeInfo.getInstance()
-        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getConfigNodeList());
     while (retry > 0) {
       logger.info("start joining the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
@@ -396,7 +394,7 @@ public class DataNode implements DataNodeMBean {
     // init rpc service
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
+        .setRpcImplClassName(DataNodeTSServiceImpl.class.getName());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
     }
