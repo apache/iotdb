@@ -239,7 +239,7 @@ struct TShowRegionResp {
   2: optional list<common.TRegionInfo> regionInfoList;
 }
 
-service ConfigIService {
+service IConfigNodeRPCService {
 
   /* DataNode */
 

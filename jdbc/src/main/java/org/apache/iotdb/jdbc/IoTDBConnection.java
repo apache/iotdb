@@ -22,9 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -68,7 +68,7 @@ public class IoTDBConnection implements Connection {
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   private static final String NOT_SUPPORT_PREPARE_CALL = "Does not support prepareCall";
   private static final String NOT_SUPPORT_PREPARE_STATEMENT = "Does not support prepareStatement";
-  private TSIService.Iface client = null;
+  private IClientRPCService.Iface client = null;
   private long sessionId = -1;
   private IoTDBConnectionParams params;
   private boolean isClosed = true;
@@ -111,9 +111,9 @@ public class IoTDBConnection implements Connection {
     this.zoneId = ZoneId.of(params.getTimeZone());
     openTransport();
     if (Config.rpcThriftCompressionEnable) {
-      setClient(new TSIService.Client(new TCompactProtocol(transport)));
+      setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
     } else {
-      setClient(new TSIService.Client(new TBinaryProtocol(transport)));
+      setClient(new IClientRPCService.Client(new TBinaryProtocol(transport)));
     }
     // open client session
     openSession();
@@ -454,7 +454,7 @@ public class IoTDBConnection implements Connection {
     throw new SQLException("Does not support setSavepoint");
   }
 
-  public TSIService.Iface getClient() {
+  public IClientRPCService.Iface getClient() {
     return client;
   }
 
@@ -462,7 +462,7 @@ public class IoTDBConnection implements Connection {
     return sessionId;
   }
 
-  public void setClient(TSIService.Iface client) {
+  public void setClient(IClientRPCService.Iface client) {
     this.client = client;
   }
 
@@ -536,9 +536,9 @@ public class IoTDBConnection implements Connection {
           transport.close();
           openTransport();
           if (Config.rpcThriftCompressionEnable) {
-            setClient(new TSIService.Client(new TCompactProtocol(transport)));
+            setClient(new IClientRPCService.Client(new TCompactProtocol(transport)));
           } else {
-            setClient(new TSIService.Client(new TBinaryProtocol(transport)));
+            setClient(new IClientRPCService.Client(new TBinaryProtocol(transport)));
           }
           openSession();
           setClient(RpcUtils.newSynchronizedClient(getClient()));

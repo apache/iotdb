@@ -27,14 +27,14 @@ import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.thrift.handler.InternalServiceThriftHandler;
-import org.apache.iotdb.db.service.thrift.impl.InternalServiceImpl;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService.Processor;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeRPCServiceImpl;
+import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 
-public class InternalService extends ThriftService implements InternalServiceMBean {
+public class ClientRPCService extends ThriftService implements InternalServiceMBean {
 
-  private InternalServiceImpl impl;
+  private DataNodeRPCServiceImpl impl;
 
-  private InternalService() {}
+  private ClientRPCService() {}
 
   @Override
   public ServiceType getID() {
@@ -44,7 +44,7 @@ public class InternalService extends ThriftService implements InternalServiceMBe
   @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    impl = new InternalServiceImpl();
+    impl = new DataNodeRPCServiceImpl();
     initSyncedServiceImpl(null);
     processor = new Processor<>(impl);
   }
@@ -82,13 +82,13 @@ public class InternalService extends ThriftService implements InternalServiceMBe
     return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
 
-  private static class InternalServiceHolder {
-    private static final InternalService INSTANCE = new InternalService();
+  private static class ClientRPCServiceHolder {
+    private static final ClientRPCService INSTANCE = new ClientRPCService();
 
-    private InternalServiceHolder() {}
+    private ClientRPCServiceHolder() {}
   }
 
-  public static InternalService getInstance() {
-    return InternalService.InternalServiceHolder.INSTANCE;
+  public static ClientRPCService getInstance() {
+    return ClientRPCServiceHolder.INSTANCE;
   }
 }
