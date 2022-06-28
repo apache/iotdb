@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
@@ -116,6 +117,8 @@ public interface IManager {
    * @return DataNodesInfoDataSet
    */
   DataSet getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq);
+
+  TClusterNodeInfos getAllClusterNodeInfos();
 
   TSStatus setTTL(SetTTLReq configRequest);
 

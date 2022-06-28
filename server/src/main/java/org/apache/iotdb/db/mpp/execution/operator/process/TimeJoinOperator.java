@@ -31,9 +31,11 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.util.concurrent.Futures.successfulAsList;
 
 public class TimeJoinOperator implements ProcessOperator {
 
@@ -109,16 +111,17 @@ public class TimeJoinOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
+    List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && empty(i)) {
-        ListenableFuture<Void> blocked = children.get(i).isBlocked();
+        ListenableFuture<?> blocked = children.get(i).isBlocked();
         if (!blocked.isDone()) {
-          return blocked;
+          listenableFutures.add(blocked);
         }
       }
     }
-    return NOT_BLOCKED;
+    return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
   }
 
   @Override

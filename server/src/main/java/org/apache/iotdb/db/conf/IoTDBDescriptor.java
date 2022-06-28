@@ -476,6 +476,16 @@ public class IoTDBDescriptor {
         conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
       }
 
+      conf.setMaxAllowedConcurrentQueries(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_allowed_concurrent_queries",
+                  Integer.toString(conf.getConcurrentQueryThread()))));
+
+      if (conf.getMaxAllowedConcurrentQueries() <= 0) {
+        conf.setMaxAllowedConcurrentQueries(1000);
+      }
+
       conf.setConcurrentSubRawQueryThread(
           Integer.parseInt(
               properties.getProperty(
@@ -1712,9 +1722,6 @@ public class IoTDBDescriptor {
   // These configurations are received from config node when registering
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
-    conf.setDataRegionConsensusProtocolClass(globalConfig.getDataRegionConsensusProtocolClass());
-    conf.setSchemaRegionConsensusProtocolClass(
-        globalConfig.getSchemaRegionConsensusProtocolClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
   }

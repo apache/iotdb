@@ -50,7 +50,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     if (currentIndex < inputOperatorsCount) {
       return children.get(currentIndex).isBlocked();
     } else {

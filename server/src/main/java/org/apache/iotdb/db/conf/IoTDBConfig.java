@@ -296,6 +296,9 @@ public class IoTDBConfig {
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int concurrentQueryThread = 16;
 
+  /** How many queries can be concurrently executed. When <= 0, use 1000. */
+  private int maxAllowedConcurrentQueries = 1000;
+
   /**
    * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
    */
@@ -872,10 +875,10 @@ public class IoTDBConfig {
   private int mppDataExchangePort = 8777;
 
   /** Core pool size of mpp data exchange. */
-  private int mppDataExchangeCorePoolSize = 1;
+  private int mppDataExchangeCorePoolSize = 10;
 
   /** Max pool size of mpp data exchange. */
-  private int mppDataExchangeMaxPoolSize = 5;
+  private int mppDataExchangeMaxPoolSize = 10;
 
   /** Thread keep alive time in ms of mpp data exchange. */
   private int mppDataExchangeKeepAliveTimeInMs = 1000;
@@ -896,7 +899,7 @@ public class IoTDBConfig {
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
-  private int partitionCacheSize = 100000;
+  private int partitionCacheSize = 0;
 
   /** Cache size of user and role */
   private int authorCacheSize = 100;
@@ -1322,6 +1325,14 @@ public class IoTDBConfig {
 
   public void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getMaxAllowedConcurrentQueries() {
+    return maxAllowedConcurrentQueries;
+  }
+
+  public void setMaxAllowedConcurrentQueries(int maxAllowedConcurrentQueries) {
+    this.maxAllowedConcurrentQueries = maxAllowedConcurrentQueries;
   }
 
   public int getConcurrentSubRawQueryThread() {

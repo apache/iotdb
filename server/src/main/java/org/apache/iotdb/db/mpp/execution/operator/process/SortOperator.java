@@ -31,7 +31,7 @@ public class SortOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return ProcessOperator.super.isBlocked();
   }
 

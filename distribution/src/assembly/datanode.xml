@@ -20,7 +20,7 @@
 
 -->
 <assembly>
-    <id>server-bin</id>
+    <id>datanode-bin</id>
     <formats>
         <format>dir</format>
         <format>zip</format>
