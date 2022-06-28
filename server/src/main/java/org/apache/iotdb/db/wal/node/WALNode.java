@@ -238,7 +238,7 @@ public class WALNode implements IWALNode {
         }
       }
 
-      logger.debug(
+      logger.info(
           "Start deleting outdated wal files for wal node-{}, the first valid version id is {}, and the safely deleted search index is {}.",
           identifier,
           firstValidVersionId,

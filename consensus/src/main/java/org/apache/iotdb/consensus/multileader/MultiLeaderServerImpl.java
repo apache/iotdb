@@ -104,6 +104,10 @@ public class MultiLeaderServerImpl {
     synchronized (stateMachine) {
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
+      logger.info(
+          "index after build: safeIndex: {}, searchIndex: {}",
+          indexedConsensusRequest.getSafelyDeletedSearchIndex(),
+          indexedConsensusRequest.getSearchIndex());
       TSStatus result = stateMachine.write(indexedConsensusRequest);
       logDispatcher.offer(indexedConsensusRequest);
       return result;
