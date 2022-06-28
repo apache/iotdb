@@ -88,6 +88,7 @@ public class IoTDBSyntaxConventionStringLiteralIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("CREATE STORAGE GROUP root.sg1.d1 ");
       statement.execute("CREATE TIMESERIES root.sg1.d1.s1 TEXT");
       for (int i = 0; i < insertData.length; i++) {
         String insertSql =
