@@ -69,7 +69,7 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     } catch (BatchProcessException e) {
       LOGGER.warn(
-          "Executing a InsertTabletNode failed. device:{}, startTime: {}, Measurement:{}, Failing Status:{}",
+          "Batch failure in executing a InsertTabletNode. device: {}, startTime: {}, measurements: {}, failing status: {}",
           node.getDevicePath(),
           node.getTimes()[0],
           node.getMeasurements(),
@@ -84,11 +84,12 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insert(node);
       return StatusUtils.OK;
     } catch (BatchProcessException e) {
-      LOGGER.warn("Executing a InsertRowsNode failed");
+      LOGGER.warn("Batch failure in executing a InsertRowsNode.");
+      // for each error
       for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
         InsertRowNode insertRowNode = node.getInsertRowNodeList().get(failedEntry.getKey());
         LOGGER.warn(
-            "Insert row failed. device: {}, time:{}, measurement:{}, TSStatus:{}",
+            "Insert row failed. device: {}, time: {}, measurements: {}, failing status: {}",
             insertRowNode.getDevicePath(),
             insertRowNode.getTime(),
             insertRowNode.getMeasurements(),
@@ -104,12 +105,12 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insertTablets(node);
       return StatusUtils.OK;
     } catch (BatchProcessException e) {
-      LOGGER.warn("Executing a InsertMultiTablets failed");
+      LOGGER.warn("Batch failure in executing a InsertMultiTabletsNode.");
       for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
         InsertTabletNode insertTabletNode =
             node.getInsertTabletNodeList().get(failedEntry.getKey());
         LOGGER.warn(
-            "Insert tablet failed. device: {}, startTime:{}, measurement:{}, TSStatus:{}",
+            "Insert tablet failed. device: {}, startTime: {}, measurements: {}, failing status: {}",
             insertTabletNode.getDevicePath(),
             insertTabletNode.getTimes()[0],
             insertTabletNode.getMeasurements(),
@@ -129,11 +130,11 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     } catch (BatchProcessException e) {
-      LOGGER.warn("Executing a InsertRowsOfOneDeviceNode failed");
+      LOGGER.warn("Batch failure in executing a InsertRowsOfOneDeviceNode.");
       for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
         InsertRowNode insertRowNode = node.getInsertRowNodeList().get(failedEntry.getKey());
         LOGGER.warn(
-            "Insert row failed. device: {}, time:{}, measurement:{}, TSStatus:{}",
+            "Insert row failed. device: {}, time: {}, measurements: {}, failing status: {}",
             insertRowNode.getDevicePath(),
             insertRowNode.getTime(),
             insertRowNode.getMeasurements(),
