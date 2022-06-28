@@ -654,7 +654,7 @@ public class TsFilePlanRedoerTest {
       assertEquals(true, timeValuePair.getValue().getVector()[2].getBoolean());
       assertEquals((time - 5) * 100, timeValuePair.getValue().getVector()[3].getFloat(), 0.00001);
       assertEquals(null, timeValuePair.getValue().getVector()[4]);
-      ++time;
+      time++;
     }
     assertEquals(10, time);
   }
