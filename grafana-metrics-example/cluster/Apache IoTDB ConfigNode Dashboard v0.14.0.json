@@ -60,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1655363164080,
+  "iteration": 1656333428851,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -170,6 +170,19 @@
       "type": "stat"
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 40,
+      "panels": [],
+      "title": "Region",
+      "type": "row"
+    },
+    {
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -210,10 +223,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -224,7 +233,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 8
+        "y": 9
       },
       "id": 38,
       "options": {
@@ -251,7 +260,7 @@
           "refId": "A"
         }
       ],
-      "title": "Total Region on Node",
+      "title": "Total Region in Node",
       "type": "timeseries"
     },
     {
@@ -295,10 +304,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -309,7 +314,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 8
+        "y": 9
       },
       "id": 32,
       "options": {
@@ -336,7 +341,7 @@
           "refId": "A"
         }
       ],
-      "title": "Region on Node",
+      "title": "Region in Node",
       "type": "timeseries"
     },
     {
@@ -390,7 +395,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 16
+        "y": 17
       },
       "id": 35,
       "options": {
@@ -417,7 +422,7 @@
           "refId": "A"
         }
       ],
-      "title": "Region on StorageGroup",
+      "title": "Region in StorageGroup",
       "type": "timeseries"
     },
     {
@@ -461,10 +466,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -475,7 +476,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 16
+        "y": 17
       },
       "id": 37,
       "options": {
@@ -511,7 +512,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 25
       },
       "id": 16,
       "panels": [],
@@ -569,7 +570,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 25
+        "y": 26
       },
       "id": 10,
       "options": {
@@ -591,7 +592,7 @@
           },
           "exemplar": true,
           "expr": "sum(rate(jvm_gc_pause_seconds_count{instance=~\"$instance\", action=\"end of minor GC\"}[1m]))*60",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Young GC number",
           "refId": "A"
         },
@@ -603,7 +604,7 @@
           "exemplar": true,
           "expr": "sum(rate(jvm_gc_pause_seconds_count{instance=~\"$instance\", action=\"end of major GC\"}[1m]))*60",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Full GC number",
           "refId": "B"
         }
@@ -663,7 +664,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 25
+        "y": 26
       },
       "id": 8,
       "options": {
@@ -685,7 +686,7 @@
           },
           "exemplar": true,
           "expr": "sum(rate(jvm_gc_pause_seconds_sum{instance=~\"$instance\", action=\"end of minor GC\"}[1m]))*60",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "The time of young GC",
           "refId": "A"
         },
@@ -697,7 +698,7 @@
           "exemplar": true,
           "expr": "sum(rate(jvm_gc_pause_seconds_sum{instance=~\"$instance\", action=\"end of major GC\"}[1m]))*60",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "The time of full GC",
           "refId": "B"
         }
@@ -757,7 +758,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 33
+        "y": 34
       },
       "id": 6,
       "options": {
@@ -779,7 +780,7 @@
           },
           "exemplar": true,
           "expr": "sum(jvm_memory_max_bytes{instance=~\"$instance\",area=\"heap\"})",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Maximum heap memory",
           "refId": "A"
         },
@@ -791,7 +792,7 @@
           "exemplar": true,
           "expr": "sum(jvm_memory_used_bytes{instance=~\"$instance\",area=\"heap\"})",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Used heap memory",
           "refId": "B"
         },
@@ -803,7 +804,7 @@
           "exemplar": true,
           "expr": "jvm_memory_used_bytes{instance=~\"$instance\",area=\"heap\",id=\"PS Old Gen\"}",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Old area",
           "refId": "C"
         },
@@ -815,7 +816,7 @@
           "exemplar": true,
           "expr": "jvm_memory_used_bytes{instance=~\"$instance\",area=\"heap\",id=\"PS Eden Space\"}",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Eden area",
           "refId": "D"
         },
@@ -827,7 +828,7 @@
           "exemplar": true,
           "expr": "jvm_memory_used_bytes{instance=~\"$instance\",area=\"heap\",id=\"PS Survivor Space\"}",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "Survivor area",
           "refId": "E"
         }
@@ -887,7 +888,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 33
+        "y": 34
       },
       "id": 4,
       "options": {
@@ -909,7 +910,7 @@
           },
           "exemplar": true,
           "expr": "sum(jvm_buffer_memory_used_bytes{instance=~\"$instance\"})",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "off-heap memory",
           "refId": "A"
         }
@@ -968,7 +969,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 41
+        "y": 42
       },
       "id": 2,
       "options": {
@@ -990,7 +991,7 @@
           },
           "exemplar": true,
           "expr": "jvm_threads_live_threads{instance=~\"$instance\"}",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "The total number of jvm thread",
           "refId": "A"
         },
@@ -1002,7 +1003,7 @@
           "exemplar": true,
           "expr": "jvm_threads_states_threads{instance=~\"$instance\"}",
           "hide": false,
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "{{state}}",
           "refId": "B"
         }
@@ -1051,10 +1052,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
@@ -1066,7 +1063,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 41
+        "y": 42
       },
       "id": 26,
       "options": {
@@ -1088,7 +1085,7 @@
           },
           "exemplar": true,
           "expr": "avg(rate(entry_seconds_sum{}[1m])/rate(entry_seconds_count{}[1m])) by (name,instance)",
-          "interval": "1m",
+          "interval": "",
           "legendFormat": "{{instance}}-{{name}}",
           "refId": "A"
         }
@@ -1154,7 +1151,7 @@
     ]
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {
@@ -1170,6 +1167,6 @@
   "timezone": "browser",
   "title": "Apache IoTDB ConfigNode Dashboard",
   "uid": "TbEVYRw7g",
-  "version": 16,
+  "version": 19,
   "weekStart": ""
 }

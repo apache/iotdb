@@ -19,8 +19,6 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -101,7 +99,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
@@ -157,17 +154,7 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
 
   @Override
   public TClusterNodeInfos getAllClusterNodeInfos() throws TException {
-    List<TConfigNodeLocation> configNodeLocations =
-        configManager.getNodeManager().getOnlineConfigNodes();
-    List<TDataNodeLocation> dataNodeInfoLocations =
-        configManager.getNodeManager().getOnlineDataNodes(-1).stream()
-            .map(TDataNodeInfo::getLocation)
-            .collect(Collectors.toList());
-
-    return new TClusterNodeInfos(
-        new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
-        configNodeLocations,
-        dataNodeInfoLocations);
+    return configManager.getAllClusterNodeInfos();
   }
 
   @Override
@@ -473,6 +460,11 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
     showRegionResp.setStatus(dataSet.getStatus());
     showRegionResp.setRegionInfoList(dataSet.getRegionInfoList());
     return showRegionResp;
+  }
+
+  @Override
+  public long getConfigNodeHeartBeat(long timestamp) throws TException {
+    return timestamp;
   }
 
   public void handleClientExit() {}

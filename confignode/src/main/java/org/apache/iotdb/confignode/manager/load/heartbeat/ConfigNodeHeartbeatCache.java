@@ -22,22 +22,18 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 
 import java.util.LinkedList;
 
-/** HeartbeatCache caches and maintains all the heartbeat data */
-public class HeartbeatCache implements IHeartbeatStatistic {
+public class ConfigNodeHeartbeatCache implements IHeartbeatStatistic {
 
   // Cache heartbeat samples
   private static final int maximumWindowSize = 100;
   private final LinkedList<HeartbeatPackage> slidingWindow;
 
-  // For guiding queries, the higher the score the higher the load
-  private volatile float loadScore;
   // For showing cluster
   private volatile NodeStatus status;
 
-  public HeartbeatCache() {
+  public ConfigNodeHeartbeatCache() {
     this.slidingWindow = new LinkedList<>();
 
-    this.loadScore = 0;
     this.status = NodeStatus.Running;
   }
 
@@ -67,7 +63,6 @@ public class HeartbeatCache implements IHeartbeatStatistic {
     }
 
     // TODO: Optimize
-    loadScore = -lastSendTime;
     if (System.currentTimeMillis() - lastSendTime > 20_000) {
       status = NodeStatus.Unknown;
     } else {
@@ -80,7 +75,7 @@ public class HeartbeatCache implements IHeartbeatStatistic {
     // Return a copy of loadScore
     switch (status) {
       case Running:
-        return loadScore;
+        return 0;
       case Unknown:
       default:
         // The Unknown Node will get the highest loadScore

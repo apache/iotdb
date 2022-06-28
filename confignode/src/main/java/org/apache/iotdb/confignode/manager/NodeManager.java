@@ -229,6 +229,10 @@ public class NodeManager {
 
         // Execute removePeer
         if (getConsensusManager().removeConfigNodePeer(removeConfigNodeReq)) {
+          configManager
+              .getLoadManager()
+              .removeNodeHeartbeatHandCache(
+                  removeConfigNodeReq.getConfigNodeLocation().getConfigNodeId());
           return getConsensusManager().write(removeConfigNodeReq).getStatus();
         } else {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
@@ -306,6 +310,8 @@ public class NodeManager {
 
     @Override
     public void removeDataNode(TDataNodeLocation dataNodeInfo) {
+      // TODO: When removing a datanode, do the following
+      //  configManager.getLoadManager().removeNodeHeartbeatHandCache(dataNodeId);
       serverChanged();
     }
 

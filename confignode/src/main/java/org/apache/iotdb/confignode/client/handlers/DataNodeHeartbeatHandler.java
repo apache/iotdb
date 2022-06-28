@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.client.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatPackage;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
@@ -27,22 +27,23 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
+public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(HeartbeatHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeHeartbeatHandler.class);
 
-  // Update HeartbeatCache when success
+  // Update DataNodeHeartbeatCache when success
   private final TDataNodeLocation dataNodeLocation;
-  private final HeartbeatCache heartbeatCache;
+  private final DataNodeHeartbeatCache dataNodeHeartbeatCache;
 
-  public HeartbeatHandler(TDataNodeLocation dataNodeLocation, HeartbeatCache heartbeatCache) {
+  public DataNodeHeartbeatHandler(
+      TDataNodeLocation dataNodeLocation, DataNodeHeartbeatCache dataNodeHeartbeatCache) {
     this.dataNodeLocation = dataNodeLocation;
-    this.heartbeatCache = heartbeatCache;
+    this.dataNodeHeartbeatCache = dataNodeHeartbeatCache;
   }
 
   @Override
   public void onComplete(THeartbeatResp tHeartbeatResp) {
-    heartbeatCache.cacheHeartBeat(
+    dataNodeHeartbeatCache.cacheHeartBeat(
         new HeartbeatPackage(tHeartbeatResp.getHeartbeatTimestamp(), System.currentTimeMillis()));
   }
 

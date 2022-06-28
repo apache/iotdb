@@ -54,7 +54,7 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public ListenableFuture<Void> isFull() {
+  public ListenableFuture<?> isFull() {
     return NOT_BLOCKED;
   }
 
