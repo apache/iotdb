@@ -872,10 +872,10 @@ public class IoTDBConfig {
   private int mppDataExchangePort = 8777;
 
   /** Core pool size of mpp data exchange. */
-  private int mppDataExchangeCorePoolSize = 1;
+  private int mppDataExchangeCorePoolSize = 10;
 
   /** Max pool size of mpp data exchange. */
-  private int mppDataExchangeMaxPoolSize = 5;
+  private int mppDataExchangeMaxPoolSize = 10;
 
   /** Thread keep alive time in ms of mpp data exchange. */
   private int mppDataExchangeKeepAliveTimeInMs = 1000;
