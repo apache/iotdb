@@ -804,10 +804,10 @@ public class WALNode implements IWALNode {
             nextSearchIndex,
             targetIndex,
             targetIndex);
-        searchedFilesVersionId = -1;
-        insertNodes.clear();
-        itr = null;
       }
+      searchedFilesVersionId = -1;
+      insertNodes.clear();
+      itr = null;
       nextSearchIndex = targetIndex;
       this.filesToSearch = null;
       this.currentFileIndex = -1;
