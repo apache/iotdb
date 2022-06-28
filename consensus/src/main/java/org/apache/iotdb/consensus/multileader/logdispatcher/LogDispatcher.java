@@ -295,8 +295,12 @@ public class LogDispatcher {
         long currentIndex, long maxIndex, List<TLogBatch> logBatches) {
       logger.info(
           String.format(
-              "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d",
-              peer.getGroupId().getId(), peer.getEndpoint().ip, currentIndex, maxIndex));
+              "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d, iteratorIndex: %d",
+              peer.getGroupId().getId(),
+              peer.getEndpoint().ip,
+              currentIndex,
+              maxIndex,
+              iteratorIndex));
       long startTime = System.nanoTime();
       int count = 0;
       try {
