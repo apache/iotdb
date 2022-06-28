@@ -23,6 +23,7 @@ package org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -42,6 +43,91 @@ public abstract class TernaryTransformer extends Transformer {
   protected final boolean isThirdPointReaderConstant;
 
   protected final boolean isCurrentConstant;
+
+  @Override
+  protected YieldableState yieldValue() throws QueryProcessException, IOException {
+    final YieldableState firstYieldableState = firstPointReader.yield();
+    final YieldableState secondYieldableState = secondPointReader.yield();
+    final YieldableState thirdYieldableState = thirdPointReader.yield();
+
+    if (YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(firstYieldableState)
+        || YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(secondYieldableState)
+        || YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(thirdYieldableState)) {
+      return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+    }
+
+    final YieldableState timeYieldState = yieldTime();
+    if (!YieldableState.YIELDABLE.equals(timeYieldState)) {
+      return timeYieldState;
+    }
+
+    if (firstPointReader.isCurrentNull()
+        || secondPointReader.isCurrentNull()
+        || thirdPointReader.isCurrentNull()) {
+      currentNull = true;
+    } else {
+      transformAndCache();
+    }
+
+    firstPointReader.readyForNext();
+    secondPointReader.readyForNext();
+    thirdPointReader.readyForNext();
+    return YieldableState.YIELDABLE;
+  }
+
+  private YieldableState yieldTime() throws IOException, QueryProcessException {
+    if (isCurrentConstant) {
+      return YieldableState.YIELDABLE;
+    }
+
+    long firstTime = isFirstPointReaderConstant ? Long.MIN_VALUE : firstPointReader.currentTime();
+    long secondTime =
+        isSecondPointReaderConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
+    long thirdTime = isThirdPointReaderConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
+    // Long.MIN_VALUE is used to determine whether  isFirstConstant && isSecondConstant &&
+    // isThirdConstant = true
+    while (firstTime != secondTime || firstTime != thirdTime) { // the logic is similar to MergeSort
+      if (firstTime < secondTime) {
+        if (isFirstPointReaderConstant) {
+          firstTime = secondTime;
+        } else {
+          firstPointReader.readyForNext();
+          final YieldableState firstYieldableState = firstPointReader.yield();
+          if (!YieldableState.YIELDABLE.equals(firstYieldableState)) {
+            return firstYieldableState;
+          }
+          firstTime = firstPointReader.currentTime();
+        }
+      } else if (secondTime < thirdTime) {
+        if (isSecondPointReaderConstant) {
+          secondTime = thirdTime;
+        } else {
+          secondPointReader.readyForNext();
+          final YieldableState secondYieldableState = secondPointReader.yield();
+          if (!YieldableState.YIELDABLE.equals(secondYieldableState)) {
+            return secondYieldableState;
+          }
+          secondTime = secondPointReader.currentTime();
+        }
+      } else {
+        if (isThirdPointReaderConstant) {
+          thirdTime = firstTime;
+        } else {
+          thirdPointReader.readyForNext();
+          final YieldableState thirdYieldableState = thirdPointReader.yield();
+          if (!YieldableState.YIELDABLE.equals(thirdYieldableState)) {
+            return thirdYieldableState;
+          }
+          thirdTime = secondPointReader.currentTime();
+        }
+      }
+    }
+
+    if (firstTime != Long.MIN_VALUE) {
+      cachedTime = firstTime;
+    }
+    return YieldableState.YIELDABLE;
+  }
 
   protected TernaryTransformer(
       LayerPointReader firstPointReader,
@@ -98,7 +184,7 @@ public abstract class TernaryTransformer extends Transformer {
 
   /**
    * finds the smallest, unconsumed, same timestamp that exists in {@code firstPointReader}, {@code
-   * rightPointReader} and {@code thirdPointReader}and then caches the timestamp in {@code
+   * secondPointReader} and {@code thirdPointReader}and then caches the timestamp in {@code
    * cachedTime}.
    *
    * @return true if there has a timestamp that meets the requirements

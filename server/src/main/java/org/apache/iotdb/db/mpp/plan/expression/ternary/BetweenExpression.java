@@ -30,8 +30,9 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary.TernaryTra
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.List;
 
 public class BetweenExpression extends TernaryExpression {
   private final boolean isNotBetween;
@@ -58,25 +59,6 @@ public class BetweenExpression extends TernaryExpression {
   public BetweenExpression(ByteBuffer byteBuffer) {
     super(byteBuffer);
     this.isNotBetween = ReadWriteIOUtils.readBool(byteBuffer);
-  }
-
-  private void reconstruct(
-      List<Expression> firstExpressions,
-      List<Expression> secondExpressions,
-      List<Expression> thirdExpressions,
-      List<Expression> resultExpressions) {
-    for (Expression fe : firstExpressions) {
-      for (Expression se : secondExpressions)
-        for (Expression te : thirdExpressions) {
-          switch (operator()) {
-            case "between":
-              resultExpressions.add(new BetweenExpression(fe, se, te, isNotBetween));
-              break;
-            default:
-              throw new UnsupportedOperationException();
-          }
-        }
-    }
   }
 
   @Override
@@ -109,6 +91,12 @@ public class BetweenExpression extends TernaryExpression {
   protected void serialize(ByteBuffer byteBuffer) {
     super.serialize(byteBuffer);
     ReadWriteIOUtils.write(isNotBetween, byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    ReadWriteIOUtils.write(isNotBetween, stream);
   }
 
   public Expression getExpression() {
