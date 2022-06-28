@@ -65,10 +65,6 @@ ALTER
     : A L T E R
     ;
 
-AND
-     : A N D
-     ;
-
 ANY
     : A N Y
     ;
