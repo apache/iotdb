@@ -145,6 +145,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionResp(schemaPartitionResp);
           partitionCache.updateSchemaPartitionCache(devicePaths, schemaPartition);
+        } else {
+          throw new RuntimeException(
+              new IoTDBException(
+                  schemaPartitionResp.getStatus().getMessage(),
+                  schemaPartitionResp.getStatus().getCode()));
         }
       }
       return schemaPartition;
