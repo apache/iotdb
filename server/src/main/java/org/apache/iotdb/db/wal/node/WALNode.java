@@ -541,6 +541,15 @@ public class WALNode implements IWALNode {
           break;
         }
       }
+      // cannot find any in this file
+      if (WALFileUtils.parseStatusCode(currentFiles[i].getName())
+          == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
+        if (!tmpNodes.isEmpty()) {
+          return mergeInsertNodes(tmpNodes);
+        } else {
+          continue;
+        }
+      }
 
       try (WALReader walReader = new WALReader(currentFiles[i])) {
         while (walReader.hasNext()) {
@@ -590,6 +599,15 @@ public class WALNode implements IWALNode {
           result.add(mergeInsertNodes(tmpNodes));
         } else {
           break;
+        }
+      }
+      // cannot find any in this file
+      if (WALFileUtils.parseStatusCode(currentFiles[i].getName())
+          == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
+        if (!tmpNodes.isEmpty()) {
+          result.add(mergeInsertNodes(tmpNodes));
+        } else {
+          continue;
         }
       }
 
@@ -672,12 +690,24 @@ public class WALNode implements IWALNode {
         return true;
       }
 
+      // clear outdated iterator
       insertNodes.clear();
       itr = null;
 
+      // update files to search
       if (needUpdatingFilesToSearch || filesToSearch == null) {
         updateFilesToSearch();
         if (needUpdatingFilesToSearch) {
+          return false;
+        }
+      }
+
+      // find file contains search index
+      while (WALFileUtils.parseStatusCode(filesToSearch[currentFileIndex].getName())
+          == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
+        currentFileIndex++;
+        if (currentFileIndex >= filesToSearch.length) {
+          needUpdatingFilesToSearch = true;
           return false;
         }
       }
@@ -725,6 +755,14 @@ public class WALNode implements IWALNode {
       } else {
         int fileIndex = currentFileIndex + 1;
         while (!tmpNodes.isEmpty() && fileIndex < filesToSearch.length) {
+          // cannot find any in this file, find all slices of last insert plan
+          if (WALFileUtils.parseStatusCode(filesToSearch[fileIndex].getName())
+              == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
+            insertNodes.add(mergeInsertNodes(tmpNodes));
+            tmpNodes = Collections.emptyList();
+            break;
+          }
+
           try (WALReader walReader = new WALReader(filesToSearch[fileIndex])) {
             while (walReader.hasNext()) {
               WALEntry walEntry = walReader.next();
