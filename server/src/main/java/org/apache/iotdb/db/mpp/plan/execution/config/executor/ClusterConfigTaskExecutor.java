@@ -88,6 +88,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> setStorageGroup(
       SetStorageGroupStatement setStorageGroupStatement) {
+    LOGGER.info("set storage group task. {}", setStorageGroupStatement.getStorageGroupPath());
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
     TStorageGroupSchema storageGroupSchema =
@@ -107,6 +108,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
+      LOGGER.info(
+          "set storage group task. {}. Status: {}",
+          setStorageGroupStatement.getStorageGroupPath(),
+          tsStatus.code);
     } catch (TException | IOException e) {
       future.setException(e);
     }
