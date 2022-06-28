@@ -212,6 +212,7 @@ public class LogDispatcher {
       List<TLogBatch> logBatches = new ArrayList<>();
       long startIndex = syncStatus.getNextSendingIndex();
       long maxIndex = impl.getController().getCurrentIndex() + 1;
+      logger.info("get batch. startIndex: {}, maxIndex: {}", startIndex, maxIndex);
       long endIndex;
       if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
         // Use drainTo instead of poll to reduce lock overhead
@@ -292,6 +293,10 @@ public class LogDispatcher {
 
     private long constructBatchFromWAL(
         long currentIndex, long maxIndex, List<TLogBatch> logBatches) {
+      logger.info(
+          String.format(
+              "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d",
+              peer.getGroupId().getId(), peer.getEndpoint().ip, currentIndex, maxIndex));
       long startTime = System.nanoTime();
       int count = 0;
       try {
@@ -320,13 +325,8 @@ public class LogDispatcher {
         double timeConsumed = (System.nanoTime() * 1.0 - startTime) / 1000_000;
         logger.info(
             String.format(
-                "DataRegion[%s]->%s: construct batch time consumed: %.3f. BatchCount: %d, currentIndex: %d, maxIndex: %d",
-                peer.getGroupId().getId(),
-                peer.getEndpoint().ip,
-                timeConsumed,
-                count,
-                currentIndex,
-                maxIndex));
+                "DataRegion[%s]->%s: construct batch time consumed: %.3f. BatchCount: %d",
+                peer.getGroupId().getId(), peer.getEndpoint().ip, timeConsumed, count));
       }
     }
 
