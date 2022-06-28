@@ -570,6 +570,42 @@ public class IoTDBNestedQueryIT {
     }
   }
 
+  @Test
+  public void testBetweenExpression() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int start = 1, end = 5;
+      String query = "SELECT * FROM root.vehicle.d1 WHERE s1 BETWEEN " + start + " AND " + end;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+
+      query =
+          "SELECT * FROM root.vehicle.d1 WHERE s1 NOT BETWEEN " // test not between
+              + (end + 1)
+              + " AND "
+              + ITERATION_TIMES;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
   // todo: remove ignore after iotdb-3349 is merged
   @Ignore
   @Test

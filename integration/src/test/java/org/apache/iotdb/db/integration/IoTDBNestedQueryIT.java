@@ -603,8 +603,10 @@ public class IoTDBNestedQueryIT {
       try (ResultSet rs = statement.executeQuery(query)) {
         for (int i = start; i <= end; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(i, rs.getLong(1));
-          Assert.assertEquals(i, rs.getInt(2));
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
         }
       }
 
@@ -616,8 +618,10 @@ public class IoTDBNestedQueryIT {
       try (ResultSet rs = statement.executeQuery(query)) {
         for (int i = start; i <= end; i++) {
           Assert.assertTrue(rs.next());
-          Assert.assertEquals(i, rs.getLong(1));
-          Assert.assertEquals(i, rs.getInt(2));
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
         }
       }
     } catch (SQLException e) {
