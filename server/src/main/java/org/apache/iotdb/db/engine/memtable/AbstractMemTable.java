@@ -56,7 +56,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public abstract class AbstractMemTable implements IMemTable {
   private static final Logger logger = LoggerFactory.getLogger(AbstractMemTable.class);
@@ -127,7 +129,7 @@ public abstract class AbstractMemTable implements IMemTable {
     IWritableMemChunkGroup memChunkGroup =
         memTableMap.computeIfAbsent(deviceId, k -> new WritableMemChunkGroup());
     for (IMeasurementSchema schema : schemaList) {
-      if (!memChunkGroup.contains(schema.getMeasurementId())) {
+      if (schema != null && !memChunkGroup.contains(schema.getMeasurementId())) {
         seriesNumber++;
         totalPointsNumThreshold += avgSeriesPointNumThreshold;
       }
@@ -143,10 +145,11 @@ public abstract class AbstractMemTable implements IMemTable {
             k -> {
               seriesNumber += schemaList.size();
               totalPointsNumThreshold += ((long) avgSeriesPointNumThreshold) * schemaList.size();
-              return new AlignedWritableMemChunkGroup(schemaList);
+              return new AlignedWritableMemChunkGroup(
+                  schemaList.stream().filter(Objects::nonNull).collect(Collectors.toList()));
             });
     for (IMeasurementSchema schema : schemaList) {
-      if (!memChunkGroup.contains(schema.getMeasurementId())) {
+      if (schema != null && !memChunkGroup.contains(schema.getMeasurementId())) {
         seriesNumber++;
         totalPointsNumThreshold += avgSeriesPointNumThreshold;
       }
@@ -480,10 +483,10 @@ public abstract class AbstractMemTable implements IMemTable {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
-        continue;
+        schemaList.add(null);
+      } else {
+        schemaList.add(insertTabletPlan.getMeasurementMNodes()[i].getSchema());
       }
-      IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-      schemaList.add(schema);
     }
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(insertTabletPlan.getDeviceID(), schemaList);
@@ -506,10 +509,10 @@ public abstract class AbstractMemTable implements IMemTable {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
-        continue;
+        schemaList.add(null);
+      } else {
+        schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
       }
-      IMeasurementSchema schema = insertTabletNode.getMeasurementSchemas()[i];
-      schemaList.add(schema);
     }
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(insertTabletNode.getDeviceID(), schemaList);
@@ -532,10 +535,10 @@ public abstract class AbstractMemTable implements IMemTable {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
-        continue;
+        schemaList.add(null);
+      } else {
+        schemaList.add(insertTabletPlan.getMeasurementMNodes()[i].getSchema());
       }
-      IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-      schemaList.add(schema);
     }
     if (schemaList.isEmpty()) {
       return;
@@ -561,10 +564,10 @@ public abstract class AbstractMemTable implements IMemTable {
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletNode.getMeasurementSchemas().length; i++) {
       if (insertTabletNode.getColumns()[i] == null) {
-        continue;
+        schemaList.add(null);
+      } else {
+        schemaList.add(insertTabletNode.getMeasurementSchemas()[i]);
       }
-      IMeasurementSchema schema = insertTabletNode.getMeasurementSchemas()[i];
-      schemaList.add(schema);
     }
     if (schemaList.isEmpty()) {
       return;
