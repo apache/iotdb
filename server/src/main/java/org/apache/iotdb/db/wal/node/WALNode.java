@@ -780,6 +780,7 @@ public class WALNode implements IWALNode {
     public void waitForNextReady() throws InterruptedException {
       while (!hasNext()) {
         buffer.waitForFlush();
+        logger.info("awake from waiting. nextSearchIndex: {}", nextSearchIndex);
       }
     }
 
