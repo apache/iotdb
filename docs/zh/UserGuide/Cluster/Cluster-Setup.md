@@ -89,7 +89,7 @@ mvn clean package -pl distribution -am -DskipTests
 | rpc\_address    | ConfigNode 在集群内部通讯使用的地址          |
 | rpc\_port    | ConfigNode 在集群内部通讯使用的端口           |
 | consensus\_port    | ConfigNode 副本组共识协议通信使用的端口         |
-| config\_nodes    | 种子 ConfigNode 地址，第一个 ConfigNode 配置自己的 address:port        |
+| target\_config\_nodes    | 种子 ConfigNode 地址，第一个 ConfigNode 配置自己的 address:port        |
 | data\_replication\_factor  | 数据副本数，DataNode 数量不应少于此数目        |
 | data\_region\_consensus\_protocol\_class |  数据副本组的共识协议 |
 | schema\_replication\_factor  | 元数据副本数，DataNode 数量不应少于此数目       |
@@ -116,6 +116,6 @@ iotdb-datanode.properties 中的重要配置如下
 | mpp\_data\_exchange\_port    | DataNode 在集群内部接收数据流使用的端口           |
 | data\_region\_consensus\_port    | DataNode 的数据副本间共识协议通信的端口           |
 | schema\_region\_consensus\_port    | DataNode 的元数据副本间共识协议通信的端口           |
-| config\_nodes    | 集群中正在运行的 ConfigNode 地址       |
+| target\_config\_nodes    | 集群中正在运行的 ConfigNode 地址       |
 
 具体参考 [DataNode配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/DataNode-Config-Manual.html)
