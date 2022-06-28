@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
@@ -591,6 +592,11 @@ public class ConfigManager implements IManager {
       resp.setStatus(status);
       return resp;
     }
+  }
+
+  @Override
+  public DataSet getConfigNodeConfiguration(GetConfigNodeConfigurationReq req) {
+    return nodeManager.getConfigNodeConfiguration(req);
   }
 
   @Override

@@ -22,16 +22,22 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.response.ConfigNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -262,6 +268,53 @@ public class NodeInfo implements SnapshotProcessor {
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  /**
+   * Get target ConfigNode configuration
+   *
+   * @param req GetConfigNodeConfigurationReq
+   * @return GET_CONFIGNODE_CONFIGURATION_FAILED if confignode-system.properties not exist
+   */
+  public ConfigNodeConfigurationResp getConfigNodeConfiguration(GetConfigNodeConfigurationReq req) {
+    ConfigNodeConfigurationResp result = new ConfigNodeConfigurationResp();
+    Properties systemProperties = new Properties();
+    configNodeInfoReadWriteLock.readLock().lock();
+
+    if (!systemPropertiesFile.exists()) {
+      LOGGER.info("The system properties file is not exists.");
+      result.setStatus(new TSStatus(TSStatusCode.SYSTEM_PROPERTIES_FILE_NOT_EXIST.getStatusCode()));
+      return result;
+    }
+
+    try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
+      systemProperties.load(inputStream);
+      result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      result.setConfigNodes(
+          NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list")));
+
+      ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+
+      TGlobalConfig globalConfig = new TGlobalConfig();
+      globalConfig.setDataRegionConsensusProtocolClass(
+          systemProperties.getProperty("data_region_consensus_protocol_class"));
+      globalConfig.setSchemaRegionConsensusProtocolClass(
+          systemProperties.getProperty("schema_region_consensus_protocol_class"));
+      globalConfig.setSeriesPartitionSlotNum(
+          Integer.parseInt(systemProperties.getProperty("series_partition_slot_num")));
+      globalConfig.setSeriesPartitionExecutorClass(
+          systemProperties.getProperty("series_partition_executor_class"));
+      globalConfig.setTimePartitionInterval(conf.getTimePartitionInterval());
+      globalConfig.setDefaultTTL(CommonDescriptor.getInstance().getConfig().getDefaultTTL());
+      globalConfig.setSchemaReplicationFactor(conf.getSchemaReplicationFactor());
+      globalConfig.setDataReplicationFactor(conf.getDataReplicationFactor());
+      result.setGlobalConfig(globalConfig);
+    } catch (IOException | BadNodeUrlException e) {
+      LOGGER.error("Load system properties file failed.", e);
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
     }
     return result;
   }

@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -60,6 +61,26 @@ public class SyncConfigNodeClientPool {
     } else {
       configNodeLeader = null;
     }
+  }
+
+  /** Get target ConfigNode configuration */
+  public TConfigNodeConfigurationResp getConfigNodeConfiguration(
+      TConfigNodeLocation configNodeLocation) {
+    // TODO: Unified retry logic
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncConfigNodeIServiceClient client =
+          clientManager.borrowClient(configNodeLocation.getInternalEndPoint())) {
+        return client.getConfigNodeConfiguration(configNodeLocation);
+      } catch (Exception e) {
+        LOGGER.warn("Get ConfigNode configuration failed, retrying...", e);
+        doRetryWait(retry);
+      }
+    }
+    LOGGER.error("Get ConfigNode configuration failed");
+    return new TConfigNodeConfigurationResp()
+        .setStatus(
+            new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+                .setMessage("All retry failed."));
   }
 
   /** Only use registerConfigNode when the ConfigNode is first startup. */

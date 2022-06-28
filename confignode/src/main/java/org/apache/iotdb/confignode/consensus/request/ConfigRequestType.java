@@ -59,6 +59,7 @@ public enum ConfigRequestType {
   ListRolePrivilege,
   ListUserRoles,
   ListRoleUsers,
+  GetConfigNodeConfiguration,
   ApplyConfigNode,
   RemoveConfigNode,
   CreateFunction,

@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
+import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
@@ -41,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 public class ConfigNode implements ConfigNodeMBean {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNode.class);
@@ -119,6 +121,8 @@ public class ConfigNode implements ConfigNodeMBean {
   public void active() {
     try {
       setUp();
+      // Check key parameters between ConfigNodes
+      checkSystemConfig();
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
@@ -131,6 +135,41 @@ public class ConfigNode implements ConfigNodeMBean {
 
     LOGGER.info(
         "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+  }
+
+  private void checkSystemConfig() {
+    new Thread(
+            () -> {
+              if (!ConfigNodeStartupCheck.getInstance().isCheckAllConfigNodeParameter()) {
+                return;
+              }
+              try {
+                waitLeader();
+                if (!ConfigNodeStartupCheck.getInstance().checkConfigurations()) {
+                  stop();
+                  LOGGER.info("Check configurations failed!");
+                }
+              } catch (IOException | InterruptedException e) {
+                LOGGER.error("Meet error when stop ConfigNode!", e);
+              }
+            })
+        .start();
+  }
+
+  /** Waiting for the leader to be elected */
+  private void waitLeader() throws InterruptedException {
+    while (true) {
+      try {
+        TConfigNodeLocation leader = configManager.getConsensusManager().getLeader();
+        if (leader != null) {
+          LOGGER.info("leader is: {}", leader);
+          return;
+        }
+      } catch (Exception e) {
+        LOGGER.error("No leader has been elected, please wait!", e);
+      }
+      TimeUnit.MILLISECONDS.sleep(2000);
+    }
   }
 
   public void deactivate() throws IOException {

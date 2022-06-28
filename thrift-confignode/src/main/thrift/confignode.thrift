@@ -40,6 +40,9 @@ struct TGlobalConfig {
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
+  6: required i64 defaultTTL
+  7: required i32 schemaReplicationFactor
+  8: required i32 dataReplicationFactor
 }
 
 struct TDataNodeRegisterResp {
@@ -211,6 +214,12 @@ struct TConfigNodeRegisterResp {
   3: optional list<common.TConfigNodeLocation> configNodeList
 }
 
+struct TConfigNodeConfigurationResp {
+    1: required common.TSStatus status
+    2: required list<common.TConfigNodeLocation> configNodes
+    3: required TGlobalConfig globalConfig
+}
+
 // Show cluster
 struct TClusterNodeInfos {
   1: required common.TSStatus status
@@ -300,6 +309,8 @@ service ConfigIService {
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   /* ConfigNode */
+
+  TConfigNodeConfigurationResp getConfigNodeConfiguration(common.TConfigNodeLocation configNodeLocation)
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 

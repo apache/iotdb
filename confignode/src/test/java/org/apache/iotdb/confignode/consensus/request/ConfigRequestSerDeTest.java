@@ -34,6 +34,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
@@ -483,6 +484,17 @@ public class ConfigRequestSerDeTest {
     // list all user of role
     req0 = new AuthorReq(ConfigRequestType.ListRoleUsers, "", "", "", "", new HashSet<>(), "");
     req1 = (AuthorReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0, req1);
+  }
+
+  @Test
+  public void getConfigNodeConfigurationReqTest() throws IOException {
+    GetConfigNodeConfigurationReq req0 =
+        new GetConfigNodeConfigurationReq(
+            new TConfigNodeLocation(
+                0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
+    GetConfigNodeConfigurationReq req1 =
+        (GetConfigNodeConfigurationReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 

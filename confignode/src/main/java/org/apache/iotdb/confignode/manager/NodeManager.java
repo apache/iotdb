@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -160,6 +161,16 @@ public class NodeManager {
    */
   public List<TDataNodeInfo> getOnlineDataNodes(int dataNodeId) {
     return nodeInfo.getOnlineDataNodes(dataNodeId);
+  }
+
+  /**
+   * Get ConfigNode Configuration
+   *
+   * @param req GetConfigNodeConfigurationReq
+   * @retu ConfigNode key parameters
+   */
+  public DataSet getConfigNodeConfiguration(GetConfigNodeConfigurationReq req) {
+    return getConsensusManager().read(req).getDataset();
   }
 
   /**

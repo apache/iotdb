@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
@@ -596,6 +597,23 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
         TPermissionInfoResp status = client.checkUserPrivileges(req);
         if (!updateConfigNodeLeader(status.getStatus())) {
           return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TConfigNodeConfigurationResp getConfigNodeConfiguration(
+      TConfigNodeLocation configNodeLocation) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TConfigNodeConfigurationResp resp = client.getConfigNodeConfiguration(configNodeLocation);
+        if (!updateConfigNodeLeader(resp.status)) {
+          return resp;
         }
       } catch (TException e) {
         configLeader = null;

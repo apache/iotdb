@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -41,7 +42,10 @@ public class ConfigNodeConfig {
   private int consensusPort = 22278;
 
   /** Used for connecting to the ConfigNodeGroup */
-  private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
+  private List<TConfigNodeLocation> targetConfigNodeList =
+      Arrays.asList(
+          new TConfigNodeLocation(
+              0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
 
   /** Mark if the ConfigNode needs to apply */
   private boolean needApply = false;
@@ -199,12 +203,12 @@ public class ConfigNodeConfig {
     this.needApply = needApply;
   }
 
-  public TEndPoint getTargetConfigNode() {
-    return targetConfigNode;
+  public List<TConfigNodeLocation> getTargetConfigNodeList() {
+    return targetConfigNodeList;
   }
 
-  public void setTargetConfigNode(TEndPoint targetConfigNode) {
-    this.targetConfigNode = targetConfigNode;
+  public void setTargetConfigNodeList(List<TConfigNodeLocation> targetConfigNodeList) {
+    this.targetConfigNodeList = targetConfigNodeList;
   }
 
   public int getPartitionRegionId() {

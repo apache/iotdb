@@ -115,6 +115,52 @@ public class NodeUrlUtils {
   }
 
   /**
+   * Parse TConfigNodeLocation from given TEndPointUrls example
+   * 0.0.0.0:22277:22278,0.0.0.0:22279:22280,0.0.0.0:22281:22282
+   *
+   * @param endPointUrls TEndPointUrls
+   * @return List<TConfigNodeLocation>
+   * @throws BadNodeUrlException Throw when unable to parse
+   */
+  public static List<TConfigNodeLocation> parseTConfigNodeLocationUrls(String endPointUrls)
+      throws BadNodeUrlException {
+    List<TConfigNodeLocation> tConfigNodeLocations = new ArrayList<>();
+
+    int configNodeId = 0;
+    Arrays.asList(endPointUrls.split(","))
+        .forEach(
+            e -> {
+              try {
+                tConfigNodeLocations.add(parseTConfigNodeLocation(configNodeId, e));
+              } catch (BadNodeUrlException badNodeUrlException) {
+                logger.error("Failed to parse TConfigNodeLocation", badNodeUrlException);
+              }
+            });
+
+    return tConfigNodeLocations;
+  }
+
+  /**
+   * Parse TConfigNodeLocation from given TConfigNodeUrl example 0.0.0.0:22277:22278
+   *
+   * @param configNodeUrl InternalEndPointUrl,ConsensusEndPointUrl
+   * @return TConfigNodeLocation
+   * @throws BadNodeUrlException Throw when unable to parse
+   */
+  public static TConfigNodeLocation parseTConfigNodeLocation(int configNodeId, String configNodeUrl)
+      throws BadNodeUrlException {
+    String[] split = configNodeUrl.split(":");
+    if (split.length != 3) {
+      logger.warn("Bad ConfigNode url: {}", configNodeUrl);
+      throw new BadNodeUrlException(String.format("Bad node url: %s", configNodeUrl));
+    }
+    return new TConfigNodeLocation(
+        configNodeId,
+        new TEndPoint(split[0], Integer.parseInt(split[1])),
+        new TEndPoint(split[0], Integer.parseInt(split[2])));
+  }
+
+  /**
    * Convert TConfigNodeLocation to TConfigNodeUrl
    *
    * @param configNodeLocation TConfigNodeLocation

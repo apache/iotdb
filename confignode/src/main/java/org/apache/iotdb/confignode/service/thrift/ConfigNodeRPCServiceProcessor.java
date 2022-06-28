@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
@@ -43,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationF
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.response.ConfigNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
@@ -56,6 +58,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
@@ -350,6 +353,24 @@ public class ConfigNodeRPCServiceProcessor implements ConfigIService.Iface {
   public TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req) throws TException {
     return configManager.checkUserPrivileges(
         req.getUsername(), req.getPaths(), req.getPermission());
+  }
+
+  @Override
+  public TConfigNodeConfigurationResp getConfigNodeConfiguration(
+      TConfigNodeLocation configNodeLocation) throws TException {
+    GetConfigNodeConfigurationReq getConfigurationReq =
+        new GetConfigNodeConfigurationReq(configNodeLocation);
+    ConfigNodeConfigurationResp configurationResp =
+        (ConfigNodeConfigurationResp) configManager.getConfigNodeConfiguration(getConfigurationReq);
+
+    TConfigNodeConfigurationResp resp = new TConfigNodeConfigurationResp();
+    configurationResp.convertToRPCConfigNodeConfigurationResp(resp);
+
+    // Print log to record the ConfigNode that performs the GetConfigNodeConfigurationRequest
+    LOGGER.info(
+        "Execute GetConfigNodeConfigurationReq {} with result {}", getConfigurationReq, resp);
+
+    return resp;
   }
 
   @Override

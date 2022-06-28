@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionReq;
@@ -182,6 +183,9 @@ public abstract class ConfigRequest implements IConsensusRequest {
         case RevokeRoleFromUser:
         case UpdateUser:
           req = new AuthorReq(type);
+          break;
+        case GetConfigNodeConfiguration:
+          req = new GetConfigNodeConfigurationReq();
           break;
         case ApplyConfigNode:
           req = new ApplyConfigNodeReq();

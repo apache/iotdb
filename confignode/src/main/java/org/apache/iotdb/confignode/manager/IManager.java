@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetConfigNodeConfigurationReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
@@ -212,6 +213,13 @@ public interface IManager {
 
   /** Check User Privileges */
   TPermissionInfoResp checkUserPrivileges(String username, List<String> paths, int permission);
+
+  /**
+   * Get ConfigNode Configuration
+   *
+   * @return TConfigNodeConfigrationResp
+   */
+  DataSet getConfigNodeConfiguration(GetConfigNodeConfigurationReq req);
 
   /**
    * Register ConfigNode when it is first startup
