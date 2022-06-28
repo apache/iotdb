@@ -84,6 +84,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -268,6 +269,11 @@ public class ConfigManager implements IManager {
       // remove wild
       Map<String, TStorageGroupSchema> deleteStorageSchemaMap =
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
+      if (deleteStorageSchemaMap.isEmpty()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(),
+            String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
+      }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
           new ArrayList<>(deleteStorageSchemaMap.values());
       return procedureManager.deleteStorageGroups(parsedDeleteStorageGroups);
