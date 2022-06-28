@@ -316,6 +316,89 @@ public class IoTDBSchemaTemplateIT {
     Assert.assertFalse(resultSet.next());
   }
 
+  @Test
+  public void testDeactivateSchemaTemplate() throws SQLException {
+    statement.execute("SET SCHEMA TEMPLATE t1 TO root.sg1.v1");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1.dd1");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1.dd2");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.v1.x1.dd2");
+
+    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
+    String[] expectedResult =
+        new String[] {"root.sg1.v1", "root.sg1.v1.dd1", "root.sg1.v1.dd2", "root.sg1.v1.x1.dd2"};
+    Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1.dd1");
+    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
+    expectedResult = new String[] {"root.sg1.v1", "root.sg1.v1.dd2", "root.sg1.v1.x1.dd2"};
+    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1.*");
+    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
+    expectedResult = new String[] {"root.sg1.v1", "root.sg1.v1.x1.dd2"};
+    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1.**");
+    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
+    expectedResult = new String[] {"root.sg1.v1"};
+    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+
+    statement.execute("DEACTIVATE SCHEMA TEMPLATE t1 FROM root.sg1.v1");
+    statement.execute("SHOW PATHS USING SCHEMA TEMPLATE t1");
+    expectedResult = new String[] {};
+    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
+        expectedResultSet.remove(resultSet.getString("child paths"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+
+    statement.execute("UNSET SCHEMA TEMPLATE t1 FROM root.sg1.v1");
+    statement.execute("DROP SCHEMA TEMPLATE t1");
+    statement.execute("SHOW SCHEMA TEMPLATES");
+
+    expectedResult = new String[] {"t2"};
+    expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("template name")));
+        expectedResultSet.remove(resultSet.getString("template name"));
+      }
+    }
+    Assert.assertEquals(0, expectedResultSet.size());
+  }
+
   private void prepareTemplate() throws SQLException {
     // create storage group
     statement.execute("CREATE STORAGE GROUP root.sg1");

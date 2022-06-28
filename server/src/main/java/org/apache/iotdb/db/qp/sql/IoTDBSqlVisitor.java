@@ -404,6 +404,18 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return operator;
   }
 
+  // Inverse procedure of createTimeseriesOfSchemaTemplate
+
+  @Override
+  public Operator visitDeactivateSchemaTemplate(
+      IoTDBSqlParser.DeactivateSchemaTemplateContext ctx) {
+    DeactivateTemplateOperator operator =
+        new DeactivateTemplateOperator(SQLConstant.TOK_SCHEMA_TEMPLATE_DEACTIVATE);
+    operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
+    operator.setTemplateName(parseIdentifier(ctx.templateName.getText()));
+    return operator;
+  }
+
   // Create Function
 
   @Override

@@ -518,6 +518,8 @@ service TSIService {
 
   TSStatus setUsingTemplate(1:TSSetUsingTemplateReq req);
 
+  TSStatus unsetUsingTemplate(1:i64 sessionId, 2:string templateName, 3:string prefixPath);
+
   TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
 
   TSStatus executeOperationSync(1:TSOperationSyncWriteReq req);

@@ -194,6 +194,8 @@ public abstract class Operator {
     APPEND_TEMPLATE,
     DROP_TEMPLATE,
 
-    SHOW_QUERY_RESOURCE
+    SHOW_QUERY_RESOURCE,
+
+    DEACTIVATE_TEMPLATE
   }
 }

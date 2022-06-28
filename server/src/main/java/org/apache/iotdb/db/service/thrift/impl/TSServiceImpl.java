@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
@@ -1966,8 +1967,8 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) {
+    TSQueryTemplateResp resp = new TSQueryTemplateResp();
     try {
-      TSQueryTemplateResp resp = new TSQueryTemplateResp();
       String path;
       switch (TemplateQueryType.values()[req.getQueryType()]) {
         case COUNT_MEASUREMENTS:
@@ -2005,11 +2006,11 @@ public class TSServiceImpl implements TSIService.Iface {
           break;
       }
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
-      return resp;
     } catch (MetadataException e) {
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage()));
       LOGGER.error("fail to query schema template because: " + e);
     }
-    return null;
+    return resp;
   }
 
   @Override
@@ -2054,6 +2055,31 @@ public class TSServiceImpl implements TSIService.Iface {
       TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
+    }
+  }
+
+  @Override
+  public TSStatus unsetUsingTemplate(long sessionId, String templateName, String prefixPath)
+      throws TException {
+    if (!serviceProvider.checkLogin(sessionId)) {
+      return getNotLoggedInStatus();
+    }
+
+    if (AUDIT_LOGGER.isDebugEnabled()) {
+      AUDIT_LOGGER.debug(
+          "Session-{} unset using schema template {} on {}",
+          SESSION_MANAGER.getCurrSessionId(),
+          templateName,
+          prefixPath);
+    }
+
+    try {
+      DeactivateTemplatePlan plan =
+          new DeactivateTemplatePlan(templateName, new PartialPath(prefixPath));
+      TSStatus status = serviceProvider.checkAuthority(plan, sessionId);
+      return status != null ? status : executeNonQueryPlan(plan);
+    } catch (MetadataException e) {
       return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
     }
   }

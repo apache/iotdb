@@ -2377,6 +2377,12 @@ public class Session {
     defaultSessionConnection.setUsingTemplate(request);
   }
 
+  /** Inverse of {@linkplain #createTimeseriesOfTemplateOnPath}, IMPLYING data deletion. */
+  public void deactivateTemplateOn(String templateName, String prefixPath)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.deactivateTemplate(templateName, prefixPath);
+  }
+
   public void dropSchemaTemplate(String templateName)
       throws IoTDBConnectionException, StatementExecutionException {
     TSDropSchemaTemplateReq request = getTSDropSchemaTemplateReq(templateName);

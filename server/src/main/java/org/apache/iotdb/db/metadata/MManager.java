@@ -67,6 +67,7 @@ import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
@@ -122,6 +123,7 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
@@ -523,6 +525,16 @@ public class MManager {
       case ACTIVATE_TEMPLATE:
         ActivateTemplatePlan activateTemplatePlan = (ActivateTemplatePlan) plan;
         setUsingSchemaTemplate(activateTemplatePlan);
+        break;
+      case DEACTIVATE_TEMPLATE:
+        DeactivateTemplatePlan deactivateTemplatePlan = (DeactivateTemplatePlan) plan;
+        deactivateTemplatePlan.setPaths(
+            new ArrayList<>(
+                getPathsUsingTemplateUnderPrefix(
+                    deactivateTemplatePlan.getTemplateName(),
+                    deactivateTemplatePlan.getPrefixPath().getFullPath(),
+                    false)));
+        deactivateSchemaTemplate(deactivateTemplatePlan);
         break;
       case AUTO_CREATE_DEVICE_MNODE:
         AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
@@ -2279,10 +2291,29 @@ public class MManager {
         : new HashSet<>(mtree.getPathsSetOnTemplate(templateManager.getTemplate(templateName)));
   }
 
+  /** A shortcut mainly for viewing paths using template. */
   public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
     return templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
-        ? new HashSet<>(mtree.getPathsUsingTemplate(null))
-        : new HashSet<>(mtree.getPathsUsingTemplate(templateManager.getTemplate(templateName)));
+        ? new HashSet<>(mtree.getPathsUsingTemplateUnderPrefix(null, null, true))
+            .stream().map(PartialPath::getFullPath).collect(Collectors.toSet())
+        : new HashSet<>(
+                mtree.getPathsUsingTemplateUnderPrefix(
+                    templateManager.getTemplate(templateName), null, true))
+            .stream().map(PartialPath::getFullPath).collect(Collectors.toSet());
+  }
+
+  /**
+   * Complete filter of paths using template, detail at {@link
+   * MTree#getPathsUsingTemplateUnderPrefix}
+   */
+  public Set<PartialPath> getPathsUsingTemplateUnderPrefix(
+      String templateName, String prefix, boolean prefixMatch) throws MetadataException {
+    return templateName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        ? new HashSet<>(
+            mtree.getPathsUsingTemplateUnderPrefix(null, new PartialPath(prefix), prefixMatch))
+        : new HashSet<>(
+            mtree.getPathsUsingTemplateUnderPrefix(
+                templateManager.getTemplate(templateName), new PartialPath(prefix), prefixMatch));
   }
 
   public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
@@ -2377,6 +2408,43 @@ public class MManager {
         throw new MetadataException(ioException);
       }
       setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
+    }
+  }
+
+  public void deactivateSchemaTemplate(DeactivateTemplatePlan plan) throws MetadataException {
+    if (plan.getPaths() == null || plan.getPaths().size() == 0) {
+      logger.warn(
+          "No actual paths to deactivate with template [{}] on prefix [{}].",
+          plan.getTemplateName(),
+          plan.getPrefixPath().getFullPath());
+      return;
+    }
+
+    IMNode node;
+    for (PartialPath path : plan.getPaths()) {
+      node = mtree.getNodeByPath(path);
+
+      if (node.isMeasurement()) {
+        throw new MetadataException(
+            String.format(
+                "[%s] cannot be applied to deactivate template as a measurement.",
+                path.getFullPath()));
+      }
+
+      node.setUseTemplate(false);
+      // clear caches within MManger
+      mNodeCache.invalidate(node);
+      if (node.isEntity()) {
+        node.getAsEntityMNode().getTemplateLastCaches().clear();
+      }
+    }
+
+    if (!isRecovering) {
+      try {
+        logWriter.deactivateSchemaTemplate(plan);
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      }
     }
   }
 
