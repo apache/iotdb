@@ -19,15 +19,16 @@
 
 package org.apache.iotdb;
 
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -49,12 +50,14 @@ public class TsFileLoaderTool {
       writeToIoTDB(collectTsFiles(new File(filePath)), session);
     } catch (IoTDBConnectionException e) {
       System.out.println(String.format("Can not connect to IoTDB. %s", e.getMessage()));
+      e.printStackTrace();
     } catch (Exception e) {
       System.out.println(String.format("Load Error. %s", e.getMessage()));
+      e.printStackTrace();
     }
   }
 
-  public static boolean parseArgs(String[] args) {
+  public static void parseArgs(String[] args) {
     Options options = createOptions();
     try {
       CommandLine commandLine = new DefaultParser().parse(options, args);
@@ -67,7 +70,6 @@ public class TsFileLoaderTool {
       System.out.println(String.format("Parse Args Error. %s", e.getMessage()));
       priHelp(options);
     }
-    return false;
   }
 
   private static void priHelp(Options options) {
