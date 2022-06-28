@@ -83,12 +83,12 @@ public class ConfigNodeStartupCheck {
   /** Check whether the global configuration of the cluster is correct */
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to StandAlone,
-    // the config_nodes needs to point to itself
+    // the target_config_nodes needs to point to itself
     if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
         && (!conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
             || conf.getRpcPort() != conf.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
-          "config_nodes",
+          "target_config_nodes",
           conf.getTargetConfigNode().getIp() + ":" + conf.getTargetConfigNode().getPort(),
           conf.getRpcAddress() + ":" + conf.getRpcPort());
     }
@@ -160,7 +160,7 @@ public class ConfigNodeStartupCheck {
    * Check if the current ConfigNode is SeedConfigNode. If true, do the SeedConfigNode configuration
    * as well.
    *
-   * @return True if the config_nodes points to itself
+   * @return True if the target_config_nodes points to itself
    */
   private boolean isSeedConfigNode() {
     boolean result =
