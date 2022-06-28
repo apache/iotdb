@@ -24,7 +24,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import java.util.Objects;
 
 /** Deletion is a delete operation on a timeseries. */
-public class Deletion extends Modification {
+public class Deletion extends Modification implements Comparable<Deletion> {
 
   /** data within the interval [startTime, endTime] are to be deleted. */
   private long startTime;
@@ -103,5 +103,10 @@ public class Deletion extends Modification {
         + ", fileOffset="
         + fileOffset
         + '}';
+  }
+
+  @Override
+  public int compareTo(Deletion deletion) {
+    return Long.compare(startTime, deletion.startTime);
   }
 }

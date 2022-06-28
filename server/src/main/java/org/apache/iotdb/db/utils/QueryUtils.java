@@ -49,26 +49,46 @@ public class QueryUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(
       List<ChunkMetadata> chunkMetaData, List<Modification> modifications) {
+
+    // sort deletions by startTime. 不过这里默认modification就是delete，暂时没有考虑其它modifications。
+    List<Deletion> deletions =
+        modifications.stream().map(e -> (Deletion) e).sorted().collect(Collectors.toList());
+
+    // 对于每个chunkMetadata，先过滤掉时间范围上不重叠的删除操作，然后再根据版本高低判断是否应用mod
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
       ChunkMetadata metaData = chunkMetaData.get(metaIndex);
-      for (Modification modification : modifications) {
+      long startTime = metaData.getStartTime();
+      long endTime = metaData.getEndTime();
+      for (Deletion deletion : deletions) {
+        long deleteStartTime = deletion.getStartTime();
+        long deleteEndTime = deletion.getEndTime();
+        if (deleteStartTime > endTime) {
+          break;
+        }
+        if (startTime > deleteEndTime) {
+          continue;
+        }
+        // then deals with deletes that overlap in time with the chunk
+        // check the version number
+
         // When the chunkMetadata come from an old TsFile, the method modification.getFileOffset()
         // is gerVersionNum actually. In this case, we compare the versions of modification and
         // mataData to determine whether need to do modify.
         if (metaData.isFromOldTsFile()) {
-          if (modification.getFileOffset() > metaData.getVersion()) {
-            doModifyChunkMetaData(modification, metaData);
+          if (deletion.getFileOffset() > metaData.getVersion()) {
+            doModifyChunkMetaData(deletion, metaData);
           }
           continue;
         }
         // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
         // is not supposed to exist as getFileOffset() is offset containing full chunk,
         // while getOffsetOfChunkHeader() returns the chunk header offset
-        if (modification.getFileOffset() > metaData.getOffsetOfChunkHeader()) {
-          doModifyChunkMetaData(modification, metaData);
+        if (deletion.getFileOffset() > metaData.getOffsetOfChunkHeader()) {
+          doModifyChunkMetaData(deletion, metaData);
         }
       }
     }
+
     // remove chunks that are completely deleted
     chunkMetaData.removeIf(
         metaData -> {
@@ -92,6 +112,17 @@ public class QueryUtils {
   private static void doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
+      System.out.println(
+          "====DEBUG====: doModifyChunkMetaData/insertIntoSortedDeletions: "
+              + "chunkTime=["
+              + metaData.getStartTime()
+              + ","
+              + metaData.getEndTime()
+              + "],deleteTime=["
+              + deletion.getStartTime()
+              + ","
+              + deletion.getEndTime()
+              + "]");
       metaData.insertIntoSortedDeletions(deletion.getStartTime(), deletion.getEndTime());
     }
   }
