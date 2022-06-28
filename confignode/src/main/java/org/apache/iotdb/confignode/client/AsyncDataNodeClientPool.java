@@ -29,7 +29,7 @@ import org.apache.iotdb.confignode.client.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.handlers.HeartbeatHandler;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsPlan;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
@@ -64,10 +64,10 @@ public class AsyncDataNodeClientPool {
   /**
    * Execute CreateRegionsReq asynchronously
    *
-   * @param createRegionGroupsReq CreateRegionsReq
+   * @param createRegionGroupsPlan CreateRegionsReq
    * @param ttlMap Map<StorageGroupName, TTL>
    */
-  public void createRegions(CreateRegionsReq createRegionGroupsReq, Map<String, Long> ttlMap) {
+  public void createRegions(CreateRegionsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
 
     // Index of each Region
     int index = 0;
@@ -78,7 +78,7 @@ public class AsyncDataNodeClientPool {
 
     // Assign an independent index to each Region
     for (Map.Entry<String, List<TRegionReplicaSet>> entry :
-        createRegionGroupsReq.getRegionGroupMap().entrySet()) {
+        createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
       for (TRegionReplicaSet regionReplicaSet : entry.getValue()) {
         regionNum += regionReplicaSet.getDataNodeLocationsSize();
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
@@ -93,7 +93,7 @@ public class AsyncDataNodeClientPool {
     BitSet bitSet = new BitSet(regionNum);
     for (int retry = 0; retry < 3; retry++) {
       CountDownLatch latch = new CountDownLatch(regionNum - bitSet.cardinality());
-      createRegionGroupsReq
+      createRegionGroupsPlan
           .getRegionGroupMap()
           .forEach(
               (storageGroup, regionReplicaSets) -> {

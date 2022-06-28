@@ -24,15 +24,15 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
@@ -91,16 +91,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Cache StorageGroupSchema
    *
-   * @param req SetStorageGroupReq
+   * @param plan SetStorageGroupPlan
    * @return SUCCESS_STATUS if the StorageGroup is set successfully. CACHE_FAILURE if fail to set
    *     StorageGroup in MTreeAboveSG.
    */
-  public TSStatus setStorageGroup(SetStorageGroupReq req) {
+  public TSStatus setStorageGroup(SetStorageGroupPlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
       // Set StorageGroup
-      TStorageGroupSchema storageGroupSchema = req.getSchema();
+      TStorageGroupSchema storageGroupSchema = plan.getSchema();
       PartialPath partialPathName = new PartialPath(storageGroupSchema.getName());
       mTree.setStorageGroup(partialPathName);
 
@@ -124,15 +124,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Delete StorageGroup
    *
-   * @param req DeleteStorageGroupReq
+   * @param plan DeleteStorageGroupPlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus deleteStorageGroup(DeleteStorageGroupReq req) {
+  public TSStatus deleteStorageGroup(DeleteStorageGroupPlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
       // Delete StorageGroup
-      String storageGroup = req.getName();
+      String storageGroup = plan.getName();
       PartialPath partialPathName = new PartialPath(storageGroup);
       mTree.deleteStorageGroup(partialPathName);
 
@@ -149,11 +149,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /** @return The number of matched StorageGroups by the specific StorageGroup pattern */
-  public CountStorageGroupResp countMatchedStorageGroups(CountStorageGroupReq req) {
+  public CountStorageGroupResp countMatchedStorageGroups(CountStorageGroupPlan plan) {
     CountStorageGroupResp result = new CountStorageGroupResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
-      PartialPath patternPath = new PartialPath(req.getStorageGroupPattern());
+      PartialPath patternPath = new PartialPath(plan.getStorageGroupPattern());
       result.setCount(mTree.getBelongedStorageGroups(patternPath).size());
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (MetadataException e) {
@@ -168,12 +168,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   /** @return All StorageGroupSchemas that matches to the specific StorageGroup pattern */
-  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetStorageGroupReq req) {
+  public StorageGroupSchemaResp getMatchedStorageGroupSchemas(GetStorageGroupPlan plan) {
     StorageGroupSchemaResp result = new StorageGroupSchemaResp();
     storageGroupReadWriteLock.readLock().lock();
     try {
       Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
-      PartialPath patternPath = new PartialPath(req.getStorageGroupPattern());
+      PartialPath patternPath = new PartialPath(plan.getStorageGroupPattern());
       List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
@@ -193,16 +193,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TSStatus setTTL(SetTTLReq req) {
+  public TSStatus setTTL(SetTTLPlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
-      PartialPath path = new PartialPath(req.getStorageGroup());
+      PartialPath path = new PartialPath(plan.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
             .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
-            .setTTL(req.getTTL());
+            .setTTL(plan.getTTL());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
@@ -219,16 +219,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorReq req) {
+  public TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
-      PartialPath path = new PartialPath(req.getStorageGroup());
+      PartialPath path = new PartialPath(plan.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
             .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
-            .setSchemaReplicationFactor(req.getSchemaReplicationFactor());
+            .setSchemaReplicationFactor(plan.getSchemaReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
@@ -244,16 +244,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TSStatus setDataReplicationFactor(SetDataReplicationFactorReq req) {
+  public TSStatus setDataReplicationFactor(SetDataReplicationFactorPlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
-      PartialPath path = new PartialPath(req.getStorageGroup());
+      PartialPath path = new PartialPath(plan.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
             .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
-            .setDataReplicationFactor(req.getDataReplicationFactor());
+            .setDataReplicationFactor(plan.getDataReplicationFactor());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
@@ -269,16 +269,16 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TSStatus setTimePartitionInterval(SetTimePartitionIntervalReq req) {
+  public TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
-      PartialPath path = new PartialPath(req.getStorageGroup());
+      PartialPath path = new PartialPath(plan.getStorageGroup());
       if (mTree.isStorageGroupAlreadySet(path)) {
         mTree
             .getStorageGroupNodeByStorageGroupPath(path)
             .getStorageGroupSchema()
-            .setTimePartitionInterval(req.getTimePartitionInterval());
+            .setTimePartitionInterval(plan.getTimePartitionInterval());
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
@@ -297,15 +297,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   /**
    * Adjust the maximum RegionGroup count of each StorageGroup
    *
-   * @param req AdjustMaxRegionGroupCountReq
+   * @param plan AdjustMaxRegionGroupCountPlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus adjustMaxRegionGroupCount(AdjustMaxRegionGroupCountReq req) {
+  public TSStatus adjustMaxRegionGroupCount(AdjustMaxRegionGroupCountPlan plan) {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
       for (Map.Entry<String, Pair<Integer, Integer>> entry :
-          req.getMaxRegionGroupCountMap().entrySet()) {
+          plan.getMaxRegionGroupCountMap().entrySet()) {
         PartialPath path = new PartialPath(entry.getKey());
         TStorageGroupSchema storageGroupSchema =
             mTree.getStorageGroupNodeByStorageGroupPath(path).getStorageGroupSchema();

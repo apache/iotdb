@@ -16,14 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.exception.physical;
+package org.apache.iotdb.confignode.consensus.request.read;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.confignode.exception.ConfigNodeException;
 
-public class UnknownPhysicalPlanTypeException extends ConfigNodeException {
+import java.util.List;
 
-  public UnknownPhysicalPlanTypeException(ConfigPhysicalPlanType type) {
-    super(String.format("Unknown PhysicalPlanType: %d", type.ordinal()));
+public class GetStorageGroupPlan extends CountStorageGroupPlan {
+
+  public GetStorageGroupPlan() {
+    super(ConfigPhysicalPlanType.GetStorageGroup);
+  }
+
+  public GetStorageGroupPlan(List<String> storageGroupPathPattern) {
+    super(ConfigPhysicalPlanType.GetStorageGroup, storageGroupPathPattern);
   }
 }
