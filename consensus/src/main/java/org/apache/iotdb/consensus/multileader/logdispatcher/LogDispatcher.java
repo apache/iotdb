@@ -223,7 +223,7 @@ public class LogDispatcher {
         // only execute this after a restart
         endIndex = constructBatchFromWAL(startIndex, maxIndex, logBatches);
         batch = new PendingBatch(startIndex, endIndex, logBatches);
-        logger.debug("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
+        logger.info("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
       } else {
         Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
         IndexedConsensusRequest prev = iterator.next();
@@ -232,7 +232,7 @@ public class LogDispatcher {
         endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
         if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
           batch = new PendingBatch(startIndex, endIndex, logBatches);
-          logger.debug("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
+          logger.info("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
           return batch;
         }
         constructBatchIndexedFromConsensusRequest(prev, logBatches);
@@ -248,7 +248,7 @@ public class LogDispatcher {
                 constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
             if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
               batch = new PendingBatch(startIndex, endIndex, logBatches);
-              logger.debug(
+              logger.info(
                   "{} : accumulated a {} from queue and wal",
                   impl.getThisNode().getGroupId(),
                   batch);
@@ -264,7 +264,7 @@ public class LogDispatcher {
           iterator.remove();
         }
         batch = new PendingBatch(startIndex, endIndex, logBatches);
-        logger.debug(
+        logger.info(
             "{} : accumulated a {} from queue and wal", impl.getThisNode().getGroupId(), batch);
       }
       return batch;
