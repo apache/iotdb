@@ -278,6 +278,7 @@ public abstract class AbstractMemTable implements IMemTable {
     for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
       // use measurements[i] to ignore failed partial insert
       if (measurements[i] == null) {
+        schemaList.add(null);
         continue;
       }
       IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
@@ -321,6 +322,7 @@ public abstract class AbstractMemTable implements IMemTable {
     for (int i = 0; i < insertRowNode.getMeasurements().length; i++) {
       // use measurements[i] to ignore failed partial insert
       if (measurements[i] == null) {
+        schemaList.add(null);
         continue;
       }
       IMeasurementSchema schema = insertRowNode.getMeasurementSchemas()[i];

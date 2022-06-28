@@ -568,20 +568,21 @@ public class TsFilePlanRedoerTest {
 
     // generate InsertTabletPlan
     long[] times = {6, 7, 8, 9};
-    List<Integer> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT32.ordinal());
-    dataTypes.add(TSDataType.INT64.ordinal());
-    dataTypes.add(TSDataType.BOOLEAN.ordinal());
-    dataTypes.add(TSDataType.FLOAT.ordinal());
-    dataTypes.add(TSDataType.TEXT.ordinal());
-
-    Object[] columns = new Object[5];
-    columns[0] = new int[times.length];
-    columns[1] = new long[times.length];
-    columns[2] = new boolean[times.length];
-    columns[3] = new float[times.length];
-    columns[4] = new Binary[times.length];
-
+    List<Integer> dataTypes =
+        Arrays.asList(
+            TSDataType.INT32.ordinal(),
+            TSDataType.INT64.ordinal(),
+            TSDataType.BOOLEAN.ordinal(),
+            TSDataType.FLOAT.ordinal(),
+            TSDataType.TEXT.ordinal());
+    Object[] columns =
+        new Object[] {
+          new int[times.length],
+          new long[times.length],
+          new boolean[times.length],
+          new float[times.length],
+          new Binary[times.length]
+        };
     for (int r = 0; r < times.length; r++) {
       ((int[]) columns[0])[r] = (r + 1) * 100;
       ((long[]) columns[1])[r] = (r + 1) * 100;
@@ -597,7 +598,6 @@ public class TsFilePlanRedoerTest {
       // mark value of time=9 as null
       bitMaps[i].mark(3);
     }
-
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(
             new PartialPath(DEVICE3_NAME),
@@ -611,6 +611,25 @@ public class TsFilePlanRedoerTest {
     // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
     TsFilePlanRedoer planRedoer = new TsFilePlanRedoer(tsFileResource, true, null);
     planRedoer.redoInsert(insertTabletPlan);
+
+    // generate InsertRowPlan
+    int time = 9;
+    TSDataType[] dataTypes2 =
+        new TSDataType[] {
+          TSDataType.INT32, TSDataType.INT64, TSDataType.BOOLEAN, TSDataType.FLOAT, TSDataType.TEXT
+        };
+    String[] columns2 = new String[] {400 + "", 400 + "", true + "", 400.0 + "", "400"};
+    InsertRowPlan insertRowPlan =
+        new InsertRowPlan(
+            new PartialPath(DEVICE3_NAME),
+            time,
+            new String[] {"s1", "s2", "s3", "s4", "s5"},
+            dataTypes2,
+            columns2,
+            true);
+    // redo InsertTabletPlan, vsg processor is used to test IdTable, don't test IdTable here
+    planRedoer.redoInsert(insertRowPlan);
+
     // check data in memTable
     IMemTable recoveryMemTable = planRedoer.getRecoveryMemTable();
     // check d3
@@ -626,7 +645,7 @@ public class TsFilePlanRedoerTest {
                 new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.PLAIN)));
     ReadOnlyMemChunk memChunk = recoveryMemTable.query(fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
-    int time = 6;
+    time = 6;
     while (iterator.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = iterator.nextTimeValuePair();
       assertEquals(time, timeValuePair.getTimestamp());
@@ -637,7 +656,7 @@ public class TsFilePlanRedoerTest {
       assertEquals(null, timeValuePair.getValue().getVector()[4]);
       ++time;
     }
-    assertEquals(9, time);
+    assertEquals(10, time);
   }
 
   private void generateCompleteFile(File tsFile) throws IOException, WriteProcessException {
