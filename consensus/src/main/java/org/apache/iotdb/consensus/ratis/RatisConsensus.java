@@ -121,8 +121,6 @@ class RatisConsensus implements IConsensus {
 
     Utils.initRatisConfig(properties, config.getRatisConfig());
 
-    RaftServerConfigKeys.Log.setUnsafeFlushEnabled(properties, true);
-
     clientRpc = new GrpcFactory(new Parameters()).newRaftClientRpc(ClientId.randomId(), properties);
 
     server =
