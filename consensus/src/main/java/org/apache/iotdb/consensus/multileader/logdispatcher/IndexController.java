@@ -30,6 +30,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /** An index controller class to balance the performance degradation of frequent disk I/O. */
 @ThreadSafe
@@ -39,8 +40,10 @@ public class IndexController {
 
   public static final int FLUSH_INTERVAL = 500;
 
-  private volatile long lastFlushedIndex;
-  private volatile long currentIndex;
+  private long lastFlushedIndex;
+  private long currentIndex;
+
+  private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
   private final String storageDir;
   private final String prefix;
@@ -54,27 +57,42 @@ public class IndexController {
     restore();
   }
 
-  public synchronized long incrementAndGet() {
-    currentIndex++;
-    checkPersist();
-    return currentIndex;
+  public long incrementAndGet() {
+    try {
+      lock.writeLock().lock();
+      currentIndex++;
+      checkPersist();
+      return currentIndex;
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
-  public synchronized long updateAndGet(long index) {
-    long newCurrentIndex = Math.max(currentIndex, index);
-    logger.debug(
-        "update index from currentIndex {} to {} for file prefix {} in {}",
-        currentIndex,
-        newCurrentIndex,
-        prefix,
-        storageDir);
-    currentIndex = newCurrentIndex;
-    checkPersist();
-    return currentIndex;
+  public long updateAndGet(long index) {
+    try {
+      lock.writeLock().lock();
+      long newCurrentIndex = Math.max(currentIndex, index);
+      logger.debug(
+          "update index from currentIndex {} to {} for file prefix {} in {}",
+          currentIndex,
+          newCurrentIndex,
+          prefix,
+          storageDir);
+      currentIndex = newCurrentIndex;
+      checkPersist();
+      return currentIndex;
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
   public long getCurrentIndex() {
-    return currentIndex;
+    try {
+      lock.readLock().lock();
+      return currentIndex;
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   @TestOnly

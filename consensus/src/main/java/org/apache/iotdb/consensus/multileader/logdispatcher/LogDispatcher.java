@@ -210,7 +210,6 @@ public class LogDispatcher {
       PendingBatch batch;
       List<TLogBatch> logBatches = new ArrayList<>();
       long startIndex = syncStatus.getNextSendingIndex();
-      long maxIndex = impl.getController().getCurrentIndex() + 1;
       long endIndex;
       if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
         // Use drainTo instead of poll to reduce lock overhead
@@ -220,7 +219,9 @@ public class LogDispatcher {
       }
       if (bufferedRequest.isEmpty()) {
         // only execute this after a restart
-        endIndex = constructBatchFromWAL(startIndex, maxIndex, logBatches);
+        endIndex =
+            constructBatchFromWAL(
+                startIndex, impl.getController().getCurrentIndex() + 1, logBatches);
         batch = new PendingBatch(startIndex, endIndex, logBatches);
         logger.debug(
             "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batch);
