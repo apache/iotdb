@@ -637,7 +637,7 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(
               statement, sessionManager.getZoneId(req.sessionId), req.fetchSize);
-      System.out.println("[[[[[M4]]]]] fetchSize=" + req.fetchSize);
+//      System.out.println("====DEBUG====: fetchSize=" + req.fetchSize);
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(
               statement,

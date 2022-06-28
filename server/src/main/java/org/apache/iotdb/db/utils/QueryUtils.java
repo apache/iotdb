@@ -112,17 +112,17 @@ public class QueryUtils {
   private static void doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
-      System.out.println(
-          "====DEBUG====: doModifyChunkMetaData/insertIntoSortedDeletions: "
-              + "chunkTime=["
-              + metaData.getStartTime()
-              + ","
-              + metaData.getEndTime()
-              + "],deleteTime=["
-              + deletion.getStartTime()
-              + ","
-              + deletion.getEndTime()
-              + "]");
+//      System.out.println(
+//          "====DEBUG====: doModifyChunkMetaData/insertIntoSortedDeletions: "
+//              + "chunkTime=["
+//              + metaData.getStartTime()
+//              + ","
+//              + metaData.getEndTime()
+//              + "],deleteTime=["
+//              + deletion.getStartTime()
+//              + ","
+//              + deletion.getEndTime()
+//              + "]");
       metaData.insertIntoSortedDeletions(deletion.getStartTime(), deletion.getEndTime());
     }
   }

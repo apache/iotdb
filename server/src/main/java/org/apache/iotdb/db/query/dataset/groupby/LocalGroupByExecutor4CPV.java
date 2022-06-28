@@ -93,7 +93,6 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     this.tsDataType = dataType;
     this.mergeReader = new PriorityMergeReader();
 
-    // TODO: load all chunk metadatas into futureChunkList
     // get all data sources
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, this.timeFilter);
@@ -114,6 +113,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             ascending);
 
     // unpackAllOverlappedFilesToTimeSeriesMetadata
+    // TODO: this might be bad to load all chunk metadata at first
     try {
       futureChunkList.addAll(seriesReader.getAllChunkMetadatas4CPV());
     } catch (IOException e) {
@@ -136,8 +136,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
   public List<AggregateResult> calcResult(
       long curStartTime, long curEndTime, long startTime, long endTime, long interval)
       throws IOException, QueryProcessException {
-    //    System.out.println("====DEBUG====: calcResult for [" + curStartTime + "," + curEndTime +
-    // ")");
+//    System.out.println("====DEBUG====: calcResult for [" + curStartTime + "," + curEndTime + ")");
 
     // clear result cache
     for (AggregateResult result : results) {
@@ -146,7 +145,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
     // empty currentChunkList
     currentChunkList = new ArrayList<>();
 
-    //    System.out.println("====DEBUG====: deal with futureChunkList");
+//    System.out.println("====DEBUG====: deal with futureChunkList");
 
     ListIterator itr = futureChunkList.listIterator();
     List<ChunkSuit4CPV> tmpFutureChunkList = new ArrayList<>();
@@ -187,18 +186,18 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   chunkMetadata);
         }
 
-        //        System.out.println(
-        //            "====DEBUG====: load the chunk because overlaps the M4 interval. Version="
-        //                + chunkMetadata.getVersion()
-        //                + " "
-        //                + chunkMetadata.getOffsetOfChunkHeader());
+//        System.out.println(
+//            "====DEBUG====: load the chunk because overlaps the M4 interval. Version="
+//                + chunkMetadata.getVersion()
+//                + " "
+//                + chunkMetadata.getOffsetOfChunkHeader());
       }
     }
     futureChunkList.addAll(tmpFutureChunkList);
     tmpFutureChunkList = null;
     itr = null;
 
-    //    System.out.println("====DEBUG====: deal with currentChunkList");
+//    System.out.println("====DEBUG====: deal with currentChunkList");
 
     if (currentChunkList.size() == 0) {
       return results;
@@ -217,7 +216,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
       values[3] = null;
 
       // find candidate points
-      //      System.out.println("====DEBUG====: find candidate points");
+//      System.out.println("====DEBUG====: find candidate points");
 
       for (int j = 0; j < currentChunkList.size(); j++) {
         ChunkMetadata chunkMetadata = currentChunkList.get(j).getChunkMetadata();
@@ -270,7 +269,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
         }
       }
 
-      //      System.out.println("====DEBUG====: verify candidate points");
+//      System.out.println("====DEBUG====: verify candidate points");
 
       // verify candidate points.
       // firstPoint and lastPoint are valid for sure.
@@ -291,12 +290,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           }
         }
         if (isDeletedItself) {
-          //          System.out.println(
-          //              "====DEBUG====: load the chunk because candidate firstPoint is actually
-          // deleted. Version="
-          //                  + firstChunkMetadata.getVersion()
-          //                  + " "
-          //                  + firstChunkMetadata.getOffsetOfChunkHeader());
+//          System.out.println(
+//              "====DEBUG====: load the chunk because candidate firstPoint is actually deleted. Version="
+//                  + firstChunkMetadata.getVersion()
+//                  + " "
+//                  + firstChunkMetadata.getOffsetOfChunkHeader());
 
           currentChunkList.remove(listIdx[0]);
           List<IPageReader> pageReaderList =
@@ -327,7 +325,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   1,
                   Arrays.copyOfRange(values, 0, 1)); // first_value
           isFinal[0] = true;
-          //          System.out.println("====DEBUG====: find firstPoint");
+//          System.out.println("====DEBUG====: find firstPoint");
         }
       }
       if (!isFinal[1]) { // lastPoint
@@ -345,12 +343,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           }
         }
         if (isDeletedItself) {
-          //          System.out.println(
-          //              "====DEBUG====: load the chunk because candidate lastPoint is actually
-          // deleted. Version="
-          //                  + lastChunkMetadata.getVersion()
-          //                  + " "
-          //                  + lastChunkMetadata.getOffsetOfChunkHeader());
+//          System.out.println(
+//              "====DEBUG====: load the chunk because candidate lastPoint is actually deleted. Version="
+//                  + lastChunkMetadata.getVersion()
+//                  + " "
+//                  + lastChunkMetadata.getOffsetOfChunkHeader());
 
           currentChunkList.remove(listIdx[1]);
           List<IPageReader> pageReaderList =
@@ -382,7 +379,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   Arrays.copyOfRange(values, 1, 2)); // first_value
           isFinal[1] = true;
 
-          //          System.out.println("====DEBUG====: find lastPoint");
+//          System.out.println("====DEBUG====: find lastPoint");
         }
       }
       if (!isFinal[2]) { // bottomPoint
@@ -402,12 +399,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           }
         }
         if (isDeletedItself) {
-          //          System.out.println(
-          //              "====DEBUG====: load the chunk because candidate bottomPoint is actually
-          // deleted. Version="
-          //                  + bottomChunkMetadata.getVersion()
-          //                  + " "
-          //                  + bottomChunkMetadata.getOffsetOfChunkHeader());
+//          System.out.println(
+//              "====DEBUG====: load the chunk because candidate bottomPoint is actually deleted. Version="
+//                  + bottomChunkMetadata.getVersion()
+//                  + " "
+//                  + bottomChunkMetadata.getOffsetOfChunkHeader());
 
           currentChunkList.remove(listIdx[2]);
           List<IPageReader> pageReaderList =
@@ -454,7 +450,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             toMerge.add(i);
           }
           if (toMerge.isEmpty()) {
-            //            System.out.println("====DEBUG====: find bottomPoint");
+//            System.out.println("====DEBUG====: find bottomPoint");
 
             results
                 .get(4)
@@ -522,11 +518,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 currentChunkList.set(toMerge.get(o), tmpCurrentChunkList.get(0));
                 chunkSuit4CPV = currentChunkList.get(toMerge.get(o));
 
-                //                System.out.println(
-                //                    "====DEBUG====: load chunk for update merge. Version="
-                //                        + chunkMetadata.getVersion()
-                //                        + " "
-                //                        + chunkMetadata.getOffsetOfChunkHeader());
+//                System.out.println(
+//                    "====DEBUG====: load chunk for update merge. Version="
+//                        + chunkMetadata.getVersion()
+//                        + " "
+//                        + chunkMetadata.getOffsetOfChunkHeader());
               }
               mergeReader.addReader(
                   chunkSuit4CPV.getBatchData().getBatchDataIterator(),
@@ -535,11 +531,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             while (mergeReader.hasNextTimeValuePair()) {
               Pair<TimeValuePair, MergeReaderPriority> res = mergeReader.nextElement();
               TimeValuePair ret = res.left;
-              //                            System.out.println(
-              //                                "====DEBUG====: merge for bottomPoint. (t,v)="
-              //                                    + ret.getTimestamp()
-              //                                    + ","
-              //                                    + ret.getValue().getValue());
+//              System.out.println(
+//                  "====DEBUG====: merge for bottomPoint. (t,v)="
+//                      + ret.getTimestamp()
+//                      + ","
+//                      + ret.getValue().getValue());
               updateBatchDataMap
                   .get(res.right)
                   .putAnObject(ret.getTimestamp(), ret.getValue().getValue());
@@ -583,11 +579,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                   .getChunkMetadata()
                   .setStatistics(statisticsMap.get(mergeReaderPriority));
             }
-            //            System.out.println(
-            //                "====DEBUG====: merged chunks are : version="
-            //                    + newMergedVersionList
-            //                    + " offsets="
-            //                    + newMergedOffsetList);
+//            System.out.println(
+//                "====DEBUG====: merged chunks are : version="
+//                    + newMergedVersionList
+//                    + " offsets="
+//                    + newMergedOffsetList);
             continue;
           }
         }
@@ -610,12 +606,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
           }
         }
         if (isDeletedItself) {
-          //          System.out.println(
-          //              "====DEBUG====: load the chunk because candidate topPoint is actually
-          // deleted. Version="
-          //                  + topChunkMetadata.getVersion()
-          //                  + " "
-          //                  + topChunkMetadata.getOffsetOfChunkHeader());
+//          System.out.println(
+//              "====DEBUG====: load the chunk because candidate topPoint is actually deleted. Version="
+//                  + topChunkMetadata.getVersion()
+//                  + " "
+//                  + topChunkMetadata.getOffsetOfChunkHeader());
 
           currentChunkList.remove(listIdx[3]);
           List<IPageReader> pageReaderList =
@@ -668,7 +663,7 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                     1,
                     Arrays.copyOfRange(values, 3, 4)); // max_value
             isFinal[3] = true;
-            //            System.out.println("====DEBUG====: find topPoint");
+//            System.out.println("====DEBUG====: find topPoint");
             return results;
           } else {
             // deal with toMerge chunks: delete updated points
@@ -729,11 +724,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
                 currentChunkList.set(toMerge.get(o), tmpCurrentChunkList.get(0));
                 chunkSuit4CPV = currentChunkList.get(toMerge.get(o));
 
-                //                System.out.println(
-                //                    "====DEBUG====: load chunk for update merge. Version="
-                //                        + chunkMetadata.getVersion()
-                //                        + " "
-                //                        + chunkMetadata.getOffsetOfChunkHeader());
+//                System.out.println(
+//                    "====DEBUG====: load chunk for update merge. Version="
+//                        + chunkMetadata.getVersion()
+//                        + " "
+//                        + chunkMetadata.getOffsetOfChunkHeader());
               }
               mergeReader.addReader(
                   chunkSuit4CPV.getBatchData().getBatchDataIterator(),
@@ -742,11 +737,11 @@ public class LocalGroupByExecutor4CPV implements GroupByExecutor {
             while (mergeReader.hasNextTimeValuePair()) {
               Pair<TimeValuePair, MergeReaderPriority> res = mergeReader.nextElement();
               TimeValuePair ret = res.left;
-              //              System.out.println(
-              //                  "====DEBUG====: merge for topPoint. (t,v)="
-              //                      + ret.getTimestamp()
-              //                      + ","
-              //                      + ret.getValue().getValue());
+//              System.out.println(
+//                  "====DEBUG====: merge for topPoint. (t,v)="
+//                      + ret.getTimestamp()
+//                      + ","
+//                      + ret.getValue().getValue());
               updateBatchDataMap
                   .get(res.right)
                   .putAnObject(ret.getTimestamp(), ret.getValue().getValue());

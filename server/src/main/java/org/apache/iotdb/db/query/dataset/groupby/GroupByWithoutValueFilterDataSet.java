@@ -198,11 +198,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
     if (CONFIG.isEnableCPV()) {
-      System.out.println("[[[[[M4]]]]] use LocalGroupByExecutor4CPV for CPV");
+//      System.out.println("====DEBUG====: use LocalGroupByExecutor4CPV for CPV");
       return new LocalGroupByExecutor4CPV(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     } else {
-      System.out.println("[[[[[M4]]]]] use LocalGroupByExecutor for MOC");
+//      System.out.println("====DEBUG====: use LocalGroupByExecutor for MOC");
       return new LocalGroupByExecutor(
           path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
     }
