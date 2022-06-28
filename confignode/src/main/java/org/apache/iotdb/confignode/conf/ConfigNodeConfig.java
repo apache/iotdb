@@ -43,14 +43,8 @@ public class ConfigNodeConfig {
   /** Used for connecting to the ConfigNodeGroup */
   private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
 
-  /** Mark if the ConfigNode needs to apply */
-  private boolean needApply = false;
-
   // TODO: Read from iotdb-confignode.properties
   private int partitionRegionId = 0;
-
-  /** Used for building the PartitionRegion */
-  private List<TConfigNodeLocation> configNodeList = new ArrayList<>();
 
   /** Thrift socket and connection timeout between nodes */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
@@ -191,14 +185,6 @@ public class ConfigNodeConfig {
     this.consensusPort = consensusPort;
   }
 
-  public boolean isNeedApply() {
-    return needApply;
-  }
-
-  public void setNeedApply(boolean needApply) {
-    this.needApply = needApply;
-  }
-
   public TEndPoint getTargetConfigNode() {
     return targetConfigNode;
   }
@@ -213,14 +199,6 @@ public class ConfigNodeConfig {
 
   public void setPartitionRegionId(int partitionRegionId) {
     this.partitionRegionId = partitionRegionId;
-  }
-
-  public List<TConfigNodeLocation> getConfigNodeList() {
-    return configNodeList;
-  }
-
-  public void setConfigNodeList(List<TConfigNodeLocation> configNodeList) {
-    this.configNodeList = configNodeList;
   }
 
   public int getSeriesPartitionSlotNum() {

@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
@@ -32,6 +33,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
+import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
@@ -61,6 +63,32 @@ public class ConfigNode implements ConfigNodeMBean {
     // we do not init anything here, so that we can re-initialize the instance in IT.
   }
 
+  public static void main(String[] args) {
+    new ConfigNodeCommandLine().doMain(args);
+  }
+
+  public void active() {
+    try {
+      // Set up services
+      setUpServices();
+      // Do ConfigNode startup checks
+      ConfigNodeStartupCheck.getInstance().startUpCheck();
+      // Init ConfigManager
+      initConfigManager();
+    } catch (StartupException | IOException | ConfigurationException e) {
+      LOGGER.error("Meet error while starting up.", e);
+      try {
+        deactivate();
+      } catch (IOException e2) {
+        LOGGER.error("Meet error when stop ConfigNode!", e);
+      }
+      return;
+    }
+
+    LOGGER.info(
+        "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+  }
+
   private void initConfigManager() {
     // Init ConfigManager
     try {
@@ -80,15 +108,8 @@ public class ConfigNode implements ConfigNodeMBean {
     configNodeRPCServiceProcessor = new ConfigNodeRPCServiceProcessor(configManager);
   }
 
-  public static void main(String[] args) {
-    new ConfigNodeCommandLine().doMain(args);
-  }
-
-  /** Register services */
-  private void setUp() throws StartupException, IOException {
-    LOGGER.info("Setting up {}...", ConfigNodeConstant.GLOBAL_NAME);
-    // Init ConfigManager
-    initConfigManager();
+  private void setUpServices() throws StartupException, IOException {
+    LOGGER.info("Setting up services of {}...", ConfigNodeConstant.GLOBAL_NAME);
 
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
@@ -108,29 +129,12 @@ public class ConfigNode implements ConfigNodeMBean {
   private void registerUdfServices() throws StartupException {
     final ConfigNodeConfig configNodeConfig = ConfigNodeDescriptor.getInstance().getConf();
     registerManager.register(
-        UDFExecutableManager.setupAndGetInstance(
-            configNodeConfig.getTemporaryLibDir(), configNodeConfig.getUdfLibDir()));
+      UDFExecutableManager.setupAndGetInstance(
+        configNodeConfig.getTemporaryLibDir(), configNodeConfig.getUdfLibDir()));
     registerManager.register(
-        UDFClassLoaderManager.setupAndGetInstance(configNodeConfig.getUdfLibDir()));
+      UDFClassLoaderManager.setupAndGetInstance(configNodeConfig.getUdfLibDir()));
     registerManager.register(
-        UDFRegistrationService.setupAndGetInstance(configNodeConfig.getSystemUdfDir()));
-  }
-
-  public void active() {
-    try {
-      setUp();
-    } catch (StartupException | IOException e) {
-      LOGGER.error("Meet error while starting up.", e);
-      try {
-        deactivate();
-      } catch (IOException e2) {
-        LOGGER.error("Meet error when stop ConfigNode!", e);
-      }
-      return;
-    }
-
-    LOGGER.info(
-        "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+      UDFRegistrationService.setupAndGetInstance(configNodeConfig.getSystemUdfDir()));
   }
 
   public void deactivate() throws IOException {

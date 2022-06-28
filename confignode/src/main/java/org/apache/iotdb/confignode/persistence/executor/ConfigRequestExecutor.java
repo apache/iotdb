@@ -189,9 +189,9 @@ public class ConfigRequestExecutor {
       case UpdateUser:
         return authorInfo.authorNonQuery((AuthorReq) req);
       case ApplyConfigNode:
-        return nodeInfo.updateConfigNodeList((ApplyConfigNodeReq) req);
+        return nodeInfo.applyConfigNode((ApplyConfigNodeReq) req);
       case RemoveConfigNode:
-        return nodeInfo.removeConfigNodeList((RemoveConfigNodeReq) req);
+        return nodeInfo.removeConfigNode((RemoveConfigNodeReq) req);
       case CreateFunction:
         return udfInfo.createFunction((CreateFunctionReq) req);
       case DropFunction:

@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 /**
  * ConfigNodeStartupCheck checks the cluster status and parameters in iotdb-confignode.properties
@@ -51,15 +52,6 @@ public class ConfigNodeStartupCheck {
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-
-  private final File systemPropertiesFile;
-  private final Properties systemProperties;
-
-  private ConfigNodeStartupCheck() {
-    systemPropertiesFile =
-        new File(conf.getSystemDir() + File.separator + ConfigNodeConstant.SYSTEM_FILE_NAME);
-    systemProperties = new Properties();
-  }
 
   public void startUpCheck() throws StartupException, IOException, ConfigurationException {
     checkGlobalConfig();
@@ -157,25 +149,13 @@ public class ConfigNodeStartupCheck {
   }
 
   /**
-   * Check if the current ConfigNode is SeedConfigNode. If true, do the SeedConfigNode configuration
-   * as well.
+   * Check if the current ConfigNode is SeedConfigNode.
    *
-   * @return True if the config_nodes points to itself
+   * @return True if the target_config_node points to itself
    */
   private boolean isSeedConfigNode() {
-    boolean result =
-        conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
-            && conf.getRpcPort() == conf.getTargetConfigNode().getPort();
-    if (result) {
-      // TODO: Set PartitionRegionId from iotdb-confignode.properties
-      conf.setConfigNodeList(
-          Collections.singletonList(
-              new TConfigNodeLocation(
-                  0,
-                  new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
-                  new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))));
-    }
-    return result;
+    return conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
+        && conf.getRpcPort() == conf.getTargetConfigNode().getPort();
   }
 
   /** Register ConfigNode when first startup */
@@ -213,7 +193,7 @@ public class ConfigNodeStartupCheck {
       }
 
       try {
-        Thread.sleep(1000);
+        TimeUnit.MILLISECONDS.sleep(1000);
       } catch (InterruptedException e) {
         throw new StartupException("Register ConfigNode failed!");
       }
@@ -378,18 +358,6 @@ public class ConfigNodeStartupCheck {
     if (needReWrite) {
       // Re-write special parameters if necessary
       writeSystemProperties();
-    }
-  }
-
-  /** Only load ConfigNodeList from confignode-system.properties when restart */
-  private void loadConfigNodeList() throws StartupException {
-    String addresses = systemProperties.getProperty("confignode_list", null);
-    if (addresses != null && !addresses.isEmpty()) {
-      try {
-        conf.setConfigNodeList(NodeUrlUtils.parseTConfigNodeUrls(addresses));
-      } catch (BadNodeUrlException e) {
-        throw new StartupException("Parse ConfigNodeList failed: {}", e.getMessage());
-      }
     }
   }
 

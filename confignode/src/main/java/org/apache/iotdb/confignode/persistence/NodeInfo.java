@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
@@ -75,12 +76,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class NodeInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(NodeInfo.class);
-
-  private static final File systemPropertiesFile =
-      new File(
-          ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
-              + File.separator
-              + ConfigNodeConstant.SYSTEM_FILE_NAME);
 
   private static final int minimumDataNode =
       Math.max(
@@ -272,7 +267,7 @@ public class NodeInfo implements SnapshotProcessor {
    * @param applyConfigNodeReq ApplyConfigNodeReq
    * @return APPLY_CONFIGNODE_FAILED if update online ConfigNode failed.
    */
-  public TSStatus updateConfigNodeList(ApplyConfigNodeReq applyConfigNodeReq) {
+  public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
@@ -286,7 +281,7 @@ public class NodeInfo implements SnapshotProcessor {
       }
 
       onlineConfigNodes.add(applyConfigNodeReq.getConfigNodeLocation());
-      storeConfigNode();
+      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(onlineConfigNodes));
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
           applyConfigNodeReq.getConfigNodeLocation(),
@@ -309,12 +304,12 @@ public class NodeInfo implements SnapshotProcessor {
    * @param removeConfigNodeReq RemoveConfigNodeReq
    * @return REMOVE_CONFIGNODE_FAILED if remove online ConfigNode failed.
    */
-  public TSStatus removeConfigNodeList(RemoveConfigNodeReq removeConfigNodeReq) {
+  public TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq) {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
       onlineConfigNodes.remove(removeConfigNodeReq.getConfigNodeLocation());
-      storeConfigNode();
+      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(onlineConfigNodes));
       LOGGER.info(
           "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
           removeConfigNodeReq.getConfigNodeLocation(),
@@ -329,18 +324,6 @@ public class NodeInfo implements SnapshotProcessor {
       configNodeInfoReadWriteLock.writeLock().unlock();
     }
     return status;
-  }
-
-  private void storeConfigNode() throws IOException {
-    Properties systemProperties = new Properties();
-    try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
-      systemProperties.load(inputStream);
-    }
-    systemProperties.setProperty(
-        "confignode_list", NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(onlineConfigNodes)));
-    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
-      systemProperties.store(fileOutputStream, "");
-    }
   }
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
