@@ -264,7 +264,7 @@ public class LogDispatcher {
           iterator.remove();
         }
         batch = new PendingBatch(startIndex, endIndex, logBatches);
-        logger.info(
+        logger.debug(
             "{} : accumulated a {} from queue and wal", impl.getThisNode().getGroupId(), batch);
       }
       return batch;
