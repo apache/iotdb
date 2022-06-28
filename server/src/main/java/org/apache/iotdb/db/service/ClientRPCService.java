@@ -30,7 +30,7 @@ import org.apache.iotdb.db.service.thrift.handler.InternalServiceThriftHandler;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeRPCServiceImpl;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 
-public class ClientRPCService extends ThriftService implements InternalServiceMBean {
+public class ClientRPCService extends ThriftService implements ClientRPCServiceMBean {
 
   private DataNodeRPCServiceImpl impl;
 
