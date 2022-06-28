@@ -56,6 +56,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class MultiLeaderConsensusTest {
 
@@ -347,15 +349,15 @@ public class MultiLeaderConsensusTest {
 
   private static class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
 
-    private final Set<IndexedConsensusRequest> requestSet = ConcurrentHashMap.newKeySet();
+    private final RequestSets requestSets = new RequestSets(ConcurrentHashMap.newKeySet());
 
     public Set<IndexedConsensusRequest> getRequestSet() {
-      return requestSet;
+      return requestSets.getRequestSet();
     }
 
     public Set<TestEntry> getData() {
       Set<TestEntry> data = new HashSet<>();
-      requestSet.forEach(x -> data.add((TestEntry) x.getRequest()));
+      requestSets.getRequestSet().forEach(x -> data.add((TestEntry) x.getRequest()));
       return data;
     }
 
@@ -367,17 +369,17 @@ public class MultiLeaderConsensusTest {
 
     @Override
     public TSStatus write(IConsensusRequest request) {
-      synchronized (requestSet) {
+      synchronized (requestSets) {
         IConsensusRequest innerRequest = ((IndexedConsensusRequest) request).getRequest();
         if (innerRequest instanceof ByteBufferConsensusRequest) {
           ByteBuffer buffer = innerRequest.serializeToByteBuffer();
-          requestSet.add(
+          requestSets.add(
               new IndexedConsensusRequest(
                   ((IndexedConsensusRequest) request).getSearchIndex(),
                   -1,
                   new TestEntry(buffer.getInt(), Peer.deserialize(buffer))));
         } else {
-          requestSet.add(((IndexedConsensusRequest) request));
+          requestSets.add(((IndexedConsensusRequest) request));
         }
         return new TSStatus();
       }
@@ -386,7 +388,7 @@ public class MultiLeaderConsensusTest {
     @Override
     public synchronized DataSet read(IConsensusRequest request) {
       if (request instanceof GetConsensusReqReaderPlan) {
-        return new FakeConsensusReqReader(requestSet);
+        return new FakeConsensusReqReader(requestSets);
       }
       return null;
     }
@@ -402,16 +404,16 @@ public class MultiLeaderConsensusTest {
 
   public static class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
 
-    private final Set<IndexedConsensusRequest> requestSet;
+    private final RequestSets requestSets;
 
-    public FakeConsensusReqReader(Set<IndexedConsensusRequest> requestSet) {
-      this.requestSet = requestSet;
+    public FakeConsensusReqReader(RequestSets requestSets) {
+      this.requestSets = requestSets;
     }
 
     @Override
     public IConsensusRequest getReq(long index) {
-      synchronized (requestSet) {
-        for (IndexedConsensusRequest indexedConsensusRequest : requestSet) {
+      synchronized (requestSets) {
+        for (IndexedConsensusRequest indexedConsensusRequest : requestSets.getRequestSet()) {
           if (indexedConsensusRequest.getSearchIndex() == index) {
             return indexedConsensusRequest;
           }
@@ -427,7 +429,75 @@ public class MultiLeaderConsensusTest {
 
     @Override
     public ReqIterator getReqIterator(long startIndex) {
-      return null;
+      return new FakeConsensusReqIterator(startIndex);
+    }
+
+    private class FakeConsensusReqIterator implements ConsensusReqReader.ReqIterator {
+      private long nextSearchIndex;
+
+      public FakeConsensusReqIterator(long startIndex) {
+        this.nextSearchIndex = startIndex;
+      }
+
+      @Override
+      public boolean hasNext() {
+        return true;
+      }
+
+      @Override
+      public IndexedConsensusRequest next() {
+        synchronized (requestSets) {
+          for (IndexedConsensusRequest indexedConsensusRequest : requestSets.getRequestSet()) {
+            if (indexedConsensusRequest.getSearchIndex() == nextSearchIndex) {
+              nextSearchIndex++;
+              return indexedConsensusRequest;
+            }
+          }
+          return null;
+        }
+      }
+
+      @Override
+      public void waitForNextReady() throws InterruptedException {
+        while (!hasNext()) {
+          requestSets.waitForNextReady();
+        }
+      }
+
+      @Override
+      public void waitForNextReady(long time, TimeUnit unit)
+          throws InterruptedException, TimeoutException {
+        while (!hasNext()) {
+          requestSets.waitForNextReady(time, unit);
+        }
+      }
+
+      @Override
+      public void skipTo(long targetIndex) {
+        nextSearchIndex = targetIndex;
+      }
+    }
+  }
+
+  public static class RequestSets {
+    private final Set<IndexedConsensusRequest> requestSet;
+
+    public RequestSets(Set<IndexedConsensusRequest> requests) {
+      this.requestSet = requests;
+    }
+
+    public void add(IndexedConsensusRequest request) {
+      requestSet.add(request);
+    }
+
+    public Set<IndexedConsensusRequest> getRequestSet() {
+      return requestSet;
+    }
+
+    public void waitForNextReady() throws InterruptedException {}
+
+    public boolean waitForNextReady(long time, TimeUnit unit) throws InterruptedException {
+      return true;
     }
   }
 }

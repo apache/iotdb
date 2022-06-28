@@ -216,9 +216,18 @@ public class LogDispatcher {
         pendingRequest.drainTo(
             bufferedRequest,
             config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
+        // remove all request that searchIndex < startIndex
+        Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
+        while (iterator.hasNext()) {
+          IndexedConsensusRequest request = iterator.next();
+          if (request.getSearchIndex() < startIndex) {
+            iterator.remove();
+          } else {
+            break;
+          }
+        }
       }
-      if (bufferedRequest.isEmpty()) {
-        // only execute this after a restart
+      if (bufferedRequest.isEmpty()) { // only execute this after a restart
         endIndex =
             constructBatchFromWAL(
                 startIndex, impl.getController().getCurrentIndex() + 1, logBatches);
@@ -226,6 +235,7 @@ public class LogDispatcher {
         logger.debug(
             "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batch);
       } else {
+        // Notice that prev searchIndex >= startIndex
         Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
         IndexedConsensusRequest prev = iterator.next();
         // Prevents gap between logs. For example, some requests are not written into the queue when
