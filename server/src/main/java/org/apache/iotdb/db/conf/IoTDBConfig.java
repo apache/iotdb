@@ -296,6 +296,9 @@ public class IoTDBConfig {
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int concurrentQueryThread = 16;
 
+  /** How many queries can be concurrently executed. When <= 0, use 1000. */
+  private int maxAllowedConcurrentQueries = 1000;
+
   /**
    * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
    */
@@ -1322,6 +1325,14 @@ public class IoTDBConfig {
 
   public void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getMaxAllowedConcurrentQueries() {
+    return maxAllowedConcurrentQueries;
+  }
+
+  public void setMaxAllowedConcurrentQueries(int maxAllowedConcurrentQueries) {
+    this.maxAllowedConcurrentQueries = maxAllowedConcurrentQueries;
   }
 
   public int getConcurrentSubRawQueryThread() {
