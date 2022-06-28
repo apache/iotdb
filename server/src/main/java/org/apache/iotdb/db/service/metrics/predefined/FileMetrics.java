@@ -83,16 +83,17 @@ public class FileMetrics implements IMetricSet {
                     dir -> {
                       File walFolder = new File(dir);
                       File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
+                      long result = 0L;
                       if (null != walNodeFolders) {
                         for (File walNodeFolder : walNodeFolders) {
                           if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
-                            return org.apache.commons.io.FileUtils.listFiles(
-                                    walNodeFolder, null, true)
-                                .size();
+                            result +=
+                                org.apache.commons.io.FileUtils.listFiles(walNodeFolder, null, true)
+                                    .size();
                           }
                         }
                       }
-                      return 0L;
+                      return result;
                     })
                 .sum(),
         Tag.NAME.toString(),
