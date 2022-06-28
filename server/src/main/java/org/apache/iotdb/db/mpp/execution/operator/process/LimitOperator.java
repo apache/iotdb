@@ -46,13 +46,16 @@ public class LimitOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return child.isBlocked();
   }
 
   @Override
   public TsBlock next() {
     TsBlock block = child.next();
+    if (block == null) {
+      return null;
+    }
     TsBlock res = block;
     if (block.getPositionCount() <= remainingLimit) {
       remainingLimit -= block.getPositionCount();

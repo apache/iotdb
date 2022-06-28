@@ -28,7 +28,7 @@ identifier
      ;
 
 
-// List of keywords, new keywords should be added into this list.
+// List of keywords, new keywords that can be used as identifiers should be added into this list. For example, 'not' is an identifier but can not be used as an identifier in node name.
 
 keyWords
     : ADD
@@ -51,8 +51,7 @@ keyWords
     | CACHE
     | CHILD
     | CLEAR
-    | COMPRESSION
-    | COMPRESSOR
+    | CLUSTER
     | CONCAT
     | CONFIGURATION
     | CONTINUOUS
@@ -61,7 +60,7 @@ keyWords
     | CQ
     | CQS
     | CREATE
-    | DATATYPE
+    | DATA
     | DEBUG
     | DELETE
     | DESC
@@ -70,7 +69,6 @@ keyWords
     | DEVICES
     | DISABLE
     | DROP
-    | ENCODING
     | END
     | EVERY
     | EXPLAIN
@@ -99,6 +97,7 @@ keyWords
     | LINK
     | LIST
     | LOAD
+    | LOCAL
     | LOCK
     | MERGE
     | METADATA
@@ -128,6 +127,7 @@ keyWords
     | QUERY
     | READONLY
     | REGEXP
+    | REGIONS
     | REMOVE
     | RENAME
     | RESAMPLE
@@ -172,8 +172,5 @@ keyWords
     | WITH
     | WITHOUT
     | WRITABLE
-    | DATATYPE_VALUE
-    | ENCODING_VALUE
-    | COMPRESSOR_VALUE
     | PRIVILEGE_VALUE
     ;

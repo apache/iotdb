@@ -35,6 +35,7 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
 
   private long lastEndTime;
   private TimeRange curTimeRange;
+  private boolean hasCachedTimeRange;
 
   public PreAggrWindowWithNaturalMonthIterator(
       long startTime,
@@ -70,8 +71,12 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
 
   @Override
   public boolean hasNextTimeRange() {
+    if (hasCachedTimeRange) {
+      return true;
+    }
     if (curTimeRange == null) {
       curTimeRange = getFirstTimeRange();
+      hasCachedTimeRange = true;
       return true;
     }
 
@@ -90,12 +95,14 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
     }
     lastEndTime = timeBoundaryHeap.first();
     curTimeRange = new TimeRange(retStartTime, lastEndTime);
+    hasCachedTimeRange = true;
     return true;
   }
 
   @Override
   public TimeRange nextTimeRange() {
-    if (curTimeRange != null || hasNextTimeRange()) {
+    if (hasCachedTimeRange || hasNextTimeRange()) {
+      hasCachedTimeRange = false;
       return getFinalTimeRange(curTimeRange, leftCRightO);
     }
     return null;

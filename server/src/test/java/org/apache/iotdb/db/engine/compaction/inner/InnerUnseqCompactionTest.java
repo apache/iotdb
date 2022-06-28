@@ -110,11 +110,13 @@ public class InnerUnseqCompactionTest {
           Collections.emptyMap());
     }
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
+    EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     new CompactionConfigRestorer().restoreCompactionConfig();
+    EnvironmentUtils.cleanEnv();
     CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();

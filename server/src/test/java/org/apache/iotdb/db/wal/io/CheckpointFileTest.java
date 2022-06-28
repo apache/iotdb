@@ -69,12 +69,13 @@ public class CheckpointFileTest {
         new Checkpoint(
             CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(fakeMemTableInfo)));
     // test Checkpoint.serializedSize
-    int size = 0;
+    int size = Long.BYTES;
     for (Checkpoint checkpoint : expectedCheckpoints) {
       size += checkpoint.serializedSize();
     }
     ByteBuffer buffer = ByteBuffer.allocate(size);
     // test Checkpoint.serialize
+    buffer.putLong(0);
     for (Checkpoint checkpoint : expectedCheckpoints) {
       checkpoint.serialize(buffer);
     }
@@ -85,7 +86,7 @@ public class CheckpointFileTest {
     }
     // test CheckpointReader.readAll
     CheckpointReader checkpointReader = new CheckpointReader(checkpointFile);
-    List<Checkpoint> actualCheckpoints = checkpointReader.readAll();
+    List<Checkpoint> actualCheckpoints = checkpointReader.getCheckpoints();
     assertEquals(expectedCheckpoints, actualCheckpoints);
   }
 
@@ -93,7 +94,7 @@ public class CheckpointFileTest {
   public void testReadNotExistFile() throws IOException {
     if (checkpointFile.createNewFile()) {
       CheckpointReader checkpointReader = new CheckpointReader(checkpointFile);
-      List<Checkpoint> actualCheckpoints = checkpointReader.readAll();
+      List<Checkpoint> actualCheckpoints = checkpointReader.getCheckpoints();
       assertEquals(0, actualCheckpoints.size());
     }
   }
@@ -111,12 +112,13 @@ public class CheckpointFileTest {
         new Checkpoint(
             CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(fakeMemTableInfo)));
     // test Checkpoint.serializedSize
-    int size = Byte.BYTES;
+    int size = Long.BYTES + Byte.BYTES;
     for (Checkpoint checkpoint : expectedCheckpoints) {
       size += checkpoint.serializedSize();
     }
     ByteBuffer buffer = ByteBuffer.allocate(size);
     // test Checkpoint.serialize
+    buffer.putLong(0);
     for (Checkpoint checkpoint : expectedCheckpoints) {
       checkpoint.serialize(buffer);
     }
@@ -129,7 +131,7 @@ public class CheckpointFileTest {
     }
     // test CheckpointWriter.readAll
     CheckpointReader checkpointReader = new CheckpointReader(checkpointFile);
-    List<Checkpoint> actualCheckpoints = checkpointReader.readAll();
+    List<Checkpoint> actualCheckpoints = checkpointReader.getCheckpoints();
     assertEquals(expectedCheckpoints, actualCheckpoints);
   }
 }

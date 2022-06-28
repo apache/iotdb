@@ -22,52 +22,53 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
+import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
-import org.apache.iotdb.confignode.manager.Manager;
+import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.NodeManager;
 import org.apache.iotdb.confignode.manager.PartitionManager;
-import org.apache.iotdb.confignode.manager.load.balancer.allocator.CopySetRegionAllocator;
-import org.apache.iotdb.confignode.manager.load.balancer.allocator.IRegionAllocator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.CopySetRegionAllocator;
+import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionAllocator;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * The RegionBalancer provides interfaces to generate optimal Region allocation and migration plans
  */
 public class RegionBalancer {
 
-  private final Manager configManager;
-  private final IRegionAllocator regionAllocator;
+  private final IManager configManager;
 
-  public RegionBalancer(Manager configManager) {
+  public RegionBalancer(IManager configManager) {
     this.configManager = configManager;
-    // TODO: The RegionAllocator should be configurable
-    this.regionAllocator = new CopySetRegionAllocator();
   }
 
   /**
    * Generate a Regions allocation plan(CreateRegionsReq)
    *
-   * @param storageGroups List<StorageGroup>
+   * @param allotmentMap Map<StorageGroupName, Region allotment>
    * @param consensusGroupType TConsensusGroupType of the new Regions
-   * @param regionNum Number of Regions to be allocated per StorageGroup
    * @return CreateRegionsReq
    * @throws NotEnoughDataNodeException When the number of DataNodes is not enough for allocation
-   * @throws MetadataException When some StorageGroups don't exist
+   * @throws StorageGroupNotExistsException When some StorageGroups don't exist
    */
   public CreateRegionsReq genRegionsAllocationPlan(
-      List<String> storageGroups, TConsensusGroupType consensusGroupType, int regionNum)
-      throws NotEnoughDataNodeException, MetadataException {
-    CreateRegionsReq createRegionsReq = new CreateRegionsReq();
+      Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
+      throws NotEnoughDataNodeException, StorageGroupNotExistsException {
+    CreateRegionsReq createRegionGroupsReq = new CreateRegionsReq();
+    IRegionAllocator regionAllocator = genRegionAllocator();
 
     List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
-    List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllocatedRegions();
+    List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllReplicaSets();
 
-    for (String storageGroup : storageGroups) {
+    for (Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
+      String storageGroup = entry.getKey();
+      int allotment = entry.getValue();
+
       // Get schema
       TStorageGroupSchema storageGroupSchema =
           getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup);
@@ -81,7 +82,7 @@ public class RegionBalancer {
         throw new NotEnoughDataNodeException();
       }
 
-      for (int i = 0; i < regionNum; i++) {
+      for (int i = 0; i < allotment; i++) {
         // Generate allocation plan
         TRegionReplicaSet newRegion =
             regionAllocator.allocateRegion(
@@ -90,13 +91,18 @@ public class RegionBalancer {
                 replicationFactor,
                 new TConsensusGroupId(
                     consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
-        createRegionsReq.addRegion(storageGroup, newRegion);
+        createRegionGroupsReq.addRegionGroup(storageGroup, newRegion);
 
         allocatedRegions.add(newRegion);
       }
     }
 
-    return createRegionsReq;
+    return createRegionGroupsReq;
+  }
+
+  private IRegionAllocator genRegionAllocator() {
+    // TODO: The RegionAllocator should be configurable
+    return new CopySetRegionAllocator();
   }
 
   private NodeManager getNodeManager() {

@@ -226,7 +226,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     task.call();
 
     for (TsFileResource resource : seqResources) {
@@ -462,7 +463,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     task.call();
 
     for (TsFileResource resource : seqResources) {
@@ -608,7 +610,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data in source file during compaction
@@ -717,7 +720,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data in source file during compaction

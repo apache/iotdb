@@ -47,7 +47,7 @@ public class ClusterSchemaInfoTest {
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
   @BeforeClass
-  public static void setup() {
+  public static void setup() throws IOException {
     clusterSchemaInfo = new ClusterSchemaInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();

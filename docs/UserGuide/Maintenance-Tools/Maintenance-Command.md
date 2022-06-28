@@ -114,3 +114,70 @@ To get the executing `queryId`，you can use the `show query processlist` comman
 |      |         |           |
 
 The maximum display length of statement is 64 characters. For statements with more than 64 characters, the intercepted part will be displayed.
+
+
+
+## Monitoring tool for cluster Region distribution
+
+A cluster uses a Region as a unit for data replication and data management . The Region status and distribution is helpful for system operation and maintenance testing , as shown in the following scenario ：
+
+-  Check which Datanodes are allocated to each Region in the cluster and whether the balance is correct.
+
+Currently, IoTDB supports Region query using the following SQL：
+
+- `SHOW REGIONS`: Show all Region
+- `SHOW SCHEMA REGIONS`: Show all SchemaRegion distribution
+- `SHOW DATA REGIONS`: Show all DataRegion distribution
+
+```sql
+IoTDB> create timeseries root.sg.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> create timeseries root.sg.d2.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> create timeseries root.ln.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> show regions
++--------+------------+------+-------------+-----+----------+---------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+-----+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6669|
+|       1|SchemaRegion|    Up|      root.ln|    1|         3|127.0.0.1|6667|
++--------+------------+------+-------------+-----+----------+---------+----+
+Total line number = 2
+It costs 0.035s
+
+IoTDB> insert into root.sg.d1(timestamp,s1) values(1,true)
+Msg: The statement is executed successfully.
+IoTDB> show regions
++--------+------------+------+-------------+-----+----------+---------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+-----+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6669|
+|       1|SchemaRegion|    Up|      root.ln|    1|         3|127.0.0.1|6667|
+|       2|  DataRegion|    Up|      root.sg|    1|         1|127.0.0.1|6671|
++--------+------------+------+-------------+-----+----------+---------+----+
+Total line number = 3
+It costs 0.010s
+
+IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
+Msg: The statement is executed successfully.
+IoTDB> show data regions
++--------+----------+------+-------------+-----+----------+---------+----+
+|RegionId|      Type|Status|storage group|Slots|DataNodeId|     Host|Port|
++--------+----------+------+-------------+-----+----------+---------+----+
+|       2|DataRegion|    Up|      root.sg|    1|         1|127.0.0.1|6671|
+|       3|DataRegion|    Up|      root.ln|    1|         1|127.0.0.1|6671|
++--------+----------+------+-------------+-----+----------+---------+----+
+Total line number = 2
+It costs 0.011s
+IoTDB> show schema regions
++--------+------------+------+-------------+-----+----------+---------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+-----+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6669|
+|       1|SchemaRegion|    Up|      root.ln|    1|         3|127.0.0.1|6667|
++--------+------------+------+-------------+-----+----------+---------+----+
+Total line number = 2
+It costs 0.012s
+```
+

@@ -122,20 +122,6 @@ plugin](https://github.com/diffplug/spotless/tree/main/plugin-maven) together wi
 8. Before you submit codes, you can use `mvn spotless:check` to check your codes manually,
 and use `mvn spotless:apply` to format your codes.
 
-**NOTICE (if you are using JDK16+)**: IF you are using JDK16+, you have to create a file called 
-`jvm.config`, put it under `.mvn/`, before you use `spotless:apply`. 
-The file contains the following content:
-```
---add-exports jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
---add-exports jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
-```
-
-This is [an issue of Spotless](https://github.com/diffplug/spotless/issues/834),
-Once the issue is fixed, we can remove this file.
-
 ## Code Sytle
 We use the [maven-checkstyle-plugin](https://checkstyle.sourceforge.io/config_filefilters.html) to make Java codes obey a consistent ruleset defined in [checkstyle.xml](https://github.com/apache/iotdb/blob/master/checkstyle.xml) under the project root.
 

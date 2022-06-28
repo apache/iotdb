@@ -92,33 +92,6 @@ public class IoTDBSessionSimpleIT {
   }
 
   @Test
-  public void testInsertByBlankStrAndInferType()
-      throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
-
-    String deviceId = "root.sg1.d1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("s1 ");
-
-    List<String> values = new ArrayList<>();
-    values.add("1.0");
-    session.insertRecord(deviceId, 1L, measurements, values);
-
-    String[] expected = new String[] {"root.sg1.d1.s1 "};
-
-    assertFalse(session.checkTimeseriesExists("root.sg1.d1.s1 "));
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries");
-    int i = 0;
-    while (dataSet.hasNext()) {
-      assertEquals(expected[i], dataSet.next().getFields().get(0).toString());
-      i++;
-    }
-
-    session.close();
-  }
-
-  @Test
   public void testInsertPartialTablet()
       throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -1460,9 +1433,7 @@ public class IoTDBSessionSimpleIT {
         try {
           session.insertTablet(tablet, true);
         } catch (StatementExecutionException e) {
-          Assert.assertEquals(
-              "313: failed to insert measurements [s3] caused by DataType mismatch, Insert timeseries root.sg.d.s3 type TEXT, metadata tree type INT64",
-              e.getMessage());
+          Assert.assertEquals(313, e.getStatusCode());
         }
         tablet.reset();
       }
@@ -1473,9 +1444,7 @@ public class IoTDBSessionSimpleIT {
       try {
         session.insertTablet(tablet);
       } catch (StatementExecutionException e) {
-        Assert.assertEquals(
-            "313: failed to insert measurements [s3] caused by DataType mismatch, Insert timeseries root.sg.d.s3 type TEXT, metadata tree type INT64",
-            e.getMessage());
+        Assert.assertEquals(313, e.getStatusCode());
       }
       tablet.reset();
     }

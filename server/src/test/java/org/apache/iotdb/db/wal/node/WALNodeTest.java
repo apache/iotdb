@@ -29,8 +29,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALReader;
-import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.recover.CheckpointRecoverUtils;
+import org.apache.iotdb.db.wal.utils.WALFileStatus;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -115,7 +116,7 @@ public class WALNodeTest {
     }
     Thread.sleep(1_000);
     // check .wal files
-    File[] walFiles = new File(logDirectory).listFiles(WALWriter::walFilenameFilter);
+    File[] walFiles = WALFileUtils.listAllWALFiles(new File(logDirectory));
     Set<InsertTabletPlan> actualInsertTabletPlans = new HashSet<>();
     if (walFiles != null) {
       for (File walFile : walFiles) {
@@ -205,16 +206,16 @@ public class WALNodeTest {
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    Map<Integer, MemTableInfo> expectedMemTableId2Info = new ConcurrentHashMap<>();
+    Map<Long, MemTableInfo> expectedMemTableId2Info = new ConcurrentHashMap<>();
     // create 10 memTables, and flush the first 5 of them
     int memTablesNum = 10;
     for (int i = 0; i < memTablesNum; ++i) {
       Callable<Void> writeTask =
           () -> {
             IMemTable memTable = new PrimitiveMemTable();
-            int memTableId = memTable.getMemTableId();
+            long memTableId = memTable.getMemTableId();
             String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
-            int firstFileVersionId = walNode.getCurrentLogVersion();
+            long firstFileVersionId = walNode.getCurrentLogVersion();
             walNode.onMemTableCreated(memTable, tsFilePath);
             if (memTableId % 2 == 0) {
               walNode.onMemTableFlushed(memTable);
@@ -234,8 +235,8 @@ public class WALNodeTest {
       future.get();
     }
     // recover info from checkpoint file
-    Map<Integer, MemTableInfo> actualMemTableId2Info =
-        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory));
+    Map<Long, MemTableInfo> actualMemTableId2Info =
+        CheckpointRecoverUtils.recoverMemTableInfo(new File(logDirectory)).getMemTableId2Info();
     assertEquals(expectedMemTableId2Info, actualMemTableId2Info);
   }
 
@@ -245,7 +246,7 @@ public class WALNodeTest {
     // write until log is rolled
     long time = 0;
     IMemTable memTable = new PrimitiveMemTable();
-    int memTableId = memTable.getMemTableId();
+    long memTableId = memTable.getMemTableId();
     String tsFilePath = logDirectory + File.separator + memTableId + ".tsfile";
     walNode.onMemTableCreated(memTable, tsFilePath);
     while (walNode.getCurrentLogVersion() == 0) {
@@ -258,12 +259,32 @@ public class WALNodeTest {
     }
     walNode.onMemTableFlushed(memTable);
     walNode.onMemTableCreated(new PrimitiveMemTable(), tsFilePath);
-    // check existence of _0.wal file
-    assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(0)).exists());
-    assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(1)).exists());
+    // check existence of _0-0-0.wal file
+    assertTrue(
+        new File(
+                logDirectory
+                    + File.separator
+                    + WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+            .exists());
+    assertTrue(
+        new File(
+                logDirectory
+                    + File.separator
+                    + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+            .exists());
     walNode.deleteOutdatedFiles();
-    assertFalse(new File(logDirectory + File.separator + WALWriter.getLogFileName(0)).exists());
-    assertTrue(new File(logDirectory + File.separator + WALWriter.getLogFileName(1)).exists());
+    assertFalse(
+        new File(
+                logDirectory
+                    + File.separator
+                    + WALFileUtils.getLogFileName(0, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+            .exists());
+    assertTrue(
+        new File(
+                logDirectory
+                    + File.separator
+                    + WALFileUtils.getLogFileName(1, 0, WALFileStatus.CONTAINS_NONE_SEARCH_INDEX))
+            .exists());
     // check flush listeners
     try {
       for (WALFlushListener walFlushListener : walFlushListeners) {

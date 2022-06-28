@@ -24,18 +24,18 @@ import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.ServiceType;
-import org.apache.iotdb.commons.utils.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.wal.node.WALNode;
+import org.apache.iotdb.db.service.metrics.predefined.FileMetrics;
+import org.apache.iotdb.db.service.metrics.predefined.ProcessMetrics;
+import org.apache.iotdb.db.service.metrics.predefined.SystemMetrics;
 import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
-import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.predefined.IMetricSet;
+import org.apache.iotdb.metrics.predefined.jvm.JvmMetrics;
+import org.apache.iotdb.metrics.predefined.logback.LogbackMetrics;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.util.stream.Stream;
 
 public class MetricsService extends MetricService implements MetricsServiceMBean, IService {
   private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
@@ -77,119 +77,29 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
   }
 
   @Override
-  public void collectFileSystemInfo() {
-    logger.info("start collecting fileSize and fileCount of wal/seq/unseq");
-    String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        walDirs,
-        value -> Stream.of(value).mapToLong(dir -> FileUtils.getDirSize(dir)).sum(),
-        Tag.NAME.toString(),
-        "wal");
-
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                      return FileUtils.getDirSize(dir);
-                    })
-                .sum(),
-        Tag.NAME.toString(),
-        "seq");
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_SIZE.toString(),
-        MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                      return FileUtils.getDirSize(dir);
-                    })
-                .sum(),
-        Tag.NAME.toString(),
-        "unseq");
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        walDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      File walFolder = new File(dir);
-                      File[] walNodeFolders = walFolder.listFiles(WALNode::walNodeFolderNameFilter);
-                      for (File walNodeFolder : walNodeFolders) {
-                        if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
-                          return org.apache.commons.io.FileUtils.listFiles(
-                                  walNodeFolder, null, true)
-                              .size();
-                        }
-                      }
-                      return 0L;
-                    })
-                .sum(),
-        Tag.NAME.toString(),
-        "wal");
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"tsfile"}, true)
-                          .size();
-                    })
-                .sum(),
-        Tag.NAME.toString(),
-        "seq");
-    metricManager.getOrCreateAutoGauge(
-        Metric.FILE_COUNT.toString(),
-        MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                      return org.apache.commons.io.FileUtils.listFiles(
-                              new File(dir), new String[] {"tsfile"}, true)
-                          .size();
-                    })
-                .sum(),
-        Tag.NAME.toString(),
-        "unseq");
-  }
-
-  @Override
-  protected void collectProcessInfo() {
-    logger.info("start collecting information of metric service's process");
-    ProcessMetricsMonitor processMetricsMonitor = ProcessMetricsMonitor.getInstance();
-    processMetricsMonitor.collectProcessCPUInfo();
-    processMetricsMonitor.collectProcessMemInfo();
-    processMetricsMonitor.collectThreadInfo();
-    processMetricsMonitor.collectProcessStatusInfo();
-  }
-
-  @Override
-  protected void collectSystemInfo() {
-    logger.info("start collecting information of system hardware");
-    SysRunMetricsMonitor sysRunMetricsMonitor = SysRunMetricsMonitor.getInstance();
-    sysRunMetricsMonitor.collectSystemCpuInfo();
-    sysRunMetricsMonitor.collectSystemMEMInfo();
-    sysRunMetricsMonitor.collectSystemDiskInfo();
+  public void enablePredefinedMetric(PredefinedMetric metric) {
+    IMetricSet metricSet;
+    switch (metric) {
+      case JVM:
+        metricSet = new JvmMetrics();
+        break;
+      case LOGBACK:
+        metricSet = new LogbackMetrics();
+        break;
+      case FILE:
+        metricSet = new FileMetrics();
+        break;
+      case PROCESS:
+        metricSet = new ProcessMetrics();
+        break;
+      case SYSTEM:
+        metricSet = new SystemMetrics();
+        break;
+      default:
+        logger.error("Unknown predefined metrics: {}", metric);
+        return;
+    }
+    metricSet.bindTo(metricManager);
   }
 
   @Override

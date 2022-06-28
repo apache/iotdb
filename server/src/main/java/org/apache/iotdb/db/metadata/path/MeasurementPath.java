@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class MeasurementPath extends PartialPath {
@@ -175,6 +177,25 @@ public class MeasurementPath extends PartialPath {
     ReadWriteIOUtils.write(measurementAlias, byteBuffer);
   }
 
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    PathType.Measurement.serialize(stream);
+    super.serializeWithoutType(stream);
+    if (measurementSchema == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      if (measurementSchema instanceof MeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 0, stream);
+      } else if (measurementSchema instanceof VectorMeasurementSchema) {
+        ReadWriteIOUtils.write((byte) 1, stream);
+      }
+      measurementSchema.serializeTo(stream);
+    }
+    ReadWriteIOUtils.write(isUnderAlignedEntity, stream);
+    ReadWriteIOUtils.write(measurementAlias, stream);
+  }
+
   public static MeasurementPath deserialize(ByteBuffer byteBuffer) {
     PartialPath partialPath = PartialPath.deserialize(byteBuffer);
     MeasurementPath measurementPath = new MeasurementPath();
@@ -193,5 +214,10 @@ public class MeasurementPath extends PartialPath {
     measurementPath.device = partialPath.getDevice();
     measurementPath.fullPath = partialPath.getFullPath();
     return measurementPath;
+  }
+
+  @Override
+  public PartialPath transformToPartialPath() {
+    return getDevicePath().concatNode(getTailNode());
   }
 }

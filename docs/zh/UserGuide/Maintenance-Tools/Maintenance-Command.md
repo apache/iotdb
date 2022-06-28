@@ -111,3 +111,68 @@ KILL QUERY <queryId>
 |      |         |           |
 
 其中 statement 最大显示长度为 64 字符。对于超过 64 字符的查询语句，将截取部分进行显示。
+
+## 集群 Region 分布监控工具
+
+集群中以 Region 作为数据复制和数据管理的单元，Region 的状态和分布对于系统运维和测试有很大帮助，如以下场景：
+
+- 查看集群中各个 Region 被分配到了哪些 DataNode，是否均衡
+
+当前 IoTDB 支持使用如下 SQL 查看 Region：
+
+- `SHOW REGIONS`: 展示所有 Region
+- `SHOW SCHEMA REGIONS`: 展示所有 SchemaRegion 分布
+- `SHOW DATA REGIONS`: 展示所有 DataRegion 分布
+
+```sql
+IoTDB> create timeseries root.sg.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> create timeseries root.sg.d2.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> create timeseries root.ln.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> show regions
++--------+------------+------+-------------+-----+----------+---------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+-----+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6669|
+|       1|SchemaRegion|    Up|      root.ln|    1|         3|127.0.0.1|6667|
++--------+------------+------+-------------+-----+----------+---------+----+
+Total line number = 2
+It costs 0.035s
+
+IoTDB> insert into root.sg.d1(timestamp,s1) values(1,true)
+Msg: The statement is executed successfully.
+IoTDB> show regions
++--------+------------+------+-------------+-----+----------+---------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+-----+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6669|
+|       1|SchemaRegion|    Up|      root.ln|    1|         3|127.0.0.1|6667|
+|       2|  DataRegion|    Up|      root.sg|    1|         1|127.0.0.1|6671|
++--------+------------+------+-------------+-----+----------+---------+----+
+Total line number = 3
+It costs 0.010s
+
+IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
+Msg: The statement is executed successfully.
+IoTDB> show data regions
++--------+----------+------+-------------+-----+----------+---------+----+
+|RegionId|      Type|Status|storage group|Slots|DataNodeId|     Host|Port|
++--------+----------+------+-------------+-----+----------+---------+----+
+|       2|DataRegion|    Up|      root.sg|    1|         1|127.0.0.1|6671|
+|       3|DataRegion|    Up|      root.ln|    1|         1|127.0.0.1|6671|
++--------+----------+------+-------------+-----+----------+---------+----+
+Total line number = 2
+It costs 0.011s
+IoTDB> show schema regions
++--------+------------+------+-------------+-----+----------+---------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+-----+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6669|
+|       1|SchemaRegion|    Up|      root.ln|    1|         3|127.0.0.1|6667|
++--------+------------+------+-------------+-----+----------+---------+----+
+Total line number = 2
+It costs 0.012s
+```
+

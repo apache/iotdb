@@ -47,7 +47,6 @@ import java.util.Map;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -77,7 +76,7 @@ public class IoTDBSimpleQueryIT {
 
     IMeasurementMNode mNode =
         LocalSchemaProcessor.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
-    assertNull(mNode.getSchema().getProps());
+    assertEquals("PLAIN", mNode.getSchema().getEncodingType().toString().toUpperCase());
   }
 
   @Test

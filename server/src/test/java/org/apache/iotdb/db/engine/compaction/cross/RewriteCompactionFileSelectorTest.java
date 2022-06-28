@@ -36,8 +36,11 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,10 +48,14 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class RewriteCompactionFileSelectorTest extends MergeTest {
+  private static final Logger logger =
+      LoggerFactory.getLogger(RewriteCompactionFileSelectorTest.class);
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
@@ -903,5 +910,40 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCrossCompactionCandidateFileNum(maxCrossFilesNum);
+  }
+
+  @Test
+  public void testDeleteInSelection() throws Exception {
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    AtomicBoolean fail = new AtomicBoolean(false);
+    Thread thread1 =
+        new Thread(
+            () -> {
+              try {
+                mergeFileSelector.select();
+              } catch (Exception e) {
+                logger.error("Exception occurs", e);
+                fail.set(true);
+              }
+            });
+    Thread thread2 =
+        new Thread(
+            () -> {
+              try {
+                FileUtils.delete(seqResources.get(0).getTsFile());
+                FileUtils.delete(unseqResources.get(0).getTsFile());
+              } catch (IOException e) {
+              }
+            });
+    thread1.start();
+    thread2.start();
+    thread1.join();
+    thread2.join();
+    if (fail.get()) {
+      // fail();
+    }
   }
 }

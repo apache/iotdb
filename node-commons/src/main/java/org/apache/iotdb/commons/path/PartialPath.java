@@ -32,6 +32,8 @@ import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -84,6 +86,9 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   /**
+   * only use this method in following situations: 1. you are sure you do not want to split the
+   * path. 2. you are sure path is correct.
+   *
    * @param path path
    * @param needSplit whether to split path to nodes, needSplit can only be false.
    */
@@ -122,6 +127,10 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     fullPath = String.join(TsFileConstant.PATH_SEPARATOR, nodes);
   }
 
+  /**
+   * only use this method in following situations: 1. you are sure node is allowed in syntax
+   * convention. 2. you are sure node needs not to be checked.
+   */
   public PartialPath concatNode(String node) {
     String[] newPathNodes = Arrays.copyOf(nodes, nodes.length + 1);
     newPathNodes[newPathNodes.length - 1] = node;
@@ -516,11 +525,26 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    PathType.Partial.serialize(stream);
+    serializeWithoutType(stream);
+  }
+
+  @Override
   protected void serializeWithoutType(ByteBuffer byteBuffer) {
     super.serializeWithoutType(byteBuffer);
     ReadWriteIOUtils.write(nodes.length, byteBuffer);
     for (String node : nodes) {
       ReadWriteIOUtils.write(node, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeWithoutType(DataOutputStream stream) throws IOException {
+    super.serializeWithoutType(stream);
+    ReadWriteIOUtils.write(nodes.length, stream);
+    for (String node : nodes) {
+      ReadWriteIOUtils.write(node, stream);
     }
   }
 
@@ -539,5 +563,41 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     partialPath.device = path.getDevice();
     partialPath.fullPath = path.getFullPath();
     return partialPath;
+  }
+
+  public PartialPath transformToPartialPath() {
+    return this;
+  }
+
+  /**
+   * PartialPath basic total, 52B
+   *
+   * <ul>
+   *   <li>Object header, 8B
+   *   <li>String[] reference + header + length, 8 + 4 + 8= 20B
+   *   <li>Path attributes' references, 8 * 3 = 24B
+   * </ul>
+   */
+  public static int estimateSize(PartialPath partialPath) {
+    int size = 52;
+    for (String node : partialPath.getNodes()) {
+      size += estimateStringSize(node);
+    }
+    size += estimateStringSize(partialPath.getFullPath());
+    return size;
+  }
+
+  /**
+   * String basic total, 32B
+   *
+   * <ul>
+   *   <li>Object header, 8B
+   *   <li>char[] reference + header + length, 8 + 4 + 8= 20B
+   *   <li>hash code, 4B
+   * </ul>
+   */
+  private static int estimateStringSize(String string) {
+    // each char takes 2B in Java
+    return string == null ? 0 : 32 + 2 * string.length();
   }
 }

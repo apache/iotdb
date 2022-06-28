@@ -19,11 +19,15 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterTest;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.itbase.category.RemoteTest;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -36,6 +40,7 @@ import java.util.Set;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
+@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBSyntaxConventionIdentifierIT {
   @Before
   public void setUp() throws Exception {
@@ -144,7 +149,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
   public void testNodeName() {
     String[] createNodeNames = {
       "a_1",
-      "A@#{}:",
       "aaa",
       "`select`",
       "`a.b`",
@@ -155,12 +159,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "````",
       "`c.d.```",
       "`abc`",
-      "a1_:@#${}"
     };
 
     String[] resultTimeseries = {
       "root.sg1.d1.a_1",
-      "root.sg1.d1.A@#{}:",
       "root.sg1.d1.aaa",
       "root.sg1.d1.select",
       "root.sg1.d1.`a.b`",
@@ -171,12 +173,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "root.sg1.d1.````",
       "root.sg1.d1.`c.d.```",
       "root.sg1.d1.abc",
-      "root.sg1.d1.a1_:@#${}",
     };
 
     String[] selectNodeNames = {
       "a_1",
-      "A@#{}:",
       "aaa",
       "`select`",
       "`a.b`",
@@ -187,12 +187,10 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "````",
       "`c.d.```",
       "abc",
-      "a1_:@#${}",
     };
 
     String[] suffixInResultColumns = {
       "a_1",
-      "A@#{}:",
       "aaa",
       "select",
       "`a.b`",
@@ -203,7 +201,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
       "````",
       "`c.d.```",
       "abc",
-      "a1_:@#${}",
     };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -347,6 +344,23 @@ public class IoTDBSyntaxConventionIdentifierIT {
 
       try {
         statement.execute("create timeseries root.sg1.d1.timestamp INT32");
+        fail();
+      } catch (Exception ignored) {
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testCreateIllegalStorageGroup() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      try {
+        statement.execute("create storage group root.sg1.d1.");
         fail();
       } catch (Exception ignored) {
       }

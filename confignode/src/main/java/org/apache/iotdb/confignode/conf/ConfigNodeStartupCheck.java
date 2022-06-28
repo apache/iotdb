@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -49,7 +50,7 @@ public class ConfigNodeStartupCheck {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeStartupCheck.class);
 
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private final File systemPropertiesFile;
   private final Properties systemProperties;
@@ -82,33 +83,45 @@ public class ConfigNodeStartupCheck {
   /** Check whether the global configuration of the cluster is correct */
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to StandAlone,
-    // the target_configNode needs to point to itself
-    if (conf.getConfigNodeConsensusProtocolClass()
-            .equals("org.apache.iotdb.consensus.standalone.StandAloneConsensus")
+    // the config_nodes needs to point to itself
+    if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
         && (!conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
             || conf.getRpcPort() != conf.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
-          "target_confignode",
+          "config_nodes",
           conf.getTargetConfigNode().getIp() + ":" + conf.getTargetConfigNode().getPort(),
           conf.getRpcAddress() + ":" + conf.getRpcPort());
     }
 
-    // When the DataNode consensus protocol is set to StandAlone,
-    // the replication factor must be 1
-    if (conf.getDataNodeConsensusProtocolClass()
-        .equals("org.apache.iotdb.consensus.standalone.StandAloneConsensus")) {
-      if (conf.getSchemaReplicationFactor() != 1) {
-        throw new ConfigurationException(
-            "schema_replication_factor",
-            String.valueOf(conf.getSchemaReplicationFactor()),
-            String.valueOf(1));
-      }
-      if (conf.getDataReplicationFactor() != 1) {
-        throw new ConfigurationException(
-            "data_replication_factor",
-            String.valueOf(conf.getDataReplicationFactor()),
-            String.valueOf(1));
-      }
+    // When the data region consensus protocol is set to StandAlone,
+    // the data replication factor must be 1
+    if (conf.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
+        && conf.getDataReplicationFactor() != 1) {
+      throw new ConfigurationException(
+          "data_replication_factor",
+          String.valueOf(conf.getDataReplicationFactor()),
+          String.valueOf(1));
+    }
+
+    // When the schema region consensus protocol is set to StandAlone,
+    // the schema replication factor must be 1
+    if (conf.getSchemaRegionConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
+        && conf.getSchemaReplicationFactor() != 1) {
+      throw new ConfigurationException(
+          "schema_replication_factor",
+          String.valueOf(conf.getSchemaReplicationFactor()),
+          String.valueOf(1));
+    }
+
+    // When the schema region consensus protocol is set to MultiLeaderConsensus,
+    // we should report an error
+    if (conf.getSchemaRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      throw new ConfigurationException(
+          "schema_region_consensus_protocol_class",
+          String.valueOf(conf.getSchemaRegionConsensusProtocolClass()),
+          String.format(
+              "%s or %s", ConsensusFactory.StandAloneConsensus, ConsensusFactory.RatisConsensus));
     }
   }
 
@@ -118,7 +131,7 @@ public class ConfigNodeStartupCheck {
    *
    * @return True if confignode-system.properties doesn't exist.
    */
-  private boolean isFirstStart() throws IOException, StartupException {
+  private boolean isFirstStart() throws IOException {
     // If systemDir does not exist, create systemDir
     File systemDir = new File(conf.getSystemDir());
     createDirIfEmpty(systemDir);
@@ -130,18 +143,6 @@ public class ConfigNodeStartupCheck {
     // Check if system properties file exists
     boolean isFirstStart;
     if (!systemPropertiesFile.exists()) {
-      // Create the system properties file when first start the ConfigNode
-      if (systemPropertiesFile.createNewFile()) {
-        LOGGER.info(
-            "System properties file {} for ConfigNode is created.",
-            systemPropertiesFile.getAbsolutePath());
-      } else {
-        LOGGER.error(
-            "Can't create the system properties file {} for ConfigNode. IoTDB-ConfigNode is shutdown.",
-            systemPropertiesFile.getAbsolutePath());
-        throw new StartupException("Can't create system properties file");
-      }
-
       isFirstStart = true;
     } else {
       // Load system properties file
@@ -159,7 +160,7 @@ public class ConfigNodeStartupCheck {
    * Check if the current ConfigNode is SeedConfigNode. If true, do the SeedConfigNode configuration
    * as well.
    *
-   * @return True if the target_confignode points to itself
+   * @return True if the config_nodes points to itself
    */
   private boolean isSeedConfigNode() {
     boolean result =
@@ -170,6 +171,7 @@ public class ConfigNodeStartupCheck {
       conf.setConfigNodeList(
           Collections.singletonList(
               new TConfigNodeLocation(
+                  0,
                   new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                   new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))));
     }
@@ -181,9 +183,11 @@ public class ConfigNodeStartupCheck {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
+                -1,
                 new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
                 new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())),
-            conf.getDataNodeConsensusProtocolClass(),
+            conf.getDataRegionConsensusProtocolClass(),
+            conf.getSchemaRegionConsensusProtocolClass(),
             conf.getSeriesPartitionSlotNum(),
             conf.getSeriesPartitionExecutorClass(),
             CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
@@ -191,13 +195,28 @@ public class ConfigNodeStartupCheck {
             conf.getSchemaReplicationFactor(),
             conf.getDataReplicationFactor());
 
-    TConfigNodeRegisterResp resp =
-        SyncConfigNodeClientPool.getInstance().registerConfigNode(conf.getTargetConfigNode(), req);
-    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
-      conf.setConfigNodeList(resp.getConfigNodeList());
-    } else {
-      throw new StartupException("Register ConfigNode failed!");
+    TEndPoint targetConfigNode = conf.getTargetConfigNode();
+    while (true) {
+      TConfigNodeRegisterResp resp =
+          SyncConfigNodeClientPool.getInstance().registerConfigNode(targetConfigNode, req);
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
+        conf.setConfigNodeList(resp.getConfigNodeList());
+        LOGGER.info("ConfigNode registered successfully.");
+        break;
+      } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        targetConfigNode = resp.getStatus().getRedirectNode();
+        LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
+      } else if (resp.getStatus().getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
+        LOGGER.error("Configuration may not be consistent, {}", req);
+        throw new StartupException("Configuration may not be consistent!");
+      }
+
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        throw new StartupException("Register ConfigNode failed!");
+      }
     }
   }
 
@@ -205,7 +224,21 @@ public class ConfigNodeStartupCheck {
    * There are some special parameters that can't be changed after a ConfigNode first started.
    * Therefore, store them in confignode-system.properties during the first startup
    */
-  private void writeSystemProperties() {
+  private void writeSystemProperties() throws IOException, StartupException {
+    // Create the system properties file if necessary
+    if (!systemPropertiesFile.exists()) {
+      if (systemPropertiesFile.createNewFile()) {
+        LOGGER.info(
+            "System properties file {} for ConfigNode is created.",
+            systemPropertiesFile.getAbsolutePath());
+      } else {
+        LOGGER.error(
+            "Can't create the system properties file {} for ConfigNode. IoTDB-ConfigNode is shutdown.",
+            systemPropertiesFile.getAbsolutePath());
+        throw new StartupException("Can't create system properties file");
+      }
+    }
+
     // Startup configuration
     systemProperties.setProperty("rpc_address", String.valueOf(conf.getRpcAddress()));
     systemProperties.setProperty("rpc_port", String.valueOf(conf.getRpcPort()));
@@ -215,7 +248,9 @@ public class ConfigNodeStartupCheck {
     systemProperties.setProperty(
         "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass());
     systemProperties.setProperty(
-        "data_node_consensus_protocol_class", conf.getDataNodeConsensusProtocolClass());
+        "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass());
+    systemProperties.setProperty(
+        "schema_region_consensus_protocol_class", conf.getSchemaRegionConsensusProtocolClass());
 
     // PartitionSlot configuration
     systemProperties.setProperty(
@@ -227,16 +262,24 @@ public class ConfigNodeStartupCheck {
     systemProperties.setProperty(
         "confignode_list", NodeUrlUtils.convertTConfigNodeUrls(conf.getConfigNodeList()));
 
-    try {
-      systemProperties.store(new FileOutputStream(systemPropertiesFile), "");
+    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
+      systemProperties.store(fileOutputStream, "");
     } catch (IOException e) {
+      if (!systemPropertiesFile.delete()) {
+        LOGGER.error(
+            "Automatically deleting {} failed, please remove it manually.",
+            systemPropertiesFile.getAbsolutePath());
+      }
+
       LOGGER.error(
           "Can't store system properties file {}.", systemPropertiesFile.getAbsolutePath());
+      throw e;
     }
   }
 
   /** Ensure that special parameters are consistent with each startup except the first one */
-  private void checkSystemProperties() throws ConfigurationException {
+  private void checkSystemProperties()
+      throws ConfigurationException, IOException, StartupException {
     boolean needReWrite = false;
 
     // Startup configuration
@@ -282,15 +325,28 @@ public class ConfigNodeStartupCheck {
           configNodeConsensusProtocolClass);
     }
 
-    String dataNodeConsensusProtocolClass =
-        systemProperties.getProperty("data_node_consensus_protocol_class", null);
-    if (dataNodeConsensusProtocolClass == null) {
+    String dataRegionConsensusProtocolClass =
+        systemProperties.getProperty("data_region_consensus_protocol_class", null);
+    if (dataRegionConsensusProtocolClass == null) {
       needReWrite = true;
-    } else if (!dataNodeConsensusProtocolClass.equals(conf.getDataNodeConsensusProtocolClass())) {
+    } else if (!dataRegionConsensusProtocolClass.equals(
+        conf.getDataRegionConsensusProtocolClass())) {
       throw new ConfigurationException(
-          "data_node_consensus_protocol_class",
-          conf.getDataNodeConsensusProtocolClass(),
-          dataNodeConsensusProtocolClass);
+          "data_region_consensus_protocol_class",
+          conf.getDataRegionConsensusProtocolClass(),
+          dataRegionConsensusProtocolClass);
+    }
+
+    String schemaRegionConsensusProtocolClass =
+        systemProperties.getProperty("schema_region_consensus_protocol_class", null);
+    if (schemaRegionConsensusProtocolClass == null) {
+      needReWrite = true;
+    } else if (!schemaRegionConsensusProtocolClass.equals(
+        conf.getSchemaRegionConsensusProtocolClass())) {
+      throw new ConfigurationException(
+          "schema_region_consensus_protocol_class",
+          conf.getSchemaRegionConsensusProtocolClass(),
+          schemaRegionConsensusProtocolClass);
     }
 
     // PartitionSlot configuration
@@ -328,7 +384,7 @@ public class ConfigNodeStartupCheck {
   /** Only load ConfigNodeList from confignode-system.properties when restart */
   private void loadConfigNodeList() throws StartupException {
     String addresses = systemProperties.getProperty("confignode_list", null);
-    if (addresses != null) {
+    if (addresses != null && !addresses.isEmpty()) {
       try {
         conf.setConfigNodeList(NodeUrlUtils.parseTConfigNodeUrls(addresses));
       } catch (BadNodeUrlException e) {

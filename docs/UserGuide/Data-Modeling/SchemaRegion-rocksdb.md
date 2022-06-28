@@ -37,7 +37,7 @@ After that, you can get a **conf** directory and a **lib** directory in
 schema-engine-rocksdb/target/schema-engine-rocksdb. Copy the file in the conf directory to the conf directory of server,
 and copy the files in the lib directory to the lib directory of server.
 
-Then, open the **iotdb-engine.properties** in the conf directory of server, and set the `schema_engine_mode` to
+Then, open the **iotdb-datanode.properties** in the conf directory of server, and set the `schema_engine_mode` to
 Rocksdb_based. Restart the IoTDB, the system will use `RSchemaRegion` to manage the metadata.
 
 ```

@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.library.drepair.util;
 
-import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.udf.api.access.RowIterator;
 
 import java.util.PriorityQueue;
 

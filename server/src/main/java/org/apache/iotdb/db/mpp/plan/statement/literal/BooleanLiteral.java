@@ -20,14 +20,15 @@
 package org.apache.iotdb.db.mpp.plan.statement.literal;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class BooleanLiteral extends Literal {
-  public static final BooleanLiteral TRUE_LITERAL = new BooleanLiteral("true");
-  public static final BooleanLiteral FALSE_LITERAL = new BooleanLiteral("false");
 
   private final boolean value;
 
@@ -39,14 +40,16 @@ public class BooleanLiteral extends Literal {
     this.value = value;
   }
 
-  public boolean getValue() {
-    return value;
-  }
-
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(LiteralType.BOOLEAN.ordinal(), byteBuffer);
     ReadWriteIOUtils.write(value, byteBuffer);
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(LiteralType.BOOLEAN.ordinal(), stream);
+    ReadWriteIOUtils.write(value, stream);
   }
 
   @Override
@@ -69,5 +72,15 @@ public class BooleanLiteral extends Literal {
   @Override
   public int hashCode() {
     return Objects.hash(value);
+  }
+
+  @Override
+  public boolean getBoolean() {
+    return value;
+  }
+
+  @Override
+  public Binary getBinary() {
+    return new Binary(String.valueOf(value));
   }
 }

@@ -23,6 +23,8 @@ import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
 import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -44,9 +46,9 @@ public class RegisterDataNodeReq extends ConfigRequest {
   }
 
   @Override
-  protected void serializeImpl(ByteBuffer buffer) {
-    buffer.putInt(ConfigRequestType.RegisterDataNode.ordinal());
-    ThriftCommonsSerDeUtils.serializeTDataNodeInfo(info, buffer);
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigRequestType.RegisterDataNode.ordinal());
+    ThriftCommonsSerDeUtils.serializeTDataNodeInfo(info, stream);
   }
 
   @Override

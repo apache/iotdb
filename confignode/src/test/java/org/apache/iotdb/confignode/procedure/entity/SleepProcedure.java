@@ -20,13 +20,13 @@
 package org.apache.iotdb.confignode.procedure.entity;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
-import org.apache.iotdb.confignode.procedure.TestProcEnv;
+import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public class SleepProcedure extends Procedure<TestProcEnv> {
   @Override
@@ -46,8 +46,8 @@ public class SleepProcedure extends Procedure<TestProcEnv> {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putInt(TestProcedureFactory.TestProcedureType.SLEEP_PROCEDURE.ordinal());
-    super.serialize(byteBuffer);
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeInt(TestProcedureFactory.TestProcedureType.SLEEP_PROCEDURE.ordinal());
+    super.serialize(stream);
   }
 }

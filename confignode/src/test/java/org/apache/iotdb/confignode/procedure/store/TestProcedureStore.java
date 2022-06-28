@@ -21,11 +21,11 @@ package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
-import org.apache.iotdb.confignode.procedure.TestProcEnv;
 import org.apache.iotdb.confignode.procedure.TestProcedureBase;
 import org.apache.iotdb.confignode.procedure.entity.IncProcedure;
 import org.apache.iotdb.confignode.procedure.entity.StuckSTMProcedure;
 import org.apache.iotdb.confignode.procedure.entity.TestProcedureFactory;
+import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
 import org.apache.iotdb.confignode.procedure.state.ProcedureState;
 import org.apache.iotdb.confignode.procedure.util.ProcedureTestUtil;
 
@@ -48,8 +48,7 @@ public class TestProcedureStore extends TestProcedureBase {
   @Override
   protected void initExecutor() {
     this.env = new TestProcEnv();
-    this.procStore =
-        new org.apache.iotdb.confignode.procedure.store.ProcedureStore(TEST_DIR, factory);
+    this.procStore = new ProcedureStore(TEST_DIR, factory);
     this.procExecutor = new ProcedureExecutor<>(env, procStore);
     this.env.setScheduler(this.procExecutor.getScheduler());
     this.procExecutor.init(WORK_THREAD);
@@ -57,8 +56,7 @@ public class TestProcedureStore extends TestProcedureBase {
 
   @Test
   public void testUpdate() {
-    org.apache.iotdb.confignode.procedure.store.ProcedureStore procedureStore =
-        new org.apache.iotdb.confignode.procedure.store.ProcedureStore(TEST_DIR, factory);
+    ProcedureStore procedureStore = new ProcedureStore(TEST_DIR, factory);
     IncProcedure incProcedure = new IncProcedure();
     procedureStore.update(incProcedure);
     List<Procedure> procedureList = new ArrayList<>();
@@ -85,8 +83,7 @@ public class TestProcedureStore extends TestProcedureBase {
     // stop service
     ProcedureTestUtil.stopService(procExecutor, procExecutor.getScheduler(), procStore);
     ConcurrentHashMap<Long, Procedure> procedures = procExecutor.getProcedures();
-    org.apache.iotdb.confignode.procedure.store.ProcedureStore procedureStore =
-        new ProcedureStore(TEST_DIR, new TestProcedureFactory());
+    ProcedureStore procedureStore = new ProcedureStore(TEST_DIR, new TestProcedureFactory());
     List<Procedure> procedureList = new ArrayList<>();
     procedureStore.load(procedureList);
     Assert.assertEquals(childCount + 1, procedureList.size());

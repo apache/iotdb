@@ -34,7 +34,8 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.internal.util.collections.Sets;
 
-import java.nio.ByteBuffer;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -461,11 +462,11 @@ public class SchemaTreeTest {
   @Test
   public void testSerialization() throws Exception {
     SchemaNode root = generateSchemaTree();
-    ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-    root.serialize(buffer);
-    buffer.flip();
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    root.serialize(outputStream);
 
-    SchemaTree schemaTree = SchemaTree.deserialize(buffer);
+    ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    SchemaTree schemaTree = SchemaTree.deserialize(inputStream);
 
     Pair<List<MeasurementPath>, Integer> visitResult =
         schemaTree.searchMeasurementPaths(new PartialPath("root.sg.**.status"), 2, 1, true);
@@ -535,6 +536,19 @@ public class SchemaTreeTest {
     }
 
     testSchemaTree(schemaTree.getRoot());
+  }
+
+  @Test
+  public void testMergeSchemaTreeAndSearchDeviceSchemaInfo() throws Exception {
+    SchemaTree schemaTree = new SchemaTree();
+    for (SchemaTree tree : generateSchemaTrees()) {
+      schemaTree.mergeSchemaTree(tree);
+    }
+    PartialPath devicePath = new PartialPath("root.sg.d99999");
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
   }
 
   private List<SchemaTree> generateSchemaTrees() throws Exception {

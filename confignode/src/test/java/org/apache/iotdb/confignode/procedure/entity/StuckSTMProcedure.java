@@ -20,11 +20,12 @@
 package org.apache.iotdb.confignode.procedure.entity;
 
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
-import org.apache.iotdb.confignode.procedure.TestProcEnv;
+import org.apache.iotdb.confignode.procedure.env.TestProcEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -99,10 +100,10 @@ public class StuckSTMProcedure
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putInt(TestProcedureFactory.TestProcedureType.STUCK_STM_PROCEDURE.ordinal());
-    super.serialize(byteBuffer);
-    byteBuffer.putInt(childCount);
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeInt(TestProcedureFactory.TestProcedureType.STUCK_STM_PROCEDURE.ordinal());
+    super.serialize(stream);
+    stream.writeInt(childCount);
   }
 
   @Override

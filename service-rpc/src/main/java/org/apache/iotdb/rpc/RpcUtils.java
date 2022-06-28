@@ -35,6 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class RpcUtils {
 
@@ -319,5 +320,16 @@ public class RpcUtils {
       }
       return formatDatetimeStr(datetime, digits);
     }
+  }
+
+  public static TSStatus squashResponseStatusList(List<TSStatus> responseStatusList) {
+    final List<TSStatus> failedStatus =
+        responseStatusList.stream()
+            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .collect(Collectors.toList());
+    return failedStatus.isEmpty()
+        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        : new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+            .setMessage(failedStatus.toString());
   }
 }

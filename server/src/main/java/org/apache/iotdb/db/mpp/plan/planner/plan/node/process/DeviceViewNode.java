@@ -25,6 +25,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,7 +42,7 @@ import java.util.Objects;
  * same between these TsBlocks. If the input TsBlock contains n columns, the device-based view will
  * contain n+1 columns where the new column is Device column.
  */
-public class DeviceViewNode extends ProcessNode {
+public class DeviceViewNode extends MultiChildNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first OrderBy in this list has higher priority.
@@ -48,9 +50,6 @@ public class DeviceViewNode extends ProcessNode {
 
   // The size devices and children should be the same.
   private final List<String> devices = new ArrayList<>();
-
-  // each child node whose output TsBlock contains the data belonged to one device.
-  private final List<PlanNode> children = new ArrayList<>();
 
   // Device column and measurement columns in result output
   private final List<String> outputColumnNames;
@@ -117,6 +116,10 @@ public class DeviceViewNode extends ProcessNode {
         getPlanNodeId(), mergeOrders, outputColumnNames, devices, deviceToMeasurementIndexesMap);
   }
 
+  public List<OrderBy> getMergeOrders() {
+    return mergeOrders;
+  }
+
   @Override
   public List<String> getOutputColumnNames() {
     return outputColumnNames;
@@ -146,6 +149,29 @@ public class DeviceViewNode extends ProcessNode {
       ReadWriteIOUtils.write(entry.getValue().size(), byteBuffer);
       for (Integer index : entry.getValue()) {
         ReadWriteIOUtils.write(index, byteBuffer);
+      }
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DEVICE_VIEW.serialize(stream);
+    ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), stream);
+    ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), stream);
+    ReadWriteIOUtils.write(outputColumnNames.size(), stream);
+    for (String column : outputColumnNames) {
+      ReadWriteIOUtils.write(column, stream);
+    }
+    ReadWriteIOUtils.write(devices.size(), stream);
+    for (String deviceName : devices) {
+      ReadWriteIOUtils.write(deviceName, stream);
+    }
+    ReadWriteIOUtils.write(deviceToMeasurementIndexesMap.size(), stream);
+    for (Map.Entry<String, List<Integer>> entry : deviceToMeasurementIndexesMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue().size(), stream);
+      for (Integer index : entry.getValue()) {
+        ReadWriteIOUtils.write(index, stream);
       }
     }
   }
@@ -212,5 +238,10 @@ public class DeviceViewNode extends ProcessNode {
         children,
         outputColumnNames,
         deviceToMeasurementIndexesMap);
+  }
+
+  @Override
+  public String toString() {
+    return "DeviceView-" + this.getPlanNodeId();
   }
 }

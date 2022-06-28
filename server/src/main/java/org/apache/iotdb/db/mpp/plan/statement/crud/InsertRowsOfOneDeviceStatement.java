@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.crud;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -72,6 +74,13 @@ public class InsertRowsOfOneDeviceStatement extends InsertBaseStatement {
       timePartitionSlotSet.add(StorageEngineV2.getTimePartitionSlot(insertRowStatement.getTime()));
     }
     return new ArrayList<>(timePartitionSlotSet);
+  }
+
+  @Override
+  public List<TEndPoint> collectRedirectInfo(DataPartition dataPartition) {
+    return insertRowStatementList
+        .get(insertRowStatementList.size() - 1)
+        .collectRedirectInfo(dataPartition);
   }
 
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {

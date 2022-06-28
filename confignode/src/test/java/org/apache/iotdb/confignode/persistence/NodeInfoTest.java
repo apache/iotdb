@@ -77,14 +77,14 @@ public class NodeInfoTest {
     }
     nodeInfo.setDrainingDataNodes(drainingDataNodes_before);
 
-    int nextId = nodeInfo.getNextDataNodeId();
+    int nextId = nodeInfo.getNextNodeId();
     List<TDataNodeInfo> onlineDataNodes_before = nodeInfo.getOnlineDataNodes(-1);
 
     nodeInfo.processTakeSnapshot(snapshotDir);
     nodeInfo.clear();
     nodeInfo.processLoadSnapshot(snapshotDir);
 
-    Assert.assertEquals(nextId, nodeInfo.getNextDataNodeId());
+    Assert.assertEquals(nextId, nodeInfo.getNextNodeId());
 
     Set<TDataNodeLocation> drainingDataNodes_after = nodeInfo.getDrainingDataNodes();
     Assert.assertEquals(drainingDataNodes_before, drainingDataNodes_after);
@@ -99,6 +99,7 @@ public class NodeInfoTest {
         new TEndPoint("127.0.0.1", 6600 + flag),
         new TEndPoint("127.0.0.1", 7700 + flag),
         new TEndPoint("127.0.0.1", 8800 + flag),
-        new TEndPoint("127.0.0.1", 9900 + flag));
+        new TEndPoint("127.0.0.1", 9900 + flag),
+        new TEndPoint("127.0.0.1", 11000 + flag));
   }
 }

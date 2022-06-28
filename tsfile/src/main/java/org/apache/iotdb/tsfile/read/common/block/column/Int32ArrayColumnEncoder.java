@@ -28,7 +28,7 @@ import java.nio.ByteBuffer;
 public class Int32ArrayColumnEncoder implements ColumnEncoder {
 
   @Override
-  public void readColumn(ColumnBuilder columnBuilder, ByteBuffer input, int positionCount) {
+  public Column readColumn(ByteBuffer input, TSDataType dataType, int positionCount) {
 
     // Serialized data layout:
     //    +---------------+-----------------+-------------+
@@ -39,8 +39,9 @@ public class Int32ArrayColumnEncoder implements ColumnEncoder {
 
     boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
 
-    TSDataType dataType = columnBuilder.getDataType();
+    ColumnBuilder columnBuilder;
     if (TSDataType.INT32.equals(dataType)) {
+      columnBuilder = new IntColumnBuilder(null, positionCount);
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators == null || !nullIndicators[i]) {
           columnBuilder.writeInt(input.getInt());
@@ -49,6 +50,7 @@ public class Int32ArrayColumnEncoder implements ColumnEncoder {
         }
       }
     } else if (TSDataType.FLOAT.equals(dataType)) {
+      columnBuilder = new FloatColumnBuilder(null, positionCount);
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators == null || !nullIndicators[i]) {
           columnBuilder.writeFloat(Float.intBitsToFloat(input.getInt()));
@@ -59,6 +61,8 @@ public class Int32ArrayColumnEncoder implements ColumnEncoder {
     } else {
       throw new IllegalArgumentException("Invalid data type: " + dataType);
     }
+
+    return columnBuilder.build();
   }
 
   @Override

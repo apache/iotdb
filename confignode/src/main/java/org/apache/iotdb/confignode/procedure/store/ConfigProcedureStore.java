@@ -69,12 +69,12 @@ public class ConfigProcedureStore implements IProcedureStore {
   }
 
   @Override
-  public void load(List<org.apache.iotdb.confignode.procedure.Procedure> procedureList) {
+  public void load(List<Procedure> procedureList) {
     procedureInfo.load(procedureList);
   }
 
   @Override
-  public void update(org.apache.iotdb.confignode.procedure.Procedure procedure) {
+  public void update(Procedure procedure) {
     UpdateProcedureReq updateProcedureReq = new UpdateProcedureReq();
     ProcedureFactory.ProcedureType procedureType = ProcedureFactory.getProcedureType(procedure);
     if (procedureType != null) {
@@ -84,7 +84,7 @@ public class ConfigProcedureStore implements IProcedureStore {
   }
 
   @Override
-  public void update(org.apache.iotdb.confignode.procedure.Procedure[] subprocs) {
+  public void update(Procedure[] subprocs) {
     for (Procedure subproc : subprocs) {
       update(subproc);
     }

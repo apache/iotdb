@@ -23,9 +23,11 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.query.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -46,8 +48,11 @@ public class GroupByLevelController {
 
   private final int[] levels;
 
-  /** count(root.sg.d1.s1) with level = 1 -> count(root.*.d1.s1) */
+  /** count(root.sg.d1.s1) with level = 1 -> { count(root.*.d1.s1) : count(root.sg.d1.s1) } */
   private final Map<Expression, Set<Expression>> groupedPathMap;
+
+  /** count(root.sg.d1.s1) with level = 1 -> { root.sg.d1.s1 : root.sg.*.s1 } */
+  private final Map<Expression, Expression> rawPathToGroupedPathMap;
 
   /** count(root.*.d1.s1) -> alias */
   private final Map<String, String> columnToAliasMap;
@@ -58,30 +63,89 @@ public class GroupByLevelController {
    */
   private final Map<String, String> aliasToColumnMap;
 
-  public GroupByLevelController(int[] levels) {
+  private final TypeProvider typeProvider;
+
+  public GroupByLevelController(int[] levels, TypeProvider typeProvider) {
     this.levels = levels;
     this.groupedPathMap = new LinkedHashMap<>();
+    this.rawPathToGroupedPathMap = new HashMap<>();
     this.columnToAliasMap = new HashMap<>();
     this.aliasToColumnMap = new HashMap<>();
+    this.typeProvider = typeProvider;
   }
 
-  public void control(Expression expression, String alias) {
+  public void control(boolean isCountStar, Expression expression, String alias) {
     if (!(expression instanceof FunctionExpression
         && expression.isBuiltInAggregationFunctionExpression())) {
       throw new SemanticException(expression + " can't be used in group by level.");
     }
 
     PartialPath rawPath = ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
-    PartialPath groupedPath = generatePartialPathByLevel(rawPath.getNodes(), levels);
-    Expression groupedExpression =
+    PartialPath groupedPath = generatePartialPathByLevel(isCountStar, rawPath.getNodes(), levels);
+
+    checkDatatypeConsistency(
+        groupedPath.getFullPath(), ((FunctionExpression) expression).getFunctionName(), rawPath);
+
+    Expression rawPathExpression = new TimeSeriesOperand(rawPath);
+    Expression groupedPathExpression = new TimeSeriesOperand(groupedPath);
+    if (!rawPathToGroupedPathMap.containsKey(rawPathExpression)) {
+      rawPathToGroupedPathMap.put(rawPathExpression, groupedPathExpression);
+    }
+
+    FunctionExpression groupedExpression =
         new FunctionExpression(
             ((FunctionExpression) expression).getFunctionName(),
             ((FunctionExpression) expression).getFunctionAttributes(),
-            Collections.singletonList(new TimeSeriesOperand(groupedPath)));
+            Collections.singletonList(groupedPathExpression));
     groupedPathMap.computeIfAbsent(groupedExpression, key -> new HashSet<>()).add(expression);
 
     if (alias != null) {
       checkAliasAndUpdateAliasMap(alias, groupedExpression.getExpressionString());
+    }
+  }
+
+  /**
+   * GroupByLevelNode can only accept intermediate input, so it doesn't matter what the origin
+   * series datatype is for aggregation like COUNT, SUM. But for MAX_VALUE, it must be consistent
+   * across different time series. And we will take one as the final type of grouped series.
+   *
+   * @param groupedPath grouped expression, e.g. root.*.d1.s1
+   * @param functionName function name, e.g. COUNT
+   * @param rawPath raw series path, e.g. root.sg.d1.s1
+   */
+  private void checkDatatypeConsistency(
+      String groupedPath, String functionName, PartialPath rawPath) {
+    switch (functionName.toLowerCase()) {
+      case SQLConstant.MIN_TIME:
+      case SQLConstant.MAX_TIME:
+      case SQLConstant.COUNT:
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+        try {
+          typeProvider.getType(groupedPath);
+        } catch (StatementAnalyzeException e) {
+          typeProvider.setType(groupedPath, rawPath.getSeriesType());
+        }
+        return;
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.LAST_VALUE:
+      case SQLConstant.FIRST_VALUE:
+      case SQLConstant.MAX_VALUE:
+      case SQLConstant.EXTREME:
+        try {
+          TSDataType tsDataType = typeProvider.getType(groupedPath);
+          if (tsDataType != rawPath.getSeriesType()) {
+            throw new SemanticException(
+                String.format(
+                    "GROUP BY LEVEL: the data types of the same output column[%s] should be the same.",
+                    groupedPath));
+          }
+        } catch (StatementAnalyzeException e) {
+          typeProvider.setType(groupedPath, rawPath.getSeriesType());
+        }
+        return;
+      default:
+        throw new IllegalArgumentException("Invalid Aggregation function: " + functionName);
     }
   }
 
@@ -114,7 +178,8 @@ public class GroupByLevelController {
    *
    * @return result partial path
    */
-  public PartialPath generatePartialPathByLevel(String[] nodes, int[] pathLevels) {
+  public PartialPath generatePartialPathByLevel(
+      boolean isCountStar, String[] nodes, int[] pathLevels) {
     Set<Integer> levelSet = new HashSet<>();
     for (int level : pathLevels) {
       levelSet.add(level);
@@ -130,7 +195,11 @@ public class GroupByLevelController {
         transformedNodes.add(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
       }
     }
-    transformedNodes.add(nodes[nodes.length - 1]);
+    if (isCountStar) {
+      transformedNodes.add(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD);
+    } else {
+      transformedNodes.add(nodes[nodes.length - 1]);
+    }
     return new PartialPath(transformedNodes.toArray(new String[0]));
   }
 
@@ -140,5 +209,9 @@ public class GroupByLevelController {
 
   public String getAlias(String columnName) {
     return columnToAliasMap.get(columnName) != null ? columnToAliasMap.get(columnName) : null;
+  }
+
+  public Map<Expression, Expression> getRawPathToGroupedPathMap() {
+    return rawPathToGroupedPathMap;
   }
 }

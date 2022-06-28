@@ -82,7 +82,7 @@ public class MsgManager {
   public synchronized String getPipeMsg(Pipe pipe) {
     if (runningPipe == null) {
       return "";
-    } else if (!pipe.equals(runningPipe) || Messages.size() == 0) {
+    } else if (!pipe.equals(runningPipe)) {
       return "";
     }
 

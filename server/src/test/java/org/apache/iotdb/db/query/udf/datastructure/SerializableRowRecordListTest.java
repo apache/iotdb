@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
-import org.apache.iotdb.db.query.udf.datastructure.row.SerializableRowRecordList;
+import org.apache.iotdb.db.mpp.transformation.datastructure.row.SerializableRowRecordList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;

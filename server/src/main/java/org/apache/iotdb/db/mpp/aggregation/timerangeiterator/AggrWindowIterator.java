@@ -43,6 +43,7 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   private final boolean leftCRightO;
 
   private TimeRange curTimeRange;
+  private boolean hasCachedTimeRange;
 
   public AggrWindowIterator(
       long startTime,
@@ -114,8 +115,12 @@ public class AggrWindowIterator implements ITimeRangeIterator {
 
   @Override
   public boolean hasNextTimeRange() {
+    if (hasCachedTimeRange) {
+      return true;
+    }
     if (curTimeRange == null) {
       curTimeRange = getFirstTimeRange();
+      hasCachedTimeRange = true;
       return true;
     }
 
@@ -149,12 +154,14 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     }
     retEndTime = Math.min(retEndTime, endTime);
     curTimeRange = new TimeRange(retStartTime, retEndTime);
+    hasCachedTimeRange = true;
     return true;
   }
 
   @Override
   public TimeRange nextTimeRange() {
-    if (curTimeRange != null || hasNextTimeRange()) {
+    if (hasCachedTimeRange || hasNextTimeRange()) {
+      hasCachedTimeRange = false;
       return getFinalTimeRange(curTimeRange, leftCRightO);
     }
     return null;

@@ -91,6 +91,28 @@ public class MetaUtils {
     return result;
   }
 
+  public static List<PartialPath> groupAlignedSeries(List<PartialPath> fullPaths) {
+    List<PartialPath> result = new ArrayList<>();
+    Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
+    for (PartialPath path : fullPaths) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (!measurementPath.isUnderAlignedEntity()) {
+        result.add(measurementPath);
+      } else {
+        String deviceName = measurementPath.getDevice();
+        if (!deviceToAlignedPathMap.containsKey(deviceName)) {
+          AlignedPath alignedPath = new AlignedPath(measurementPath);
+          deviceToAlignedPathMap.put(deviceName, alignedPath);
+        } else {
+          AlignedPath alignedPath = deviceToAlignedPathMap.get(deviceName);
+          alignedPath.addMeasurement(measurementPath);
+        }
+      }
+    }
+    result.addAll(deviceToAlignedPathMap.values());
+    return result;
+  }
+
   @TestOnly
   public static List<String> getMultiFullPaths(IMNode node) {
     if (node == null) {
@@ -194,28 +216,34 @@ public class MetaUtils {
   public static Map<PartialPath, List<AggregationDescriptor>> groupAlignedAggregations(
       Map<PartialPath, List<AggregationDescriptor>> pathToAggregations) {
     Map<PartialPath, List<AggregationDescriptor>> result = new HashMap<>();
-    List<AggregationDescriptor> alignedPathAggregations = new ArrayList<>();
-    AlignedPath alignedPath = null;
+    Map<String, List<MeasurementPath>> deviceToAlignedPathsMap = new HashMap<>();
     for (PartialPath path : pathToAggregations.keySet()) {
       MeasurementPath measurementPath = (MeasurementPath) path;
       if (!measurementPath.isUnderAlignedEntity()) {
         result
             .computeIfAbsent(measurementPath, key -> new ArrayList<>())
             .addAll(pathToAggregations.get(path));
-        alignedPath = null;
-        alignedPathAggregations.clear();
       } else {
-        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
-          alignedPath = new AlignedPath(measurementPath);
-          alignedPathAggregations.addAll(pathToAggregations.get(path));
-        } else {
-          alignedPath.addMeasurement(measurementPath);
-          alignedPathAggregations.addAll(pathToAggregations.get(path));
-        }
+        deviceToAlignedPathsMap
+            .computeIfAbsent(path.getDevice(), key -> new ArrayList<>())
+            .add(measurementPath);
       }
     }
-    if (alignedPath != null) {
-      result.put(alignedPath, alignedPathAggregations);
+    for (Map.Entry<String, List<MeasurementPath>> alignedPathEntry :
+        deviceToAlignedPathsMap.entrySet()) {
+      List<MeasurementPath> measurementPathList = alignedPathEntry.getValue();
+      AlignedPath alignedPath = null;
+      List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+      for (int i = 0; i < measurementPathList.size(); i++) {
+        MeasurementPath measurementPath = measurementPathList.get(i);
+        if (i == 0) {
+          alignedPath = new AlignedPath(measurementPath);
+        } else {
+          alignedPath.addMeasurement(measurementPath);
+        }
+        aggregationDescriptorList.addAll(pathToAggregations.get(measurementPath));
+      }
+      result.put(alignedPath, aggregationDescriptorList);
     }
     return result;
   }

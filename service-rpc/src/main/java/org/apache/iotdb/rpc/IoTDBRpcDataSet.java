@@ -115,8 +115,9 @@ public class IoTDBRpcDataSet {
 
     // deduplicate and map
     if (columnNameIndex != null) {
-      this.columnTypeDeduplicatedList = new ArrayList<>(columnNameIndex.size());
-      for (int i = 0; i < columnNameIndex.size(); i++) {
+      int columnSize = (int) columnNameIndex.values().stream().distinct().count();
+      this.columnTypeDeduplicatedList = new ArrayList<>(columnSize);
+      for (int i = 0; i < columnSize; i++) {
         columnTypeDeduplicatedList.add(null);
       }
       for (int i = 0; i < columnNameList.size(); i++) {
@@ -125,8 +126,10 @@ public class IoTDBRpcDataSet {
         this.columnTypeList.add(columnTypeList.get(i));
         if (!columnOrdinalMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
+          if (!columnOrdinalMap.containsValue(index + START_INDEX)) {
+            columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
+          }
           columnOrdinalMap.put(name, index + START_INDEX);
-          columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
         }
       }
     } else {

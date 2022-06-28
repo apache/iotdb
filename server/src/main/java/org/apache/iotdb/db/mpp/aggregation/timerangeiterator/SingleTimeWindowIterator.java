@@ -29,6 +29,7 @@ public class SingleTimeWindowIterator implements ITimeRangeIterator {
   private final long endTime;
 
   private TimeRange curTimeRange;
+  private boolean hasCachedTimeRange;
 
   public SingleTimeWindowIterator(long startTime, long endTime) {
     this.startTime = startTime;
@@ -42,17 +43,20 @@ public class SingleTimeWindowIterator implements ITimeRangeIterator {
 
   @Override
   public boolean hasNextTimeRange() {
+    if (hasCachedTimeRange) {
+      return true;
+    }
     if (curTimeRange == null) {
       curTimeRange = getFirstTimeRange();
-      return true;
-    } else {
-      return false;
+      hasCachedTimeRange = true;
     }
+    return hasCachedTimeRange;
   }
 
   @Override
   public TimeRange nextTimeRange() {
-    if (curTimeRange != null || hasNextTimeRange()) {
+    if (hasCachedTimeRange || hasNextTimeRange()) {
+      hasCachedTimeRange = false;
       return curTimeRange;
     }
     return null;

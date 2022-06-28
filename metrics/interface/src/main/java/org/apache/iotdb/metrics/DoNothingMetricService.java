@@ -20,22 +20,12 @@
 package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.ReloadLevel;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 public class DoNothingMetricService extends MetricService {
-  @Override
-  protected void collectFileSystemInfo() {
-    // do nothing
-  }
 
   @Override
-  protected void collectProcessInfo() {
-    // do nothing
-  }
-
-  @Override
-  protected void collectSystemInfo() {
-    // do nothing
-  }
+  public void enablePredefinedMetric(PredefinedMetric metric) {}
 
   @Override
   protected void reloadProperties(ReloadLevel reloadLevel) {

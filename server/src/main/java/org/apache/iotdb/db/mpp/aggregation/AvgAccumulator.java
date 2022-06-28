@@ -42,20 +42,16 @@ public class AvgAccumulator implements Accumulator {
   }
 
   @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
+  public int addInput(Column[] column, TimeRange timeRange) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(column, timeRange);
-        break;
+        return addIntInput(column, timeRange);
       case INT64:
-        addLongInput(column, timeRange);
-        break;
+        return addLongInput(column, timeRange);
       case FLOAT:
-        addFloatInput(column, timeRange);
-        break;
+        return addFloatInput(column, timeRange);
       case DOUBLE:
-        addDoubleInput(column, timeRange);
-        break;
+        return addDoubleInput(column, timeRange);
       case TEXT:
       case BOOLEAN:
       default:
@@ -74,16 +70,25 @@ public class AvgAccumulator implements Accumulator {
     initResult = true;
     countValue += partialResult[0].getLong(0);
     sumValue += partialResult[1].getDouble(0);
+    if (countValue == 0) {
+      initResult = false;
+    }
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
     initResult = true;
     countValue += statistics.getCount();
     if (statistics instanceof IntegerStatistics) {
       sumValue += statistics.getSumLongValue();
     } else {
       sumValue += statistics.getSumDoubleValue();
+    }
+    if (countValue == 0) {
+      initResult = false;
     }
   }
 
@@ -142,12 +147,15 @@ public class AvgAccumulator implements Accumulator {
     return TSDataType.DOUBLE;
   }
 
-  private void addIntInput(Column[] column, TimeRange timeRange) {
+  private int addIntInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
         initResult = true;
@@ -155,14 +163,18 @@ public class AvgAccumulator implements Accumulator {
         sumValue += column[1].getInt(i);
       }
     }
+    return timeColumn.getPositionCount();
   }
 
-  private void addLongInput(Column[] column, TimeRange timeRange) {
+  private int addLongInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
         initResult = true;
@@ -170,14 +182,18 @@ public class AvgAccumulator implements Accumulator {
         sumValue += column[1].getLong(i);
       }
     }
+    return timeColumn.getPositionCount();
   }
 
-  private void addFloatInput(Column[] column, TimeRange timeRange) {
+  private int addFloatInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
         initResult = true;
@@ -185,14 +201,18 @@ public class AvgAccumulator implements Accumulator {
         sumValue += column[1].getFloat(i);
       }
     }
+    return timeColumn.getPositionCount();
   }
 
-  private void addDoubleInput(Column[] column, TimeRange timeRange) {
+  private int addDoubleInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime > timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
         initResult = true;
@@ -200,5 +220,6 @@ public class AvgAccumulator implements Accumulator {
         sumValue += column[1].getDouble(i);
       }
     }
+    return timeColumn.getPositionCount();
   }
 }

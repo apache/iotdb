@@ -24,6 +24,7 @@ import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.container.MNodeContainers;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
@@ -151,6 +152,11 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     logWriter.serializeMeasurementMNode(this);
+  }
+
+  @Override
+  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+    return visitor.visitMeasurementMNode(this, context);
   }
 
   /** deserialize MeasurementMNode from MeasurementNodePlan */

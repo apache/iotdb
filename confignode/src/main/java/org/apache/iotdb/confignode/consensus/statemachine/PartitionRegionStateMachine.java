@@ -69,7 +69,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     ConfigRequest plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = ConfigRequest.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+        plan = ConfigRequest.Factory.create(request.serializeToByteBuffer());
       } catch (IOException e) {
         LOGGER.error("Deserialization error for write plan : {}", request, e);
         return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -87,7 +87,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   protected TSStatus write(ConfigRequest plan) {
     TSStatus result;
     try {
-      result = executor.executorNonQueryPlan(plan);
+      result = executor.executeNonQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
@@ -100,7 +100,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     ConfigRequest plan;
     if (request instanceof ByteBufferConsensusRequest) {
       try {
-        plan = ConfigRequest.Factory.create(((ByteBufferConsensusRequest) request).getContent());
+        plan = ConfigRequest.Factory.create(request.serializeToByteBuffer());
       } catch (IOException e) {
         LOGGER.error("Deserialization error for write plan : {}", request);
         return null;
@@ -128,7 +128,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   protected DataSet read(ConfigRequest plan) {
     DataSet result;
     try {
-      result = executor.executorQueryPlan(plan);
+      result = executor.executeQueryPlan(plan);
     } catch (UnknownPhysicalPlanTypeException | AuthException e) {
       LOGGER.error(e.getMessage());
       result = null;
@@ -141,8 +141,10 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     if (currentNode.equals(newLeader)) {
       LOGGER.info("Current node {} is Leader, start procedure manager.", newLeader);
       configManager.getProcedureManager().shiftExecutor(true);
+      configManager.getLoadManager().start();
     } else {
       configManager.getProcedureManager().shiftExecutor(false);
+      configManager.getLoadManager().stop();
     }
   }
 

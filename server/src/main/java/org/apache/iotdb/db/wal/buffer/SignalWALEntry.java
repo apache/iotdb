@@ -29,7 +29,7 @@ public class SignalWALEntry extends WALEntry {
   }
 
   public SignalWALEntry(SignalType signalType, boolean wait) {
-    super(Integer.MIN_VALUE, new DeletePlan(), wait);
+    super(Long.MIN_VALUE, new DeletePlan(), wait);
     this.signalType = signalType;
   }
 

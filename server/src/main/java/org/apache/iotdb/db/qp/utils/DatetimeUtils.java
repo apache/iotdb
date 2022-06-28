@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.utils;
 
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.query.control.SessionManager;
 
 import java.time.DateTimeException;
@@ -450,13 +449,11 @@ public class DatetimeUtils {
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE_NS)
           .toFormatter();
 
-  public static long convertDatetimeStrToLong(String str, ZoneId zoneId)
-      throws LogicalOperatorException {
+  public static long convertDatetimeStrToLong(String str, ZoneId zoneId) {
     return convertDatetimeStrToLong(str, toZoneOffset(zoneId), 0);
   }
 
-  public static long getInstantWithPrecision(String str, String timestampPrecision)
-      throws LogicalOperatorException {
+  public static long getInstantWithPrecision(String str, String timestampPrecision) {
     try {
       ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
       Instant instant = zonedDateTime.toInstant();
@@ -476,13 +473,12 @@ public class DatetimeUtils {
       }
       return instant.toEpochMilli();
     } catch (DateTimeParseException e) {
-      throw new LogicalOperatorException(e.getMessage());
+      throw new RuntimeException(e.getMessage());
     }
   }
 
   /** convert date time string to millisecond, microsecond or nanosecond. */
-  public static long convertDatetimeStrToLong(String str, ZoneOffset offset, int depth)
-      throws LogicalOperatorException {
+  public static long convertDatetimeStrToLong(String str, ZoneOffset offset, int depth) {
 
     String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
 

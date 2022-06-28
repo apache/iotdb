@@ -132,7 +132,6 @@ public class IoTDBDescriptor {
   /** load an property file and set TsfileDBConfig variables. */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void loadProps() {
-    commonDescriptor.initCommonConfigDir(conf.getSystemDir());
     URL url = getPropsUrl();
     if (url == null) {
       logger.warn("Couldn't load the configuration from any of the known sources.");
@@ -794,17 +793,13 @@ public class IoTDBDescriptor {
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
+      conf.setExtPipeDir(properties.getProperty("ext_pipe_dir", conf.getExtPipeDir()).trim());
+
       conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
           Integer.parseInt(
               properties.getProperty(
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
-
-      conf.setDataNodeSchemaCacheSize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "datanode_schema_cache_size",
-                  String.valueOf(conf.getDataNodeSchemaCacheSize()))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
@@ -888,6 +883,9 @@ public class IoTDBDescriptor {
 
       // shuffle
       loadShuffleProps(properties);
+
+      // author cache
+      loadAuthorCache(properties);
     } catch (FileNotFoundException e) {
       logger.warn("Fail to find config file {}", url, e);
     } catch (IOException e) {
@@ -898,7 +896,21 @@ public class IoTDBDescriptor {
       // update all data seriesPath
       conf.updatePath();
       commonDescriptor.getConfig().updatePath(System.getProperty(IoTDBConstant.IOTDB_HOME, null));
+      MetricConfigDescriptor.getInstance()
+          .getMetricConfig()
+          .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
     }
+  }
+
+  private void loadAuthorCache(Properties properties) {
+    conf.setAuthorCacheSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "author_cache_size", String.valueOf(conf.getAuthorCacheSize()))));
+    conf.setAuthorCacheExpireTime(
+        Integer.parseInt(
+            properties.getProperty(
+                "author_cache_expire_time", String.valueOf(conf.getAuthorCacheExpireTime()))));
   }
 
   // to keep consistent with the cluster module.
@@ -1403,6 +1415,8 @@ public class IoTDBDescriptor {
     logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
+    initSchemaMemoryAllocate(properties);
+
     conf.setMaxQueryDeduplicatedPathNum(
         Integer.parseInt(
             properties.getProperty(
@@ -1440,6 +1454,54 @@ public class IoTDBDescriptor {
         }
       }
     }
+  }
+
+  private void initSchemaMemoryAllocate(Properties properties) {
+    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
+
+    int proportionSum = 10;
+    int schemaRegionProportion = 8;
+    int schemaCacheProportion = 1;
+    int partitionCacheProportion = 0;
+    int lastCacheProportion = 1;
+
+    if (conf.isClusterMode()) {
+      schemaRegionProportion = 5;
+      schemaCacheProportion = 3;
+      partitionCacheProportion = 1;
+    }
+
+    String schemaMemoryAllocatePortion =
+        properties.getProperty("schema_memory_allocate_proportion");
+    if (schemaMemoryAllocatePortion != null) {
+      String[] proportions = schemaMemoryAllocatePortion.split(":");
+      int loadedProportionSum = 0;
+      for (String proportion : proportions) {
+        loadedProportionSum += Integer.parseInt(proportion.trim());
+      }
+
+      if (loadedProportionSum != 0) {
+        proportionSum = loadedProportionSum;
+        schemaRegionProportion = Integer.parseInt(proportions[0].trim());
+        schemaCacheProportion = Integer.parseInt(proportions[1].trim());
+        partitionCacheProportion = Integer.parseInt(proportions[2].trim());
+        lastCacheProportion = Integer.parseInt(proportions[3].trim());
+      }
+    }
+
+    conf.setAllocateMemoryForSchemaRegion(
+        schemaMemoryTotal * schemaRegionProportion / proportionSum);
+    logger.info("allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
+
+    conf.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
+    logger.info("allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
+
+    conf.setAllocateMemoryForPartitionCache(
+        schemaMemoryTotal * partitionCacheProportion / proportionSum);
+    logger.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
+
+    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
+    logger.info("allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -1499,6 +1561,47 @@ public class IoTDBDescriptor {
     if (tlogBufferSize > 0) {
       conf.setTlogBufferSize(tlogBufferSize);
     }
+
+    conf.setTriggerForwardMaxQueueNumber(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_max_queue_number",
+                Integer.toString(conf.getTriggerForwardMaxQueueNumber()))));
+    conf.setTriggerForwardMaxSizePerQueue(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_max_size_per_queue",
+                Integer.toString(conf.getTriggerForwardMaxSizePerQueue()))));
+    conf.setTriggerForwardBatchSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_batch_size",
+                Integer.toString(conf.getTriggerForwardBatchSize()))));
+    conf.setTriggerForwardHTTPPoolSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_http_pool_size",
+                Integer.toString(conf.getTriggerForwardHTTPPoolSize()))));
+    conf.setTriggerForwardHTTPPOOLMaxPerRoute(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_http_pool_max_per_route",
+                Integer.toString(conf.getTriggerForwardHTTPPOOLMaxPerRoute()))));
+    conf.setTriggerForwardMQTTPoolSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "trigger_forward_mqtt_pool_size",
+                Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
+    conf.setCoordinatorReadExecutorSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "coordinator_read_executor_size",
+                Integer.toString(conf.getCoordinatorReadExecutorSize()))));
+    conf.setCoordinatorWriteExecutorSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "coordinator_write_executor_size",
+                Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
   }
 
   private void loadCQProps(Properties properties) {
@@ -1542,37 +1645,45 @@ public class IoTDBDescriptor {
       }
     }
 
-    conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
+    conf.setInternalIp(properties.getProperty("internal_address", conf.getInternalIp()));
 
     conf.setInternalPort(
         Integer.parseInt(
             properties.getProperty("internal_port", Integer.toString(conf.getInternalPort()))));
 
-    conf.setConsensusPort(
+    conf.setDataRegionConsensusPort(
         Integer.parseInt(
-            properties.getProperty("consensus_port", Integer.toString(conf.getConsensusPort()))));
+            properties.getProperty(
+                "data_region_consensus_port",
+                Integer.toString(conf.getDataRegionConsensusPort()))));
+
+    conf.setSchemaRegionConsensusPort(
+        Integer.parseInt(
+            properties.getProperty(
+                "schema_region_consensus_port",
+                Integer.toString(conf.getSchemaRegionConsensusPort()))));
   }
 
   public void loadShuffleProps(Properties properties) {
-    conf.setDataBlockManagerPort(
+    conf.setMppDataExchangePort(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_port", Integer.toString(conf.getDataBlockManagerPort()))));
-    conf.setDataBlockManagerCorePoolSize(
+                "mpp_data_exchange_port", Integer.toString(conf.getMppDataExchangePort()))));
+    conf.setMppDataExchangeCorePoolSize(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_core_pool_size",
-                Integer.toString(conf.getDataBlockManagerCorePoolSize()))));
-    conf.setDataBlockManagerMaxPoolSize(
+                "mpp_data_exchange_core_pool_size",
+                Integer.toString(conf.getMppDataExchangeCorePoolSize()))));
+    conf.setMppDataExchangeMaxPoolSize(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_max_pool_size",
-                Integer.toString(conf.getDataBlockManagerMaxPoolSize()))));
-    conf.setDataBlockManagerKeepAliveTimeInMs(
+                "mpp_data_exchange_max_pool_size",
+                Integer.toString(conf.getMppDataExchangeMaxPoolSize()))));
+    conf.setMppDataExchangeKeepAliveTimeInMs(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_keep_alive_time_in_ms",
-                Integer.toString(conf.getDataBlockManagerKeepAliveTimeInMs()))));
+                "mpp_data_exchange_keep_alive_time_in_ms",
+                Integer.toString(conf.getMppDataExchangeKeepAliveTimeInMs()))));
 
     conf.setPartitionCacheSize(
         Integer.parseInt(
@@ -1601,7 +1712,6 @@ public class IoTDBDescriptor {
   // These configurations are received from config node when registering
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
-    conf.setConsensusProtocolClass(globalConfig.getDataNodeConsensusProtocolClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
   }

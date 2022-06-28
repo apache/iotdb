@@ -34,12 +34,12 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class Aggregator {
 
-  private final Accumulator accumulator;
+  protected final Accumulator accumulator;
   // In some intermediate result input, inputLocation[] should include two columns
-  private List<InputLocation[]> inputLocationList;
-  private final AggregationStep step;
+  protected List<InputLocation[]> inputLocationList;
+  protected final AggregationStep step;
 
-  private TimeRange timeRange = new TimeRange(0, Long.MAX_VALUE);
+  protected TimeRange curTimeRange = new TimeRange(0, Long.MAX_VALUE);
 
   // Used for SeriesAggregateScanOperator
   public Aggregator(Accumulator accumulator, AggregationStep step) {
@@ -56,14 +56,14 @@ public class Aggregator {
   }
 
   // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
-  public void processTsBlock(TsBlock tsBlock) {
+  public int processTsBlock(TsBlock tsBlock) {
     checkArgument(
         step.isInputRaw(),
         "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
-    // TODO Aligned TimeSeries
     if (inputLocationList == null) {
-      accumulator.addInput(tsBlock.getTimeAndValueColumn(0), timeRange);
+      return accumulator.addInput(tsBlock.getTimeAndValueColumn(0), curTimeRange);
     } else {
+      int lastReadReadIndex = 0;
       for (InputLocation[] inputLocations : inputLocationList) {
         checkArgument(
             inputLocations[0].getTsBlockIndex() == 0,
@@ -71,8 +71,10 @@ public class Aggregator {
         Column[] timeValueColumn = new Column[2];
         timeValueColumn[0] = tsBlock.getTimeColumn();
         timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
-        accumulator.addInput(timeValueColumn, timeRange);
+        lastReadReadIndex =
+            Math.max(lastReadReadIndex, accumulator.addInput(timeValueColumn, curTimeRange));
       }
+      return lastReadReadIndex;
     }
   }
 
@@ -110,6 +112,17 @@ public class Aggregator {
     accumulator.addStatistics(statistics);
   }
 
+  /** Used for AlignedSeriesAggregateScanOperator. */
+  public void processStatistics(Statistics[] statistics) {
+    for (InputLocation[] inputLocations : inputLocationList) {
+      checkArgument(
+          inputLocations[0].getTsBlockIndex() == 0,
+          "AlignedSeriesAggregateScanOperator can only process one tsBlock input.");
+      int valueIndex = inputLocations[0].getValueColumnIndex();
+      accumulator.addStatistics(statistics[valueIndex]);
+    }
+  }
+
   public TSDataType[] getOutputType() {
     if (step.isOutputPartial()) {
       return accumulator.getIntermediateType();
@@ -119,7 +132,7 @@ public class Aggregator {
   }
 
   public void reset() {
-    timeRange = new TimeRange(0, Long.MAX_VALUE);
+    curTimeRange = new TimeRange(0, Long.MAX_VALUE);
     accumulator.reset();
   }
 
@@ -127,11 +140,11 @@ public class Aggregator {
     return accumulator.hasFinalResult();
   }
 
-  public void setTimeRange(TimeRange timeRange) {
-    this.timeRange = timeRange;
+  public void updateTimeRange(TimeRange curTimeRange) {
+    this.curTimeRange = curTimeRange;
   }
 
-  public TimeRange getTimeRange() {
-    return timeRange;
+  public TimeRange getCurTimeRange() {
+    return curTimeRange;
   }
 }

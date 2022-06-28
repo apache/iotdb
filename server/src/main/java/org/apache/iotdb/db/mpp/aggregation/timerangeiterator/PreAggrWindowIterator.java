@@ -43,6 +43,7 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
   private int intervalCnt = 0;
 
   private TimeRange curTimeRange;
+  private boolean hasCachedTimeRange;
 
   public PreAggrWindowIterator(
       long startTime,
@@ -91,8 +92,12 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
 
   @Override
   public boolean hasNextTimeRange() {
+    if (hasCachedTimeRange) {
+      return true;
+    }
     if (curTimeRange == null) {
       curTimeRange = getFirstTimeRange();
+      hasCachedTimeRange = true;
       return true;
     }
 
@@ -113,12 +118,14 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
     retEndTime = Math.min(retStartTime + curInterval, endTime);
     updateIntervalAndStep();
     curTimeRange = new TimeRange(retStartTime, retEndTime);
+    hasCachedTimeRange = true;
     return true;
   }
 
   @Override
   public TimeRange nextTimeRange() {
-    if (curTimeRange != null || hasNextTimeRange()) {
+    if (hasCachedTimeRange || hasNextTimeRange()) {
+      hasCachedTimeRange = false;
       return getFinalTimeRange(curTimeRange, leftCRightO);
     }
     return null;

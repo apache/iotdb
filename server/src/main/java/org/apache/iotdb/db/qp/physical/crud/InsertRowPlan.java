@@ -251,11 +251,12 @@ public class InsertRowPlan extends InsertPlan implements WALEntryValue {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
         } catch (Exception e) {
           logger.warn(
-              "{}.{} data type is not consistent, input {}, registered {}",
+              "data type of {}.{} is not consistent, registered type {}, inserting timestamp {}, value {}",
               devicePath,
               measurements[i],
-              values[i],
-              dataTypes[i]);
+              dataTypes[i],
+              time,
+              values[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
             markFailedMeasurementInsertion(i, e);
             measurementMNodes[i] = null;
@@ -270,6 +271,11 @@ public class InsertRowPlan extends InsertPlan implements WALEntryValue {
   @Override
   public long getMinTime() {
     return getTime();
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    return values[index];
   }
 
   @Override
