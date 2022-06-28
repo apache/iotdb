@@ -215,6 +215,11 @@ public class LogDispatcher {
       long endIndex;
       if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
         // Use drainTo instead of poll to reduce lock overhead
+        logger.info(
+            "{} : pendingRequest Size: {}, bufferedRequest size: {}",
+            impl.getThisNode().getGroupId(),
+            pendingRequest.size(),
+            bufferedRequest.size());
         pendingRequest.drainTo(
             bufferedRequest,
             config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
@@ -223,7 +228,7 @@ public class LogDispatcher {
         // only execute this after a restart
         endIndex = constructBatchFromWAL(startIndex, maxIndex, logBatches);
         batch = new PendingBatch(startIndex, endIndex, logBatches);
-        logger.info("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
+        logger.info("Empty {} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
       } else {
         Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
         IndexedConsensusRequest prev = iterator.next();
@@ -249,7 +254,7 @@ public class LogDispatcher {
             if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
               batch = new PendingBatch(startIndex, endIndex, logBatches);
               logger.info(
-                  "{} : accumulated a {} from queue and wal",
+                  "gap {} : accumulated a {} from queue and wal",
                   impl.getThisNode().getGroupId(),
                   batch);
               return batch;
