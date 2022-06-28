@@ -20,9 +20,13 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -30,6 +34,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
@@ -188,6 +193,32 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLReq setTTLReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (!clusterSchemaManager
+          .getStorageGroupNames()
+          .contains(setTTLReq.getStorageGroup().toString())) {
+        return RpcUtils.getStatus(
+            TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+            "storageGroup " + setTTLReq.getStorageGroup() + " does not exist");
+      }
+      Set<TDataNodeLocation> dataNodeLocations =
+          getPartitionManager()
+              .getDataNodeLocation(setTTLReq.getStorageGroup(), TConsensusGroupType.DataRegion);
+      if (dataNodeLocations.size() != 0) {
+        for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+          List<TDataNodeInfo> onlineDataNodes =
+              getNodeManager().getOnlineDataNodes(dataNodeLocation.getDataNodeId());
+          for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+            status =
+                SyncDataNodeClientPool.getInstance()
+                    .setTTL(
+                        dataNodeInfo.getLocation().getInternalEndPoint(),
+                        new TSetTTLReq(setTTLReq.getStorageGroup(), setTTLReq.getTTL()));
+            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              return status;
+            }
+          }
+        }
+      }
       return clusterSchemaManager.setTTL(setTTLReq);
     } else {
       return status;
@@ -726,9 +757,5 @@ public class ConfigManager implements IManager {
   public void addMetrics() {
     partitionManager.addMetrics();
     nodeManager.addMetrics();
-  }
-
-  public boolean ifStorageGroupExist(String storageGroup) {
-    return clusterSchemaManager.getStorageGroupNames().contains(storageGroup.toString());
   }
 }
