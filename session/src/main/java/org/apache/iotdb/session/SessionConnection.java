@@ -26,6 +26,7 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
@@ -36,7 +37,6 @@ import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
@@ -77,7 +77,7 @@ public class SessionConnection {
       "Fail to reconnect to server. Please check server status";
   private Session session;
   private TTransport transport;
-  private TSIService.Iface client;
+  private IClientRPCService.Iface client;
   private long sessionId;
   private long statementId;
   private ZoneId zoneId;
@@ -118,9 +118,9 @@ public class SessionConnection {
     }
 
     if (session.enableRPCCompression) {
-      client = new TSIService.Client(new TCompactProtocol(transport));
+      client = new IClientRPCService.Client(new TCompactProtocol(transport));
     } else {
-      client = new TSIService.Client(new TBinaryProtocol(transport));
+      client = new IClientRPCService.Client(new TBinaryProtocol(transport));
     }
     client = RpcUtils.newSynchronizedClient(client);
 
@@ -188,7 +188,7 @@ public class SessionConnection {
     }
   }
 
-  protected TSIService.Iface getClient() {
+  protected IClientRPCService.Iface getClient() {
     return client;
   }
 
