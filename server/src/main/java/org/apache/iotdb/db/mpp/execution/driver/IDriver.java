@@ -47,7 +47,7 @@ public interface IDriver {
    *     processing. Otherwise, meaning that this IDriver is blocked and not ready for next
    *     processing.
    */
-  ListenableFuture<Void> processFor(Duration duration);
+  ListenableFuture<?> processFor(Duration duration);
 
   /**
    * the id information about this IDriver.

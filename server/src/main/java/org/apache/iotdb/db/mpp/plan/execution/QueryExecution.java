@@ -289,7 +289,7 @@ public class QueryExecution implements IQueryExecution {
         stateMachine.transitionToFinished();
         return Optional.empty();
       }
-      ListenableFuture<Void> blocked = resultHandle.isBlocked();
+      ListenableFuture<?> blocked = resultHandle.isBlocked();
       blocked.get();
       if (!resultHandle.isFinished()) {
         return Optional.of(resultHandle.receive());

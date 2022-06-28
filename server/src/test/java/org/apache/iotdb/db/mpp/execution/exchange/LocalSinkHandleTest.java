@@ -137,7 +137,7 @@ public class LocalSinkHandleTest {
       numOfSentTsblocks += 1;
     }
     Assert.assertEquals(6, numOfSentTsblocks);
-    ListenableFuture<Void> blocked = localSinkHandle.isFull();
+    ListenableFuture<?> blocked = localSinkHandle.isFull();
     Assert.assertFalse(blocked.isDone());
     Assert.assertFalse(localSinkHandle.isFinished());
     Assert.assertEquals(6 * mockTsBlockSize, localSinkHandle.getBufferRetainedSizeInBytes());

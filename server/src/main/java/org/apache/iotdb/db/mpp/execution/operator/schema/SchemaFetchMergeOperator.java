@@ -64,7 +64,7 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return children.get(currentIndex).isBlocked();
   }
 
