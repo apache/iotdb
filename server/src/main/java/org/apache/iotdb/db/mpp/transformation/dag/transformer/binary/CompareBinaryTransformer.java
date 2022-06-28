@@ -30,7 +30,7 @@ import java.util.Objects;
 public abstract class CompareBinaryTransformer extends BinaryTransformer {
 
   @FunctionalInterface
-  public interface Evaluator {
+  protected interface Evaluator {
 
     boolean evaluate() throws QueryProcessException, IOException;
   }
