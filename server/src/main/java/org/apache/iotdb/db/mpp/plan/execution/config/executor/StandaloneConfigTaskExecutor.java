@@ -173,6 +173,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
                     "Path %s does not exist",
                     Arrays.toString(deleteStorageGroupStatement.getPrefixPath().toArray())),
                 TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()));
+        return future;
       } else {
         LocalConfigNode.getInstance().deleteStorageGroups(deletePathList);
       }
