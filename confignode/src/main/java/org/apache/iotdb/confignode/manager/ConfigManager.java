@@ -20,6 +20,8 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -67,6 +69,7 @@ import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
@@ -84,6 +87,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -185,6 +189,28 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TClusterNodeInfos getAllClusterNodeInfos() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<TConfigNodeLocation> configNodeLocations = getNodeManager().getOnlineConfigNodes();
+      List<TDataNodeLocation> dataNodeInfoLocations =
+          getNodeManager().getOnlineDataNodes(-1).stream()
+              .map(TDataNodeInfo::getLocation)
+              .collect(Collectors.toList());
+      Map<Integer, String> nodeStatus = new HashMap<>();
+      getLoadManager()
+          .getHeartbeatCacheMap()
+          .forEach(
+              (nodeId, heartbeatCache) -> {
+                nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus());
+              });
+      return new TClusterNodeInfos(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
+    } else {
+      return new TClusterNodeInfos(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
+    }
+  }
+
+  @Override
   public TSStatus setTTL(SetTTLReq setTTLReq) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -268,6 +294,11 @@ public class ConfigManager implements IManager {
       // remove wild
       Map<String, TStorageGroupSchema> deleteStorageSchemaMap =
           getClusterSchemaManager().getMatchedStorageGroupSchemasByName(deletedPaths);
+      if (deleteStorageSchemaMap.isEmpty()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode(),
+            String.format("Path %s does not exist", Arrays.toString(deletedPaths.toArray())));
+      }
       ArrayList<TStorageGroupSchema> parsedDeleteStorageGroups =
           new ArrayList<>(deleteStorageSchemaMap.values());
       return procedureManager.deleteStorageGroups(parsedDeleteStorageGroups);

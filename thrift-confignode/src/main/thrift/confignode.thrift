@@ -216,6 +216,7 @@ struct TClusterNodeInfos {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
+  4: required map<i32, string> nodeStatus
 }
 
 // UDF
@@ -321,6 +322,9 @@ service IConfigNodeRPCService {
   /* Show Region */
 
   TShowRegionResp showRegion(TShowRegionReq req)
+
+  /* Get confignode heartbeat */
+  i64 getConfigNodeHeartBeat(i64 timestamp)
 
 }
 

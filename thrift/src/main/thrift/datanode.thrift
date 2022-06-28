@@ -245,7 +245,7 @@ service IDataNodeRPCService {
   *
   * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
   **/
-  THeartbeatResp getHeartBeat(THeartbeatReq req)
+  THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req)
 
   /**
    * Config node will create a function on a list of data nodes.
