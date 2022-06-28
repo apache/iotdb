@@ -21,8 +21,6 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.ternary;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
@@ -33,7 +31,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 public class BetweenExpression extends TernaryExpression {
@@ -61,36 +58,6 @@ public class BetweenExpression extends TernaryExpression {
   public BetweenExpression(ByteBuffer byteBuffer) {
     super(byteBuffer);
     this.isNotBetween = ReadWriteIOUtils.readBool(byteBuffer);
-  }
-
-  @Override
-  public final void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
-    List<Expression> firstExpressions = new ArrayList<>();
-    firstExpression.concat(prefixPaths, firstExpressions);
-
-    List<Expression> secondExpressions = new ArrayList<>();
-    secondExpression.concat(prefixPaths, secondExpressions);
-
-    List<Expression> thirdExpressions = new ArrayList<>();
-    secondExpression.concat(prefixPaths, thirdExpressions);
-
-    reconstruct(firstExpressions, secondExpressions, thirdExpressions, resultExpressions);
-  }
-
-  @Override
-  public final void removeWildcards(
-      org.apache.iotdb.db.qp.utils.WildcardsRemover wildcardsRemover,
-      List<Expression> resultExpressions)
-      throws LogicalOptimizeException {
-    List<Expression> firstExpressions = new ArrayList<>();
-    firstExpression.removeWildcards(wildcardsRemover, firstExpressions);
-
-    List<Expression> secondExpressions = new ArrayList<>();
-    secondExpression.removeWildcards(wildcardsRemover, secondExpressions);
-
-    List<Expression> thirdExpressions = new ArrayList<>();
-    thirdExpression.removeWildcards(wildcardsRemover, secondExpressions);
-    reconstruct(firstExpressions, secondExpressions, thirdExpressions, resultExpressions);
   }
 
   private void reconstruct(
@@ -122,7 +89,6 @@ public class BetweenExpression extends TernaryExpression {
         secondParentLayerPointReader,
         thirdParentLayerPointReader,
         isNotBetween);
-        firstParentLayerPointReader, secondParentLayerPointReader, thirdParentLayerPointReader);
   }
 
   @Override

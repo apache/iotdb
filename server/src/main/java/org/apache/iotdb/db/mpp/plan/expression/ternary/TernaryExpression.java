@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -350,5 +351,12 @@ public abstract class TernaryExpression extends Expression {
     Expression.serialize(firstExpression, byteBuffer);
     Expression.serialize(secondExpression, byteBuffer);
     Expression.serialize(thirdExpression, byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(firstExpression, stream);
+    Expression.serialize(secondExpression, stream);
+    Expression.serialize(thirdExpression, stream);
   }
 }
