@@ -916,9 +916,9 @@ public class ExpressionAnalyzer {
       // Reconstruct the function name to lower case to finish the calculation afterwards while the
       // origin name will be only as output name
       return new FunctionExpression(
-              functionExpression.getFunctionName().toLowerCase(),
-              functionExpression.getFunctionAttributes(),
-              childExpressions);
+          functionExpression.getFunctionName().toLowerCase(),
+          functionExpression.getFunctionAttributes(),
+          childExpressions);
     } else if (expression instanceof TimeSeriesOperand) {
       MeasurementPath rawPath = (MeasurementPath) ((TimeSeriesOperand) expression).getPath();
       if (rawPath.isMeasurementAliasExists()) {

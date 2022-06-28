@@ -318,32 +318,6 @@ public abstract class TernaryExpression extends Expression {
       LayerPointReader secondParentLayerPointReader,
       LayerPointReader thirdParentLayerPointReader);
 
-  @Override
-  public final String getExpressionStringInternal() {
-    StringBuilder builder = new StringBuilder();
-    if (firstExpression.getExpressionType().getPriority()
-        < this.getExpressionType().getPriority()) {
-      builder.append("(").append(firstExpression.getExpressionString()).append(")");
-    } else {
-      builder.append(firstExpression.getExpressionString());
-    }
-    builder.append(" ").append(operator()).append(" ");
-    if (secondExpression.getExpressionType().getPriority()
-        < this.getExpressionType().getPriority()) {
-      builder.append("(").append(secondExpression.getExpressionString()).append(")");
-    } else {
-      builder.append(secondExpression.getExpressionString());
-    }
-    builder.append(" ").append(operator()).append(" ");
-    if (thirdExpression.getExpressionType().getPriority()
-        < this.getExpressionType().getPriority()) {
-      builder.append("(").append(thirdExpression.getExpressionString()).append(")");
-    } else {
-      builder.append(thirdExpression.getExpressionString());
-    }
-    return builder.toString();
-  }
-
   protected abstract String operator();
 
   @Override

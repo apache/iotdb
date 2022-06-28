@@ -39,28 +39,29 @@ public class BetweenTransformer extends CompareTernaryTransformer {
   @Override
   protected Evaluator constructNumberEvaluator() {
     return () ->
-        (Double.compare(
-                    castCurrentValueToDoubleOperand(firstPointReader, firstPointReaderDataType),
-                    castCurrentValueToDoubleOperand(secondPointReader, secondPointReaderDataType))
-                >= 0)
-            && (Double.compare(
+        ((Double.compare(
+                        castCurrentValueToDoubleOperand(firstPointReader, firstPointReaderDataType),
+                        castCurrentValueToDoubleOperand(
+                            secondPointReader, secondPointReaderDataType))
+                    >= 0)
+                && (Double.compare(
                         castCurrentValueToDoubleOperand(firstPointReader, firstPointReaderDataType),
                         castCurrentValueToDoubleOperand(thirdPointReader, thirdPointReaderDataType))
-                    <= 0)
-                ^ isNotBetween;
+                    <= 0))
+            ^ isNotBetween;
   }
 
   @Override
   protected Evaluator constructTextEvaluator() {
     return () ->
-        (compare(
-                    firstPointReader.currentBinary().getStringValue(),
-                    secondPointReader.currentBinary().getStringValue())
-                >= 0)
-            && (compare(
+        ((compare(
+                        firstPointReader.currentBinary().getStringValue(),
+                        secondPointReader.currentBinary().getStringValue())
+                    >= 0)
+                && (compare(
                         firstPointReader.currentBinary().getStringValue(),
                         thirdPointReader.currentBinary().getStringValue())
-                    <= 0)
-                ^ isNotBetween;
+                    <= 0))
+            ^ isNotBetween;
   }
 }

@@ -50,10 +50,16 @@ public abstract class TernaryTransformer extends Transformer {
     final YieldableState secondYieldableState = secondPointReader.yield();
     final YieldableState thirdYieldableState = thirdPointReader.yield();
 
+    if (YieldableState.NOT_YIELDABLE_NO_MORE_DATA.equals(firstYieldableState)
+        || YieldableState.NOT_YIELDABLE_NO_MORE_DATA.equals(secondYieldableState)
+        || YieldableState.NOT_YIELDABLE_NO_MORE_DATA.equals(thirdYieldableState)) {
+      return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+    }
+
     if (YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(firstYieldableState)
         || YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(secondYieldableState)
         || YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA.equals(thirdYieldableState)) {
-      return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+      return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
     }
 
     final YieldableState timeYieldState = yieldTime();
@@ -84,8 +90,7 @@ public abstract class TernaryTransformer extends Transformer {
     long secondTime =
         isSecondPointReaderConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
     long thirdTime = isThirdPointReaderConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
-    // Long.MIN_VALUE is used to determine whether  isFirstConstant && isSecondConstant &&
-    // isThirdConstant = true
+
     while (firstTime != secondTime || firstTime != thirdTime) { // the logic is similar to MergeSort
       if (firstTime < secondTime) {
         if (isFirstPointReaderConstant) {
@@ -118,7 +123,7 @@ public abstract class TernaryTransformer extends Transformer {
           if (!YieldableState.YIELDABLE.equals(thirdYieldableState)) {
             return thirdYieldableState;
           }
-          thirdTime = secondPointReader.currentTime();
+          thirdTime = thirdPointReader.currentTime();
         }
       }
     }
