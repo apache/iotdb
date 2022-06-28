@@ -37,6 +37,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class DataPartitionTable {
 
@@ -131,6 +132,15 @@ public class DataPartitionTable {
                     .filterUnassignedDataPartitionSlots(timePartitionSlots)));
 
     return result;
+  }
+
+  public long getTimeSlots(TConsensusGroupId tConsensusGroupId) {
+    AtomicLong timeSlots = new AtomicLong();
+    dataPartitionMap.forEach(
+        (seriesPartitionSlot, seriesPartitionTable) -> {
+          seriesPartitionTable.getTimeSlots(tConsensusGroupId, timeSlots);
+        });
+    return timeSlots.get();
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

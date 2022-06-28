@@ -37,6 +37,7 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class SeriesPartitionTable {
 
@@ -125,6 +126,13 @@ public class SeriesPartitionTable {
         });
 
     return result;
+  }
+
+  public void getTimeSlots(TConsensusGroupId tConsensusGroupId, AtomicLong timeSlots) {
+    timeSlots.addAndGet(
+        seriesPartitionMap.values().stream()
+            .filter(consensusGroupId -> consensusGroupId.contains(tConsensusGroupId))
+            .count());
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
