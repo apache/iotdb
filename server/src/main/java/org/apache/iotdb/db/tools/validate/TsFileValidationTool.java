@@ -470,7 +470,11 @@ public class TsFileValidationTool {
                     badFileNum++;
                   }
                   if (printDetails) {
-                    printBoth("---- Device " + deviceID + " overlap between files");
+                    printBoth(
+                        "---- Device "
+                            + deviceID
+                            + " overlap between files, with previous file "
+                            + deviceEndTime.get(deviceID).left);
                   }
                 }
                 hasCheckedDeviceOverlap.put(deviceID, true);
