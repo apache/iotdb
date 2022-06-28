@@ -46,7 +46,7 @@ public class SchemaRegionConsensusImpl {
     return INSTANCE;
   }
 
-  public static synchronized IConsensus createInstance() {
+  public static synchronized IConsensus setupAndGetInstance() {
     if (INSTANCE == null) {
       INSTANCE =
           ConsensusFactory.getConsensusImpl(
