@@ -35,33 +35,37 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
  */
 public class SchemaRegionConsensusImpl {
 
+  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+
+  private static IConsensus INSTANCE = null;
+
   private SchemaRegionConsensusImpl() {}
 
+  // need to create instance before calling this method
   public static IConsensus getInstance() {
-    return SchemaRegionConsensusImplHolder.INSTANCE;
+    return INSTANCE;
   }
 
-  private static class SchemaRegionConsensusImplHolder {
-
-    private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    private static final IConsensus INSTANCE =
-        ConsensusFactory.getConsensusImpl(
-                conf.getSchemaRegionConsensusProtocolClass(),
-                ConsensusConfig.newBuilder()
-                    .setThisNode(
-                        new TEndPoint(conf.getInternalIp(), conf.getSchemaRegionConsensusPort()))
-                    .setStorageDir(conf.getSchemaRegionConsensusDir())
-                    .build(),
-                gid ->
-                    new SchemaRegionStateMachine(
-                        SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid)))
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        String.format(
-                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            conf.getSchemaRegionConsensusProtocolClass())));
-
-    private SchemaRegionConsensusImplHolder() {}
+  public static synchronized IConsensus createInstance() {
+    if (INSTANCE == null) {
+      INSTANCE =
+          ConsensusFactory.getConsensusImpl(
+                  conf.getSchemaRegionConsensusProtocolClass(),
+                  ConsensusConfig.newBuilder()
+                      .setThisNode(
+                          new TEndPoint(conf.getInternalIp(), conf.getSchemaRegionConsensusPort()))
+                      .setStorageDir(conf.getSchemaRegionConsensusDir())
+                      .build(),
+                  gid ->
+                      new SchemaRegionStateMachine(
+                          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid)))
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          String.format(
+                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                              conf.getSchemaRegionConsensusProtocolClass())));
+    }
+    return INSTANCE;
   }
 }
