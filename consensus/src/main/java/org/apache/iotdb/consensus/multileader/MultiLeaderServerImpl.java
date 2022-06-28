@@ -106,7 +106,6 @@ public class MultiLeaderServerImpl {
           buildIndexedConsensusRequestForLocalRequest(request);
       TSStatus result = stateMachine.write(indexedConsensusRequest);
       logDispatcher.offer(indexedConsensusRequest);
-      controller.incrementAndGet();
       return result;
     }
   }
@@ -157,7 +156,7 @@ public class MultiLeaderServerImpl {
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
     return new IndexedConsensusRequest(
-        controller.getCurrentIndex() + 1, getCurrentSafelyDeletedSearchIndex(), request);
+        controller.incrementAndGet(), getCurrentSafelyDeletedSearchIndex(), request);
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
