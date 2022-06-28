@@ -228,7 +228,7 @@ public class CompactionTaskManager implements IService {
   }
 
   private boolean isTaskRunning(AbstractCompactionTask task) {
-    String regionWithSG = task.getRegionWithSG();
+    String regionWithSG = getSGWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
     return storageGroupTasks
         .computeIfAbsent(regionWithSG, x -> new ConcurrentHashMap<>())
         .containsKey(task);
@@ -262,7 +262,7 @@ public class CompactionTaskManager implements IService {
   }
 
   public synchronized void removeRunningTaskFuture(AbstractCompactionTask task) {
-    String regionWithSG = task.getRegionWithSG();
+    String regionWithSG = getSGWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
     if (storageGroupTasks.containsKey(regionWithSG)) {
       storageGroupTasks.get(regionWithSG).remove(task);
     }
@@ -337,8 +337,14 @@ public class CompactionTaskManager implements IService {
 
   public void recordTask(AbstractCompactionTask task, Future<CompactionTaskSummary> summary) {
     storageGroupTasks
-        .computeIfAbsent(task.getRegionWithSG(), x -> new ConcurrentHashMap<>())
+        .computeIfAbsent(
+            getSGWithRegionId(task.getStorageGroupName(), task.getDataRegionId()),
+            x -> new ConcurrentHashMap<>())
         .put(task, summary);
+  }
+
+  public static String getSGWithRegionId(String storageGroupName, String dataRegionId) {
+    return storageGroupName + "-" + dataRegionId;
   }
 
   @TestOnly
@@ -386,7 +392,7 @@ public class CompactionTaskManager implements IService {
   @TestOnly
   public Future<CompactionTaskSummary> getCompactionTaskFutureMayBlock(AbstractCompactionTask task)
       throws InterruptedException, TimeoutException {
-    String regionWithSG = task.getRegionWithSG();
+    String regionWithSG = getSGWithRegionId(task.getStorageGroupName(), task.getDataRegionId());
     long startTime = System.currentTimeMillis();
     while (!storageGroupTasks.containsKey(regionWithSG)
         || !storageGroupTasks.get(regionWithSG).containsKey(task)) {

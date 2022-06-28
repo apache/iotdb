@@ -22,21 +22,26 @@ package org.apache.iotdb.db.engine.compaction.task;
 public class CompactionTaskSummary {
   private long timeCost = 0L;
   private volatile Status status = Status.NOT_STARTED;
+  private long startTime = -1L;
 
   public CompactionTaskSummary() {}
 
   public void start() {
     this.status = Status.STARTED;
+    this.startTime = System.currentTimeMillis();
   }
 
-  public void finish(boolean success, long timeCost) {
+  public void finish(boolean success) {
     this.status = success ? Status.SUCCESS : Status.FAILED;
-    this.timeCost = timeCost;
+    this.timeCost = System.currentTimeMillis() - this.startTime;
   }
 
   public void cancel() {
     if (this.status != Status.SUCCESS && this.status != Status.FAILED) {
       this.status = Status.CANCELED;
+      if (this.startTime != -1) {
+        this.timeCost = System.currentTimeMillis() - this.startTime;
+      }
     }
   }
 

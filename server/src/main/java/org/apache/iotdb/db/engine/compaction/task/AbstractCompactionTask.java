@@ -39,7 +39,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 public abstract class AbstractCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  protected String regionWithSG;
+  protected String dataRegionId;
+  protected String storageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
   protected final TsFileManager tsFileManager;
@@ -49,12 +50,14 @@ public abstract class AbstractCompactionTask {
   protected long serialId;
 
   public AbstractCompactionTask(
-      String regionWithSG,
+      String storageGroupName,
+      String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       AtomicInteger currentTaskNum,
       long serialId) {
-    this.regionWithSG = regionWithSG;
+    this.storageGroupName = storageGroupName;
+    this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
@@ -63,31 +66,28 @@ public abstract class AbstractCompactionTask {
 
   public abstract void setSourceFilesToCompactionCandidate();
 
-  protected abstract void doCompaction() throws Exception;
+  protected abstract void doCompaction();
 
-  public void start() throws Exception {
-    long startTime = System.currentTimeMillis();
+  public void start() {
     currentTaskNum.incrementAndGet();
     boolean isSuccess = false;
     try {
       summary.start();
       doCompaction();
       isSuccess = true;
-    } catch (InterruptedException e) {
-      LOGGER.warn("{} [Compaction] Current task is interrupted", regionWithSG);
-    } catch (Throwable e) {
-      // Use throwable to catch OOM exception.
-      LOGGER.error("{} [Compaction] Running compaction task failed", regionWithSG, e);
     } finally {
       this.currentTaskNum.decrementAndGet();
-      long timeCost = System.currentTimeMillis() - startTime;
-      summary.finish(isSuccess, timeCost);
+      summary.finish(isSuccess);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
     }
   }
 
-  public String getRegionWithSG() {
-    return regionWithSG;
+  public String getStorageGroupName() {
+    return this.storageGroupName;
+  }
+
+  public String getDataRegionId() {
+    return this.dataRegionId;
   }
 
   public long getTimePartition() {
@@ -120,7 +120,8 @@ public abstract class AbstractCompactionTask {
 
   protected void checkInterrupted() throws InterruptedException {
     if (Thread.currentThread().isInterrupted()) {
-      throw new InterruptedException(String.format("%s [Compaction] abort", regionWithSG));
+      throw new InterruptedException(
+          String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
     }
   }
 

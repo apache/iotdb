@@ -301,7 +301,11 @@ public class CompactionTaskComparatorTest {
     long cnt = 0;
     while (compactionTaskQueue.size() > 0) {
       for (int i = 0; i < 10; ++i) {
-        taskCount.get(compactionTaskQueue.take().getRegionWithSG()).incrementAndGet();
+        AbstractCompactionTask task = compactionTaskQueue.take();
+        String id =
+            CompactionTaskManager.getSGWithRegionId(
+                task.getStorageGroupName(), task.getDataRegionId());
+        taskCount.get(id).incrementAndGet();
       }
       cnt++;
       for (int i = 0; i < 10; ++i) {
@@ -331,7 +335,7 @@ public class CompactionTaskComparatorTest {
     }
 
     @Override
-    protected void doCompaction() throws Exception {}
+    protected void doCompaction() {}
 
     @Override
     public boolean equalsOtherTask(AbstractCompactionTask other) {
@@ -365,7 +369,7 @@ public class CompactionTaskComparatorTest {
     }
 
     @Override
-    protected void doCompaction() throws Exception {}
+    protected void doCompaction() {}
 
     @Override
     public boolean equalsOtherTask(AbstractCompactionTask other) {

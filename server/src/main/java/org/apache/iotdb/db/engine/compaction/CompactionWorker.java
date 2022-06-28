@@ -47,22 +47,23 @@ public class CompactionWorker implements Runnable {
   @Override
   public void run() {
     while (!Thread.currentThread().isInterrupted()) {
+      AbstractCompactionTask task = null;
       try {
-        AbstractCompactionTask task = compactionTaskQueue.take();
+        task = compactionTaskQueue.take();
+      } catch (InterruptedException e) {
+        log.warn("CompactionThread-{} terminates because interruption", threadId);
+        return;
+      }
+      if (task != null) {
         // add metrics
         CompactionMetricsRecorder.recordTaskInfo(
             task, CompactionTaskStatus.POLL_FROM_QUEUE, compactionTaskQueue.size());
-        if (task != null && task.checkValidAndSetMerging()) {
+        if (task.checkValidAndSetMerging()) {
           CompactionTaskSummary summary = task.getSummary();
           CompactionTaskFuture future = new CompactionTaskFuture(summary);
           CompactionTaskManager.getInstance().recordTask(task, future);
           task.start();
         }
-      } catch (InterruptedException e) {
-        log.error("CompactionThread-{} terminates because interruption", threadId);
-        return;
-      } catch (Throwable t) {
-        log.error("CompactionThread-{} meets exception", threadId, t);
       }
     }
   }
