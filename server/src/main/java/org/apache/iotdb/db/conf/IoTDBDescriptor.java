@@ -935,7 +935,7 @@ public class IoTDBDescriptor {
       conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
     }
 
-    for (TEndPoint configNode : conf.getConfigNodeList()) {
+    for (TEndPoint configNode : conf.getTargetConfigNodeList()) {
       boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
       if (!isInvalidNodeIp) {
         String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
@@ -947,7 +947,7 @@ public class IoTDBDescriptor {
         "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
         conf.getRpcAddress(),
         conf.getInternalIp(),
-        conf.getConfigNodeList());
+        conf.getTargetConfigNodeList());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1648,7 +1648,7 @@ public class IoTDBDescriptor {
     String configNodeUrls = properties.getProperty("target_config_nodes");
     if (configNodeUrls != null) {
       try {
-        conf.setConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
             "Config nodes are set in wrong format, please set them like 0.0.0.0:22277,0.0.0.0:22281");
