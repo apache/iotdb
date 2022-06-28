@@ -115,9 +115,10 @@ public class ConfigNodeDescriptor {
           Integer.parseInt(
               properties.getProperty("consensus_port", String.valueOf(conf.getConsensusPort()))));
 
-      String targetConfigNode = properties.getProperty("config_nodes", null);
-      if (targetConfigNode != null) {
-        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNode));
+      // TODO: Enable multiple target_config_nodes
+      String targetConfigNodes = properties.getProperty("target_config_nodes", null);
+      if (targetConfigNodes != null) {
+        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes));
       }
 
       conf.setSeriesPartitionSlotNum(
