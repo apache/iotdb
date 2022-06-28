@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
 import org.apache.thrift.TException;
 
@@ -28,9 +28,9 @@ import java.lang.reflect.Method;
 
 public class SynchronizedHandler implements InvocationHandler {
 
-  private final TSIService.Iface client;
+  private final IClientRPCService.Iface client;
 
-  public SynchronizedHandler(TSIService.Iface client) {
+  public SynchronizedHandler(IClientRPCService.Iface client) {
     this.client = client;
   }
 

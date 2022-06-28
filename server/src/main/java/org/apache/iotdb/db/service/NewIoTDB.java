@@ -48,7 +48,7 @@ import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeTSIServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeTSServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -129,7 +129,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     // init rpc service
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
+        .setRpcImplClassName(DataNodeTSServiceImpl.class.getName());
 
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
@@ -144,7 +144,7 @@ public class NewIoTDB implements NewIoTDBMBean {
 
     registerManager.register(StorageEngineV2.getInstance());
     registerManager.register(MPPDataExchangeService.getInstance());
-    registerManager.register(InternalService.getInstance());
+    registerManager.register(ClientRPCService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
 
     registerManager.register(TemporaryQueryDataFileService.getInstance());

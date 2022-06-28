@@ -614,10 +614,10 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
     }
     if (enableRPCCompression) {
         shared_ptr<TCompactProtocol> protocol(new TCompactProtocol(transport));
-        client = std::make_shared<TSIServiceClient>(protocol);
+        client = std::make_shared<IClientRPCServiceClient>(protocol);
     } else {
         shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport));
-        client = std::make_shared<TSIServiceClient>(protocol);
+        client = std::make_shared<IClientRPCServiceClient>(protocol);
     }
 
     std::map<std::string, std::string> configuration;
