@@ -63,6 +63,7 @@ public class IoTDBCompleteIT {
     ConfigFactory.getConfig().setDataRegionNum(prevDataRegionNum);
   }
 
+  @Ignore
   @Test
   public void test() {
     String[] sqls = {"SET STORAGE GROUP TO root.vehicle"};

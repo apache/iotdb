@@ -19,11 +19,13 @@
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -41,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -155,11 +158,16 @@ public class StandaloneScheduler implements IScheduler {
                     insertNode.getFailedMessages());
               }
             }
+
+            TSStatus executionResult;
+
             if (groupId instanceof DataRegionId) {
-              STORAGE_ENGINE.write((DataRegionId) groupId, planNode);
+              executionResult = STORAGE_ENGINE.write((DataRegionId) groupId, planNode);
             } else {
-              SCHEMA_ENGINE.write((SchemaRegionId) groupId, planNode);
+              executionResult = SCHEMA_ENGINE.write((SchemaRegionId) groupId, planNode);
             }
+
+            // partial insert
             if (hasFailedMeasurement) {
               InsertNode node = (InsertNode) planNode;
               List<Exception> exceptions = node.getFailedExceptions();
@@ -169,6 +177,11 @@ public class StandaloneScheduler implements IScheduler {
                       + (!exceptions.isEmpty()
                           ? (" caused by " + exceptions.get(0).getMessage())
                           : ""));
+            }
+
+            if (executionResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              stateMachine.transitionToFailed(
+                  new IoTDBException(executionResult.getMessage(), executionResult.getCode()));
             }
           }
           stateMachine.transitionToFinished();
