@@ -119,7 +119,7 @@
         <module>library-udf</module>
         <module>schema-engine-rocksdb</module>
         <module>udf-api</module>
-        <module>rewriteFileTool</module>
+        <module>load-tsfile-tool</module>
     </modules>
     <!-- Properties Management -->
     <properties>
