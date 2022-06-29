@@ -432,6 +432,11 @@ public class MultiLeaderConsensusTest {
       return new FakeConsensusReqIterator(startIndex);
     }
 
+    @Override
+    public long getCurrentSearchIndex() {
+      return 0;
+    }
+
     private class FakeConsensusReqIterator implements ConsensusReqReader.ReqIterator {
       private long nextSearchIndex;
 
