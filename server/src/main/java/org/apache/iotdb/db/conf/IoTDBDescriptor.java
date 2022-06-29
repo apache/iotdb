@@ -480,7 +480,7 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "max_allowed_concurrent_queries",
-                  Integer.toString(conf.getConcurrentQueryThread()))));
+                  Integer.toString(conf.getMaxAllowedConcurrentQueries()))));
 
       if (conf.getMaxAllowedConcurrentQueries() <= 0) {
         conf.setMaxAllowedConcurrentQueries(1000);
