@@ -70,8 +70,6 @@ public class MultiLeaderServerImpl {
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
-    // TODO restart
-    this.index = new AtomicLong(0);
     this.configuration = configuration;
     if (configuration.isEmpty()) {
       recoverConfiguration();
@@ -80,6 +78,9 @@ public class MultiLeaderServerImpl {
     }
     this.config = config;
     this.logDispatcher = new LogDispatcher(this, clientManager);
+    // restart
+    long currentSearchIndex = this.logDispatcher.getCurrentSearchIndex().orElse(0L);
+    this.index = new AtomicLong(currentSearchIndex);
   }
 
   public IStateMachine getStateMachine() {

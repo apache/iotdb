@@ -262,8 +262,8 @@ public class MultiLeaderConsensusTest {
     Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
     Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
 
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL * 2, servers.get(0).getImpl(gid).getIndex());
-    Assert.assertEquals(IndexController.FLUSH_INTERVAL * 2, servers.get(1).getImpl(gid).getIndex());
+    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(0).getImpl(gid).getIndex());
+    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(1).getImpl(gid).getIndex());
     Assert.assertEquals(0, servers.get(2).getImpl(gid).getIndex());
 
     for (int i = 0; i < 2; i++) {
@@ -424,7 +424,7 @@ public class MultiLeaderConsensusTest {
 
     @Override
     public long getCurrentSearchIndex() {
-      return 0;
+      return requestSets.getRequestSet().size();
     }
 
     private class FakeConsensusReqIterator implements ConsensusReqReader.ReqIterator {
