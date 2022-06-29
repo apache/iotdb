@@ -564,7 +564,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-        throw new RuntimeException("error code: " + result.status);
+        return RpcUtils.getTSExecuteStatementResp(result.status);
       }
 
       IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);

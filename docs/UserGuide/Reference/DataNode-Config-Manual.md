@@ -19,39 +19,32 @@
 
 -->
 
-# Configuration Parameters
+# DataNode/Standalone Configuration Parameters
 
+We use the same configuration files for IoTDB DataNode and Standalone version, all under the `datanode/conf`.
 
-Before starting to use IoTDB, you need to config the configuration files first. For your convenience, we have already set the default config in the files.
+* `datanode-env.sh/bat`：Environment configurations, in which we could set the memory allocation of DataNode and Standalone.
 
-In total, we provide users three kinds of configurations module: 
-
-* environment configuration file (`iotdb-env.bat`, `iotdb-env.sh`). The default configuration file for the environment configuration item. Users can configure the relevant system configuration items of JAVA-JVM in the file.
-* system configuration file (`iotdb-datanode.properties`). 
-	* `iotdb-datanode.properties`: The default configuration file for the IoTDB engine layer configuration item. Users can configure the IoTDB engine related parameters in the file, such as JDBC service listening port (`rpc_port`), unsequence data storage directory (`unsequence_data_dir`), etc. What's more, Users can configure the information about the TsFile, such as the data size written to the disk per time(`group_size_in_byte`). 
-  
-* log configuration file (`logback.xml`)
-
-The configuration files of the three configuration items are located in the IoTDB installation directory: `$IOTDB_HOME/conf` folder.
+* `iotdb-datanode.properties`：IoTDB DataNode/Standalone system configurations.
 
 ## Hot Modification Configuration
 
-For the convenience of users, IoTDB server provides users with hot modification function, that is, modifying some configuration parameters in `iotdb engine. Properties` during the system operation and applying them to the system immediately. 
+For the convenience of users, IoTDB provides users with hot modification function, that is, modifying some configuration parameters in `iotdb-datanode.properties` during the system operation and applying them to the system immediately. 
 In the parameters described below, these parameters whose way of `Effective` is `trigger` support hot modification.
 
-Trigger way: The client sends the command `load configuration` to the IoTDB server. See Chapter 4 for the usage of the client.
+Trigger way: The client sends the command(sql) `load configuration` to the IoTDB server.
 
-## IoTDB Environment Configuration File
+## Environment Configuration File（datanode-env.sh/bat）
 
-The environment configuration file is mainly used to configure the Java environment related parameters when IoTDB Server is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the IoTDB Server starts. Users can view the contents of the environment configuration file by viewing the `iotdb-env.sh` (or `iotdb-env.bat`) file.
+The environment configuration file is mainly used to configure the Java environment related parameters when DataNode is running, such as JVM related configuration. This part of the configuration is passed to the JVM when the DataNode starts.
 
-The detail of each variables are as follows:
+The details of each parameter are as follows:
 
 * MAX\_HEAP\_SIZE
 
 |Name|MAX\_HEAP\_SIZE|
 |:---:|:---|
-|Description|The maximum heap memory size that IoTDB can use at startup.|
+|Description|The maximum heap memory size that IoTDB can use |
 |Type|String|
 |Default| On Linux or MacOS, the default is one quarter of the memory. On Windows, the default value for 32-bit systems is 512M, and the default for 64-bit systems is 2G.|
 |Effective|After restarting system|
@@ -60,9 +53,18 @@ The detail of each variables are as follows:
 
 |Name|HEAP\_NEWSIZE|
 |:---:|:---|
-|Description|The minimum heap memory size that IoTDB can use at startup.|
+|Description|The minimum heap memory size that IoTDB will use when startup |
 |Type|String|
 |Default| On Linux or MacOS, the default is min{cores * 100M, one quarter of MAX\_HEAP\_SIZE}. On Windows, the default value for 32-bit systems is 512M, and the default for 64-bit systems is 2G.|
+|Effective|After restarting system|
+
+* MAX\_DIRECT\_MEMORY\_SIZE
+
+|Name|MAX\_DIRECT\_MEMORY\_SIZE|
+|:---:|:---|
+|Description|The max direct memory that IoTDB could use|
+|Type|String|
+|Default| Equal to the MAX\_HEAP\_SIZE|
 |Effective|After restarting system|
 
 * JMX\_LOCAL
@@ -73,7 +75,6 @@ The detail of each variables are as follows:
 |Type|Enum String: "true", "false"|
 |Default|true|
 |Effective|After restarting system|
-
 
 * JMX\_PORT
 
@@ -101,7 +102,159 @@ The user and passwords are in ${IOTDB\_CONF}/conf/jmx.password.
 
 The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
-## IoTDB System Configuration File
+## DataNode/Standalone Configuration File (iotdb-datanode.properties)
+
+### Client RPC Service
+
+* rpc\_address
+
+|Name| rpc\_address |
+|:---:|:---|
+|Description| The client rpc service listens on the address.|
+|Type|String|
+|Default| "0.0.0.0" |
+|Effective|After restarting system|
+
+* rpc\_port
+
+|Name| rpc\_port |
+|:---:|:---|
+|Description| The client rpc service listens on the port.|
+|Type|Short Int : [0,65535]|
+|Default| 6667 |
+|Effective|After restarting system|
+
+* rpc\_thrift\_compression\_enable
+
+|Name| rpc\_thrift\_compression\_enable |
+|:---:|:---|
+|Description| Whether enable thrift's compression (using GZIP).|
+|Type|Boolean|
+|Default| false |
+|Effective|After restarting system|
+
+* rpc\_advanced\_compression\_enable
+
+|Name| rpc\_advanced\_compression\_enable |
+|:---:|:---|
+|Description| Whether enable thrift's advanced compression.|
+|Type|Boolean|
+|Default| false |
+|Effective|After restarting system|
+
+* rpc\_max\_concurrent\_client\_num
+
+|Name| rpc\_max\_concurrent\_client\_num |
+|:---:|:---|
+|Description| Max concurrent rpc connections|
+|Type| Short Int : [0,65535] |
+|Description| 65535 |
+|Effective|After restarting system|
+
+* thrift\_max\_frame\_size
+
+|Name| thrift\_max\_frame\_size |
+|:---:|:---|
+|Description| Max size of bytes of each thrift RPC request/response|
+|Type| Long |
+|Unit|Byte|
+|Default| 536870912 |
+|Effective|After restarting system|
+
+* thrift\_init\_buffer\_size
+
+|Name| thrift\_init\_buffer\_size |
+|:---:|:---|
+|Description| Initial size of bytes of buffer that thrift used |
+|Type| long |
+|Default| 1024 |
+|Effective|After restarting system|
+
+### MPP Query Engine
+
+* mpp\_data\_exchange\_port
+
+|Name| mpp\_data\_exchange\_port |
+|:---:|:---|
+|Description| MPP data exchange port |
+|Type| int |
+|Default| 8777 |
+|Effective|After restarting system|
+
+* mpp\_data\_exchange\_core\_pool\_size
+
+|Name| mpp\_data\_exchange\_core\_pool\_size |
+|:---:|:---|
+|Description| Core size of ThreadPool of MPP data exchange|
+|Type| int |
+|Default| 1 |
+|Effective|After restarting system|
+
+* mpp\_data\_exchange\_max\_pool\_size
+
+|Name| mpp\_data\_exchange\_max\_pool\_size |
+|:---:|:---|
+|Description| Max size of ThreadPool of MPP data exchange |
+|Type| int |
+|Default| 5 |
+|Effective|After restarting system|
+
+* mpp\_data\_exchange\_core\_pool\_size=1
+
+|Name| mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
+|:---:|:---|
+|Description| Max waiting time for MPP data exchange |
+|Type| long |
+|Default| 1000 |
+|Effective|After restarting system|
+
+
+### DataNode Internal Service
+
+* internal\_address
+
+|Name| internal\_address |
+|:---:|:---|
+|Description| DataNode internal service host/IP |
+|Type| string |
+|Default| 127.0.0.1 |
+|Effective|After restarting system|
+
+* internal\_port
+
+|Name| internal\_address |
+|:---:|:---|
+|Description| DataNode internal service port |
+|Type| int |
+|Default| 9003 |
+|Effective|After restarting system|
+
+* data\_region\_consensus\_port
+
+|Name| data\_region\_consensus\_port |
+|:---:|:---|
+|Description| DataNode Data replica communication port for consensus |
+|Type| int |
+|Default| 40010 |
+|Effective|After restarting system|
+
+* schema\_region\_consensus\_port
+
+|Name| schema\_region\_consensus\_port |
+|:---:|:---|
+|Description| DataNode Schema replica communication port for consensus |
+|Type| int |
+|Default| 50010 |
+|Effective|After restarting system|
+
+* config\_nodes
+
+|Name| config\_nodes |
+|:---:|:---|
+|Description| ConfigNode Address for DataNode to join cluster |
+|Type| String |
+|Default| 127.0.0.1:22277 |
+|Effective|After restarting system|
 
 ### File Layer
 
@@ -218,48 +371,11 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 ### Engine Layer
 
-* rpc\_address
-
-|Name| rpc\_address |
-|:---:|:---|
-|Description| The jdbc service listens on the address.|
-|Type|String|
-|Default| "0.0.0.0" |
-|Effective|After restarting system|
-
-* rpc\_port
-
-|Name| rpc\_port |
-|:---:|:---|
-|Description| The jdbc service listens on the port. Please confirm that the port is not a system reserved port and is not occupied.|
-|Type|Short Int : [0,65535]|
-|Default| 6667 |
-|Effective|After restarting system|
-
-* rpc\_thrift\_compression\_enable
-
-|Name| rpc\_thrift\_compression\_enable |
-|:---:|:---|
-|Description| Whether enable thrift's compression (using GZIP).|
-|Type|Boolean|
-|Default| false |
-|Effective|After restarting system|
-
-* rpc\_advanced\_compression\_enable
-
-|Name| rpc\_advanced\_compression\_enable |
-|:---:|:---|
-|Description| Whether enable thrift's advanced compression.|
-|Type|Boolean|
-|Default| false |
-|Effective|After restarting system|
-
-
 * time\_zone
 
 |Name| time\_zone |
 |:---:|:---|
-|Description| The time zone in which the server is located, the default is Beijing time (+8) |
+|Description| The time zone in which the datanode is located, the default is Beijing time (+8) |
 |Type|Time Zone String|
 |Default| +08:00 |
 |Effective|Trigger|
@@ -1131,14 +1247,14 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 GC log is off by default.
 For performance tuning, you may want to collect the GC info. 
 
-To enable GC log, just add a parameter "printgc" when you start the server.
+To enable GC log, just add a parameter "printgc" when you start the DataNode.
 
 ```bash
-nohup sbin/start-server.sh printgc >/dev/null 2>&1 &
+nohup sbin/start-datanode.sh printgc >/dev/null 2>&1 &
 ```
 Or
-```bash
-sbin\start-server.bat printgc
+```cmd
+sbin\start-datanode.bat printgc
 ```
 
 GC log is stored at `IOTDB_HOME/logs/gc.log`.
