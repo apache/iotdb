@@ -191,16 +191,14 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
    */
   private int[] checkColumnsInInsertPlan(List<IMeasurementSchema> schemaListInInsertPlan) {
     Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
-    for (int schemaIndex = 0; schemaIndex < schemaListInInsertPlan.size(); schemaIndex++) {
-      if (schemaListInInsertPlan.get(schemaIndex) != null) {
-        measurementIdsInInsertPlan.put(
-            schemaListInInsertPlan.get(schemaIndex).getMeasurementId(), schemaIndex);
-        if (!containsMeasurement(schemaListInInsertPlan.get(schemaIndex).getMeasurementId())) {
+    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
+      if (schemaListInInsertPlan.get(i) != null) {
+        measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), i);
+        if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
           this.measurementIndexMap.put(
-              schemaListInInsertPlan.get(schemaIndex).getMeasurementId(),
-              measurementIndexMap.size());
-          this.schemaList.add(schemaListInInsertPlan.get(schemaIndex));
-          this.list.extendColumn(schemaListInInsertPlan.get(schemaIndex).getType());
+              schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
+          this.schemaList.add(schemaListInInsertPlan.get(i));
+          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
         }
       }
     }
