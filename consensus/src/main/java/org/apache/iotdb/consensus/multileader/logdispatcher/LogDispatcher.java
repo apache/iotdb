@@ -324,6 +324,7 @@ public class LogDispatcher {
       }
       while (currentIndex < maxIndex
           && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
+        logger.info("construct from WAL for one Entry, index : {}", currentIndex);
         try {
           walEntryiterator.waitForNextReady();
         } catch (InterruptedException e) {

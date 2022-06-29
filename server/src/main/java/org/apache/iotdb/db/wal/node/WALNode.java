@@ -901,7 +901,7 @@ public class WALNode implements IWALNode {
       WALFileUtils.ascSortByVersionId(filesToSearch);
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
       logger.info(
-          "files: {}, searchIndex: {} result: {}", filesToSearch, nextSearchIndex, fileIndex);
+          "searchIndex: {}, result: {}, files: {}, ", nextSearchIndex, fileIndex, filesToSearch);
       if (filesToSearch != null && fileIndex >= 0) { // possible to find next
         this.filesToSearch = filesToSearch;
         this.currentFileIndex = fileIndex;
