@@ -20,10 +20,10 @@
 package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -48,7 +48,7 @@ public class IoTDBRpcDataSet {
   public static final int START_INDEX = 2;
   public String sql;
   public boolean isClosed = false;
-  public TSIService.Iface client;
+  public IClientRPCService.Iface client;
   public List<String> columnNameList; // no deduplication
   public List<String> columnTypeList; // no deduplication
   public Map<String, Integer>
@@ -86,7 +86,7 @@ public class IoTDBRpcDataSet {
       boolean ignoreTimeStamp,
       long queryId,
       long statementId,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       long sessionId,
       TSQueryDataSet queryDataSet,
       int fetchSize,

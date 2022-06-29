@@ -202,7 +202,9 @@ struct TConfigNodeRegisterReq {
   6: required i64 defaultTTL
   7: required i64 timePartitionInterval
   8: required i32 schemaReplicationFactor
-  9: required i32 dataReplicationFactor
+  9: required double schemaRegionPerDataNode
+  10: required i32 dataReplicationFactor
+  11: required double dataRegionPerProcessor
 }
 
 struct TConfigNodeRegisterResp {
@@ -216,6 +218,7 @@ struct TClusterNodeInfos {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
+  4: required map<i32, string> nodeStatus
 }
 
 // UDF
@@ -239,7 +242,7 @@ struct TShowRegionResp {
   2: optional list<common.TRegionInfo> regionInfoList;
 }
 
-service ConfigIService {
+service IConfigNodeRPCService {
 
   /* DataNode */
 
@@ -321,6 +324,9 @@ service ConfigIService {
   /* Show Region */
 
   TShowRegionResp showRegion(TShowRegionReq req)
+
+  /* Get confignode heartbeat */
+  i64 getConfigNodeHeartBeat(i64 timestamp)
 
 }
 

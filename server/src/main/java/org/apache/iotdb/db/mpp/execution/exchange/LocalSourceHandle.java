@@ -122,7 +122,7 @@ public class LocalSourceHandle implements ISourceHandle {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     if (aborted) {
       throw new IllegalStateException("Source handle is closed.");
     }

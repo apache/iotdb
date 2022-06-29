@@ -63,7 +63,7 @@ import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelPlanFragmentReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCancelQueryReq;
@@ -103,14 +103,14 @@ import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-public class InternalServiceImpl implements InternalService.Iface {
+public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(InternalServiceImpl.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRPCServiceImpl.class);
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
   private static final double loadBalanceThreshold = 0.1;
 
-  public InternalServiceImpl() {
+  public DataNodeRPCServiceImpl() {
     super();
   }
 
@@ -315,7 +315,7 @@ public class InternalServiceImpl implements InternalService.Iface {
   }
 
   @Override
-  public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
+  public THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req) throws TException {
     THeartbeatResp resp = new THeartbeatResp(req.getHeartbeatTimestamp(), getJudgedLeaders());
     Random whetherToGetMetric = new Random();
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
@@ -340,22 +340,27 @@ public class InternalServiceImpl implements InternalService.Iface {
 
   private Map<TConsensusGroupId, Boolean> getJudgedLeaders() {
     Map<TConsensusGroupId, Boolean> result = new HashMap<>();
-    DataRegionConsensusImpl.getInstance()
-        .getAllConsensusGroupIds()
-        .forEach(
-            groupId -> {
-              result.put(
-                  groupId.convertToTConsensusGroupId(),
-                  DataRegionConsensusImpl.getInstance().isLeader(groupId));
-            });
-    SchemaRegionConsensusImpl.getInstance()
-        .getAllConsensusGroupIds()
-        .forEach(
-            groupId -> {
-              result.put(
-                  groupId.convertToTConsensusGroupId(),
-                  SchemaRegionConsensusImpl.getInstance().isLeader(groupId));
-            });
+    if (DataRegionConsensusImpl.getInstance() != null) {
+      DataRegionConsensusImpl.getInstance()
+          .getAllConsensusGroupIds()
+          .forEach(
+              groupId -> {
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    DataRegionConsensusImpl.getInstance().isLeader(groupId));
+              });
+    }
+
+    if (SchemaRegionConsensusImpl.getInstance() != null) {
+      SchemaRegionConsensusImpl.getInstance()
+          .getAllConsensusGroupIds()
+          .forEach(
+              groupId -> {
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    SchemaRegionConsensusImpl.getInstance().isLeader(groupId));
+              });
+    }
     return result;
   }
 
