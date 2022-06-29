@@ -27,7 +27,7 @@ Apache IoTDB Cluster contains two types of nodes: ConfigNode and DataNode, each 
 
 A illustrate of the cluster architecture：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Architecture.png?raw=true">
+<img style="width:100%; max-width:500px; max-height:400px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Architecture.png?raw=true">
 
 ConfigNode is the control node of the cluster, which manage the node status of cluster, partition information, etc. All ConfigNodes in the cluster form a high available group, which is fully replicated.
 
@@ -38,7 +38,7 @@ Client could only connect to the DataNode for operation.
 ## Characteristics of Cluster
 
 * Native Cluster Architecture
-    * All module is designed for the IoTDB cluster.
+    * All modules are designed for cluster.
     * Standalone is a special form of Cluster.
 * High Scalability
     * Support add nodes in a few seconds without data migration.
@@ -81,7 +81,7 @@ A region is the basic unit of replication. Multiple replicas of a region constru
 
 A illustration of the partition allocation in cluster:
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Data-Partition.png?raw=true">
+<img style="width:100%; max-width:500px; max-height:500px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Data-Partition.png?raw=true">
 
 The figure contains 1 SchemaRegion group, and the schema_replication_factor is 3, so the 3 white SchemaRegion-0s form a replication group, and the Raft protocol is used to ensure data consistency.
 
@@ -95,3 +95,7 @@ Among multiple replicas of each region group, data consistency is guaranteed thr
   * Standalone：Could only be used when replica is 1, which is the empty implementation of the consensus protocol.
   * MultiLeader：Could be used in any number of replicas, only for DataRegion, writes can be applied on each replica and replicated asynchronously to other replicas.
   * Ratis：Raft consensus protocol, Could be used in any number of replicas, could be used for any region groups。
+  
+## 0.14.0-preview1 Function Map
+
+<img style="width:100%; max-width:800px; max-height:1000px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Preview1-Function.png?raw=true">
