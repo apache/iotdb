@@ -82,7 +82,7 @@ The total process are three steps:
 
 ### Start the first ConfigNode
 
-Important parameters in iotdb-confignode.properties:
+Please set the important parameters in iotdb-confignode.properties:
 
 | **Configuration** | **Description**                                      |
 | -------- | -------------------------------------------- |
@@ -95,17 +95,33 @@ Important parameters in iotdb-confignode.properties:
 | schema\_replication\_factor  | Schema replication factor, no more than DataNode number       |
 | schema\_region\_consensus\_protocol\_class   | Consensus protocol of schema replicas |
 
+Start on Linux
+```
+# Foreground
+./confignode/sbin/start-confignode.sh
+
+# Background
+nohup ./confignode/sbin/start-confignode.sh >/dev/null 2>&1 &
+```
+
+Start on Windows
+```
+confignode\sbin\start-confignode.bat
+```
+
 More details  [ConfigNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/ConfigNode-Config-Manual.html)
 
 ### Add ConfigNode (Optional)
 
 This will add the replication factor of ConfigNode, except for the port couldn't conflict, make sure other configurations are the same with existing ConfigNode in Cluster.
 
+The adding ConfigNode also use the start-confignode.sh/bat.
+
 ### Start DataNode
 
 You could add any number of DataNode.
 
-Important parameters in iotdb-datanode.properties
+Please set the important parameters in iotdb-datanode.properties
 
 | **Configuration** | **Description**                                      |
 | -------- | -------------------------------------------- |
@@ -118,4 +134,32 @@ Important parameters in iotdb-datanode.properties
 | schema\_region\_consensus\_port    | Schema replicas communication port for consensus          |
 | target\_config\_nodes    | Running ConfigNode of the Cluster      |
 
+Start on Linux
+```
+# Foreground
+./datanode/sbin/start-datanode.sh
+
+# Background
+nohup ./datanode/sbin/start-datanode.sh >/dev/null 2>&1 &
+```
+
+Start on Windows
+```
+datanode\sbin\start-datanode.bat
+```
+
 More details [DataNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html)
+
+### Start Cli
+
+Cli is in datanode/sbin folder
+
+Start on Linux
+```
+./datanode/sbin/start-cli.sh
+```
+
+Start on Windows
+```
+datanode\sbin\start-cli.bat
+```

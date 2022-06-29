@@ -82,7 +82,7 @@ mvn clean package -pl distribution -am -DskipTests
 
 ### 启动种子 ConfigNode
 
-启动种子 ConfigNode，iotdb-confignode.properties 中的重要配置如下
+对 confignode/conf/iotdb-confignode.properties 中的重要参数进行配置：
 
 | **配置项** | **说明**                                      |
 | -------- | -------------------------------------------- |
@@ -95,11 +95,27 @@ mvn clean package -pl distribution -am -DskipTests
 | schema\_replication\_factor  | 元数据副本数，DataNode 数量不应少于此数目       |
 | schema\_region\_consensus\_protocol\_class   | 元数据副本组的共识协议 |
 
+Linux 启动方式
+```
+# 前台启动
+./confignode/sbin/start-confignode.sh
+
+# 后台启动
+nohup ./confignode/sbin/start-confignode.sh >/dev/null 2>&1 &
+```
+
+Windows 启动方式
+```
+confignode\sbin\start-confignode.bat
+```
+
 具体参考 [ConfigNode配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/ConfigNode-Config-Manual.html)
 
 ### 增加 ConfigNode（可选）
 
 增加 ConfigNode 是一个扩容操作，除端口不能冲突外，其他参数需要与集群已有的 ConfigNode 保持一致，并将 config\_nodes 配置为集群已有节点。
+
+启动方式同上。
 
 ### 增加 DataNode
 
@@ -118,4 +134,33 @@ iotdb-datanode.properties 中的重要配置如下
 | schema\_region\_consensus\_port    | DataNode 的元数据副本间共识协议通信的端口           |
 | target\_config\_nodes    | 集群中正在运行的 ConfigNode 地址       |
 
+
+Linux 启动方式
+```
+# 前台启动
+./datanode/sbin/start-datanode.sh
+
+# 后台启动
+nohup ./datanode/sbin/start-datanode.sh >/dev/null 2>&1 &
+```
+
+Windows 启动方式
+```
+datanode\sbin\start-datanode.bat
+```
+
 具体参考 [DataNode配置参数](https://iotdb.apache.org/zh/UserGuide/Master/Reference/DataNode-Config-Manual.html)
+
+### 启动 Cli
+
+Cli 启动脚本在 datanode/sbin 目录
+
+Linux 启动方式
+```
+./datanode/sbin/start-cli.sh
+```
+
+Windows 启动方式
+```
+datanode\sbin\start-cli.bat
+```
