@@ -93,7 +93,7 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
 
   // ToDo @xinzhongtianxia remove this temporary converter after mpp online
   private ShowTimeSeriesPlan convertToPhysicalPlan() {
-    return new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, orderByHeat);
+    return new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, false);
   }
 
   private void setColumns(ShowTimeSeriesResult series, TsBlockBuilder builder) {
