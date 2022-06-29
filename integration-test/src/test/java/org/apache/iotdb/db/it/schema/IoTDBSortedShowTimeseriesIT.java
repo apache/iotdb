@@ -261,6 +261,7 @@ public class IoTDBSortedShowTimeseriesIT {
                 + ","
                 + resultSet.getString("attributes");
 
+        System.out.println(ans);
         assertTrue(retSet.contains(ans));
         count++;
       }
