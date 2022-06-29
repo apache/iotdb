@@ -235,3 +235,6 @@ You can also click the *summary* at the upper left and then check and download t
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/download2.png">
 
+### Commands for running IT
+
+Please check [Integration Test For the MPP Architecture](https://github.com/apache/iotdb/blob/master/integration-test/README.md) for details.
