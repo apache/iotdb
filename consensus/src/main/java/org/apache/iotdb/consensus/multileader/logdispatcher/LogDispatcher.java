@@ -146,7 +146,7 @@ public class LogDispatcher {
           new ArrayBlockingQueue<>(config.getReplication().getMaxPendingRequestNumPerNode());
       this.controller =
           new IndexController(
-              impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()), false);
+              impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()));
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryiterator = reader.getReqIterator(iteratorIndex);
     }
@@ -234,9 +234,7 @@ public class LogDispatcher {
         }
       }
       if (bufferedRequest.isEmpty()) { // only execute this after a restart
-        endIndex =
-            constructBatchFromWAL(
-                startIndex, impl.getController().getCurrentIndex() + 1, logBatches);
+        endIndex = constructBatchFromWAL(startIndex, impl.getIndex() + 1, logBatches);
         batch = new PendingBatch(startIndex, endIndex, logBatches);
         logger.info(
             "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batch);

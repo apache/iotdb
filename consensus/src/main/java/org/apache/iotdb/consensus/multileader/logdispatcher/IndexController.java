@@ -47,13 +47,10 @@ public class IndexController {
 
   private final String storageDir;
   private final String prefix;
-  // Indicates whether currentIndex needs to be incremented by FLUSH_INTERVAL interval after restart
-  private final boolean incrementIntervalAfterRestart;
 
-  public IndexController(String storageDir, String prefix, boolean incrementIntervalAfterRestart) {
+  public IndexController(String storageDir, String prefix) {
     this.storageDir = storageDir;
     this.prefix = prefix + '-';
-    this.incrementIntervalAfterRestart = incrementIntervalAfterRestart;
     restore();
   }
 
@@ -149,13 +146,7 @@ public class IndexController {
           }
         }
       }
-      if (incrementIntervalAfterRestart) {
-        // prevent overlapping in case of failure
-        currentIndex = lastFlushedIndex + FLUSH_INTERVAL;
-        persist();
-      } else {
-        currentIndex = lastFlushedIndex;
-      }
+      currentIndex = lastFlushedIndex;
     } else {
       versionFile = new File(directory, prefix + "0");
       try {
