@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.service.rpc.thrift.TSIService.Iface;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Iface;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.apache.thrift.TException;
