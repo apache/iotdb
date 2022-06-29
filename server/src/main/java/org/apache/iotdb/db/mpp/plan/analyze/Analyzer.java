@@ -28,6 +28,9 @@ import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -79,6 +82,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
@@ -628,6 +632,25 @@ public class Analyzer {
         }
       }
       return new Pair<>(globalTimeFilter, hasValueFilter);
+    }
+
+    private GroupByFilter initGroupByFilter(GroupByTimeComponent groupByTimeComponent) {
+      if (groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth()) {
+        return new GroupByMonthFilter(
+            groupByTimeComponent.getInterval(),
+            groupByTimeComponent.getSlidingStep(),
+            groupByTimeComponent.getStartTime(),
+            groupByTimeComponent.getEndTime(),
+            groupByTimeComponent.isSlidingStepByMonth(),
+            groupByTimeComponent.isIntervalByMonth(),
+            TimeZone.getTimeZone("+00:00"));
+      } else {
+        return new GroupByFilter(
+            groupByTimeComponent.getInterval(),
+            groupByTimeComponent.getSlidingStep(),
+            groupByTimeComponent.getStartTime(),
+            groupByTimeComponent.getEndTime());
+      }
     }
 
     private void updateSource(
@@ -1431,24 +1454,18 @@ public class Analyzer {
 
       return analysis;
     }
-  }
 
-  private GroupByFilter initGroupByFilter(GroupByTimeComponent groupByTimeComponent) {
-    if (groupByTimeComponent.isIntervalByMonth() || groupByTimeComponent.isSlidingStepByMonth()) {
-      return new GroupByMonthFilter(
-          groupByTimeComponent.getInterval(),
-          groupByTimeComponent.getSlidingStep(),
-          groupByTimeComponent.getStartTime(),
-          groupByTimeComponent.getEndTime(),
-          groupByTimeComponent.isSlidingStepByMonth(),
-          groupByTimeComponent.isIntervalByMonth(),
-          TimeZone.getTimeZone("+00:00"));
-    } else {
-      return new GroupByFilter(
-          groupByTimeComponent.getInterval(),
-          groupByTimeComponent.getSlidingStep(),
-          groupByTimeComponent.getStartTime(),
-          groupByTimeComponent.getEndTime());
+    @Override
+    public Analysis visitClearCache(
+        ClearCacheStatement clearCacheStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setFinishQueryAfterAnalyze(true);
+
+      ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
+      BloomFilterCache.getInstance().clear();
+
+      return analysis;
     }
   }
 }
