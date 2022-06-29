@@ -219,14 +219,14 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (!clusterSchemaManager
           .getStorageGroupNames()
-          .contains(setTTLReq.getStorageGroup().toString())) {
+          .contains(setTTLPlan.getStorageGroup().toString())) {
         return RpcUtils.getStatus(
             TSStatusCode.STORAGE_GROUP_NOT_EXIST,
-            "storageGroup " + setTTLReq.getStorageGroup() + " does not exist");
+            "storageGroup " + setTTLPlan.getStorageGroup() + " does not exist");
       }
       Set<TDataNodeLocation> dataNodeLocations =
           getPartitionManager()
-              .getDataNodeLocation(setTTLReq.getStorageGroup(), TConsensusGroupType.DataRegion);
+              .getDataNodeLocation(setTTLPlan.getStorageGroup(), TConsensusGroupType.DataRegion);
       if (dataNodeLocations.size() != 0) {
         for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
           List<TDataNodeInfo> onlineDataNodes =
@@ -236,14 +236,14 @@ public class ConfigManager implements IManager {
                 SyncDataNodeClientPool.getInstance()
                     .setTTL(
                         dataNodeInfo.getLocation().getInternalEndPoint(),
-                        new TSetTTLReq(setTTLReq.getStorageGroup(), setTTLReq.getTTL()));
+                        new TSetTTLReq(setTTLPlan.getStorageGroup(), setTTLPlan.getTTL()));
             if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
               return status;
             }
           }
         }
       }
-      return clusterSchemaManager.setTTL(setTTLReq);
+      return clusterSchemaManager.setTTL(setTTLPlan);
     } else {
       return status;
     }
