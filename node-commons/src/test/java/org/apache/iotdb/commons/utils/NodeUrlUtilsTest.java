@@ -37,7 +37,7 @@ public class NodeUrlUtilsTest {
             new TEndPoint("127.0.0.1", 6667),
             new TEndPoint("127.0.0.1", 6668),
             new TEndPoint("127.0.0.1", 6669));
-    final String endPointUrls = "127.0.0:6667,127.0.0:6668,127.0.0:6669";
+    final String endPointUrls = "127.0.0.1:6667,127.0.0.1:6668,127.0.0.1:6669";
 
     Assert.assertEquals(endPointUrls, NodeUrlUtils.convertTEndPointUrls(endPoints));
     Assert.assertEquals(endPoints, NodeUrlUtils.parseTEndPointUrls(endPointUrls));
@@ -54,7 +54,7 @@ public class NodeUrlUtilsTest {
             new TConfigNodeLocation(
                 2, new TEndPoint("127.0.0.1", 22281), new TEndPoint("127.0.0.1", 22282)));
     final String configNodeUrls =
-        "0,127.0.0:22277,127.0.0:22278;1,127.0.0:22279,127.0.0:22280;2,127.0.0:22281,127.0.0:22282";
+        "0,127.0.0.1:22277,127.0.0.1:22278;1,127.0.0.1:22279,127.0.0.1:22280;2,127.0.0.1:22281,127.0.0.1:22282";
 
     Assert.assertEquals(configNodeUrls, NodeUrlUtils.convertTConfigNodeUrls(configNodeLocations));
     Assert.assertEquals(configNodeLocations, NodeUrlUtils.parseTConfigNodeUrls(configNodeUrls));

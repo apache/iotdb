@@ -1651,7 +1651,7 @@ public class IoTDBDescriptor {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
-            "Config nodes are set in wrong format, please set them like 127.0.0:22277,127.0.0:22281");
+            "Config nodes are set in wrong format, please set them like 127.0.0.1:22277,127.0.0.1:22281");
       }
     }
 
