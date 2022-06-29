@@ -530,7 +530,7 @@ public class IoTDBSimpleQueryIT {
 
         resultSet = statement.executeQuery("select count(*) from root");
         // has no column
-        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(0, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
