@@ -75,12 +75,12 @@ public class ConfigNodeStartupCheck {
   /** Check whether the global configuration of the cluster is correct */
   private void checkGlobalConfig() throws ConfigurationException {
     // When the ConfigNode consensus protocol is set to StandAlone,
-    // the config_nodes needs to point to itself
+    // the target_config_nodes needs to point to itself
     if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
         && (!conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
             || conf.getRpcPort() != conf.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
-          "config_nodes",
+          "target_config_nodes",
           conf.getTargetConfigNode().getIp() + ":" + conf.getTargetConfigNode().getPort(),
           conf.getRpcAddress() + ":" + conf.getRpcPort());
     }
@@ -151,7 +151,7 @@ public class ConfigNodeStartupCheck {
   /**
    * Check if the current ConfigNode is SeedConfigNode.
    *
-   * @return True if the target_config_node points to itself
+   * @return True if the target_config_nodes points to itself
    */
   private boolean isSeedConfigNode() {
     return conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
@@ -173,7 +173,9 @@ public class ConfigNodeStartupCheck {
             CommonDescriptor.getInstance().getConfig().getDefaultTTL(),
             conf.getTimePartitionInterval(),
             conf.getSchemaReplicationFactor(),
-            conf.getDataReplicationFactor());
+            conf.getSchemaRegionPerDataNode(),
+            conf.getDataReplicationFactor(),
+            conf.getDataRegionPerProcessor());
 
     TEndPoint targetConfigNode = conf.getTargetConfigNode();
     while (true) {

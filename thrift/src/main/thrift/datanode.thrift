@@ -132,7 +132,7 @@ struct TCancelFragmentInstanceReq {
 
 struct TCancelResp {
   1: required bool cancelled
-  2: optional string messsage
+  2: optional string message
 }
 
 struct TSchemaFetchRequest {
@@ -170,17 +170,17 @@ struct THeartbeatResp {
   4: optional i16 memory
 }
 
-service InternalService {
+service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
 
   /**
-  * disptcher FragmentInstance to remote node for query request
+  * dispatch FragmentInstance to remote node for query request
   */
   TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req);
 
   /**
-  * disptcher PlanNode to remote node for write request in order to save resource
+  * dispatch PlanNode to remote node for write request in order to save resource
   */
   TSendPlanNodeResp sendPlanNode(TSendPlanNodeReq req);
 

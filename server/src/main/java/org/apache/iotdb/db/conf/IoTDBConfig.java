@@ -296,6 +296,9 @@ public class IoTDBConfig {
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int concurrentQueryThread = 16;
 
+  /** How many queries can be concurrently executed. When <= 0, use 1000. */
+  private int maxAllowedConcurrentQueries = 1000;
+
   /**
    * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
    */
@@ -837,7 +840,7 @@ public class IoTDBConfig {
   private int schemaRegionConsensusPort = 50010;
 
   /** Ip and port of config nodes. */
-  private List<TEndPoint> configNodeList =
+  private List<TEndPoint> targetConfigNodeList =
       Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
   /** The max time of data node waiting to join into the cluster */
@@ -896,7 +899,7 @@ public class IoTDBConfig {
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
-  private int partitionCacheSize = 100000;
+  private int partitionCacheSize = 0;
 
   /** Cache size of user and role */
   private int authorCacheSize = 100;
@@ -1322,6 +1325,14 @@ public class IoTDBConfig {
 
   public void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getMaxAllowedConcurrentQueries() {
+    return maxAllowedConcurrentQueries;
+  }
+
+  public void setMaxAllowedConcurrentQueries(int maxAllowedConcurrentQueries) {
+    this.maxAllowedConcurrentQueries = maxAllowedConcurrentQueries;
   }
 
   public int getConcurrentSubRawQueryThread() {
@@ -2725,12 +2736,12 @@ public class IoTDBConfig {
     this.schemaRegionConsensusPort = schemaRegionConsensusPort;
   }
 
-  public List<TEndPoint> getConfigNodeList() {
-    return configNodeList;
+  public List<TEndPoint> getTargetConfigNodeList() {
+    return targetConfigNodeList;
   }
 
-  public void setConfigNodeList(List<TEndPoint> configNodeList) {
-    this.configNodeList = configNodeList;
+  public void setTargetConfigNodeList(List<TEndPoint> targetConfigNodeList) {
+    this.targetConfigNodeList = targetConfigNodeList;
   }
 
   public long getJoinClusterTimeOutMs() {

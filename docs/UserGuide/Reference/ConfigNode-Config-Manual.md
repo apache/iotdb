@@ -85,9 +85,9 @@ IoTDB Cluster configuration is in ConfigNode.
 |Default| 6667 |
 |Effective|After restarting system|
 
-* config\_nodes
+* target\_config\_nodes
 
-|Name| config\_nodes |
+|Name| target\_config\_nodes |
 |:---:|:---|
 |Description| Target ConfigNode address, for current ConfigNode to join the cluster |
 |Type| String |
