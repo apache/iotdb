@@ -206,6 +206,7 @@ public class WALNode implements IWALNode {
   }
 
   // region Task to delete outdated .wal files
+
   /** Delete outdated .wal files */
   public void deleteOutdatedFiles() {
     try {
@@ -818,6 +819,8 @@ public class WALNode implements IWALNode {
       File[] filesToSearch = logDirectory.listFiles(this::filterFilesToSearch);
       WALFileUtils.ascSortByVersionId(filesToSearch);
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
+      logger.info(
+          "files: {}, searchIndex: {} result: {}", filesToSearch, nextSearchIndex, fileIndex);
       if (filesToSearch != null && fileIndex >= 0) { // possible to find next
         this.filesToSearch = filesToSearch;
         this.currentFileIndex = fileIndex;
