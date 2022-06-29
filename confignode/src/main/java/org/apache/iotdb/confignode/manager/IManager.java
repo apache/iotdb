@@ -119,14 +119,14 @@ public interface IManager {
   DataSet getDataNodeInfo(GetDataNodeInfoPlan getDataNodeInfoPlan);
 
   TClusterNodeInfos getAllClusterNodeInfos();
-  
+
   TSStatus setTTL(SetTTLPlan configRequest);
 
-  TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan configRequest);
+  TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan configPhysicalPlan);
 
-  TSStatus setDataReplicationFactor(SetDataReplicationFactorPlan configRequest);
+  TSStatus setDataReplicationFactor(SetDataReplicationFactorPlan configPhysicalPlan);
 
-  TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan configRequest);
+  TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan configPhysicalPlan);
 
   /**
    * Count StorageGroups
@@ -140,7 +140,7 @@ public interface IManager {
    *
    * @return StorageGroupSchemaDataSet
    */
-  DataSet getMatchedStorageGroupSchemas(GetStorageGroupPlan getOrCountStorageGroupReq);
+  DataSet getMatchedStorageGroupSchemas(GetStorageGroupPlan getOrCountStorageGroupPlan);
 
   /**
    * Set StorageGroup
@@ -191,7 +191,7 @@ public interface IManager {
    * @return TDataPartitionResp
    */
   TDataPartitionResp getOrCreateDataPartition(
-      GetOrCreateDataPartitionPlan getOrCreateDataPartitionReq);
+      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
 
   /**
    * Operate Permission
@@ -243,5 +243,5 @@ public interface IManager {
   void addMetrics();
 
   /** Show (data/schema) regions */
-  DataSet showRegion(GetRegionInfoListPlan getRegionsinfoReq);
+  DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
 }
