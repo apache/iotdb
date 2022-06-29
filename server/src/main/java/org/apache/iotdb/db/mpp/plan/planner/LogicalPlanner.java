@@ -453,11 +453,15 @@ public class LogicalPlanner {
       // source operator.
       boolean canPushDownOffsetLimit =
           analysis.getSchemaPartitionInfo() != null
-              && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1;
+              && analysis.getSchemaPartitionInfo().getDistributionInfo().size() == 1
+              && !showTimeSeriesStatement.isOrderByHeat();
 
       int limit = showTimeSeriesStatement.getLimit();
       int offset = showTimeSeriesStatement.getOffset();
-      if (!canPushDownOffsetLimit) {
+      if (showTimeSeriesStatement.isOrderByHeat()) {
+        limit = 0;
+        offset = 0;
+      } else if (!canPushDownOffsetLimit) {
         limit = showTimeSeriesStatement.getLimit() + showTimeSeriesStatement.getOffset();
         offset = 0;
       }
@@ -484,14 +488,14 @@ public class LogicalPlanner {
         planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
       }
 
-      if (!canPushDownOffsetLimit) {
-        return planBuilder
-            .planOffset(showTimeSeriesStatement.getOffset())
-            .planLimit(showTimeSeriesStatement.getLimit())
-            .getRoot();
+      if (canPushDownOffsetLimit) {
+        return planBuilder.getRoot();
       }
 
-      return planBuilder.getRoot();
+      return planBuilder
+          .planOffset(showTimeSeriesStatement.getOffset())
+          .planLimit(showTimeSeriesStatement.getLimit())
+          .getRoot();
     }
 
     @Override
