@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.web.grafana.Interceptor;
+package org.apache.iotdb.web.grafana.interceptor;
 
 import org.osgi.service.component.annotations.Component;
 import org.springframework.beans.factory.annotation.Value;
