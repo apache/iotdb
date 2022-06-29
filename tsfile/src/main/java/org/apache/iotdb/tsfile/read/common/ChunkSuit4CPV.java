@@ -32,15 +32,25 @@ public class ChunkSuit4CPV {
   private BatchData batchData;
   private List<Long> mergeVersionList = new ArrayList<>();
   private List<Long> mergeOffsetList = new ArrayList<>();
+  private boolean isLazyLoad = false;
 
   public ChunkSuit4CPV(ChunkMetadata chunkMetadata) {
     this.chunkMetadata = chunkMetadata;
     this.batchData = null;
+    this.isLazyLoad = false;
   }
 
   public ChunkSuit4CPV(ChunkMetadata chunkMetadata, BatchData batchData) {
     this.chunkMetadata = chunkMetadata;
     this.batchData = batchData;
+  }
+
+  public void setLazyLoad(boolean lazyLoad) {
+    isLazyLoad = lazyLoad;
+  }
+
+  public boolean isLazyLoad() {
+    return isLazyLoad;
   }
 
   public ChunkMetadata getChunkMetadata() {

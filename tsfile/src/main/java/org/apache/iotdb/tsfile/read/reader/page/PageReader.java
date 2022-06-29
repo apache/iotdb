@@ -175,12 +175,13 @@ public class PageReader implements IPageReader {
                 statistics);
         chunkMetadata1.setVersion(chunkMetadata.getVersion()); // don't miss this
 
-        // important, used later for candidate point verification
-        // (1) candidate point itself whether is in the deleted interval
-        // (2) candidate point whether is overlapped by a chunk with a larger version number and
-        // the chunk does not have a deleted interval overlapping this candidate point
-        chunkMetadata1.setDeleteIntervalList(chunkMetadata.getDeleteIntervalList());
-        // not use current Ii to modify deletedIntervalList any more
+        //        // important, used later for candidate point verification
+        //        // (1) candidate point itself whether is in the deleted interval
+        //        // (2) candidate point whether is overlapped by a chunk with a larger version
+        // number and
+        //        // the chunk does not have a deleted interval overlapping this candidate point
+        //        chunkMetadata1.setDeleteIntervalList(chunkMetadata.getDeleteIntervalList());
+        //        // not use current Ii to modify deletedIntervalList any more
 
         splitChunkMetadataMap.put(idx, chunkMetadata1);
       }
@@ -229,17 +230,51 @@ public class PageReader implements IPageReader {
     }
     int curIdx = (int) Math.floor((curStartTime - startTime) * 1.0 / interval);
     int num = (int) Math.floor((endTime - startTime) * 1.0 / interval);
-    for (int i = 0; i < num; i++) {
-      if (splitBatchDataMap.containsKey(i) && i == curIdx && !splitBatchDataMap.get(i).isEmpty()) {
-        currentChunkList.add(
-            new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
-      } else if (splitBatchDataMap.containsKey(i)
-          && i != curIdx
-          && !splitBatchDataMap.get(i).isEmpty()) {
-        futureChunkList.add(
-            new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+
+    //    for (int i = 0; i < num;
+    //        i++) { // TODO: [M4] this loop can be polished, no need to loop 0~num, just loop the
+    // keySet of splitBatchDataMap
+    //      if (splitBatchDataMap.containsKey(i) && i == curIdx &&
+    // !splitBatchDataMap.get(i).isEmpty()) {
+    //        currentChunkList.add(
+    //            new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+    //      } else if (splitBatchDataMap.containsKey(i)
+    //          && i != curIdx
+    //          && !splitBatchDataMap.get(i).isEmpty()) {
+    //        futureChunkList.add(
+    //            new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+    //      }
+    //    }
+
+    for (Integer i : splitBatchDataMap.keySet()) {
+      if (!splitBatchDataMap.get(i).isEmpty()) {
+        if (i == curIdx) {
+          currentChunkList.add(
+              new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+        } else {
+          futureChunkList.add(
+              new ChunkSuit4CPV(splitChunkMetadataMap.get(i), splitBatchDataMap.get(i).flip()));
+        }
       }
     }
+  }
+
+  /**
+   * chunk里点时间戳从小到大递增， 所以遍历直到点的时间戳大于或等于candidateTimestamp即可结束
+   *
+   * @return true if the point whose time equals candidateTimestamp exists, false if not
+   */
+  public boolean partialScan(long candidateTimestamp) throws IOException {
+    while (timeDecoder.hasNext(timeBuffer)) {
+      long timestamp = timeDecoder.readLong(timeBuffer);
+      if (timestamp > candidateTimestamp) {
+        return false;
+      }
+      if (timestamp == candidateTimestamp) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** @return the returned BatchData may be empty, but never be null */
