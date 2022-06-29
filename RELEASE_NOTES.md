@@ -49,9 +49,7 @@ The 0.14.0-preview1 version only contains the new cluster version.
 
 ![](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Preview1-Function.png?raw=true)
 
-Improvements
-
-Incompatible changes
+## Incompatible changes
 - Rename the following scripts and configuration files
   
 | Previous                     | Now                            |
