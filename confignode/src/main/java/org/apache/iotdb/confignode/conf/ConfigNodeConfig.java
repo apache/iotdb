@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 public class ConfigNodeConfig {
 
   /** could set ip or hostname */
-  private String rpcAddress = "0.0.0.0";
+  private String rpcAddress = "127.0.0.1";
 
   /** used for communication between data node and config node */
   private int rpcPort = 22277;
@@ -41,7 +41,7 @@ public class ConfigNodeConfig {
   private int consensusPort = 22278;
 
   /** Used for connecting to the ConfigNodeGroup */
-  private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
+  private TEndPoint targetConfigNode = new TEndPoint("127.0.0.1", 22277);
 
   /** Mark if the ConfigNode needs to apply */
   private boolean needApply = false;

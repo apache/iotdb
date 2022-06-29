@@ -95,7 +95,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |:---:|:---|
 |描述| rpc地址 |
 |类型| String |
-|默认值| 0.0.0.0|
+|默认值| 127.0.0.1|
 |改后生效方式|重启服务生效|
 
 * rpc\_port

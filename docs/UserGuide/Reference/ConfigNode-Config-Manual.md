@@ -73,7 +73,7 @@ IoTDB Cluster configuration is in ConfigNode.
 |:---:|:---|
 |Description| Client rpc service address |
 |Type| String |
-|Default| 0.0.0.0|
+|Default| 127.0.0.1|
 |Effective|After restarting system|
 
 * rpc\_port

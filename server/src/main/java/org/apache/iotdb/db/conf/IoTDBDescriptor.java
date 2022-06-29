@@ -930,9 +930,9 @@ public class IoTDBDescriptor {
       conf.setRpcAddress(InetAddress.getByName(conf.getRpcAddress()).getHostAddress());
     }
 
-    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalIp());
+    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalAddress());
     if (!isInvalidInternalIp) {
-      conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
+      conf.setInternalAddress(InetAddress.getByName(conf.getInternalAddress()).getHostAddress());
     }
 
     for (TEndPoint configNode : conf.getTargetConfigNodeList()) {
@@ -946,7 +946,7 @@ public class IoTDBDescriptor {
     logger.debug(
         "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
         conf.getRpcAddress(),
-        conf.getInternalIp(),
+        conf.getInternalAddress(),
         conf.getTargetConfigNodeList());
   }
 
@@ -1655,7 +1655,7 @@ public class IoTDBDescriptor {
       }
     }
 
-    conf.setInternalIp(properties.getProperty("internal_address", conf.getInternalIp()));
+    conf.setInternalAddress(properties.getProperty("internal_address", conf.getInternalAddress()));
 
     conf.setInternalPort(
         Integer.parseInt(

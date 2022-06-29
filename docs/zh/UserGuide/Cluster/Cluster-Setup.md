@@ -164,3 +164,18 @@ Windows 启动方式
 ```
 datanode\sbin\start-cli.bat
 ```
+
+## 快速上手
+
+解压 apache-iotdb-0.14.0-preview1-all-bin.zip
+
+部署 1 个 ConfigNode 和 1 个 DataNode（1C1D）集群版，默认 1 副本。
+```
+./confignode/sbin/start-confignode.sh
+./datanode/sbin/start-datanode.sh
+```
+
+启动 Cli
+```
+./datanode/sbin/start-cli.sh
+```

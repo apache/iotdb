@@ -56,7 +56,8 @@ public class DataRegionConsensusImpl {
                   conf.getDataRegionConsensusProtocolClass(),
                   ConsensusConfig.newBuilder()
                       .setThisNode(
-                          new TEndPoint(conf.getInternalIp(), conf.getDataRegionConsensusPort()))
+                          new TEndPoint(
+                              conf.getInternalAddress(), conf.getDataRegionConsensusPort()))
                       .setStorageDir(conf.getDataRegionConsensusDir())
                       .setMultiLeaderConfig(
                           MultiLeaderConfig.newBuilder()
