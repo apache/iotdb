@@ -176,3 +176,47 @@ Total line number = 2
 It costs 0.012s
 ```
 
+## 集群节点状态查看工具
+
+查看全部节点信息 : 
+
+```
+SHOW CLUSTER
+```
+
+示例：
+
+```
+IoTDB> show cluster
++------+----------+-------+---------+-----+
+|NodeID|  NodeType| Status|     Host| Port|
++------+----------+-------+---------+-----+
+|     4|ConfigNode|Running|  0.0.0.0|22279|
+|     0|ConfigNode|Running|  0.0.0.0|22277|
+|     5|ConfigNode|Running|  0.0.0.0|22281|
+|     1|  DataNode|Running|127.0.0.1| 9005|
+|     2|  DataNode|Running|127.0.0.1| 9003|
+|     3|  DataNode|Running|127.0.0.1| 9007|
++------+----------+-------+---------+-----+
+Total line number = 6
+It costs 0.011s
+```
+
+停止一个节点之后，节点的状态会发生改变，状态显示如下：
+
+```
+IoTDB> show cluster
++------+----------+-------+---------+-----+
+|NodeID|  NodeType| Status|     Host| Port|
++------+----------+-------+---------+-----+
+|     4|ConfigNode|Running|  0.0.0.0|22279|
+|     0|ConfigNode|Running|  0.0.0.0|22277|
+|     5|ConfigNode|Unknown|  0.0.0.0|22281|
+|     1|  DataNode|Running|127.0.0.1| 9005|
+|     2|  DataNode|Running|127.0.0.1| 9003|
+|     3|  DataNode|Running|127.0.0.1| 9007|
++------+----------+-------+---------+-----+
+Total line number = 6
+It costs 0.012s
+```
+
