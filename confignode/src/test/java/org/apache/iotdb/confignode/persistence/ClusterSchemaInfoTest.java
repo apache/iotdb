@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import org.apache.commons.io.FileUtils;
@@ -80,7 +80,7 @@ public class ClusterSchemaInfoTest {
       tStorageGroupSchema.setSchemaReplicationFactor(i);
       tStorageGroupSchema.setTimePartitionInterval(i);
       testMap.put(path, tStorageGroupSchema);
-      clusterSchemaInfo.setStorageGroup(new SetStorageGroupReq(tStorageGroupSchema));
+      clusterSchemaInfo.setStorageGroup(new SetStorageGroupPlan(tStorageGroupSchema));
       i++;
     }
     clusterSchemaInfo.processTakeSnapshot(snapshotDir);
@@ -90,8 +90,8 @@ public class ClusterSchemaInfoTest {
     Assert.assertEquals(
         storageGroupPathList.size(), clusterSchemaInfo.getStorageGroupNames().size());
 
-    GetStorageGroupReq getStorageGroupReq =
-        new GetStorageGroupReq(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));
+    GetStorageGroupPlan getStorageGroupReq =
+        new GetStorageGroupPlan(Arrays.asList(PathUtils.splitPathToDetachedNodes("root.**")));
     Map<String, TStorageGroupSchema> reloadResult =
         clusterSchemaInfo.getMatchedStorageGroupSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
