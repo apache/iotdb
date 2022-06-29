@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
@@ -30,11 +29,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -54,9 +50,6 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBMetadataFetchIT {
-
-  private DatabaseMetaData databaseMetaData;
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBMetadataFetchIT.class);
 
   private static void insertSQL() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -84,7 +77,7 @@ public class IoTDBMetadataFetchIT {
         statement.execute(sql);
       }
     } catch (Exception e) {
-      logger.error("insertSQL() failed", e);
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }
@@ -144,25 +137,20 @@ public class IoTDBMetadataFetchIT {
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         Set<String> standard = standards[n];
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                StringBuilder builder = new StringBuilder();
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                String string = builder.toString();
-                Assert.assertTrue(standard.contains(string));
-                standard.remove(string);
-              }
-              assertEquals(0, standard.size());
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
             }
+            String string = builder.toString();
+            Assert.assertTrue(standard.contains(string));
+            standard.remove(string);
           }
+          assertEquals(0, standard.size());
         } catch (SQLException e) {
-          logger.error("showTimeseriesTest() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -194,47 +182,23 @@ public class IoTDBMetadataFetchIT {
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         Set<String> standard = standards[n];
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                StringBuilder builder = new StringBuilder();
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                Assert.assertTrue(standard.contains(builder.toString()));
-                String string = builder.toString();
-                Assert.assertTrue(standard.contains(string));
-                standard.remove(string);
-              }
-              assertEquals(0, standard.size());
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
             }
+            Assert.assertTrue(standard.contains(builder.toString()));
+            String string = builder.toString();
+            Assert.assertTrue(standard.contains(string));
+            standard.remove(string);
           }
+          assertEquals(0, standard.size());
         } catch (SQLException e) {
-          logger.error("showStorageGroupTest() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
-      }
-    }
-  }
-
-  @Test
-  public void showVersionTest() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      String sql = "show version";
-      try {
-        boolean hasResultSet = statement.execute(sql);
-        if (hasResultSet) {
-          try (ResultSet resultSet = statement.getResultSet()) {
-            resultSet.next();
-            Assert.assertEquals(IoTDBConstant.VERSION, resultSet.getString(1));
-          }
-        }
-      } catch (Exception e) {
-        fail(e.getMessage());
       }
     }
   }
@@ -260,26 +224,21 @@ public class IoTDBMetadataFetchIT {
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         Set<String> standard = standards[n];
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                StringBuilder builder = new StringBuilder();
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                String string = builder.toString();
-                System.out.println(string);
-                Assert.assertTrue(standard.contains(string));
-                standard.remove(string);
-              }
-              assertEquals(0, standard.size());
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
             }
+            String string = builder.toString();
+            System.out.println(string);
+            Assert.assertTrue(standard.contains(string));
+            standard.remove(string);
           }
+          assertEquals(0, standard.size());
         } catch (SQLException e) {
-          logger.error("showDevicesTest() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -301,25 +260,20 @@ public class IoTDBMetadataFetchIT {
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         Set<String> standard = standards[n];
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                StringBuilder builder = new StringBuilder();
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                String string = builder.toString();
-                Assert.assertTrue(standard.contains(string));
-                standard.remove(string);
-              }
-              assertEquals(0, standard.size());
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
             }
+            String string = builder.toString();
+            Assert.assertTrue(standard.contains(string));
+            standard.remove(string);
           }
+          assertEquals(0, standard.size());
         } catch (SQLException e) {
-          logger.error("showDevicesTest() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -336,22 +290,17 @@ public class IoTDBMetadataFetchIT {
         String sql = sqls[n];
         String standard = standards[n];
         StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
             }
+            builder.append("\n");
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          logger.error("showChildPaths() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -368,22 +317,17 @@ public class IoTDBMetadataFetchIT {
         String sql = sqls[n];
         String standard = standards[n];
         StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
             }
+            builder.append("\n");
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          logger.error("showChildNodes() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -400,22 +344,17 @@ public class IoTDBMetadataFetchIT {
         String sql = sqls[n];
         String standard = standards[n];
         StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
             }
+            builder.append("\n");
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          logger.error("showCountTimeSeries() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -437,22 +376,17 @@ public class IoTDBMetadataFetchIT {
         String sql = sqls[n];
         String standard = standards[n];
         StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
             }
+            builder.append("\n");
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          logger.error("showCountDevices() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -474,22 +408,17 @@ public class IoTDBMetadataFetchIT {
         String sql = sqls[n];
         String standard = standards[n];
         StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
             }
+            builder.append("\n");
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          logger.error("showCountStorageGroup() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -520,20 +449,15 @@ public class IoTDBMetadataFetchIT {
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         Set<String> standard = standards[n];
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              while (resultSet.next()) {
-                String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
-                Assert.assertTrue(standard.contains(string));
-                standard.remove(string);
-              }
-              assertEquals(0, standard.size());
-            }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          while (resultSet.next()) {
+            String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
+            Assert.assertTrue(standard.contains(string));
+            standard.remove(string);
           }
+          assertEquals(0, standard.size());
         } catch (SQLException e) {
-          logger.error("showCountTimeSeriesGroupBy() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -558,22 +482,17 @@ public class IoTDBMetadataFetchIT {
         String sql = sqls[n];
         String standard = standards[n];
         StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
             }
+            builder.append("\n");
           }
           Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
-          logger.error("showCountNodes() failed", e);
+          e.printStackTrace();
           fail(e.getMessage());
         }
       }
@@ -593,17 +512,14 @@ public class IoTDBMetadataFetchIT {
           };
 
       int num = 0;
-      boolean hasResultSet = statement.execute("show timeseries root.sg.d.*");
-      if (hasResultSet) {
-        try (ResultSet resultSet = statement.getResultSet()) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          while (resultSet.next()) {
-            StringBuilder builder = new StringBuilder();
-            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-              builder.append(resultSet.getString(i)).append(",");
-            }
-            Assert.assertEquals(expected[num++], builder.toString());
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg.d.*")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
           }
+          Assert.assertEquals(expected[num++], builder.toString());
         }
       }
       Assert.assertEquals(2, num);
@@ -623,25 +539,20 @@ public class IoTDBMetadataFetchIT {
               Arrays.asList(
                   "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
                   "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,"));
-      try {
-        boolean hasResultSet = statement.execute(sql);
-        if (hasResultSet) {
-          try (ResultSet resultSet = statement.getResultSet()) {
-            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-            while (resultSet.next()) {
-              StringBuilder builder = new StringBuilder();
-              for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                builder.append(resultSet.getString(i)).append(",");
-              }
-              String string = builder.toString();
-              Assert.assertTrue(standard.contains(string));
-              standard.remove(string);
-            }
-            assertEquals(0, standard.size());
+      try (ResultSet resultSet = statement.executeQuery(sql)) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
           }
+          String string = builder.toString();
+          Assert.assertTrue(standard.contains(string));
+          standard.remove(string);
         }
+        assertEquals(0, standard.size());
       } catch (SQLException e) {
-        logger.error("showTimeseriesTest() failed", e);
+        e.printStackTrace();
         fail(e.getMessage());
       }
     }

@@ -18,18 +18,15 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.itbase.constant.TestConstant;
+import org.apache.iotdb.itbase.env.BaseConfig;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -50,7 +47,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBMultiDeviceIT {
 
-  private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+  private static BaseConfig tsFileConfig = ConfigFactory.getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
   private static int groupSizeInByte;
@@ -69,7 +66,7 @@ public class IoTDBMultiDeviceIT {
     tsFileConfig.setPageSizeInByte(1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1000);
     ConfigFactory.getConfig().setMemtableSizeThreshold(1024 * 1000);
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(100);
     ConfigFactory.getConfig().setCompressor("LZ4");
 
@@ -182,7 +179,7 @@ public class IoTDBMultiDeviceIT {
       statement.executeBatch();
 
       statement.execute("flush");
-      statement.execute("merge");
+      //      statement.execute("merge");
 
       // unsequential data, memory data
       for (int time = 10000; time < 11000; time++) {
@@ -244,9 +241,7 @@ public class IoTDBMultiDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute(selectSql);
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         int cnt = 0;
         long before = -1;
         while (resultSet.next()) {
@@ -277,9 +272,7 @@ public class IoTDBMultiDeviceIT {
       statement.execute("DELETE FROM root.fans.** WHERE time >= 200500 and time < 201000");
       statement.execute("DELETE FROM root.car.** WHERE time >= 200500 and time < 201000");
 
-      boolean hasResultSet = statement.execute(selectSql);
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery(selectSql)) {
         int cnt = 0;
         long before = -1;
         while (resultSet.next()) {

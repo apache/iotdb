@@ -18,13 +18,12 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.constant.TestConstant;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -51,7 +50,7 @@ public class IoTDBCompleteIT {
   @Before
   public void setUp() throws InterruptedException {
     // test different partition
-    prevDataRegionNum = IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
+    prevDataRegionNum = ConfigFactory.getConfig().getDataRegionNum();
     ConfigFactory.getConfig().setDataRegionNum(16);
     EnvFactory.getEnv().initBeforeClass();
   }
@@ -457,9 +456,8 @@ public class IoTDBCompleteIT {
             now_start = System.currentTimeMillis();
           }
 
-          statement.execute(sql);
           if (sql.split(" ")[0].equals("SELECT")) {
-            ResultSet resultSet = statement.getResultSet();
+            ResultSet resultSet = statement.executeQuery(sql);
             ResultSetMetaData metaData = resultSet.getMetaData();
             int count = metaData.getColumnCount();
             String[] column = new String[count];
@@ -469,7 +467,7 @@ public class IoTDBCompleteIT {
             result = "";
             while (resultSet.next()) {
               for (int i = 1; i <= count; i++) {
-                if (now_start > 0L && column[i - 1] == TestConstant.TIMESTAMP_STR) {
+                if (now_start > 0L && column[i - 1].equals(TestConstant.TIMESTAMP_STR)) {
                   String timestr = resultSet.getString(i);
                   Long tn = Long.valueOf(timestr);
                   Long now = System.currentTimeMillis();

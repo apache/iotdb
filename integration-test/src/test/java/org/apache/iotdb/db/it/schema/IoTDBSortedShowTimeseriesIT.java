@@ -24,7 +24,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -164,9 +163,7 @@ public class IoTDBSortedShowTimeseriesIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("show timeseries");
-      Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show timeseries");
       int count = 0;
       while (resultSet.next()) {
         String ans =
@@ -191,9 +188,7 @@ public class IoTDBSortedShowTimeseriesIT {
       }
       assertEquals(retArray1.size(), count);
 
-      hasResultSet = statement.execute("show LATEST timeseries");
-      Assert.assertTrue(hasResultSet);
-      resultSet = statement.getResultSet();
+      resultSet = statement.executeQuery("show LATEST timeseries");
       count = 0;
       while (resultSet.next()) {
         String ans =
@@ -244,9 +239,7 @@ public class IoTDBSortedShowTimeseriesIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("show LATEST timeseries limit 5");
-      Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show LATEST timeseries limit 5");
       int count = 0;
       while (resultSet.next()) {
         String ans =
@@ -293,9 +286,7 @@ public class IoTDBSortedShowTimeseriesIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("show LATEST timeseries where 'unit'='cores'");
-      Assert.assertTrue(hasResultSet);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show LATEST timeseries where 'unit'='cores'");
       int count = 0;
       while (resultSet.next()) {
         String ans =

@@ -50,6 +50,11 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
+  public int getDataRegionNum() {
+    return IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
+  }
+
+  @Override
   public BaseConfig setDataRegionNum(int dataRegionNum) {
     IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(dataRegionNum);
     return this;

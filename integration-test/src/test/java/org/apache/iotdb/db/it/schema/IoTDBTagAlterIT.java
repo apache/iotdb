@@ -69,9 +69,7 @@ public class IoTDBTagAlterIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show timeseries");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -119,9 +117,7 @@ public class IoTDBTagAlterIT {
       }
 
       statement.execute("ALTER timeseries root.turbine.d1.s1 RENAME 'tag1' TO 'tagNew1'");
-      hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      resultSet = statement.getResultSet();
+      resultSet = statement.executeQuery("show timeseries");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -171,9 +167,7 @@ public class IoTDBTagAlterIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show timeseries");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -211,9 +205,7 @@ public class IoTDBTagAlterIT {
       }
 
       statement.execute("ALTER timeseries root.turbine.d1.s1 SET 'tag1'='newV1', 'attr2'='newV2'");
-      hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      resultSet = statement.getResultSet();
+      resultSet = statement.executeQuery("show timeseries");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -262,9 +254,7 @@ public class IoTDBTagAlterIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show timeseries");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -293,9 +283,7 @@ public class IoTDBTagAlterIT {
       assertEquals(ret.length, count);
 
       statement.execute("ALTER timeseries root.turbine.d1.s1 DROP attr1,'tag1'");
-      hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      resultSet = statement.getResultSet();
+      resultSet = statement.executeQuery("show timeseries");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -349,9 +337,7 @@ public class IoTDBTagAlterIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show timeseries");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -380,9 +366,7 @@ public class IoTDBTagAlterIT {
       assertEquals(ret.length, count);
 
       statement.execute("ALTER timeseries root.turbine.d1.s1 ADD TAGS 'tag3'='v3', 'tag4'='v4'");
-      hasResult = statement.execute("show timeseries where 'tag3'='v3'");
-      assertTrue(hasResult);
-      resultSet = statement.getResultSet();
+      resultSet = statement.executeQuery("show timeseries where 'tag3'='v3'");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -432,9 +416,7 @@ public class IoTDBTagAlterIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show timeseries");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -464,9 +446,7 @@ public class IoTDBTagAlterIT {
 
       statement.execute(
           "ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES 'attr3'='v3', 'attr4'='v4'");
-      hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      resultSet = statement.getResultSet();
+      resultSet = statement.executeQuery("show timeseries");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -520,9 +500,7 @@ public class IoTDBTagAlterIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show timeseries");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -552,9 +530,7 @@ public class IoTDBTagAlterIT {
 
       statement.execute(
           "ALTER timeseries root.turbine.d1.s1 UPSERT TAGS('tag3'='v3', 'tag2'='newV2')");
-      hasResult = statement.execute("show timeseries where 'tag3'='v3'");
-      assertTrue(hasResult);
-      resultSet = statement.getResultSet();
+      resultSet = statement.executeQuery("show timeseries where 'tag3'='v3'");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -585,9 +561,7 @@ public class IoTDBTagAlterIT {
       statement.execute(
           "ALTER timeseries root.turbine.d1.s1 UPSERT TAGS('tag1'='newV1', 'tag3'='newV3') "
               + "ATTRIBUTES('attr1'='newA1', 'attr3'='v3')");
-      hasResult = statement.execute("show timeseries where 'tag3'='newV3'");
-      assertTrue(hasResult);
-      resultSet = statement.getResultSet();
+      resultSet = statement.executeQuery("show timeseries where 'tag3'='newV3'");
       count = 0;
       try {
         while (resultSet.next()) {
@@ -612,8 +586,7 @@ public class IoTDBTagAlterIT {
         }
         assertEquals(ret3.length, count);
 
-        statement.execute("show timeseries where 'tag3'='v3'");
-        resultSet = statement.getResultSet();
+        resultSet = statement.executeQuery("show timeseries where 'tag3'='v3'");
         assertFalse(resultSet.next());
       } finally {
         resultSet.close();

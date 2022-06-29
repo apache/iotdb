@@ -18,15 +18,10 @@
  */
 package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -67,61 +62,22 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  public void testCreateTimeseries1() throws MetadataException {
+  public void testCreateTimeseries1() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.d0.s1")) {
+        if (resultSet.next()) {
+          assertEquals("PLAIN", resultSet.getString("encoding").toUpperCase());
+        }
+      }
+
     } catch (SQLException e) {
       e.printStackTrace();
     }
-
-    IMeasurementMNode mNode =
-        LocalSchemaProcessor.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
-    assertEquals("PLAIN", mNode.getSchema().getEncodingType().toString().toUpperCase());
-  }
-
-  @Test
-  public void testCreateTimeseriesSDTProperties() throws MetadataException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.sg1");
-      // test set sdt property
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,"
-              + "'LOSS'='SDT','COMPDEV'='2'");
-    } catch (SQLException e) {
-      e.printStackTrace();
-    }
-
-    IMeasurementMNode mNode =
-        LocalSchemaProcessor.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
-
-    // check if SDT property is set
-    assertEquals(2, mNode.getSchema().getProps().size());
-  }
-
-  @Test
-  public void testCreateTimeseriesWithSDTProperties2() throws MetadataException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.sg1");
-      // test set sdt property
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,"
-              + "'LOSS'='SDT','COMPDEV'='2','COMPMINTIME'='2','COMPMAXTIME'='10'");
-    } catch (SQLException e) {
-      e.printStackTrace();
-    }
-
-    IMeasurementMNode mNode =
-        LocalSchemaProcessor.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
-
-    // check if SDT property is set
-    assertEquals(4, mNode.getSchema().getProps().size());
   }
 
   @Test
@@ -483,7 +439,7 @@ public class IoTDBSimpleQueryIT {
       assertEquals(15, count);
 
       // no sdt encoding when merging
-      statement.execute("merge");
+      //      statement.execute("merge");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
       while (resultSet.next()) {
@@ -537,7 +493,7 @@ public class IoTDBSimpleQueryIT {
       assertEquals(18, count);
 
       // no sdt encoding when merging
-      statement.execute("merge");
+      //      statement.execute("merge");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
       while (resultSet.next()) {
@@ -900,7 +856,7 @@ public class IoTDBSimpleQueryIT {
       try {
         statement.execute("INSERT INTO root.sg1.d0(timestamp, s0, s1) VALUES (1, 1, 2.2)");
         fail();
-      } catch (IoTDBSQLException e) {
+      } catch (SQLException e) {
         assertTrue(e.getMessage().contains("s1"));
       }
 
@@ -1145,17 +1101,14 @@ public class IoTDBSimpleQueryIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("SHOW STORAGE GROUP");
-      if (hasResultSet) {
-        try (ResultSet resultSet = statement.getResultSet()) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          while (resultSet.next()) {
-            StringBuilder builder = new StringBuilder();
-            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-              builder.append(resultSet.getString(i));
-            }
-            Assert.assertEquals(builder.toString(), "root.group_with_hyphen");
+      try (ResultSet resultSet = statement.executeQuery("SHOW STORAGE GROUP")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i));
           }
+          Assert.assertEquals(builder.toString(), "root.group_with_hyphen");
         }
       }
     } catch (SQLException e) {

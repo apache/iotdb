@@ -38,16 +38,32 @@ public interface BaseConfig {
     return this;
   }
 
+  default int getPageSizeInByte() {
+    return 64 * 1024;
+  }
+
   default BaseConfig setPageSizeInByte(int pageSizeInByte) {
     return this;
+  }
+
+  default int getGroupSizeInByte() {
+    return 128 * 1024 * 1024;
   }
 
   default BaseConfig setGroupSizeInByte(int groupSizeInByte) {
     return this;
   }
 
+  default long getMemtableSizeThreshold() {
+    return 1024 * 1024 * 1024L;
+  }
+
   default BaseConfig setMemtableSizeThreshold(long memtableSizeThreshold) {
     return this;
+  }
+
+  default int getDataRegionNum() {
+    return 1;
   }
 
   default BaseConfig setDataRegionNum(int dataRegionNum) {

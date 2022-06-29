@@ -70,9 +70,7 @@ public class IoTDBTagIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show timeseries");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -125,9 +123,7 @@ public class IoTDBTagIT {
         Statement statement = connection.createStatement()) {
       statement.execute(sql1);
       statement.execute(sql2);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show timeseries");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -181,9 +177,7 @@ public class IoTDBTagIT {
         Statement statement = connection.createStatement()) {
       statement.execute(sql1);
       statement.execute(sql2);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
-      ResultSet resultSet = statement.getResultSet();
+      ResultSet resultSet = statement.executeQuery("show timeseries");
       int count = 0;
       try {
         while (resultSet.next()) {
@@ -307,10 +301,9 @@ public class IoTDBTagIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      boolean hasResult = statement.execute("show timeseries root.turbine.d6.temperature");
-      assertTrue(hasResult);
       int count = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("show timeseries root.turbine.d6.temperature")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -361,12 +354,10 @@ public class IoTDBTagIT {
           "create timeseries root.turbine.d1.s3(temperature3) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
               + "tags('tag1'='v1', 'tag2'='v2') "
               + "attributes('attr1'='v1', 'attr2'='v2')");
-      boolean hasResult =
-          statement.execute(
-              "show timeseries root.turbine.d1.** where 'tag1'='v1' limit 2 offset 1");
-      assertTrue(hasResult);
       int count = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "show timeseries root.turbine.d1.** where 'tag1'='v1' limit 2 offset 1")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -420,10 +411,8 @@ public class IoTDBTagIT {
         Statement statement = connection.createStatement()) {
       statement.execute(sql1);
       statement.execute(sql2);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
       int count = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -449,10 +438,8 @@ public class IoTDBTagIT {
       assertEquals(ret1.size(), count);
 
       statement.execute("delete timeseries root.turbine.d7.s2");
-      hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
       count = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -507,10 +494,8 @@ public class IoTDBTagIT {
         Statement statement = connection.createStatement()) {
       statement.execute(sql1);
       statement.execute(sql2);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
       int count = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -536,10 +521,8 @@ public class IoTDBTagIT {
       assertEquals(ret1.size(), count);
 
       statement.execute("delete timeseries root.turbine.d7.status");
-      hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
       count = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -634,10 +617,8 @@ public class IoTDBTagIT {
       for (String sql : sqls) {
         statement.execute(sql);
       }
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
       int count = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -661,11 +642,10 @@ public class IoTDBTagIT {
         }
         assertEquals(ret1.size(), count);
       }
-      hasResult = statement.execute("show timeseries where 'unit'='f'");
-      assertTrue(hasResult);
+
       count = 0;
       Set<String> res = new HashSet<>();
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries where 'unit'='f'")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -741,11 +721,10 @@ public class IoTDBTagIT {
       }
 
       // with *
-      boolean hasResult = statement.execute("show timeseries root.turbine.** where 'unit'='f'");
-      assertTrue(hasResult);
       int count = 0;
       Set<String> res = new HashSet<>();
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("show timeseries root.turbine.** where 'unit'='f'")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -772,11 +751,10 @@ public class IoTDBTagIT {
       assertEquals(ret.size(), count);
 
       // no *
-      hasResult = statement.execute("show timeseries root.turbine.** where 'unit'='f'");
-      assertTrue(hasResult);
       count = 0;
       res.clear();
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("show timeseries root.turbine.** where 'unit'='f'")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -802,9 +780,9 @@ public class IoTDBTagIT {
         assertEquals(ret.size(), count);
       }
 
-      statement.execute("show timeseries root.turbine where 'unit'='c'");
       count = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("show timeseries root.turbine where 'unit'='c'")) {
         while (resultSet.next()) {
           count++;
         }
@@ -864,12 +842,10 @@ public class IoTDBTagIT {
 
       statement.execute("delete timeseries root.turbine.d2.s0");
 
-      // with *
-      boolean hasResult = statement.execute("show timeseries where 'unit'='f'");
-      assertTrue(hasResult);
+      // with *;
       int count = 0;
       Set<String> res = new HashSet<>();
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries where 'unit'='f'")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -954,11 +930,10 @@ public class IoTDBTagIT {
         statement.execute(sql);
       }
 
-      boolean hasResult = statement.execute("show timeseries where 'description' contains 'test1'");
-      assertTrue(hasResult);
       int count = 0;
       Set<String> res = new HashSet<>();
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("show timeseries where 'description' contains 'test1'")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -985,12 +960,11 @@ public class IoTDBTagIT {
       assertEquals(ret, res);
       assertEquals(ret.size(), count);
 
-      hasResult =
-          statement.execute("show timeseries root.ln.** where 'description' contains 'test1'");
-      assertTrue(hasResult);
       count = 0;
       res.clear();
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "show timeseries root.ln.** where 'description' contains 'test1'")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")
@@ -1097,10 +1071,8 @@ public class IoTDBTagIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(sql);
-      boolean hasResult = statement.execute("show timeseries");
-      assertTrue(hasResult);
       int count = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
         while (resultSet.next()) {
           String ans =
               resultSet.getString("timeseries")

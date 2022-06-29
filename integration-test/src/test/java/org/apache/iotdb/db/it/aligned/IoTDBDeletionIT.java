@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;
@@ -62,7 +61,7 @@ public class IoTDBDeletionIT {
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeTest();
     prepareSeries();
@@ -197,7 +196,7 @@ public class IoTDBDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("merge");
+      //      statement.execute("merge");
       statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
 
       // before merge completes
@@ -323,9 +322,9 @@ public class IoTDBDeletionIT {
 
   @Test
   public void testDelFlushingMemtable() throws SQLException {
-    long size = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
+    long size = ConfigFactory.getConfig().getMemtableSizeThreshold();
     // Adjust memstable threshold size to make it flush automatically
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(10000);
+    ConfigFactory.getConfig().setMemtableSizeThreshold(10000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -344,14 +343,14 @@ public class IoTDBDeletionIT {
       }
       cleanData();
     }
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(size);
+    ConfigFactory.getConfig().setMemtableSizeThreshold(size);
   }
 
   @Test
   public void testDelMultipleFlushingMemtable() throws SQLException {
-    long size = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
+    long size = ConfigFactory.getConfig().getMemtableSizeThreshold();
     // Adjust memstable threshold size to make it flush automatically
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1000000);
+    ConfigFactory.getConfig().setMemtableSizeThreshold(1000000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -380,7 +379,7 @@ public class IoTDBDeletionIT {
       }
       cleanData();
     }
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(size);
+    ConfigFactory.getConfig().setMemtableSizeThreshold(size);
   }
 
   @Test
