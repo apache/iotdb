@@ -24,7 +24,7 @@ import org.apache.iotdb.commons.client.AsyncBaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.commons.pool2.PooledObject;
@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class AsyncDataNodeInternalServiceClient extends InternalService.AsyncClient {
+public class AsyncDataNodeInternalServiceClient extends IDataNodeRPCService.AsyncClient {
 
   private static final Logger logger =
       LoggerFactory.getLogger(AsyncDataNodeInternalServiceClient.class);

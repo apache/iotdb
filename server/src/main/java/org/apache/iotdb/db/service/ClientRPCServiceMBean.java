@@ -19,4 +19,4 @@
 
 package org.apache.iotdb.db.service;
 
-public interface InternalServiceMBean {}
+public interface ClientRPCServiceMBean {}

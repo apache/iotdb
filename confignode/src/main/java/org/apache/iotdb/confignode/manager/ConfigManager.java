@@ -694,11 +694,25 @@ public class ConfigManager implements IManager {
               "Reject register, please ensure that the schema_replication_factor are consistent.");
       return errorResp;
     }
+    if (req.getSchemaRegionPerDataNode() != conf.getSchemaRegionPerDataNode()) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the schema_region_per_data_node are consistent.");
+      return errorResp;
+    }
     if (req.getDataReplicationFactor() != conf.getDataReplicationFactor()) {
       errorResp
           .getStatus()
           .setMessage(
               "Reject register, please ensure that the data_replication_factor are consistent.");
+      return errorResp;
+    }
+    if (req.getDataRegionPerProcessor() != conf.getDataRegionPerProcessor()) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the data_region_per_processor are consistent.");
       return errorResp;
     }
     return null;
