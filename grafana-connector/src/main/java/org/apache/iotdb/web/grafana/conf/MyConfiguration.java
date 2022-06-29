@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.web.grafana.conf;
 
-import org.apache.iotdb.web.grafana.Interceptor.LoginInterceptor;
+import org.apache.iotdb.web.grafana.interceptor.LoginInterceptor;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
