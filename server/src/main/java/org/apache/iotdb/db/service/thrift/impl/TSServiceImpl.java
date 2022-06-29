@@ -167,7 +167,7 @@ public class TSServiceImpl implements TSIEventHandler {
 
   private class QueryTask implements Callable<TSExecuteStatementResp> {
 
-    private PhysicalPlan plan;
+    private final PhysicalPlan plan;
     private final long queryStartTime;
     private final long sessionId;
     private final String statement;

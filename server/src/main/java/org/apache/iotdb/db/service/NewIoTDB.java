@@ -97,11 +97,6 @@ public class NewIoTDB implements NewIoTDBMBean {
       return;
     }
 
-    // set recover config, avoid creating deleted time series when recovering wal
-    boolean prevIsAutoCreateSchemaEnabled = config.isAutoCreateSchemaEnabled();
-    config.setAutoCreateSchemaEnabled(false);
-    boolean prevIsEnablePartialInsert = config.isEnablePartialInsert();
-    config.setEnablePartialInsert(true);
     // Set datanodeId to 0 for standalone IoTDB
     config.setDataNodeId(0);
 
@@ -113,10 +108,6 @@ public class NewIoTDB implements NewIoTDBMBean {
       logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
       return;
     }
-
-    // reset config
-    config.setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
-    config.setEnablePartialInsert(prevIsEnablePartialInsert);
 
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }

@@ -22,7 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsPlan;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -48,18 +48,18 @@ public class RegionBalancer {
   }
 
   /**
-   * Generate a Regions allocation plan(CreateRegionsReq)
+   * Generate a Regions allocation plan(CreateRegionsPlan)
    *
    * @param allotmentMap Map<StorageGroupName, Region allotment>
    * @param consensusGroupType TConsensusGroupType of the new Regions
-   * @return CreateRegionsReq
+   * @return CreateRegionsPlan
    * @throws NotEnoughDataNodeException When the number of DataNodes is not enough for allocation
    * @throws StorageGroupNotExistsException When some StorageGroups don't exist
    */
-  public CreateRegionsReq genRegionsAllocationPlan(
+  public CreateRegionsPlan genRegionsAllocationPlan(
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, StorageGroupNotExistsException {
-    CreateRegionsReq createRegionGroupsReq = new CreateRegionsReq();
+    CreateRegionsPlan createRegionGroupsPlan = new CreateRegionsPlan();
     IRegionAllocator regionAllocator = genRegionAllocator();
 
     List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
@@ -91,13 +91,13 @@ public class RegionBalancer {
                 replicationFactor,
                 new TConsensusGroupId(
                     consensusGroupType, getPartitionManager().generateNextRegionGroupId()));
-        createRegionGroupsReq.addRegionGroup(storageGroup, newRegion);
+        createRegionGroupsPlan.addRegionGroup(storageGroup, newRegion);
 
         allocatedRegions.add(newRegion);
       }
     }
 
-    return createRegionGroupsReq;
+    return createRegionGroupsPlan;
   }
 
   private IRegionAllocator genRegionAllocator() {
