@@ -57,15 +57,14 @@ The 0.14.0-preview1 version only contains the new cluster version.
 | conf/iotdb-engine.properties | conf/iotdb-datanode.properties |
 | conf/iotdb-env.sh & bat      | conf/datanode-env.sh & bat     |
 
-- Rename the following configuration parameters
-  - DataNode
+- Rename the DataNode configuration parameters
 
 | Previous                         | Now                 |
 |----------------------------------|---------------------|
 | internal_ip                      | internal_address    |
 | target_confignode / config_nodes | target_config_nodes |
 
-  - ConfigNode
+- Rename the ConfigNode configuration parameters
 
  | Previous                         | Now                 |
  |----------------------------------|---------------------|
@@ -73,82 +72,82 @@ The 0.14.0-preview1 version only contains the new cluster version.
 
 ## Acknowledgements:
 
-543202718
-23931017wu
-Alima777
-Beyyes
-Bigreybear
-cchen1115
-chaow
-Chengjianyun
-ChengShengHan
-ChenSiHou
-Choubenson
-chuchaofan
-ChuShaoHuan
-Cigarl
-CloudWise-Lukemiao
-Cmlmakahts
-Cornmonster
-Cpaulzy
-CRZbulabula
-dafei1288
-Ericpai
-Flashzxi
-FrankHWD
-greenhandatsjtu
-HeimingZ
-HTHou
-huanhuanerer
-huzk8
-irvine0109
-iskytek
-JackieTien97
-jamber001
-JerryZhangZZY
-jiazhiren
-jixuan1989
-jun0315
-Krystal-xiao
-leety1228
-leonardodalinky
-Liuminghui233
-LIU-WEI-git
-ljn55966005
-lyssom
-MarosZyk
-MinaQin
-MrQuanzy
-Mychaow
-Noorall
-OneSizeFitsQuorum
-Plutooooooo
-Qiaojialin
-RYH61
-Samperson1997
-SilverNarcissus
-SpriCoder
-SteveYurongSu
-swpulk
-SzyWilliam
-THUMarkLau
-tisonkun
-trin1t
-Tsunghanjacktsai
-wallezhang
-wangchao316
-wanghui42
-wayblink
-Wei-hao-Li
-Xiaoyehanren
-Xingtanzjr
-Xinzhongtianxia
-Xuanronaldo
-Yifuzhou
-Yschengzi
-Yuyuankang
-yyt86
-ZhanGHanG9991
+543202718,
+23931017wu,
+Alima777,
+Beyyes,
+Bigreybear,
+cchen1115,
+chaow,
+Chengjianyun,
+ChengShengHan,
+ChenSiHou,
+Choubenson,
+chuchaofan,
+ChuShaoHuan,
+Cigarl,
+CloudWise-Lukemiao,
+Cmlmakahts,
+Cornmonster,
+Cpaulzy,
+CRZbulabula,
+dafei1288,
+Ericpai,
+Flashzxi,
+FrankHWD,
+greenhandatsjtu,
+HeimingZ,
+HTHou,
+huanhuanerer,
+huzk8,
+irvine0109,
+iskytek,
+JackieTien97,
+jamber001,
+JerryZhangZZY,
+jiazhiren,
+jixuan1989,
+jun0315,
+Krystal-xiao,
+leety1228,
+leonardodalinky,
+Liuminghui233,
+LIU-WEI-git,
+ljn55966005,
+lyssom,
+MarosZyk,
+MinaQin,
+MrQuanzy,
+Mychaow,
+Noorall,
+OneSizeFitsQuorum,
+Plutooooooo,
+Qiaojialin,
+RYH61,
+Samperson1997,
+SilverNarcissus,
+SpriCoder,
+SteveYurongSu,
+swpulk,
+SzyWilliam,
+THUMarkLau,
+tisonkun,
+trin1t,
+Tsunghanjacktsai,
+wallezhang,
+wangchao316,
+wanghui42,
+wayblink,
+Wei-hao-Li,
+Xiaoyehanren,
+Xingtanzjr,
+Xinzhongtianxia,
+Xuanronaldo,
+Yifuzhou,
+Yschengzi,
+Yuyuankang,
+yyt86,
+ZhanGHanG9991,
 zjx1230
 
 
