@@ -16,7 +16,7 @@
  */
 package org.apache.iotdb.db.service.thrift.handler;
 
-import org.apache.iotdb.db.service.thrift.impl.TSIEventHandler;
+import org.apache.iotdb.db.service.thrift.impl.IClientRPCServiceWithHandler;
 
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
@@ -24,9 +24,10 @@ import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
 public class RPCServiceThriftHandler implements TServerEventHandler {
-  private TSIEventHandler eventHandler;
 
-  public RPCServiceThriftHandler(TSIEventHandler eventHandler) {
+  private final IClientRPCServiceWithHandler eventHandler;
+
+  public RPCServiceThriftHandler(IClientRPCServiceWithHandler eventHandler) {
     this.eventHandler = eventHandler;
   }
 

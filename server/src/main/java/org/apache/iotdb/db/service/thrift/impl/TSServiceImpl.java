@@ -161,7 +161,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNonQueryException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 /** Thrift RPC implementation at server side. */
-public class TSServiceImpl implements TSIEventHandler {
+public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   private static final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 

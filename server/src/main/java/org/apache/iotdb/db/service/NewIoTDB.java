@@ -48,7 +48,7 @@ import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeTSServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -120,7 +120,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     // init rpc service
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(DataNodeTSServiceImpl.class.getName());
+        .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
 
     registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");

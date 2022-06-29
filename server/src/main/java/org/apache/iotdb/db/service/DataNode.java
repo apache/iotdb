@@ -60,7 +60,7 @@ import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeTSServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -394,7 +394,7 @@ public class DataNode implements DataNodeMBean {
     // init rpc service
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(DataNodeTSServiceImpl.class.getName());
+        .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
     }
