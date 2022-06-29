@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,7 +38,6 @@ import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class SeriesPartitionTable {
 
@@ -128,11 +128,15 @@ public class SeriesPartitionTable {
     return result;
   }
 
-  public void getTimeSlots(TConsensusGroupId tConsensusGroupId, AtomicLong timeSlots) {
-    timeSlots.addAndGet(
-        seriesPartitionMap.values().stream()
-            .filter(consensusGroupId -> consensusGroupId.contains(tConsensusGroupId))
-            .count());
+  public List<TTimePartitionSlot> getTimeSlots(TConsensusGroupId tConsensusGroupId) {
+    List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
+    seriesPartitionMap.forEach(
+        (tTimePartitionSlot, tConsensusGroupIds) -> {
+          if (tConsensusGroupIds.contains(tConsensusGroupId)) {
+            timePartitionSlots.add(tTimePartitionSlot);
+          }
+        });
+    return timePartitionSlots;
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
