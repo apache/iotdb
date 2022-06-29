@@ -709,6 +709,16 @@ public class WALNode implements IWALNode {
         }
       }
 
+      // find file contains search index
+      while (WALFileUtils.parseStatusCode(filesToSearch[currentFileIndex].getName())
+          == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
+        currentFileIndex++;
+        if (currentFileIndex >= filesToSearch.length) {
+          needUpdatingFilesToSearch = true;
+          return false;
+        }
+      }
+
       // find all insert plan of current wal file
       List<InsertNode> tmpNodes = new ArrayList<>();
       long targetIndex = nextSearchIndex;
