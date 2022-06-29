@@ -83,9 +83,9 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |默认值| 6667 |
 |改后生效方式|重启服务生效|
 
-* config\_nodes
+* target\_config\_nodes
 
-|名字| config\_nodes |
+|名字| target\_config\_nodes |
 |:---:|:---|
 |描述| 目标 ConfigNode 地址，ConfigNode 通过此地址加入集群 |
 |类型| String |

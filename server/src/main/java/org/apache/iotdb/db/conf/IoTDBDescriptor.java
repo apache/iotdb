@@ -1645,7 +1645,7 @@ public class IoTDBDescriptor {
   }
 
   public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty("config_nodes");
+    String configNodeUrls = properties.getProperty("target_config_nodes");
     if (configNodeUrls != null) {
       try {
         conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
