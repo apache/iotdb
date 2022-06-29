@@ -82,10 +82,10 @@ public class ConfigRequestSerDeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(1);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("127.0.0.1", 9003));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("127.0.0.1", 8777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 50010));
 
     TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
     dataNodeInfo.setLocation(dataNodeLocation);
@@ -198,10 +198,10 @@ public class ConfigRequestSerDeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("127.0.0.1", 9003));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("127.0.0.1", 8777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 50010));
 
     CreateRegionsReq req0 = new CreateRegionsReq();
     TRegionReplicaSet dataRegionSet = new TRegionReplicaSet();
@@ -235,10 +235,10 @@ public class ConfigRequestSerDeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("127.0.0.1", 9003));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("127.0.0.1", 8777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 50010));
 
     String storageGroup = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
@@ -291,10 +291,10 @@ public class ConfigRequestSerDeTest {
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
     dataNodeLocation.setDataNodeId(0);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("127.0.0.1", 9003));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("127.0.0.1", 8777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 50010));
 
     String storageGroup = "root.sg0";
     TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(10);
@@ -491,7 +491,7 @@ public class ConfigRequestSerDeTest {
     ApplyConfigNodeReq req0 =
         new ApplyConfigNodeReq(
             new TConfigNodeLocation(
-                0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
+                0, new TEndPoint("127.0.0.1", 22277), new TEndPoint("127.0.0.1", 22278)));
     ApplyConfigNodeReq req1 =
         (ApplyConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -502,7 +502,7 @@ public class ConfigRequestSerDeTest {
     RemoveConfigNodeReq req0 =
         new RemoveConfigNodeReq(
             new TConfigNodeLocation(
-                0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278)));
+                0, new TEndPoint("127.0.0.1", 22277), new TEndPoint("127.0.0.1", 22278)));
     RemoveConfigNodeReq req1 =
         (RemoveConfigNodeReq) ConfigRequest.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);

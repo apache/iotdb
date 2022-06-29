@@ -68,7 +68,7 @@ public class TemporaryClientDemo {
   private void createClients() throws TTransportException {
     clients = new HashMap<>();
     for (int i = 22277; i <= 22281; i += 2) {
-      TTransport transport = RpcTransportFactory.INSTANCE.getTransport("0.0.0.0", i, timeOutInMS);
+      TTransport transport = RpcTransportFactory.INSTANCE.getTransport("127.0.0.1", i, timeOutInMS);
       transport.open();
       clients.put(i, new IConfigNodeRPCService.Client(new TBinaryProtocol(transport)));
     }
