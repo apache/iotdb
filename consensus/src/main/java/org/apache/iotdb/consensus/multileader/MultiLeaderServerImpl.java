@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
@@ -110,7 +111,17 @@ public class MultiLeaderServerImpl {
           indexedConsensusRequest.getSafelyDeletedSearchIndex(),
           indexedConsensusRequest.getSearchIndex());
       TSStatus result = stateMachine.write(indexedConsensusRequest);
-      logDispatcher.offer(indexedConsensusRequest);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        logDispatcher.offer(indexedConsensusRequest);
+      } else {
+        logger.info(
+            "{}: write operation failed. searchIndex: {}. Code: {}",
+            thisNode.getGroupId(),
+            indexedConsensusRequest.getSearchIndex(),
+            result.getCode());
+        index.decrementAndGet();
+      }
+
       return result;
     }
   }
