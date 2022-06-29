@@ -1459,6 +1459,7 @@ public class Analyzer {
     public Analysis visitClearCache(
         ClearCacheStatement clearCacheStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
+      analysis.setStatement(clearCacheStatement);
       analysis.setFinishQueryAfterAnalyze(true);
 
       ChunkCache.getInstance().clear();
