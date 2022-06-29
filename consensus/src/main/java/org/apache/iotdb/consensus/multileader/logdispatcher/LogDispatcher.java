@@ -195,10 +195,13 @@ public class LogDispatcher {
         while (!Thread.interrupted() && !stopped) {
           while ((batch = getBatch()).isEmpty()) {
             // we may block here if there is no requests in the queue
-            bufferedRequest.add(pendingRequest.take());
-            // If write pressure is low, we simply sleep a little to reduce the number of RPC
-            if (pendingRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
-              Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
+            IndexedConsensusRequest request = pendingRequest.poll(10, TimeUnit.SECONDS);
+            if (request != null) {
+              bufferedRequest.add(request);
+              // If write pressure is low, we simply sleep a little to reduce the number of RPC
+              if (pendingRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
+                Thread.sleep(config.getReplication().getMaxWaitingTimeForAccumulatingBatchInMs());
+              }
             }
           }
           // we may block here if the synchronization pipeline is full
