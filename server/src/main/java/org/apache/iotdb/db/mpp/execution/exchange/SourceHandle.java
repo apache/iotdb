@@ -201,7 +201,7 @@ public class SourceHandle implements ISourceHandle {
   }
 
   @Override
-  public synchronized ListenableFuture<Void> isBlocked() {
+  public synchronized ListenableFuture<?> isBlocked() {
     if (aborted) {
       throw new IllegalStateException("Source handle is aborted.");
     }

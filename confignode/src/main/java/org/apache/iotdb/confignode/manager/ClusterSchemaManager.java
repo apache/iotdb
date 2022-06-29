@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
@@ -48,6 +49,11 @@ import java.util.Map;
 public class ClusterSchemaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
+
+  private static final double schemaRegionPerDataNode =
+      ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionPerDataNode();
+  private static final double dataRegionPerProcessor =
+      ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerProcessor();
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -165,8 +171,12 @@ public class ClusterSchemaManager {
             Math.max(
                 1,
                 Math.max(
-                    dataNodeNum
-                        / (storageGroupNum * storageGroupSchema.getSchemaReplicationFactor()),
+                    (int)
+                        (schemaRegionPerDataNode
+                            * dataNodeNum
+                            / (double)
+                                (storageGroupNum
+                                    * storageGroupSchema.getSchemaReplicationFactor())),
                     allocatedSchemaRegionGroupCount));
 
         // Adjust maxDataRegionGroupCount.
@@ -179,8 +189,11 @@ public class ClusterSchemaManager {
             Math.max(
                 2,
                 Math.max(
-                    totalCpuCoreNum
-                        / (3 * storageGroupNum * storageGroupSchema.getDataReplicationFactor()),
+                    (int)
+                        (dataRegionPerProcessor
+                            * totalCpuCoreNum
+                            / (double)
+                                (storageGroupNum * storageGroupSchema.getDataReplicationFactor())),
                     allocatedDataRegionGroupCount));
 
         adjustMaxRegionGroupCountPlan.putEntry(

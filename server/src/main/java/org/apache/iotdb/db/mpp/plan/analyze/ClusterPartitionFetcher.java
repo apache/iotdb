@@ -19,10 +19,12 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -143,6 +145,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionResp(schemaPartitionResp);
           partitionCache.updateSchemaPartitionCache(devicePaths, schemaPartition);
+        } else {
+          throw new RuntimeException(
+              new IoTDBException(
+                  schemaPartitionResp.getStatus().getMessage(),
+                  schemaPartitionResp.getStatus().getCode()));
         }
       }
       return schemaPartition;
@@ -299,11 +306,18 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                 storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
               }
             }
+            Set<String> successFullyCreatedStorageGroup = new HashSet<>();
             for (String storageGroupName : storageGroupNamesNeedCreated) {
               TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
               storageGroupSchema.setName(storageGroupName);
               TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
-              client.setStorageGroup(req);
+              TSStatus tsStatus = client.setStorageGroup(req);
+              if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+                successFullyCreatedStorageGroup.add(storageGroupName);
+              } else {
+                partitionCache.updateStorageCache(successFullyCreatedStorageGroup);
+                throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
+              }
             }
             partitionCache.updateStorageCache(storageGroupNamesNeedCreated);
             // third try to hit cache

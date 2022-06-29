@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.wal.buffer;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.db.wal.io.ILogWriter;
 import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
@@ -43,10 +42,8 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
   protected final AtomicLong currentWALFileVersion = new AtomicLong();
   /** current search index */
   protected volatile long currentSearchIndex;
-  /** current search index */
-  protected volatile WALFileStatus currentFileStatus;
   /** current wal file log writer */
-  protected volatile ILogWriter currentWALFileWriter;
+  protected volatile WALWriter currentWALFileWriter;
 
   public AbstractWALBuffer(
       String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
@@ -58,14 +55,15 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
       logger.info("Create folder {} for wal node-{}'s buffer.", logDirectory, identifier);
     }
     currentSearchIndex = startSearchIndex;
-    currentFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     currentWALFileVersion.set(startFileVersion);
     currentWALFileWriter =
         new WALWriter(
             SystemFileFactory.INSTANCE.getFile(
                 logDirectory,
                 WALFileUtils.getLogFileName(
-                    currentWALFileVersion.get(), currentSearchIndex, currentFileStatus)));
+                    currentWALFileVersion.get(),
+                    currentSearchIndex,
+                    WALFileStatus.CONTAINS_SEARCH_INDEX)));
   }
 
   @Override
@@ -99,7 +97,9 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
         SystemFileFactory.INSTANCE.getFile(
             logDirectory,
             WALFileUtils.getLogFileName(
-                currentWALFileVersion.incrementAndGet(), searchIndex, currentFileStatus));
+                currentWALFileVersion.incrementAndGet(),
+                searchIndex,
+                WALFileStatus.CONTAINS_SEARCH_INDEX));
     currentWALFileWriter = new WALWriter(nextLogFile);
     logger.debug("Open new wal file {} for wal node-{}'s buffer.", nextLogFile, identifier);
   }

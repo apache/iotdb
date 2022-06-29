@@ -29,7 +29,7 @@ import org.apache.iotdb.db.service.thrift.ProcessorWithMetrics;
 import org.apache.iotdb.db.service.thrift.handler.RPCServiceThriftHandler;
 import org.apache.iotdb.db.service.thrift.impl.TSIEventHandler;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Processor;
 
 import java.lang.reflect.InvocationTargetException;
 

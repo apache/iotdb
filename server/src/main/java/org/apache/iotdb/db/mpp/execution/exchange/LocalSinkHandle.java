@@ -71,7 +71,7 @@ public class LocalSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public synchronized ListenableFuture<Void> isFull() {
+  public synchronized ListenableFuture<?> isFull() {
     if (aborted) {
       throw new IllegalStateException("Sink handle is closed.");
     }

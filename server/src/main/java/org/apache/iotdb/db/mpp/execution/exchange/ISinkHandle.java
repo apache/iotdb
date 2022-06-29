@@ -34,7 +34,7 @@ public interface ISinkHandle {
   long getBufferRetainedSizeInBytes();
 
   /** Get a future that will be completed when the output buffer is not full. */
-  ListenableFuture<Void> isFull();
+  ListenableFuture<?> isFull();
 
   /**
    * Send a list of tsblocks to an unpartitioned output buffer. If no-more-tsblocks has been set,

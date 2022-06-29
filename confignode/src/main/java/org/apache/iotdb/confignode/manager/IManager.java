@@ -37,6 +37,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
@@ -117,6 +118,8 @@ public interface IManager {
    */
   DataSet getDataNodeInfo(GetDataNodeInfoPlan getDataNodeInfoPlan);
 
+  TClusterNodeInfos getAllClusterNodeInfos();
+  
   TSStatus setTTL(SetTTLPlan configRequest);
 
   TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan configRequest);

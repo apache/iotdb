@@ -281,30 +281,38 @@ public class QueryExecution implements IQueryExecution {
    */
   @Override
   public Optional<TsBlock> getBatchResult() {
-    try {
-      if (resultHandle == null || resultHandle.isAborted() || resultHandle.isFinished()) {
-        // Once the resultHandle is finished, we should transit the state of this query to FINISHED.
-        // So that the corresponding cleanup work could be triggered.
-        logger.info("resultHandle for client is finished");
-        stateMachine.transitionToFinished();
-        return Optional.empty();
+    // iterate until we get a non-nullable TsBlock or result is finished
+    while (true) {
+      try {
+        if (resultHandle == null || resultHandle.isAborted() || resultHandle.isFinished()) {
+          // Once the resultHandle is finished, we should transit the state of this query to
+          // FINISHED.
+          // So that the corresponding cleanup work could be triggered.
+          logger.info("resultHandle for client is finished");
+          stateMachine.transitionToFinished();
+          return Optional.empty();
+        }
+        ListenableFuture<?> blocked = resultHandle.isBlocked();
+        blocked.get();
+        if (!resultHandle.isFinished()) {
+          TsBlock res = resultHandle.receive();
+          if (res == null) {
+            continue;
+          }
+          return Optional.of(res);
+        } else {
+          return Optional.empty();
+        }
+      } catch (ExecutionException | CancellationException e) {
+        stateMachine.transitionToFailed(e);
+        Throwable t = e.getCause() == null ? e : e.getCause();
+        throwIfUnchecked(t);
+        throw new RuntimeException(t);
+      } catch (InterruptedException e) {
+        stateMachine.transitionToFailed(e);
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(new SQLException("ResultSet thread was interrupted", e));
       }
-      ListenableFuture<Void> blocked = resultHandle.isBlocked();
-      blocked.get();
-      if (!resultHandle.isFinished()) {
-        return Optional.of(resultHandle.receive());
-      } else {
-        return Optional.empty();
-      }
-    } catch (ExecutionException | CancellationException e) {
-      stateMachine.transitionToFailed(e);
-      Throwable t = e.getCause() == null ? e : e.getCause();
-      throwIfUnchecked(t);
-      throw new RuntimeException(t);
-    } catch (InterruptedException e) {
-      stateMachine.transitionToFailed(e);
-      Thread.currentThread().interrupt();
-      throw new RuntimeException(new SQLException("ResultSet thread was interrupted", e));
     }
   }
 
