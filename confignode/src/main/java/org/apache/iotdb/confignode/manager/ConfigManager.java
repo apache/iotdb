@@ -64,12 +64,16 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.TemplateInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigRequestExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
@@ -122,6 +126,9 @@ public class ConfigManager implements IManager {
   /** UDF */
   private final UDFManager udfManager;
 
+  /** Template **/
+  private final TemplateManager templateManager;
+
   public ConfigManager() throws IOException {
     // Build the persistence module
     NodeInfo nodeInfo = new NodeInfo();
@@ -130,6 +137,7 @@ public class ConfigManager implements IManager {
     AuthorInfo authorInfo = new AuthorInfo();
     ProcedureInfo procedureInfo = new ProcedureInfo();
     UDFInfo udfInfo = new UDFInfo();
+    TemplateInfo templateInfo = new TemplateInfo();
 
     // Build state machine and executor
     ConfigRequestExecutor executor =
@@ -146,6 +154,7 @@ public class ConfigManager implements IManager {
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
     this.consensusManager = new ConsensusManager(this, stateMachine);
+    this.templateManager = new TemplateManager(this,templateInfo);
   }
 
   public void close() throws IOException {
@@ -726,5 +735,35 @@ public class ConfigManager implements IManager {
   public void addMetrics() {
     partitionManager.addMetrics();
     nodeManager.addMetrics();
+  }
+
+  @Override
+  public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return templateManager.createTemplate(req);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TGetAllTemplatesResp getAllTemplates() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return templateManager.getAllTemplates();
+    } else {
+      return new TGetAllTemplatesResp();
+    }
+  }
+
+  @Override
+  public TGetTemplateResp getTemplate(String req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return templateManager.getTemplate(req);
+    } else {
+      return new TGetTemplateResp();
+    }
   }
 }

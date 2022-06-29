@@ -239,6 +239,22 @@ struct TShowRegionResp {
   2: optional list<common.TRegionInfo> regionInfoList;
 }
 
+// Template
+struct TCreateSchemaTemplateReq {
+  1: required string name
+  2: required binary serializedTemplate
+}
+
+struct TGetAllTemplatesResp {
+  1: required common.TSStatus status
+  2: optional list<binary> templateList
+}
+
+struct TGetTemplateResp {
+  1: required common.TSStatus status
+  2: optional binary template
+}
+
 service ConfigIService {
 
   /* DataNode */
@@ -321,6 +337,14 @@ service ConfigIService {
   /* Show Region */
 
   TShowRegionResp showRegion(TShowRegionReq req)
+
+  /* Template */
+
+  common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
+
+  TGetAllTemplatesResp getAllTemplates()
+
+  TGetTemplateResp getTemplate(string req)
 
 }
 

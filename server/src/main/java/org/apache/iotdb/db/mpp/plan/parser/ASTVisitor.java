@@ -102,6 +102,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
@@ -2248,4 +2249,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     return showRegionStatement;
   }
+  @Override
+  public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
+    CreateTemplateStatement createTemplateStatement = new CreateTemplateStatement();
+    //createTemplateStatement.setType();
+    return createTemplateStatement;
+  }
+
+
 }

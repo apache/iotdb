@@ -39,7 +39,10 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
@@ -241,4 +244,10 @@ public interface IManager {
 
   /** Show (data/schema) regions */
   DataSet showRegion(GetRegionInfoListReq getRegionsinfoReq);
+
+  TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req);
+
+  TGetAllTemplatesResp getAllTemplates() ;
+
+  TGetTemplateResp getTemplate(String req);
 }
