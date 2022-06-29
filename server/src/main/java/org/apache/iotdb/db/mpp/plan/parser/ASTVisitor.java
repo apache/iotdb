@@ -103,6 +103,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -2271,5 +2272,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showRegionStatement.setRegionType(null);
     }
     return showRegionStatement;
+  }
+
+  // Clear Cache
+
+  @Override
+  public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
+    return new ClearCacheStatement();
   }
 }

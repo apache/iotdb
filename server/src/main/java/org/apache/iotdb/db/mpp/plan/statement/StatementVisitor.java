@@ -56,6 +56,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 
@@ -255,5 +256,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowRegion(ShowRegionStatement showRegionStatement, C context) {
     return visitStatement(showRegionStatement, context);
+  }
+
+  public R visitClearCache(ClearCacheStatement clearCacheStatement, C context) {
+    return visitStatement(clearCacheStatement, context);
   }
 }
