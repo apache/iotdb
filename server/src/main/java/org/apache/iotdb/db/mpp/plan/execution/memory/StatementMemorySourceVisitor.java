@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.mpp.plan.execution.memory;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
@@ -105,9 +107,15 @@ public class StatementMemorySourceVisitor
     Set<String> matchedChildNodes = new TreeSet<>(context.getAnalysis().getMatchedNodes());
     matchedChildNodes.forEach(
         node -> {
-          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(node));
-          tsBlockBuilder.declarePosition();
+          try {
+            PartialPath nodePath = new PartialPath(node);
+            String nodeName = nodePath.getTailNode();
+            tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+            tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(nodeName));
+            tsBlockBuilder.declarePosition();
+          } catch (IllegalPathException ignored) {
+            // definitely won't happen
+          }
         });
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());

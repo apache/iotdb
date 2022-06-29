@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class StandalonePartitionFetcher implements IPartitionFetcher {
 
@@ -87,7 +91,41 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
   @Override
   public SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
       PathPatternTree patternTree, Integer level) {
-    return null;
+    try {
+      patternTree.constructTree();
+      Set<String> matchedNodes = new HashSet<>();
+      Set<PartialPath> involvedStorageGroup = new HashSet<>();
+      if (level == null) {
+        // Get Child
+        for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+          Pair<Set<String>, Set<PartialPath>> result =
+              localConfigNode.getChildNodePathInNextLevel(pathPattern);
+          matchedNodes.addAll(result.left);
+          involvedStorageGroup.addAll(result.right);
+        }
+      } else {
+        for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
+          Pair<List<PartialPath>, Set<PartialPath>> result =
+              localConfigNode.getNodesListInGivenLevel(pathPattern, level, false, null);
+          matchedNodes.addAll(
+              result.left.stream().map(PartialPath::getFullPath).collect(Collectors.toList()));
+          involvedStorageGroup.addAll(result.right);
+        }
+      }
+
+      PathPatternTree partitionReq = new PathPatternTree();
+      involvedStorageGroup.forEach(
+          storageGroup ->
+              partitionReq.appendPathPattern(storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD)));
+
+      return new SchemaNodeManagementPartition(
+          localConfigNode.getSchemaPartition(patternTree),
+          IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionExecutorClass(),
+          IoTDBDescriptor.getInstance().getConfig().getSeriesPartitionSlotNum(),
+          matchedNodes);
+    } catch (MetadataException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

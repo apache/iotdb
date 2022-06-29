@@ -35,9 +35,11 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -184,16 +186,19 @@ public class IoTDBMetadataFetchIT {
         Set<String> standard = standards[n];
         try (ResultSet resultSet = statement.executeQuery(sql)) {
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          List<String> returnedSG = new ArrayList<>();
           while (resultSet.next()) {
-            StringBuilder builder = new StringBuilder();
-            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-              builder.append(resultSet.getString(i)).append(",");
-            }
-            Assert.assertTrue(standard.contains(builder.toString()));
-            String string = builder.toString();
-            Assert.assertTrue(standard.contains(string));
-            standard.remove(string);
+            returnedSG.add(resultSet.getString(1));
           }
+          StringBuilder builder = new StringBuilder();
+          Collections.sort(returnedSG);
+          for (String s : returnedSG) {
+            builder.append(s).append(",");
+          }
+          Assert.assertTrue(standard.contains(builder.toString()));
+          String string = builder.toString();
+          Assert.assertTrue(standard.contains(string));
+          standard.remove(string);
           assertEquals(0, standard.size());
         } catch (SQLException e) {
           e.printStackTrace();

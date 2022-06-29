@@ -180,8 +180,7 @@ public class StandaloneScheduler implements IScheduler {
             }
 
             if (executionResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              stateMachine.transitionToFailed(
-                  new IoTDBException(executionResult.getMessage(), executionResult.getCode()));
+              throw new IoTDBException(executionResult.getMessage(), executionResult.getCode());
             }
           }
           stateMachine.transitionToFinished();

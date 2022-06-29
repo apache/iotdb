@@ -92,7 +92,7 @@ public class IoTDBDeletionIT {
       statement.execute("insert into root.vehicle.d0(time,s4) values (10,true)");
 
       String errorMsg =
-          "416: For delete statement, where clause can only contain time expressions,";
+          "416: For delete statement, where clause can only contain time expressions, value filter is not currently supported.";
 
       try {
         statement.execute(
