@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -132,15 +131,6 @@ public class DataPartitionTable {
                     .filterUnassignedDataPartitionSlots(timePartitionSlots)));
 
     return result;
-  }
-
-  public long getTimeSlots(TConsensusGroupId tConsensusGroupId) {
-    List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
-    dataPartitionMap.forEach(
-        (seriesPartitionSlot, seriesPartitionTable) -> {
-          timePartitionSlots.addAll(seriesPartitionTable.getTimeSlots(tConsensusGroupId));
-        });
-    return timePartitionSlots.stream().distinct().count();
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)

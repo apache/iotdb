@@ -386,11 +386,11 @@ public class StorageGroupPartitionTable {
               TRegionInfo tRegionInfoList = new TRegionInfo();
               tRegionInfoList.setConsensusGroupId(replicaSet.getRegionId());
               tRegionInfoList.setStorageGroup(storageGroupName);
-              tRegionInfoList.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
               if (replicaSet.getRegionId().getType() == TConsensusGroupType.DataRegion) {
-                tRegionInfoList.setTimeSlots(
-                    dataPartitionTable.getTimeSlots(replicaSet.getRegionId()));
+                tRegionInfoList.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
+                tRegionInfoList.setTimeSlots(regionGroup.getCounter());
               } else if (replicaSet.getRegionId().getType() == TConsensusGroupType.SchemaRegion) {
+                tRegionInfoList.setSeriesSlots(regionGroup.getCounter());
                 tRegionInfoList.setTimeSlots(0);
               }
               tRegionInfoList.setDataNodeId(dataNodeLocation.getDataNodeId());

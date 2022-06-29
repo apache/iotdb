@@ -35,18 +35,20 @@ public class RegionGroup {
 
   private final TRegionReplicaSet replicaSet;
 
-  // For DataRegion, each SeriesSlot * TimeSlot form a slot,
-  // for SchemaRegion, each SeriesSlot is a slot
-  private final AtomicLong slotCount;
+  // For DataRegion, each SeriesSlot and each TimeSlot it contains can form a slot.
+  // Eg: Have SeriesSlot-1, SeriesSlot-1 has TimeSlot-1, TimeSlot-2, Timeslot-3,
+  // then (SeriesSlot1 -> TimeSlot1) is a slot.
+  // For SchemaRegion, each SeriesSlot is a slot
+  private final AtomicLong partitionCount;
 
   public RegionGroup() {
     this.replicaSet = new TRegionReplicaSet();
-    this.slotCount = new AtomicLong();
+    this.partitionCount = new AtomicLong();
   }
 
   public RegionGroup(TRegionReplicaSet replicaSet) {
     this.replicaSet = replicaSet;
-    this.slotCount = new AtomicLong(0);
+    this.partitionCount = new AtomicLong(0);
   }
 
   public TConsensusGroupId getId() {
@@ -58,23 +60,23 @@ public class RegionGroup {
   }
 
   public void addCounter(long delta) {
-    slotCount.getAndAdd(delta);
+    partitionCount.getAndAdd(delta);
   }
 
   public long getCounter() {
-    return slotCount.get();
+    return partitionCount.get();
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     replicaSet.write(protocol);
-    ReadWriteIOUtils.write(slotCount.get(), outputStream);
+    ReadWriteIOUtils.write(partitionCount.get(), outputStream);
   }
 
   public void deserialize(InputStream inputStream, TProtocol protocol)
       throws IOException, TException {
     replicaSet.read(protocol);
-    slotCount.set(ReadWriteIOUtils.readLong(inputStream));
+    partitionCount.set(ReadWriteIOUtils.readLong(inputStream));
   }
 
   @Override

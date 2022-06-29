@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -126,17 +125,6 @@ public class SeriesPartitionTable {
         });
 
     return result;
-  }
-
-  public List<TTimePartitionSlot> getTimeSlots(TConsensusGroupId tConsensusGroupId) {
-    List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
-    seriesPartitionMap.forEach(
-        (tTimePartitionSlot, tConsensusGroupIds) -> {
-          if (tConsensusGroupIds.contains(tConsensusGroupId)) {
-            timePartitionSlots.add(tTimePartitionSlot);
-          }
-        });
-    return timePartitionSlots;
   }
 
   public void serialize(OutputStream outputStream, TProtocol protocol)
