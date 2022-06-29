@@ -54,7 +54,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
         "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
     properties.setProperty("connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
-      properties.setProperty("config_nodes", this.targetConfigNode);
+      properties.setProperty("target_config_nodes", this.targetConfigNode);
     }
   }
 
