@@ -104,10 +104,6 @@ public class LogDispatcher {
     return threads.stream().mapToLong(LogDispatcherThread::getCurrentSyncIndex).min();
   }
 
-  public OptionalLong getCurrentSearchIndex() {
-    return threads.stream().mapToLong(LogDispatcherThread::getCurrentSearchIndex).min();
-  }
-
   public void offer(IndexedConsensusRequest request) {
     threads.forEach(
         thread -> {
@@ -181,10 +177,6 @@ public class LogDispatcher {
 
     public boolean isStopped() {
       return stopped;
-    }
-
-    public long getCurrentSearchIndex() {
-      return reader.getCurrentSearchIndex();
     }
 
     @Override

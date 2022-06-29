@@ -32,6 +32,7 @@ import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
+import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -80,7 +81,9 @@ public class MultiLeaderServerImpl {
     this.config = config;
     this.logDispatcher = new LogDispatcher(this, clientManager);
     // restart
-    long currentSearchIndex = this.logDispatcher.getCurrentSearchIndex().orElse(0L);
+    ConsensusReqReader reader =
+        (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
+    long currentSearchIndex = reader.getCurrentSearchIndex();
     this.index = new AtomicLong(currentSearchIndex);
   }
 
@@ -112,6 +115,7 @@ public class MultiLeaderServerImpl {
             indexedConsensusRequest.getSafelyDeletedSearchIndex(),
             indexedConsensusRequest.getSearchIndex());
       }
+      // TODO wal and memtable
       TSStatus result = stateMachine.write(indexedConsensusRequest);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logDispatcher.offer(indexedConsensusRequest);
