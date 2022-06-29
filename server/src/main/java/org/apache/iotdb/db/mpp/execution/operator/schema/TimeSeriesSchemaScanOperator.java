@@ -118,8 +118,14 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   private String mapToString(Map<String, String> map) {
-    return map.entrySet().stream()
-        .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
-        .collect(Collectors.joining(","));
+    String content =
+        map.entrySet().stream()
+            .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
+            .collect(Collectors.joining(","));
+    if (content.isEmpty()) {
+      return "null";
+    } else {
+      return "{" + content + "}";
+    }
   }
 }

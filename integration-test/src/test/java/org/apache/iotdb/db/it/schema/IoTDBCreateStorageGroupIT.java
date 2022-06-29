@@ -80,7 +80,7 @@ public class IoTDBCreateStorageGroupIT {
     connection.close();
     // todo
     //    EnvironmentUtils.stopDaemon();
-    //    setUp();
+    setUp();
 
     // ensure StorageGroup in cache is right after recovering.
     createStorageGroupTool(storageGroups);

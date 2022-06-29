@@ -25,6 +25,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -386,6 +387,7 @@ public class IoTDBTagIT {
     }
   }
 
+  @Ignore
   @Test
   public void deleteTest() {
     List<String> ret1 =
@@ -469,6 +471,7 @@ public class IoTDBTagIT {
     }
   }
 
+  @Ignore
   @Test
   public void deleteWithAliasTest() {
     List<String> ret1 =
@@ -795,6 +798,7 @@ public class IoTDBTagIT {
     }
   }
 
+  @Ignore
   @Test
   public void queryWithWhereAndDeleteTest() {
     Set<String> ret = new HashSet<>();

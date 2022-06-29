@@ -175,7 +175,7 @@ public class IoTDBAutoCreateSchemaIT {
     connection.close();
     // todo restart test
     //    EnvironmentUtils.stopDaemon();
-    //    setUp();
+    setUp();
 
     // ensure that storage group in cache is right after recovering.
     InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
