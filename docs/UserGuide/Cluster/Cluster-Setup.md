@@ -89,7 +89,7 @@ Important parameters in iotdb-confignode.properties:
 | rpc\_address    | Internal rpc service address of ConfigNode          |
 | rpc\_port    | Internal rpc service address of ConfigNode       |
 | consensus\_port    | ConfigNode replication consensus protocol communication port    |
-| config\_nodes    | Target ConfigNode address, if the current is the first ConfigNode, then set its address:port    |
+| target\_config\_nodes    | Target ConfigNode address, if the current is the first ConfigNode, then set its address:port    |
 | data\_replication\_factor  | Data replication factor, no more than DataNode number        |
 | data\_region\_consensus\_protocol\_class | Consensus protocol of data replicas |
 | schema\_replication\_factor  | Schema replication factor, no more than DataNode number       |
@@ -116,6 +116,6 @@ Important parameters in iotdb-datanode.properties
 | mpp\_data\_exchange\_port    | Data flow port of DataNode inside cluster           |
 | data\_region\_consensus\_port    | Data replicas communication port for consensus     |
 | schema\_region\_consensus\_port    | Schema replicas communication port for consensus          |
-| config\_nodes    | Running ConfigNode of the Cluster      |
+| target\_config\_nodes    | Running ConfigNode of the Cluster      |
 
 More details [DataNode Configurations](https://iotdb.apache.org/UserGuide/Master/Reference/DataNode-Config-Manual.html)

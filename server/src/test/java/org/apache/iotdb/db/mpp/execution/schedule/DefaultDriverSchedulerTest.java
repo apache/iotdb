@@ -26,7 +26,7 @@ import org.apache.iotdb.db.mpp.execution.exchange.IMPPDataExchangeManager;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTaskStatus;
 import org.apache.iotdb.db.utils.stats.CpuTimer;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 
 import io.airlift.units.Duration;
 import org.junit.After;
@@ -309,7 +309,8 @@ public class DefaultDriverSchedulerTest {
     IMPPDataExchangeManager mockMPPDataExchangeManager =
         Mockito.mock(IMPPDataExchangeManager.class);
     manager.setBlockManager(mockMPPDataExchangeManager);
-    InternalService.Client mockMppServiceClient = Mockito.mock(InternalService.Client.class);
+    IDataNodeRPCService.Client mockMppServiceClient =
+        Mockito.mock(IDataNodeRPCService.Client.class);
     ITaskScheduler defaultScheduler = manager.getScheduler();
     QueryId queryId = new QueryId("test");
     FragmentInstanceId instanceId1 =

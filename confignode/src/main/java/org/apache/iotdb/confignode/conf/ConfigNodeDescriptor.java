@@ -115,9 +115,10 @@ public class ConfigNodeDescriptor {
           Integer.parseInt(
               properties.getProperty("consensus_port", String.valueOf(conf.getConsensusPort()))));
 
-      String targetConfigNode = properties.getProperty("config_nodes", null);
-      if (targetConfigNode != null) {
-        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNode));
+      // TODO: Enable multiple target_config_nodes
+      String targetConfigNodes = properties.getProperty("target_config_nodes", null);
+      if (targetConfigNodes != null) {
+        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes));
       }
 
       conf.setSeriesPartitionSlotNum(
@@ -133,14 +134,25 @@ public class ConfigNodeDescriptor {
           properties.getProperty(
               "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
 
-      conf.setDataRegionConsensusProtocolClass(
-          properties.getProperty(
-              "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass()));
-
       conf.setSchemaRegionConsensusProtocolClass(
           properties.getProperty(
               "schema_region_consensus_protocol_class",
               conf.getSchemaRegionConsensusProtocolClass()));
+
+      conf.setSchemaRegionPerDataNode(
+          Double.parseDouble(
+              properties.getProperty(
+                  "schema_region_per_data_node",
+                  String.valueOf(conf.getSchemaRegionPerDataNode()))));
+
+      conf.setDataRegionConsensusProtocolClass(
+          properties.getProperty(
+              "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass()));
+
+      conf.setDataRegionPerProcessor(
+          Double.parseDouble(
+              properties.getProperty(
+                  "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))));
 
       conf.setRpcAdvancedCompressionEnable(
           Boolean.parseBoolean(

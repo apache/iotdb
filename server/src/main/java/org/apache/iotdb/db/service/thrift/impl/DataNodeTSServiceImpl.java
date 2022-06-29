@@ -121,9 +121,9 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
-public class DataNodeTSIServiceImpl implements TSIEventHandler {
+public class DataNodeTSServiceImpl implements TSIEventHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTSIServiceImpl.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeTSServiceImpl.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -135,7 +135,7 @@ public class DataNodeTSIServiceImpl implements TSIEventHandler {
 
   private final ISchemaFetcher SCHEMA_FETCHER;
 
-  public DataNodeTSIServiceImpl() {
+  public DataNodeTSServiceImpl() {
     if (config.isClusterMode()) {
       PARTITION_FETCHER = ClusterPartitionFetcher.getInstance();
       SCHEMA_FETCHER = ClusterSchemaFetcher.getInstance();
