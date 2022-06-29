@@ -477,6 +477,11 @@ public class MultiLeaderConsensusTest {
         nextSearchIndex = targetIndex;
       }
     }
+
+    @Override
+    public long getCurrentSearchIndex() {
+      return 0;
+    }
   }
 
   public static class RequestSets {

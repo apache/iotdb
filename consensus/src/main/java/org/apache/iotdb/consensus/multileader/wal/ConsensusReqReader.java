@@ -90,4 +90,7 @@ public interface ConsensusReqReader {
      */
     void skipTo(long targetIndex);
   }
+
+  /** Get current search index */
+  long getCurrentSearchIndex();
 }
