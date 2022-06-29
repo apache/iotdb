@@ -105,7 +105,8 @@ public abstract class ServiceProvider {
    * @return true: If logged in; false: If not logged in
    */
   public boolean checkLogin(long sessionId) {
-    boolean isLoggedIn = SESSION_MANAGER.getUsername(sessionId) != null;
+    Long currSessionId = SESSION_MANAGER.getCurrSessionId();
+    boolean isLoggedIn = currSessionId != null && currSessionId == sessionId;
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
     } else {
