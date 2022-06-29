@@ -35,11 +35,9 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -173,11 +171,11 @@ public class IoTDBMetadataFetchIT {
           new Set[] {
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01,",
-                    "root.ln.wf01.wt02,",
-                    "root.ln1.wf01.wt01,",
-                    "root.ln2.wf01.wt01,")),
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,", "root.ln.wf01.wt02,")),
+                    "root.ln.wf01.wt01",
+                    "root.ln.wf01.wt02",
+                    "root.ln1.wf01.wt01",
+                    "root.ln2.wf01.wt01")),
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt01", "root.ln.wf01.wt02")),
             new HashSet<>()
           };
 
@@ -185,20 +183,10 @@ public class IoTDBMetadataFetchIT {
         String sql = sqls[n];
         Set<String> standard = standards[n];
         try (ResultSet resultSet = statement.executeQuery(sql)) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          List<String> returnedSG = new ArrayList<>();
           while (resultSet.next()) {
-            returnedSG.add(resultSet.getString(1));
+            Assert.assertTrue(standard.contains(resultSet.getString(1)));
+            standard.remove(resultSet.getString(1));
           }
-          StringBuilder builder = new StringBuilder();
-          Collections.sort(returnedSG);
-          for (String s : returnedSG) {
-            builder.append(s).append(",");
-          }
-          Assert.assertTrue(standard.contains(builder.toString()));
-          String string = builder.toString();
-          Assert.assertTrue(standard.contains(string));
-          standard.remove(string);
           assertEquals(0, standard.size());
         } catch (SQLException e) {
           e.printStackTrace();
