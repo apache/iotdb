@@ -66,6 +66,7 @@ public class RatisConsensusTest {
                   RatisConfig.Log.newBuilder()
                       .setPurgeUptoSnapshotIndex(true)
                       .setPurgeGap(10)
+                      .setUnsafeFlushEnabled(false)
                       .build())
               .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(100).build())
               .build();

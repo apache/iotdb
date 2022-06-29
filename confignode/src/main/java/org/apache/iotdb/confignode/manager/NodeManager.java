@@ -27,10 +27,10 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
@@ -95,7 +95,7 @@ public class NodeManager {
    * @return DataNodeConfigurationDataSet. The TSStatus will be set to SUCCESS_STATUS when register
    *     success, and DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
    */
-  public DataSet registerDataNode(RegisterDataNodeReq req) {
+  public DataSet registerDataNode(RegisterDataNodePlan req) {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
 
     if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
@@ -129,7 +129,7 @@ public class NodeManager {
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoReq req) {
+  public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoPlan req) {
     return (DataNodeInfosResp) getConsensusManager().read(req).getDataset();
   }
 
@@ -189,15 +189,15 @@ public class NodeManager {
   public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
     // Generate new ConfigNode's index
     configNodeLocation.setConfigNodeId(nodeInfo.generateNextNodeId());
-    ApplyConfigNodeReq applyConfigNodeReq = new ApplyConfigNodeReq(configNodeLocation);
-    getConsensusManager().write(applyConfigNodeReq);
+    ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodeReq(configNodeLocation);
+    getConsensusManager().write(applyConfigNodePlan);
   }
 
   public void addMetrics() {
     nodeInfo.addMetrics();
   }
 
-  public TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq) {
+  public TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
     if (removeConfigNodeLock.tryLock()) {
       try {
         // Check ConfigNodes number
@@ -208,7 +208,7 @@ public class NodeManager {
         }
 
         // Check whether the onlineConfigNodes contain the ConfigNode to be removed.
-        if (!getOnlineConfigNodes().contains(removeConfigNodeReq.getConfigNodeLocation())) {
+        if (!getOnlineConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
               .setMessage(
                   "Remove ConfigNode failed because the ConfigNode not in current Cluster.");
@@ -223,18 +223,18 @@ public class NodeManager {
         }
         if (leader
             .getInternalEndPoint()
-            .equals(removeConfigNodeReq.getConfigNodeLocation().getInternalEndPoint())) {
+            .equals(removeConfigNodePlan.getConfigNodeLocation().getInternalEndPoint())) {
           // transfer leader
-          return transferLeader(removeConfigNodeReq, getConsensusManager().getConsensusGroupId());
+          return transferLeader(removeConfigNodePlan, getConsensusManager().getConsensusGroupId());
         }
 
         // Execute removePeer
-        if (getConsensusManager().removeConfigNodePeer(removeConfigNodeReq)) {
+        if (getConsensusManager().removeConfigNodePeer(removeConfigNodePlan)) {
           configManager
               .getLoadManager()
               .removeNodeHeartbeatHandCache(
-                  removeConfigNodeReq.getConfigNodeLocation().getConfigNodeId());
-          return getConsensusManager().write(removeConfigNodeReq).getStatus();
+                  removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
+          return getConsensusManager().write(removeConfigNodePlan).getStatus();
         } else {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
               .setMessage(
@@ -250,10 +250,10 @@ public class NodeManager {
   }
 
   private TSStatus transferLeader(
-      RemoveConfigNodeReq removeConfigNodeReq, ConsensusGroupId groupId) {
+      RemoveConfigNodePlan removeConfigNodePlan, ConsensusGroupId groupId) {
     TConfigNodeLocation newLeader =
         getOnlineConfigNodes().stream()
-            .filter(e -> !e.equals(removeConfigNodeReq.getConfigNodeLocation()))
+            .filter(e -> !e.equals(removeConfigNodePlan.getConfigNodeLocation()))
             .findAny()
             .get();
     ConsensusGenericResponse resp =

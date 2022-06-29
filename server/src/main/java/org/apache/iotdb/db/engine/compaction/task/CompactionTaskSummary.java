@@ -20,13 +20,56 @@ package org.apache.iotdb.db.engine.compaction.task;
 
 /** The summary of one {@link AbstractCompactionTask} execution */
 public class CompactionTaskSummary {
-  private final boolean success;
+  private long timeCost = 0L;
+  private volatile Status status = Status.NOT_STARTED;
+  private long startTime = -1L;
 
-  public CompactionTaskSummary(boolean success) {
-    this.success = success;
+  public CompactionTaskSummary() {}
+
+  public void start() {
+    this.status = Status.STARTED;
+    this.startTime = System.currentTimeMillis();
+  }
+
+  public void finish(boolean success) {
+    this.status = success ? Status.SUCCESS : Status.FAILED;
+    this.timeCost = System.currentTimeMillis() - this.startTime;
+  }
+
+  public void cancel() {
+    if (this.status != Status.SUCCESS && this.status != Status.FAILED) {
+      this.status = Status.CANCELED;
+      if (this.startTime != -1) {
+        this.timeCost = System.currentTimeMillis() - this.startTime;
+      }
+    }
+  }
+
+  public boolean isCancel() {
+    return this.status == Status.CANCELED;
+  }
+
+  public boolean isFinished() {
+    return this.status == Status.SUCCESS || this.status == Status.FAILED;
+  }
+
+  public boolean isRan() {
+    return this.status != Status.NOT_STARTED;
   }
 
   public boolean isSuccess() {
-    return success;
+    return this.status == Status.SUCCESS;
+  }
+
+  public long getTimeCost() {
+    return timeCost;
+  }
+
+  enum Status {
+    NOT_STARTED,
+    STARTED,
+    SUCCESS,
+    FAILED,
+    CANCELED
   }
 }

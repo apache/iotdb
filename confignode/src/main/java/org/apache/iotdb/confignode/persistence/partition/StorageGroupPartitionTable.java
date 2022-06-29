@@ -27,7 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -364,13 +364,13 @@ public class StorageGroupPartitionTable {
   }
 
   public void getRegionInfoList(
-      GetRegionInfoListReq regionsInfoReq, List<TRegionInfo> regionInfoList) {
+      GetRegionInfoListPlan regionsInfoPlan, List<TRegionInfo> regionInfoList) {
     regionInfoMap.forEach(
         (consensusGroupId, regionGroup) -> {
           TRegionReplicaSet replicaSet = regionGroup.getReplicaSet();
-          if (regionsInfoReq.getRegionType() == null) {
+          if (regionsInfoPlan.getRegionType() == null) {
             buildTRegionsInfo(regionInfoList, replicaSet, regionGroup);
-          } else if (regionsInfoReq.getRegionType().ordinal()
+          } else if (regionsInfoPlan.getRegionType().ordinal()
               == replicaSet.getRegionId().getType().ordinal()) {
             buildTRegionsInfo(regionInfoList, replicaSet, regionGroup);
           }
@@ -386,8 +386,13 @@ public class StorageGroupPartitionTable {
               TRegionInfo tRegionInfoList = new TRegionInfo();
               tRegionInfoList.setConsensusGroupId(replicaSet.getRegionId());
               tRegionInfoList.setStorageGroup(storageGroupName);
-              long slots = regionGroup.getCounter();
-              tRegionInfoList.setSlots((int) slots);
+              if (replicaSet.getRegionId().getType() == TConsensusGroupType.DataRegion) {
+                tRegionInfoList.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
+                tRegionInfoList.setTimeSlots(regionGroup.getCounter());
+              } else if (replicaSet.getRegionId().getType() == TConsensusGroupType.SchemaRegion) {
+                tRegionInfoList.setSeriesSlots(regionGroup.getCounter());
+                tRegionInfoList.setTimeSlots(0);
+              }
               tRegionInfoList.setDataNodeId(dataNodeLocation.getDataNodeId());
               tRegionInfoList.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
               tRegionInfoList.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());

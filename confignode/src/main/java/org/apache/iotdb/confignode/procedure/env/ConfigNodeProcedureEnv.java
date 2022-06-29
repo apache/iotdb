@@ -24,8 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -80,8 +80,8 @@ public class ConfigNodeProcedureEnv {
    * @return tsStatus
    */
   public TSStatus deleteConfig(String name) {
-    DeleteStorageGroupReq deleteStorageGroupReq = new DeleteStorageGroupReq(name);
-    return configManager.getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupReq);
+    DeleteStorageGroupPlan deleteStorageGroupPlan = new DeleteStorageGroupPlan(name);
+    return configManager.getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupPlan);
   }
 
   /**
@@ -90,7 +90,8 @@ public class ConfigNodeProcedureEnv {
    * @param preDeleteType execute/rollback
    * @param deleteSgName storage group name
    */
-  public void preDelete(PreDeleteStorageGroupReq.PreDeleteType preDeleteType, String deleteSgName) {
+  public void preDelete(
+      PreDeleteStorageGroupPlan.PreDeleteType preDeleteType, String deleteSgName) {
     configManager.getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
   }
 

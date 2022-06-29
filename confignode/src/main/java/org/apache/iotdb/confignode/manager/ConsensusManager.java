@@ -27,8 +27,9 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequest;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -151,27 +152,27 @@ public class ConsensusManager {
   /**
    * Remove a ConfigNode Peer out of PartitionRegion
    *
-   * @param removeConfigNodeReq RemoveConfigNodeReq
+   * @param removeConfigNodePlan RemoveConfigNodeReq
    * @return True if successfully removePeer. False if another ConfigNode is being removed to the
    *     PartitionRegion
    */
-  public boolean removeConfigNodePeer(RemoveConfigNodeReq removeConfigNodeReq) {
+  public boolean removeConfigNodePeer(RemoveConfigNodePlan removeConfigNodePlan) {
     return consensusImpl
         .removePeer(
             consensusGroupId,
             new Peer(
                 consensusGroupId,
-                removeConfigNodeReq.getConfigNodeLocation().getConsensusEndPoint()))
+                removeConfigNodePlan.getConfigNodeLocation().getConsensusEndPoint()))
         .isSuccess();
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusWriteResponse write(ConfigRequest req) {
+  public ConsensusWriteResponse write(ConfigPhysicalPlan req) {
     return consensusImpl.write(consensusGroupId, req);
   }
 
   /** Transmit PhysicalPlan to confignode.consensus.statemachine */
-  public ConsensusReadResponse read(ConfigRequest req) {
+  public ConsensusReadResponse read(ConfigPhysicalPlan req) {
     return consensusImpl.read(consensusGroupId, req);
   }
 

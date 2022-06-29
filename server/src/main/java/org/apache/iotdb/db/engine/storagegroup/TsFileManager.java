@@ -46,7 +46,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class TsFileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
   private String storageGroupName;
-  private String dataRegion;
+  private String dataRegionId;
   private String storageGroupDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
@@ -63,10 +63,10 @@ public class TsFileManager {
   private boolean allowCompaction = true;
   private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
-  public TsFileManager(String storageGroupName, String dataRegion, String storageGroupDir) {
+  public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
-    this.dataRegion = dataRegion;
+    this.dataRegionId = dataRegionId;
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
@@ -357,12 +357,12 @@ public class TsFileManager {
     this.allowCompaction = allowCompaction;
   }
 
-  public String getDataRegion() {
-    return dataRegion;
+  public String getDataRegionId() {
+    return dataRegionId;
   }
 
-  public void setDataRegion(String dataRegion) {
-    this.dataRegion = dataRegion;
+  public void setDataRegionId(String dataRegionId) {
+    this.dataRegionId = dataRegionId;
   }
 
   public List<TsFileResource> getSequenceRecoverTsFileResources() {
