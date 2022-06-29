@@ -726,6 +726,43 @@ public class ExpressionAnalyzer {
     } else if (predicate instanceof LikeExpression || predicate instanceof RegularExpression) {
       return new Pair<>(null, true);
     } else if (predicate instanceof BetweenExpression) {
+      Expression firstExpression = ((TernaryExpression) predicate).getFirstExpression();
+      Expression secondExpression = ((TernaryExpression) predicate).getSecondExpression();
+      Expression thirdExpression = ((TernaryExpression) predicate).getThirdExpression();
+      if (firstExpression instanceof TimestampOperand) {
+        Filter filter =
+            constructTimeFilter(
+                predicate.getExpressionType(),
+                secondExpression,
+                thirdExpression,
+                0,
+                ((BetweenExpression) predicate).isNotBetween());
+        if (filter != null) {
+          return new Pair<>(filter, false);
+        }
+      } else if (secondExpression instanceof TimestampOperand) {
+        Filter filter =
+            constructTimeFilter(
+                predicate.getExpressionType(),
+                firstExpression,
+                thirdExpression,
+                1,
+                ((BetweenExpression) predicate).isNotBetween());
+        if (filter != null) {
+          return new Pair<>(filter, false);
+        }
+      } else if (thirdExpression instanceof TimestampOperand) {
+        Filter filter =
+            constructTimeFilter(
+                predicate.getExpressionType(),
+                firstExpression,
+                secondExpression,
+                2,
+                ((BetweenExpression) predicate).isNotBetween());
+        if (filter != null) {
+          return new Pair<>(filter, false);
+        }
+      }
       return new Pair<>(null, true);
     } else if (predicate instanceof IsNullExpression) {
       return new Pair<>(null, true);

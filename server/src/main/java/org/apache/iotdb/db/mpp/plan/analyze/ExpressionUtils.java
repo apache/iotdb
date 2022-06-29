@@ -251,6 +251,28 @@ public class ExpressionUtils {
     return null;
   }
 
+  public static Filter constructTimeFilter(
+      ExpressionType expressionType,
+      Expression valueExpression1,
+      Expression valueExpression2,
+      int timeOffset,
+      boolean not) {
+    if (valueExpression1 instanceof ConstantOperand
+        && valueExpression2 instanceof ConstantOperand
+        && ((ConstantOperand) valueExpression1).getDataType() == TSDataType.INT64
+        && ((ConstantOperand) valueExpression2).getDataType() == TSDataType.INT64) {
+      long value1 = Long.parseLong(((ConstantOperand) valueExpression1).getValueString());
+      long value2 = Long.parseLong(((ConstantOperand) valueExpression2).getValueString());
+      switch (expressionType) {
+        case BETWEEN:
+          return TimeFilter.between(value1, value2, timeOffset, not);
+        default:
+          throw new IllegalArgumentException("unsupported expression type: " + expressionType);
+      }
+    }
+    return null;
+  }
+
   public static Expression constructQueryFilter(List<Expression> expressions) {
     if (expressions.size() == 1) {
       return expressions.get(0);
