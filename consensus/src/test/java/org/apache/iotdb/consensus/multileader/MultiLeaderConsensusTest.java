@@ -35,6 +35,8 @@ import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.apache.ratis.util.FileUtils;
@@ -355,7 +357,7 @@ public class MultiLeaderConsensusTest {
         } else {
           requestSets.add(((IndexedConsensusRequest) request), true);
         }
-        return new TSStatus();
+        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       }
     }
 
