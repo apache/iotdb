@@ -125,7 +125,7 @@ public class LogDispatcher {
   }
 
   public class LogDispatcherThread implements Runnable {
-
+    private static final long PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC = 10;
     private final MultiLeaderConfig config;
     private final Peer peer;
     private final IndexController controller;
@@ -195,7 +195,8 @@ public class LogDispatcher {
         while (!Thread.interrupted() && !stopped) {
           while ((batch = getBatch()).isEmpty()) {
             // we may block here if there is no requests in the queue
-            IndexedConsensusRequest request = pendingRequest.poll(10, TimeUnit.SECONDS);
+            IndexedConsensusRequest request =
+                pendingRequest.poll(PENDING_REQUEST_TAKING_TIME_OUT_IN_SEC, TimeUnit.SECONDS);
             if (request != null) {
               bufferedRequest.add(request);
               // If write pressure is low, we simply sleep a little to reduce the number of RPC
