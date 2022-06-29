@@ -577,6 +577,7 @@ public class IoTDBLastIT {
     }
   }
 
+  // test cases that empty container would be created
   @Test
   public void lastWithEmptyContainer() {
     String[] retArray =
