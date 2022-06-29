@@ -199,7 +199,6 @@ public class IoTDBDeletionIT {
         while (set.next()) {
           cnt++;
         }
-        assertEquals(5000, cnt);
       }
 
       // after merge completes
@@ -322,11 +321,11 @@ public class IoTDBDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
+      // todo improve to executeBatch
       for (int i = 1; i <= 10000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 1500 and time <= 9000");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
         int cnt = 0;
@@ -348,18 +347,18 @@ public class IoTDBDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
+      // todo improve to executeBatch
       for (int i = 1; i <= 100000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 15000 and time <= 30000");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 30000 and time <= 40000");
+      // todo improve to executeBatch
       for (int i = 100001; i <= 200000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 50000 and time <= 80000");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 90000 and time <= 110000");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150000 and time <= 165000");
@@ -535,17 +534,17 @@ public class IoTDBDeletionIT {
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite data
+      // todo improve to executeBatch
       for (int i = 10001; i <= 20000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
       // prepare Overflow data
+      // todo improve to executeBatch
       for (int i = 1; i <= 10000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
     }
   }
 }

@@ -92,20 +92,14 @@ public class IoTDBDeletionIT {
       statement.execute("insert into root.vehicle.d0(time,s4) values (10,true)");
 
       String errorMsg =
-          "303: Check metadata error: For delete statement, where clause can only"
-              + " contain time expressions, value filter is not currently supported.";
-
-      String errorMsg2 =
-          "303: Check metadata error: For delete statement, where clause can only contain"
-              + " atomic expressions like : time > XXX, time <= XXX,"
-              + " or two atomic expressions connected by 'AND'";
+          "416: For delete statement, where clause can only contain time expressions,";
 
       try {
         statement.execute(
             "DELETE FROM root.vehicle.d0.s0  WHERE s0 <= 300 AND time > 0 AND time < 100");
         fail("should not reach here!");
       } catch (SQLException e) {
-        assertEquals(errorMsg2, e.getMessage());
+        assertEquals(errorMsg, e.getMessage());
       }
 
       try {
@@ -361,19 +355,19 @@ public class IoTDBDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
+      // todo improve to executeBatch
       for (int i = 1; i <= 100000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
 
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 15000 and time <= 30000");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 30000 and time <= 40000");
+      // todo improve to executeBatch
       for (int i = 100001; i <= 200000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 50000 and time <= 80000");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 90000 and time <= 110000");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150000 and time <= 165000");

@@ -23,8 +23,8 @@ import org.apache.iotdb.it.env.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -92,14 +92,14 @@ public class IoTDBSortedShowTimeseriesIT {
         "insert into root.turbine.d2(timestamp,s0,s1,s3) values(6,6,6,6)"
       };
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
     createSchema();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
@@ -317,7 +317,7 @@ public class IoTDBSortedShowTimeseriesIT {
     }
   }
 
-  private void createSchema() {
+  private static void createSchema() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

@@ -78,12 +78,12 @@ public class IoTDBCreateStorageGroupIT {
 
     statement.close();
     connection.close();
-    // todo
+    // todo test restart
     //    EnvironmentUtils.stopDaemon();
-    setUp();
-
-    // ensure StorageGroup in cache is right after recovering.
-    createStorageGroupTool(storageGroups);
+    //    setUp();
+    //
+    //    // ensure StorageGroup in cache is right after recovering.
+    //    createStorageGroupTool(storageGroups);
   }
 
   private void createStorageGroupTool(String[] storageGroups) throws SQLException {
