@@ -1093,4 +1093,69 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
           .setMaxSelectUnseqFileNumInEachUnseqCompaction(originNum);
     }
   }
+
+  /**
+   * 5 seq files [0,99] [100,199] [200,299] [300,399] [400,499]<br>
+   * 3 unseq files [1~150] [201~350] [401~499]<br>
+   * Memory budget is 1024, at least select one unseq file and its overlap seq files.<br>
+   * selected seq file index: 1 2 <br>
+   * selected unseq file index: 1
+   */
+  @Test
+  public void testSelectAtLeastOneUnseqFile()
+      throws IOException, WriteProcessException, MergeException {
+    List<TsFileResource> seqList = new ArrayList<>();
+    List<TsFileResource> unseqList = new ArrayList<>();
+    // 5 seq files [0,99] [100,199] [200,299] [300,399] [400,499]
+    int seqFileNum = 5;
+    for (int i = 0; i < seqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "seq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      prepareFile(fileResource, i * 100, 100, i * 100);
+      seqList.add(fileResource);
+    }
+    int unseqFileNum = 3;
+    // 3 unseq files [1~150] [201~350] [401~499]
+    for (int i = 0; i < unseqFileNum; i++) {
+      File file =
+          new File(
+              TestConstant.OUTPUT_DATA_DIR.concat(
+                  10
+                      + "unseq"
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + i
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 10
+                      + IoTDBConstant.FILE_NAME_SEPARATOR
+                      + 0
+                      + ".tsfile"));
+      TsFileResource fileResource = new TsFileResource(file);
+      fileResource.setClosed(true);
+      unseqList.add(fileResource);
+    }
+    prepareFile(unseqList.get(0), 1, 150, 1);
+    prepareFile(unseqList.get(1), 201, 150, 201);
+    prepareFile(unseqList.get(2), 401, 99, 401);
+
+    MergeResource resource = new MergeResource(seqList, unseqList);
+    Assert.assertEquals(5, resource.getSeqFiles().size());
+    Assert.assertEquals(3, resource.getUnseqFiles().size());
+    IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 1024);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+  }
 }

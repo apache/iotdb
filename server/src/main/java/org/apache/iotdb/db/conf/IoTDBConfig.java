@@ -1319,7 +1319,7 @@ public class IoTDBConfig {
     return mergeMemoryBudget;
   }
 
-  void setMergeMemoryBudget(long mergeMemoryBudget) {
+  public void setMergeMemoryBudget(long mergeMemoryBudget) {
     this.mergeMemoryBudget = mergeMemoryBudget;
   }
 

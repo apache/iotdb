@@ -49,7 +49,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   MergeResource resource;
 
   long totalCost;
-  private long memoryBudget;
+  private final long memoryBudget;
   private long maxSeqFileCost;
 
   // the number of timeseries being queried at the same time
@@ -187,7 +187,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
   }
 
   private boolean updateSelectedFiles(long newCost, TsFileResource unseqFile) {
-    if (totalCost + newCost < memoryBudget) {
+    if (selectedUnseqFiles.size() == 0 || totalCost + newCost < memoryBudget) {
       selectedUnseqFiles.add(unseqFile);
       maxSeqFileCost = tempMaxSeqFileCost;
 
