@@ -121,7 +121,7 @@ The adding ConfigNode also use the start-confignode.sh/bat.
 
 You could add any number of DataNode.
 
-Please set the Important parameters in iotdb-datanode.properties
+Please set the important parameters in iotdb-datanode.properties
 
 | **Configuration** | **Description**                                      |
 | -------- | -------------------------------------------- |
