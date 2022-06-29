@@ -329,13 +329,15 @@ public class LogDispatcher {
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
-        // TODO iterator
         IndexedConsensusRequest data = walEntryiterator.next();
         currentIndex = data.getSearchIndex();
         iteratorIndex = currentIndex;
         logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
+        if (currentIndex == maxIndex - 1) {
+          break;
+        }
       }
-      return currentIndex - 1;
+      return currentIndex;
     }
 
     private void constructBatchIndexedFromConsensusRequest(
