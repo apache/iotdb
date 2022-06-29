@@ -107,6 +107,14 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
         storageGroupName,
         dataRegionId,
         selectedTsFileResourceList.size());
+    try {
+      targetTsFileResource =
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(
+              selectedTsFileResourceList, sequence);
+    } catch (IOException e) {
+      LOGGER.error("Failed to get target file for {}", selectedTsFileResourceList, e);
+      return;
+    }
     File logFile =
         new File(
             dataDirectory
@@ -115,9 +123,6 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
                 + CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX);
     try (CompactionLogger compactionLogger = new CompactionLogger(logFile)) {
       // Here is tmpTargetFile, which is xxx.target
-      targetTsFileResource =
-          TsFileNameGenerator.getInnerCompactionTargetFileResource(
-              selectedTsFileResourceList, sequence);
       targetTsFileList = new ArrayList<>(Collections.singletonList(targetTsFileResource));
       compactionLogger.logFiles(selectedTsFileResourceList, CompactionLogger.STR_SOURCE_FILES);
       compactionLogger.logFiles(targetTsFileList, CompactionLogger.STR_TARGET_FILES);
