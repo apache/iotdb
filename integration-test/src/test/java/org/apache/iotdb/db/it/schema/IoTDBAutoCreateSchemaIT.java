@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it.metadata;
+package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;

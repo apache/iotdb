@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it.metadata;
+package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.it.env.EnvFactory;
