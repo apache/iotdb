@@ -65,6 +65,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
         TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         status.setMessage(message);
         resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
+        return;
       }
       List<TSStatus> statuses = new ArrayList<>();
       // We use synchronized to ensure atomicity of executing multiple logs
