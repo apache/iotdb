@@ -163,3 +163,18 @@ Start on Windows
 ```
 datanode\sbin\start-cli.bat
 ```
+
+## Quick Start
+
+unzip apache-iotdb-0.14.0-preview1-all-bin.zip
+
+Deploy a one-ConfigNode and one-DataNode（1C1D）cluster, default is one replica.
+```
+./confignode/sbin/start-confignode.sh
+./datanode/sbin/start-datanode.sh
+```
+
+Start Cli
+```
+./datanode/sbin/start-cli.sh
+```
