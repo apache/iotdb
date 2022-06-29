@@ -66,7 +66,9 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
         // Startup environment check
         StartupChecks checks = new StartupChecks().withDefaultTest();
         checks.verify();
-      } catch (StartupException e) {
+        // Do ConfigNode startup checks
+        ConfigNodeStartupCheck.getInstance().startUpCheck();
+      } catch (StartupException | ConfigurationException | IOException e) {
         LOGGER.error("Meet error when doing start checking", e);
         return -1;
       }

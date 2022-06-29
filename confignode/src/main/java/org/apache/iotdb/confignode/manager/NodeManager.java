@@ -181,15 +181,16 @@ public class NodeManager {
     return resp;
   }
 
-  public TSStatus applyConfigNode(ApplyConfigNodeReq applyConfigNodeReq) {
-    if (getConsensusManager().addConfigNodePeer(applyConfigNodeReq)) {
-      // Generate new ConfigNode's index
-      applyConfigNodeReq.getConfigNodeLocation().setConfigNodeId(nodeInfo.generateNextNodeId());
-      return getConsensusManager().write(applyConfigNodeReq).getStatus();
-    } else {
-      return new TSStatus(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("Apply ConfigNode failed because there is another ConfigNode being applied.");
-    }
+  /**
+   * Only leader use this interface, record the new ConfigNode's information
+   *
+   * @param configNodeLocation The new ConfigNode
+   */
+  public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
+    // Generate new ConfigNode's index
+    configNodeLocation.setConfigNodeId(nodeInfo.generateNextNodeId());
+    ApplyConfigNodeReq applyConfigNodeReq = new ApplyConfigNodeReq(configNodeLocation);
+    getConsensusManager().write(applyConfigNodeReq);
   }
 
   public void addMetrics() {

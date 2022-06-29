@@ -23,9 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
@@ -61,7 +59,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentNavigableMap;
@@ -88,7 +85,7 @@ public class NodeInfo implements SnapshotProcessor {
 
   // Online DataNodes
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-  private final AtomicInteger nextNodeId = new AtomicInteger(1);
+  private final AtomicInteger nextNodeId = new AtomicInteger(0);
   private final ConcurrentNavigableMap<Integer, TDataNodeInfo> onlineDataNodes =
       new ConcurrentSkipListMap<>();
 
@@ -101,8 +98,7 @@ public class NodeInfo implements SnapshotProcessor {
   public NodeInfo() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
-    this.onlineConfigNodes =
-        new HashSet<>(ConfigNodeDescriptor.getInstance().getConf().getConfigNodeList());
+    this.onlineConfigNodes = new HashSet<>();
   }
 
   public void addMetrics() {

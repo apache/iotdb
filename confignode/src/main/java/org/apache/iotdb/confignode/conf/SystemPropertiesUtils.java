@@ -20,8 +20,9 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,39 +32,150 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 
 public class SystemPropertiesUtils {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SystemPropertiesUtils.class);
+
   private static final File systemPropertiesFile =
-    new File(
-      ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
-        + File.separator
-        + ConfigNodeConstant.SYSTEM_FILE_NAME);
+      new File(
+          ConfigNodeDescriptor.getInstance().getConf().getSystemDir()
+              + File.separator
+              + ConfigNodeConstant.SYSTEM_FILE_NAME);
+
+  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
   /**
-   * Store the latest config_node_list in confignode-system.properties file
+   * Check if the ConfigNode is restarted
    *
-   * @param configNodes The latest ConfigNodeList
-   * @throws IOException When store confignode-system.properties file failed
+   * @return True if confignode-system.properties file exist.
    */
-  public static void storeConfigNodeList(List<TConfigNodeLocation> configNodes) throws IOException {
+  public static boolean isRestarted() {
+    return systemPropertiesFile.exists();
+  }
+
+  /**
+   * Check whether system parameters are consistent during each restart. We only invoke this
+   * interface when restarted
+   *
+   * @throws IOException When read the confignode-system.properties file failed
+   * @throws ConfigurationException When some system parameters are inconsistent
+   */
+  public static void checkSystemProperties() throws IOException, ConfigurationException {
     Properties systemProperties = getSystemProperties();
-    systemProperties.setProperty(
-      "config_node_list", NodeUrlUtils.convertTConfigNodeUrls(configNodes));
-    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
-      systemProperties.store(fileOutputStream, "");
+    boolean needReWrite = false;
+
+    // Startup configuration
+    String rpcAddress = systemProperties.getProperty("rpc_address", null);
+    if (rpcAddress == null) {
+      needReWrite = true;
+    } else if (!rpcAddress.equals(conf.getRpcAddress())) {
+      throw new ConfigurationException("rpc_address", conf.getRpcAddress(), rpcAddress);
+    }
+
+    if (systemProperties.getProperty("rpc_port", null) == null) {
+      needReWrite = true;
+    } else {
+      int rpcPort = Integer.parseInt(systemProperties.getProperty("rpc_port"));
+      if (rpcPort != conf.getRpcPort()) {
+        throw new ConfigurationException(
+            "rpc_port", String.valueOf(conf.getRpcPort()), String.valueOf(rpcPort));
+      }
+    }
+
+    if (systemProperties.getProperty("consensus_port", null) == null) {
+      needReWrite = true;
+    } else {
+      int consensusPort = Integer.parseInt(systemProperties.getProperty("consensus_port"));
+      if (consensusPort != conf.getConsensusPort()) {
+        throw new ConfigurationException(
+            "consensus_port",
+            String.valueOf(conf.getConsensusPort()),
+            String.valueOf(consensusPort));
+      }
+    }
+
+    // Consensus protocol configuration
+    String configNodeConsensusProtocolClass =
+        systemProperties.getProperty("config_node_consensus_protocol_class", null);
+    if (configNodeConsensusProtocolClass == null) {
+      needReWrite = true;
+    } else if (!configNodeConsensusProtocolClass.equals(
+        conf.getConfigNodeConsensusProtocolClass())) {
+      throw new ConfigurationException(
+          "config_node_consensus_protocol_class",
+          conf.getConfigNodeConsensusProtocolClass(),
+          configNodeConsensusProtocolClass);
+    }
+
+    String dataRegionConsensusProtocolClass =
+        systemProperties.getProperty("data_region_consensus_protocol_class", null);
+    if (dataRegionConsensusProtocolClass == null) {
+      needReWrite = true;
+    } else if (!dataRegionConsensusProtocolClass.equals(
+        conf.getDataRegionConsensusProtocolClass())) {
+      throw new ConfigurationException(
+          "data_region_consensus_protocol_class",
+          conf.getDataRegionConsensusProtocolClass(),
+          dataRegionConsensusProtocolClass);
+    }
+
+    String schemaRegionConsensusProtocolClass =
+        systemProperties.getProperty("schema_region_consensus_protocol_class", null);
+    if (schemaRegionConsensusProtocolClass == null) {
+      needReWrite = true;
+    } else if (!schemaRegionConsensusProtocolClass.equals(
+        conf.getSchemaRegionConsensusProtocolClass())) {
+      throw new ConfigurationException(
+          "schema_region_consensus_protocol_class",
+          conf.getSchemaRegionConsensusProtocolClass(),
+          schemaRegionConsensusProtocolClass);
+    }
+
+    // PartitionSlot configuration
+    if (systemProperties.getProperty("series_partition_slot_num", null) == null) {
+      needReWrite = true;
+    } else {
+      int seriesPartitionSlotNum =
+          Integer.parseInt(systemProperties.getProperty("series_partition_slot_num"));
+      if (seriesPartitionSlotNum != conf.getSeriesPartitionSlotNum()) {
+        throw new ConfigurationException(
+            "series_partition_slot_num",
+            String.valueOf(conf.getSeriesPartitionSlotNum()),
+            String.valueOf(seriesPartitionSlotNum));
+      }
+    }
+
+    String seriesPartitionSlotExecutorClass =
+        systemProperties.getProperty("series_partition_executor_class", null);
+    if (seriesPartitionSlotExecutorClass == null) {
+      needReWrite = true;
+    } else if (!Objects.equals(
+        seriesPartitionSlotExecutorClass, conf.getSeriesPartitionExecutorClass())) {
+      throw new ConfigurationException(
+          "series_partition_executor_class",
+          conf.getSeriesPartitionExecutorClass(),
+          seriesPartitionSlotExecutorClass);
+    }
+
+    if (needReWrite) {
+      // Re-write special parameters if necessary
+      storeSystemParameters();
     }
   }
 
   /**
-   * Load the config_node_list in confignode-system.properties file
+   * Load the config_node_list in confignode-system.properties file. We only invoke this interface
+   * when restarted.
    *
    * @return The property of config_node_list in confignode-system.properties file
    * @throws IOException When load confignode-system.properties file failed
    * @throws BadNodeUrlException When parsing config_node_list failed
    */
-  private static List<TConfigNodeLocation> loadConfigNodeList() throws IOException, BadNodeUrlException {
+  public static List<TConfigNodeLocation> loadConfigNodeList()
+      throws IOException, BadNodeUrlException {
     Properties systemProperties = getSystemProperties();
     String addresses = systemProperties.getProperty("config_node_list", null);
 
@@ -74,13 +186,84 @@ public class SystemPropertiesUtils {
     }
   }
 
+  /**
+   * The system parameters can't be changed after the ConfigNode first started. Therefore, store
+   * them in confignode-system.properties during the first startup
+   */
+  public static void storeSystemParameters() throws IOException {
+    Properties systemProperties = getSystemProperties();
+    // Startup configuration
+    systemProperties.setProperty("rpc_address", String.valueOf(conf.getRpcAddress()));
+    systemProperties.setProperty("rpc_port", String.valueOf(conf.getRpcPort()));
+    systemProperties.setProperty("consensus_port", String.valueOf(conf.getConsensusPort()));
 
+    // Consensus protocol configuration
+    systemProperties.setProperty(
+        "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass());
+    systemProperties.setProperty(
+        "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass());
+    systemProperties.setProperty(
+        "schema_region_consensus_protocol_class", conf.getSchemaRegionConsensusProtocolClass());
 
-  private static Properties getSystemProperties() throws IOException{
+    // PartitionSlot configuration
+    systemProperties.setProperty(
+        "series_partition_slot_num", String.valueOf(conf.getSeriesPartitionSlotNum()));
+    systemProperties.setProperty(
+        "series_partition_executor_class", conf.getSeriesPartitionExecutorClass());
+
+    storeSystemProperties(systemProperties);
+  }
+
+  /**
+   * Store the latest config_node_list in confignode-system.properties file
+   *
+   * @param configNodes The latest ConfigNodeList
+   * @throws IOException When store confignode-system.properties file failed
+   */
+  public static void storeConfigNodeList(List<TConfigNodeLocation> configNodes) throws IOException {
+    if (!systemPropertiesFile.exists()) {
+      // Avoid creating confignode-system.properties files during
+      // synchronizing the ApplyConfigNode logs from the ConsensusLayer.
+      // 1. For the Non-Seed-ConfigNode, We don't need to create confignode-system.properties file
+      // until the leader sends the notifyRegisterSuccess request.
+      // 2. The leader commits the ApplyConfigNode log at the end of AddConfigNodeProcedure,
+      // in which case the latest config_node_list will be updated.
+      return;
+    }
+
+    Properties systemProperties = getSystemProperties();
+    systemProperties.setProperty(
+        "config_node_list", NodeUrlUtils.convertTConfigNodeUrls(configNodes));
+
+    storeSystemProperties(systemProperties);
+  }
+
+  private static synchronized Properties getSystemProperties() throws IOException {
+    // Create confignode-system.properties file if necessary
+    if (!systemPropertiesFile.exists()) {
+      if (systemPropertiesFile.createNewFile()) {
+        LOGGER.info(
+            "System properties file {} for ConfigNode is created.",
+            systemPropertiesFile.getAbsolutePath());
+      } else {
+        LOGGER.error(
+            "Can't create the system properties file {} for ConfigNode. IoTDB-ConfigNode is shutdown.",
+            systemPropertiesFile.getAbsolutePath());
+        throw new IOException("Can't create system properties file");
+      }
+    }
+
     Properties systemProperties = new Properties();
     try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
       systemProperties.load(inputStream);
     }
     return systemProperties;
+  }
+
+  private static synchronized void storeSystemProperties(Properties systemProperties)
+      throws IOException {
+    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
+      systemProperties.store(fileOutputStream, "");
+    }
   }
 }

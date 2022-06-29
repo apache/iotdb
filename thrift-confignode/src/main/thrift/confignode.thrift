@@ -307,6 +307,8 @@ service IConfigNodeRPCService {
 
   common.TSStatus addConsensusGroup(TConfigNodeRegisterResp req)
 
+  common.TSStatus notifyRegisterSuccess()
+
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)

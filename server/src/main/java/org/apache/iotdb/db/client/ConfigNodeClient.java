@@ -639,6 +639,11 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TSStatus notifyRegisterSuccess() throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support notifyRegisterSuccess.");
+  }
+
+  @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {

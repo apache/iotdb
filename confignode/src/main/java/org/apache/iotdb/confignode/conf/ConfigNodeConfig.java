@@ -18,15 +18,12 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeConfig {
@@ -139,7 +136,7 @@ public class ConfigNodeConfig {
   /** The heartbeat interval in milliseconds */
   private long heartbeatInterval = 1000;
 
-  ConfigNodeConfig() {
+  public ConfigNodeConfig() {
     // empty constructor
   }
 
