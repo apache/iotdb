@@ -71,6 +71,7 @@ public class DataRegionConsensusImpl {
                                           conf.getSelectorNumOfClientManager())
                                       .setThriftServerAwaitTimeForStopService(
                                           conf.getThriftServerAwaitTimeForStopService())
+                                      .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
                                       .build())
                               .build())
                       .setRatisConfig(

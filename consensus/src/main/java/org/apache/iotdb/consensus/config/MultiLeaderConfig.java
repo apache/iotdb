@@ -71,18 +71,21 @@ public class MultiLeaderConfig {
     private final boolean isRpcThriftCompressionEnabled;
     private final int selectorNumOfClientManager;
     private final int connectionTimeoutInMs;
+    private final int thriftMaxFrameSize;
 
     private RPC(
         int rpcMaxConcurrentClientNum,
         int thriftServerAwaitTimeForStopService,
         boolean isRpcThriftCompressionEnabled,
         int selectorNumOfClientManager,
-        int connectionTimeoutInMs) {
+        int connectionTimeoutInMs,
+        int thriftMaxFrameSize) {
       this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
       this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
       this.isRpcThriftCompressionEnabled = isRpcThriftCompressionEnabled;
       this.selectorNumOfClientManager = selectorNumOfClientManager;
       this.connectionTimeoutInMs = connectionTimeoutInMs;
+      this.thriftMaxFrameSize = thriftMaxFrameSize;
     }
 
     public int getRpcMaxConcurrentClientNum() {
@@ -105,6 +108,10 @@ public class MultiLeaderConfig {
       return connectionTimeoutInMs;
     }
 
+    public int getThriftMaxFrameSize() {
+      return thriftMaxFrameSize;
+    }
+
     public static RPC.Builder newBuilder() {
       return new RPC.Builder();
     }
@@ -115,6 +122,7 @@ public class MultiLeaderConfig {
       private boolean isRpcThriftCompressionEnabled = false;
       private int selectorNumOfClientManager = 1;
       private int connectionTimeoutInMs = (int) TimeUnit.SECONDS.toMillis(20);
+      private int thriftMaxFrameSize = 536870912;
 
       public RPC.Builder setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
         this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
@@ -142,13 +150,19 @@ public class MultiLeaderConfig {
         return this;
       }
 
+      public RPC.Builder setThriftMaxFrameSize(int thriftMaxFrameSize) {
+        this.thriftMaxFrameSize = thriftMaxFrameSize;
+        return this;
+      }
+
       public RPC build() {
         return new RPC(
             rpcMaxConcurrentClientNum,
             thriftServerAwaitTimeForStopService,
             isRpcThriftCompressionEnabled,
             selectorNumOfClientManager,
-            connectionTimeoutInMs);
+            connectionTimeoutInMs,
+            thriftMaxFrameSize);
       }
     }
   }

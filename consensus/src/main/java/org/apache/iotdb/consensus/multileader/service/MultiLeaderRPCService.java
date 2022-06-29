@@ -29,6 +29,8 @@ import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
 
+import org.apache.thrift.TBaseAsyncProcessor;
+
 import java.lang.reflect.InvocationTargetException;
 
 public class MultiLeaderRPCService extends ThriftService implements MultiLeaderRPCServiceMBean {
@@ -48,20 +50,20 @@ public class MultiLeaderRPCService extends ThriftService implements MultiLeaderR
   }
 
   @Override
-  public void initSyncedServiceImpl(Object multiLeaderRPCServiceProcessor) {
+  public void initAsyncedServiceImpl(Object multiLeaderRPCServiceProcessor) {
     this.multiLeaderRPCServiceProcessor =
         (MultiLeaderRPCServiceProcessor) multiLeaderRPCServiceProcessor;
     super.mbeanName =
         String.format(
             "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
-    super.initSyncedServiceImpl(this.multiLeaderRPCServiceProcessor);
+    super.initAsyncedServiceImpl(this.multiLeaderRPCServiceProcessor);
   }
 
   @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException,
           NoSuchMethodException, InvocationTargetException {
-    processor = new MultiLeaderConsensusIService.Processor<>(multiLeaderRPCServiceProcessor);
+    processor = new MultiLeaderConsensusIService.AsyncProcessor<>(multiLeaderRPCServiceProcessor);
   }
 
   @Override
@@ -70,7 +72,7 @@ public class MultiLeaderRPCService extends ThriftService implements MultiLeaderR
     try {
       thriftServiceThread =
           new ThriftServiceThread(
-              processor,
+              (TBaseAsyncProcessor) processor,
               getID().getName(),
               ThreadName.MULTI_LEADER_CONSENSUS_RPC_CLIENT.getName(),
               getBindIP(),
@@ -78,7 +80,10 @@ public class MultiLeaderRPCService extends ThriftService implements MultiLeaderR
               config.getRpc().getRpcMaxConcurrentClientNum(),
               config.getRpc().getThriftServerAwaitTimeForStopService(),
               new MultiLeaderRPCServiceHandler(multiLeaderRPCServiceProcessor),
-              config.getRpc().isRpcThriftCompressionEnabled());
+              config.getRpc().isRpcThriftCompressionEnabled(),
+              config.getRpc().getConnectionTimeoutInMs(),
+              config.getRpc().getThriftMaxFrameSize(),
+              ThriftServiceThread.ServerType.SELECTOR);
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
