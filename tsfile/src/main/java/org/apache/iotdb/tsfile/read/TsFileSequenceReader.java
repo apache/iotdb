@@ -334,7 +334,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (ignoreNotExists) {
         return null;
       }
-      logger.warn("Device {} is not in {}", path.getDevice(), file);
+      logger.debug("Device {} is not in {}", path.getDevice(), file);
       return null;
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
