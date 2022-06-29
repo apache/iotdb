@@ -857,7 +857,9 @@ public class WALNode implements IWALNode {
     @Override
     public void waitForNextReady() throws InterruptedException {
       while (!hasNext()) {
+        logger.info("start to wait for flush");
         buffer.waitForFlush();
+        logger.info("wait for flush done");
       }
     }
 
