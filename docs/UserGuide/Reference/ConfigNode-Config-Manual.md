@@ -91,7 +91,7 @@ IoTDB Cluster configuration is in ConfigNode.
 |:---:|:---|
 |Description| Target ConfigNode address, for current ConfigNode to join the cluster |
 |Type| String |
-|Default| 0.0.0.0:22277 |
+|Default| 127.0.0:22277 |
 |Effective|After restarting system|
 
 * rpc\_thrift\_compression\_enable

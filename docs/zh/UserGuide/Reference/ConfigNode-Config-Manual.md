@@ -89,7 +89,7 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |:---:|:---|
 |描述| 目标 ConfigNode 地址，ConfigNode 通过此地址加入集群 |
 |类型| String |
-|默认值| 0.0.0.0:22277 |
+|默认值| 127.0.0:22277 |
 |改后生效方式|重启服务生效|
 
 * rpc\_thrift\_compression\_enable
