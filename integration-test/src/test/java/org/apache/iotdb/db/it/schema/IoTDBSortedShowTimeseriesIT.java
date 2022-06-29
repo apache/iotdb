@@ -33,7 +33,9 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -222,19 +224,19 @@ public class IoTDBSortedShowTimeseriesIT {
   @Test
   public void showTimeseriesOrderByHeatWithLimitTest() {
 
-    String[] retArray =
-        new String[] {
-          "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2"
-              + " this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
-          "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this "
-              + "is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
-          "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine d2 this "
-              + "is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
-          "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
-              + "tpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
-          "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
-              + "gpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
-        };
+    Set<String> retSet =
+        new HashSet<>(
+            Arrays.asList(
+                "root.turbine.d2.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2"
+                    + " this is a test1\",\"unit\":\"f\"},{\"MinValue\":\"1\",\"MaxValue\":\"100\"}",
+                "root.turbine.d2.s1,power,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine d2 this "
+                    + "is a test2\",\"unit\":\"kw\"},{\"MinValue\":\"44.4\",\"MaxValue\":\"99.9\"}",
+                "root.turbine.d2.s3,status,root.turbine,INT32,RLE,SNAPPY,{\"description\":\"turbine d2 this "
+                    + "is a test3\"},{\"MinValue\":\"5\",\"MaxValue\":\"9\"}",
+                "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
+                    + "tpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+                "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
+                    + "gpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -259,10 +261,10 @@ public class IoTDBSortedShowTimeseriesIT {
                 + ","
                 + resultSet.getString("attributes");
 
-        assertEquals(retArray[count], ans);
+        assertTrue(retSet.contains(ans));
         count++;
       }
-      assertEquals(retArray.length, count);
+      assertEquals(retSet.size(), count);
 
     } catch (Exception e) {
       e.printStackTrace();

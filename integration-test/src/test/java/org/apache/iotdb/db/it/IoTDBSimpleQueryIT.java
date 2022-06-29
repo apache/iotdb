@@ -91,7 +91,7 @@ public class IoTDBSimpleQueryIT {
             "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'='-2'");
       } catch (Exception e) {
         assertEquals(
-            "318: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
+            "411: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
             e.getMessage());
       }
 
@@ -530,7 +530,7 @@ public class IoTDBSimpleQueryIT {
 
         resultSet = statement.executeQuery("select count(*) from root");
         // has no column
-        Assert.assertEquals(0, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
@@ -1105,9 +1105,7 @@ public class IoTDBSimpleQueryIT {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         while (resultSet.next()) {
           StringBuilder builder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            builder.append(resultSet.getString(i));
-          }
+          builder.append(resultSet.getString(1));
           Assert.assertEquals(builder.toString(), "root.group_with_hyphen");
         }
       }
