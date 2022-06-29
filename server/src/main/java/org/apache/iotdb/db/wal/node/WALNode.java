@@ -206,7 +206,6 @@ public class WALNode implements IWALNode {
   }
 
   // region Task to delete outdated .wal files
-
   /** Delete outdated .wal files */
   public void deleteOutdatedFiles() {
     try {
@@ -248,11 +247,6 @@ public class WALNode implements IWALNode {
       // delete outdated files
       deleteOutdatedFiles();
 
-      // wal is used to search, cannot optimize files deletion
-      if (safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
-        return;
-      }
-
       // calculate effective information ratio
       long costOfActiveMemTables = checkpointManager.getTotalCostOfActiveMemTables();
       long costOfFlushedMemTables = totalCostOfFlushedMemTables.get();
@@ -278,6 +272,10 @@ public class WALNode implements IWALNode {
             identifier,
             config.getWalMinEffectiveInfoRatio());
         if (snapshotOrFlushMemTable() && recursionTime < MAX_RECURSION_TIME) {
+          // wal is used to search, cannot optimize files deletion
+          if (safelyDeletedSearchIndex != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
+            return;
+          }
           run();
           recursionTime++;
         }
@@ -293,8 +291,10 @@ public class WALNode implements IWALNode {
       }
       // delete files whose content's search index are all <= safelyDeletedSearchIndex
       WALFileUtils.ascSortByVersionId(filesToDelete);
+      // judge DEFAULT_SAFELY_DELETED_SEARCH_INDEX for standalone, Long.MIN_VALUE for multi-leader
       int endFileIndex =
           safelyDeletedSearchIndex == DEFAULT_SAFELY_DELETED_SEARCH_INDEX
+                  || safelyDeletedSearchIndex == Long.MIN_VALUE
               ? filesToDelete.length
               : WALFileUtils.binarySearchFileBySearchIndex(
                   filesToDelete, safelyDeletedSearchIndex + 1);
@@ -695,7 +695,7 @@ public class WALNode implements IWALNode {
       if (needUpdatingFilesToSearch || filesToSearch == null) {
         updateFilesToSearch();
         if (needUpdatingFilesToSearch) {
-          logger.info("update file to search failed");
+          logger.warn("update file to search failed");
           return false;
         }
       }
@@ -898,8 +898,8 @@ public class WALNode implements IWALNode {
       File[] filesToSearch = WALFileUtils.listAllWALFiles(logDirectory);
       WALFileUtils.ascSortByVersionId(filesToSearch);
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
-      logger.info(
-          "files: {}, searchIndex: {} result: {}", filesToSearch, nextSearchIndex, fileIndex);
+      logger.debug(
+          "searchIndex: {}, result: {}, files: {}, ", nextSearchIndex, fileIndex, filesToSearch);
       if (filesToSearch != null && fileIndex >= 0) { // possible to find next
         this.filesToSearch = filesToSearch;
         this.currentFileIndex = fileIndex;

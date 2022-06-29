@@ -21,8 +21,8 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
@@ -72,8 +72,8 @@ public class ProcedureInfo {
     }
   }
 
-  public TSStatus updateProcedure(UpdateProcedureReq updateProcedureReq) {
-    Procedure procedure = updateProcedureReq.getProcedure();
+  public TSStatus updateProcedure(UpdateProcedurePlan updateProcedurePlan) {
+    Procedure procedure = updateProcedurePlan.getProcedure();
     long procId = procedure.getProcId();
     Path path = Paths.get(procedureWalDir, procId + ProcedureStore.PROCEDURE_WAL_SUFFIX);
     ProcedureWAL procedureWAL =
@@ -87,8 +87,8 @@ public class ProcedureInfo {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
-  public TSStatus deleteProcedure(DeleteProcedureReq deleteProcedureReq) {
-    long procId = deleteProcedureReq.getProcId();
+  public TSStatus deleteProcedure(DeleteProcedurePlan deleteProcedurePlan) {
+    long procId = deleteProcedurePlan.getProcId();
     ProcedureWAL procedureWAL = procWALMap.get(procId);
     if (procedureWAL != null) {
       procedureWAL.delete();
