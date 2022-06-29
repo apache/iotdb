@@ -340,22 +340,27 @@ public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
 
   private Map<TConsensusGroupId, Boolean> getJudgedLeaders() {
     Map<TConsensusGroupId, Boolean> result = new HashMap<>();
-    DataRegionConsensusImpl.getInstance()
-        .getAllConsensusGroupIds()
-        .forEach(
-            groupId -> {
-              result.put(
-                  groupId.convertToTConsensusGroupId(),
-                  DataRegionConsensusImpl.getInstance().isLeader(groupId));
-            });
-    SchemaRegionConsensusImpl.getInstance()
-        .getAllConsensusGroupIds()
-        .forEach(
-            groupId -> {
-              result.put(
-                  groupId.convertToTConsensusGroupId(),
-                  SchemaRegionConsensusImpl.getInstance().isLeader(groupId));
-            });
+    if (DataRegionConsensusImpl.getInstance() != null) {
+      DataRegionConsensusImpl.getInstance()
+          .getAllConsensusGroupIds()
+          .forEach(
+              groupId -> {
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    DataRegionConsensusImpl.getInstance().isLeader(groupId));
+              });
+    }
+
+    if (SchemaRegionConsensusImpl.getInstance() != null) {
+      SchemaRegionConsensusImpl.getInstance()
+          .getAllConsensusGroupIds()
+          .forEach(
+              groupId -> {
+                result.put(
+                    groupId.convertToTConsensusGroupId(),
+                    SchemaRegionConsensusImpl.getInstance().isLeader(groupId));
+              });
+    }
     return result;
   }
 

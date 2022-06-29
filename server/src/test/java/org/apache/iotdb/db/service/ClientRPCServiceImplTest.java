@@ -74,8 +74,8 @@ public class ClientRPCServiceImplTest {
     IoTDB.configManager.init();
     configNode = LocalConfigNode.getInstance();
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln"));
-    DataRegionConsensusImpl.getInstance().start();
-    SchemaRegionConsensusImpl.getInstance().start();
+    DataRegionConsensusImpl.setupAndGetInstance().start();
+    SchemaRegionConsensusImpl.setupAndGetInstance().start();
   }
 
   @Before
