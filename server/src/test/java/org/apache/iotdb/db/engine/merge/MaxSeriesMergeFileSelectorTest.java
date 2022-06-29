@@ -71,12 +71,11 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
   }
 
   @Test
-  public void testNonSelection() throws MergeException, IOException {
+  public void testSelectAtLeastOneUnseqFile() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
     MaxSeriesMergeFileSelector mergeFileSelector = new MaxSeriesMergeFileSelector(resource, 1);
     List[] result = mergeFileSelector.select();
-    assertEquals(0, result.length);
-    assertEquals(0, mergeFileSelector.getConcurrentMergeNum());
+    assertEquals(2, result.length);
     resource.clear();
   }
 

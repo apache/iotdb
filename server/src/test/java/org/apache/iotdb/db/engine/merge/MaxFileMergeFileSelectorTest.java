@@ -83,8 +83,9 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
   public void testNonSelection() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
     IMergeFileSelector mergeFileSelector = new MaxFileMergeFileSelector(resource, 1);
+    // at least one unseq file will be selected
     List[] result = mergeFileSelector.select();
-    assertEquals(0, result.length);
+    assertEquals(2, result.length);
     resource.clear();
   }
 
@@ -306,10 +307,10 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
       resource =
           new MergeResource(
               seqList.subList(1, seqList.size()), unseqList.subList(1, unseqList.size()));
-      // the second selection should be empty
+      // the second selection should select at least one unseq file
       mergeFileSelector = new MaxFileMergeFileSelector(resource, 29000);
       result = mergeFileSelector.select();
-      assertEquals(0, result.length);
+      assertEquals(2, result.length);
       resource.clear();
     } finally {
       removeFiles(seqList, unseqList);
