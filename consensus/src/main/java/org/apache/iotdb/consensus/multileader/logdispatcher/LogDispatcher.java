@@ -104,6 +104,10 @@ public class LogDispatcher {
     return threads.stream().mapToLong(LogDispatcherThread::getCurrentSyncIndex).min();
   }
 
+  public OptionalLong getCurrentSearchIndex() {
+    return threads.stream().mapToLong(LogDispatcherThread::getCurrentSearchIndex).min();
+  }
+
   public void offer(IndexedConsensusRequest request) {
     threads.forEach(
         thread -> {
@@ -146,7 +150,7 @@ public class LogDispatcher {
           new ArrayBlockingQueue<>(config.getReplication().getMaxPendingRequestNumPerNode());
       this.controller =
           new IndexController(
-              impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()), false);
+              impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()));
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryiterator = reader.getReqIterator(iteratorIndex);
     }
@@ -177,6 +181,10 @@ public class LogDispatcher {
 
     public boolean isStopped() {
       return stopped;
+    }
+
+    public long getCurrentSearchIndex() {
+      return reader.getCurrentSearchIndex();
     }
 
     @Override
@@ -234,9 +242,7 @@ public class LogDispatcher {
         }
       }
       if (bufferedRequest.isEmpty()) { // only execute this after a restart
-        endIndex =
-            constructBatchFromWAL(
-                startIndex, impl.getController().getCurrentIndex() + 1, logBatches);
+        endIndex = constructBatchFromWAL(startIndex, impl.getIndex() + 1, logBatches);
         batch = new PendingBatch(startIndex, endIndex, logBatches);
         logger.info(
             "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batch);
@@ -323,13 +329,15 @@ public class LogDispatcher {
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
-        // TODO iterator
         IndexedConsensusRequest data = walEntryiterator.next();
         currentIndex = data.getSearchIndex();
         iteratorIndex = currentIndex;
         logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
+        if (currentIndex == maxIndex - 1) {
+          break;
+        }
       }
-      return currentIndex - 1;
+      return currentIndex;
     }
 
     private void constructBatchIndexedFromConsensusRequest(

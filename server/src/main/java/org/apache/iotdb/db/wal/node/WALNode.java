@@ -913,6 +913,12 @@ public class WALNode implements IWALNode {
       }
     }
   }
+
+  @Override
+  public long getCurrentSearchIndex() {
+    return buffer.getCurrentSearchIndex();
+  }
+
   // endregion
 
   @Override

@@ -30,10 +30,8 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
-import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
-import org.apache.iotdb.consensus.ratis.Utils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
@@ -46,6 +44,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MultiLeaderServerImpl {
 
@@ -57,7 +56,7 @@ public class MultiLeaderServerImpl {
   private final IStateMachine stateMachine;
   private final String storageDir;
   private final List<Peer> configuration;
-  private final IndexController controller;
+  private final AtomicLong index;
   private final LogDispatcher logDispatcher;
   private final MultiLeaderConfig config;
 
@@ -71,8 +70,6 @@ public class MultiLeaderServerImpl {
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
-    this.controller =
-        new IndexController(storageDir, Utils.fromTEndPointToString(thisNode.getEndpoint()), true);
     this.configuration = configuration;
     if (configuration.isEmpty()) {
       recoverConfiguration();
@@ -81,6 +78,9 @@ public class MultiLeaderServerImpl {
     }
     this.config = config;
     this.logDispatcher = new LogDispatcher(this, clientManager);
+    // restart
+    long currentSearchIndex = this.logDispatcher.getCurrentSearchIndex().orElse(0L);
+    this.index = new AtomicLong(currentSearchIndex);
   }
 
   public IStateMachine getStateMachine() {
@@ -160,7 +160,7 @@ public class MultiLeaderServerImpl {
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
     return new IndexedConsensusRequest(
-        controller.incrementAndGet(), getCurrentSafelyDeletedSearchIndex(), request);
+        index.incrementAndGet(), getCurrentSafelyDeletedSearchIndex(), request);
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
@@ -174,7 +174,7 @@ public class MultiLeaderServerImpl {
    * single copies, the current index is selected
    */
   public long getCurrentSafelyDeletedSearchIndex() {
-    return logDispatcher.getMinSyncIndex().orElseGet(controller::getCurrentIndex);
+    return logDispatcher.getMinSyncIndex().orElseGet(index::get);
   }
 
   public String getStorageDir() {
@@ -189,8 +189,8 @@ public class MultiLeaderServerImpl {
     return configuration;
   }
 
-  public IndexController getController() {
-    return controller;
+  public long getIndex() {
+    return index.get();
   }
 
   public MultiLeaderConfig getConfig() {
