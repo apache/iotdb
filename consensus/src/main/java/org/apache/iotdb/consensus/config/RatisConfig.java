@@ -525,7 +525,7 @@ public class RatisConfig {
       private SizeInBytes preallocatedSize = SizeInBytes.valueOf("4MB");
       private SizeInBytes writeBufferSize = SizeInBytes.valueOf("64KB");
       private int forceSyncNum = 128;
-      private boolean unsafeFlushEnabled = false;
+      private boolean unsafeFlushEnabled = true;
 
       public Log build() {
         return new Log(

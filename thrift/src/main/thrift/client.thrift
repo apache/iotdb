@@ -406,7 +406,7 @@ struct TSDropSchemaTemplateReq {
   2: required string templateName
 }
 
-service TSIService {
+service IClientRPCService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
   common.TSStatus closeSession(1:TSCloseSessionReq req);

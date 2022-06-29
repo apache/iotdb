@@ -22,9 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
@@ -63,11 +63,11 @@ public class RpcUtils {
   public static final TSStatus SUCCESS_STATUS =
       new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-  public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
-    return (TSIService.Iface)
+  public static IClientRPCService.Iface newSynchronizedClient(IClientRPCService.Iface client) {
+    return (IClientRPCService.Iface)
         Proxy.newProxyInstance(
             RpcUtils.class.getClassLoader(),
-            new Class[] {TSIService.Iface.class},
+            new Class[] {IClientRPCService.Iface.class},
             new SynchronizedHandler(client));
   }
 

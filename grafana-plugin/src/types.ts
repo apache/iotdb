@@ -26,8 +26,8 @@ export interface IoTDBQuery extends DataQuery {
 
   paths: string[];
   aggregateFun?: string;
-  aggregated: string;
-  isAggregated: boolean;
+  sqlType: string;
+  isDropDownList: boolean;
   fillClauses: string;
   groupBy?: GroupBy;
   limitAll?: LimitAll;
