@@ -206,7 +206,6 @@ public class WALNode implements IWALNode {
   }
 
   // region Task to delete outdated .wal files
-
   /** Delete outdated .wal files */
   public void deleteOutdatedFiles() {
     try {
@@ -695,7 +694,7 @@ public class WALNode implements IWALNode {
       if (needUpdatingFilesToSearch || filesToSearch == null) {
         updateFilesToSearch();
         if (needUpdatingFilesToSearch) {
-          logger.info("update file to search failed");
+          logger.warn("update file to search failed");
           return false;
         }
       }
@@ -857,9 +856,7 @@ public class WALNode implements IWALNode {
     @Override
     public void waitForNextReady() throws InterruptedException {
       while (!hasNext()) {
-        logger.info("start to wait for flush");
         buffer.waitForFlush();
-        logger.info("wait for flush done");
       }
     }
 
@@ -900,7 +897,7 @@ public class WALNode implements IWALNode {
       File[] filesToSearch = WALFileUtils.listAllWALFiles(logDirectory);
       WALFileUtils.ascSortByVersionId(filesToSearch);
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
-      logger.info(
+      logger.debug(
           "searchIndex: {}, result: {}, files: {}, ", nextSearchIndex, fileIndex, filesToSearch);
       if (filesToSearch != null && fileIndex >= 0) { // possible to find next
         this.filesToSearch = filesToSearch;

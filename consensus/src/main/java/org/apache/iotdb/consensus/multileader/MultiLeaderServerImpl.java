@@ -105,16 +105,18 @@ public class MultiLeaderServerImpl {
     synchronized (stateMachine) {
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
-      logger.info(
-          "DataRegion[{}]: index after build: safeIndex: {}, searchIndex: {}",
-          thisNode.getGroupId(),
-          indexedConsensusRequest.getSafelyDeletedSearchIndex(),
-          indexedConsensusRequest.getSearchIndex());
+      if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
+        logger.info(
+            "DataRegion[{}]: index after build: safeIndex: {}, searchIndex: {}",
+            thisNode.getGroupId(),
+            indexedConsensusRequest.getSafelyDeletedSearchIndex(),
+            indexedConsensusRequest.getSearchIndex());
+      }
       TSStatus result = stateMachine.write(indexedConsensusRequest);
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logDispatcher.offer(indexedConsensusRequest);
       } else {
-        logger.info(
+        logger.debug(
             "{}: write operation failed. searchIndex: {}. Code: {}",
             thisNode.getGroupId(),
             indexedConsensusRequest.getSearchIndex(),
