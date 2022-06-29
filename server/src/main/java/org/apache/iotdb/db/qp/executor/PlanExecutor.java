@@ -1028,6 +1028,7 @@ public class PlanExecutor implements IPlanExecutor {
     File[] files = curFile.listFiles();
     long[] establishTime = new long[files.length];
     List<Integer> tsfiles = new ArrayList<>();
+    List<String> failedFiles = new ArrayList<>();
 
     for (int i = 0; i < files.length; i++) {
       File file = files[i];
@@ -1046,13 +1047,22 @@ public class PlanExecutor implements IPlanExecutor {
           return establishTime[o1] < establishTime[o2] ? -1 : 1;
         });
     for (Integer i : tsfiles) {
-      loadFile(files[i], plan);
+      try {
+        loadFile(files[i], plan);
+      } catch (QueryProcessException e) {
+        logger.error("{}, skip load {}.", e.getMessage(), files[i].getAbsolutePath());
+        failedFiles.add(files[i].getAbsolutePath());
+      }
     }
 
     for (File file : files) {
       if (file.isDirectory()) {
         loadDir(file, plan);
       }
+    }
+    if (failedFiles.size() > 0) {
+      throw new QueryProcessException(
+          String.format("Fail to load TsFile %s", String.join(",", failedFiles)));
     }
   }
 
