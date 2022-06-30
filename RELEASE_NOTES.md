@@ -61,14 +61,14 @@ The 0.14.0-preview1 version only contains the new cluster version.
 
 | Previous                         | Now                 |
 |----------------------------------|---------------------|
-| internal_ip                      | internal_address    |
-| target_confignode / config_nodes | target_config_nodes |
+| internal\_ip                      | internal\_address    |
+| target\_confignode / config\_nodes | target\_config\_nodes |
 
 - Rename the ConfigNode configuration parameters
 
  | Previous                         | Now                 |
  |----------------------------------|---------------------|
- | target_confignode / config_nodes | target_config_nodes |
+ | target\_confignode / config\_nodes | target\_config\_nodes |
 
 ## Acknowledgements:
 
