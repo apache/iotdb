@@ -64,10 +64,10 @@ public class ThriftCommonsSerDeUtilsTest {
     TDataNodeLocation dataNodeLocation0 = new TDataNodeLocation();
     dataNodeLocation0.setDataNodeId(0);
     dataNodeLocation0.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
-    dataNodeLocation0.setInternalEndPoint(new TEndPoint("127.0.0.1", 9003));
-    dataNodeLocation0.setMPPDataExchangeEndPoint(new TEndPoint("127.0.0.1", 8777));
-    dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 40010));
-    dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 50010));
+    dataNodeLocation0.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation0.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation0.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation0.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -128,10 +128,10 @@ public class ThriftCommonsSerDeUtilsTest {
       TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
       dataNodeLocation.setDataNodeId(i);
       dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
-      dataNodeLocation.setInternalEndPoint(new TEndPoint("127.0.0.1", 9003 + i));
-      dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("127.0.0.1", 8777 + i));
-      dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 40010 + i));
-      dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 50010 + i));
+      dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
+      dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
+      dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010 + i));
+      dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010 + i));
       regionReplicaSet0.getDataNodeLocations().add(dataNodeLocation);
     }
     try (PublicBAOS byteArrayOutputStream = new PublicBAOS();

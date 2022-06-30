@@ -86,8 +86,8 @@ Please set the important parameters in iotdb-confignode.properties:
 
 | **Configuration** | **Description**                                      |
 | -------- | -------------------------------------------- |
-| rpc\_address    | Internal rpc service address of ConfigNode          |
-| rpc\_port    | Internal rpc service address of ConfigNode       |
+| internal\_address    | Internal rpc service address of ConfigNode          |
+| internal\_port    | Internal rpc service address of ConfigNode       |
 | consensus\_port    | ConfigNode replication consensus protocol communication port    |
 | target\_config\_nodes    | Target ConfigNode address, if the current is the first ConfigNode, then set its address:port    |
 | data\_replication\_factor  | Data replication factor, no more than DataNode number        |

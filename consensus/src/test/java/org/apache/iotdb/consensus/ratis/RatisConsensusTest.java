@@ -94,9 +94,9 @@ public class RatisConsensusTest {
   public void setUp() throws IOException {
     gid = new DataRegionId(1);
     peers = new ArrayList<>();
-    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6000)));
-    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6001)));
-    peers.add(new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
+    peers.add(new Peer(gid, new TEndPoint("0.0.0.0", 6000)));
+    peers.add(new Peer(gid, new TEndPoint("0.0.0.0", 6001)));
+    peers.add(new Peer(gid, new TEndPoint("0.0.0.0", 6002)));
     peersStorage = new ArrayList<>();
     peersStorage.add(new File("target" + java.io.File.separator + "1"));
     peersStorage.add(new File("target" + java.io.File.separator + "2"));

@@ -63,26 +63,26 @@ The details of each parameter are as follows:
 
 ## ConfigNode Configuration File（iotdb-confignode.properties）
 
-IoTDB Cluster configuration is in ConfigNode.
+The global configuration of cluster is in ConfigNode.
 
 ### Internal RPC Service Configurations
 
-* rpc\_address
+* internal\_address
 
-|Name| rpc\_address |
+|Name| internal\_address |
 |:---:|:---|
-|Description| Client rpc service address |
+|Description| ConfigNode internal service address |
 |Type| String |
-|Default| 127.0.0.1|
+|Default| 0.0.0.0|
 |Effective|After restarting system|
 
-* rpc\_port
+* internal\_port
 
-|Name| rpc\_port |
+|Name| internal\_port |
 |:---:|:---|
-|Description| Client RPC service port|
+|Description| ConfigNode internal service port|
 |Type| Short Int : [0,65535] |
-|Default| 6667 |
+|Default| 22277 |
 |Effective|After restarting system|
 
 * target\_config\_nodes

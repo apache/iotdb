@@ -218,11 +218,11 @@ public class PartitionInfoTest {
     for (int i = startFlag; i < locationNum + startFlag; i++) {
       TDataNodeLocation tDataNodeLocation = new TDataNodeLocation();
       tDataNodeLocation.setDataNodeId(i);
-      tDataNodeLocation.setClientRpcEndPoint(new TEndPoint("127.0.0.1", 6000 + i));
-      tDataNodeLocation.setInternalEndPoint(new TEndPoint("127.0.0.1", 7000 + i));
-      tDataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("127.0.0.1", 8000 + i));
-      tDataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 9000 + i));
-      tDataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("127.0.0.1", 10000 + i));
+      tDataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6000 + i));
+      tDataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 7000 + i));
+      tDataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8000 + i));
+      tDataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 9000 + i));
+      tDataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 10000 + i));
       dataNodeLocations.add(tDataNodeLocation);
     }
     tRegionReplicaSet.setDataNodeLocations(dataNodeLocations);
