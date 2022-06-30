@@ -147,8 +147,12 @@ public class ConfigNodeProcedureEnv {
 =======
   public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation) {
     List<TConfigNodeLocation> configNodeLocations = new ArrayList<>();
+<<<<<<< HEAD
     configNodeLocations.addAll(configManager.getLoadManager().getOnlineConfigNodes());
 >>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
+=======
+    configNodeLocations.addAll(configManager.getNodeManager().getRegisteredConfigNodes());
+>>>>>>> 1061337ce2 (fix getRegisteredConfigNodes)
     configNodeLocations.add(tConfigNodeLocation);
     SyncConfigNodeClientPool.getInstance()
         .addConsensusGroup(tConfigNodeLocation.getInternalEndPoint(), configNodeLocations);

@@ -346,28 +346,26 @@ public class NodeInfo implements SnapshotProcessor {
       systemProperties.load(inputStream);
     }
     systemProperties.setProperty(
-<<<<<<< HEAD
         IoTDBConstant.TARGET_CONFIG_NODES,
-        NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(onlineConfigNodes)));
-=======
-        "confignode_list",
         NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(registeredConfigNodes)));
->>>>>>> bb9059aaab (move getOnlineConfigNodes to LoadManager)
     try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
       systemProperties.store(fileOutputStream, "");
     }
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   public List<TConfigNodeLocation> getRegisterConfigNodes() {
 >>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
 =======
   public List<TConfigNodeLocation> getRegisteredDataNodes() {
 >>>>>>> 94af7168f6 (fix name)
+=======
+  public List<TConfigNodeLocation> getRegisteredConfigNodes() {
+>>>>>>> 1061337ce2 (fix getRegisteredConfigNodes)
     List<TConfigNodeLocation> result;
     configNodeInfoReadWriteLock.readLock().lock();
     try {
-      // TODO: Check ConfigNode status, ensure the returned ConfigNode isn't removed
       result = new ArrayList<>(registeredConfigNodes);
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();

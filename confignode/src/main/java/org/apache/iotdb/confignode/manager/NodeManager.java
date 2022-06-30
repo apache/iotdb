@@ -118,7 +118,7 @@ public class NodeManager {
     }
 
     dataSet.setDataNodeId(req.getInfo().getLocation().getDataNodeId());
-    dataSet.setConfigNodeList(getLoadManager().getOnlineConfigNodes());
+    dataSet.setConfigNodeList(nodeInfo.getRegisteredConfigNodes());
     setGlobalConfig(dataSet);
     return dataSet;
   }
@@ -178,7 +178,7 @@ public class NodeManager {
     resp.setPartitionRegionId(
         getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
 
-    resp.setConfigNodeList(getLoadManager().getOnlineConfigNodes());
+    resp.setConfigNodeList(nodeInfo.getRegisteredConfigNodes());
     return resp;
   }
 
@@ -209,9 +209,7 @@ public class NodeManager {
         }
 
         // Check whether the onlineConfigNodes contain the ConfigNode to be removed.
-        if (!getLoadManager()
-            .getOnlineConfigNodes()
-            .contains(removeConfigNodePlan.getConfigNodeLocation())) {
+        if (!getRegisteredConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
               .setMessage(
                   "Remove ConfigNode failed because the ConfigNode not in current Cluster.");
@@ -275,8 +273,8 @@ public class NodeManager {
                 + ".");
   }
 
-  public List<TConfigNodeLocation> getRegisteredDataNodes() {
-    return nodeInfo.getRegisteredDataNodes();
+  public List<TConfigNodeLocation> getRegisteredConfigNodes() {
+    return nodeInfo.getRegisteredConfigNodes();
   }
 
   private ConsensusManager getConsensusManager() {

@@ -31,10 +31,13 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 <<<<<<< HEAD
+<<<<<<< HEAD
 import org.apache.iotdb.confignode.exception.AddPeerException;
 =======
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 >>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
+=======
+>>>>>>> 1061337ce2 (fix getRegisteredConfigNodes)
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -188,7 +191,7 @@ public class ConsensusManager {
     for (int retry = 0; retry < 50; retry++) {
       Peer leaderPeer = consensusImpl.getLeader(consensusGroupId);
       if (leaderPeer != null) {
-        List<TConfigNodeLocation> onlineConfigNodes = getLoadManager().getOnlineConfigNodes();
+        List<TConfigNodeLocation> onlineConfigNodes = getNodeManager().getRegisteredConfigNodes();
         TConfigNodeLocation leaderLocation =
             onlineConfigNodes.stream()
                 .filter(leader -> leader.getConsensusEndPoint().equals(leaderPeer.getEndpoint()))
@@ -216,8 +219,8 @@ public class ConsensusManager {
     return consensusImpl;
   }
 
-  private LoadManager getLoadManager() {
-    return configManager.getLoadManager();
+  private NodeManager getNodeManager() {
+    return configManager.getNodeManager();
   }
 
   @TestOnly

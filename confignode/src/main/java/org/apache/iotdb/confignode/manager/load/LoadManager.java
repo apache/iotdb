@@ -62,7 +62,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+<<<<<<< HEAD
 import java.util.concurrent.atomic.AtomicInteger;
+=======
+import java.util.stream.Collectors;
+>>>>>>> f18229a5f8 (fix getRegisteredConfigNodes)
 
 /**
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
@@ -99,9 +103,6 @@ public class LoadManager {
   private Future<?> currentHeartbeatFuture;
   private final AtomicInteger balanceCount;
 
-  /** Online ConfigNodes * */
-  private List<TConfigNodeLocation> onlineConfigNodes;
-
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
     this.heartbeatCacheMap = new ConcurrentHashMap<>();
@@ -112,6 +113,7 @@ public class LoadManager {
     this.routeBalancer = new RouteBalancer(configManager);
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     this.balanceCount = new AtomicInteger(0);
 =======
@@ -120,6 +122,8 @@ public class LoadManager {
 =======
     this.onlineConfigNodes = getNodeManager().getRegisteredDataNodes();
 >>>>>>> ee3487b0fc (fix name)
+=======
+>>>>>>> f18229a5f8 (fix getRegisteredConfigNodes)
   }
 
   /**
@@ -244,7 +248,7 @@ public class LoadManager {
       // Send heartbeat requests to all the online DataNodes
       pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
       // Send heartbeat requests to all the online ConfigNodes
-      pingOnlineConfigNodes(getNodeManager().getRegisteredDataNodes());
+      pingOnlineConfigNodes(getNodeManager().getRegisteredConfigNodes());
       // Do load balancing
       doLoadBalancing();
       balanceCount.getAndIncrement();
@@ -327,16 +331,14 @@ public class LoadManager {
   }
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
-    getNodeManager()
-        .getRegisteredDataNodes()
-        .forEach(
-            registerConfigNode -> {
-              if (heartbeatCacheMap.get(registerConfigNode.getConfigNodeId()).getNodeStatus()
-                  == NodeStatus.Unknown) {
-                onlineConfigNodes.remove(registerConfigNode);
-              }
-            });
-    return onlineConfigNodes;
+    return getNodeManager().getRegisteredConfigNodes().stream()
+        .filter(
+            registeredConfigNode ->
+                heartbeatCacheMap
+                    .get(registeredConfigNode.getConfigNodeId())
+                    .getNodeStatus()
+                    .equals(NodeStatus.Running))
+        .collect(Collectors.toList());
   }
 
   private ConsensusManager getConsensusManager() {
