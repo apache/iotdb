@@ -88,15 +88,8 @@ public class IoTDBDeletionIT {
       statement.execute("insert into root.vehicle.d0(time,s4) aligned values (10,true)");
 
       String errorMsg =
-          "416: For delete statement, where clause can only contain time expressions, value filter is not currently supported.";
-
-      try {
-        statement.execute(
-            "DELETE FROM root.vehicle.d0.s0  WHERE s0 <= 300 AND time > 0 AND time < 100");
-        fail("should not reach here!");
-      } catch (SQLException e) {
-        assertEquals(errorMsg, e.getMessage());
-      }
+          "416: For delete statement, where clause can only"
+              + " contain time expressions, value filter is not currently supported.";
 
       try {
         statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE s0 <= 300 AND s0 > 0");
