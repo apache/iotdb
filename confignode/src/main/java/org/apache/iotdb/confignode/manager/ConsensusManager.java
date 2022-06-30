@@ -78,7 +78,7 @@ public class ConsensusManager {
         ConsensusFactory.getConsensusImpl(
                 conf.getConfigNodeConsensusProtocolClass(),
                 ConsensusConfig.newBuilder()
-                    .setThisNode(new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))
+                    .setThisNode(new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort()))
                     .setStorageDir(conf.getConsensusDir())
                     .build(),
                 gid -> stateMachine)

@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -106,17 +107,21 @@ public class ConfigNodeDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
+      conf.setInternalAddress(
+          properties.getProperty(IoTDBConstant.INTERNAL_ADDRESS, conf.getInternalAddress()));
 
-      conf.setRpcPort(
-          Integer.parseInt(properties.getProperty("rpc_port", String.valueOf(conf.getRpcPort()))));
+      conf.setInternalPort(
+          Integer.parseInt(
+              properties.getProperty(
+                  IoTDBConstant.INTERNAL_PORT, String.valueOf(conf.getInternalPort()))));
 
       conf.setConsensusPort(
           Integer.parseInt(
-              properties.getProperty("consensus_port", String.valueOf(conf.getConsensusPort()))));
+              properties.getProperty(
+                  IoTDBConstant.CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()))));
 
       // TODO: Enable multiple target_config_nodes
-      String targetConfigNodes = properties.getProperty("target_config_nodes", null);
+      String targetConfigNodes = properties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES, null);
       if (targetConfigNodes != null) {
         conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes));
       }
@@ -222,6 +227,8 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
 
+      conf.setRoutingPolicy(properties.getProperty("routing_policy", conf.getRoutingPolicy()));
+
       // commons
       commonDescriptor.loadCommonProps(properties);
       commonDescriptor.initCommonConfigDir(conf.getSystemDir());
@@ -253,7 +260,7 @@ public class ConfigNodeDescriptor {
           .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
       MetricConfigDescriptor.getInstance()
           .getMetricConfig()
-          .updateRpcInstance(conf.getRpcAddress(), conf.getRpcPort());
+          .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
     }
   }
 

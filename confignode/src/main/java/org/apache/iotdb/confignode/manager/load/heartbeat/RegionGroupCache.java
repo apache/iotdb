@@ -16,24 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.manager.load.heartbeat;
 
-package org.apache.iotdb.db.mpp.plan.constant;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+public class RegionGroupCache implements IRegionGroupCache {
 
-public class DataNodeEndPoints {
-  public static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
-      new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
+  // TODO: This class might be split into SchemaRegionGroupCache and DataRegionGroupCache
 
-  public static final TEndPoint LOCAL_HOST_INTERNAL_ENDPOINT =
-      new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getInternalPort());
+  private long timestamp;
 
-  public static boolean isSameNode(TEndPoint endPoint) {
-    return endPoint.equals(LOCAL_HOST_DATA_BLOCK_ENDPOINT);
+  private final AtomicInteger leaderDataNodeId;
+
+  public RegionGroupCache() {
+    this.leaderDataNodeId = new AtomicInteger(-1);
+  }
+
+  @Override
+  public synchronized void updateLeader(long timestamp, int dataNodeId) {
+    if (timestamp > this.timestamp) {
+      this.timestamp = timestamp;
+      this.leaderDataNodeId.set(dataNodeId);
+    }
+  }
+
+  @Override
+  public int getLeaderDataNodeId() {
+    return leaderDataNodeId.get();
   }
 }

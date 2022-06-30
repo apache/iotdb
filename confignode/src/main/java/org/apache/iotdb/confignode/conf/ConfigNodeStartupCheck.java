@@ -20,6 +20,18 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
+import org.apache.iotdb.commons.exception.ConfigurationException;
+import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 
 import org.slf4j.Logger;
@@ -51,12 +63,12 @@ public class ConfigNodeStartupCheck {
     // When the ConfigNode consensus protocol is set to StandAlone,
     // the target_config_nodes needs to point to itself
     if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
-        && (!conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
-            || conf.getRpcPort() != conf.getTargetConfigNode().getPort())) {
+        && (!conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+            || conf.getInternalPort() != conf.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
-          "target_config_nodes",
+          IoTDBConstant.TARGET_CONFIG_NODES,
           conf.getTargetConfigNode().getIp() + ":" + conf.getTargetConfigNode().getPort(),
-          conf.getRpcAddress() + ":" + conf.getRpcPort());
+          conf.getInternalAddress() + ":" + conf.getInternalPort());
     }
 
     // When the data region consensus protocol is set to StandAlone,
@@ -88,6 +100,12 @@ public class ConfigNodeStartupCheck {
           String.valueOf(conf.getSchemaRegionConsensusProtocolClass()),
           String.format(
               "%s or %s", ConsensusFactory.StandAloneConsensus, ConsensusFactory.RatisConsensus));
+    }
+
+    if (!conf.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)
+        && !conf.getRoutingPolicy().equals(RouteBalancer.greedyPolicy)) {
+      throw new ConfigurationException(
+          "routing_policy", conf.getRoutingPolicy(), "leader or greedy");
     }
   }
 

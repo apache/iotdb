@@ -93,7 +93,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 |名字| rpc\_address |
 |:---:|:---|
-|描述| rpc地址 |
+|描述| 客户端 RPC 服务监听地址 |
 |类型| String |
 |默认值| 0.0.0.0|
 |改后生效方式|重启服务生效|
@@ -102,7 +102,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 
 |名字| rpc\_port |
 |:---:|:---|
-|描述| Client RPC 服务监听端口。|
+|描述| Client RPC 服务监听端口|
 |类型| Short Int : [0,65535] |
 |默认值| 6667 |
 |改后生效方式|重启服务生效|

@@ -65,20 +65,20 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 
 ### Internal RPC Service 配置
 
-* rpc\_address
+* internal\_address
 
-|名字| rpc\_address |
+|名字| internal\_address |
 |:---:|:---|
-|描述| rpc地址 |
+|描述| ConfigNode 集群内部地址 |
 |类型| String |
 |默认值| 0.0.0.0|
 |改后生效方式|重启服务生效|
 
-* rpc\_port
+* internal\_port
 
-|名字| rpc\_port |
+|名字| internal\_port |
 |:---:|:---|
-|描述| jdbc 服务监听端口。请确认该端口不是系统保留端口并且未被占用。|
+|描述| ConfigNode 集群服务监听端口|
 |类型| Short Int : [0,65535] |
 |默认值| 6667 |
 |改后生效方式|重启服务生效|
@@ -89,7 +89,7 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |:---:|:---|
 |描述| 目标 ConfigNode 地址，ConfigNode 通过此地址加入集群 |
 |类型| String |
-|默认值| 0.0.0.0:22277 |
+|默认值| 127.0.0.1:22277 |
 |改后生效方式|重启服务生效|
 
 * rpc\_thrift\_compression\_enable

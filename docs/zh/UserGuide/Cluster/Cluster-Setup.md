@@ -86,8 +86,8 @@ mvn clean package -pl distribution -am -DskipTests
 
 | **配置项** | **说明**                                      |
 | -------- | -------------------------------------------- |
-| rpc\_address    | ConfigNode 在集群内部通讯使用的地址          |
-| rpc\_port    | ConfigNode 在集群内部通讯使用的端口           |
+| internal\_address    | ConfigNode 在集群内部通讯使用的地址          |
+| internal\_port    | ConfigNode 在集群内部通讯使用的端口           |
 | consensus\_port    | ConfigNode 副本组共识协议通信使用的端口         |
 | target\_config\_nodes    | 种子 ConfigNode 地址，第一个 ConfigNode 配置自己的 address:port        |
 | data\_replication\_factor  | 数据副本数，DataNode 数量不应少于此数目        |
