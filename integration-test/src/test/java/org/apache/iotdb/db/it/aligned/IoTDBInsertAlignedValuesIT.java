@@ -253,7 +253,7 @@ public class IoTDBInsertAlignedValuesIT {
     }
   }
 
-  @Test
+  @Test(expected = Exception.class)
   public void testInsertWithWrongType() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

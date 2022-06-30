@@ -32,7 +32,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanGraphPrinter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -129,6 +131,30 @@ public class StatementMemorySourceVisitor
     Set<String> matchedChildNodes = new TreeSet<>(context.getAnalysis().getMatchedNodes());
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeInt(matchedChildNodes.size());
+    tsBlockBuilder.declarePosition();
+    return new StatementMemorySource(
+        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  @Override
+  public StatementMemorySource visitCountDevices(
+      CountDevicesStatement countStatement, StatementMemorySourceContext context) {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.countDevicesHeader.getRespDataTypes());
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeInt(0);
+    tsBlockBuilder.declarePosition();
+    return new StatementMemorySource(
+        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  @Override
+  public StatementMemorySource visitCountTimeSeries(
+      CountTimeSeriesStatement countStatement, StatementMemorySourceContext context) {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.countTimeSeriesHeader.getRespDataTypes());
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeInt(0);
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
