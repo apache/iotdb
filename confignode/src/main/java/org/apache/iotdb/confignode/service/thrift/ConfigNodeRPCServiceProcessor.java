@@ -481,10 +481,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     GetRegionInfoListPlan getRegionsInfoPlan =
         new GetRegionInfoListPlan(showDataNodesReq.getConsensusGroupType());
     Map<Integer, List<Integer>> map = new HashMap<>();
-    DataNodesListResp DataNodesInfoDataSet = (DataNodesListResp) configManager.getOnlineDataNodes();
+    DataNodesListResp dataNodesInfoDataSet = (DataNodesListResp) configManager.getOnlineDataNodes();
     RegionInfoListResp regionsInfoDataSet =
         (RegionInfoListResp) configManager.showRegion(getRegionsInfoPlan);
-    List<TDataNodesInfo> dataNodesList = DataNodesInfoDataSet.getDataNodesList();
+    List<TDataNodesInfo> dataNodesList = dataNodesInfoDataSet.getDataNodesList();
     if (regionsInfoDataSet.getRegionInfoList() != null) {
       List<TRegionInfo> regionInfoList = regionsInfoDataSet.getRegionInfoList();
       regionInfoList.forEach(
@@ -522,7 +522,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
           }));
     }
     TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
-    showDataNodesResp.setStatus(DataNodesInfoDataSet.getStatus());
+    showDataNodesResp.setStatus(dataNodesInfoDataSet.getStatus());
     showDataNodesResp.setDataNodesInfoList(dataNodesList);
     return showDataNodesResp;
   }
