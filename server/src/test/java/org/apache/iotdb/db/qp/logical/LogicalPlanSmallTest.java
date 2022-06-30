@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -306,7 +307,7 @@ public class LogicalPlanSmallTest {
     String errorMsg = null;
     try {
       LogicalGenerator.generate(sql, ZoneId.systemDefault());
-    } catch (SQLParserException e) {
+    } catch (SemanticException e) {
       errorMsg = e.getMessage();
     }
     Assert.assertEquals(
@@ -318,7 +319,7 @@ public class LogicalPlanSmallTest {
     errorMsg = null;
     try {
       LogicalGenerator.generate(sql, ZoneId.systemDefault());
-    } catch (SQLParserException e) {
+    } catch (SemanticException e) {
       errorMsg = e.getMessage();
     }
     Assert.assertEquals(
