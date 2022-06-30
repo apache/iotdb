@@ -56,7 +56,7 @@ public class IoTDBSyncSenderIT {
   private boolean enableUnseqSpaceCompaction;
   private boolean enableCrossSpaceCompaction;
 
-  private static final long waitTime = 2000;
+  private static final long waitTime = 2000; // 2000
 
   private static final String pipeSinkName = "test_pipesink";
   private static final String pipeName = "test_pipe";
