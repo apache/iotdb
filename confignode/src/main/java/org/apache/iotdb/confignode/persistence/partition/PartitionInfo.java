@@ -436,6 +436,7 @@ public class PartitionInfo implements SnapshotProcessor {
     regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return regionResp;
   }
+
   // ======================================================
   // Leader scheduling interfaces
   // ======================================================
