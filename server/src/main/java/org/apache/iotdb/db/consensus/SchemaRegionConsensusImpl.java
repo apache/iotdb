@@ -53,7 +53,8 @@ public class SchemaRegionConsensusImpl {
                   conf.getSchemaRegionConsensusProtocolClass(),
                   ConsensusConfig.newBuilder()
                       .setThisNode(
-                          new TEndPoint(conf.getInternalIp(), conf.getSchemaRegionConsensusPort()))
+                          new TEndPoint(
+                              conf.getInternalAddress(), conf.getSchemaRegionConsensusPort()))
                       .setStorageDir(conf.getSchemaRegionConsensusDir())
                       .build(),
                   gid ->

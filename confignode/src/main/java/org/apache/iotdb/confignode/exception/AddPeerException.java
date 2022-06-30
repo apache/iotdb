@@ -16,24 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.exception;
 
-package org.apache.iotdb.db.mpp.plan.constant;
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+public class AddPeerException extends ConfigNodeException {
 
-public class DataNodeEndPoints {
-  public static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
-      new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
-
-  public static final TEndPoint LOCAL_HOST_INTERNAL_ENDPOINT =
-      new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getInternalPort());
-
-  public static boolean isSameNode(TEndPoint endPoint) {
-    return endPoint.equals(LOCAL_HOST_DATA_BLOCK_ENDPOINT);
+  public AddPeerException(TConfigNodeLocation configNodeLocation) {
+    super(String.format("Add peer: %s failed.", configNodeLocation.toString()));
   }
 }

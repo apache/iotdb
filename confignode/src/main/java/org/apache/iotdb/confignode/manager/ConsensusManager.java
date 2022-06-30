@@ -22,13 +22,15 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
+import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.common.Peer;
@@ -41,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -65,17 +68,17 @@ public class ConsensusManager {
     consensusImpl.stop();
   }
 
-  /** Build ConfigNodeGroup ConsensusLayer */
+  /** ConsensusLayer local implementation */
   private void setConsensusLayer(PartitionRegionStateMachine stateMachine) throws IOException {
     // There is only one ConfigNodeGroup
     consensusGroupId = new PartitionRegionId(conf.getPartitionRegionId());
 
-    // Consensus local implement
+    // Implement local ConsensusLayer by ConfigNodeConfig
     consensusImpl =
         ConsensusFactory.getConsensusImpl(
                 conf.getConfigNodeConsensusProtocolClass(),
                 ConsensusConfig.newBuilder()
-                    .setThisNode(new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))
+                    .setThisNode(new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort()))
                     .setStorageDir(conf.getConsensusDir())
                     .build(),
                 gid -> stateMachine)
@@ -87,20 +90,34 @@ public class ConsensusManager {
                             conf.getConfigNodeConsensusProtocolClass())));
     consensusImpl.start();
 
-    // if does not start firstly, or is seed-node. will add ConsensusGroup.
-    if (!conf.isNeedApply()) {
-      addConsensusGroup(conf.getConfigNodeList());
+    if (SystemPropertiesUtils.isRestarted()) {
+      try {
+        // Create ConsensusGroup from confignode-system.properties file when restart
+        // TODO: Check and notify if current ConfigNode's ip or port has changed
+        addConsensusGroup(SystemPropertiesUtils.loadConfigNodeList());
+      } catch (BadNodeUrlException e) {
+        throw new IOException(e);
+      }
+    } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
+      // Create ConsensusGroup that contains only itself
+      // if the current ConfigNode is Seed-ConfigNode
+      addConsensusGroup(
+          Collections.singletonList(
+              new TConfigNodeLocation(
+                  0,
+                  new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
+                  new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort()))));
     }
   }
 
   /**
-   * after register config node, leader will call addConsensusGroup remotely. execute in new node
+   * Add the current ConfigNode to the ConsensusGroup
    *
-   * @param configNodeLocations all config node
+   * @param configNodeLocations All registered ConfigNodes
    */
   public void addConsensusGroup(List<TConfigNodeLocation> configNodeLocations) {
     if (configNodeLocations.size() == 0) {
-      LOGGER.warn("configNodeLocations is null");
+      LOGGER.warn("configNodeLocations is null, addConsensusGroup failed.");
       return;
     }
 
@@ -110,26 +127,25 @@ public class ConsensusManager {
       peerList.add(new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()));
     }
     consensusImpl.addConsensusGroup(consensusGroupId, peerList);
-
-    // Set config node list
-    conf.setConfigNodeList(configNodeLocations);
   }
 
   /**
-   * Apply new ConfigNode Peer into PartitionRegion
+   * Add new ConfigNode Peer into PartitionRegion
    *
-   * @param applyConfigNodePlan ApplyConfigNodeReq
-   * @return True if successfully addPeer. False if another ConfigNode is being added to the
-   *     PartitionRegion
+   * @param configNodeLocation The new ConfigNode
+   * @throws AddPeerException When addPeer doesn't success
    */
-  public boolean addConfigNodePeer(ApplyConfigNodePlan applyConfigNodePlan) {
-    return consensusImpl
-        .addPeer(
-            consensusGroupId,
-            new Peer(
+  public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
+    boolean result =
+        consensusImpl
+            .addPeer(
                 consensusGroupId,
-                applyConfigNodePlan.getConfigNodeLocation().getConsensusEndPoint()))
-        .isSuccess();
+                new Peer(consensusGroupId, configNodeLocation.getConsensusEndPoint()))
+            .isSuccess();
+
+    if (!result) {
+      throw new AddPeerException(configNodeLocation);
+    }
   }
 
   /**
@@ -202,19 +218,17 @@ public class ConsensusManager {
 
   @TestOnly
   public void singleCopyMayWaitUntilLeaderReady() {
-    if (conf.getConfigNodeList().size() == 1) {
-      long startTime = System.currentTimeMillis();
-      long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
-      try {
-        while (!consensusImpl.isLeader(consensusGroupId)) {
-          TimeUnit.MILLISECONDS.sleep(100);
-          long elapsed = System.currentTimeMillis() - startTime;
-          if (elapsed > maxWaitTime) {
-            return;
-          }
+    long startTime = System.currentTimeMillis();
+    long maxWaitTime = 1000 * 60; // milliseconds, which is 60s
+    try {
+      while (!consensusImpl.isLeader(consensusGroupId)) {
+        TimeUnit.MILLISECONDS.sleep(100);
+        long elapsed = System.currentTimeMillis() - startTime;
+        if (elapsed > maxWaitTime) {
+          return;
         }
-      } catch (InterruptedException ignored) {
       }
+    } catch (InterruptedException ignored) {
     }
   }
 }

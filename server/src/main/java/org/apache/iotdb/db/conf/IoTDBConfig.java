@@ -827,8 +827,8 @@ public class IoTDBConfig {
   /** cache size for pages in one schema file */
   private int pageCacheSizeInSchemaFile = 1024;
 
-  /** Internal ip for data node */
-  private String internalIp = "127.0.0.1";
+  /** Internal address for data node */
+  private String internalAddress = "127.0.0.1";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;
@@ -2704,12 +2704,12 @@ public class IoTDBConfig {
     this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
   }
 
-  public String getInternalIp() {
-    return internalIp;
+  public String getInternalAddress() {
+    return internalAddress;
   }
 
-  public void setInternalIp(String internalIp) {
-    this.internalIp = internalIp;
+  public void setInternalAddress(String internalAddress) {
+    this.internalAddress = internalAddress;
   }
 
   public int getInternalPort() {
