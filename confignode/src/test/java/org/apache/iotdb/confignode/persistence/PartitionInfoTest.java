@@ -181,7 +181,7 @@ public class PartitionInfoTest {
         .getRegionInfoList()
         .forEach(
             (regionInfo) -> {
-              Assert.assertEquals(regionInfo.getClientRpcIp(), "0.0.0.0");
+              Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1");
             });
 
     regionReq.setRegionType(TConsensusGroupType.SchemaRegion);
