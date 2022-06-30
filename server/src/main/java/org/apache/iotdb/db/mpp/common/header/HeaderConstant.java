@@ -75,6 +75,10 @@ public class HeaderConstant {
   public static final String COLUMN_DATANODE_ID = "DataNodeId";
   public static final String COLUMN_SLOTS = "Slots";
 
+  // column names for show datanodes
+  public static final String COLUMN_DATA_REGION_NUM = "DataRegionNum";
+  public static final String COLUMN_SCHEMA_REGION_NUM = "SchemaRegionNum";
+
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
   public static final DatasetHeader showDevicesHeader;
@@ -102,6 +106,9 @@ public class HeaderConstant {
 
   // dataset header for show region
   public static final DatasetHeader showRegionHeader;
+
+  // dataset header for show datanodes
+  public static final DatasetHeader showDataNodesHeader;
 
   static {
     countStorageGroupHeader =
@@ -222,6 +229,20 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
                 new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
+            true);
+  }
+
+  static {
+    showDataNodesHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
+                new ColumnHeader(COLUMN_DATA_REGION_NUM, TSDataType.INT32),
+                new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32)),
             true);
   }
 }

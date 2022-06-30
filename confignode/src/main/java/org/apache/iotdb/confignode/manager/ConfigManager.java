@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodesListResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
@@ -744,6 +745,14 @@ public class ConfigManager implements IManager {
       regionResp.setStatus(status);
       return regionResp;
     }
+  }
+
+  @Override
+  public DataSet getOnlineDataNodes() {
+    DataNodesListResp dataNodesListResp = new DataNodesListResp();
+    dataNodesListResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+    dataNodesListResp.setDataNodesList(nodeManager.getOnlineDataNodesLocations());
+    return dataNodesListResp;
   }
 
   public ProcedureManager getProcedureManager() {

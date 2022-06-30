@@ -157,6 +157,11 @@ DATA
     : D A T A
     ;
 
+DATANODES
+
+    : D A T A N O D E S
+    ;
+
 DEBUG
     : D E B U G
     ;
