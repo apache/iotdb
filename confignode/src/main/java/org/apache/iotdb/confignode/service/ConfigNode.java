@@ -78,15 +78,20 @@ public class ConfigNode implements ConfigNodeMBean {
     try {
       // Init ConfigManager
       initConfigManager();
-      // Set up services
-      setUpServices();
+      // Set up internal services
+      setUpInternalServices();
 
-      // Check for initial startup or restart
+      /* Check for initial startup or restart */
       if (SystemPropertiesUtils.isRestarted()) {
-        // Restart process finished
+
+        /* Restart */
+        setUpRPCService();
         LOGGER.info(
             "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+
       } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
+
+        /* Initial startup of Seed-ConfigNode */
         SystemPropertiesUtils.storeSystemParameters();
         // Seed-ConfigNode should apply itself when first start
         configManager
@@ -96,13 +101,22 @@ public class ConfigNode implements ConfigNodeMBean {
                     0,
                     new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
                     new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort())));
+        // We always set up Seed-ConfigNode's RPC service lastly to ensure that
+        // the external service is not provided until Seed-ConfigNode is fully initialized
+        setUpRPCService();
         // The initial startup of Seed-ConfigNode finished
         LOGGER.info(
             "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+
       } else {
+
+        /* Initial startup of Non-Seed-ConfigNode */
+        // We set up Non-Seed ConfigNode's RPC service before sending the register request
+        // in order to facilitate the scheduling of capacity expansion process in ConfigNode-leader
+        setUpRPCService();
         registerConfigNode();
         // The initial startup of Non-Seed-ConfigNode is not yet finished,
-        // We should wait for leader's scheduling
+        // we should wait for leader's scheduling
         LOGGER.info(
             "{} has registered successfully. Waiting for the leader's scheduling to join the cluster.",
             ConfigNodeConstant.GLOBAL_NAME);
@@ -135,7 +149,7 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
-  private void setUpServices() throws StartupException, IOException {
+  private void setUpInternalServices() throws StartupException, IOException {
     // Setup JMXService
     registerManager.register(new JMXService());
     JMXService.registerMBean(this, mbeanName);
@@ -149,13 +163,6 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup MetricsService
     registerManager.register(MetricsService.getInstance());
     MetricsService.getInstance().startAllReporter();
-
-    // Setup RPCService
-    ConfigNodeRPCService configNodeRPCService = new ConfigNodeRPCService();
-    ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor =
-        new ConfigNodeRPCServiceProcessor(configManager);
-    configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
-    registerManager.register(configNodeRPCService);
 
     LOGGER.info("Successfully setup internal services.");
   }
@@ -200,6 +207,15 @@ public class ConfigNode implements ConfigNodeMBean {
         throw new StartupException("Register ConfigNode failed!");
       }
     }
+  }
+
+  private void setUpRPCService() throws StartupException {
+    // Setup RPCService
+    ConfigNodeRPCService configNodeRPCService = new ConfigNodeRPCService();
+    ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor =
+        new ConfigNodeRPCServiceProcessor(configManager);
+    configNodeRPCService.initSyncedServiceImpl(configNodeRPCServiceProcessor);
+    registerManager.register(configNodeRPCService);
   }
 
   public void stop() throws IOException {
