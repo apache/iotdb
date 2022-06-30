@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -357,7 +358,8 @@ public class NodeInfo implements SnapshotProcessor {
       systemProperties.load(inputStream);
     }
     systemProperties.setProperty(
-        "confignode_list", NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(onlineConfigNodes)));
+        IoTDBConstant.TARGET_CONFIG_NODES,
+        NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(onlineConfigNodes)));
     try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
       systemProperties.store(fileOutputStream, "");
     }

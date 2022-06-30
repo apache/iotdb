@@ -21,11 +21,13 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -85,12 +87,12 @@ public class ConfigNodeStartupCheck {
     // When the ConfigNode consensus protocol is set to StandAlone,
     // the target_config_nodes needs to point to itself
     if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
-        && (!conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
-            || conf.getRpcPort() != conf.getTargetConfigNode().getPort())) {
+        && (!conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+            || conf.getInternalPort() != conf.getTargetConfigNode().getPort())) {
       throw new ConfigurationException(
-          "target_config_nodes",
+          IoTDBConstant.TARGET_CONFIG_NODES,
           conf.getTargetConfigNode().getIp() + ":" + conf.getTargetConfigNode().getPort(),
-          conf.getRpcAddress() + ":" + conf.getRpcPort());
+          conf.getInternalAddress() + ":" + conf.getInternalPort());
     }
 
     // When the data region consensus protocol is set to StandAlone,
@@ -122,6 +124,12 @@ public class ConfigNodeStartupCheck {
           String.valueOf(conf.getSchemaRegionConsensusProtocolClass()),
           String.format(
               "%s or %s", ConsensusFactory.StandAloneConsensus, ConsensusFactory.RatisConsensus));
+    }
+
+    if (!conf.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)
+        && !conf.getRoutingPolicy().equals(RouteBalancer.greedyPolicy)) {
+      throw new ConfigurationException(
+          "routing_policy", conf.getRoutingPolicy(), "leader or greedy");
     }
   }
 
@@ -164,16 +172,16 @@ public class ConfigNodeStartupCheck {
    */
   private boolean isSeedConfigNode() {
     boolean result =
-        conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
-            && conf.getRpcPort() == conf.getTargetConfigNode().getPort();
+        conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+            && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
     if (result) {
       // TODO: Set PartitionRegionId from iotdb-confignode.properties
       conf.setConfigNodeList(
           Collections.singletonList(
               new TConfigNodeLocation(
                   0,
-                  new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
-                  new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))));
+                  new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
+                  new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort()))));
     }
     return result;
   }
@@ -184,8 +192,8 @@ public class ConfigNodeStartupCheck {
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
                 -1,
-                new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
-                new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())),
+                new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
+                new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort())),
             conf.getDataRegionConsensusProtocolClass(),
             conf.getSchemaRegionConsensusProtocolClass(),
             conf.getSeriesPartitionSlotNum(),
@@ -242,9 +250,12 @@ public class ConfigNodeStartupCheck {
     }
 
     // Startup configuration
-    systemProperties.setProperty("rpc_address", String.valueOf(conf.getRpcAddress()));
-    systemProperties.setProperty("rpc_port", String.valueOf(conf.getRpcPort()));
-    systemProperties.setProperty("consensus_port", String.valueOf(conf.getConsensusPort()));
+    systemProperties.setProperty(
+        IoTDBConstant.INTERNAL_ADDRESS, String.valueOf(conf.getInternalAddress()));
+    systemProperties.setProperty(
+        IoTDBConstant.INTERNAL_PORT, String.valueOf(conf.getInternalPort()));
+    systemProperties.setProperty(
+        IoTDBConstant.CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()));
 
     // Consensus protocol configuration
     systemProperties.setProperty(
@@ -262,7 +273,8 @@ public class ConfigNodeStartupCheck {
 
     // ConfigNodeList
     systemProperties.setProperty(
-        "confignode_list", NodeUrlUtils.convertTConfigNodeUrls(conf.getConfigNodeList()));
+        IoTDBConstant.TARGET_CONFIG_NODES,
+        NodeUrlUtils.convertTConfigNodeUrls(conf.getConfigNodeList()));
 
     try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
       systemProperties.store(fileOutputStream, "");
@@ -285,30 +297,35 @@ public class ConfigNodeStartupCheck {
     boolean needReWrite = false;
 
     // Startup configuration
-    String rpcAddress = systemProperties.getProperty("rpc_address", null);
-    if (rpcAddress == null) {
+    String internalAddress = systemProperties.getProperty(IoTDBConstant.INTERNAL_ADDRESS, null);
+    if (internalAddress == null) {
       needReWrite = true;
-    } else if (!rpcAddress.equals(conf.getRpcAddress())) {
-      throw new ConfigurationException("rpc_address", conf.getRpcAddress(), rpcAddress);
+    } else if (!internalAddress.equals(conf.getInternalAddress())) {
+      throw new ConfigurationException(
+          IoTDBConstant.INTERNAL_ADDRESS, conf.getInternalAddress(), internalAddress);
     }
 
-    if (systemProperties.getProperty("rpc_port", null) == null) {
+    if (systemProperties.getProperty(IoTDBConstant.INTERNAL_PORT, null) == null) {
       needReWrite = true;
     } else {
-      int rpcPort = Integer.parseInt(systemProperties.getProperty("rpc_port"));
-      if (rpcPort != conf.getRpcPort()) {
+      int internalPort =
+          Integer.parseInt(systemProperties.getProperty(IoTDBConstant.INTERNAL_PORT));
+      if (internalPort != conf.getInternalPort()) {
         throw new ConfigurationException(
-            "rpc_port", String.valueOf(conf.getRpcPort()), String.valueOf(rpcPort));
+            IoTDBConstant.INTERNAL_PORT,
+            String.valueOf(conf.getInternalPort()),
+            String.valueOf(internalPort));
       }
     }
 
-    if (systemProperties.getProperty("consensus_port", null) == null) {
+    if (systemProperties.getProperty(IoTDBConstant.CONSENSUS_PORT, null) == null) {
       needReWrite = true;
     } else {
-      int consensusPort = Integer.parseInt(systemProperties.getProperty("consensus_port"));
+      int consensusPort =
+          Integer.parseInt(systemProperties.getProperty(IoTDBConstant.CONSENSUS_PORT));
       if (consensusPort != conf.getConsensusPort()) {
         throw new ConfigurationException(
-            "consensus_port",
+            IoTDBConstant.CONSENSUS_PORT,
             String.valueOf(conf.getConsensusPort()),
             String.valueOf(consensusPort));
       }
@@ -385,12 +402,12 @@ public class ConfigNodeStartupCheck {
 
   /** Only load ConfigNodeList from confignode-system.properties when restart */
   private void loadConfigNodeList() throws StartupException {
-    String addresses = systemProperties.getProperty("confignode_list", null);
+    String addresses = systemProperties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES, null);
     if (addresses != null && !addresses.isEmpty()) {
       try {
         conf.setConfigNodeList(NodeUrlUtils.parseTConfigNodeUrls(addresses));
       } catch (BadNodeUrlException e) {
-        throw new StartupException("Parse ConfigNodeList failed: {}", e.getMessage());
+        throw new StartupException("Parse target_config_nodes failed: {}", e.getMessage());
       }
     }
   }
