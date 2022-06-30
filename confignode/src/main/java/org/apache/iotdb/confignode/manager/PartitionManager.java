@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -424,6 +425,9 @@ public class PartitionManager {
     throw new TimeoutException("");
   }
 
+  public Set<TDataNodeLocation> getDataNodeLocation(String storageGroup, TConsensusGroupType type) {
+    return partitionInfo.getDataNodeLocation(storageGroup, type);
+  }
   /**
    * Only leader use this interface
    *

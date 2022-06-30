@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
@@ -403,6 +404,11 @@ public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
   @Override
   public TSStatus flush(TFlushReq req) throws TException {
     return StorageEngineV2.getInstance().operateFlush(req);
+  }
+
+  @Override
+  public TSStatus setTTL(TSetTTLReq req) throws TException {
+    return StorageEngineV2.getInstance().setTTL(req);
   }
 
   @Override
