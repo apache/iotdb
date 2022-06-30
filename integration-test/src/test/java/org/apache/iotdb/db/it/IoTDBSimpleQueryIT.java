@@ -92,7 +92,7 @@ public class IoTDBSimpleQueryIT {
         fail();
       } catch (Exception e) {
         assertEquals(
-            "411: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
+            "318: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
             e.getMessage());
       }
 
