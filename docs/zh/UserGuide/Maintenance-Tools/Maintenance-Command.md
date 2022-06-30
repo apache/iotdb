@@ -175,4 +175,58 @@ IoTDB> show schema regions
 Total line number = 2
 It costs 0.012s
 ```
+## 集群 DataNode 分布式监控工具
 
+当前 IoTDB 支持使用如下 SQL 查看 DataNode：
+
+- `SHOW DATANODES`: 展示所有DataNode
+
+```sql
+IoTDB> create timeseries root.sg.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> create timeseries root.sg.d2.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> create timeseries root.ln.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> show regions
++--------+------------+------+-------------+-----+----------+---------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+-----+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6669|
+|       1|SchemaRegion|    Up|      root.ln|    1|         3|127.0.0.1|6667|
++--------+------------+------+-------------+-----+----------+---------+----+
+Total line number = 2
+It costs 0.035s
+
+IoTDB> show datanodes
++------+--------+-------+---------+----+-------------+---------------+
+|NodeID|NodeType| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
++------+--------+-------+---------+----+-------------+---------------+
+|     1|DataNode|Running|127.0.0.1|6667|            0|              1|
+|     2|DataNode|Running|127.0.0.1|6669|            0|              1|
++------+--------+-------+---------+----+-------------+---------------+
+Total line number = 2
+It costs 0.007s
+
+IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
+Msg: The statement is executed successfully.
+IoTDB> show regions
++--------+------------+------+-------------+-----+----------+---------+----+
+|RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+-----+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6668|
+|       1|SchemaRegion|    Up|      root.ln|    1|         1|127.0.0.1|6667|
+|       2|  DataRegion|    Up|      root.sg|    1|         2|127.0.0.1|6668|
++--------+------------+------+-------------+-----+----------+---------+----+
+Total line number = 3
+It costs 0.007s
+IoTDB> show datanodes
++------+--------+-------+---------+----+-------------+---------------+
+|NodeID|NodeType| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
++------+--------+-------+---------+----+-------------+---------------+
+|     1|DataNode|Running|127.0.0.1|6667|            0|              1|
+|     2|DataNode|Running|127.0.0.1|6668|            1|              1|
++------+--------+-------+---------+----+-------------+---------------+
+Total line number = 2
+It costs 0.007s
+```
