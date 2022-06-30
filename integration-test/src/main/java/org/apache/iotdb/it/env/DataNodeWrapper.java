@@ -46,7 +46,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   @Override
   protected void updateConfig(Properties properties) {
     properties.setProperty(IoTDBConstant.RPC_ADDRESS, super.getIp());
-    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, "0.0.0.0");
+    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, "127.0.0.1");
     properties.setProperty(IoTDBConstant.RPC_PORT, String.valueOf(getPort()));
     properties.setProperty("mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
     properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(this.internalPort));

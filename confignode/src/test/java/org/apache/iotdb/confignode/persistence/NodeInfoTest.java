@@ -96,10 +96,10 @@ public class NodeInfoTest {
   private TDataNodeLocation generateTDataNodeLocation(int flag) {
     return new TDataNodeLocation(
         10000 + flag,
-        new TEndPoint("0.0.0.0", 6600 + flag),
-        new TEndPoint("0.0.0.0", 7700 + flag),
-        new TEndPoint("0.0.0.0", 8800 + flag),
-        new TEndPoint("0.0.0.0", 9900 + flag),
-        new TEndPoint("0.0.0.0", 11000 + flag));
+        new TEndPoint("127.0.0.1", 6600 + flag),
+        new TEndPoint("127.0.0.1", 7700 + flag),
+        new TEndPoint("127.0.0.1", 8800 + flag),
+        new TEndPoint("127.0.0.1", 9900 + flag),
+        new TEndPoint("127.0.0.1", 11000 + flag));
   }
 }

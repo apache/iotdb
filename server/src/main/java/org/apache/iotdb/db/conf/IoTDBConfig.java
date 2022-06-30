@@ -828,7 +828,7 @@ public class IoTDBConfig {
   private int pageCacheSizeInSchemaFile = 1024;
 
   /** Internal address for data node */
-  private String internalAddress = "0.0.0.0";
+  private String internalAddress = "127.0.0.1";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;

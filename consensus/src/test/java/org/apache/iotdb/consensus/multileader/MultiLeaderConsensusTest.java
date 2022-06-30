@@ -65,9 +65,9 @@ public class MultiLeaderConsensusTest {
 
   private final List<Peer> peers =
       Arrays.asList(
-          new Peer(gid, new TEndPoint("0.0.0.0", 6000)),
-          new Peer(gid, new TEndPoint("0.0.0.0", 6001)),
-          new Peer(gid, new TEndPoint("0.0.0.0", 6002)));
+          new Peer(gid, new TEndPoint("127.0.0.1", 6000)),
+          new Peer(gid, new TEndPoint("127.0.0.1", 6001)),
+          new Peer(gid, new TEndPoint("127.0.0.1", 6002)));
 
   private final List<File> peersStorage =
       Arrays.asList(
