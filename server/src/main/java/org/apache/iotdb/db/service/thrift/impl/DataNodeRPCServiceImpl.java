@@ -314,7 +314,7 @@ public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
   }
 
   @Override
-  public THeartbeatResp getHeartBeat(THeartbeatReq req) throws TException {
+  public THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req) throws TException {
     THeartbeatResp resp = new THeartbeatResp();
     resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
 
