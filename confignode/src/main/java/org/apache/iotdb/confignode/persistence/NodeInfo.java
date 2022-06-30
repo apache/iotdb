@@ -81,7 +81,7 @@ public class NodeInfo implements SnapshotProcessor {
 
   // Online ConfigNodes
   private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
-  private final Set<TConfigNodeLocation> onlineConfigNodes;
+  private final Set<TConfigNodeLocation> registeredConfigNodes;
 
   // Online DataNodes
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
@@ -98,7 +98,12 @@ public class NodeInfo implements SnapshotProcessor {
   public NodeInfo() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
+<<<<<<< HEAD
     this.onlineConfigNodes = new HashSet<>();
+=======
+    this.registeredConfigNodes =
+        new HashSet<>(ConfigNodeDescriptor.getInstance().getConf().getConfigNodeList());
+>>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
   }
 
   public void addMetrics() {
@@ -108,7 +113,7 @@ public class NodeInfo implements SnapshotProcessor {
           .getOrCreateAutoGauge(
               Metric.CONFIG_NODE.toString(),
               MetricLevel.CORE,
-              onlineConfigNodes,
+              registeredConfigNodes,
               o -> getOnlineDataNodeCount(),
               Tag.NAME.toString(),
               "online");
@@ -276,12 +281,17 @@ public class NodeInfo implements SnapshotProcessor {
         }
       }
 
+<<<<<<< HEAD
       onlineConfigNodes.add(applyConfigNodePlan.getConfigNodeLocation());
       SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(onlineConfigNodes));
+=======
+      registeredConfigNodes.add(applyConfigNodePlan.getConfigNodeLocation());
+      storeConfigNode();
+>>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
           applyConfigNodePlan.getConfigNodeLocation(),
-          onlineConfigNodes);
+          registeredConfigNodes);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Update online ConfigNode failed.", e);
@@ -304,12 +314,17 @@ public class NodeInfo implements SnapshotProcessor {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
+<<<<<<< HEAD
       onlineConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation());
       SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(onlineConfigNodes));
+=======
+      registeredConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation());
+      storeConfigNode();
+>>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
       LOGGER.info(
           "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
           removeConfigNodePlan.getConfigNodeLocation(),
-          onlineConfigNodes);
+          registeredConfigNodes);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Remove online ConfigNode failed.", e);
@@ -322,12 +337,34 @@ public class NodeInfo implements SnapshotProcessor {
     return status;
   }
 
+<<<<<<< HEAD
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
+=======
+  private void storeConfigNode() throws IOException {
+    Properties systemProperties = new Properties();
+    try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
+      systemProperties.load(inputStream);
+    }
+    systemProperties.setProperty(
+<<<<<<< HEAD
+        IoTDBConstant.TARGET_CONFIG_NODES,
+        NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(onlineConfigNodes)));
+=======
+        "confignode_list",
+        NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(registeredConfigNodes)));
+>>>>>>> bb9059aaab (move getOnlineConfigNodes to LoadManager)
+    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
+      systemProperties.store(fileOutputStream, "");
+    }
+  }
+
+  public List<TConfigNodeLocation> getRegisterConfigNodes() {
+>>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
     List<TConfigNodeLocation> result;
     configNodeInfoReadWriteLock.readLock().lock();
     try {
       // TODO: Check ConfigNode status, ensure the returned ConfigNode isn't removed
-      result = new ArrayList<>(onlineConfigNodes);
+      result = new ArrayList<>(registeredConfigNodes);
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();
     }
@@ -474,6 +511,6 @@ public class NodeInfo implements SnapshotProcessor {
     nextNodeId.set(0);
     onlineDataNodes.clear();
     drainingDataNodes.clear();
-    onlineConfigNodes.clear();
+    registeredConfigNodes.clear();
   }
 }

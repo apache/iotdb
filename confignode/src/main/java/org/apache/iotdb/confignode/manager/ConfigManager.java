@@ -174,7 +174,7 @@ public class ConfigManager implements IManager {
     } else {
       DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
       dataSet.setStatus(status);
-      dataSet.setConfigNodeList(nodeManager.getOnlineConfigNodes());
+      dataSet.setConfigNodeList(loadManager.getOnlineConfigNodes());
       return dataSet;
     }
   }
@@ -195,7 +195,7 @@ public class ConfigManager implements IManager {
   public TClusterNodeInfos getAllClusterNodeInfos() {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<TConfigNodeLocation> configNodeLocations = getNodeManager().getOnlineConfigNodes();
+      List<TConfigNodeLocation> configNodeLocations = getNodeManager().getRegisterConfigNodes();
       List<TDataNodeLocation> dataNodeInfoLocations =
           getNodeManager().getOnlineDataNodes(-1).stream()
               .map(TDataNodeInfo::getLocation)

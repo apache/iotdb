@@ -415,7 +415,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
    */
   @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    if (!configManager.getNodeManager().getOnlineConfigNodes().contains(configNodeLocation)) {
+    if (!configManager.getLoadManager().getOnlineConfigNodes().contains(configNodeLocation)) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
           .setMessage("Stop ConfigNode failed because the ConfigNode not in current Cluster.");
     }

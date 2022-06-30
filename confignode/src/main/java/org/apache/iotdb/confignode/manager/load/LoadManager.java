@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -98,6 +99,8 @@ public class LoadManager {
   private Future<?> currentHeartbeatFuture;
   private final AtomicInteger balanceCount;
 
+  List<TConfigNodeLocation> onlineConfigNodes;
+
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
     this.heartbeatCacheMap = new ConcurrentHashMap<>();
@@ -106,8 +109,12 @@ public class LoadManager {
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
+<<<<<<< HEAD
 
     this.balanceCount = new AtomicInteger(0);
+=======
+    this.onlineConfigNodes = getNodeManager().getRegisterConfigNodes();
+>>>>>>> d79d68be56 (move getOnlineConfigNodes to LoadManager)
   }
 
   /**
@@ -232,7 +239,7 @@ public class LoadManager {
       // Send heartbeat requests to all the online DataNodes
       pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
       // Send heartbeat requests to all the online ConfigNodes
-      pingOnlineConfigNodes(getNodeManager().getOnlineConfigNodes());
+      pingOnlineConfigNodes(getNodeManager().getRegisterConfigNodes());
       // Do load balancing
       doLoadBalancing();
       balanceCount.getAndIncrement();
@@ -312,6 +319,19 @@ public class LoadManager {
    */
   public void removeNodeHeartbeatHandCache(Integer nodeId) {
     heartbeatCacheMap.remove(nodeId);
+  }
+
+  public List<TConfigNodeLocation> getOnlineConfigNodes() {
+    getNodeManager()
+        .getRegisterConfigNodes()
+        .forEach(
+            registerConfigNode -> {
+              if (heartbeatCacheMap.get(registerConfigNode.getConfigNodeId()).getNodeStatus()
+                  == NodeStatus.Unknown) {
+                onlineConfigNodes.remove(registerConfigNode);
+              }
+            });
+    return onlineConfigNodes;
   }
 
   private ConsensusManager getConsensusManager() {
