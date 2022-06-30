@@ -32,10 +32,10 @@ import java.util.concurrent.TimeUnit;
 public class ConfigNodeConfig {
 
   /** could set ip or hostname */
-  private String rpcAddress = "0.0.0.0";
+  private String internalAddress = "0.0.0.0";
 
   /** used for communication between data node and config node */
-  private int rpcPort = 22277;
+  private int internalPort = 22277;
 
   /** used for communication between config node and config node */
   private int consensusPort = 22278;
@@ -173,20 +173,20 @@ public class ConfigNodeConfig {
     return dir;
   }
 
-  public String getRpcAddress() {
-    return rpcAddress;
+  public String getInternalAddress() {
+    return internalAddress;
   }
 
-  public void setRpcAddress(String rpcAddress) {
-    this.rpcAddress = rpcAddress;
+  public void setInternalAddress(String internalAddress) {
+    this.internalAddress = internalAddress;
   }
 
-  public int getRpcPort() {
-    return rpcPort;
+  public int getInternalPort() {
+    return internalPort;
   }
 
-  public void setRpcPort(int rpcPort) {
-    this.rpcPort = rpcPort;
+  public void setInternalPort(int internalPort) {
+    this.internalPort = internalPort;
   }
 
   public int getConsensusPort() {

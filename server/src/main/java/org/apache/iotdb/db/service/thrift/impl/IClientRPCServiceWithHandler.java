@@ -20,6 +20,6 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 
-public interface TSIEventHandler extends IClientRPCService.Iface {
+public interface IClientRPCServiceWithHandler extends IClientRPCService.Iface {
   void handleClientExit();
 }
