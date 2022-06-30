@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
@@ -796,15 +797,15 @@ public class ConfigManager implements IManager {
     // Map<DataNodeId, SchemaRegionNum>
     Map<Integer, AtomicInteger> schemaRegionNumMap = new HashMap<>();
 
-    if (regionsInfoDataSet.getRegionInfoList() != null) {
-      List<TRegionInfo> regionInfoList = regionsInfoDataSet.getRegionInfoList();
+    List<TRegionInfo> regionInfoList = regionsInfoDataSet.getRegionInfoList();
+    if (CollectionUtils.isNotEmpty(regionInfoList)) {
 
       regionInfoList.forEach(
           (regionInfo) -> {
             int dataNodeId = regionInfo.getDataNodeId();
             int regionTypeValue = regionInfo.getConsensusGroupId().getType().getValue();
 
-            if (dataRegionNumMap.get(dataNodeId) != null) {
+            if (dataRegionNumMap.containsKey(dataNodeId)) {
               dataRegionNumMap.put(
                   dataNodeId,
                   dataRegionNumMap.get(dataNodeId).addAndGet(regionTypeValue)
