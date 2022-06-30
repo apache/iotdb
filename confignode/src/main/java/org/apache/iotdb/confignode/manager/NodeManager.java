@@ -201,14 +201,14 @@ public class NodeManager {
   public TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
     if (removeConfigNodeLock.tryLock()) {
       try {
-        // Check ConfigNodes number
+        // Check OnlineConfigNodes number
         if (getLoadManager().getOnlineConfigNodes().size() <= 1) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
               .setMessage(
                   "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
         }
 
-        // Check whether the onlineConfigNodes contain the ConfigNode to be removed.
+        // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
         if (!getRegisteredConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
               .setMessage(
