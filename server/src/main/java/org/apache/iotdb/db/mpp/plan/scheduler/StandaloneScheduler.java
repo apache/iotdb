@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -180,7 +179,9 @@ public class StandaloneScheduler implements IScheduler {
             }
 
             if (executionResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              throw new IoTDBException(executionResult.getMessage(), executionResult.getCode());
+              LOGGER.error("Execute write operation error: {}", executionResult.getMessage());
+              stateMachine.transitionToFailed(executionResult);
+              return;
             }
           }
           stateMachine.transitionToFinished();

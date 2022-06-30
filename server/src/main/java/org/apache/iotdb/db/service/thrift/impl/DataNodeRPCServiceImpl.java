@@ -179,6 +179,7 @@ public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
               && TSStatusCode.SUCCESS_STATUS.getStatusCode()
                   == writeResponse.getStatus().getCode());
       response.setMessage(writeResponse.getStatus().message);
+      response.setStatus(writeResponse.getStatus());
     } else {
       LOGGER.error(
           "Something wrong happened while calling consensus layer's write API.",

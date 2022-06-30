@@ -24,7 +24,6 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
-import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -150,7 +149,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       return immediateFuture(new FragInstanceDispatchResult(result));
     } catch (FragmentInstanceDispatchException e) {
       logger.error("cannot dispatch FI for write operation", e);
-      return immediateFuture(new FragInstanceDispatchResult(false));
+      return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
     }
   }
 
@@ -189,7 +188,10 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   new TPlanNode(instance.getFragment().getRoot().serializeToByteBuffer()),
                   instance.getRegionReplicaSet().getRegionId());
           TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
-          return sendPlanNodeResp.accepted;
+          if (!sendPlanNodeResp.accepted) {
+            throw new FragmentInstanceDispatchException(sendPlanNodeResp.getStatus());
+          }
+          return true;
       }
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
@@ -249,9 +251,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         }
 
         if (writeResponse.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          throw new RuntimeException(
-              new IoTDBException(
-                  writeResponse.getStatus().getMessage(), writeResponse.getStatus().getCode()));
+          throw new FragmentInstanceDispatchException(writeResponse.getStatus());
         }
 
         return true;
