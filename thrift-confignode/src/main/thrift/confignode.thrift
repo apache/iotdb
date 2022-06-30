@@ -237,10 +237,6 @@ struct TShowRegionResp {
 }
 
 // show datanodes
-struct TShowDataNodesReq {
-  1: optional common.TConsensusGroupType consensusGroupType
-}
-
 struct TShowDataNodesResp {
   1: required common.TSStatus status
   2: optional list<common.TDataNodesInfo> dataNodesInfoList
@@ -334,7 +330,7 @@ service IConfigNodeRPCService {
 
   /* Show DataNodes */
 
-  TShowDataNodesResp showDataNodes(TShowDataNodesReq req)
+  TShowDataNodesResp showDataNodes()
 
 }
 

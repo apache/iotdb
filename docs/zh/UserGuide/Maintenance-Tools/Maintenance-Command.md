@@ -189,14 +189,47 @@ Msg: The statement is executed successfully.
 IoTDB> create timeseries root.ln.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
 Msg: The statement is executed successfully.
 IoTDB> show regions
-+--------+------------+------+-------------+-----+----------+---------+----+
-|RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
-+--------+------------+------+-------------+-----+----------+---------+----+
-|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6668|
-|       1|SchemaRegion|    Up|      root.ln|    1|         1|127.0.0.1|6667|
-+--------+------------+------+-------------+-----+----------+---------+----+
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|6667|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|6668|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
 Total line number = 2
-It costs 0.035s
+It costs 0.013s
+
+IoTDB> show datanodes
++------+-------+---------+----+-------------+---------------+
+|NodeID| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
++------+-------+---------+----+-------------+---------------+
+|     1|Running|127.0.0.1|6667|            0|              1|
+|     2|Running|127.0.0.1|6668|            0|              1|
++------+-------+---------+----+-------------+---------------+
+Total line number = 2
+It costs 0.007s
+
+IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
+Msg: The statement is executed successfully.
+IoTDB> show regions
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         1|127.0.0.1|6667|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|6668|
+|       2|  DataRegion|    Up|      root.ln|           1|         1|         1|127.0.0.1|6667|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+Total line number = 3
+It costs 0.008s
+IoTDB> show datanodes
++------+-------+---------+----+-------------+---------------+
+|NodeID| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
++------+-------+---------+----+-------------+---------------+
+|     1|Running|127.0.0.1|6667|            1|              1|
+|     2|Running|127.0.0.1|6668|            0|              1|
++------+-------+---------+----+-------------+---------------+
+Total line number = 2
+It costs 0.006s
+```
 
 ## 集群节点状态查看工具
 
@@ -242,35 +275,3 @@ Total line number = 6
 It costs 0.012s
 ```
 
-IoTDB> show datanodes
-+------+--------+-------+---------+----+-------------+---------------+
-|NodeID|NodeType| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
-+------+--------+-------+---------+----+-------------+---------------+
-|     1|DataNode|Running|127.0.0.1|6667|            0|              1|
-|     2|DataNode|Running|127.0.0.1|6668|            0|              1|
-+------+--------+-------+---------+----+-------------+---------------+
-Total line number = 2
-It costs 0.007s
-
-IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
-Msg: The statement is executed successfully.
-IoTDB> show regions
-+--------+------------+------+-------------+-----+----------+---------+----+
-|RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
-+--------+------------+------+-------------+-----+----------+---------+----+
-|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6668|
-|       1|SchemaRegion|    Up|      root.ln|    1|         1|127.0.0.1|6667|
-|       2|  DataRegion|    Up|      root.sg|    1|         2|127.0.0.1|6668|
-+--------+------------+------+-------------+-----+----------+---------+----+
-Total line number = 3
-It costs 0.007s
-IoTDB> show datanodes
-+------+--------+-------+---------+----+-------------+---------------+
-|NodeID|NodeType| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
-+------+--------+-------+---------+----+-------------+---------------+
-|     1|DataNode|Running|127.0.0.1|6667|            0|              1|
-|     2|DataNode|Running|127.0.0.1|6668|            1|              1|
-+------+--------+-------+---------+----+-------------+---------------+
-Total line number = 2
-It costs 0.007s
-```

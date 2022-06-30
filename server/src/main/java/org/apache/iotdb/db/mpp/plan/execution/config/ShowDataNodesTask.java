@@ -56,22 +56,19 @@ public class ShowDataNodesTask implements IConfigTask {
       for (TDataNodesInfo tDataNodesLocation : showDataNodesResp.getDataNodesInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
         builder.getColumnBuilder(0).writeInt(tDataNodesLocation.getDataNodeId());
-        if (tDataNodesLocation.getDataNodeId() != -1) {
-          builder.getColumnBuilder(1).writeBinary(Binary.valueOf("DataNode"));
-        }
         builder
-            .getColumnBuilder(2)
+            .getColumnBuilder(1)
             .writeBinary(
                 Binary.valueOf(
                     tDataNodesLocation.getStatus() == null ? "" : tDataNodesLocation.getStatus()));
 
         builder
-            .getColumnBuilder(3)
+            .getColumnBuilder(2)
             .writeBinary(Binary.valueOf(tDataNodesLocation.getRpcAddresss()));
-        builder.getColumnBuilder(4).writeInt(tDataNodesLocation.getRpcPort());
-        builder.getColumnBuilder(5).writeInt(tDataNodesLocation.getDataRegionNum());
+        builder.getColumnBuilder(3).writeInt(tDataNodesLocation.getRpcPort());
+        builder.getColumnBuilder(4).writeInt(tDataNodesLocation.getDataRegionNum());
 
-        builder.getColumnBuilder(6).writeInt(tDataNodesLocation.getSchemaRegionNum());
+        builder.getColumnBuilder(5).writeInt(tDataNodesLocation.getSchemaRegionNum());
         builder.declarePosition();
       }
     }

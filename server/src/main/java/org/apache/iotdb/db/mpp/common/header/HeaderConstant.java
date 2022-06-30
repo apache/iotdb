@@ -239,7 +239,6 @@ public class HeaderConstant {
         new DatasetHeader(
             Arrays.asList(
                 new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
-                new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_PORT, TSDataType.INT32),

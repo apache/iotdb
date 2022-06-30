@@ -25,13 +25,11 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.cluster.NodeStatus;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodesInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
@@ -136,11 +134,6 @@ public class NodeManager {
   public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoPlan req) {
     return (DataNodeInfosResp) getConsensusManager().read(req).getDataset();
   }
-
-  public DataSet getDataNodesLocations(GetDataNodesInfoListPlan req) {
-    return getConsensusManager().read(req).getDataset();
-  }
-
   /**
    * Only leader use this interface
    *
@@ -170,7 +163,7 @@ public class NodeManager {
     return nodeInfo.getOnlineDataNodes(dataNodeId);
   }
 
-  public List<TDataNodesInfo> getOnlineDataNodesLocations() {
+  public List<TDataNodesInfo> getOnlineDataNodesInfoList() {
     List<TDataNodesInfo> dataNodesLocations = new ArrayList<>();
     List<TDataNodeInfo> onlineDataNodes = this.getOnlineDataNodes(-1);
     if (onlineDataNodes != null) {
@@ -178,7 +171,6 @@ public class NodeManager {
           (dataNodeInfo) -> {
             TDataNodesInfo tDataNodesLocation = new TDataNodesInfo();
             tDataNodesLocation.setDataNodeId(dataNodeInfo.getLocation().getDataNodeId());
-            tDataNodesLocation.setNodeType(IoTDBConstant.NODE_TYPE_DATA_NODE);
             tDataNodesLocation.setStatus(NodeStatus.Running.getStatus());
             tDataNodesLocation.setRpcAddresss(
                 dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());

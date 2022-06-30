@@ -32,7 +32,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -351,11 +350,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       ShowDataNodesStatement showDataNodesStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
-    TShowDataNodesReq showDataNodesReq = new TShowDataNodesReq();
-    showDataNodesReq.setConsensusGroupType(showDataNodesStatement.getRegionType());
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      showDataNodesResp = client.showDataNodes(showDataNodesReq);
+      showDataNodesResp = client.showDataNodes();
       if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.setException(new StatementExecutionException(showDataNodesResp.getStatus()));
         return future;

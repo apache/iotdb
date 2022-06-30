@@ -19,10 +19,7 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -50,7 +47,6 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodesListResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
@@ -84,7 +80,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
-import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -103,12 +98,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Iface {
@@ -477,53 +468,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TShowDataNodesResp showDataNodes(TShowDataNodesReq showDataNodesReq) throws TException {
-    GetRegionInfoListPlan getRegionsInfoPlan =
-        new GetRegionInfoListPlan(showDataNodesReq.getConsensusGroupType());
-    Map<Integer, List<Integer>> map = new HashMap<>();
-    DataNodesListResp dataNodesInfoDataSet = (DataNodesListResp) configManager.getOnlineDataNodes();
-    RegionInfoListResp regionsInfoDataSet =
-        (RegionInfoListResp) configManager.showRegion(getRegionsInfoPlan);
-    List<TDataNodesInfo> dataNodesList = dataNodesInfoDataSet.getDataNodesList();
-    if (regionsInfoDataSet.getRegionInfoList() != null) {
-      List<TRegionInfo> regionInfoList = regionsInfoDataSet.getRegionInfoList();
-      regionInfoList.forEach(
-          (regionInfo) -> {
-            if (map.get(regionInfo.getDataNodeId()) != null
-                && map.get(regionInfo.getDataNodeId()).size() != 0) {
-              List<Integer> regionValues = map.get(regionInfo.getDataNodeId());
-              regionValues.add(regionInfo.getConsensusGroupId().getType().getValue());
-              map.put(regionInfo.getDataNodeId(), regionValues);
-            } else {
-              List<Integer> regionValues = new ArrayList<>();
-              regionValues.add(regionInfo.getConsensusGroupId().getType().getValue());
-              map.put(regionInfo.getDataNodeId(), regionValues);
-            }
-          });
-
-      dataNodesList.forEach(
-          (tDataNodesInfo -> {
-            List<Integer> regionValues = map.get(tDataNodesInfo.getDataNodeId());
-            AtomicInteger dataRegionNum = new AtomicInteger();
-            AtomicInteger schemaRegionNum = new AtomicInteger();
-            if (regionValues != null) {
-              regionValues.forEach(
-                  (regionValue) -> {
-                    if (regionValue == TConsensusGroupType.DataRegion.getValue()) {
-                      dataRegionNum.getAndIncrement();
-                    }
-                    if (regionValue == TConsensusGroupType.SchemaRegion.getValue()) {
-                      schemaRegionNum.getAndIncrement();
-                    }
-                    tDataNodesInfo.setDataRegionNum(dataRegionNum.get());
-                    tDataNodesInfo.setSchemaRegionNum(schemaRegionNum.get());
-                  });
-            }
-          }));
-    }
+  public TShowDataNodesResp showDataNodes() throws TException {
+    GetRegionInfoListPlan getRegionsInfoPlan = new GetRegionInfoListPlan();
+    DataNodeInfosResp dataSet = (DataNodeInfosResp) configManager.showDataNodes(getRegionsInfoPlan);
     TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
-    showDataNodesResp.setStatus(dataNodesInfoDataSet.getStatus());
-    showDataNodesResp.setDataNodesInfoList(dataNodesList);
+    showDataNodesResp.setStatus(dataSet.getStatus());
+    showDataNodesResp.setDataNodesInfoList(dataSet.getDataNodesInfoList());
     return showDataNodesResp;
   }
 

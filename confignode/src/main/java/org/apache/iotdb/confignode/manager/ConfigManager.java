@@ -23,7 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -57,7 +59,6 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodesListResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
@@ -777,11 +778,62 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet getOnlineDataNodes() {
-    DataNodesListResp dataNodesListResp = new DataNodesListResp();
-    dataNodesListResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    dataNodesListResp.setDataNodesList(nodeManager.getOnlineDataNodesLocations());
-    return dataNodesListResp;
+  public DataSet showDataNodes(GetRegionInfoListPlan getRegionsinfoReq) {
+    TSStatus status = confirmLeader();
+    DataNodeInfosResp dataNodeInfosResp = new DataNodeInfosResp();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      List<TDataNodesInfo> dataNodesInfoList = nodeManager.getOnlineDataNodesInfoList();
+      RegionInfoListResp regionsInfoDataSet =
+          (RegionInfoListResp) partitionManager.getRegionInfoList(getRegionsinfoReq);
+      Map<Integer, Integer> dataRegionNumMap = new HashMap<>();
+      Map<Integer, Integer> schemaRegionNumMap = new HashMap<>();
+      if (regionsInfoDataSet.getRegionInfoList() != null) {
+        List<TRegionInfo> regionInfoList = regionsInfoDataSet.getRegionInfoList();
+        regionInfoList.forEach(
+            (regionInfo) -> {
+              if (dataRegionNumMap.get(regionInfo.getDataNodeId()) != null) {
+                dataRegionNumMap.put(
+                    regionInfo.getDataNodeId(),
+                    dataRegionNumMap.get(regionInfo.getDataNodeId())
+                                + regionInfo.getConsensusGroupId().getType().getValue()
+                            == TConsensusGroupType.DataRegion.getValue()
+                        ? 1
+                        : 0);
+                schemaRegionNumMap.put(
+                    regionInfo.getDataNodeId(),
+                    schemaRegionNumMap.get(regionInfo.getDataNodeId())
+                                + regionInfo.getConsensusGroupId().getType().getValue()
+                            == TConsensusGroupType.SchemaRegion.getValue()
+                        ? 1
+                        : 0);
+              } else {
+                dataRegionNumMap.put(
+                    regionInfo.getDataNodeId(),
+                    regionInfo.getConsensusGroupId().getType().getValue()
+                            == TConsensusGroupType.DataRegion.getValue()
+                        ? 1
+                        : 0);
+                schemaRegionNumMap.put(
+                    regionInfo.getDataNodeId(),
+                    regionInfo.getConsensusGroupId().getType().getValue()
+                            == TConsensusGroupType.SchemaRegion.getValue()
+                        ? 1
+                        : 0);
+              }
+            });
+        dataNodesInfoList.forEach(
+            (dataNodesInfo -> {
+              dataNodesInfo.setDataRegionNum(dataRegionNumMap.get(dataNodesInfo.getDataNodeId()));
+              dataNodesInfo.setSchemaRegionNum(
+                  schemaRegionNumMap.get(dataNodesInfo.getDataNodeId()));
+            }));
+      }
+      dataNodeInfosResp.setStatus(regionsInfoDataSet.getStatus());
+      dataNodeInfosResp.setDataNodesInfoList(dataNodesInfoList);
+    } else {
+      dataNodeInfosResp.setStatus(status);
+    }
+    return dataNodeInfosResp;
   }
 
   public ProcedureManager getProcedureManager() {
