@@ -68,12 +68,6 @@ struct TDeleteStorageGroupsReq {
   1: required list<string> prefixPathList
 }
 
-struct TSetTTLReq {
-  1: required string storageGroup
-  2: required i64 TTL
-}
-
-
 struct TSetSchemaReplicationFactorReq {
   1: required string storageGroup
   2: required i32 schemaReplicationFactor
@@ -202,7 +196,9 @@ struct TConfigNodeRegisterReq {
   6: required i64 defaultTTL
   7: required i64 timePartitionInterval
   8: required i32 schemaReplicationFactor
-  9: required i32 dataReplicationFactor
+  9: required double schemaRegionPerDataNode
+  10: required i32 dataReplicationFactor
+  11: required double dataRegionPerProcessor
 }
 
 struct TConfigNodeRegisterResp {
@@ -240,7 +236,7 @@ struct TShowRegionResp {
   2: optional list<common.TRegionInfo> regionInfoList;
 }
 
-service ConfigIService {
+service IConfigNodeRPCService {
 
   /* DataNode */
 
@@ -261,7 +257,7 @@ service ConfigIService {
 
   common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
 
-  common.TSStatus setTTL(TSetTTLReq req)
+  common.TSStatus setTTL(common.TSetTTLReq req)
 
   common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
 

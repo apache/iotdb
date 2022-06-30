@@ -20,9 +20,9 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 
 import org.apache.thrift.TException;
@@ -46,7 +46,7 @@ import static org.mockito.Mockito.when;
 
 public class IoTDBConnectionTest {
 
-  @Mock private TSIService.Iface client;
+  @Mock private IClientRPCService.Iface client;
 
   private IoTDBConnection connection = new IoTDBConnection();
   private TSStatus successStatus = RpcUtils.SUCCESS_STATUS;

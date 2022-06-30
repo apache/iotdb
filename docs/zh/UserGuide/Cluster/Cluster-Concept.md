@@ -27,7 +27,7 @@ Apache IoTDB 集群版包含两种角色的节点，ConfigNode 和 DataNode，�
 
 集群架构示例如下图：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Architecture.png?raw=true">
+<img style="width:100%; max-width:500px; max-height:400px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Architecture.png?raw=true">
 
 ConfigNode 是集群的控制节点，管理集群的节点状态、分区信息等，集群所有 ConfigNode 组成一个高可用组，数据全量备份。
 
@@ -82,7 +82,7 @@ Region 是数据复制的基本单位，一个 Region 的多个副本构成了�
 
 完整的集群分区复制的示意图如下：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Data-Partition.png?raw=true">
+<img style="width:100%; max-width:500px; max-height:500px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Data-Partition.png?raw=true">
 
 图中包含 1 个 SchemaRegion 组，元数据采用 3 副本，因此 3 个白色的 SchemaRegion-0 组成了一个副本组。
 
@@ -96,3 +96,7 @@ Region 是数据复制的基本单位，一个 Region 的多个副本构成了�
     * Standalone：仅单副本时可用，一致性协议的空实现，效率最高。
     * MultiLeader：任意副本数可用，当前仅可用于 DataRegion 的副本上，写入可以在任一副本进行，并异步复制到其他副本。
     * Ratis：Raft 协议的一种实现，任意副本数可用，当前可用于任意副本组上。
+
+## 0.14.0-Preview1 功能图
+
+<img style="width:100%; max-width:800px; max-height:1000px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Cluster/Preview1-Function.png?raw=true">

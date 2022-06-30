@@ -112,7 +112,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| The client rpc service listens on the address.|
 |Type|String|
-|Default| "0.0.0.0" |
+|Default| 0.0.0.0 |
 |Effective|After restarting system|
 
 * rpc\_port
@@ -247,9 +247,9 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 50010 |
 |Effective|After restarting system|
 
-* config\_nodes
+* target\_config\_nodes
 
-|Name| config\_nodes |
+|Name| target\_config\_nodes |
 |:---:|:---|
 |Description| ConfigNode Address for DataNode to join cluster |
 |Type| String |
