@@ -324,7 +324,8 @@ public class LogDispatcher {
         try {
           walEntryiterator.waitForNextReady();
         } catch (InterruptedException e) {
-          e.printStackTrace();
+          Thread.currentThread().interrupt();
+          logger.warn("wait for next WAL entry is interrupted");
         }
         IndexedConsensusRequest data = walEntryiterator.next();
         currentIndex = data.getSearchIndex();
