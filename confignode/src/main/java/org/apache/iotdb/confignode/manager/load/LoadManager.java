@@ -275,7 +275,7 @@ public class LoadManager {
                   heartbeatCacheMap.computeIfAbsent(
                       dataNodeInfo.getLocation().getDataNodeId(),
                       empty -> new DataNodeHeartbeatCache()),
-                      regionGroupCacheMap);
+              regionGroupCacheMap);
       AsyncDataNodeClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);

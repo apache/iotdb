@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -146,7 +147,7 @@ public class ConfigNodeConfig {
   private long heartbeatInterval = 1000;
 
   /** The routing policy of read/write requests */
-  private String routingPolicy = "leader";
+  private String routingPolicy = RouteBalancer.greedyPolicy;
 
   ConfigNodeConfig() {
     // empty constructor

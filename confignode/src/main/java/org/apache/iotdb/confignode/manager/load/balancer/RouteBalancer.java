@@ -36,6 +36,9 @@ import java.util.Map;
  */
 public class RouteBalancer {
 
+  public static final String leaderPolicy = "leader";
+  public static final String greedyPolicy = "greedy";
+
   private final IManager configManager;
 
   public RouteBalancer(IManager configManager) {
@@ -49,7 +52,7 @@ public class RouteBalancer {
 
   private IRouter genRouter() {
     String policy = ConfigNodeDescriptor.getInstance().getConf().getRoutingPolicy();
-    if (policy.equals("leader")) {
+    if (policy.equals(leaderPolicy)) {
       return new LeaderRouter(
           getLoadManager().getAllLeadership(), getLoadManager().getAllLoadScores());
     } else {

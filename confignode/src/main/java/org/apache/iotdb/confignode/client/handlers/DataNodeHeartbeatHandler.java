@@ -30,6 +30,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
+
 public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatResp> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeHeartbeatHandler.class);
@@ -40,28 +42,33 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
   private final Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap;
 
   public DataNodeHeartbeatHandler(
-      TDataNodeLocation dataNodeLocation, DataNodeHeartbeatCache dataNodeHeartbeatCache, Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap) {
+      TDataNodeLocation dataNodeLocation,
+      DataNodeHeartbeatCache dataNodeHeartbeatCache,
+      Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap) {
     this.dataNodeLocation = dataNodeLocation;
     this.dataNodeHeartbeatCache = dataNodeHeartbeatCache;
     this.regionGroupCacheMap = regionGroupCacheMap;
   }
 
   @Override
-  public void onComplete(THeartbeatResp tHeartbeatResp) {
+  public void onComplete(THeartbeatResp heartbeatResp) {
     dataNodeHeartbeatCache.cacheHeartBeat(
-        new HeartbeatPackage(tHeartbeatResp.getHeartbeatTimestamp(), System.currentTimeMillis()));
+        new HeartbeatPackage(heartbeatResp.getHeartbeatTimestamp(), System.currentTimeMillis()));
 
-        if (resp.isSetJudgedLeaders()) {
-          resp.getJudgedLeaders()
-              .forEach(
-                  (consensusGroupId, isLeader) -> {
-                    if (isLeader) {
-                      regionGroupCacheMap
-                          .computeIfAbsent(consensusGroupId, empty -> new RegionGroupCache())
-                          .updateLeader(resp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId());
-                    }
-                  });
-  }}
+    if (heartbeatResp.isSetJudgedLeaders()) {
+      heartbeatResp
+          .getJudgedLeaders()
+          .forEach(
+              (consensusGroupId, isLeader) -> {
+                if (isLeader) {
+                  regionGroupCacheMap
+                      .computeIfAbsent(consensusGroupId, empty -> new RegionGroupCache())
+                      .updateLeader(
+                          heartbeatResp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId());
+                }
+              });
+    }
+  }
 
   @Override
   public void onError(Exception e) {
