@@ -275,8 +275,8 @@ public class NodeManager {
                 + ".");
   }
 
-  public List<TConfigNodeLocation> getRegisterConfigNodes() {
-    return nodeInfo.getRegisterConfigNodes();
+  public List<TConfigNodeLocation> getRegisteredDataNodes() {
+    return nodeInfo.getRegisteredDataNodes();
   }
 
   private ConsensusManager getConsensusManager() {

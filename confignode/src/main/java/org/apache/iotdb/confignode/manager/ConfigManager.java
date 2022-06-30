@@ -195,7 +195,7 @@ public class ConfigManager implements IManager {
   public TClusterNodeInfos getAllClusterNodeInfos() {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<TConfigNodeLocation> configNodeLocations = getNodeManager().getRegisterConfigNodes();
+      List<TConfigNodeLocation> configNodeLocations = getNodeManager().getRegisteredDataNodes();
       List<TDataNodeLocation> dataNodeInfoLocations =
           getNodeManager().getOnlineDataNodes(-1).stream()
               .map(TDataNodeInfo::getLocation)

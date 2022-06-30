@@ -358,8 +358,12 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
+<<<<<<< HEAD
   public List<TConfigNodeLocation> getRegisterConfigNodes() {
 >>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
+=======
+  public List<TConfigNodeLocation> getRegisteredDataNodes() {
+>>>>>>> 94af7168f6 (fix name)
     List<TConfigNodeLocation> result;
     configNodeInfoReadWriteLock.readLock().lock();
     try {

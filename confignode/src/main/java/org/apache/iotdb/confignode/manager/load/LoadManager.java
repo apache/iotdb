@@ -110,11 +110,15 @@ public class LoadManager {
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     this.balanceCount = new AtomicInteger(0);
 =======
     this.onlineConfigNodes = getNodeManager().getRegisterConfigNodes();
 >>>>>>> d79d68be56 (move getOnlineConfigNodes to LoadManager)
+=======
+    this.onlineConfigNodes = getNodeManager().getRegisteredDataNodes();
+>>>>>>> ee3487b0fc (fix name)
   }
 
   /**
@@ -239,7 +243,7 @@ public class LoadManager {
       // Send heartbeat requests to all the online DataNodes
       pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
       // Send heartbeat requests to all the online ConfigNodes
-      pingOnlineConfigNodes(getNodeManager().getRegisterConfigNodes());
+      pingOnlineConfigNodes(getNodeManager().getRegisteredDataNodes());
       // Do load balancing
       doLoadBalancing();
       balanceCount.getAndIncrement();
@@ -323,7 +327,7 @@ public class LoadManager {
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
     getNodeManager()
-        .getRegisterConfigNodes()
+        .getRegisteredDataNodes()
         .forEach(
             registerConfigNode -> {
               if (heartbeatCacheMap.get(registerConfigNode.getConfigNodeId()).getNodeStatus()
