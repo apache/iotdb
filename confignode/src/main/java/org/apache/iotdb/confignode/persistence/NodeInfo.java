@@ -79,7 +79,7 @@ public class NodeInfo implements SnapshotProcessor {
           ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor(),
           ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
 
-  // Online ConfigNodes
+  // Registered ConfigNodes
   private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
   private final Set<TConfigNodeLocation> registeredConfigNodes;
 
