@@ -29,6 +29,4 @@
   <allow pkg="org\.junit.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.itbase" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.it.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true"/>
-  <allow pkg="org\.apache\.iotdb\.db\.constant\.TestConstant.*" regex="true"/>
 </import-control>

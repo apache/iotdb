@@ -42,13 +42,14 @@ import static org.junit.Assert.fail;
 
 public class TestUtils {
 
-  public static void prepareData(String[] SQLs) {
+  public static void prepareData(String[] sqls) {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String sql : SQLs) {
+      // TODO replace with prepareBatchData
+      for (String sql : sqls) {
         statement.execute(sql);
       }
-    } catch (Exception e) {
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -178,7 +179,7 @@ public class TestUtils {
         }
         Assert.assertEquals(0, cnt);
       }
-    } catch (Exception e) {
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -189,7 +190,7 @@ public class TestUtils {
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail();
-    } catch (Exception e) {
+    } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }
   }
