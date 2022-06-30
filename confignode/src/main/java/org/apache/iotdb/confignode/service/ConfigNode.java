@@ -81,17 +81,16 @@ public class ConfigNode implements ConfigNodeMBean {
       // Set up internal services
       setUpInternalServices();
 
-      /* Check for initial startup or restart */
+      /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
-
-        /* Restart */
         setUpRPCService();
         LOGGER.info(
             "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+        return;
+      }
 
-      } else if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
-
-        /* Initial startup of Seed-ConfigNode */
+      /* Initial startup of Seed-ConfigNode */
+      if (ConfigNodeDescriptor.getInstance().isSeedConfigNode()) {
         SystemPropertiesUtils.storeSystemParameters();
         // Seed-ConfigNode should apply itself when first start
         configManager
@@ -107,20 +106,19 @@ public class ConfigNode implements ConfigNodeMBean {
         // The initial startup of Seed-ConfigNode finished
         LOGGER.info(
             "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
-
-      } else {
-
-        /* Initial startup of Non-Seed-ConfigNode */
-        // We set up Non-Seed ConfigNode's RPC service before sending the register request
-        // in order to facilitate the scheduling of capacity expansion process in ConfigNode-leader
-        setUpRPCService();
-        registerConfigNode();
-        // The initial startup of Non-Seed-ConfigNode is not yet finished,
-        // we should wait for leader's scheduling
-        LOGGER.info(
-            "{} has registered successfully. Waiting for the leader's scheduling to join the cluster.",
-            ConfigNodeConstant.GLOBAL_NAME);
+        return;
       }
+
+      /* Initial startup of Non-Seed-ConfigNode */
+      // We set up Non-Seed ConfigNode's RPC service before sending the register request
+      // in order to facilitate the scheduling of capacity expansion process in ConfigNode-leader
+      setUpRPCService();
+      registerConfigNode();
+      // The initial startup of Non-Seed-ConfigNode is not yet finished,
+      // we should wait for leader's scheduling
+      LOGGER.info(
+          "{} has registered successfully. Waiting for the leader's scheduling to join the cluster.",
+          ConfigNodeConstant.GLOBAL_NAME);
 
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
