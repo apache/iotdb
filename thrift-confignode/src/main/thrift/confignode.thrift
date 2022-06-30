@@ -68,12 +68,6 @@ struct TDeleteStorageGroupsReq {
   1: required list<string> prefixPathList
 }
 
-struct TSetTTLReq {
-  1: required string storageGroup
-  2: required i64 TTL
-}
-
-
 struct TSetSchemaReplicationFactorReq {
   1: required string storageGroup
   2: required i32 schemaReplicationFactor
@@ -263,7 +257,7 @@ service IConfigNodeRPCService {
 
   common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
 
-  common.TSStatus setTTL(TSetTTLReq req)
+  common.TSStatus setTTL(common.TSetTTLReq req)
 
   common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
 

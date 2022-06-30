@@ -73,6 +73,8 @@ public class WALBuffer extends AbstractWALBuffer {
   // buffer in syncing status, serializeThread makes sure no more writes to syncingBuffer
   private volatile ByteBuffer syncingBuffer;
   // endregion
+  /** file status of working buffer, updating file writer's status when syncing */
+  protected volatile WALFileStatus currentFileStatus;
   /** single thread to serialize WALEntry to workingBuffer */
   private final ExecutorService serializeThread;
   /** single thread to sync syncingBuffer to disk */
@@ -86,6 +88,7 @@ public class WALBuffer extends AbstractWALBuffer {
       String identifier, String logDirectory, long startFileVersion, long startSearchIndex)
       throws FileNotFoundException {
     super(identifier, logDirectory, startFileVersion, startSearchIndex);
+    currentFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     allocateBuffers();
     serializeThread =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
@@ -402,6 +405,8 @@ public class WALBuffer extends AbstractWALBuffer {
 
     @Override
     public void run() {
+      currentWALFileWriter.updateFileStatus(fileStatus);
+
       // flush buffer to os
       try {
         currentWALFileWriter.write(syncingBuffer);
@@ -437,7 +442,7 @@ public class WALBuffer extends AbstractWALBuffer {
       if (rollWALFileWriterListener != null
           || (forceFlag && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
         try {
-          rollLogWriter(searchIndex, fileStatus);
+          rollLogWriter(searchIndex, currentWALFileWriter.getWalFileStatus());
           if (rollWALFileWriterListener != null) {
             rollWALFileWriterListener.succeed();
           }

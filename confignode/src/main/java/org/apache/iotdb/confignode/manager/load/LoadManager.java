@@ -34,7 +34,7 @@ import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsPlan;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
@@ -109,20 +109,20 @@ public class LoadManager {
   public void doRegionCreation(
       Map<String, Integer> allotmentMap, TConsensusGroupType consensusGroupType)
       throws NotEnoughDataNodeException, StorageGroupNotExistsException {
-    CreateRegionsReq createRegionGroupsReq =
+    CreateRegionsPlan createRegionGroupsPlan =
         regionBalancer.genRegionsAllocationPlan(allotmentMap, consensusGroupType);
 
     // TODO: Use procedure to protect the following process
     // Create Regions on DataNodes
     Map<String, Long> ttlMap = new HashMap<>();
-    for (String storageGroup : createRegionGroupsReq.getRegionGroupMap().keySet()) {
+    for (String storageGroup : createRegionGroupsPlan.getRegionGroupMap().keySet()) {
       ttlMap.put(
           storageGroup,
           getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
     }
-    AsyncDataNodeClientPool.getInstance().createRegions(createRegionGroupsReq, ttlMap);
+    AsyncDataNodeClientPool.getInstance().createRegions(createRegionGroupsPlan, ttlMap);
     // Persist the allocation result
-    getConsensusManager().write(createRegionGroupsReq);
+    getConsensusManager().write(createRegionGroupsPlan);
   }
 
   /**
