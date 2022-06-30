@@ -89,7 +89,7 @@ public class QueryDataSetHandler {
     DatasetHeader datasetHeader = queryExecution.getDatasetHeader();
 
     for (int i = 0; i < datasetHeader.getRespColumns().size(); i++) {
-      targetDataSet.addColumnNamesItem(datasetHeader.getRespColumns().get(i));
+      targetDataSet.addExpressionsItem(datasetHeader.getRespColumns().get(i));
       targetDataSet.addValuesItem(new ArrayList<>());
     }
 
