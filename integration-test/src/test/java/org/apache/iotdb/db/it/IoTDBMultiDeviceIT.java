@@ -236,7 +236,12 @@ public class IoTDBMultiDeviceIT {
   }
 
   @Test
-  public void selectAllTest() {
+  public void testMultiDeviceQueryAndDelete() {
+    testSelectAll();
+    testSelectAfterDelete();
+  }
+
+  private void testSelectAll() {
     String selectSql = "select * from root.**";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -260,8 +265,7 @@ public class IoTDBMultiDeviceIT {
     }
   }
 
-  @Test
-  public void selectAfterDeleteTest() {
+  private void testSelectAfterDelete() {
     String selectSql = "select * from root.**";
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
