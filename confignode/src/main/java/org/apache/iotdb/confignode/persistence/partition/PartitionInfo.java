@@ -562,6 +562,10 @@ public class PartitionInfo implements SnapshotProcessor {
     return storageGroupPartitionTables.get(storageGroup).getRegionAllocationParticle(type);
   }
 
+  public Set<TDataNodeLocation> getDataNodeLocation(String storageGroup, TConsensusGroupType type) {
+    return storageGroupPartitionTables.get(storageGroup).getDataNodeLocation(type);
+  }
+
   /**
    * Only leader use this interface.
    *
