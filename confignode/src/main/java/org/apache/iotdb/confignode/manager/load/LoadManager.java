@@ -99,7 +99,8 @@ public class LoadManager {
   private Future<?> currentHeartbeatFuture;
   private final AtomicInteger balanceCount;
 
-  List<TConfigNodeLocation> onlineConfigNodes;
+  /** Online ConfigNodes * */
+  private List<TConfigNodeLocation> onlineConfigNodes;
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
