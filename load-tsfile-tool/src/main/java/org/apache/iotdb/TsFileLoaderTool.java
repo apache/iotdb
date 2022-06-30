@@ -30,13 +30,6 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -54,6 +47,13 @@ import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 import java.io.File;
 import java.io.IOException;
@@ -192,11 +192,11 @@ public class TsFileLoaderTool {
     // read mods file
     List<Modification> modifications = null;
     if (FSFactoryProducer.getFSFactory()
-            .getFile(filename + ModificationFile.FILE_SUFFIX)
-            .exists()) {
+        .getFile(filename + ModificationFile.FILE_SUFFIX)
+        .exists()) {
       modifications =
-              (List<Modification>)
-                      new ModificationFile(filename + ModificationFile.FILE_SUFFIX).getModifications();
+          (List<Modification>)
+              new ModificationFile(filename + ModificationFile.FILE_SUFFIX).getModifications();
     }
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
@@ -215,34 +215,34 @@ public class TsFileLoaderTool {
             chunkHeaderOffset = reader.position() - 1;
             ChunkHeader header = reader.readChunkHeader(marker);
             Decoder defaultTimeDecoder =
-                    Decoder.getDecoderByType(
-                            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                            TSDataType.INT64);
+                Decoder.getDecoderByType(
+                    TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                    TSDataType.INT64);
             Decoder valueDecoder =
-                    Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
+                Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
             // 1. construct MeasurementSchema from chunkHeader
             String measurement = header.getMeasurementID();
             MeasurementSchema measurementSchema =
-                    new MeasurementSchema(
-                            measurement,
-                            header.getDataType(),
-                            header.getEncodingType(),
-                            header.getCompressionType());
+                new MeasurementSchema(
+                    measurement,
+                    header.getDataType(),
+                    header.getEncodingType(),
+                    header.getCompressionType());
             // 2. record data point of each measurement
             int dataSize = header.getDataSize();
             while (dataSize > 0) {
               valueDecoder.reset();
               PageHeader pageHeader =
-                      reader.readPageHeader(
-                              header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
+                  reader.readPageHeader(
+                      header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
               ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
               PageReader reader1 =
-                      new PageReader(
-                              pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
+                  new PageReader(
+                      pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
               // read delete time range from old modification file
               List<TimeRange> deleteIntervalList =
-                      getSortedDeleteIntervals(
-                              curDevice, measurementSchema, chunkHeaderOffset, modifications);
+                  getSortedDeleteIntervals(
+                      curDevice, measurementSchema, chunkHeaderOffset, modifications);
               reader1.setDeleteIntervalList(deleteIntervalList);
               BatchData batchData = reader1.getAllSatisfiedPageData();
               int maxRow;
@@ -253,7 +253,7 @@ public class TsFileLoaderTool {
               }
 
               Tablet tablet =
-                      new Tablet(curDevice, Collections.singletonList(measurementSchema), maxRow);
+                  new Tablet(curDevice, Collections.singletonList(measurementSchema), maxRow);
               long curTabletSize = 0;
               while (batchData.hasCurrent()) {
                 tablet.addTimestamp(tablet.rowSize, batchData.currentTime());
@@ -278,7 +278,7 @@ public class TsFileLoaderTool {
                     break;
                   default:
                     throw new UnSupportedDataTypeException(
-                            String.format("Data type %s is not supported.", header.getDataType()));
+                        String.format("Data type %s is not supported.", header.getDataType()));
                 }
                 // if curTabletSize is over the threshold
                 if (curTabletSize >= MAX_TABLET_SIZE) {
@@ -308,19 +308,19 @@ public class TsFileLoaderTool {
         }
       }
     } catch (IllegalPathException
-            | IOException
-            | IoTDBConnectionException
-            | StatementExecutionException e) {
+        | IOException
+        | IoTDBConnectionException
+        | StatementExecutionException e) {
       e.printStackTrace();
     }
   }
 
   private static List<TimeRange> getSortedDeleteIntervals(
-          String deviceId,
-          MeasurementSchema schema,
-          long chunkHeaderOffset,
-          List<Modification> modifications)
-          throws IllegalPathException {
+      String deviceId,
+      MeasurementSchema schema,
+      long chunkHeaderOffset,
+      List<Modification> modifications)
+      throws IllegalPathException {
     if (modifications != null && modifications.size() != 0) {
       Iterator<Modification> modsIterator = modifications.listIterator();
       ChunkMetadata chunkMetadata = new ChunkMetadata();
@@ -331,9 +331,9 @@ public class TsFileLoaderTool {
         if (currentDeletion
                 .getPath()
                 .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
-                && currentDeletion.getFileOffset() > chunkHeaderOffset) {
+            && currentDeletion.getFileOffset() > chunkHeaderOffset) {
           chunkMetadata.insertIntoSortedDeletions(
-                  currentDeletion.getStartTime(), currentDeletion.getEndTime());
+              currentDeletion.getStartTime(), currentDeletion.getEndTime());
         }
       }
       return chunkMetadata.getDeleteIntervalList();
