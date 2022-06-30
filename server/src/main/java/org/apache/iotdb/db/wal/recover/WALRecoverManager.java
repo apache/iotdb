@@ -105,19 +105,23 @@ public class WALRecoverManager {
       // deal with remaining TsFiles which don't have wal
       for (UnsealedTsFileRecoverPerformer recoverPerformer :
           absolutePath2RecoverPerformer.values()) {
-        try {
-          recoverPerformer.startRecovery();
-          // skip redo logs because it doesn't belong to any wal node
-          recoverPerformer.endRecovery();
-          recoverPerformer.getRecoverListener().succeed();
-        } catch (DataRegionException | IOException e) {
-          logger.error(
-              "Fail to recover unsealed TsFile {}, skip it.",
-              recoverPerformer.getTsFileAbsolutePath(),
-              e);
-          recoverPerformer.getRecoverListener().fail(e);
-        }
+        recoverThreadPool.submit(
+            () -> {
+              try {
+                recoverPerformer.startRecovery();
+                // skip redo logs because it doesn't belong to any wal node
+                recoverPerformer.endRecovery();
+                recoverPerformer.getRecoverListener().succeed();
+              } catch (DataRegionException | IOException | WALRecoverException e) {
+                logger.error(
+                    "Fail to recover unsealed TsFile {}, skip it.",
+                    recoverPerformer.getTsFileAbsolutePath(),
+                    e);
+                recoverPerformer.getRecoverListener().fail(e);
+              }
+            });
       }
+      absolutePath2RecoverPerformer.clear();
     } catch (Exception e) {
       for (UnsealedTsFileRecoverPerformer recoverPerformer :
           absolutePath2RecoverPerformer.values()) {
