@@ -63,6 +63,9 @@ public class DataRegionConsensusImpl {
                               .setRpc(
                                   RPC.newBuilder()
                                       .setConnectionTimeoutInMs(conf.getConnectionTimeoutInMS())
+                                      .setRpcSelectorThreadNum(conf.getRpcSelectorThreadNum())
+                                      .setRpcMinConcurrentClientNum(
+                                          conf.getRpcMinConcurrentClientNum())
                                       .setRpcMaxConcurrentClientNum(
                                           conf.getRpcMaxConcurrentClientNum())
                                       .setRpcThriftCompressionEnabled(

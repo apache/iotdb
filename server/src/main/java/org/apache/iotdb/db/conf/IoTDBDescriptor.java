@@ -602,6 +602,28 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
 
+      int rpcSelectorThreadNum =
+          Integer.parseInt(
+              properties.getProperty(
+                  "rpc_selector_thread_num",
+                  Integer.toString(conf.getRpcSelectorThreadNum()).trim()));
+      if (rpcSelectorThreadNum <= 0) {
+        rpcSelectorThreadNum = 1;
+      }
+
+      conf.setRpcSelectorThreadNum(rpcSelectorThreadNum);
+
+      int minConcurrentClientNum =
+          Integer.parseInt(
+              properties.getProperty(
+                  "rpc_min_concurrent_client_num",
+                  Integer.toString(conf.getRpcMinConcurrentClientNum()).trim()));
+      if (minConcurrentClientNum <= 0) {
+        minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
+      }
+
+      conf.setRpcMinConcurrentClientNum(minConcurrentClientNum);
+
       int maxConcurrentClientNum =
           Integer.parseInt(
               properties.getProperty(

@@ -77,6 +77,8 @@ public class MultiLeaderRPCService extends ThriftService implements MultiLeaderR
               ThreadName.MULTI_LEADER_CONSENSUS_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
+              config.getRpc().getRpcSelectorThreadNum(),
+              config.getRpc().getRpcMinConcurrentClientNum(),
               config.getRpc().getRpcMaxConcurrentClientNum(),
               config.getRpc().getThriftServerAwaitTimeForStopService(),
               new MultiLeaderRPCServiceHandler(multiLeaderRPCServiceProcessor),
