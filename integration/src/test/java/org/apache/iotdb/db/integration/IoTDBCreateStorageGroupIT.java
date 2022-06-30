@@ -112,7 +112,7 @@ public class IoTDBCreateStorageGroupIT {
     try {
       statement.execute(String.format("create storage group %s", storageGroup));
     } catch (SQLException e) {
-      Assert.assertEquals(e.getMessage(), "300: root.sg has already been set to storage group");
+      Assert.assertEquals(e.getMessage(), "903: root.sg has already been set to storage group");
     }
   }
 
@@ -125,7 +125,7 @@ public class IoTDBCreateStorageGroupIT {
     try {
       statement.execute("create storage group root.sg.`device`");
     } catch (SQLException e) {
-      Assert.assertEquals(e.getMessage(), "300: root.sg has already been set to storage group");
+      Assert.assertEquals(e.getMessage(), "903: root.sg has already been set to storage group");
     }
   }
 }
