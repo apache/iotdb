@@ -1222,7 +1222,8 @@ public class TSServiceImpl implements TSIService.Iface {
    * @return true: If logged in; false: If not logged in
    */
   private boolean checkLogin(long sessionId) {
-    boolean isLoggedIn = sessionManager.getUsername(sessionId) != null;
+    Long currentSessionId = sessionManager.getCurrSessionId();
+    boolean isLoggedIn = currentSessionId != null && currentSessionId == sessionId;
     if (!isLoggedIn) {
       LOGGER.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
     }
