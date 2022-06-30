@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -331,6 +332,23 @@ public class StorageGroupPartitionTable {
     return schemaPartitionTable.filterUnassignedSchemaPartitionSlots(partitionSlots);
   }
 
+  public Set<TDataNodeLocation> getDataNodeLocation(TConsensusGroupType type) {
+    HashSet<TDataNodeLocation> result = new HashSet<>();
+    regionInfoMap.forEach(
+        (consensusGroupId, regionGroup) -> {
+          if (consensusGroupId.getType().equals(type)) {
+            regionGroup
+                .getReplicaSet()
+                .getDataNodeLocations()
+                .forEach(
+                    (dataNodeLocation) -> {
+                      result.add(dataNodeLocation);
+                    });
+          }
+        });
+    return result;
+  }
+
   /**
    * Only Leader use this interface. Filter unassigned DataPartitionSlots within the specific
    * StorageGroup
@@ -386,8 +404,13 @@ public class StorageGroupPartitionTable {
               TRegionInfo tRegionInfoList = new TRegionInfo();
               tRegionInfoList.setConsensusGroupId(replicaSet.getRegionId());
               tRegionInfoList.setStorageGroup(storageGroupName);
-              long slots = regionGroup.getCounter();
-              tRegionInfoList.setSlots((int) slots);
+              if (replicaSet.getRegionId().getType() == TConsensusGroupType.DataRegion) {
+                tRegionInfoList.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
+                tRegionInfoList.setTimeSlots(regionGroup.getCounter());
+              } else if (replicaSet.getRegionId().getType() == TConsensusGroupType.SchemaRegion) {
+                tRegionInfoList.setSeriesSlots(regionGroup.getCounter());
+                tRegionInfoList.setTimeSlots(0);
+              }
               tRegionInfoList.setDataNodeId(dataNodeLocation.getDataNodeId());
               tRegionInfoList.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
               tRegionInfoList.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
