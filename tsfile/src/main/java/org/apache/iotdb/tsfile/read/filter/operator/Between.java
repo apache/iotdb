@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.filter.operator;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
@@ -37,18 +38,15 @@ public class Between<T extends Comparable<T>> implements Filter {
 
   protected T value2;
 
-  protected int timeOffset;
-
   protected boolean not;
 
   protected FilterType filterType;
 
   public Between() {}
 
-  public Between(T value1, T value2, int timeOffset, FilterType filterType, boolean not) {
+  public Between(T value1, T value2, FilterType filterType, boolean not) {
     this.value1 = value1;
     this.value2 = value2;
-    this.timeOffset = timeOffset;
     this.filterType = filterType;
     this.not = not;
   }
@@ -81,33 +79,63 @@ public class Between<T extends Comparable<T>> implements Filter {
 
   @Override
   public boolean satisfy(Statistics statistics) {
-    return true;
+    if (filterType == FilterType.TIME_FILTER) {
+      long time1 = (Long) value1, time2 = (Long) value2;
+      if (not) {
+        return statistics.getStartTime() < time1 || statistics.getEndTime() > time2;
+      } else {
+        return statistics.getEndTime() >= time1 || statistics.getStartTime() <= time2;
+      }
+    } else {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
+        return true;
+      }
+      if (not) {
+        return ((T) statistics.getMinValue()).compareTo(value1) < 0
+            || ((T) statistics.getMaxValue()).compareTo(value2) > 0;
+      } else {
+        return ((T) statistics.getMaxValue()).compareTo(value1) >= 0
+            || ((T) statistics.getMinValue()).compareTo(value2) <= 0;
+      }
+    }
   }
 
   @Override
   public boolean satisfy(long time, Object value) {
     Object v = filterType == FilterType.TIME_FILTER ? time : value;
-    if (timeOffset == 0) {
-      return (value1.compareTo((T) v) <= 0 && ((T) v).compareTo(value2) <= 0) ^ not;
-    } else if (timeOffset == 1) {
-      return (((T) v).compareTo(value1) <= 0 && (value1).compareTo(value2) <= 0) ^ not;
-    } else {
-      return (value2.compareTo(value1) <= 0 && (value1).compareTo((T) v) <= 0) ^ not;
-    }
+    return (value1.compareTo((T) v) <= 0 && ((T) v).compareTo(value2) <= 0) ^ not;
   }
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    return true;
+    if (filterType == FilterType.TIME_FILTER) {
+      long time1 = (Long) value1, time2 = (Long) value2;
+      if (not) {
+        return startTime < time1 || endTime > time2;
+      } else {
+        return endTime >= time1 || startTime <= time2;
+      }
+    } else {
+      return true;
+    }
   }
 
   @Override
   public boolean containStartEndTime(long startTime, long endTime) {
-    return true;
+    if (filterType == FilterType.TIME_FILTER) {
+      long time1 = (Long) value1, time2 = (Long) value2;
+      if (not) {
+        return endTime < time1 || startTime > time2;
+      } else {
+        return startTime >= time1 && endTime <= time2;
+      }
+    } else {
+      return true;
+    }
   }
 
   @Override
   public Filter copy() {
-    return new Between(value1, value2, timeOffset, filterType, not);
+    return new Between(value1, value2, filterType, not);
   }
 }

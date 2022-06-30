@@ -600,6 +600,68 @@ public class IoTDBNestedQueryIT {
           Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
         }
       }
+
+      query = "SELECT * FROM root.vehicle.d1 WHERE time BETWEEN " + start + " AND " + end;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+
+      query =
+          "SELECT * FROM root.vehicle.d1 WHERE time NOT BETWEEN " // test not between
+              + (end + 1)
+              + " AND "
+              + ITERATION_TIMES;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+
+      query = "SELECT * FROM root.vehicle.d1 WHERE " + start + " BETWEEN time AND " + end;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        Assert.assertTrue(rs.next());
+        Assert.assertEquals("1", rs.getString("Time"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s1"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s2"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s3"));
+      }
+
+      query = "SELECT * FROM root.vehicle.d1 WHERE " + start + " NOT BETWEEN time AND " + end;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start + 1; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+
+      query = "SELECT * FROM root.vehicle.d1 WHERE " + start + " BETWEEN " + end + " AND time";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        Assert.assertFalse(rs.next());
+      }
+
+      query = "SELECT * FROM root.vehicle.d1 WHERE " + start + " NOT BETWEEN " + end + " AND time";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
     } catch (SQLException e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());

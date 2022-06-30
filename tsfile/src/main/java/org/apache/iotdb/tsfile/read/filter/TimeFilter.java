@@ -68,14 +68,14 @@ public class TimeFilter {
     return new TimeIn(values, not);
   }
 
-  public static TimeBetween between(long value1, long value2, int timeOffset, boolean not) {
-    return new TimeBetween(value1, value2, timeOffset, not);
+  public static TimeBetween between(long value1, long value2, boolean not) {
+    return new TimeBetween(value1, value2, not);
   }
 
   public static class TimeBetween extends Between {
 
-    private TimeBetween(long value1, long value2, int timeOffset, boolean not) {
-      super(value1, value2, timeOffset, FilterType.TIME_FILTER, not);
+    private TimeBetween(long value1, long value2, boolean not) {
+      super(value1, value2, FilterType.TIME_FILTER, not);
     }
   }
 

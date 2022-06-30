@@ -89,7 +89,7 @@ public abstract class TernaryTransformer extends Transformer {
     long firstTime = isFirstPointReaderConstant ? Long.MIN_VALUE : firstPointReader.currentTime();
     long secondTime =
         isSecondPointReaderConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
-    long thirdTime = isThirdPointReaderConstant ? Long.MIN_VALUE : secondPointReader.currentTime();
+    long thirdTime = isThirdPointReaderConstant ? Long.MIN_VALUE : thirdPointReader.currentTime();
 
     while (firstTime != secondTime || firstTime != thirdTime) { // the logic is similar to MergeSort
       if (firstTime < secondTime) {

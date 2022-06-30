@@ -50,6 +50,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -251,26 +252,52 @@ public class ExpressionUtils {
     return null;
   }
 
-  public static Filter constructTimeFilter(
-      ExpressionType expressionType,
-      Expression valueExpression1,
-      Expression valueExpression2,
-      int timeOffset,
-      boolean not) {
-    if (valueExpression1 instanceof ConstantOperand
-        && valueExpression2 instanceof ConstantOperand
-        && ((ConstantOperand) valueExpression1).getDataType() == TSDataType.INT64
-        && ((ConstantOperand) valueExpression2).getDataType() == TSDataType.INT64) {
-      long value1 = Long.parseLong(((ConstantOperand) valueExpression1).getValueString());
-      long value2 = Long.parseLong(((ConstantOperand) valueExpression2).getValueString());
-      switch (expressionType) {
-        case BETWEEN:
-          return TimeFilter.between(value1, value2, timeOffset, not);
-        default:
-          throw new IllegalArgumentException("unsupported expression type: " + expressionType);
-      }
+  public static Pair<Filter, Boolean> getPairFromBetweenTimeFirst(
+      Expression firstExpression, Expression secondExpression, boolean not) {
+    if (firstExpression instanceof ConstantOperand
+        && secondExpression instanceof ConstantOperand
+        && ((ConstantOperand) firstExpression).getDataType() == TSDataType.INT64
+        && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64) {
+      long value1 = Long.parseLong(((ConstantOperand) firstExpression).getValueString());
+      long value2 = Long.parseLong(((ConstantOperand) secondExpression).getValueString());
+      return new Pair<>(TimeFilter.between(value1, value2, not), false);
+    } else {
+      return new Pair<>(null, true);
     }
-    return null;
+  }
+
+  public static Pair<Filter, Boolean> getPairFromBetweenTimeSecond(
+      BetweenExpression predicate, Expression expression) {
+    if (predicate.isNotBetween()) {
+      return new Pair<>(
+          TimeFilter.gt(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+
+    } else {
+      return new Pair<>(
+          TimeFilter.ltEq(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+    }
+  }
+
+  public static Pair<Filter, Boolean> getPairFromBetweenTimeThird(
+      BetweenExpression predicate, Expression expression) {
+    if (predicate.isNotBetween()) {
+      return new Pair<>(
+          TimeFilter.lt(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+
+    } else {
+      return new Pair<>(
+          TimeFilter.gtEq(Long.parseLong(((ConstantOperand) expression).getValueString())), false);
+    }
+  }
+
+  public static boolean checkConstantSatisfy(
+      Expression firstExpression, Expression secondExpression) {
+    return firstExpression.isConstantOperand()
+        && secondExpression.isConstantOperand()
+        && ((ConstantOperand) firstExpression).getDataType() == TSDataType.INT64
+        && ((ConstantOperand) secondExpression).getDataType() == TSDataType.INT64
+        && (Long.parseLong(((ConstantOperand) firstExpression).getValueString())
+            <= Long.parseLong(((ConstantOperand) secondExpression).getValueString()));
   }
 
   public static Expression constructQueryFilter(List<Expression> expressions) {

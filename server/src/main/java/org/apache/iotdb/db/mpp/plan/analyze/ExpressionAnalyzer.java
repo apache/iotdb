@@ -64,7 +64,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.cartesianProduct;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.checkConstantSatisfy;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.constructTimeFilter;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.getPairFromBetweenTimeFirst;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.getPairFromBetweenTimeSecond;
+import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.getPairFromBetweenTimeThird;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructBinaryExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructFunctionExpressions;
 import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructTernaryExpressions;
@@ -730,37 +734,19 @@ public class ExpressionAnalyzer {
       Expression secondExpression = ((TernaryExpression) predicate).getSecondExpression();
       Expression thirdExpression = ((TernaryExpression) predicate).getThirdExpression();
       if (firstExpression instanceof TimestampOperand) {
-        Filter filter =
-            constructTimeFilter(
-                predicate.getExpressionType(),
-                secondExpression,
-                thirdExpression,
-                0,
-                ((BetweenExpression) predicate).isNotBetween());
-        if (filter != null) {
-          return new Pair<>(filter, false);
-        }
+        return getPairFromBetweenTimeFirst(
+            secondExpression, thirdExpression, ((BetweenExpression) predicate).isNotBetween());
       } else if (secondExpression instanceof TimestampOperand) {
-        Filter filter =
-            constructTimeFilter(
-                predicate.getExpressionType(),
-                firstExpression,
-                thirdExpression,
-                1,
-                ((BetweenExpression) predicate).isNotBetween());
-        if (filter != null) {
-          return new Pair<>(filter, false);
+        if (checkConstantSatisfy(firstExpression, thirdExpression)) {
+          return getPairFromBetweenTimeSecond((BetweenExpression) predicate, firstExpression);
+        } else {
+          return new Pair<>(null, true); // TODO return Filter.True/False
         }
       } else if (thirdExpression instanceof TimestampOperand) {
-        Filter filter =
-            constructTimeFilter(
-                predicate.getExpressionType(),
-                firstExpression,
-                secondExpression,
-                2,
-                ((BetweenExpression) predicate).isNotBetween());
-        if (filter != null) {
-          return new Pair<>(filter, false);
+        if (checkConstantSatisfy(secondExpression, firstExpression)) {
+          return getPairFromBetweenTimeThird((BetweenExpression) predicate, firstExpression);
+        } else {
+          return new Pair<>(null, true); // TODO return Filter.True/False
         }
       }
       return new Pair<>(null, true);
