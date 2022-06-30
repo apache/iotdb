@@ -31,6 +31,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
 import org.slf4j.Logger;
@@ -88,8 +89,12 @@ public class LastCacheManager {
 
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (lastCacheContainer.isEmptyContainer()) {
-      lastCacheContainer = new LastCacheContainer();
-      node.setLastCacheContainer(lastCacheContainer);
+      synchronized (LastCacheManager.class){
+        if (lastCacheContainer.isEmptyContainer()){
+          lastCacheContainer = new LastCacheContainer();
+          node.setLastCacheContainer(lastCacheContainer);
+        }
+      }
     }
     lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
@@ -100,13 +105,13 @@ public class LastCacheManager {
    * @param node the measurementMNode holding the lastCache When invoker only has the target
    *     seriesPath, the node could be null and MManager will search the node
    */
+  @TestOnly
   public static void resetLastCache(IMeasurementMNode node) {
     if (node == null) {
       return;
     }
 
     checkIsTemplateLastCacheAndSetIfAbsent(node);
-
     node.setLastCacheContainer(EmptyLastCacheContainer.getInstance());
   }
 

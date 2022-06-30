@@ -230,6 +230,7 @@ public class LastQueryExecutor {
           }
         } else {
           resultContainer.get(i).left = true;
+          // set empty container when the system restart and container is initialized as null
           cacheAccessors.get(i).markEmpty();
         }
       }
@@ -256,7 +257,9 @@ public class LastQueryExecutor {
       }
     }
 
+
     for (int i = 0; i < cacheAccessors.size(); i++) {
+      // if empty container, then it means no data, query results return null
       if (cacheAccessors.get(i).checkEmptyContainer()) {
         resultContainer.add(new Pair<>(true, null));
         continue;
