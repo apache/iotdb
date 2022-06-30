@@ -220,3 +220,6 @@ public class IoTDBAlignedSeriesQueryIT {
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/integration-test/pic/download2.png">
 
+### 运行集成测试的命令
+
+请参考 [《Integration Test For the MPP Architecture》](https://github.com/apache/iotdb/blob/master/integration-test/README.md) 文档。

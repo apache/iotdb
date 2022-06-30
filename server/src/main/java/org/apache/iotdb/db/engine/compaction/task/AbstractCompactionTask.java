@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -37,27 +36,28 @@ import java.util.concurrent.atomic.AtomicInteger;
  * currentTaskNum in CompactionScheduler when the {@link AbstractCompactionTask#doCompaction()} is
  * finished. The future returns the {@link CompactionTaskSummary} of this task execution.
  */
-public abstract class AbstractCompactionTask implements Callable<CompactionTaskSummary> {
+public abstract class AbstractCompactionTask {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
-  protected String fullStorageGroupName;
+  protected String dataRegionId;
+  protected String storageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
   protected final TsFileManager tsFileManager;
-  protected long timeCost = 0L;
-  protected volatile boolean ran = false;
-  protected volatile boolean finished = false;
   protected ICompactionPerformer performer;
   protected int hashCode = -1;
+  protected CompactionTaskSummary summary = new CompactionTaskSummary();
   protected long serialId;
 
   public AbstractCompactionTask(
-      String fullStorageGroupName,
+      String storageGroupName,
+      String dataRegionId,
       long timePartition,
       TsFileManager tsFileManager,
       AtomicInteger currentTaskNum,
       long serialId) {
-    this.fullStorageGroupName = fullStorageGroupName;
+    this.storageGroupName = storageGroupName;
+    this.dataRegionId = dataRegionId;
     this.timePartition = timePartition;
     this.tsFileManager = tsFileManager;
     this.currentTaskNum = currentTaskNum;
@@ -66,33 +66,28 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
 
   public abstract void setSourceFilesToCompactionCandidate();
 
-  protected abstract void doCompaction() throws Exception;
+  protected abstract void doCompaction();
 
-  @Override
-  public CompactionTaskSummary call() throws Exception {
-    ran = true;
-    long startTime = System.currentTimeMillis();
+  public void start() {
     currentTaskNum.incrementAndGet();
     boolean isSuccess = false;
     try {
+      summary.start();
       doCompaction();
       isSuccess = true;
-    } catch (InterruptedException e) {
-      LOGGER.warn("{} [Compaction] Current task is interrupted", fullStorageGroupName);
-    } catch (Throwable e) {
-      // Use throwable to catch OOM exception.
-      LOGGER.error("{} [Compaction] Running compaction task failed", fullStorageGroupName, e);
     } finally {
       this.currentTaskNum.decrementAndGet();
-      timeCost = System.currentTimeMillis() - startTime;
+      summary.finish(isSuccess);
       CompactionTaskManager.getInstance().removeRunningTaskFuture(this);
-      finished = true;
     }
-    return new CompactionTaskSummary(isSuccess);
   }
 
-  public String getFullStorageGroupName() {
-    return fullStorageGroupName;
+  public String getStorageGroupName() {
+    return this.storageGroupName;
+  }
+
+  public String getDataRegionId() {
+    return this.dataRegionId;
   }
 
   public long getTimePartition() {
@@ -120,21 +115,34 @@ public abstract class AbstractCompactionTask implements Callable<CompactionTaskS
   public abstract void resetCompactionCandidateStatusForAllSourceFiles();
 
   public long getTimeCost() {
-    return timeCost;
+    return summary.getTimeCost();
   }
 
   protected void checkInterrupted() throws InterruptedException {
     if (Thread.currentThread().isInterrupted()) {
-      throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
+      throw new InterruptedException(
+          String.format("%s-%s [Compaction] abort", storageGroupName, dataRegionId));
     }
   }
 
   public boolean isTaskRan() {
-    return ran;
+    return summary.isRan();
+  }
+
+  public void cancel() {
+    summary.cancel();
+  }
+
+  public boolean isSuccess() {
+    return summary.isSuccess();
+  }
+
+  public CompactionTaskSummary getSummary() {
+    return summary;
   }
 
   public boolean isTaskFinished() {
-    return finished;
+    return summary.isFinished();
   }
 
   public long getSerialId() {

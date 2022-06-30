@@ -311,6 +311,7 @@ public class Analyzer {
                 throw e;
               }
               deviceToQueryFilter.put(devicePath.getFullPath(), queryFilter);
+              queryFilter.inferTypes(typeProvider);
               updateSource(
                   queryFilter,
                   deviceToSourceExpressions.computeIfAbsent(
@@ -369,6 +370,7 @@ public class Analyzer {
             Expression queryFilter = analyzeWhere(queryStatement, schemaTree);
 
             // update sourceExpression according to queryFilter
+            queryFilter.inferTypes(typeProvider);
             updateSource(queryFilter, sourceExpressions, isRawDataSource);
             analysis.setQueryFilter(queryFilter);
           }

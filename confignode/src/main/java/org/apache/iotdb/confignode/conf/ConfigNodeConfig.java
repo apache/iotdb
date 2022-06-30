@@ -18,24 +18,22 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeConfig {
 
   /** could set ip or hostname */
-  private String rpcAddress = "0.0.0.0";
+  private String internalAddress = "0.0.0.0";
 
   /** used for communication between data node and config node */
-  private int rpcPort = 22277;
+  private int internalPort = 22277;
 
   /** used for communication between config node and config node */
   private int consensusPort = 22278;
@@ -43,14 +41,8 @@ public class ConfigNodeConfig {
   /** Used for connecting to the ConfigNodeGroup */
   private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
 
-  /** Mark if the ConfigNode needs to apply */
-  private boolean needApply = false;
-
   // TODO: Read from iotdb-confignode.properties
   private int partitionRegionId = 0;
-
-  /** Used for building the PartitionRegion */
-  private List<TConfigNodeLocation> configNodeList = new ArrayList<>();
 
   /** Thrift socket and connection timeout between nodes */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
@@ -145,7 +137,10 @@ public class ConfigNodeConfig {
   /** The heartbeat interval in milliseconds */
   private long heartbeatInterval = 1000;
 
-  ConfigNodeConfig() {
+  /** The routing policy of read/write requests */
+  private String routingPolicy = RouteBalancer.greedyPolicy;
+
+  public ConfigNodeConfig() {
     // empty constructor
   }
 
@@ -173,20 +168,20 @@ public class ConfigNodeConfig {
     return dir;
   }
 
-  public String getRpcAddress() {
-    return rpcAddress;
+  public String getInternalAddress() {
+    return internalAddress;
   }
 
-  public void setRpcAddress(String rpcAddress) {
-    this.rpcAddress = rpcAddress;
+  public void setInternalAddress(String internalAddress) {
+    this.internalAddress = internalAddress;
   }
 
-  public int getRpcPort() {
-    return rpcPort;
+  public int getInternalPort() {
+    return internalPort;
   }
 
-  public void setRpcPort(int rpcPort) {
-    this.rpcPort = rpcPort;
+  public void setInternalPort(int internalPort) {
+    this.internalPort = internalPort;
   }
 
   public int getConsensusPort() {
@@ -195,14 +190,6 @@ public class ConfigNodeConfig {
 
   public void setConsensusPort(int consensusPort) {
     this.consensusPort = consensusPort;
-  }
-
-  public boolean isNeedApply() {
-    return needApply;
-  }
-
-  public void setNeedApply(boolean needApply) {
-    this.needApply = needApply;
   }
 
   public TEndPoint getTargetConfigNode() {
@@ -219,14 +206,6 @@ public class ConfigNodeConfig {
 
   public void setPartitionRegionId(int partitionRegionId) {
     this.partitionRegionId = partitionRegionId;
-  }
-
-  public List<TConfigNodeLocation> getConfigNodeList() {
-    return configNodeList;
-  }
-
-  public void setConfigNodeList(List<TConfigNodeLocation> configNodeList) {
-    this.configNodeList = configNodeList;
   }
 
   public int getSeriesPartitionSlotNum() {
@@ -440,5 +419,13 @@ public class ConfigNodeConfig {
 
   public void setHeartbeatInterval(long heartbeatInterval) {
     this.heartbeatInterval = heartbeatInterval;
+  }
+
+  public String getRoutingPolicy() {
+    return routingPolicy;
+  }
+
+  public void setRoutingPolicy(String routingPolicy) {
+    this.routingPolicy = routingPolicy;
   }
 }
