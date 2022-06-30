@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -242,8 +243,18 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
         } else {
           writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }
-        return !hasFailedMeasurement
-            && TSStatusCode.SUCCESS_STATUS.getStatusCode() == writeResponse.getStatus().getCode();
+
+        if (hasFailedMeasurement) {
+          return false;
+        }
+
+        if (writeResponse.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          throw new RuntimeException(
+              new IoTDBException(
+                  writeResponse.getStatus().getMessage(), writeResponse.getStatus().getCode()));
+        }
+
+        return true;
     }
     throw new UnsupportedOperationException(
         String.format("unknown query type [%s]", instance.getType()));

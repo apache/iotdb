@@ -89,6 +89,7 @@ public class IoTDBSimpleQueryIT {
       try {
         statement.execute(
             "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'='-2'");
+        fail();
       } catch (Exception e) {
         assertEquals(
             "411: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",

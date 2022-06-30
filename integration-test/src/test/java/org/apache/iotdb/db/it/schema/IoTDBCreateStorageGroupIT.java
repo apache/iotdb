@@ -39,6 +39,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.fail;
+
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
@@ -126,8 +128,9 @@ public class IoTDBCreateStorageGroupIT {
 
     try {
       statement.execute("create storage group root.sg.`device`");
+      fail();
     } catch (SQLException e) {
-      Assert.assertEquals(e.getMessage(), "300: root.sg has already been set to storage group");
+      Assert.assertEquals(e.getMessage(), "903: root.sg has already been set to storage group");
     }
   }
 }
