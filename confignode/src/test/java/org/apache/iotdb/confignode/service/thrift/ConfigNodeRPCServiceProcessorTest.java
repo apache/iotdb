@@ -283,7 +283,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertEquals(2, countResp.getCount());
 
     // test count one StorageGroup
-    countResp = processor.countMatchedStorageGroups(Arrays.asList("root", "sg0", "**"));
+    countResp = processor.countMatchedStorageGroups(Arrays.asList("root", "sg0"));
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), countResp.getStatus().getCode());
     Assert.assertEquals(1, countResp.getCount());
