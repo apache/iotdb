@@ -193,7 +193,7 @@ public class LoadManager {
 
     regionGroupCacheMap.forEach(
         (consensusGroupId, regionGroupCache) ->
-            result.put(consensusGroupId, regionGroupCache.getLeaderId()));
+            result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId()));
 
     return result;
   }

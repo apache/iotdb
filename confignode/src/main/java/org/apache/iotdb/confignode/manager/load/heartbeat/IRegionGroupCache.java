@@ -33,5 +33,5 @@ public interface IRegionGroupCache {
    *
    * @return The DataNodeId of latest leader
    */
-  int getLeaderId();
+  int getLeaderDataNodeId();
 }

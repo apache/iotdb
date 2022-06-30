@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -124,7 +125,8 @@ public class ConfigNodeStartupCheck {
               "%s or %s", ConsensusFactory.StandAloneConsensus, ConsensusFactory.RatisConsensus));
     }
 
-    if (!conf.getRoutingPolicy().equals("leader") && !conf.getRoutingPolicy().equals("greedy")) {
+    if (!conf.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)
+        && !conf.getRoutingPolicy().equals(RouteBalancer.greedyPolicy)) {
       throw new ConfigurationException(
           "routing_policy", conf.getRoutingPolicy(), "leader or greedy");
     }

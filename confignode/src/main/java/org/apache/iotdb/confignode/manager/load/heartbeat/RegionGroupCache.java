@@ -26,22 +26,22 @@ public class RegionGroupCache implements IRegionGroupCache {
 
   private long timestamp;
 
-  private final AtomicInteger leaderId;
+  private final AtomicInteger leaderDataNodeId;
 
   public RegionGroupCache() {
-    this.leaderId = new AtomicInteger(-1);
+    this.leaderDataNodeId = new AtomicInteger(-1);
   }
 
   @Override
   public synchronized void updateLeader(long timestamp, int dataNodeId) {
     if (timestamp > this.timestamp) {
       this.timestamp = timestamp;
-      this.leaderId.set(dataNodeId);
+      this.leaderDataNodeId.set(dataNodeId);
     }
   }
 
   @Override
-  public int getLeaderId() {
-    return leaderId.get();
+  public int getLeaderDataNodeId() {
+    return leaderDataNodeId.get();
   }
 }
