@@ -137,9 +137,8 @@ public class ConfigNodeConfig {
   /** The heartbeat interval in milliseconds */
   private long heartbeatInterval = 1000;
 
-    /** The routing policy of read/write requests */
-    private String routingPolicy = RouteBalancer.greedyPolicy;
-
+  /** The routing policy of read/write requests */
+  private String routingPolicy = RouteBalancer.greedyPolicy;
 
   public ConfigNodeConfig() {
     // empty constructor
