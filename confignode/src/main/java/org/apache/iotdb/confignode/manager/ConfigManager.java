@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
@@ -177,6 +178,15 @@ public class ConfigManager implements IManager {
       dataSet.setConfigNodeList(nodeManager.getOnlineConfigNodes());
       return dataSet;
     }
+  }
+
+  @Override
+  public TSStatus activateDataNode(ActivateDataNodePlan activateDataNodePlan) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return nodeManager.activateDataNode(activateDataNodePlan);
+    }
+    return status;
   }
 
   @Override

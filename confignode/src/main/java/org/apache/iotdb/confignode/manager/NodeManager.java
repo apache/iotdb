@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
@@ -97,29 +98,42 @@ public class NodeManager {
    */
   public DataSet registerDataNode(RegisterDataNodePlan req) {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
-
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    status.setMessage("registerDataNode success.");
+    dataSet.setStatus(status);
     if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
-      // Reset client
-      AsyncDataNodeClientPool.getInstance()
-          .resetClient(req.getInfo().getLocation().getInternalEndPoint());
-
-      TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
+      status.setCode(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
-      dataSet.setStatus(status);
-    } else {
-      // Persist DataNodeInfo
+    } else if (req.getInfo().getLocation().getDataNodeId() < 1) {
+      // only when new dataNode is registered, generate new dataNodeId
       req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextNodeId());
-      ConsensusWriteResponse resp = getConsensusManager().write(req);
-      dataSet.setStatus(resp.getStatus());
-
-      // Adjust the maximum RegionGroup number of each StorageGroup
-      getClusterSchemaManager().adjustMaxRegionGroupCount();
     }
 
     dataSet.setDataNodeId(req.getInfo().getLocation().getDataNodeId());
     dataSet.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
     setGlobalConfig(dataSet);
     return dataSet;
+  }
+
+  /**
+   * Active DataNode
+   *
+   * @param req ActiveDataNodeReq
+   * @return TSStatus The TSStatus will be set to SUCCESS_STATUS when active success, and
+   *     DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
+   */
+  public TSStatus activateDataNode(ActivateDataNodePlan req) {
+    TSStatus status = new TSStatus();
+    if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
+      status.setCode(TSStatusCode.DATANODE_ALREADY_ACTIVATED.getStatusCode());
+      status.setMessage("DataNode already activated.");
+    } else {
+      ConsensusWriteResponse resp = getConsensusManager().write(req);
+      status = resp.getStatus();
+      // Adjust the maximum RegionGroup number of each StorageGroup
+      getClusterSchemaManager().adjustMaxRegionGroupCount();
+    }
+    return status;
   }
 
   /**

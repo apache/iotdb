@@ -30,8 +30,7 @@ struct TDataNodeRegisterReq {
 }
 
 struct TDataNodeActiveReq {
-  1: required common.TDataNodeLocation location
-  2: required i32 dataNodeId
+  1: required common.TDataNodeInfo dataNodeInfo
 }
 
 struct TGlobalConfig {
