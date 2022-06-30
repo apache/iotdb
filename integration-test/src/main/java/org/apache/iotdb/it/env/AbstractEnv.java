@@ -283,7 +283,7 @@ public abstract class AbstractEnv implements BaseEnv {
       dataNode = this.dataNodeWrapperList.get(0);
     }
 
-    String endpoint = dataNode.getIp() + ":" + dataNode.getPort();
+    String endpoint = dataNode.getRPCAddress() + ":" + dataNode.getPort();
     Connection writeConnection =
         DriverManager.getConnection(
             Config.IOTDB_URL_PREFIX + endpoint + getParam(version, NODE_NETWORK_TIMEOUT_MS),

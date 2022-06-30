@@ -49,7 +49,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void updateConfig(Properties properties) {
-    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, super.getIp());
+    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, super.getInternalAddress());
     properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(getPort()));
     properties.setProperty(IoTDBConstant.CONSENSUS_PORT, String.valueOf(this.consensusPort));
     properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNodes);

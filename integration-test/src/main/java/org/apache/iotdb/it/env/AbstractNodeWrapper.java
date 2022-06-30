@@ -250,8 +250,13 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   }
 
   @Override
-  public final String getIp() {
+  public final String getRPCAddress() {
     return "127.0.0.1";
+  }
+
+  @Override
+  public final String getInternalAddress() {
+    return "0.0.0.0";
   }
 
   @Override
@@ -261,7 +266,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   @Override
   public final String getIpAndPortString() {
-    return this.getIp() + ":" + this.getPort();
+    return this.getRPCAddress() + ":" + this.getPort();
   }
 
   protected String workDirFilePath(String dirName, String fileName) {

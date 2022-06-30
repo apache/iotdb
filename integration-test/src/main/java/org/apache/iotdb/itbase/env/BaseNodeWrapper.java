@@ -34,7 +34,9 @@ public interface BaseNodeWrapper {
 
   void waitingToShutDown();
 
-  String getIp();
+  String getRPCAddress();
+
+  String getInternalAddress();
 
   int getPort();
 
