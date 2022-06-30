@@ -197,8 +197,8 @@ IoTDB> show regions
 +--------+------------+------+-------------+-----+----------+---------+----+
 |RegionId|        Type|Status|storage group|Slots|DataNodeId|     Host|Port|
 +--------+------------+------+-------------+-----+----------+---------+----+
-|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6669|
-|       1|SchemaRegion|    Up|      root.ln|    1|         3|127.0.0.1|6667|
+|       0|SchemaRegion|    Up|      root.sg|    2|         2|127.0.0.1|6668|
+|       1|SchemaRegion|    Up|      root.ln|    1|         1|127.0.0.1|6667|
 +--------+------------+------+-------------+-----+----------+---------+----+
 Total line number = 2
 It costs 0.035s
@@ -208,7 +208,7 @@ IoTDB> show datanodes
 |NodeID|NodeType| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
 +------+--------+-------+---------+----+-------------+---------------+
 |     1|DataNode|Running|127.0.0.1|6667|            0|              1|
-|     2|DataNode|Running|127.0.0.1|6669|            0|              1|
+|     2|DataNode|Running|127.0.0.1|6668|            0|              1|
 +------+--------+-------+---------+----+-------------+---------------+
 Total line number = 2
 It costs 0.007s
