@@ -94,8 +94,8 @@ public class ConfigNode implements ConfigNodeMBean {
             .applyConfigNode(
                 new TConfigNodeLocation(
                     0,
-                    new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
-                    new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())));
+                    new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
+                    new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort())));
         // The initial startup of Seed-ConfigNode finished
         LOGGER.info(
             "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
@@ -166,8 +166,8 @@ public class ConfigNode implements ConfigNodeMBean {
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
                 -1,
-                new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
-                new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort())),
+                new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
+                new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort())),
             conf.getDataRegionConsensusProtocolClass(),
             conf.getSchemaRegionConsensusProtocolClass(),
             conf.getSeriesPartitionSlotNum(),

@@ -68,20 +68,21 @@ public class SystemPropertiesUtils {
     boolean needReWrite = false;
 
     // Startup configuration
-    String rpcAddress = systemProperties.getProperty("rpc_address", null);
-    if (rpcAddress == null) {
+    String internalAddress = systemProperties.getProperty("internal_address", null);
+    if (internalAddress == null) {
       needReWrite = true;
-    } else if (!rpcAddress.equals(conf.getRpcAddress())) {
-      throw new ConfigurationException("rpc_address", conf.getRpcAddress(), rpcAddress);
+    } else if (!internalAddress.equals(conf.getInternalAddress())) {
+      throw new ConfigurationException(
+          "internal_address", conf.getInternalAddress(), internalAddress);
     }
 
-    if (systemProperties.getProperty("rpc_port", null) == null) {
+    if (systemProperties.getProperty("internal_port", null) == null) {
       needReWrite = true;
     } else {
-      int rpcPort = Integer.parseInt(systemProperties.getProperty("rpc_port"));
-      if (rpcPort != conf.getRpcPort()) {
+      int internalPort = Integer.parseInt(systemProperties.getProperty("internal_port"));
+      if (internalPort != conf.getInternalPort()) {
         throw new ConfigurationException(
-            "rpc_port", String.valueOf(conf.getRpcPort()), String.valueOf(rpcPort));
+            "internal_port", String.valueOf(conf.getInternalPort()), String.valueOf(internalPort));
       }
     }
 
@@ -193,8 +194,8 @@ public class SystemPropertiesUtils {
   public static void storeSystemParameters() throws IOException {
     Properties systemProperties = getSystemProperties();
     // Startup configuration
-    systemProperties.setProperty("rpc_address", String.valueOf(conf.getRpcAddress()));
-    systemProperties.setProperty("rpc_port", String.valueOf(conf.getRpcPort()));
+    systemProperties.setProperty("internal_address", String.valueOf(conf.getInternalAddress()));
+    systemProperties.setProperty("internal_port", String.valueOf(conf.getInternalPort()));
     systemProperties.setProperty("consensus_port", String.valueOf(conf.getConsensusPort()));
 
     // Consensus protocol configuration

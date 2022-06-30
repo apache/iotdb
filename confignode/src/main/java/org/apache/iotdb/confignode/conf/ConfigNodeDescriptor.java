@@ -270,8 +270,8 @@ public class ConfigNodeDescriptor {
    * @return True if the target_config_nodes points to itself
    */
   public boolean isSeedConfigNode() {
-    return conf.getRpcAddress().equals(conf.getTargetConfigNode().getIp())
-        && conf.getRpcPort() == conf.getTargetConfigNode().getPort();
+    return conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+        && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
   }
 
   public static ConfigNodeDescriptor getInstance() {

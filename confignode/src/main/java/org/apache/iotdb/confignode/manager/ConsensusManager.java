@@ -105,8 +105,8 @@ public class ConsensusManager {
           Collections.singletonList(
               new TConfigNodeLocation(
                   0,
-                  new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()),
-                  new TEndPoint(conf.getRpcAddress(), conf.getConsensusPort()))));
+                  new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()),
+                  new TEndPoint(conf.getInternalAddress(), conf.getConsensusPort()))));
     }
   }
 
