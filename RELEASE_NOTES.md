@@ -19,6 +19,21 @@
 
 -->
 
+# Apache IoTDB 0.12.6
+
+## Improvements
+* [IOTDB-3515] Make the message clear when loading empty TsFile
+
+## Bug Fixes
+* [IOTDB-3292] Fix chunk size overflow in level compaction
+* [IOTDB-3392] Fix File doesn't exist when moving TsFile when virtual_storage_group > 1
+* [IOTDB-3398] Shield the exception when query meet a device is not in TsFile, which is a normal case
+* [ISSUE-4399] Fix printing "no permissions for this operation UDTF" when the query result is empty by non-root user
+* [ISSUE-5809] Fix bug: sum aggregation result return 0 when no data
+* Fix parameter max_select_unseq_file_num_in_each_unseq_compaction does not take effect bug
+* Fix data of one series in seq files overlapped
+* Optimize the login check 
+  
 # Apache IoTDB 0.12.5
 
 ## New Features
