@@ -233,7 +233,7 @@ public class LoadManager {
     if (getConsensusManager().isLeader()) {
       // Send heartbeat requests to all the online DataNodes
       pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
-      // Send heartbeat requests to all the online ConfigNodes
+      // Send heartbeat requests to all the registered ConfigNodes
       pingRegisteredConfigNodes(getNodeManager().getRegisteredConfigNodes());
       // Do load balancing
       doLoadBalancing();
@@ -287,11 +287,11 @@ public class LoadManager {
   /**
    * Send heartbeat requests to all the online ConfigNodes
    *
-   * @param onlineConfigNodes ConfigNodes that currently online
+   * @param registeredConfigNodes ConfigNodes that registered in cluster
    */
-  private void pingRegisteredConfigNodes(List<TConfigNodeLocation> onlineConfigNodes) {
+  private void pingRegisteredConfigNodes(List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
-    for (TConfigNodeLocation configNodeLocation : onlineConfigNodes) {
+    for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
       ConfigNodeHeartbeatHandler handler =
           new ConfigNodeHeartbeatHandler(
               configNodeLocation,
