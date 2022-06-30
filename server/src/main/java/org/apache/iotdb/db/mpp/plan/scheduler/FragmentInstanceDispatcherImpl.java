@@ -43,6 +43,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import com.google.common.util.concurrent.SettableFuture;
@@ -189,6 +190,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   instance.getRegionReplicaSet().getRegionId());
           TSendPlanNodeResp sendPlanNodeResp = client.sendPlanNode(sendPlanNodeReq);
           if (!sendPlanNodeResp.accepted) {
+            logger.error(sendPlanNodeResp.getStatus().message);
             throw new FragmentInstanceDispatchException(sendPlanNodeResp.getStatus());
           }
           return true;
@@ -224,6 +226,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
       case WRITE:
         PlanNode planNode = instance.getFragment().getRoot();
         boolean hasFailedMeasurement = false;
+        String partialInsertMessage = null;
         if (planNode instanceof InsertNode) {
           InsertNode insertNode = (InsertNode) planNode;
           try {
@@ -233,10 +236,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           }
           hasFailedMeasurement = insertNode.hasFailedMeasurements();
           if (hasFailedMeasurement) {
-            logger.warn(
-                "Fail to insert measurements {} caused by {}",
-                insertNode.getFailedMeasurements(),
-                insertNode.getFailedMessages());
+            partialInsertMessage =
+                String.format(
+                    "Fail to insert measurements %s caused by %s",
+                    insertNode.getFailedMeasurements(), insertNode.getFailedMessages());
+            logger.warn(partialInsertMessage);
           }
         }
         ConsensusWriteResponse writeResponse;
@@ -246,12 +250,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }
 
-        if (hasFailedMeasurement) {
-          return false;
-        }
-
         if (writeResponse.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          logger.error(writeResponse.getStatus().message);
           throw new FragmentInstanceDispatchException(writeResponse.getStatus());
+        } else if (hasFailedMeasurement) {
+          throw new FragmentInstanceDispatchException(
+              RpcUtils.getStatus(
+                  TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
         }
 
         return true;

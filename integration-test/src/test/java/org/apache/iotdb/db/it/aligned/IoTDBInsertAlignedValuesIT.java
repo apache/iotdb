@@ -253,7 +253,7 @@ public class IoTDBInsertAlignedValuesIT {
     }
   }
 
-  @Test(expected = Exception.class)
+  @Test
   public void testInsertWithWrongType() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -261,6 +261,7 @@ public class IoTDBInsertAlignedValuesIT {
           "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(latitude INT32 encoding=PLAIN compressor=SNAPPY, longitude INT32 encoding=PLAIN compressor=SNAPPY) ");
       statement.execute(
           "insert into root.lz.dev.GPS(time,latitude,longitude) aligned values(1,1.3,6.7)");
+      fail();
     }
   }
 
