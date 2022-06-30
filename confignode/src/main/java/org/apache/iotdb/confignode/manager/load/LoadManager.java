@@ -62,11 +62,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-<<<<<<< HEAD
 import java.util.concurrent.atomic.AtomicInteger;
-=======
 import java.util.stream.Collectors;
->>>>>>> f18229a5f8 (fix getRegisteredConfigNodes)
 
 /**
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
@@ -111,19 +108,8 @@ public class LoadManager {
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
 
     this.balanceCount = new AtomicInteger(0);
-=======
-    this.onlineConfigNodes = getNodeManager().getRegisterConfigNodes();
->>>>>>> d79d68be56 (move getOnlineConfigNodes to LoadManager)
-=======
-    this.onlineConfigNodes = getNodeManager().getRegisteredDataNodes();
->>>>>>> ee3487b0fc (fix name)
-=======
->>>>>>> f18229a5f8 (fix getRegisteredConfigNodes)
   }
 
   /**
