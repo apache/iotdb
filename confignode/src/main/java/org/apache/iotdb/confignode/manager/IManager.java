@@ -246,5 +246,5 @@ public interface IManager {
   DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
 
   /** Show datanodes */
-  DataSet showDataNodes(GetRegionInfoListPlan getRegionsinfoReq);
+  DataSet showDataNodes();
 }

@@ -469,8 +469,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TShowDataNodesResp showDataNodes() throws TException {
-    GetRegionInfoListPlan getRegionsInfoPlan = new GetRegionInfoListPlan();
-    DataNodeInfosResp dataSet = (DataNodeInfosResp) configManager.showDataNodes(getRegionsInfoPlan);
+    DataNodeInfosResp dataSet = (DataNodeInfosResp) configManager.showDataNodes();
     TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
     showDataNodesResp.setStatus(dataSet.getStatus());
     showDataNodesResp.setDataNodesInfoList(dataSet.getDataNodesInfoList());

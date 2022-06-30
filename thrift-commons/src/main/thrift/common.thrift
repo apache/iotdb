@@ -102,11 +102,11 @@ struct TFlushReq {
 
 struct TDataNodesInfo {
   1: required i32 dataNodeId
-  2: optional string status
-  3: optional string rpcAddresss
-  4: optional i32 rpcPort
-  5: optional i32 dataRegionNum
-  6: optional i32 schemaRegionNum
+  2: required string status
+  3: required string rpcAddresss
+  4: required i32 rpcPort
+  5: required i32 dataRegionNum
+  6: required i32 schemaRegionNum
 }
 
 struct TSetTTLReq {

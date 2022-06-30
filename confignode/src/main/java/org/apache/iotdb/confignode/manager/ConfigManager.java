@@ -99,6 +99,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -778,56 +779,64 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet showDataNodes(GetRegionInfoListPlan getRegionsinfoReq) {
+  public DataSet showDataNodes() {
     TSStatus status = confirmLeader();
+    GetRegionInfoListPlan getRegionsinfoReq = new GetRegionInfoListPlan();
     DataNodeInfosResp dataNodeInfosResp = new DataNodeInfosResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<TDataNodesInfo> dataNodesInfoList = nodeManager.getOnlineDataNodesInfoList();
       RegionInfoListResp regionsInfoDataSet =
           (RegionInfoListResp) partitionManager.getRegionInfoList(getRegionsinfoReq);
-      Map<Integer, Integer> dataRegionNumMap = new HashMap<>();
-      Map<Integer, Integer> schemaRegionNumMap = new HashMap<>();
+
+      // Map<DataNodeId, DataRegionNum>
+      Map<Integer, AtomicInteger> dataRegionNumMap = new HashMap<>();
+      // Map<DataNodeId, SchemaRegionNum>
+      Map<Integer, AtomicInteger> schemaRegionNumMap = new HashMap<>();
+
       if (regionsInfoDataSet.getRegionInfoList() != null) {
         List<TRegionInfo> regionInfoList = regionsInfoDataSet.getRegionInfoList();
+
         regionInfoList.forEach(
             (regionInfo) -> {
-              if (dataRegionNumMap.get(regionInfo.getDataNodeId()) != null) {
+              int dataNodeId = regionInfo.getDataNodeId();
+              int regionTypeValue = regionInfo.getConsensusGroupId().getType().getValue();
+
+              if (dataRegionNumMap.get(dataNodeId) != null) {
                 dataRegionNumMap.put(
-                    regionInfo.getDataNodeId(),
-                    dataRegionNumMap.get(regionInfo.getDataNodeId())
-                                + regionInfo.getConsensusGroupId().getType().getValue()
+                    dataNodeId,
+                    dataRegionNumMap.get(dataNodeId).addAndGet(regionTypeValue)
                             == TConsensusGroupType.DataRegion.getValue()
-                        ? 1
-                        : 0);
+                        ? new AtomicInteger(1)
+                        : new AtomicInteger(0));
                 schemaRegionNumMap.put(
-                    regionInfo.getDataNodeId(),
-                    schemaRegionNumMap.get(regionInfo.getDataNodeId())
-                                + regionInfo.getConsensusGroupId().getType().getValue()
+                    dataNodeId,
+                    schemaRegionNumMap.get(dataNodeId).addAndGet(regionTypeValue)
                             == TConsensusGroupType.SchemaRegion.getValue()
-                        ? 1
-                        : 0);
+                        ? new AtomicInteger(1)
+                        : new AtomicInteger(0));
               } else {
                 dataRegionNumMap.put(
-                    regionInfo.getDataNodeId(),
-                    regionInfo.getConsensusGroupId().getType().getValue()
-                            == TConsensusGroupType.DataRegion.getValue()
-                        ? 1
-                        : 0);
+                    dataNodeId,
+                    regionTypeValue == TConsensusGroupType.DataRegion.getValue()
+                        ? new AtomicInteger(1)
+                        : new AtomicInteger(0));
                 schemaRegionNumMap.put(
-                    regionInfo.getDataNodeId(),
-                    regionInfo.getConsensusGroupId().getType().getValue()
-                            == TConsensusGroupType.SchemaRegion.getValue()
-                        ? 1
-                        : 0);
+                    dataNodeId,
+                    regionTypeValue == TConsensusGroupType.SchemaRegion.getValue()
+                        ? new AtomicInteger(1)
+                        : new AtomicInteger(0));
               }
             });
+
         dataNodesInfoList.forEach(
             (dataNodesInfo -> {
-              dataNodesInfo.setDataRegionNum(dataRegionNumMap.get(dataNodesInfo.getDataNodeId()));
+              dataNodesInfo.setDataRegionNum(
+                  dataRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
               dataNodesInfo.setSchemaRegionNum(
-                  schemaRegionNumMap.get(dataNodesInfo.getDataNodeId()));
+                  schemaRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
             }));
       }
+
       dataNodeInfosResp.setStatus(regionsInfoDataSet.getStatus());
       dataNodeInfosResp.setDataNodesInfoList(dataNodesInfoList);
     } else {
