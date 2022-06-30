@@ -98,12 +98,7 @@ public class NodeInfo implements SnapshotProcessor {
   public NodeInfo() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
-<<<<<<< HEAD
-    this.onlineConfigNodes = new HashSet<>();
-=======
-    this.registeredConfigNodes =
-        new HashSet<>(ConfigNodeDescriptor.getInstance().getConf().getConfigNodeList());
->>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
+    this.registeredConfigNodes = new HashSet<>();
   }
 
   public void addMetrics() {
@@ -281,13 +276,8 @@ public class NodeInfo implements SnapshotProcessor {
         }
       }
 
-<<<<<<< HEAD
-      onlineConfigNodes.add(applyConfigNodePlan.getConfigNodeLocation());
-      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(onlineConfigNodes));
-=======
       registeredConfigNodes.add(applyConfigNodePlan.getConfigNodeLocation());
-      storeConfigNode();
->>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
+      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes));
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
           applyConfigNodePlan.getConfigNodeLocation(),
@@ -314,13 +304,8 @@ public class NodeInfo implements SnapshotProcessor {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
-<<<<<<< HEAD
-      onlineConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation());
-      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(onlineConfigNodes));
-=======
       registeredConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation());
-      storeConfigNode();
->>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
+      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes));
       LOGGER.info(
           "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
           removeConfigNodePlan.getConfigNodeLocation(),
@@ -337,32 +322,7 @@ public class NodeInfo implements SnapshotProcessor {
     return status;
   }
 
-<<<<<<< HEAD
-  public List<TConfigNodeLocation> getOnlineConfigNodes() {
-=======
-  private void storeConfigNode() throws IOException {
-    Properties systemProperties = new Properties();
-    try (FileInputStream inputStream = new FileInputStream(systemPropertiesFile)) {
-      systemProperties.load(inputStream);
-    }
-    systemProperties.setProperty(
-        IoTDBConstant.TARGET_CONFIG_NODES,
-        NodeUrlUtils.convertTConfigNodeUrls(new ArrayList<>(registeredConfigNodes)));
-    try (FileOutputStream fileOutputStream = new FileOutputStream(systemPropertiesFile)) {
-      systemProperties.store(fileOutputStream, "");
-    }
-  }
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-  public List<TConfigNodeLocation> getRegisterConfigNodes() {
->>>>>>> ac78852c3f (move getOnlineConfigNodes to LoadManager)
-=======
-  public List<TConfigNodeLocation> getRegisteredDataNodes() {
->>>>>>> 94af7168f6 (fix name)
-=======
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
->>>>>>> 1061337ce2 (fix getRegisteredConfigNodes)
     List<TConfigNodeLocation> result;
     configNodeInfoReadWriteLock.readLock().lock();
     try {
