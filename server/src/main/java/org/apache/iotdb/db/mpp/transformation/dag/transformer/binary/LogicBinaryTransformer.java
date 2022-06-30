@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.transformation.dag.transformer.binary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -39,6 +40,39 @@ public abstract class LogicBinaryTransformer extends BinaryTransformer {
         || rightPointReaderDataType != TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException("Unsupported data type: " + TSDataType.BOOLEAN);
     }
+  }
+
+  @Override
+  public YieldableState yieldValue() throws QueryProcessException, IOException {
+    final YieldableState leftYieldableState = leftPointReader.yield();
+    final YieldableState rightYieldableState = rightPointReader.yield();
+
+    if (leftYieldableState == YieldableState.YIELDABLE
+        && rightYieldableState == YieldableState.YIELDABLE) {
+      cacheValue(leftPointReader, rightPointReader);
+      return YieldableState.YIELDABLE;
+    }
+
+    if (leftYieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA
+        || rightYieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+      return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+    }
+
+    if (leftYieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA
+        && rightYieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+      return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+    }
+
+    if (leftYieldableState == YieldableState.YIELDABLE && !isLeftPointReaderConstant) {
+      cacheValue(leftPointReader);
+      return YieldableState.YIELDABLE;
+    }
+    if (rightYieldableState == YieldableState.YIELDABLE && !isRightPointReaderConstant) {
+      cacheValue(rightPointReader);
+      return YieldableState.YIELDABLE;
+    }
+
+    return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
   }
 
   @Override

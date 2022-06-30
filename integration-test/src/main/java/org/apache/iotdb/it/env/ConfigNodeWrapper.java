@@ -27,14 +27,17 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   private final int consensusPort;
   private final String targetConfigNode;
-  private final int[] portList;
+  private final boolean isSeed;
 
-  public ConfigNodeWrapper(boolean isSeed, String targetConfigNode, String testName) {
-    super(testName);
-
-    portList = super.searchAvailablePorts();
+  public ConfigNodeWrapper(
+      boolean isSeed,
+      String targetConfigNode,
+      String testClassName,
+      String testMethodName,
+      int[] portList) {
+    super(testClassName, testMethodName, portList);
     this.consensusPort = portList[1];
-
+    this.isSeed = isSeed;
     if (isSeed) {
       this.targetConfigNode = getIpAndPortString();
     } else {
@@ -47,7 +50,7 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     properties.setProperty("rpc_address", super.getIp());
     properties.setProperty("rpc_port", String.valueOf(getPort()));
     properties.setProperty("consensus_port", String.valueOf(this.consensusPort));
-    properties.setProperty("target_confignode", this.targetConfigNode);
+    properties.setProperty("target_config_nodes", this.targetConfigNode);
     properties.setProperty(
         "config_node_consensus_protocol_class",
         "org.apache.iotdb.consensus.standalone.StandAloneConsensus");
@@ -65,6 +68,14 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   @Override
   protected String getConfigPath() {
     return workDirFilePath("confignode" + File.separator + "conf", "iotdb-confignode.properties");
+  }
+
+  @Override
+  protected String getEnvConfigPath() {
+    if (SystemUtils.IS_OS_WINDOWS) {
+      return workDirFilePath("confignode" + File.separator + "conf", "confignode-env.bat");
+    }
+    return workDirFilePath("confignode" + File.separator + "conf", "confignode-env.sh");
   }
 
   @Override
@@ -86,31 +97,10 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected String getLogPath() {
-    return System.getProperty("user.dir")
-        + File.separator
-        + "target"
-        + File.separator
-        + "cluster-logs"
-        + File.separator
-        + testName
-        + File.separator
-        + "Config"
-        + super.getId()
-        + ".log";
-  }
-
-  @Override
-  protected String getNodePath() {
-    return System.getProperty("user.dir")
-        + File.separator
-        + "target"
-        + File.separator
-        + super.getId();
-  }
-
-  @Override
-  public int getPort() {
-    return portList[0];
+  public final String getId() {
+    if (isSeed) {
+      return "SeedConfigNode" + getPort();
+    }
+    return "ConfigNode" + getPort();
   }
 }

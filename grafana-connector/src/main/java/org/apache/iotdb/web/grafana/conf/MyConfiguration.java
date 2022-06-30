@@ -18,15 +18,18 @@
  */
 package org.apache.iotdb.web.grafana.conf;
 
+import org.apache.iotdb.web.grafana.interceptor.LoginInterceptor;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 /** Created by dell on 2017/7/18. */
 @Configuration
-public class MyConfiguration {
+public class MyConfiguration extends WebMvcConfigurerAdapter {
 
   /** return WebMvcConfigurer. */
   @Bean
@@ -37,5 +40,15 @@ public class MyConfiguration {
         registry.addMapping("/**");
       }
     };
+  }
+
+  @Bean
+  public LoginInterceptor loginInterceptor() {
+    return new LoginInterceptor();
+  }
+
+  @Override
+  public void addInterceptors(InterceptorRegistry registry) {
+    registry.addInterceptor(loginInterceptor()).addPathPatterns("/**");
   }
 }

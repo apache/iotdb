@@ -361,9 +361,78 @@ We provide the Apache IoTDB Dashboard, and the rendering shown in Grafana is as 
 
 ![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-How to get Apache IoTDB Dashboard:
+#### 5.3.1. How to get Apache IoTDB Dashboard
 
 1. You can obtain the json files of Dashboards corresponding to different iotdb versions in the grafana-metrics-example folder.
 2. You can visit [Grafana Dashboard official website](https://grafana.com/grafana/dashboards/), search for `Apache IoTDB Dashboard` and use
 
 When creating Grafana, you can select the json file you just downloaded to `Import` and select the corresponding target data source for Apache IoTDB Dashboard.
+
+#### 5.3.2. Apache IoTDB StandaAlone Dashboard Instructions
+> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
+
+1. `Overview`:
+   1. `The number of entity`: The number of entities, currently including the number of timeseries.
+   2. `write point per minute`: the cumulative number of write points per minute.
+   3. `storage group used memory`: The memory size used by each storage group.
+2. `Interface`:
+   1. `The QPS of Interface`: The number of times the system interface is accessed per second
+   2. `The time consumed of Interface`: The average time consumed by the system interface
+   3. `Cache hit rate`: Cache hit rate.
+3. `Engine`:
+   1. `Task number (pending and active)`: The number of tasks in different states in the system.
+   2. `The time consumed of tasking (pending and active)`: The time consumption of tasks in different states in the system.
+4. `System`:
+   1. `The size of file`: The size of files related to the IoTDB system, including the total file size under wal, the total size of tsfile files under seq, and the total size of tsfile files under unseq.
+   2. `The number of file`: The number of files related to the IoTDB system, including the number of files under wal, the number of tsfile files under seq, and the number of tsfile files under unseq.
+   3. `The number of GC (per minute)`: The number of GC per minute of IoTDB, including Young GC and Full GC.
+   4. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC.
+   5. `Heap Memory`: The heap memory of IoTDB.
+   6. `Off-heap Memory`: The off-heap memory of IoTDB.
+   7. `The number of Java Thread`: The number of threads in different states of IoTDB.
+
+#### 5.3.3. Apache IoTDB ConfigNode Dashboard Instructions
+> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
+
+1. `Overview`:
+   1. `Online ConfigNode`: the number of online ConfigNodes
+   2. `Online DataNode`: the number of online DataNodes
+   3. `Storage Group`: the number of storage groups
+   4. `TotalRegion`: The total number of Regions
+   5. `DataRegion`: The total number of DataRegions
+   6. `SchemaRegion`: The total number of SchemaRegions
+2. `Region`:
+   1. `Total Region in Node`: The total number of Regions in different Nodes
+   2. `Region in Node`: The number of Regions in different Nodes, including SchemaRegion, DataRegion
+   3. `Region in Storage Group` (Normal level): The number of Regions in different storage groups, including SchemaRegion, DataRegion
+   4. `Slot in Storage Group` (Normal level): The number of Slots in different storage groups, including the number of DataSlots and the number of SchemaSlots
+3. `System`:
+   1. `The number of GC(per minute)`: The number of GCs per minute of IoTDB, including Young GC and Full GC.
+   2. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC.
+   3. `Heap Memory`: The heap memory of IoTDB.
+   4. `Off-heap Memory`: The off-heap memory of IoTDB.
+   5. `The number of Java Thread`: The number of threads in different states of IoTDB.
+   6. `The time consumed of Interface`: The average time consumed by the system interface
+
+#### 5.3.4. Apache IoTDB DataNode Dashboard Instructions
+> Except for the metrics specified specially, the following metrics are guaranteed to be available in the monitoring framework at the Important levels.
+
+1. `Overview`:
+   1. `The number of entity`: The number of entities, currently including the number of timeseries.
+   2. `write point per minute`: the cumulative number of write points per minute.
+   3. `storage group used memory`: The memory size used by each storage group.
+2. `Interface`:
+   1. `The QPS of Interface`: The number of times the system interface is accessed per second
+   2. `The time consumed of Interface`: The average time consumed by the system interface
+3. `Engine`:
+   1. `Task number (pending and active)`: The number of tasks in different states in the system.
+   2. `The time consumed of tasking (pending and active)`: The time consumption of tasks in different states in the system.
+   3. `Cache hit rate`: Cache hit rate
+4. `System`:
+   1. `The size of file`: The size of files related to the IoTDB system, including the total file size under wal, the total size of tsfile files under seq, and the total size of tsfile files under unseq.
+   2. `The number of file`: The number of files related to the IoTDB system, including the number of files under wal, the number of tsfile files under seq, and the number of tsfile files under unseq.
+   3. `The number of GC (per minute)`: The number of GC per minute of IoTDB, including Young GC and Full GC.
+   4. `The time consumed of GC (per minute)`: IoTDB's average GC time per minute, including Young GC and Full GC.
+   5. `Heap Memory`: The heap memory of IoTDB.
+   6. `Off-heap Memory`: The off-heap memory of IoTDB.
+   7. `The number of Java Thread`: The number of threads in different states of IoTDB.

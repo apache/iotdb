@@ -68,12 +68,6 @@ struct TDeleteStorageGroupsReq {
   1: required list<string> prefixPathList
 }
 
-struct TSetTTLReq {
-  1: required string storageGroup
-  2: required i64 TTL
-}
-
-
 struct TSetSchemaReplicationFactorReq {
   1: required string storageGroup
   2: required i32 schemaReplicationFactor
@@ -106,8 +100,8 @@ struct TStorageGroupSchema {
   3: optional i32 schemaReplicationFactor
   4: optional i32 dataReplicationFactor
   5: optional i64 timePartitionInterval
-  6: optional i32 maximumSchemaRegionCount
-  7: optional i32 maximumDataRegionCount
+  6: optional i32 maxSchemaRegionGroupCount
+  7: optional i32 maxDataRegionGroupCount
 }
 
 // Schema
@@ -202,7 +196,9 @@ struct TConfigNodeRegisterReq {
   6: required i64 defaultTTL
   7: required i64 timePartitionInterval
   8: required i32 schemaReplicationFactor
-  9: required i32 dataReplicationFactor
+  9: required double schemaRegionPerDataNode
+  10: required i32 dataReplicationFactor
+  11: required double dataRegionPerProcessor
 }
 
 struct TConfigNodeRegisterResp {
@@ -216,6 +212,7 @@ struct TClusterNodeInfos {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
+  4: required map<i32, string> nodeStatus
 }
 
 // UDF
@@ -236,10 +233,10 @@ struct TShowRegionReq {
 
 struct TShowRegionResp {
   1: required common.TSStatus status
-  2: optional list<common.TRegionLocation> regionInfoList;
+  2: optional list<common.TRegionInfo> regionInfoList;
 }
 
-service ConfigIService {
+service IConfigNodeRPCService {
 
   /* DataNode */
 
@@ -260,7 +257,7 @@ service ConfigIService {
 
   common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
 
-  common.TSStatus setTTL(TSetTTLReq req)
+  common.TSStatus setTTL(common.TSetTTLReq req)
 
   common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
 
@@ -302,7 +299,11 @@ service ConfigIService {
 
   TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
 
-  common.TSStatus applyConfigNode(common.TConfigNodeLocation configNodeLocation)
+  common.TSStatus addConsensusGroup(TConfigNodeRegisterResp req)
+
+  common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /* UDF */
 
@@ -317,6 +318,9 @@ service ConfigIService {
   /* Show Region */
 
   TShowRegionResp showRegion(TShowRegionReq req)
+
+  /* Get confignode heartbeat */
+  i64 getConfigNodeHeartBeat(i64 timestamp)
 
 }
 

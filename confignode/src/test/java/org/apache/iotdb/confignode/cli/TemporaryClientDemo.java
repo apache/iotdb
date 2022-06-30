@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.cli;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -39,8 +39,8 @@ public class TemporaryClientDemo {
   private static final int timeOutInMS = 10000;
 
   private final Random random = new Random();
-  private Map<Integer, ConfigIService.Client> clients;
-  private ConfigIService.Client defaultClient;
+  private Map<Integer, IConfigNodeRPCService.Client> clients;
+  private IConfigNodeRPCService.Client defaultClient;
 
   public void setStorageGroupsDemo() throws TException {
     createClients();
@@ -70,7 +70,7 @@ public class TemporaryClientDemo {
     for (int i = 22277; i <= 22281; i += 2) {
       TTransport transport = RpcTransportFactory.INSTANCE.getTransport("0.0.0.0", i, timeOutInMS);
       transport.open();
-      clients.put(i, new ConfigIService.Client(new TBinaryProtocol(transport)));
+      clients.put(i, new IConfigNodeRPCService.Client(new TBinaryProtocol(transport)));
     }
   }
 }

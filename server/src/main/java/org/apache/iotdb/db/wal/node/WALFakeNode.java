@@ -45,29 +45,29 @@ public class WALFakeNode implements IWALNode {
   }
 
   @Override
-  public WALFlushListener log(int memTableId, InsertRowPlan insertRowPlan) {
+  public WALFlushListener log(long memTableId, InsertRowPlan insertRowPlan) {
     return getResult();
   }
 
   @Override
-  public WALFlushListener log(int memTableId, InsertRowNode insertRowNode) {
-    return getResult();
-  }
-
-  @Override
-  public WALFlushListener log(
-      int memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
+  public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
     return getResult();
   }
 
   @Override
   public WALFlushListener log(
-      int memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+      long memTableId, InsertTabletPlan insertTabletPlan, int start, int end) {
     return getResult();
   }
 
   @Override
-  public WALFlushListener log(int memTableId, DeletePlan deletePlan) {
+  public WALFlushListener log(
+      long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
+    return getResult();
+  }
+
+  @Override
+  public WALFlushListener log(long memTableId, DeletePlan deletePlan) {
     return getResult();
   }
 

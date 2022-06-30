@@ -42,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
@@ -377,14 +378,22 @@ public abstract class Expression {
         break;
 
       case 15:
+        expression = new IsNullExpression(byteBuffer);
+        break;
+
+        /*case 16:
+        expression = new BetweenExpression(byteBuffer);
+        break;*/
+
+      case 17:
         expression = new InExpression(byteBuffer);
         break;
 
-      case 16:
+      case 18:
         expression = new LogicAndExpression(byteBuffer);
         break;
 
-      case 17:
+      case 19:
         expression = new LogicOrExpression(byteBuffer);
         break;
 

@@ -27,9 +27,10 @@ import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
@@ -155,18 +156,18 @@ public class NodeInfo implements SnapshotProcessor {
   /**
    * Persist DataNode info
    *
-   * @param registerDataNodeReq RegisterDataNodePlan
+   * @param registerDataNodePlan RegisterDataNodePlan
    * @return SUCCESS_STATUS
    */
-  public TSStatus registerDataNode(RegisterDataNodeReq registerDataNodeReq) {
+  public TSStatus registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
     TSStatus result;
-    TDataNodeInfo info = registerDataNodeReq.getInfo();
+    TDataNodeInfo info = registerDataNodePlan.getInfo();
     dataNodeInfoReadWriteLock.writeLock().lock();
     try {
       onlineDataNodes.put(info.getLocation().getDataNodeId(), info);
 
       // To ensure that the nextNodeId is updated correctly when
-      // the ConfigNode-followers concurrently processes RegisterDataNodeReq,
+      // the ConfigNode-followers concurrently processes RegisterDataNodePlan,
       // we need to add a synchronization lock here
       synchronized (nextNodeId) {
         if (nextNodeId.get() < info.getLocation().getDataNodeId()) {
@@ -192,15 +193,15 @@ public class NodeInfo implements SnapshotProcessor {
   /**
    * Get DataNode info
    *
-   * @param getDataNodeInfoReq QueryDataNodeInfoPlan
+   * @param getDataNodeInfoPlan QueryDataNodeInfoPlan
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
-  public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq) {
+  public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoPlan getDataNodeInfoPlan) {
     DataNodeInfosResp result = new DataNodeInfosResp();
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
-    int dataNodeId = getDataNodeInfoReq.getDataNodeID();
+    int dataNodeId = getDataNodeInfoPlan.getDataNodeID();
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {
@@ -268,27 +269,27 @@ public class NodeInfo implements SnapshotProcessor {
   /**
    * Update ConfigNodeList both in memory and confignode-system.properties file
    *
-   * @param applyConfigNodeReq ApplyConfigNodeReq
+   * @param applyConfigNodePlan ApplyConfigNodePlan
    * @return APPLY_CONFIGNODE_FAILED if update online ConfigNode failed.
    */
-  public TSStatus updateConfigNodeList(ApplyConfigNodeReq applyConfigNodeReq) {
+  public TSStatus updateConfigNodeList(ApplyConfigNodePlan applyConfigNodePlan) {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
       // To ensure that the nextNodeId is updated correctly when
-      // the ConfigNode-followers concurrently processes ApplyConfigNodeReq,
+      // the ConfigNode-followers concurrently processes ApplyConfigNodePlan,
       // we need to add a synchronization lock here
       synchronized (nextNodeId) {
-        if (nextNodeId.get() < applyConfigNodeReq.getConfigNodeLocation().getConfigNodeId()) {
-          nextNodeId.set(applyConfigNodeReq.getConfigNodeLocation().getConfigNodeId());
+        if (nextNodeId.get() < applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId()) {
+          nextNodeId.set(applyConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
         }
       }
 
-      onlineConfigNodes.add(applyConfigNodeReq.getConfigNodeLocation());
+      onlineConfigNodes.add(applyConfigNodePlan.getConfigNodeLocation());
       storeConfigNode();
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
-          applyConfigNodeReq.getConfigNodeLocation(),
+          applyConfigNodePlan.getConfigNodeLocation(),
           onlineConfigNodes);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
@@ -296,6 +297,34 @@ public class NodeInfo implements SnapshotProcessor {
       status.setCode(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode());
       status.setMessage(
           "Apply new ConfigNode failed because current ConfigNode can't store ConfigNode information.");
+    } finally {
+      configNodeInfoReadWriteLock.writeLock().unlock();
+    }
+    return status;
+  }
+
+  /**
+   * Update ConfigNodeList both in memory and confignode-system.properties file
+   *
+   * @param removeConfigNodePlan RemoveConfigNodePlan
+   * @return REMOVE_CONFIGNODE_FAILED if remove online ConfigNode failed.
+   */
+  public TSStatus removeConfigNodeList(RemoveConfigNodePlan removeConfigNodePlan) {
+    TSStatus status = new TSStatus();
+    configNodeInfoReadWriteLock.writeLock().lock();
+    try {
+      onlineConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation());
+      storeConfigNode();
+      LOGGER.info(
+          "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
+          removeConfigNodePlan.getConfigNodeLocation(),
+          onlineConfigNodes);
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (IOException e) {
+      LOGGER.error("Remove online ConfigNode failed.", e);
+      status.setCode(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode());
+      status.setMessage(
+          "Remove ConfigNode failed because current ConfigNode can't store ConfigNode information.");
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
     }

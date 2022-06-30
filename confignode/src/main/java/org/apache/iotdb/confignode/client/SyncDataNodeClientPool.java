@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
@@ -86,17 +87,17 @@ public class SyncDataNodeClientPool {
   }
 
   public void deleteRegions(Set<TRegionReplicaSet> deletedRegionSet) {
-    Map<TDataNodeLocation, List<TConsensusGroupId>> regionLocationMap = new HashMap<>();
+    Map<TDataNodeLocation, List<TConsensusGroupId>> regionInfoMap = new HashMap<>();
     deletedRegionSet.forEach(
         (tRegionReplicaSet) -> {
           for (TDataNodeLocation dataNodeLocation : tRegionReplicaSet.getDataNodeLocations()) {
-            regionLocationMap
+            regionInfoMap
                 .computeIfAbsent(dataNodeLocation, k -> new ArrayList<>())
                 .add(tRegionReplicaSet.getRegionId());
           }
         });
-    LOGGER.info("Current regionLocationMap {} ", regionLocationMap);
-    regionLocationMap.forEach(
+    LOGGER.info("Current regionInfoMap {} ", regionInfoMap);
+    regionInfoMap.forEach(
         (dataNodeLocation, regionIds) ->
             deleteRegions(dataNodeLocation.getInternalEndPoint(), regionIds, deletedRegionSet));
   }
@@ -148,5 +149,19 @@ public class SyncDataNodeClientPool {
 
   public static SyncDataNodeClientPool getInstance() {
     return ClientPoolHolder.INSTANCE;
+  }
+
+  public TSStatus setTTL(TEndPoint endPoint, TSetTTLReq setTTLReq) {
+    TSStatus status;
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
+      status = client.setTTL(setTTLReq);
+    } catch (IOException e) {
+      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
+      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
+    } catch (TException e) {
+      LOGGER.error("setTTL on DataNode {} failed", endPoint, e);
+      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+    }
+    return status;
   }
 }

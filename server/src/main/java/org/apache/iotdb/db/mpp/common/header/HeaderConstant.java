@@ -61,7 +61,7 @@ public class HeaderConstant {
   public static final String COLUMN_NODE_ID = "NodeID";
   public static final String COLUMN_NODE_TYPE = "NodeType";
   public static final String COLUMN_STATUS = "Status";
-  public static final String COLUMN_HOST_ADDRESS = "HostAdress";
+  public static final String COLUMN_HOST = "Host";
   public static final String COLUMN_PORT = "Port";
 
   // column names for show functions statement
@@ -73,7 +73,8 @@ public class HeaderConstant {
   public static final String COLUMN_REGION_ID = "RegionId";
   public static final String COLUMN_TYPE = "Type";
   public static final String COLUMN_DATANODE_ID = "DataNodeId";
-  public static final String COLUMN_SLOTS = "Slots";
+  public static final String COLUMN_SERIES_SLOTS = "Series Slots";
+  public static final String COLUMN_TIME_SLOTS = "Time Slots";
 
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
@@ -195,7 +196,7 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
                 new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
             true);
   }
@@ -218,9 +219,10 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_SLOTS, TSDataType.INT64),
+                new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT64),
+                new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
                 new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
-                new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
             true);
   }

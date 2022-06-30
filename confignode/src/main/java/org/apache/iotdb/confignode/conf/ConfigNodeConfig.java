@@ -58,11 +58,17 @@ public class ConfigNodeConfig {
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
+  /** DataNode schema region consensus protocol */
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
+
+  /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
+  private double schemaRegionPerDataNode = 1.0;
+
   /** DataNode data region consensus protocol */
   private String dataRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
 
-  /** DataNode schema region consensus protocol */
-  private String schemaRegionConsensusProtocolClass = ConsensusFactory.StandAloneConsensus;
+  /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
+  private double dataRegionPerProcessor = 0.5;
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -323,6 +329,22 @@ public class ConfigNodeConfig {
     this.configNodeConsensusProtocolClass = configNodeConsensusProtocolClass;
   }
 
+  public String getSchemaRegionConsensusProtocolClass() {
+    return schemaRegionConsensusProtocolClass;
+  }
+
+  public void setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass) {
+    this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
+  }
+
+  public double getSchemaRegionPerDataNode() {
+    return schemaRegionPerDataNode;
+  }
+
+  public void setSchemaRegionPerDataNode(double schemaRegionPerDataNode) {
+    this.schemaRegionPerDataNode = schemaRegionPerDataNode;
+  }
+
   public String getDataRegionConsensusProtocolClass() {
     return dataRegionConsensusProtocolClass;
   }
@@ -331,12 +353,12 @@ public class ConfigNodeConfig {
     this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
   }
 
-  public String getSchemaRegionConsensusProtocolClass() {
-    return schemaRegionConsensusProtocolClass;
+  public double getDataRegionPerProcessor() {
+    return dataRegionPerProcessor;
   }
 
-  public void setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass) {
-    this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
+  public void setDataRegionPerProcessor(double dataRegionPerProcessor) {
+    this.dataRegionPerProcessor = dataRegionPerProcessor;
   }
 
   public int getThriftServerAwaitTimeForStopService() {

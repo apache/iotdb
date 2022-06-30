@@ -519,13 +519,13 @@ public class RatisConfig {
       private SizeInBytes queueByteLimit = SizeInBytes.valueOf("64MB");
       private int purgeGap = 1024;
       private boolean purgeUptoSnapshotIndex = false;
-      private SizeInBytes segmentSizeMax = SizeInBytes.valueOf("128MB");
+      private SizeInBytes segmentSizeMax = SizeInBytes.valueOf("24MB");
       private int segmentCacheNumMax = 2;
       private SizeInBytes segmentCacheSizeMax = SizeInBytes.valueOf("200MB");
       private SizeInBytes preallocatedSize = SizeInBytes.valueOf("4MB");
       private SizeInBytes writeBufferSize = SizeInBytes.valueOf("64KB");
       private int forceSyncNum = 128;
-      private boolean unsafeFlushEnabled = false;
+      private boolean unsafeFlushEnabled = true;
 
       public Log build() {
         return new Log(

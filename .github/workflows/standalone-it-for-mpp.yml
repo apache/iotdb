@@ -48,7 +48,11 @@ jobs:
       - name: Adjust network dynamic TCP ports range
         if: ${{ runner.os == 'Windows' }}
         shell: pwsh
-        run: netsh int ipv4 set dynamicport tcp start=32768 num=32768
+        run: |
+          netsh int ipv4 set dynamicport tcp start=32768 num=32768
+          netsh int ipv4 set dynamicport udp start=32768 num=32768
+          netsh int ipv6 set dynamicport tcp start=32768 num=32768
+          netsh int ipv6 set dynamicport udp start=32768 num=32768
       - name: Adjust Linux kernel somaxconn
         if: ${{ runner.os == 'Linux' }}
         shell: bash

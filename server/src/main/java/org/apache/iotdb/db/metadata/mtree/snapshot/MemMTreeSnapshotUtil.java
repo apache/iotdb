@@ -28,9 +28,12 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
+import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
+import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -63,6 +66,8 @@ public class MemMTreeSnapshotUtil {
       "Error occurred during deserializing MemMTree.";
 
   private static final byte VERSION = 0;
+  private static final MemoryStatistics MEMORY_STATISTICS = MemoryStatistics.getInstance();
+  private static final IMNodeSizeEstimator ESTIMATOR = new BasicMNodSizeEstimator();
 
   public static boolean createSnapshot(File snapshotDir, MemMTreeStore store) {
     File snapshotTmp =
@@ -105,6 +110,11 @@ public class MemMTreeSnapshotUtil {
         SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.MTREE_SNAPSHOT);
     try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(snapshot))) {
       return deserializeFrom(inputStream, measurementProcess);
+    } catch (Throwable e) {
+      // This method is only invoked during recovery. If failed, the memory usage should be cleared
+      // since the loaded schema will not be used.
+      MEMORY_STATISTICS.clear();
+      throw e;
     }
   }
 
@@ -202,6 +212,8 @@ public class MemMTreeSnapshotUtil {
       default:
         throw new IOException("Unrecognized MNode type " + type);
     }
+
+    MEMORY_STATISTICS.requestMemory(ESTIMATOR.estimateSize(node));
 
     if (!ancestors.isEmpty()) {
       node.setParent(ancestors.peek());
