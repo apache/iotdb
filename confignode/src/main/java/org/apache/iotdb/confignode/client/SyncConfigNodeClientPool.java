@@ -108,7 +108,7 @@ public class SyncConfigNodeClientPool {
   /**
    * ConfigNode Leader stop any ConfigNode in the cluster
    *
-   * @param configNodeLocations confignode_list of confignode-system.properties
+   * @param configNodeLocations target_config_nodes of confignode-system.properties
    * @param configNodeLocation To be removed ConfigNode
    * @return SUCCESS_STATUS: remove ConfigNode success, other status remove failed
    */

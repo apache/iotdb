@@ -79,11 +79,11 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
   @Override
   public String getBindIP() {
-    return conf.getRpcAddress();
+    return conf.getInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return conf.getRpcPort();
+    return conf.getInternalPort();
   }
 }

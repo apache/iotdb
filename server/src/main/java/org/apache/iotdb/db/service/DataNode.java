@@ -60,7 +60,7 @@ import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeTSServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -113,10 +113,10 @@ public class DataNode implements DataNodeMBean {
 
     // if client ip is the default address, set it same with internal ip
     if (config.getRpcAddress().equals("0.0.0.0")) {
-      config.setRpcAddress(config.getInternalIp());
+      config.setRpcAddress(config.getInternalAddress());
     }
 
-    thisNode.setIp(IoTDBDescriptor.getInstance().getConfig().getInternalIp());
+    thisNode.setIp(IoTDBDescriptor.getInstance().getConfig().getInternalAddress());
     thisNode.setPort(IoTDBDescriptor.getInstance().getConfig().getInternalPort());
   }
 
@@ -180,13 +180,13 @@ public class DataNode implements DataNodeMBean {
         location.setDataNodeId(config.getDataNodeId());
         location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getInternalPort()));
+            new TEndPoint(config.getInternalAddress(), config.getInternalPort()));
         location.setMPPDataExchangeEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getMppDataExchangePort()));
+            new TEndPoint(config.getInternalAddress(), config.getMppDataExchangePort()));
         location.setDataRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getDataRegionConsensusPort()));
+            new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
         location.setSchemaRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getSchemaRegionConsensusPort()));
+            new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
 
         // Set DataNodeInfo
         TDataNodeInfo info = new TDataNodeInfo();
@@ -354,13 +354,13 @@ public class DataNode implements DataNodeMBean {
         location.setDataNodeId(config.getDataNodeId());
         location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getInternalPort()));
+            new TEndPoint(config.getInternalAddress(), config.getInternalPort()));
         location.setMPPDataExchangeEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getMppDataExchangePort()));
+            new TEndPoint(config.getInternalAddress(), config.getMppDataExchangePort()));
         location.setDataRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getDataRegionConsensusPort()));
+            new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
         location.setSchemaRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getSchemaRegionConsensusPort()));
+            new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
         TDataNodeActiveReq req = new TDataNodeActiveReq();
         req.setLocation(location);
         req.setDataNodeId(config.getDataNodeId());
@@ -394,7 +394,7 @@ public class DataNode implements DataNodeMBean {
     // init rpc service
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(DataNodeTSServiceImpl.class.getName());
+        .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
     }

@@ -101,7 +101,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
@@ -109,7 +108,6 @@ public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRPCServiceImpl.class);
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
-  private static final double loadBalanceThreshold = 0.1;
 
   public DataNodeRPCServiceImpl() {
     super();
@@ -328,10 +326,17 @@ public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
 
   @Override
   public THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req) throws TException {
-    THeartbeatResp resp = new THeartbeatResp(req.getHeartbeatTimestamp(), getJudgedLeaders());
-    Random whetherToGetMetric = new Random();
+    THeartbeatResp resp = new THeartbeatResp();
+    resp.setHeartbeatTimestamp(req.getHeartbeatTimestamp());
+
+    // Judging leader if necessary
+    if (req.isNeedJudgeLeader()) {
+      resp.setJudgedLeaders(getJudgedLeaders());
+    }
+
+    // Sampling load if necessary
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
-        && whetherToGetMetric.nextDouble() < loadBalanceThreshold) {
+        && req.isNeedSamplingLoad()) {
       long cpuLoad =
           MetricsService.getInstance()
               .getMetricManager()
