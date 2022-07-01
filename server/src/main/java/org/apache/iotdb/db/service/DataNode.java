@@ -381,7 +381,8 @@ public class DataNode implements DataNodeMBean {
     TDataNodeLocation location = new TDataNodeLocation();
     location.setDataNodeId(config.getDataNodeId());
     location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
-    location.setInternalEndPoint(new TEndPoint(config.getInternalAddress(), config.getInternalPort()));
+    location.setInternalEndPoint(
+        new TEndPoint(config.getInternalAddress(), config.getInternalPort()));
     location.setMPPDataExchangeEndPoint(
         new TEndPoint(config.getInternalAddress(), config.getMppDataExchangePort()));
     location.setDataRegionConsensusEndPoint(
