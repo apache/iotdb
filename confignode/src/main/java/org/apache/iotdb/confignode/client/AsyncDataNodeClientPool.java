@@ -72,6 +72,8 @@ public class AsyncDataNodeClientPool {
   public void createRegions(
       CreateRegionGroupsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
 
+    // TODO: Unify retry logic
+
     // Index of each Region
     int index = 0;
     // Number of regions to be created
@@ -166,6 +168,7 @@ public class AsyncDataNodeClientPool {
 
   private TCreateSchemaRegionReq genCreateSchemaRegionReq(
       String storageGroup, TRegionReplicaSet regionReplicaSet) {
+    // TODO: Add a retry logic
     TCreateSchemaRegionReq req = new TCreateSchemaRegionReq();
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet);
@@ -179,6 +182,7 @@ public class AsyncDataNodeClientPool {
    */
   private void createSchemaRegion(
       TEndPoint endPoint, TCreateSchemaRegionReq req, CreateRegionHandler handler) {
+    // TODO: Add a retry logic
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);
@@ -192,6 +196,7 @@ public class AsyncDataNodeClientPool {
 
   private TCreateDataRegionReq genCreateDataRegionReq(
       String storageGroup, TRegionReplicaSet regionReplicaSet, long TTL) {
+    // TODO: Add a retry logic
     TCreateDataRegionReq req = new TCreateDataRegionReq();
     req.setStorageGroup(storageGroup);
     req.setRegionReplicaSet(regionReplicaSet);
@@ -206,6 +211,7 @@ public class AsyncDataNodeClientPool {
    */
   public void createDataRegion(
       TEndPoint endPoint, TCreateDataRegionReq req, CreateRegionHandler handler) {
+    // TODO: Add a retry logic
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);
@@ -224,6 +230,7 @@ public class AsyncDataNodeClientPool {
    */
   public void getDataNodeHeartBeat(
       TEndPoint endPoint, THeartbeatReq req, DataNodeHeartbeatHandler handler) {
+    // TODO: Add a retry logic
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);
@@ -249,6 +256,7 @@ public class AsyncDataNodeClientPool {
    */
   public void createFunction(
       TEndPoint endPoint, TCreateFunctionRequest request, FunctionManagementHandler handler) {
+    // TODO: Add a retry logic
     try {
       clientManager.borrowClient(endPoint).createFunction(request, handler);
     } catch (Exception e) {
@@ -263,6 +271,7 @@ public class AsyncDataNodeClientPool {
    */
   public void dropFunction(
       TEndPoint endPoint, TDropFunctionRequest request, FunctionManagementHandler handler) {
+    // TODO: Add a retry logic
     try {
       clientManager.borrowClient(endPoint).dropFunction(request, handler);
     } catch (Exception e) {
@@ -276,13 +285,11 @@ public class AsyncDataNodeClientPool {
    * @param endPoint The specific DataNode
    */
   public void flush(TEndPoint endPoint, TFlushReq flushReq, FlushHandler handler) {
-    for (int retry = 0; retry < 3; retry++) {
-      try {
-        clientManager.borrowClient(endPoint).flush(flushReq, handler);
-        return;
-      } catch (Exception e) {
-        LOGGER.error("Failed to asking DataNode to flush: {}", endPoint, e);
-      }
+    // TODO: Add a retry logic
+    try {
+      clientManager.borrowClient(endPoint).flush(flushReq, handler);
+    } catch (Exception e) {
+      LOGGER.error("Failed to asking DataNode to flush: {}", endPoint, e);
     }
   }
 
@@ -292,14 +299,13 @@ public class AsyncDataNodeClientPool {
    * @param endPoint The specific DataNode
    */
   public void setTTL(TEndPoint endPoint, TSetTTLReq setTTLReq, SetTTLHandler handler) {
-    for (int retry = 0; retry < 3; retry++) {
-      try {
-        clientManager.borrowClient(endPoint).setTTL(setTTLReq, handler);
-      } catch (IOException e) {
-        LOGGER.error("Can't connect to DataNode {}", endPoint, e);
-      } catch (TException e) {
-        LOGGER.error("Set TTL on DataNode {} failed", endPoint, e);
-      }
+    // TODO: Add a retry logic
+    try {
+      clientManager.borrowClient(endPoint).setTTL(setTTLReq, handler);
+    } catch (IOException e) {
+      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
+    } catch (TException e) {
+      LOGGER.error("Set TTL on DataNode {} failed", endPoint, e);
     }
   }
 
