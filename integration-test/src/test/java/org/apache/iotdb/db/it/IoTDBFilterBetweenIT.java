@@ -38,7 +38,7 @@ import java.sql.Statement;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({ClusterIT.class})
+@Category({ClusterIT.class}) // TODO After old StandAlone remove
 public class IoTDBFilterBetweenIT {
   protected static final int ITERATION_TIMES = 10;
 
