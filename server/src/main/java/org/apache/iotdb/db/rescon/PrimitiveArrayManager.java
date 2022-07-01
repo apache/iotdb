@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.db.rescon;
 
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** Manage all primitive data lists in memory, including get and release operations. */
 public class PrimitiveArrayManager {
