@@ -482,7 +482,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
-    return null;
+    return configManager.getLatestRegionRouteMap();
   }
 
   @Override
