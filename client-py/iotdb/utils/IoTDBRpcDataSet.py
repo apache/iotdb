@@ -269,9 +269,12 @@ class IoTDBRpcDataSet(object):
                 if result[column_name] is None:
                     result[column_name] = data_array
                 else:
-                    result[column_name] = np.concatenate(
-                        (result[column_name], data_array), axis=0
-                    )
+                    if isinstance(result[column_name], pd.Series):
+                        result[column_name] = result[column_name].append(data_array)
+                    else:
+                        result[column_name] = np.concatenate(
+                            (result[column_name], data_array), axis=0
+                        )
         for k, v in result.items():
             if v is None:
                 result[k] = []
