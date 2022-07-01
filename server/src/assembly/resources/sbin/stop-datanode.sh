@@ -18,12 +18,20 @@
 # under the License.
 #
 
-
+IOTDB_CONF="`dirname $(pwd)`"/conf
+rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${IOTDB_CONF}/iotdb-datanode.properties`
 PIDS=$(ps ax | grep -i 'DataNode' | grep java | grep -v grep | awk '{print $1}')
-if [ ! $PIDS ];then
+PID=$(lsof -t -i:${rpc_port})
+if [ -z "$PID" ]; then
   echo "No DataNode to stop"
-else
+  exit 1
+elif [[ "${PIDS}" =~ "${PID}" ]]; then
+  kill -s TERM $PID
   echo "Stop DataNode"
-  jps | grep -w DataNode | grep -v grep | awk '{print $1}'  | xargs kill
+else
+  echo "No DataNode to stop"
+  exit 1
 fi
+
+
 
