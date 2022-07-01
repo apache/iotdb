@@ -414,6 +414,10 @@ public class Analyzer {
               }
             }
           } else if (fillComponent.getFillPolicy() == FillPolicy.LINEAR) {
+            if (queryStatement.isAlignByDevice()) {
+              throw new SemanticException("");
+            }
+
             for (Expression fillColumn : fillColumnList) {
               TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
               if (!checkedDataType.isNumeric()) {

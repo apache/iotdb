@@ -53,7 +53,9 @@ public class DoubleLiteral extends Literal {
 
   @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
-    return dataType == TSDataType.FLOAT || dataType == TSDataType.DOUBLE;
+    return dataType == TSDataType.FLOAT
+        || dataType == TSDataType.DOUBLE
+        || dataType == TSDataType.TEXT;
   }
 
   @Override
