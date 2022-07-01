@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -239,6 +240,13 @@ public interface IManager {
   TSStatus dropFunction(String udfName);
 
   TSStatus flush(TFlushReq req);
+
+  /**
+   * Get the latest RegionRouteMap
+   *
+   * @return TRegionRouteMapResp
+   */
+  TRegionRouteMapResp getLatestRegionRouteMap();
 
   void addMetrics();
 

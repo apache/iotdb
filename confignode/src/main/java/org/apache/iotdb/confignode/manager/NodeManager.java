@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
@@ -119,7 +120,7 @@ public class NodeManager {
     }
 
     dataSet.setDataNodeId(req.getInfo().getLocation().getDataNodeId());
-    dataSet.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
+    dataSet.setConfigNodeList(nodeInfo.getRegisteredConfigNodes());
     setGlobalConfig(dataSet);
     return dataSet;
   }
@@ -199,19 +200,20 @@ public class NodeManager {
     resp.setPartitionRegionId(
         getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
 
-    resp.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
+    resp.setConfigNodeList(nodeInfo.getRegisteredConfigNodes());
     return resp;
   }
 
-  public TSStatus applyConfigNode(ApplyConfigNodePlan applyConfigNodePlan) {
-    if (getConsensusManager().addConfigNodePeer(applyConfigNodePlan)) {
-      // Generate new ConfigNode's index
-      applyConfigNodePlan.getConfigNodeLocation().setConfigNodeId(nodeInfo.generateNextNodeId());
-      return getConsensusManager().write(applyConfigNodePlan).getStatus();
-    } else {
-      return new TSStatus(TSStatusCode.APPLY_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("Apply ConfigNode failed because there is another ConfigNode being applied.");
-    }
+  /**
+   * Only leader use this interface, record the new ConfigNode's information
+   *
+   * @param configNodeLocation The new ConfigNode
+   */
+  public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
+    // Generate new ConfigNode's index
+    configNodeLocation.setConfigNodeId(nodeInfo.generateNextNodeId());
+    ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
+    getConsensusManager().write(applyConfigNodePlan);
   }
 
   public void addMetrics() {
@@ -221,15 +223,15 @@ public class NodeManager {
   public TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
     if (removeConfigNodeLock.tryLock()) {
       try {
-        // Check ConfigNodes number
-        if (getOnlineConfigNodes().size() <= 1) {
+        // Check OnlineConfigNodes number
+        if (getLoadManager().getOnlineConfigNodes().size() <= 1) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
               .setMessage(
                   "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
         }
 
-        // Check whether the onlineConfigNodes contain the ConfigNode to be removed.
-        if (!getOnlineConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
+        // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
+        if (!getRegisteredConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
           return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
               .setMessage(
                   "Remove ConfigNode failed because the ConfigNode not in current Cluster.");
@@ -273,7 +275,7 @@ public class NodeManager {
   private TSStatus transferLeader(
       RemoveConfigNodePlan removeConfigNodePlan, ConsensusGroupId groupId) {
     TConfigNodeLocation newLeader =
-        getOnlineConfigNodes().stream()
+        getLoadManager().getOnlineConfigNodes().stream()
             .filter(e -> !e.equals(removeConfigNodePlan.getConfigNodeLocation()))
             .findAny()
             .get();
@@ -293,8 +295,8 @@ public class NodeManager {
                 + ".");
   }
 
-  public List<TConfigNodeLocation> getOnlineConfigNodes() {
-    return nodeInfo.getOnlineConfigNodes();
+  public List<TConfigNodeLocation> getRegisteredConfigNodes() {
+    return nodeInfo.getRegisteredConfigNodes();
   }
 
   private ConsensusManager getConsensusManager() {
@@ -389,5 +391,9 @@ public class NodeManager {
       LOGGER.error("NodeManager was interrupted during flushing on data nodes", e);
     }
     return dataNodeResponseStatus;
+  }
+
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 }

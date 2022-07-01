@@ -25,12 +25,12 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 public class DataNodeEndPoints {
   public static final TEndPoint LOCAL_HOST_DATA_BLOCK_ENDPOINT =
       new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
+          IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
           IoTDBDescriptor.getInstance().getConfig().getMppDataExchangePort());
 
   public static final TEndPoint LOCAL_HOST_INTERNAL_ENDPOINT =
       new TEndPoint(
-          IoTDBDescriptor.getInstance().getConfig().getInternalIp(),
+          IoTDBDescriptor.getInstance().getConfig().getInternalAddress(),
           IoTDBDescriptor.getInstance().getConfig().getInternalPort());
 
   public static boolean isSameNode(TEndPoint endPoint) {

@@ -25,6 +25,8 @@ import java.util.LinkedList;
 /** DataNodeHeartbeatCache caches and maintains all the heartbeat data */
 public class DataNodeHeartbeatCache implements IHeartbeatStatistic {
 
+  // TODO: This class might be split into DataNodeCache and ConfigNodeCache
+
   // Cache heartbeat samples
   private static final int maximumWindowSize = 100;
   private final LinkedList<HeartbeatPackage> slidingWindow;

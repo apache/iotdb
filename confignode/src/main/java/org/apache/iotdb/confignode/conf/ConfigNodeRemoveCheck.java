@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.conf;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
@@ -80,11 +81,12 @@ public class ConfigNodeRemoveCheck {
   }
 
   public List<TConfigNodeLocation> getConfigNodeList() throws BadNodeUrlException {
-    return NodeUrlUtils.parseTConfigNodeUrls(systemProperties.getProperty("confignode_list"));
+    return NodeUrlUtils.parseTConfigNodeUrls(
+        systemProperties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES));
   }
 
   public int getConsensusPort() {
-    return Integer.parseInt(systemProperties.getProperty("consensus_port"));
+    return Integer.parseInt(systemProperties.getProperty(IoTDBConstant.CONSENSUS_PORT));
   }
 
   private static class ConfigNodeConfRemoveCheckHolder {
