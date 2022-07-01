@@ -96,15 +96,6 @@ struct TRegionInfo {
   8: optional string status
 }
 
-struct TRegionRouteMapResp {
-  1: required TSStatus status
-  // For version stamp
-  2: optional i64 timestamp
-  // The routing policy of read/write requests for each RegionGroup is based on the order in the TRegionReplicaSet.
-  // The replica with higher sorting result in TRegionReplicaSet will have higher priority.
-  3: optional map<TConsensusGroupId, TRegionReplicaSet> regionRouteMap
-}
-
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
