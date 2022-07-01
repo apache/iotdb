@@ -504,13 +504,13 @@ public class StandaloneSchedulerTest {
     dataNodeList.add(
         new TDataNodeLocation()
             .setClientRpcEndPoint(new TEndPoint(conf.getRpcAddress(), conf.getRpcPort()))
-            .setInternalEndPoint(new TEndPoint(conf.getInternalIp(), conf.getInternalPort()))
+            .setInternalEndPoint(new TEndPoint(conf.getInternalAddress(), conf.getInternalPort()))
             .setMPPDataExchangeEndPoint(
-                new TEndPoint(conf.getInternalIp(), conf.getMppDataExchangePort()))
+                new TEndPoint(conf.getInternalAddress(), conf.getMppDataExchangePort()))
             .setDataRegionConsensusEndPoint(
-                new TEndPoint(conf.getInternalIp(), conf.getDataRegionConsensusPort()))
+                new TEndPoint(conf.getInternalAddress(), conf.getDataRegionConsensusPort()))
             .setSchemaRegionConsensusEndPoint(
-                new TEndPoint(conf.getInternalIp(), conf.getSchemaRegionConsensusPort())));
+                new TEndPoint(conf.getInternalAddress(), conf.getSchemaRegionConsensusPort())));
 
     // construct fragmentInstance
     return new TRegionReplicaSet(new TConsensusGroupId(type, 0), dataNodeList);

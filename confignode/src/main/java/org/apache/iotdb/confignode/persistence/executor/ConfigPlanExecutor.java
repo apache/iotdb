@@ -35,7 +35,7 @@ import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupC
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
@@ -167,7 +167,7 @@ public class ConfigPlanExecutor {
       case SetTimePartitionInterval:
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalPlan) req);
       case CreateRegionGroups:
-        return partitionInfo.createRegionGroups((CreateRegionsPlan) req);
+        return partitionInfo.createRegionGroups((CreateRegionGroupsPlan) req);
       case CreateSchemaPartition:
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionPlan) req);
       case CreateDataPartition:
@@ -189,9 +189,9 @@ public class ConfigPlanExecutor {
       case UpdateUser:
         return authorInfo.authorNonQuery((AuthorPlan) req);
       case ApplyConfigNode:
-        return nodeInfo.updateConfigNodeList((ApplyConfigNodePlan) req);
+        return nodeInfo.applyConfigNode((ApplyConfigNodePlan) req);
       case RemoveConfigNode:
-        return nodeInfo.removeConfigNodeList((RemoveConfigNodePlan) req);
+        return nodeInfo.removeConfigNode((RemoveConfigNodePlan) req);
       case CreateFunction:
         return udfInfo.createFunction((CreateFunctionPlan) req);
       case DropFunction:

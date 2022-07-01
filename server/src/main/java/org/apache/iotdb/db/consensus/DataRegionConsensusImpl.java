@@ -56,13 +56,17 @@ public class DataRegionConsensusImpl {
                   conf.getDataRegionConsensusProtocolClass(),
                   ConsensusConfig.newBuilder()
                       .setThisNode(
-                          new TEndPoint(conf.getInternalIp(), conf.getDataRegionConsensusPort()))
+                          new TEndPoint(
+                              conf.getInternalAddress(), conf.getDataRegionConsensusPort()))
                       .setStorageDir(conf.getDataRegionConsensusDir())
                       .setMultiLeaderConfig(
                           MultiLeaderConfig.newBuilder()
                               .setRpc(
                                   RPC.newBuilder()
                                       .setConnectionTimeoutInMs(conf.getConnectionTimeoutInMS())
+                                      .setRpcSelectorThreadNum(conf.getRpcSelectorThreadNum())
+                                      .setRpcMinConcurrentClientNum(
+                                          conf.getRpcMinConcurrentClientNum())
                                       .setRpcMaxConcurrentClientNum(
                                           conf.getRpcMaxConcurrentClientNum())
                                       .setRpcThriftCompressionEnabled(
@@ -71,6 +75,7 @@ public class DataRegionConsensusImpl {
                                           conf.getSelectorNumOfClientManager())
                                       .setThriftServerAwaitTimeForStopService(
                                           conf.getThriftServerAwaitTimeForStopService())
+                                      .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
                                       .build())
                               .build())
                       .setRatisConfig(
