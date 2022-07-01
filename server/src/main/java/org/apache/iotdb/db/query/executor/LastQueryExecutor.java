@@ -257,7 +257,6 @@ public class LastQueryExecutor {
       }
     }
 
-
     for (int i = 0; i < cacheAccessors.size(); i++) {
       // if empty container, then it means no data, query results return null
       if (cacheAccessors.get(i).checkEmptyContainer()) {

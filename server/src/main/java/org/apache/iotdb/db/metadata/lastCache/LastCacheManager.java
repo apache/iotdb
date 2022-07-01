@@ -89,8 +89,8 @@ public class LastCacheManager {
 
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (lastCacheContainer.isEmptyContainer()) {
-      synchronized (node){
-        if (lastCacheContainer.isEmptyContainer()){
+      synchronized (node) {
+        if (lastCacheContainer.isEmptyContainer()) {
           lastCacheContainer = new LastCacheContainer();
           node.setLastCacheContainer(lastCacheContainer);
         }
@@ -105,6 +105,7 @@ public class LastCacheManager {
    * @param node the measurementMNode holding the lastCache When invoker only has the target
    *     seriesPath, the node could be null and MManager will search the node
    */
+  @TestOnly
   public static void resetLastCache(IMeasurementMNode node) {
     if (node == null) {
       return;
