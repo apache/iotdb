@@ -73,9 +73,10 @@ public class TsFileLoaderTool {
   private static String filePath = "";
 
   public static void main(String[] args) {
+    Session session = null;
     try {
       parseArgs(args);
-      Session session = new Session(host, port, user, password);
+      session = new Session(host, port, user, password);
       session.open();
       System.out.printf("Connect to IoTDB %s:%s successfully.%n", host, port);
       writeToIoTDB(collectTsFiles(new File(filePath)), session);
@@ -85,6 +86,15 @@ public class TsFileLoaderTool {
     } catch (Exception e) {
       System.out.printf("Load Error. %s%n", e.getMessage());
       e.printStackTrace();
+    } finally {
+      if (session != null) {
+        try {
+          session.close();
+        } catch (IoTDBConnectionException e) {
+          System.out.printf("Can not connect to IoTDB. %s%n", e.getMessage());
+          e.printStackTrace();
+        }
+      }
     }
   }
 
