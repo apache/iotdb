@@ -522,6 +522,7 @@ public class SeriesScanUtil {
         for (IPageReader iPageReader : pageReaderList) {
           seqPageReaders.add(
               new VersionPageReader(
+                  chunkMetaData.getTimestamp(),
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   iPageReader,
@@ -531,6 +532,7 @@ public class SeriesScanUtil {
         for (int i = pageReaderList.size() - 1; i >= 0; i--) {
           seqPageReaders.add(
               new VersionPageReader(
+                  chunkMetaData.getTimestamp(),
                   chunkMetaData.getVersion(),
                   chunkMetaData.getOffsetOfChunkHeader(),
                   pageReaderList.get(i),
@@ -542,6 +544,7 @@ public class SeriesScanUtil {
           pageReader ->
               unSeqPageReaders.add(
                   new VersionPageReader(
+                      chunkMetaData.getTimestamp(),
                       chunkMetaData.getVersion(),
                       chunkMetaData.getOffsetOfChunkHeader(),
                       pageReader,
@@ -1101,8 +1104,8 @@ public class SeriesScanUtil {
 
     protected boolean isSeq;
 
-    VersionPageReader(long version, long offset, IPageReader data, boolean isSeq) {
-      this.version = new PriorityMergeReader.MergeReaderPriority(version, offset);
+    VersionPageReader(long timestamp, long version, long offset, IPageReader data, boolean isSeq) {
+      this.version = new PriorityMergeReader.MergeReaderPriority(timestamp, version, offset);
       this.data = data;
       this.isSeq = isSeq;
     }

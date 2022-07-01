@@ -199,6 +199,10 @@ public class ChunkMetadata implements IChunkMetadata {
     this.version = version;
   }
 
+  public long getTimestamp() {
+    return this.timestamp;
+  }
+
   public List<TimeRange> getDeleteIntervalList() {
     return deleteIntervalList;
   }

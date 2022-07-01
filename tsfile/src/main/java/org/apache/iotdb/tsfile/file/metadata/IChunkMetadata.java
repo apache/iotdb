@@ -45,6 +45,8 @@ public interface IChunkMetadata {
 
   void setVersion(long version);
 
+  long getTimestamp();
+
   long getOffsetOfChunkHeader();
 
   long getStartTime();
