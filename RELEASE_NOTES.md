@@ -24,7 +24,7 @@
 ## New Features
 
 * [ISSUE-6171] Support createTimeseriesOfTemplate in Session
-* [IOTDB-2602] Without null support filtering based on partial columns
+* [IOTDB-2602] "Without null" supports filtering based on partial columns
 
 ## Improvements
 
