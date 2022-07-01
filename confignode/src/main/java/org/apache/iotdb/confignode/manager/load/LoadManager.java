@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
@@ -62,6 +63,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * The LoadManager at ConfigNodeGroup-Leader is active. It proactively implements the cluster
@@ -231,8 +233,8 @@ public class LoadManager {
     if (getConsensusManager().isLeader()) {
       // Send heartbeat requests to all the online DataNodes
       pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
-      // Send heartbeat requests to all the online ConfigNodes
-      pingOnlineConfigNodes(getNodeManager().getOnlineConfigNodes());
+      // Send heartbeat requests to all the registered ConfigNodes
+      pingRegisteredConfigNodes(getNodeManager().getRegisteredConfigNodes());
       // Do load balancing
       doLoadBalancing();
       balanceCount.getAndIncrement();
@@ -285,11 +287,11 @@ public class LoadManager {
   /**
    * Send heartbeat requests to all the online ConfigNodes
    *
-   * @param onlineConfigNodes ConfigNodes that currently online
+   * @param registeredConfigNodes ConfigNodes that registered in cluster
    */
-  private void pingOnlineConfigNodes(List<TConfigNodeLocation> onlineConfigNodes) {
+  private void pingRegisteredConfigNodes(List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
-    for (TConfigNodeLocation configNodeLocation : onlineConfigNodes) {
+    for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
       ConfigNodeHeartbeatHandler handler =
           new ConfigNodeHeartbeatHandler(
               configNodeLocation,
@@ -312,6 +314,17 @@ public class LoadManager {
    */
   public void removeNodeHeartbeatHandCache(Integer nodeId) {
     heartbeatCacheMap.remove(nodeId);
+  }
+
+  public List<TConfigNodeLocation> getOnlineConfigNodes() {
+    return getNodeManager().getRegisteredConfigNodes().stream()
+        .filter(
+            registeredConfigNode ->
+                heartbeatCacheMap
+                    .get(registeredConfigNode.getConfigNodeId())
+                    .getNodeStatus()
+                    .equals(NodeStatus.Running))
+        .collect(Collectors.toList());
   }
 
   private ConsensusManager getConsensusManager() {

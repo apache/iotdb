@@ -79,9 +79,9 @@ public class NodeInfo implements SnapshotProcessor {
           ConfigNodeDescriptor.getInstance().getConf().getSchemaReplicationFactor(),
           ConfigNodeDescriptor.getInstance().getConf().getDataReplicationFactor());
 
-  // Online ConfigNodes
+  // Registered ConfigNodes
   private final ReentrantReadWriteLock configNodeInfoReadWriteLock;
-  private final Set<TConfigNodeLocation> onlineConfigNodes;
+  private final Set<TConfigNodeLocation> registeredConfigNodes;
 
   // Online DataNodes
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
@@ -98,7 +98,7 @@ public class NodeInfo implements SnapshotProcessor {
   public NodeInfo() {
     this.dataNodeInfoReadWriteLock = new ReentrantReadWriteLock();
     this.configNodeInfoReadWriteLock = new ReentrantReadWriteLock();
-    this.onlineConfigNodes = new HashSet<>();
+    this.registeredConfigNodes = new HashSet<>();
   }
 
   public void addMetrics() {
@@ -108,7 +108,7 @@ public class NodeInfo implements SnapshotProcessor {
           .getOrCreateAutoGauge(
               Metric.CONFIG_NODE.toString(),
               MetricLevel.CORE,
-              onlineConfigNodes,
+              registeredConfigNodes,
               o -> getOnlineDataNodeCount(),
               Tag.NAME.toString(),
               "online");
@@ -276,12 +276,12 @@ public class NodeInfo implements SnapshotProcessor {
         }
       }
 
-      onlineConfigNodes.add(applyConfigNodePlan.getConfigNodeLocation());
-      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(onlineConfigNodes));
+      registeredConfigNodes.add(applyConfigNodePlan.getConfigNodeLocation());
+      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes));
       LOGGER.info(
           "Successfully apply ConfigNode: {}. Current ConfigNodeGroup: {}",
           applyConfigNodePlan.getConfigNodeLocation(),
-          onlineConfigNodes);
+          registeredConfigNodes);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Update online ConfigNode failed.", e);
@@ -304,12 +304,12 @@ public class NodeInfo implements SnapshotProcessor {
     TSStatus status = new TSStatus();
     configNodeInfoReadWriteLock.writeLock().lock();
     try {
-      onlineConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation());
-      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(onlineConfigNodes));
+      registeredConfigNodes.remove(removeConfigNodePlan.getConfigNodeLocation());
+      SystemPropertiesUtils.storeConfigNodeList(new ArrayList<>(registeredConfigNodes));
       LOGGER.info(
           "Successfully remove ConfigNode: {}. Current ConfigNodeGroup: {}",
           removeConfigNodePlan.getConfigNodeLocation(),
-          onlineConfigNodes);
+          registeredConfigNodes);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException e) {
       LOGGER.error("Remove online ConfigNode failed.", e);
@@ -322,12 +322,11 @@ public class NodeInfo implements SnapshotProcessor {
     return status;
   }
 
-  public List<TConfigNodeLocation> getOnlineConfigNodes() {
+  public List<TConfigNodeLocation> getRegisteredConfigNodes() {
     List<TConfigNodeLocation> result;
     configNodeInfoReadWriteLock.readLock().lock();
     try {
-      // TODO: Check ConfigNode status, ensure the returned ConfigNode isn't removed
-      result = new ArrayList<>(onlineConfigNodes);
+      result = new ArrayList<>(registeredConfigNodes);
     } finally {
       configNodeInfoReadWriteLock.readLock().unlock();
     }
@@ -474,6 +473,6 @@ public class NodeInfo implements SnapshotProcessor {
     nextNodeId.set(0);
     onlineDataNodes.clear();
     drainingDataNodes.clear();
-    onlineConfigNodes.clear();
+    registeredConfigNodes.clear();
   }
 }
