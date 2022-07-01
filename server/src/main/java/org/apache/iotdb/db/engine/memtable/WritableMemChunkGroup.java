@@ -49,8 +49,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       if (columns[i] == null) {
         continue;
       }
-      IWritableMemChunk memChunk =
-          createMemChunkIfNotExistAndGet(schemaList.get(i));
+      IWritableMemChunk memChunk = createMemChunkIfNotExistAndGet(schemaList.get(i));
       memChunk.write(
           times,
           columns[i],
