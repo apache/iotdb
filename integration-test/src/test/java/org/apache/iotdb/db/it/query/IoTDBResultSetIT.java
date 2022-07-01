@@ -78,7 +78,7 @@ public class IoTDBResultSetIT {
           "insert into root.t1.wf01.wt01(timestamp, status, type, grade) values (2000, false, 2, 2000)");
 
       try (ResultSet resultSet1 =
-          statement.executeQuery("select count(status) from root.t1.wf01.wt01"); ) {
+          statement.executeQuery("select count(status) from root.t1.wf01.wt01")) {
         resultSet1.next();
         // type of r1 is INT64(long), test long convert to int
         int countStatus = resultSet1.getInt(1);
@@ -87,7 +87,7 @@ public class IoTDBResultSetIT {
 
       try (ResultSet resultSet2 =
           statement.executeQuery(
-              "select type from root.t1.wf01.wt01 where time = 1000 limit 1"); ) {
+              "select type from root.t1.wf01.wt01 where time = 1000 limit 1")) {
         resultSet2.next();
         // type of r2 is INT32(int), test int convert to long
         long type = resultSet2.getLong(2);
@@ -96,7 +96,7 @@ public class IoTDBResultSetIT {
 
       try (ResultSet resultSet3 =
           statement.executeQuery(
-              "select grade from root.t1.wf01.wt01 where time = 1000 limit 1"); ) {
+              "select grade from root.t1.wf01.wt01 where time = 1000 limit 1")) {
         resultSet3.next();
         // type of r3 is INT64(long), test long convert to int
         int grade = resultSet3.getInt(2);
