@@ -20,18 +20,18 @@
 namespace java org.apache.iotdb.common.rpc.thrift
 namespace py iotdb.thrift.common
 
+// Define a set of ip:port address
+struct TEndPoint {
+  1: required string ip
+  2: required i32 port
+}
+
 // The return status code and message in each response.
 struct TSStatus {
   1: required i32 code
   2: optional string message
   3: optional list<TSStatus> subStatus
   4: optional TEndPoint redirectNode
-}
-
-// Define a set of ip:port address
-struct TEndPoint {
-  1: required string ip
-  2: required i32 port
 }
 
 enum TConsensusGroupType {
