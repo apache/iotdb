@@ -104,7 +104,7 @@ public class NodeManager {
     if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
       status.setCode(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
-    } else if (req.getInfo().getLocation().getDataNodeId() < 1) {
+    } else if (req.getInfo().getLocation().getDataNodeId() < 0) {
       // only when new dataNode is registered, generate new dataNodeId
       req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextNodeId());
     }

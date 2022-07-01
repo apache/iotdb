@@ -146,6 +146,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   private void registerAndActivateDataNodes() throws TException {
     for (int i = 0; i < 3; i++) {
       TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+      dataNodeLocation.setDataNodeId(-1);
       dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
       dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
@@ -181,9 +182,10 @@ public class ConfigNodeRPCServiceProcessorTest {
     dataNodeInfo.setMaxMemory(1024 * 1024);
 
     TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeInfo);
-    TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
+    TDataNodeRegisterResp resp;
 
     // test only register not activate
+    dataNodeLocation.setDataNodeId(-1);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6670));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9007));
     dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8781));
@@ -191,9 +193,10 @@ public class ConfigNodeRPCServiceProcessorTest {
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50014));
     resp = processor.registerDataNode(req);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
-    Assert.assertEquals(4, resp.getDataNodeId());
+    Assert.assertEquals(3, resp.getDataNodeId());
 
     // test success re-register
+    dataNodeLocation.setDataNodeId(1);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6668));
     dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
     dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8778));
@@ -205,6 +208,19 @@ public class ConfigNodeRPCServiceProcessorTest {
         TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode(), resp.getStatus().getCode());
     Assert.assertEquals(1, resp.getDataNodeId());
     checkGlobalConfig(resp.getGlobalConfig());
+
+    // test success re-activated
+    dataNodeLocation.setDataNodeId(1);
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6668));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8778));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50011));
+
+    TDataNodeActiveReq activateReq = new TDataNodeActiveReq(dataNodeInfo);
+    TSStatus activateRlt = processor.activeDataNode(activateReq);
+    Assert.assertEquals(
+        TSStatusCode.DATANODE_ALREADY_ACTIVATED.getStatusCode(), activateRlt.getCode());
 
     // test query DataNodeInfo
     TDataNodeInfoResp infoResp = processor.getDataNodeInfo(-1);
@@ -224,12 +240,12 @@ public class ConfigNodeRPCServiceProcessorTest {
       Assert.assertEquals(dataNodeLocation, infoList.get(i).getValue().getLocation());
     }
 
-    infoResp = processor.getDataNodeInfo(4);
+    infoResp = processor.getDataNodeInfo(3);
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), infoResp.getStatus().getCode());
     infoMap = infoResp.getDataNodeInfoMap();
     Assert.assertEquals(1, infoMap.size());
-    Assert.assertNull(infoMap.get(1));
+    Assert.assertNull(infoMap.get(3));
 
     infoResp = processor.getDataNodeInfo(0);
     Assert.assertEquals(
