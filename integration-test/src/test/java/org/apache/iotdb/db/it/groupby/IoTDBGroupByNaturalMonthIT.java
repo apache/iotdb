@@ -32,6 +32,7 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -191,7 +192,7 @@ public class IoTDBGroupByNaturalMonthIT {
         Assert.assertTrue(cnt >= 28);
         Assert.assertTrue(cnt <= 31);
       }
-    } catch (Exception e) {
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

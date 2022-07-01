@@ -30,6 +30,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.DateFormat;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,7 +38,6 @@ import static org.apache.iotdb.itbase.constant.TestConstant.DELTA;
 import static org.apache.iotdb.itbase.constant.TestConstant.NULL;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TestUtils {
@@ -211,15 +211,15 @@ public class TestUtils {
     }
     assertEquals(expectedHeader, header.toString());
 
+    Set<String> actualRetSet = new HashSet<>();
     while (actualResultSet.next()) {
       StringBuilder builder = new StringBuilder();
       for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
         builder.append(actualResultSet.getString(i)).append(",");
       }
-      assertTrue(expectedRetSet.contains(builder.toString()));
-      expectedRetSet.remove(builder.toString());
+      actualRetSet.add(builder.toString());
     }
-    assertEquals(expectedRetSet.size(), 0);
+    assertEquals(expectedRetSet, actualRetSet);
   }
 
   public static void assertResultSetEqual(

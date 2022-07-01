@@ -34,6 +34,7 @@ import org.junit.runner.RunWith;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 
@@ -101,7 +102,7 @@ public class IoTDBResultSetIT {
         int grade = resultSet3.getInt(2);
         Assert.assertEquals(1000, grade);
       }
-    } catch (Exception e) {
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
@@ -124,7 +125,7 @@ public class IoTDBResultSetIT {
         assertEquals("TEXT", metaData.getColumnTypeName(2));
       }
 
-    } catch (Exception e) {
+    } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }

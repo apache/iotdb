@@ -33,6 +33,7 @@ import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
@@ -164,7 +165,7 @@ public class IoTDBAliasIT {
       try (ResultSet resultSet = statement.executeQuery("select powerNew from root.sg.d2")) {
         assertResultSetEqual(resultSet, "Time,root.sg.d2.powerNew,", retArray);
       }
-    } catch (Exception e) {
+    } catch (SQLException e) {
       fail(e.getMessage());
       e.printStackTrace();
     }
