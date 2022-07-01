@@ -184,7 +184,7 @@ public class ConsensusManager {
     for (int retry = 0; retry < 50; retry++) {
       Peer leaderPeer = consensusImpl.getLeader(consensusGroupId);
       if (leaderPeer != null) {
-        List<TConfigNodeLocation> onlineConfigNodes = getNodeManager().getOnlineConfigNodes();
+        List<TConfigNodeLocation> onlineConfigNodes = getNodeManager().getRegisteredConfigNodes();
         TConfigNodeLocation leaderLocation =
             onlineConfigNodes.stream()
                 .filter(leader -> leader.getConsensusEndPoint().equals(leaderPeer.getEndpoint()))
