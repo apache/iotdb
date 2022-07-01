@@ -16,19 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.aligned;
+package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -42,36 +43,34 @@ import static org.apache.iotdb.db.constant.TestConstant.lastValue;
 import static org.apache.iotdb.db.constant.TestConstant.maxValue;
 import static org.apache.iotdb.db.constant.TestConstant.minTime;
 import static org.apache.iotdb.db.constant.TestConstant.minValue;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 
-@Category({LocalStandaloneTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
 
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
-  protected static long prevPartitionInterval;
-
-  private static final String TIMESTAMP_STR = "Time";
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeClass();
-    enableSeqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction =
-        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
+
+    EnvFactory.getEnv().initBeforeClass();
+
     AlignedWriteUtil.insertData();
-    Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("delete from root.sg1.d1.s1 where time <= 15");
-      statement.execute("delete timeseries root.sg1.d1.s2");
+      // TODO replace it while delete timeseries is supported in cluster mode
+      //      statement.execute("delete timeseries root.sg1.d1.s2");
+      statement.execute("delete from root.sg1.d1.s2 where time <= 40");
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -82,7 +81,6 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
     EnvFactory.getEnv().cleanAfterClass();
   }
 
@@ -92,14 +90,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         new String[] {"1,0,5006.666666666667", "11,5,13014.2", "21,1,25578.0", "31,0,null"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
-                  + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 10ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
+                  + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 10ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -114,13 +110,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
-                  + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 10ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 10ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -146,14 +139,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
-                  + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
+                  + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -168,13 +159,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
-                  + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -205,14 +193,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
-                  + "where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
+                  + "where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -227,13 +213,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select count(s1), sum(s2), avg(s3) from root.sg1.d1 "
-                  + " where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -258,14 +241,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
-                  + "where s3 > 5 GROUP BY ([1, 41), 10ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+                  + "where s3 > 5 GROUP BY ([1, 41), 10ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -282,13 +263,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
-                  + " where s3 > 5 GROUP BY ([1, 41), 10ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " where s3 > 5 GROUP BY ([1, 41), 10ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -322,14 +300,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
-                  + "where s3 > 5 and time < 38 GROUP BY ([1, 41), 5ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+                  + "where s3 > 5 and time < 38 GROUP BY ([1, 41), 5ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -346,13 +322,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
-                  + " where s3 > 5 and time < 38 GROUP BY ([1, 41), 5ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " where s3 > 5 and time < 38 GROUP BY ([1, 41), 5ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -385,14 +358,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
-                  + "where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+                  + "where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -409,13 +380,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
-                  + " where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " where s3 > 5 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -440,14 +408,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         new String[] {"1,null,30000", "11,20.0,11", "21,230000.0,21", "31,null,null"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(s1), first_value(s3) from root.sg1.d1 "
-                  + "where s3 > 5 GROUP BY ([1, 41), 10ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(s1), first_value(s3) from root.sg1.d1 "
+                  + "where s3 > 5 GROUP BY ([1, 41), 10ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -462,13 +428,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select last_value(s1), first_value(s3) from root.sg1.d1 "
-                  + " where s3 > 5 GROUP BY ([1, 41), 10ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " where s3 > 5 GROUP BY ([1, 41), 10ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -500,14 +463,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(s1), first_value(s3) from root.sg1.d1 "
-                  + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(s1), first_value(s3) from root.sg1.d1 "
+                  + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -522,13 +483,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select last_value(s1), first_value(s3) from root.sg1.d1 "
-                  + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 5ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -559,14 +517,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(s1), first_value(s3) from root.sg1.d1 "
-                  + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 4ms, 6ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(s1), first_value(s3) from root.sg1.d1 "
+                  + "where s3 > 5 and time < 30 GROUP BY ([1, 41), 4ms, 6ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -581,13 +537,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select last_value(s1), first_value(s3) from root.sg1.d1 "
-                  + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 4ms, 6ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " where s3 > 5 and time < 30 GROUP BY ([1, 41), 4ms, 6ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -615,14 +568,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(*), last_value(*) from root.sg1.d1 "
-                  + " where s3 > 5 or s4 = true GROUP BY ([1, 41), 10ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(*), last_value(*) from root.sg1.d1 "
+                  + " where s3 > 5 or s4 = true GROUP BY ([1, 41), 10ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -649,13 +600,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select count(*), last_value(*) from root.sg1.d1 "
-                  + "where s3 > 5 or s4 = true GROUP BY ([1, 41), 10ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + "where s3 > 5 or s4 = true GROUP BY ([1, 41), 10ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -701,14 +649,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select count(*) from root.sg1.d1 "
-                  + "where s3 > 5 or s5 like 'aligned_test3%' GROUP BY ([1, 41), 3ms, 4ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select count(*) from root.sg1.d1 "
+                  + "where s3 > 5 or s5 like 'aligned_test3%' GROUP BY ([1, 41), 3ms, 4ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -727,13 +673,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select count(*) from root.sg1.d1 where s3 > 5 or s5 like 'aligned_test3%' "
-                  + " GROUP BY ([1, 41), 3ms, 4ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " GROUP BY ([1, 41), 3ms, 4ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =
@@ -771,14 +714,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.sg1.d1 "
-                  + "where s3 > 5 or s5 like 'aligned_test3%' GROUP BY ([1, 41), 3ms, 4ms)");
-      Assert.assertTrue(hasResultSet);
 
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.sg1.d1 "
+                  + "where s3 > 5 or s5 like 'aligned_test3%' GROUP BY ([1, 41), 3ms, 4ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -797,13 +738,10 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletionIT {
         Assert.assertEquals(retArray.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
+      try (ResultSet resultSet =
+          statement.executeQuery(
               "select last_value(*) from root.sg1.d1 where s3 > 5 or s5 like 'aligned_test3%' "
-                  + " GROUP BY ([1, 41), 3ms, 4ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+                  + " GROUP BY ([1, 41), 3ms, 4ms) order by time desc")) {
         cnt = retArray.length;
         while (resultSet.next()) {
           String ans =

@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.db.exception.sql;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
-public class PathNumOverLimitException extends QueryProcessException {
+public class PathNumOverLimitException extends SemanticException {
 
   public PathNumOverLimitException() {
     super(
