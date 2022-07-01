@@ -192,9 +192,9 @@ public class ConfigPlanExecutor {
       case UpdateUser:
         return authorInfo.authorNonQuery((AuthorPlan) req);
       case ApplyConfigNode:
-        return nodeInfo.updateConfigNodeList((ApplyConfigNodePlan) req);
+        return nodeInfo.applyConfigNode((ApplyConfigNodePlan) req);
       case RemoveConfigNode:
-        return nodeInfo.removeConfigNodeList((RemoveConfigNodePlan) req);
+        return nodeInfo.removeConfigNode((RemoveConfigNodePlan) req);
       case CreateFunction:
         return udfInfo.createFunction((CreateFunctionPlan) req);
       case DropFunction:
