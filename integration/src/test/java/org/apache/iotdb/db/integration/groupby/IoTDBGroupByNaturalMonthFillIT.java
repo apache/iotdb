@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration.groupby;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
@@ -38,13 +39,13 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.TimeZone;
 
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
-public class IoTDBGroupByMonthFillIT {
+@Category({LocalStandaloneTest.class, ClusterTest.class})
+public class IoTDBGroupByNaturalMonthFillIT {
 
-  private static final String TIMESTAMP_STR = "Time";
   private static final DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
 
   @BeforeClass
