@@ -52,6 +52,7 @@ public class SetTTLHandler implements AsyncMethodCallback<TSStatus> {
 
   @Override
   public void onError(Exception e) {
+    latch.countDown();
     LOGGER.error("Failed to SetTTL on DataNode: {}", dataNodeLocation);
   }
 }
