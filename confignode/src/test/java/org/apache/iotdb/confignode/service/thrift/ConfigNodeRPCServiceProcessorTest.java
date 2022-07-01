@@ -244,8 +244,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), infoResp.getStatus().getCode());
     infoMap = infoResp.getDataNodeInfoMap();
-    Assert.assertEquals(1, infoMap.size());
-    Assert.assertNull(infoMap.get(3));
+    Assert.assertEquals(0, infoMap.size());
 
     infoResp = processor.getDataNodeInfo(0);
     Assert.assertEquals(

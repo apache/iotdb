@@ -219,7 +219,9 @@ public class NodeInfo implements SnapshotProcessor {
         result.setDataNodeInfoMap(new HashMap<>(onlineDataNodes));
       } else {
         result.setDataNodeInfoMap(
-            Collections.singletonMap(dataNodeId, onlineDataNodes.get(dataNodeId)));
+            onlineDataNodes.get(dataNodeId) == null
+                ? new HashMap<>(0)
+                : Collections.singletonMap(dataNodeId, onlineDataNodes.get(dataNodeId)));
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
