@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
@@ -88,6 +87,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -804,40 +804,28 @@ public class ConfigManager implements IManager {
           (regionInfo) -> {
             int dataNodeId = regionInfo.getDataNodeId();
             int regionTypeValue = regionInfo.getConsensusGroupId().getType().getValue();
-
-            if (dataRegionNumMap.containsKey(dataNodeId)) {
-              dataRegionNumMap.put(
-                  dataNodeId,
-                  dataRegionNumMap.get(dataNodeId).addAndGet(regionTypeValue)
-                          == TConsensusGroupType.DataRegion.getValue()
-                      ? new AtomicInteger(1)
-                      : new AtomicInteger(0));
-              schemaRegionNumMap.put(
-                  dataNodeId,
-                  schemaRegionNumMap.get(dataNodeId).addAndGet(regionTypeValue)
-                          == TConsensusGroupType.SchemaRegion.getValue()
-                      ? new AtomicInteger(1)
-                      : new AtomicInteger(0));
-            } else {
-              dataRegionNumMap.put(
-                  dataNodeId,
-                  regionTypeValue == TConsensusGroupType.DataRegion.getValue()
-                      ? new AtomicInteger(1)
-                      : new AtomicInteger(0));
-              schemaRegionNumMap.put(
-                  dataNodeId,
-                  regionTypeValue == TConsensusGroupType.SchemaRegion.getValue()
-                      ? new AtomicInteger(1)
-                      : new AtomicInteger(0));
-            }
+            int dataRegionNum =
+                regionTypeValue == TConsensusGroupType.DataRegion.getValue() ? 1 : 0;
+            int schemaRegionNum =
+                regionTypeValue == TConsensusGroupType.SchemaRegion.getValue() ? 1 : 0;
+            dataRegionNumMap
+                .computeIfAbsent(dataNodeId, key -> new AtomicInteger())
+                .addAndGet(dataRegionNum);
+            schemaRegionNumMap
+                .computeIfAbsent(dataNodeId, key -> new AtomicInteger())
+                .addAndGet(schemaRegionNum);
           });
 
       dataNodesInfoList.forEach(
           (dataNodesInfo -> {
-            dataNodesInfo.setDataRegionNum(
-                dataRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
-            dataNodesInfo.setSchemaRegionNum(
-                schemaRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
+            if (dataRegionNumMap.containsKey(dataNodesInfo.getDataNodeId())) {
+              dataNodesInfo.setDataRegionNum(
+                  dataRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
+            }
+            if (schemaRegionNumMap.containsKey(dataNodesInfo.getDataNodeId())) {
+              dataNodesInfo.setSchemaRegionNum(
+                  schemaRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
+            }
           }));
     }
 
