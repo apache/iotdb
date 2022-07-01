@@ -18,18 +18,16 @@
  */
 package org.apache.iotdb.db.rescon;
 
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicLong;
 
 /** Manage all primitive data lists in memory, including get and release operations. */
 public class PrimitiveArrayManager {
@@ -266,7 +264,7 @@ public class PrimitiveArrayManager {
    * @return an array of primitive data arrays
    */
   public static Object createDataListsByType(TSDataType dataType, int size) {
-    int arrayNumber = (int) Math.ceil((float) size / (float) ARRAY_SIZE);
+    int arrayNumber = size / ARRAY_SIZE + 1;
     switch (dataType) {
       case BOOLEAN:
         boolean[][] booleans = new boolean[arrayNumber][];

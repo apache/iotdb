@@ -18,16 +18,15 @@
  */
 package org.apache.iotdb.db.utils.datastructure;
 
+import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class BooleanTVList extends TVList {
 
@@ -93,11 +92,11 @@ public class BooleanTVList extends TVList {
 
   @Override
   public void sort() {
-    if (sortedTimestamps == null || sortedTimestamps.length < size) {
+    if (sortedTimestamps == null || sortedTimestamps.length < size / ARRAY_SIZE + 1) {
       sortedTimestamps =
           (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, size);
     }
-    if (sortedValues == null || sortedValues.length < size) {
+    if (sortedValues == null || sortedValues.length < size / ARRAY_SIZE + 1) {
       sortedValues =
           (boolean[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.BOOLEAN, size);
     }
