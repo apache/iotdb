@@ -69,7 +69,7 @@ public class IoTDBInsertAlignedValues4IT {
       statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(4,'test','test')");
       statement.execute("insert into root.sg.d1(time,s1,s3) aligned values(5,'test','test')");
       statement.execute("insert into root.sg.d1(time,s1,s2) aligned values(6,'test','test')");
-      statement.execute(ConfigFactory.getConfig().getFlushCommand());
+      statement.execute("flush");
       statement.execute("insert into root.sg.d1(time,s1,s3) aligned values(7,'test','test')");
     } catch (SQLException e) {
       fail();

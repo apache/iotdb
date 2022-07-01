@@ -153,6 +153,10 @@ CREATE
     : C R E A T E
     ;
 
+DATA
+    : D A T A
+    ;
+
 DEBUG
     : D E B U G
     ;
@@ -416,6 +420,10 @@ READONLY
 
 REGEXP
     : R E G E X P
+    ;
+
+REGIONS
+    : R E G I O N S
     ;
 
 REMOVE
@@ -765,6 +773,8 @@ OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
 
+OPERATOR_IS : I S;
+
 OPERATOR_IN : I N;
 
 OPERATOR_AND
@@ -867,7 +877,6 @@ NULL_LITERAL
 NAN_LITERAL
     : N A N
     ;
-
 
 /**
  * 6. ID

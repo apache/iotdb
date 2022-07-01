@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatemen
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -48,6 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -163,9 +166,20 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
         deletePathList.addAll(
             LocalConfigNode.getInstance().getMatchedStorageGroups(prefixPath, false));
       }
-      LocalConfigNode.getInstance().deleteStorageGroups(deletePathList);
+      if (deletePathList.isEmpty()) {
+        future.setException(
+            new IoTDBException(
+                String.format(
+                    "Path %s does not exist",
+                    Arrays.toString(deleteStorageGroupStatement.getPrefixPath().toArray())),
+                TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()));
+        return future;
+      } else {
+        LocalConfigNode.getInstance().deleteStorageGroups(deletePathList);
+      }
     } catch (MetadataException e) {
       future.setException(e);
+      return future;
     }
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     return future;
@@ -222,7 +236,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
         new StatementExecutionException(
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
-                "Executing this command in standalone mode is not supported")));
+                "Executing show cluster in standalone mode is not supported")));
     return future;
   }
 
@@ -254,6 +268,17 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     }
     // build TSBlock
     ShowTTLTask.buildTSBlock(storageGroupToTTL, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing show regions in standalone mode is not supported")));
     return future;
   }
 }

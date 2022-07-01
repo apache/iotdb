@@ -50,6 +50,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
@@ -250,5 +251,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitFlush(FlushStatement flushStatement, C context) {
     return visitStatement(flushStatement, context);
+  }
+
+  public R visitShowRegion(ShowRegionStatement showRegionStatement, C context) {
+    return visitStatement(showRegionStatement, context);
   }
 }

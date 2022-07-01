@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.plan.expression;
 
 public enum ExpressionType {
@@ -41,14 +42,18 @@ public enum ExpressionType {
   LESS_EQUAL((short) 11, (short) 600),
   LESS_THAN((short) 12, (short) 600),
 
-  REGEXP((short) 13, (short) 500),
-  LIKE((short) 14, (short) 500),
+  LIKE((short) 13, (short) 500),
+  REGEXP((short) 14, (short) 500),
 
-  IN((short) 15, (short) 400),
+  IS_NULL((short) 15, (short) 475),
 
-  LOGIC_AND((short) 16, (short) 300),
+  // BETWEEN((short) 16, (short) 450),
 
-  LOGIC_OR((short) 17, (short) 200),
+  IN((short) 17, (short) 400),
+
+  LOGIC_AND((short) 18, (short) 300),
+
+  LOGIC_OR((short) 19, (short) 200),
   ;
 
   private final short expressionType;

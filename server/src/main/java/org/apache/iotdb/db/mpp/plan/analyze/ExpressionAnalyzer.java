@@ -43,6 +43,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
@@ -289,6 +290,7 @@ public class ExpressionAnalyzer {
       // removing all wildcards. We use actualExpressions to collect them.
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
+
       return reconstructFunctionExpressions((FunctionExpression) expression, childExpressionsList);
     } else if (expression instanceof TimeSeriesOperand) {
       PartialPath path = ((TimeSeriesOperand) expression).getPath();
@@ -587,6 +589,8 @@ public class ExpressionAnalyzer {
       if (timeInRightFilter != null) {
         return new Pair<>(timeInRightFilter, false);
       }
+      return new Pair<>(null, true);
+    } else if (predicate instanceof IsNullExpression) {
       return new Pair<>(null, true);
     } else if (predicate instanceof InExpression) {
       Expression timeExpression = ((InExpression) predicate).getExpression();

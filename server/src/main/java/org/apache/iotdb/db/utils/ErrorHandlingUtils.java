@@ -123,6 +123,12 @@ public class ErrorHandlingUtils {
     } else if (t instanceof SemanticException) {
       return RpcUtils.getStatus(TSStatusCode.SEMANTIC_ERROR, rootCause.getMessage());
     }
+
+    if (t instanceof RuntimeException && rootCause instanceof IoTDBException) {
+      return RpcUtils.getStatus(
+          ((IoTDBException) rootCause).getErrorCode(), rootCause.getMessage());
+    }
+
     return null;
   }
 

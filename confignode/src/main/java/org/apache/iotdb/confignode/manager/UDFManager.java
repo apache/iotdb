@@ -24,11 +24,12 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FunctionManagementHandler;
-import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
-import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -38,7 +39,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
-import java.util.stream.Collectors;
 
 public class UDFManager {
 
@@ -59,13 +59,14 @@ public class UDFManager {
       final TSStatus configNodeStatus =
           configManager
               .getConsensusManager()
-              .write(new CreateFunctionReq(functionName, className, uris))
+              .write(new CreateFunctionPlan(functionName, className, uris))
               .getStatus();
       if (configNodeStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return configNodeStatus;
       }
 
-      return squashResponseStatusList(createFunctionOnDataNodes(functionName, className, uris));
+      return RpcUtils.squashResponseStatusList(
+          createFunctionOnDataNodes(functionName, className, uris));
     } catch (Exception e) {
       final String errorMessage =
           String.format(
@@ -111,9 +112,9 @@ public class UDFManager {
     try {
       final List<TSStatus> nodeResponseList = dropFunctionOnDataNodes(functionName);
       final TSStatus configNodeStatus =
-          configManager.getConsensusManager().write(new DropFunctionReq(functionName)).getStatus();
+          configManager.getConsensusManager().write(new DropFunctionPlan(functionName)).getStatus();
       nodeResponseList.add(configNodeStatus);
-      return squashResponseStatusList(nodeResponseList);
+      return RpcUtils.squashResponseStatusList(nodeResponseList);
     } catch (Exception e) {
       final String errorMessage =
           String.format("Failed to deregister UDF %s, because of exception: %s", functionName, e);
@@ -149,16 +150,5 @@ public class UDFManager {
     }
 
     return dataNodeResponseStatus;
-  }
-
-  private TSStatus squashResponseStatusList(List<TSStatus> responseStatusList) {
-    final List<TSStatus> failedStatus =
-        responseStatusList.stream()
-            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
-            .collect(Collectors.toList());
-    return failedStatus.isEmpty()
-        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-        : new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-            .setMessage(failedStatus.toString());
   }
 }

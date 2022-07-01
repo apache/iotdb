@@ -31,9 +31,13 @@ import org.apache.iotdb.db.metadata.mnode.estimator.BasicMNodSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.estimator.IMNodeSizeEstimator;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mnode.iterator.MNodeIterator;
+import org.apache.iotdb.db.metadata.mtree.snapshot.MemMTreeSnapshotUtil;
 import org.apache.iotdb.db.metadata.rescon.MemoryStatistics;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
@@ -54,6 +58,10 @@ public class MemMTreeStore implements IMTreeStore {
     } else {
       this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     }
+  }
+
+  private MemMTreeStore(IMNode root) {
+    this.root = root;
   }
 
   @Override
@@ -156,6 +164,16 @@ public class MemMTreeStore implements IMTreeStore {
     root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
     memoryStatistics.releaseMemory(localMemoryUsage.get());
     localMemoryUsage.set(0);
+  }
+
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    return MemMTreeSnapshotUtil.createSnapshot(snapshotDir, this);
+  }
+
+  public static MemMTreeStore loadFromSnapshot(
+      File snapshotDir, Consumer<IMeasurementMNode> measurementProcess) throws IOException {
+    return new MemMTreeStore(MemMTreeSnapshotUtil.loadSnapshot(snapshotDir, measurementProcess));
   }
 
   private void requestMemory(int size) {

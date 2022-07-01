@@ -88,7 +88,7 @@ public class IoTDBInsertAlignedValues2IT {
         }
       }
 
-      statement.execute(ConfigFactory.getConfig().getFlushCommand());
+      statement.execute("flush");
       int rowCount = 0;
       try (ResultSet resultSet = statement.executeQuery("select S3 from root.lz.dev.GPS")) {
         while (resultSet.next()) {

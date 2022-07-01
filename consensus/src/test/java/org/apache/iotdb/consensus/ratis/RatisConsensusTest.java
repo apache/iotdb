@@ -66,6 +66,7 @@ public class RatisConsensusTest {
                   RatisConfig.Log.newBuilder()
                       .setPurgeUptoSnapshotIndex(true)
                       .setPurgeGap(10)
+                      .setUnsafeFlushEnabled(false)
                       .build())
               .setSnapshot(RatisConfig.Snapshot.newBuilder().setAutoTriggerThreshold(100).build())
               .build();
@@ -117,10 +118,6 @@ public class RatisConsensusTest {
     for (File file : peersStorage) {
       FileUtils.deleteFully(file);
     }
-  }
-
-  private int getLeaderOrdinal() {
-    return servers.get(0).getLeader(gid).getEndpoint().port - 6000;
   }
 
   @Test

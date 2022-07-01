@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -36,6 +37,7 @@ import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -52,16 +54,17 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeTSIServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -75,6 +78,7 @@ import java.util.List;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final String mbeanName =
       String.format(
@@ -105,15 +109,14 @@ public class DataNode implements DataNodeMBean {
 
   protected void serverCheckAndInit() throws ConfigurationException, IOException {
     IoTDBStartCheck.getInstance().checkConfig();
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     // TODO: check configuration for data node
 
     // if client ip is the default address, set it same with internal ip
     if (config.getRpcAddress().equals("0.0.0.0")) {
-      config.setRpcAddress(config.getInternalIp());
+      config.setRpcAddress(config.getInternalAddress());
     }
 
-    thisNode.setIp(IoTDBDescriptor.getInstance().getConfig().getInternalIp());
+    thisNode.setIp(IoTDBDescriptor.getInstance().getConfig().getInternalAddress());
     thisNode.setPort(IoTDBDescriptor.getInstance().getConfig().getInternalPort());
   }
 
@@ -160,7 +163,7 @@ public class DataNode implements DataNodeMBean {
 
     // start InternalService first so that it can respond to configNode's heartbeat before joining
     // cluster
-    registerManager.register(InternalService.getInstance());
+    registerManager.register(ClientRPCService.getInstance());
   }
 
   /** register DataNode with ConfigNode */
@@ -168,24 +171,22 @@ public class DataNode implements DataNodeMBean {
     int retry = DEFAULT_JOIN_RETRY;
 
     ConfigNodeInfo.getInstance()
-        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getConfigNodeList());
+        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getTargetConfigNodeList());
     while (retry > 0) {
       logger.info("start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
         // Set DataNodeLocation
         TDataNodeLocation location = new TDataNodeLocation();
         location.setDataNodeId(config.getDataNodeId());
-        location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
+        location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getInternalPort()));
-        location.setDataBlockManagerEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
+            new TEndPoint(config.getInternalAddress(), config.getInternalPort()));
+        location.setMPPDataExchangeEndPoint(
+            new TEndPoint(config.getInternalAddress(), config.getMppDataExchangePort()));
         location.setDataRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getDataRegionConsensusPort()));
+            new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
         location.setSchemaRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getSchemaRegionConsensusPort()));
+            new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
 
         // Set DataNodeInfo
         TDataNodeInfo info = new TDataNodeInfo();
@@ -215,6 +216,26 @@ public class DataNode implements DataNodeMBean {
             config.setDataNodeId(dataNodeID);
           }
           IoTDBDescriptor.getInstance().loadGlobalConfig(dataNodeRegisterResp.globalConfig);
+
+          if (!IoTDBStartCheck.getInstance()
+              .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
+            config.setDataRegionConsensusProtocolClass(
+                dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass());
+            IoTDBStartCheck.getInstance()
+                .serializeConsensusProtocol(
+                    dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass(),
+                    TConsensusGroupType.DataRegion);
+          }
+
+          if (!IoTDBStartCheck.getInstance()
+              .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
+            config.setSchemaRegionConsensusProtocolClass(
+                dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
+            IoTDBStartCheck.getInstance()
+                .serializeConsensusProtocol(
+                    dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass(),
+                    TConsensusGroupType.SchemaRegion);
+          }
           logger.info("Register to the cluster successfully");
           return;
         }
@@ -249,16 +270,14 @@ public class DataNode implements DataNodeMBean {
       setUp();
     } catch (StartupException | QueryProcessException e) {
       logger.error("meet error while starting up.", e);
-      deactivate();
-      logger.error("IoTDB DataNode exit");
-      return;
+      throw new StartupException("Error in activating IoTDB DataNode.");
     }
     logger.info("IoTDB DataNode has started.");
 
     try {
       // TODO: Start consensus layer in some where else
-      SchemaRegionConsensusImpl.getInstance().start();
-      DataRegionConsensusImpl.getInstance().start();
+      SchemaRegionConsensusImpl.setupAndGetInstance().start();
+      DataRegionConsensusImpl.setupAndGetInstance().start();
     } catch (IOException e) {
       throw new StartupException(e);
     }
@@ -281,11 +300,17 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(CompactionTaskManager.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
+
+    // close wal when using ratis consensus
+    if (config.isClusterMode()
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)) {
+      config.setWalMode(WALMode.DISABLE);
+    }
     registerManager.register(WALManager.getInstance());
 
     // in mpp mode we need to start some other services
     registerManager.register(StorageEngineV2.getInstance());
-    registerManager.register(DataBlockService.getInstance());
+    registerManager.register(MPPDataExchangeService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
 
     registerUdfServices();
@@ -321,25 +346,21 @@ public class DataNode implements DataNodeMBean {
   private void activateCurrentDataNode() throws StartupException {
     int retry = DEFAULT_JOIN_RETRY;
 
-    ConfigNodeInfo.getInstance()
-        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getConfigNodeList());
     while (retry > 0) {
       logger.info("start joining the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
         // Set DataNodeLocation
         TDataNodeLocation location = new TDataNodeLocation();
         location.setDataNodeId(config.getDataNodeId());
-        location.setExternalEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
+        location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
         location.setInternalEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getInternalPort()));
-        location.setDataBlockManagerEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getDataBlockManagerPort()));
+            new TEndPoint(config.getInternalAddress(), config.getInternalPort()));
+        location.setMPPDataExchangeEndPoint(
+            new TEndPoint(config.getInternalAddress(), config.getMppDataExchangePort()));
         location.setDataRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getDataRegionConsensusPort()));
+            new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
         location.setSchemaRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalIp(), config.getSchemaRegionConsensusPort()));
+            new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
         TDataNodeActiveReq req = new TDataNodeActiveReq();
         req.setLocation(location);
         req.setDataNodeId(config.getDataNodeId());
@@ -373,7 +394,7 @@ public class DataNode implements DataNodeMBean {
     // init rpc service
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setRpcImplClassName(DataNodeTSIServiceImpl.class.getName());
+        .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
       registerManager.register(RPCService.getInstance());
     }

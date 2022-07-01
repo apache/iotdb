@@ -47,14 +47,14 @@ done
 
 CONF_PARAMS=$*
 
-if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
+if [ -f "$IOTDB_CONF/datanode-env.sh" ]; then
     if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
-      . "$IOTDB_CONF/iotdb-env.sh" "printgc"
+      . "$IOTDB_CONF/datanode-env.sh" "printgc"
     else
-        . "$IOTDB_CONF/iotdb-env.sh"
+        . "$IOTDB_CONF/datanode-env.sh"
     fi
 else
-    echo "can't find $IOTDB_CONF/iotdb-env.sh"
+    echo "can't find $IOTDB_CONF/datanode-env.sh"
 fi
 
 if [ -d ${IOTDB_HOME}/lib ]; then

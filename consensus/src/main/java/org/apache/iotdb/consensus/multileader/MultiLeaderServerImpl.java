@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.consensus.multileader;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -27,6 +29,7 @@ import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
+import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
@@ -63,6 +66,7 @@ public class MultiLeaderServerImpl {
       Peer thisNode,
       List<Peer> configuration,
       IStateMachine stateMachine,
+      IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager,
       MultiLeaderConfig config) {
     this.storageDir = storageDir;
     this.thisNode = thisNode;
@@ -76,7 +80,7 @@ public class MultiLeaderServerImpl {
       persistConfiguration();
     }
     this.config = config;
-    this.logDispatcher = new LogDispatcher(this);
+    this.logDispatcher = new LogDispatcher(this, clientManager);
   }
 
   public IStateMachine getStateMachine() {

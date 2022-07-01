@@ -26,7 +26,7 @@ import static com.google.common.util.concurrent.Futures.immediateVoidFuture;
 
 public interface Operator extends AutoCloseable {
 
-  ListenableFuture<Void> NOT_BLOCKED = immediateVoidFuture();
+  ListenableFuture<?> NOT_BLOCKED = immediateVoidFuture();
 
   OperatorContext getOperatorContext();
 
@@ -34,7 +34,7 @@ public interface Operator extends AutoCloseable {
    * Returns a future that will be completed when the operator becomes unblocked. If the operator is
    * not blocked, this method should return {@code NOT_BLOCKED}.
    */
-  default ListenableFuture<Void> isBlocked() {
+  default ListenableFuture<?> isBlocked() {
     return NOT_BLOCKED;
   }
 

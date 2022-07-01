@@ -49,8 +49,8 @@ public class SingleNodeIT extends Cases {
           .withImagePullPolicy(PullPolicy.defaultPolicy())
           // mount another properties for changing parameters, e.g., open 5555 port (sync module)
           .withFileSystemBind(
-              new File("src/test/resources/iotdb-engine.properties").getAbsolutePath(),
-              "/iotdb/conf/iotdb-engine.properties",
+              new File("src/test/resources/iotdb-datanode.properties").getAbsolutePath(),
+              "/iotdb/conf/iotdb-datanode.properties",
               BindMode.READ_ONLY)
           .withFileSystemBind(
               new File("src/test/resources/logback-container.xml").getAbsolutePath(),

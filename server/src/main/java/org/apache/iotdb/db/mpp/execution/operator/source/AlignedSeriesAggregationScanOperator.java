@@ -60,6 +60,7 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
   private ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
+  private boolean isGroupByQuery;
 
   private TsBlock preCachedData;
 
@@ -95,6 +96,7 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
     }
     tsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+    this.isGroupByQuery = groupByTimeParameter != null;
   }
 
   @Override
@@ -148,27 +150,32 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
 
       // read from file first
       while (alignedSeriesScanUtil.hasNextFile()) {
-        Statistics fileTimeStatistics = alignedSeriesScanUtil.currentFileTimeStatistics();
-        if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
-          if (ascending) {
-            updateResultTsBlockFromAggregators();
-            return true;
-          } else {
+        if (canUseCurrentFileStatistics()) {
+          Statistics fileTimeStatistics = alignedSeriesScanUtil.currentFileTimeStatistics();
+          if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+            if (ascending) {
+              updateResultTsBlockFromAggregators();
+              return true;
+            } else {
+              alignedSeriesScanUtil.skipCurrentFile();
+              continue;
+            }
+          }
+          // calc from fileMetaData
+          if (curTimeRange.contains(
+              fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
+            Statistics[] statisticsList = new Statistics[subSensorSize];
+            for (int i = 0; i < subSensorSize; i++) {
+              statisticsList[i] = alignedSeriesScanUtil.currentFileStatistics(i);
+            }
+            calcFromStatistics(statisticsList);
             alignedSeriesScanUtil.skipCurrentFile();
-            continue;
+            if (isEndCalc(aggregators) && !isGroupByQuery) {
+              break;
+            } else {
+              continue;
+            }
           }
-        }
-        // calc from fileMetaData
-        if (canUseCurrentFileStatistics()
-            && curTimeRange.contains(
-                fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
-          Statistics[] statisticsList = new Statistics[subSensorSize];
-          for (int i = 0; i < subSensorSize; i++) {
-            statisticsList[i] = alignedSeriesScanUtil.currentFileStatistics(i);
-          }
-          calcFromStatistics(statisticsList);
-          alignedSeriesScanUtil.skipCurrentFile();
-          continue;
         }
 
         // read chunk
@@ -221,25 +228,32 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
   @SuppressWarnings("squid:S3776")
   private void calcFromBatch(TsBlock tsBlock, TimeRange curTimeRange) {
     // check if the batchData does not contain points in current interval
-    if (tsBlock == null || !satisfied(tsBlock, curTimeRange, ascending)) {
-      return;
-    }
-
-    // skip points that cannot be calculated
-    tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange, ascending);
-
-    for (Aggregator aggregator : aggregators) {
-      // current agg method has been calculated
-      if (aggregator.hasFinalResult()) {
-        continue;
+    if (tsBlock != null && satisfied(tsBlock, curTimeRange, ascending)) {
+      // skip points that cannot be calculated
+      if ((ascending && tsBlock.getStartTime() < curTimeRange.getMin())
+          || (!ascending && tsBlock.getStartTime() > curTimeRange.getMax())) {
+        tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange, ascending);
       }
 
-      aggregator.processTsBlock(tsBlock);
-    }
+      int lastReadRowIndex = 0;
+      for (Aggregator aggregator : aggregators) {
+        // current agg method has been calculated
+        if (aggregator.hasFinalResult()) {
+          continue;
+        }
 
-    // can calc for next interval
-    if (tsBlock.getTsBlockSingleColumnIterator().hasNext()) {
-      preCachedData = tsBlock;
+        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(tsBlock));
+      }
+      if (lastReadRowIndex >= tsBlock.getPositionCount()) {
+        tsBlock = null;
+      } else {
+        tsBlock = tsBlock.subTsBlock(lastReadRowIndex);
+      }
+
+      // can calc for next interval
+      if (tsBlock != null && tsBlock.getTsBlockSingleColumnIterator().hasNext()) {
+        preCachedData = tsBlock;
+      }
     }
   }
 
@@ -266,9 +280,8 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean readAndCalcFromPage(TimeRange curTimeRange) throws IOException {
     while (alignedSeriesScanUtil.hasNextPage()) {
-      Statistics pageTimeStatistics = alignedSeriesScanUtil.currentPageTimeStatistics();
-      // must be non overlapped page
-      if (pageTimeStatistics != null) {
+      if (canUseCurrentPageStatistics()) {
+        Statistics pageTimeStatistics = alignedSeriesScanUtil.currentPageTimeStatistics();
         // There is no more eligible points in current time range
         if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
@@ -288,10 +301,11 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
           }
           calcFromStatistics(statisticsList);
           alignedSeriesScanUtil.skipCurrentPage();
-          if (isEndCalc(aggregators)) {
+          if (isEndCalc(aggregators) && !isGroupByQuery) {
             return true;
+          } else {
+            continue;
           }
-          continue;
         }
       }
 
@@ -301,9 +315,6 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
       if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
         continue;
       }
-
-      // reset the last position to current Index
-      // lastReadIndex = tsBlockIterator.getRowIndex();
 
       // stop calc and cached current batchData
       if (ascending && tsBlockIterator.currentTime() > curTimeRange.getMax()) {
@@ -328,28 +339,34 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
 
   private boolean readAndCalcFromChunk(TimeRange curTimeRange) throws IOException {
     while (alignedSeriesScanUtil.hasNextChunk()) {
-      Statistics chunkTimeStatistics = alignedSeriesScanUtil.currentChunkTimeStatistics();
-      if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
-        if (ascending) {
-          return true;
-        } else {
-          alignedSeriesScanUtil.skipCurrentChunk();
-          continue;
+      if (canUseCurrentChunkStatistics()) {
+        Statistics chunkTimeStatistics = alignedSeriesScanUtil.currentChunkTimeStatistics();
+        if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+          if (ascending) {
+            return true;
+          } else {
+            alignedSeriesScanUtil.skipCurrentChunk();
+            continue;
+          }
         }
-      }
-      // calc from chunkMetaData
-      if (canUseCurrentChunkStatistics()
-          && curTimeRange.contains(
-              chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
         // calc from chunkMetaData
-        Statistics[] statisticsList = new Statistics[subSensorSize];
-        for (int i = 0; i < subSensorSize; i++) {
-          statisticsList[i] = alignedSeriesScanUtil.currentChunkStatistics(i);
+        if (curTimeRange.contains(
+            chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
+          // calc from chunkMetaData
+          Statistics[] statisticsList = new Statistics[subSensorSize];
+          for (int i = 0; i < subSensorSize; i++) {
+            statisticsList[i] = alignedSeriesScanUtil.currentChunkStatistics(i);
+          }
+          calcFromStatistics(statisticsList);
+          alignedSeriesScanUtil.skipCurrentChunk();
+          if (isEndCalc(aggregators) && !isGroupByQuery) {
+            return true;
+          } else {
+            continue;
+          }
         }
-        calcFromStatistics(statisticsList);
-        alignedSeriesScanUtil.skipCurrentChunk();
-        continue;
       }
+
       // read page
       if (readAndCalcFromPage(curTimeRange)) {
         return true;

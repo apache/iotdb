@@ -22,9 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxTSStatus;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
@@ -35,6 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class RpcUtils {
 
@@ -62,11 +63,11 @@ public class RpcUtils {
   public static final TSStatus SUCCESS_STATUS =
       new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
-  public static TSIService.Iface newSynchronizedClient(TSIService.Iface client) {
-    return (TSIService.Iface)
+  public static IClientRPCService.Iface newSynchronizedClient(IClientRPCService.Iface client) {
+    return (IClientRPCService.Iface)
         Proxy.newProxyInstance(
             RpcUtils.class.getClassLoader(),
-            new Class[] {TSIService.Iface.class},
+            new Class[] {IClientRPCService.Iface.class},
             new SynchronizedHandler(client));
   }
 
@@ -319,5 +320,16 @@ public class RpcUtils {
       }
       return formatDatetimeStr(datetime, digits);
     }
+  }
+
+  public static TSStatus squashResponseStatusList(List<TSStatus> responseStatusList) {
+    final List<TSStatus> failedStatus =
+        responseStatusList.stream()
+            .filter(status -> status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode())
+            .collect(Collectors.toList());
+    return failedStatus.isEmpty()
+        ? new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        : new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+            .setMessage(failedStatus.toString());
   }
 }

@@ -61,13 +61,20 @@ public class HeaderConstant {
   public static final String COLUMN_NODE_ID = "NodeID";
   public static final String COLUMN_NODE_TYPE = "NodeType";
   public static final String COLUMN_STATUS = "Status";
-  public static final String COLUMN_HOST_ADDRESS = "HostAdress";
+  public static final String COLUMN_HOST = "Host";
   public static final String COLUMN_PORT = "Port";
 
   // column names for show functions statement
   public static final String COLUMN_FUNCTION_NAME = "function name";
   public static final String COLUMN_FUNCTION_TYPE = "function type";
   public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+
+  // column names for show region statement
+  public static final String COLUMN_REGION_ID = "RegionId";
+  public static final String COLUMN_TYPE = "Type";
+  public static final String COLUMN_DATANODE_ID = "DataNodeId";
+  public static final String COLUMN_SERIES_SLOTS = "Series Slots";
+  public static final String COLUMN_TIME_SLOTS = "Time Slots";
 
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
@@ -93,6 +100,9 @@ public class HeaderConstant {
 
   // dataset header for show functions
   public static final DatasetHeader SHOW_FUNCTIONS_HEADER;
+
+  // dataset header for show region
+  public static final DatasetHeader showRegionHeader;
 
   static {
     countStorageGroupHeader =
@@ -186,7 +196,7 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
                 new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_HOST_ADDRESS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
             true);
   }
@@ -198,6 +208,22 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_FUNCTION_NAME, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_FUNCTION_TYPE, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_FUNCTION_CLASS, TSDataType.TEXT)),
+            true);
+  }
+
+  static {
+    showRegionHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT64),
+                new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
+                new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
             true);
   }
 }

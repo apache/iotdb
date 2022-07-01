@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPCServiceMBean {
@@ -53,7 +53,7 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
   @Override
   public void initTProcessor() throws InstantiationException {
-    processor = new ConfigIService.Processor<>(configNodeRPCServiceProcessor);
+    processor = new IConfigNodeRPCService.Processor<>(configNodeRPCServiceProcessor);
   }
 
   @Override
@@ -79,11 +79,11 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
   @Override
   public String getBindIP() {
-    return conf.getRpcAddress();
+    return conf.getInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return conf.getRpcPort();
+    return conf.getInternalPort();
   }
 }

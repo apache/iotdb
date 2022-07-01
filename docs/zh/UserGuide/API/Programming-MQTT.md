@@ -156,7 +156,7 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
     @Override
     public String getName() {
-        // set the value of mqtt_payload_formatter in iotdb-engine.properties as the following string:
+        // set the value of mqtt_payload_formatter in iotdb-datanode.properties as the following string:
         return "CustomizedJson";
     }
 }
@@ -169,8 +169,8 @@ public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
 在 IoTDB 服务端:
 * 创建 ${IOTDB_HOME}/ext/mqtt/ 文件夹, 将刚才的 jar 包放入此文件夹。
-* 打开 MQTT 服务参数. (`enable_mqtt_service=true` in `conf/iotdb-engine.properties`)
-* 用刚才的实现类中的 getName() 方法的返回值 设置为 `conf/iotdb-engine.properties` 中 `mqtt_payload_formatter` 的值， 
+* 打开 MQTT 服务参数. (`enable_mqtt_service=true` in `conf/iotdb-datanode.properties`)
+* 用刚才的实现类中的 getName() 方法的返回值 设置为 `conf/iotdb-datanode.properties` 中 `mqtt_payload_formatter` 的值， 
   , 在本例中，为 `CustomizedJson`
 * 启动 IoTDB
 * 搞定.

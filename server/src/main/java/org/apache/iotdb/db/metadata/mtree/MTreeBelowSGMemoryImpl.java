@@ -64,6 +64,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,6 +78,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -125,11 +128,36 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     levelOfSG = storageGroup.getNodeLength() - 1;
   }
 
+  private MTreeBelowSGMemoryImpl(
+      MemMTreeStore store, IStorageGroupMNode storageGroupMNode, int schemaRegionId) {
+    this.store = store;
+    this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
+    this.storageGroupMNode.setParent(storageGroupMNode.getParent());
+    levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
+  }
+
   @Override
   public void clear() {
     store.clear();
     storageGroupMNode = null;
   }
+
+  public synchronized boolean createSnapshot(File snapshotDir) {
+    return store.createSnapshot(snapshotDir);
+  }
+
+  public static MTreeBelowSGMemoryImpl loadFromSnapshot(
+      File snapshotDir,
+      IStorageGroupMNode storageGroupMNode,
+      int schemaRegionId,
+      Consumer<IMeasurementMNode> measurementProcess)
+      throws IOException {
+    return new MTreeBelowSGMemoryImpl(
+        MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess),
+        storageGroupMNode,
+        schemaRegionId);
+  }
+
   // endregion
 
   // region Timeseries operation, including create and delete

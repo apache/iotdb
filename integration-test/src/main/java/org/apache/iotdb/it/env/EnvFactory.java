@@ -37,11 +37,14 @@ public class EnvFactory {
           case "Standalone":
             env = (BaseEnv) Class.forName("org.apache.iotdb.db.it.env.StandaloneEnv").newInstance();
             break;
-          case "Remote":
-            env = new RemoteServerEnv();
+          case "LocalStandaloneOnMpp":
+            env = new StandaloneOnMppEnv();
             break;
           case "Cluster1":
             env = new Cluster1Env();
+            break;
+          case "Remote":
+            env = new RemoteServerEnv();
             break;
           default:
             throw new ClassNotFoundException("The Property class of TestEnv not found");

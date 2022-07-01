@@ -37,5 +37,7 @@ public interface BaseEnv {
 
   Connection getConnection(Constant.Version version) throws SQLException;
 
-  void setNextTestCaseName(String testCaseName);
+  void setTestMethodName(String testCaseName);
+
+  void dumpTestJVMSnapshot();
 }

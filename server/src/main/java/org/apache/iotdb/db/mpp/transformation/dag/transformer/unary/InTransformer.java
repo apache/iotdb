@@ -96,51 +96,27 @@ public class InTransformer extends UnaryTransformer {
     switch (layerPointReaderDataType) {
       case INT32:
         int intValue = layerPointReader.currentInt();
-        if (satisfy.of(intValue)) {
-          cachedBoolean = true;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(intValue);
         break;
       case INT64:
         long longValue = layerPointReader.currentLong();
-        if (satisfy.of(longValue)) {
-          cachedBoolean = true;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(longValue);
         break;
       case FLOAT:
         float floatValue = layerPointReader.currentFloat();
-        if (satisfy.of(floatValue)) {
-          cachedBoolean = true;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(floatValue);
         break;
       case DOUBLE:
         double doubleValue = layerPointReader.currentDouble();
-        if (satisfy.of(doubleValue)) {
-          cachedBoolean = true;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(doubleValue);
         break;
       case BOOLEAN:
         boolean booleanValue = layerPointReader.currentBoolean();
-        if (satisfy.of(booleanValue)) {
-          cachedBoolean = true;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(booleanValue);
         break;
       case TEXT:
         Binary binaryValue = layerPointReader.currentBinary();
-        if (satisfy.of(binaryValue.getStringValue())) {
-          cachedBoolean = true;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(binaryValue.getStringValue());
         break;
       default:
         throw new QueryProcessException("unsupported data type: " + layerPointReader.getDataType());
