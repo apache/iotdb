@@ -75,6 +75,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -386,12 +387,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return StatusUtils.OK;
   }
 
-  /**
-   * For leader to remove ConfigNode configuration in consensus layer
-   *
-   * @param configNodeLocation
-   * @return
-   */
+  /** For leader to remove ConfigNode configuration in consensus layer */
   @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     RemoveConfigNodePlan removeConfigNodePlan = new RemoveConfigNodePlan(configNodeLocation);
@@ -407,12 +403,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return status;
   }
 
-  /**
-   * For leader to stop ConfigNode
-   *
-   * @param configNodeLocation
-   * @return
-   */
+  /** For leader to stop ConfigNode */
   @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
@@ -470,13 +461,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TShowRegionResp showRegion(TShowRegionReq showRegionReq) throws TException {
-    GetRegionInfoListPlan getRegionsinfoPlan =
+    GetRegionInfoListPlan getRegionInfoListPlan =
         new GetRegionInfoListPlan(showRegionReq.getConsensusGroupType());
-    RegionInfoListResp dataSet = (RegionInfoListResp) configManager.showRegion(getRegionsinfoPlan);
+    RegionInfoListResp dataSet =
+        (RegionInfoListResp) configManager.showRegion(getRegionInfoListPlan);
     TShowRegionResp showRegionResp = new TShowRegionResp();
     showRegionResp.setStatus(dataSet.getStatus());
     showRegionResp.setRegionInfoList(dataSet.getRegionInfoList());
     return showRegionResp;
+  }
+
+  @Override
+  public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
+    return configManager.getLatestRegionRouteMap();
   }
 
   @Override

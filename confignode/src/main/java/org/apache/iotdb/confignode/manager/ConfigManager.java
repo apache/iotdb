@@ -77,6 +77,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -204,9 +205,8 @@ public class ConfigManager implements IManager {
       getLoadManager()
           .getHeartbeatCacheMap()
           .forEach(
-              (nodeId, heartbeatCache) -> {
-                nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus());
-              });
+              (nodeId, heartbeatCache) ->
+                  nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus()));
       return new TClusterNodeInfos(status, configNodeLocations, dataNodeInfoLocations, nodeStatus);
     } else {
       return new TClusterNodeInfos(status, new ArrayList<>(), new ArrayList<>(), new HashMap<>());
@@ -759,15 +759,28 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TRegionRouteMapResp getLatestRegionRouteMap() {
+    TSStatus status = confirmLeader();
+    TRegionRouteMapResp resp = new TRegionRouteMapResp(status);
+
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      resp.setTimestamp(System.currentTimeMillis());
+      resp.setRegionRouteMap(getLoadManager().genRealTimeRoutingPolicy());
+    }
+
+    return resp;
+  }
+
+  @Override
   public UDFManager getUDFManager() {
     return udfManager;
   }
 
   @Override
-  public DataSet showRegion(GetRegionInfoListPlan getRegionsinfoReq) {
+  public DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getRegionInfoList(getRegionsinfoReq);
+      return partitionManager.getRegionInfoList(getRegionInfoListPlan);
     } else {
       RegionInfoListResp regionResp = new RegionInfoListResp();
       regionResp.setStatus(status);
