@@ -103,4 +103,9 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     currentWALFileWriter = new WALWriter(nextLogFile);
     logger.debug("Open new wal file {} for wal node-{}'s buffer.", nextLogFile, identifier);
   }
+
+  @Override
+  public long getCurrentSearchIndex() {
+    return currentSearchIndex;
+  }
 }
