@@ -22,21 +22,22 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
-import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodeReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
@@ -108,43 +109,45 @@ public interface IManager {
    *
    * @return DataNodeConfigurationDataSet
    */
-  DataSet registerDataNode(RegisterDataNodeReq registerDataNodeReq);
+  DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan);
 
   /**
    * Get DataNode info
    *
    * @return DataNodesInfoDataSet
    */
-  DataSet getDataNodeInfo(GetDataNodeInfoReq getDataNodeInfoReq);
+  DataSet getDataNodeInfo(GetDataNodeInfoPlan getDataNodeInfoPlan);
 
-  TSStatus setTTL(SetTTLReq configRequest);
+  TClusterNodeInfos getAllClusterNodeInfos();
 
-  TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorReq configRequest);
+  TSStatus setTTL(SetTTLPlan configRequest);
 
-  TSStatus setDataReplicationFactor(SetDataReplicationFactorReq configRequest);
+  TSStatus setSchemaReplicationFactor(SetSchemaReplicationFactorPlan configPhysicalPlan);
 
-  TSStatus setTimePartitionInterval(SetTimePartitionIntervalReq configRequest);
+  TSStatus setDataReplicationFactor(SetDataReplicationFactorPlan configPhysicalPlan);
+
+  TSStatus setTimePartitionInterval(SetTimePartitionIntervalPlan configPhysicalPlan);
 
   /**
    * Count StorageGroups
    *
    * @return The number of matched StorageGroups
    */
-  DataSet countMatchedStorageGroups(CountStorageGroupReq countStorageGroupReq);
+  DataSet countMatchedStorageGroups(CountStorageGroupPlan countStorageGroupPlan);
 
   /**
    * Get StorageGroupSchemas
    *
    * @return StorageGroupSchemaDataSet
    */
-  DataSet getMatchedStorageGroupSchemas(GetStorageGroupReq getOrCountStorageGroupReq);
+  DataSet getMatchedStorageGroupSchemas(GetStorageGroupPlan getOrCountStorageGroupPlan);
 
   /**
    * Set StorageGroup
    *
    * @return status
    */
-  TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq);
+  TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan);
 
   /**
    * Delete StorageGroups
@@ -180,7 +183,7 @@ public interface IManager {
    *
    * @return TDataPartitionResp
    */
-  TDataPartitionResp getDataPartition(GetDataPartitionReq getDataPartitionReq);
+  TDataPartitionResp getDataPartition(GetDataPartitionPlan getDataPartitionPlan);
 
   /**
    * Get or create DataPartition
@@ -188,21 +191,21 @@ public interface IManager {
    * @return TDataPartitionResp
    */
   TDataPartitionResp getOrCreateDataPartition(
-      GetOrCreateDataPartitionReq getOrCreateDataPartitionReq);
+      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
 
   /**
    * Operate Permission
    *
    * @return status
    */
-  TSStatus operatePermission(AuthorReq authorReq);
+  TSStatus operatePermission(AuthorPlan authorPlan);
 
   /**
    * Query Permission
    *
    * @return PermissionInfoDataSet
    */
-  DataSet queryPermission(AuthorReq authorReq);
+  DataSet queryPermission(AuthorPlan authorPlan);
 
   /** login */
   TPermissionInfoResp login(String username, String password);
@@ -229,7 +232,7 @@ public interface IManager {
    *
    * @return status
    */
-  TSStatus removeConfigNode(RemoveConfigNodeReq removeConfigNodeReq);
+  TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan);
 
   TSStatus createFunction(String udfName, String className, List<String> uris);
 
@@ -240,5 +243,5 @@ public interface IManager {
   void addMetrics();
 
   /** Show (data/schema) regions */
-  DataSet showRegion(GetRegionInfoListReq getRegionsinfoReq);
+  DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
 }

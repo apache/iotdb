@@ -164,7 +164,7 @@ git checkout vx.x.x
 ### 配置
 
 配置文件在"conf"文件夹下
-* 环境配置模块(`iotdb-env.bat`, `iotdb-env.sh`),
+* 环境配置模块(`datanode-env.bat`, `datanode-env.sh`),
 * 系统配置模块(`iotdb-datanode.properties`)
 * 日志配置模块(`logback.xml`)。
 

@@ -22,7 +22,9 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -121,7 +123,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     tsFilesReader =
@@ -206,7 +211,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
     assertEquals(
         0, targetResources.get(0).getStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0"));
@@ -308,7 +316,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 2; i++) {
@@ -413,7 +424,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 9; i++) {
@@ -548,7 +562,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 5; i++) {
@@ -673,7 +690,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 5; i++) {
@@ -784,7 +804,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 5; i++) {
@@ -864,7 +887,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -972,7 +998,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1090,7 +1119,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1214,7 +1246,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1387,7 +1422,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1541,7 +1579,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1647,7 +1688,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
     }
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -1740,7 +1784,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     tsFilesReader =
@@ -1853,7 +1900,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2047,7 +2097,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2238,7 +2291,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     List<String> deviceIdList = new ArrayList<>();
@@ -2419,7 +2475,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     Assert.assertEquals(2, targetResources.size());
@@ -2591,7 +2650,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     Assert.assertEquals(4, targetResources.size());
@@ -2762,7 +2824,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     tsFilesReader =
@@ -2889,7 +2954,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -3089,7 +3157,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     Assert.assertEquals(4, targetResources.size());
@@ -3324,7 +3395,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -3534,7 +3608,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-    new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -3619,7 +3696,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
       List<TsFileResource> targetResources =
           CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-      new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+      ICompactionPerformer performer =
+          new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
       Assert.assertEquals(4, targetResources.size());
@@ -3689,7 +3769,10 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
 
       List<TsFileResource> targetResources =
           CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
-      new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources).perform();
+      ICompactionPerformer performer =
+          new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
       Assert.assertEquals(2, targetResources.size());

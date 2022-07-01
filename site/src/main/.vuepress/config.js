@@ -971,10 +971,10 @@ var config = {
 						]
 					},
 					{
-						title: 'Cluster Setup',
+						title: 'Cluster',
 						children: [
-							['Cluster/Cluster-Setup','Cluster Setup'],
-							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+							['Cluster/Cluster-Concept','Cluster Concept'],
+							['Cluster/Cluster-Setup','Cluster Setup']
 						]
 					},
 					{
@@ -996,7 +996,8 @@ var config = {
 					{
 						title: 'Reference',
 						children: [
-							['Reference/Config-Manual','Config Manual'],
+							['Reference/ConfigNode-Config-Manual','ConfigNode Config Manual'],
+							['Reference/DataNode-Config-Manual','DataNode Config Manual'],
 							['Reference/Keywords','Keywords'],
 							['Reference/Frequently-asked-questions','Frequently asked questions'],
 							['Reference/TSDB-Comparison','TSDB Comparison']
@@ -1894,10 +1895,10 @@ var config = {
 						]
 					},
 					{
-						title: '集群搭建',
+						title: '分布式',
 						children: [
-							['Cluster/Cluster-Setup','集群搭建'],
-							['Cluster/Cluster-Setup-Example','集群搭建示例']
+							['Cluster/Cluster-Concept','基本概念'],
+							['Cluster/Cluster-Setup','分布式部署']
 						]
 					},
 					{
@@ -1919,7 +1920,8 @@ var config = {
 					{
 						title: '参考',
 						children: [
-							['Reference/Config-Manual','配置参数'],
+							['Reference/ConfigNode-Config-Manual','ConfigNode配置参数'],
+							['Reference/DataNode-Config-Manual','DataNode配置参数'],
 							['Reference/Keywords','关键字'],
 							['Reference/Frequently-asked-questions','常见问题'],
 							['Reference/TSDB-Comparison','时间序列数据库比较']

@@ -33,6 +33,11 @@ public class BatchProcessException extends QueryProcessException {
     this.failingStatus = failingStatus;
   }
 
+  public BatchProcessException(String message) {
+    super(message);
+    failingStatus = null;
+  }
+
   public TSStatus[] getFailingStatus() {
     return failingStatus;
   }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.performer;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 
@@ -37,6 +38,8 @@ public interface ICompactionPerformer {
       throws IOException, MetadataException, StorageEngineException, InterruptedException;
 
   void setTargetFiles(List<TsFileResource> targetFiles);
+
+  void setSummary(CompactionTaskSummary summary);
 
   default void setSourceFiles(List<TsFileResource> files) {
     throw new RuntimeException("Cannot set single type of source files to this kind of performer");

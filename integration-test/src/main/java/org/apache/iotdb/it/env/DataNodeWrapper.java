@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import org.apache.commons.lang3.SystemUtils;
 
 import java.io.File;
@@ -43,18 +45,18 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void updateConfig(Properties properties) {
-    properties.setProperty("rpc_address", super.getIp());
-    properties.setProperty("internal_address", "127.0.0.1");
-    properties.setProperty("rpc_port", String.valueOf(getPort()));
+    properties.setProperty(IoTDBConstant.RPC_ADDRESS, super.getIp());
+    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, "127.0.0.1");
+    properties.setProperty(IoTDBConstant.RPC_PORT, String.valueOf(getPort()));
     properties.setProperty("mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
-    properties.setProperty("internal_port", String.valueOf(this.internalPort));
+    properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(this.internalPort));
     properties.setProperty(
         "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
     properties.setProperty(
         "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
     properties.setProperty("connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
-      properties.setProperty("config_nodes", this.targetConfigNode);
+      properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNode);
     }
   }
 
@@ -66,9 +68,9 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   @Override
   protected String getEnvConfigPath() {
     if (SystemUtils.IS_OS_WINDOWS) {
-      return workDirFilePath("datanode" + File.separator + "conf", "iotdb-env.bat");
+      return workDirFilePath("datanode" + File.separator + "conf", "datanode-env.bat");
     }
-    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-env.sh");
+    return workDirFilePath("datanode" + File.separator + "conf", "datanode-env.sh");
   }
 
   @Override

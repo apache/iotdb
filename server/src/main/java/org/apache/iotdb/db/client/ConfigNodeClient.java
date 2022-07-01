@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.BaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
@@ -30,7 +31,7 @@ import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClient;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
-import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
@@ -57,7 +58,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -82,7 +82,8 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient, AutoCloseable {
+public class ConfigNodeClient
+    implements IConfigNodeRPCService.Iface, SyncThriftClient, AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(ConfigNodeClient.class);
 
   private static final int RETRY_NUM = 5;
@@ -92,7 +93,7 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
 
   private long connectionTimeout = ClientPoolProperty.DefaultProperty.WAIT_CLIENT_TIMEOUT_MS;
 
-  private ConfigIService.Iface client;
+  private IConfigNodeRPCService.Iface client;
 
   private TTransport transport;
 
@@ -152,7 +153,7 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
       throw new TException(e);
     }
 
-    client = new ConfigIService.Client(protocolFactory.getProtocol(transport));
+    client = new IConfigNodeRPCService.Client(protocolFactory.getProtocol(transport));
   }
 
   private void reconnect() throws TException {
@@ -638,6 +639,11 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
   }
 
   @Override
+  public TSStatus notifyRegisterSuccess() throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support notifyRegisterSuccess.");
+  }
+
+  @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -709,6 +715,19 @@ public class ConfigNodeClient implements ConfigIService.Iface, SyncThriftClient,
         if (!updateConfigNodeLeader(showRegionResp.getStatus())) {
           return showRegionResp;
         }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public long getConfigNodeHeartBeat(long timestamp) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        return client.getConfigNodeHeartBeat(timestamp);
       } catch (TException e) {
         configLeader = null;
       }

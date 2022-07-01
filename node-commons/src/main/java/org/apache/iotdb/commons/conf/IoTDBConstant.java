@@ -25,9 +25,16 @@ public class IoTDBConstant {
 
   private IoTDBConstant() {}
 
-  public static final String ENV_FILE_NAME = "iotdb-env";
+  public static final String ENV_FILE_NAME = "datanode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
+
+  public static final String RPC_ADDRESS = "rpc_address";
+  public static final String RPC_PORT = "rpc_port";
+  public static final String INTERNAL_ADDRESS = "internal_address";
+  public static final String INTERNAL_PORT = "internal_port";
+  public static final String CONSENSUS_PORT = "consensus_port";
+  public static final String TARGET_CONFIG_NODES = "target_config_nodes";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()

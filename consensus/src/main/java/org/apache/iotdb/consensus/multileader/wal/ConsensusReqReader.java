@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.multileader.wal;
 
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 
 import java.util.Iterator;
 import java.util.List;
@@ -68,7 +69,7 @@ public interface ConsensusReqReader {
      * @throws java.util.NoSuchElementException if the iteration has no more elements, wait a moment
      *     or call {@link this#waitForNextReady} for more elements
      */
-    IConsensusRequest next();
+    IndexedConsensusRequest next();
 
     /**
      * Wait for the next element in the iteration ready, blocked until next element is available.
@@ -89,4 +90,7 @@ public interface ConsensusReqReader {
      */
     void skipTo(long targetIndex);
   }
+
+  /** Get current search index */
+  long getCurrentSearchIndex();
 }

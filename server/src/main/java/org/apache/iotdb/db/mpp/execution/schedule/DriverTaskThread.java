@@ -55,7 +55,7 @@ public class DriverTaskThread extends AbstractDriverThread {
     }
     IDriver instance = task.getFragmentInstance();
     CpuTimer timer = new CpuTimer();
-    ListenableFuture<Void> future = instance.processFor(EXECUTION_TIME_SLICE);
+    ListenableFuture<?> future = instance.processFor(EXECUTION_TIME_SLICE);
     CpuTimer.CpuDuration duration = timer.elapsedTime();
     // long cost = System.nanoTime() - startTime;
     // If the future is cancelled, the task is in an error and should be thrown.
