@@ -414,8 +414,9 @@ public class Analyzer {
               }
             }
           } else if (fillComponent.getFillPolicy() == FillPolicy.LINEAR) {
+            // TODO support linear fill in align by device query
             if (queryStatement.isAlignByDevice()) {
-              throw new SemanticException("");
+              throw new SemanticException("Linear fill is not supported in align by device query.");
             }
 
             for (Expression fillColumn : fillColumnList) {
