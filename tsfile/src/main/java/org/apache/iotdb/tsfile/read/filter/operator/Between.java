@@ -95,7 +95,7 @@ public class Between<T extends Comparable<T>> implements Filter {
             || ((T) statistics.getMaxValue()).compareTo(value2) > 0;
       } else {
         return ((T) statistics.getMaxValue()).compareTo(value1) >= 0
-            || ((T) statistics.getMinValue()).compareTo(value2) <= 0;
+            && ((T) statistics.getMinValue()).compareTo(value2) <= 0;
       }
     }
   }
@@ -113,7 +113,7 @@ public class Between<T extends Comparable<T>> implements Filter {
       if (not) {
         return startTime < time1 || endTime > time2;
       } else {
-        return endTime >= time1 || startTime <= time2;
+        return endTime >= time1 && startTime <= time2;
       }
     } else {
       return true;
