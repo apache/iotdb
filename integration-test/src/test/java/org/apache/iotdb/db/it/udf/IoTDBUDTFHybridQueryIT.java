@@ -116,11 +116,8 @@ public class IoTDBUDTFHybridQueryIT {
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail();
-    } catch (SQLException throwable) {
-      assertTrue(
-          throwable
-              .getMessage()
-              .contains("Raw data and aggregation hybrid query is not supported."));
+    } catch (SQLException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("not supported"));
     }
   }
 
