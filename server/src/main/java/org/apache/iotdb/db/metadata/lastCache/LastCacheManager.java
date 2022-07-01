@@ -89,7 +89,7 @@ public class LastCacheManager {
 
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
     if (lastCacheContainer.isEmptyContainer()) {
-      synchronized (LastCacheManager.class){
+      synchronized (node){
         if (lastCacheContainer.isEmptyContainer()){
           lastCacheContainer = new LastCacheContainer();
           node.setLastCacheContainer(lastCacheContainer);
