@@ -24,7 +24,6 @@ import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,9 +40,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.isEndCalc;
-import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.skipOutOfTimeRangePoints;
-import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.updateResultTsBlockFromAggregators;
 
 /** This operator is responsible to do the aggregation calculation especially for aligned series. */
 public class AlignedSeriesAggregationScanOperator implements DataSourceOperator {
@@ -132,19 +132,19 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
 
       // 2. Calculate aggregation result based on current time window
       if (calcFromCacheData(curTimeRange)) {
-        updateResultTsBlockFromAggregators();
+        updateResultTsBlock();
         return true;
       }
 
       // read page data firstly
       if (readAndCalcFromPage(curTimeRange)) {
-        updateResultTsBlockFromAggregators();
+        updateResultTsBlock();
         return true;
       }
 
       // read chunk data secondly
       if (readAndCalcFromChunk(curTimeRange)) {
-        updateResultTsBlockFromAggregators();
+        updateResultTsBlock();
         return true;
       }
 
@@ -154,7 +154,7 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
           Statistics fileTimeStatistics = alignedSeriesScanUtil.currentFileTimeStatistics();
           if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
             if (ascending) {
-              updateResultTsBlockFromAggregators();
+              updateResultTsBlock();
               return true;
             } else {
               alignedSeriesScanUtil.skipCurrentFile();
@@ -180,12 +180,12 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
 
         // read chunk
         if (readAndCalcFromChunk(curTimeRange)) {
-          updateResultTsBlockFromAggregators();
+          updateResultTsBlock();
           return true;
         }
       }
 
-      updateResultTsBlockFromAggregators();
+      updateResultTsBlock();
       return true;
     } catch (IOException e) {
       throw new RuntimeException("Error while scanning the file", e);
@@ -207,10 +207,9 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
     return sourceId;
   }
 
-  private void updateResultTsBlockFromAggregators() {
+  private void updateResultTsBlock() {
     resultTsBlock =
-        AggregationOperator.updateResultTsBlockFromAggregators(
-            tsBlockBuilder, aggregators, timeRangeIterator);
+        updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
     hasCachedTsBlock = true;
   }
 

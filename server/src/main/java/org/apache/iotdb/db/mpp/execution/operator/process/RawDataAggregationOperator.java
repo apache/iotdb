@@ -27,9 +27,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -37,7 +35,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.satisfied;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.updateResultTsBlockFromAggregators;
 
 /**
  * RawDataAggregationOperator is used to process raw data tsBlock input calculating using value
@@ -122,8 +124,7 @@ public class RawDataAggregationOperator implements ProcessOperator {
 
     // 2. Update result using aggregators
     curTimeRange = null;
-    return AggregationOperator.updateResultTsBlockFromAggregators(
-        tsBlockBuilder, aggregators, timeRangeIterator);
+    return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
   @Override
@@ -175,56 +176,5 @@ public class RawDataAggregationOperator implements ProcessOperator {
                 ? preCachedData.getEndTime() > curTimeRange.getMax()
                 : preCachedData.getEndTime() < curTimeRange.getMin()))
         || isEndCalc(aggregators);
-  }
-
-  // skip points that cannot be calculated
-  public static TsBlock skipOutOfTimeRangePoints(
-      TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
-    TimeColumn timeColumn = tsBlock.getTimeColumn();
-    long targetTime = ascending ? curTimeRange.getMin() : curTimeRange.getMax();
-    int left = 0, right = timeColumn.getPositionCount() - 1, mid;
-    // if ascending, find the first greater than or equal to targetTime
-    // else, find the first less than or equal to targetTime
-    while (left < right) {
-      mid = (left + right) >> 1;
-      if (timeColumn.getLongWithoutCheck(mid) < targetTime) {
-        if (ascending) {
-          left = mid + 1;
-        } else {
-          right = mid;
-        }
-      } else if (timeColumn.getLongWithoutCheck(mid) > targetTime) {
-        if (ascending) {
-          right = mid;
-        } else {
-          left = mid + 1;
-        }
-      } else if (timeColumn.getLongWithoutCheck(mid) == targetTime) {
-        return tsBlock.subTsBlock(mid);
-      }
-    }
-    return tsBlock.subTsBlock(left);
-  }
-
-  public static boolean satisfied(TsBlock tsBlock, TimeRange timeRange, boolean ascending) {
-    TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
-    if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
-      return false;
-    }
-
-    return ascending
-        ? (tsBlockIterator.getEndTime() >= timeRange.getMin()
-            && tsBlockIterator.currentTime() <= timeRange.getMax())
-        : (tsBlockIterator.getEndTime() <= timeRange.getMax()
-            && tsBlockIterator.currentTime() >= timeRange.getMin());
-  }
-
-  public static boolean isEndCalc(List<Aggregator> aggregators) {
-    for (Aggregator aggregator : aggregators) {
-      if (!aggregator.hasFinalResult()) {
-        return false;
-      }
-    }
-    return true;
   }
 }

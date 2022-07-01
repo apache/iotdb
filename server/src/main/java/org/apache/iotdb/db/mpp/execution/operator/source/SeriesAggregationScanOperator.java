@@ -22,10 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
-import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
-import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,8 +39,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.isEndCalc;
-import static org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.updateResultTsBlockFromAggregators;
 
 /**
  * This operator is responsible to do the aggregation calculation for one series based on global
@@ -106,31 +105,6 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
     this.isGroupByQuery = groupByTimeParameter != null;
   }
 
-  /**
-   * If groupByTimeParameter is null, which means it's an aggregation query without down sampling.
-   * Aggregation query has only one time window and the result set of it does not contain a
-   * timestamp, so it doesn't matter what the time range returns.
-   */
-  public static ITimeRangeIterator initTimeRangeIterator(
-      GroupByTimeParameter groupByTimeParameter,
-      boolean ascending,
-      boolean outputPartialTimeWindow) {
-    if (groupByTimeParameter == null) {
-      return new SingleTimeWindowIterator(0, Long.MAX_VALUE);
-    } else {
-      return TimeRangeIteratorFactory.getTimeRangeIterator(
-          groupByTimeParameter.getStartTime(),
-          groupByTimeParameter.getEndTime(),
-          groupByTimeParameter.getInterval(),
-          groupByTimeParameter.getSlidingStep(),
-          ascending,
-          groupByTimeParameter.isIntervalByMonth(),
-          groupByTimeParameter.isSlidingStepByMonth(),
-          groupByTimeParameter.isLeftCRightO(),
-          outputPartialTimeWindow);
-    }
-  }
-
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
@@ -164,19 +138,19 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
 
       // 2. Calculate aggregation result based on current time window
       if (calcFromCacheData(curTimeRange)) {
-        updateResultTsBlockFromAggregators();
+        updateResultTsBlock();
         return true;
       }
 
       // read page data firstly
       if (readAndCalcFromPage(curTimeRange)) {
-        updateResultTsBlockFromAggregators();
+        updateResultTsBlock();
         return true;
       }
 
       // read chunk data secondly
       if (readAndCalcFromChunk(curTimeRange)) {
-        updateResultTsBlockFromAggregators();
+        updateResultTsBlock();
         return true;
       }
 
@@ -186,7 +160,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
           Statistics fileStatistics = seriesScanUtil.currentFileStatistics();
           if (fileStatistics.getStartTime() > curTimeRange.getMax()) {
             if (ascending) {
-              updateResultTsBlockFromAggregators();
+              updateResultTsBlock();
               return true;
             } else {
               seriesScanUtil.skipCurrentFile();
@@ -207,22 +181,21 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
 
         // read chunk
         if (readAndCalcFromChunk(curTimeRange)) {
-          updateResultTsBlockFromAggregators();
+          updateResultTsBlock();
           return true;
         }
       }
 
-      updateResultTsBlockFromAggregators();
+      updateResultTsBlock();
       return true;
     } catch (IOException e) {
       throw new RuntimeException("Error while scanning the file", e);
     }
   }
 
-  private void updateResultTsBlockFromAggregators() {
+  private void updateResultTsBlock() {
     resultTsBlock =
-        AggregationOperator.updateResultTsBlockFromAggregators(
-            tsBlockBuilder, aggregators, timeRangeIterator);
+        updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
     hasCachedTsBlock = true;
   }
 
