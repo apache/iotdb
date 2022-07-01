@@ -216,6 +216,7 @@ public class IoTDBUDTFHybridQueryIT {
   }
 
   @Test
+  @Ignore // TODO remove after IOTDB-3674
   public void testUserDefinedFunctionAlignByDeviceQuery() {
     String[] retArray =
         new String[] {
@@ -250,9 +251,9 @@ public class IoTDBUDTFHybridQueryIT {
         }
         assertEquals(retArray.length, cnt);
       }
-    } catch (SQLException throwable) {
-      throwable.printStackTrace();
-      fail(throwable.getMessage());
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }
