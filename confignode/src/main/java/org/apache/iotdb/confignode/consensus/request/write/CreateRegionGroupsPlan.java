@@ -35,12 +35,12 @@ import java.util.Objects;
 import java.util.TreeMap;
 
 /** Create regions for specific StorageGroups */
-public class CreateRegionsPlan extends ConfigPhysicalPlan {
+public class CreateRegionGroupsPlan extends ConfigPhysicalPlan {
 
   // Map<StorageGroupName, List<TRegionReplicaSet>>
   private final Map<String, List<TRegionReplicaSet>> regionGroupMap;
 
-  public CreateRegionsPlan() {
+  public CreateRegionGroupsPlan() {
     super(ConfigPhysicalPlanType.CreateRegionGroups);
     this.regionGroupMap = new TreeMap<>();
   }
@@ -91,7 +91,7 @@ public class CreateRegionsPlan extends ConfigPhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    CreateRegionsPlan that = (CreateRegionsPlan) o;
+    CreateRegionGroupsPlan that = (CreateRegionGroupsPlan) o;
     return regionGroupMap.equals(that.regionGroupMap);
   }
 
