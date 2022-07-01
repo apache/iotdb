@@ -18,10 +18,21 @@
 # under the License.
 #
 
-IOTDB_CONF="`dirname $(pwd)`"/conf
-rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${IOTDB_CONF}/iotdb-datanode.properties`
+DATANODE_CONF="`dirname "$0"`/../conf"
+rpc_port=`sed '/^rpc_port=/!d;s/.*=//' ${DATANODE_CONF}/iotdb-datanode.properties`
+
+if  type lsof > /dev/null 2>&1 ; then
+  PID=$(lsof -t -i:${rpc_port} -sTCP:LISTEN)
+elif type netstat > /dev/null 2>&1 ; then
+  PID=$(netstat -anp 2>/dev/null | grep ":${rpc_port} " | grep ' LISTEN ' | awk '{print $NF}' | sed "s|/.*||g" )
+else
+  echo ""
+  echo " Error: No necessary tool."
+  echo " Please install 'lsof' or 'netstat'."
+  exit 1
+fi
+
 PIDS=$(ps ax | grep -i 'DataNode' | grep java | grep -v grep | awk '{print $1}')
-PID=$(lsof -t -i:${rpc_port})
 if [ -z "$PID" ]; then
   echo "No DataNode to stop"
   exit 1
@@ -32,6 +43,7 @@ else
   echo "No DataNode to stop"
   exit 1
 fi
+
 
 
 
