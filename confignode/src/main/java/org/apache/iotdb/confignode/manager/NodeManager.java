@@ -100,15 +100,15 @@ public class NodeManager {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     status.setMessage("registerDataNode success.");
-    dataSet.setStatus(status);
     if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
       status.setCode(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
     } else if (req.getInfo().getLocation().getDataNodeId() < 0) {
       // only when new dataNode is registered, generate new dataNodeId
       req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextNodeId());
+      status = getConsensusManager().write(req).getStatus();
     }
-
+    dataSet.setStatus(status);
     dataSet.setDataNodeId(req.getInfo().getLocation().getDataNodeId());
     dataSet.setConfigNodeList(nodeInfo.getOnlineConfigNodes());
     setGlobalConfig(dataSet);
