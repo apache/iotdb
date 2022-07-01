@@ -86,8 +86,7 @@ public class IoTDBResultSetIT {
       }
 
       try (ResultSet resultSet2 =
-          statement.executeQuery(
-              "select type from root.t1.wf01.wt01 where time = 1000 limit 1")) {
+          statement.executeQuery("select type from root.t1.wf01.wt01 where time = 1000 limit 1")) {
         resultSet2.next();
         // type of r2 is INT32(int), test int convert to long
         long type = resultSet2.getLong(2);
@@ -95,8 +94,7 @@ public class IoTDBResultSetIT {
       }
 
       try (ResultSet resultSet3 =
-          statement.executeQuery(
-              "select grade from root.t1.wf01.wt01 where time = 1000 limit 1")) {
+          statement.executeQuery("select grade from root.t1.wf01.wt01 where time = 1000 limit 1")) {
         resultSet3.next();
         // type of r3 is INT64(long), test long convert to int
         int grade = resultSet3.getInt(2);
