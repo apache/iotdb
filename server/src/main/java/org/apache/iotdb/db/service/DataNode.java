@@ -116,7 +116,7 @@ public class DataNode implements DataNodeMBean {
       config.setRpcAddress(config.getInternalAddress());
     }
 
-    thisNode.setIp(IoTDBDescriptor.getInstance().getConfig().getInternalAddress());
+    thisNode.setAddress(IoTDBDescriptor.getInstance().getConfig().getInternalAddress());
     thisNode.setPort(IoTDBDescriptor.getInstance().getConfig().getInternalPort());
   }
 

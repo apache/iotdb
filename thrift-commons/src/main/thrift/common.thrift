@@ -21,7 +21,7 @@ namespace java org.apache.iotdb.common.rpc.thrift
 namespace py iotdb.thrift.common
 
 struct TEndPoint {
-  1: required string ip
+  1: required string address
   2: required i32 port
 }
 

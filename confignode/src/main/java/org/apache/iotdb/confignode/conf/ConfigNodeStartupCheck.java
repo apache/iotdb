@@ -87,12 +87,15 @@ public class ConfigNodeStartupCheck {
     // When the ConfigNode consensus protocol is set to StandAlone,
     // the target_config_nodes needs to point to itself
     if (conf.getConfigNodeConsensusProtocolClass().equals(ConsensusFactory.StandAloneConsensus)
-        && (!conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+        && (!conf.getInternalAddress().equals(conf.getTargetConfigNode().getAddress())
             || conf.getInternalPort() != conf.getTargetConfigNode().getPort())) {
-      throw new ConfigurationException(
-          IoTDBConstant.TARGET_CONFIG_NODES,
-          conf.getTargetConfigNode().getIp() + ":" + conf.getTargetConfigNode().getPort(),
-          conf.getInternalAddress() + ":" + conf.getInternalPort());
+      if (!(conf.getInternalAddress().equals("0.0.0.0")
+          && conf.getTargetConfigNode().getAddress().equals("127.0.0.1"))) {
+        throw new ConfigurationException(
+            IoTDBConstant.TARGET_CONFIG_NODES,
+            conf.getTargetConfigNode().getAddress() + ":" + conf.getTargetConfigNode().getPort(),
+            conf.getInternalAddress() + ":" + conf.getInternalPort());
+      }
     }
 
     // When the data region consensus protocol is set to StandAlone,
@@ -172,7 +175,7 @@ public class ConfigNodeStartupCheck {
    */
   private boolean isSeedConfigNode() {
     boolean result =
-        conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+        conf.getInternalAddress().equals(conf.getTargetConfigNode().getAddress())
             && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
     if (result) {
       // TODO: Set PartitionRegionId from iotdb-confignode.properties

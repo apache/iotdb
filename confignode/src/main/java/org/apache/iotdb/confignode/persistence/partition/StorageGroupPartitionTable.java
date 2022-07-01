@@ -412,7 +412,7 @@ public class StorageGroupPartitionTable {
                 tRegionInfoList.setTimeSlots(0);
               }
               tRegionInfoList.setDataNodeId(dataNodeLocation.getDataNodeId());
-              tRegionInfoList.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
+              tRegionInfoList.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getAddress());
               tRegionInfoList.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
               // TODO: Wait for data migration. And then add the state
               tRegionInfoList.setStatus(RegionStatus.Up.getStatus());

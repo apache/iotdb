@@ -242,7 +242,7 @@ public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         TEndPoint endpoint =
             new TEndPoint(
-                dataNodeLocation.getSchemaRegionConsensusEndPoint().getIp(),
+                dataNodeLocation.getSchemaRegionConsensusEndPoint().getAddress(),
                 dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort());
         peers.add(new Peer(schemaRegionId, endpoint));
       }
@@ -280,7 +280,7 @@ public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
         TEndPoint endpoint =
             new TEndPoint(
-                dataNodeLocation.getDataRegionConsensusEndPoint().getIp(),
+                dataNodeLocation.getDataRegionConsensusEndPoint().getAddress(),
                 dataNodeLocation.getDataRegionConsensusEndPoint().getPort());
         peers.add(new Peer(dataRegionId, endpoint));
       }
@@ -459,7 +459,7 @@ public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           TEndPoint endpoint =
               new TEndPoint(
-                  dataNodeLocation.getDataRegionConsensusEndPoint().getIp(),
+                  dataNodeLocation.getDataRegionConsensusEndPoint().getAddress(),
                   dataNodeLocation.getDataRegionConsensusEndPoint().getPort());
           newPeers.add(new Peer(dataRegionId, endpoint));
         }
@@ -472,7 +472,7 @@ public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           TEndPoint endpoint =
               new TEndPoint(
-                  dataNodeLocation.getSchemaRegionConsensusEndPoint().getIp(),
+                  dataNodeLocation.getSchemaRegionConsensusEndPoint().getAddress(),
                   dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort());
           newPeers.add(new Peer(schemaRegionId, endpoint));
         }

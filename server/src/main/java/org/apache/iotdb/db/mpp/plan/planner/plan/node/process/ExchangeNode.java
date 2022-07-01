@@ -127,7 +127,7 @@ public class ExchangeNode extends PlanNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.EXCHANGE.serialize(byteBuffer);
-    ReadWriteIOUtils.write(upstreamEndpoint.getIp(), byteBuffer);
+    ReadWriteIOUtils.write(upstreamEndpoint.getAddress(), byteBuffer);
     ReadWriteIOUtils.write(upstreamEndpoint.getPort(), byteBuffer);
     upstreamInstanceId.serialize(byteBuffer);
     upstreamPlanNodeId.serialize(byteBuffer);
@@ -140,7 +140,7 @@ public class ExchangeNode extends PlanNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.EXCHANGE.serialize(stream);
-    ReadWriteIOUtils.write(upstreamEndpoint.getIp(), stream);
+    ReadWriteIOUtils.write(upstreamEndpoint.getAddress(), stream);
     ReadWriteIOUtils.write(upstreamEndpoint.getPort(), stream);
     upstreamInstanceId.serialize(stream);
     upstreamPlanNodeId.serialize(stream);
@@ -170,7 +170,7 @@ public class ExchangeNode extends PlanNode {
     }
     return String.format(
         "%s/%s/%s",
-        getUpstreamEndpoint().getIp(), getUpstreamInstanceId(), getUpstreamPlanNodeId());
+        getUpstreamEndpoint().getAddress(), getUpstreamInstanceId(), getUpstreamPlanNodeId());
   }
 
   public FragmentSinkNode getRemoteSourceNode() {

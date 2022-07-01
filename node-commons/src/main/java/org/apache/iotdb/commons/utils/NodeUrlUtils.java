@@ -43,7 +43,7 @@ public class NodeUrlUtils {
    */
   public static String convertTEndPointUrl(TEndPoint endPoint) {
     StringJoiner url = new StringJoiner(":");
-    url.add(endPoint.getIp());
+    url.add(endPoint.getAddress());
     url.add(String.valueOf(endPoint.getPort()));
     return url.toString();
   }

@@ -53,7 +53,8 @@ public class AsyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSe
     super(
         protocolFactory,
         tClientManager,
-        TNonblockingSocketWrapper.wrap(endpoint.getIp(), endpoint.getPort(), connectionTimeout));
+        TNonblockingSocketWrapper.wrap(
+            endpoint.getAddress(), endpoint.getPort(), connectionTimeout));
     this.endpoint = endpoint;
     this.clientManager = clientManager;
   }

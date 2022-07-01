@@ -228,7 +228,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       if (currentDataSet.getEndPoint() != null) {
         org.apache.iotdb.common.rpc.thrift.TEndPoint endPoint =
             new org.apache.iotdb.common.rpc.thrift.TEndPoint();
-        endPoint.setIp(currentDataSet.getEndPoint().getIp());
+        endPoint.setAddress(currentDataSet.getEndPoint().getIp());
         endPoint.setPort(currentDataSet.getEndPoint().getPort());
         throw new RedirectException(endPoint);
       }

@@ -206,7 +206,8 @@ class RatisConsensus implements IConsensus {
 
     if (suggestedLeader != null) {
       TEndPoint leaderEndPoint = Utils.formRaftPeerIdToTEndPoint(suggestedLeader.getId());
-      writeResult.setRedirectNode(new TEndPoint(leaderEndPoint.getIp(), leaderEndPoint.getPort()));
+      writeResult.setRedirectNode(
+          new TEndPoint(leaderEndPoint.getAddress(), leaderEndPoint.getPort()));
     }
 
     return ConsensusWriteResponse.newBuilder().setStatus(writeResult).build();

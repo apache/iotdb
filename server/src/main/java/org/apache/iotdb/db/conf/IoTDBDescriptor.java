@@ -936,10 +936,10 @@ public class IoTDBDescriptor {
     }
 
     for (TEndPoint configNode : conf.getTargetConfigNodeList()) {
-      boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
+      boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.address);
       if (!isInvalidNodeIp) {
-        String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
-        configNode.setIp(newNodeIP);
+        String newNodeIP = InetAddress.getByName(configNode.address).getHostAddress();
+        configNode.setAddress(newNodeIP);
       }
     }
 

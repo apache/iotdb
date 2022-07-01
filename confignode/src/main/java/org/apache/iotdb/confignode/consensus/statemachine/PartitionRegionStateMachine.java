@@ -52,7 +52,7 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
     this.configManager = configManager;
     this.currentNode =
         new TEndPoint()
-            .setIp(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
+            .setAddress(ConfigNodeDescriptor.getInstance().getConf().getInternalAddress())
             .setPort(ConfigNodeDescriptor.getInstance().getConf().getConsensusPort());
   }
 

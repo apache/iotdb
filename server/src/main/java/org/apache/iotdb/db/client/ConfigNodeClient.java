@@ -146,7 +146,7 @@ public class ConfigNodeClient
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
-              endpoint.getIp(), endpoint.getPort(), (int) connectionTimeout);
+              endpoint.getAddress(), endpoint.getPort(), (int) connectionTimeout);
       transport.open();
       configNode = endpoint;
     } catch (TTransportException e) {
@@ -228,7 +228,8 @@ public class ConfigNodeClient
     if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       if (status.isSetRedirectNode()) {
         configLeader =
-            new TEndPoint(status.getRedirectNode().getIp(), status.getRedirectNode().getPort());
+            new TEndPoint(
+                status.getRedirectNode().getAddress(), status.getRedirectNode().getPort());
       } else {
         configLeader = null;
       }

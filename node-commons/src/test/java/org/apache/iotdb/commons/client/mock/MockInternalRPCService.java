@@ -82,7 +82,7 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
 
   @Override
   public String getBindIP() {
-    return thisNode.getIp();
+    return thisNode.getAddress();
   }
 
   @Override

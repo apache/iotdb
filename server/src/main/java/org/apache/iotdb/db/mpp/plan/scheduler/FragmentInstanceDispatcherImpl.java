@@ -166,7 +166,8 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
   }
 
   private boolean isDispatchedToLocal(TEndPoint endPoint) {
-    return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
+    return this.localhostIpAddr.equals(endPoint.getAddress())
+        && localhostInternalPort == endPoint.port;
   }
 
   private boolean dispatchRemote(FragmentInstance instance, TEndPoint endPoint)

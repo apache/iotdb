@@ -108,7 +108,7 @@ public class FragmentSinkNode extends SinkNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.FRAGMENT_SINK.serialize(byteBuffer);
-    ReadWriteIOUtils.write(downStreamEndpoint.getIp(), byteBuffer);
+    ReadWriteIOUtils.write(downStreamEndpoint.getAddress(), byteBuffer);
     ReadWriteIOUtils.write(downStreamEndpoint.getPort(), byteBuffer);
     downStreamInstanceId.serialize(byteBuffer);
     downStreamPlanNodeId.serialize(byteBuffer);
@@ -117,7 +117,7 @@ public class FragmentSinkNode extends SinkNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.FRAGMENT_SINK.serialize(stream);
-    ReadWriteIOUtils.write(downStreamEndpoint.getIp(), stream);
+    ReadWriteIOUtils.write(downStreamEndpoint.getAddress(), stream);
     ReadWriteIOUtils.write(downStreamEndpoint.getPort(), stream);
     downStreamInstanceId.serialize(stream);
     downStreamPlanNodeId.serialize(stream);
@@ -148,7 +148,7 @@ public class FragmentSinkNode extends SinkNode {
     }
     return String.format(
         "%s:%d/%s/%s",
-        getDownStreamEndpoint().getIp(),
+        getDownStreamEndpoint().getAddress(),
         getDownStreamEndpoint().getPort(),
         getDownStreamInstanceId(),
         getDownStreamPlanNodeId());

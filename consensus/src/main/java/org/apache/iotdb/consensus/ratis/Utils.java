@@ -50,11 +50,11 @@ public class Utils {
   private Utils() {}
 
   public static String HostAddress(TEndPoint endpoint) {
-    return String.format("%s:%d", endpoint.getIp(), endpoint.getPort());
+    return String.format("%s:%d", endpoint.getAddress(), endpoint.getPort());
   }
 
   public static String fromTEndPointToString(TEndPoint endpoint) {
-    return String.format("%s_%d", endpoint.getIp(), endpoint.getPort());
+    return String.format("%s_%d", endpoint.getAddress(), endpoint.getPort());
   }
 
   /** Encode the ConsensusGroupId into 6 bytes: 2 Bytes for Group Type and 4 Bytes for Group ID */

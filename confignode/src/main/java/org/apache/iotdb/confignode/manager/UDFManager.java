@@ -95,7 +95,10 @@ public class UDFManager {
               endPoint,
               request,
               new FunctionManagementHandler(
-                  countDownLatch, dataNodeResponseStatus, endPoint.getIp(), endPoint.getPort()));
+                  countDownLatch,
+                  dataNodeResponseStatus,
+                  endPoint.getAddress(),
+                  endPoint.getPort()));
     }
 
     try {
@@ -139,7 +142,10 @@ public class UDFManager {
               endPoint,
               request,
               new FunctionManagementHandler(
-                  countDownLatch, dataNodeResponseStatus, endPoint.getIp(), endPoint.getPort()));
+                  countDownLatch,
+                  dataNodeResponseStatus,
+                  endPoint.getAddress(),
+                  endPoint.getPort()));
     }
 
     try {

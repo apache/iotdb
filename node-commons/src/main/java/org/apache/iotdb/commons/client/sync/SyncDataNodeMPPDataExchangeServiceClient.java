@@ -54,7 +54,7 @@ public class SyncDataNodeMPPDataExchangeServiceClient extends MPPDataExchangeSer
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
                     TConfigurationConst.defaultTConfiguration,
-                    endPoint.getIp(),
+                    endPoint.getAddress(),
                     endPoint.getPort(),
                     connectionTimeout))));
     this.endPoint = endPoint;

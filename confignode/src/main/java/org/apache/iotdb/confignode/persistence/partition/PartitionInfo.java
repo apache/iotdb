@@ -623,7 +623,7 @@ public class PartitionInfo implements SnapshotProcessor {
       TDataNodeLocation dataNodeLocation = entry.getKey();
       String name =
           "EndPoint("
-              + dataNodeLocation.getClientRpcEndPoint().ip
+              + dataNodeLocation.getClientRpcEndPoint().address
               + ":"
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";

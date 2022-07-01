@@ -87,7 +87,7 @@ public class MultiLeaderRPCService extends ThriftService implements MultiLeaderR
 
   @Override
   public String getBindIP() {
-    return thisNode.getIp();
+    return thisNode.getAddress();
   }
 
   @Override

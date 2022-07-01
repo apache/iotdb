@@ -48,7 +48,7 @@ public class SessionPoint {
                 .equalsIgnoreCase("org.apache.iotdb.common.rpc.thrift.TEndPoint")
             && reflectField.getName().equalsIgnoreCase("defaultEndPoint")) {
           this.rpcPort = ((TEndPoint) reflectField.get(session)).port;
-          this.host = ((TEndPoint) reflectField.get(session)).ip;
+          this.host = ((TEndPoint) reflectField.get(session)).address;
         }
         if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
             && reflectField.getName().equalsIgnoreCase("username")) {

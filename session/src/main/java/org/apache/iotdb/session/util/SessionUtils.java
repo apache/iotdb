@@ -258,7 +258,7 @@ public class SessionUtils {
     String ip = split[0];
     try {
       int rpcPort = Integer.parseInt(split[1]);
-      return endPoint.setIp(ip).setPort(rpcPort);
+      return endPoint.setAddress(ip).setPort(rpcPort);
     } catch (Exception e) {
       throw new NumberFormatException("NodeUrl Incorrect format");
     }

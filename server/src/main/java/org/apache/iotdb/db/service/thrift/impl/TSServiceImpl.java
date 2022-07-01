@@ -846,7 +846,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       } catch (RedirectException e) {
         if (plan.isEnableRedirect()) {
           TEndPoint endPoint = e.getEndPoint();
-          return redirectQueryToAnotherNode(resp, context, endPoint.ip, endPoint.port);
+          return redirectQueryToAnotherNode(resp, context, endPoint.address, endPoint.port);
         } else {
           LOGGER.error(
               "execute {} error, if session does not support redirect, should not throw redirection exception.",
