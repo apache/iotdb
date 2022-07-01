@@ -45,19 +45,17 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    int emptyColumnCount = 0;
     for (int i = 0; i < columns.length; i++) {
       if (columns[i] == null) {
-        emptyColumnCount++;
         continue;
       }
       IWritableMemChunk memChunk =
-          createMemChunkIfNotExistAndGet(schemaList.get(i - emptyColumnCount));
+          createMemChunkIfNotExistAndGet(schemaList.get(i));
       memChunk.write(
           times,
           columns[i],
           bitMaps == null ? null : bitMaps[i],
-          schemaList.get(i - emptyColumnCount).getType(),
+          schemaList.get(i).getType(),
           start,
           end);
     }
