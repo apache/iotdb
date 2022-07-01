@@ -79,6 +79,7 @@ public class MyTest2 {
     config.setEnableCPV(
         true); // this test cannot be false, as the expected answer for bottomTime and topTime can
     // be different
+    config.setTimestampPrecision("ms");
   }
 
   @After

@@ -68,6 +68,7 @@ public class MyTest3 {
 
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
+    config.setTimestampPrecision("ms");
   }
 
   @After
