@@ -321,7 +321,12 @@ service IConfigNodeRPCService {
 
   TShowRegionResp showRegion(TShowRegionReq req)
 
+  /* Routing */
+
+  common.TRegionRouteMapResp getLatestRegionRouteMap()
+
   /* Get confignode heartbeat */
+
   i64 getConfigNodeHeartBeat(i64 timestamp)
 
 }

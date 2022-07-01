@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -239,6 +240,13 @@ public interface IManager {
   TSStatus dropFunction(String udfName);
 
   TSStatus flush(TFlushReq req);
+
+  /**
+   * Get the latest RegionRouteMap
+   *
+   * @return TRegionRouteMapResp
+   */
+  TRegionRouteMapResp getLatestRegionRouteMap();
 
   void addMetrics();
 
