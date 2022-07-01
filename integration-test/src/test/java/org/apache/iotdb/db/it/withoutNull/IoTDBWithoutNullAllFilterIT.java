@@ -38,7 +38,6 @@ import java.sql.Statement;
 import static org.junit.Assert.fail;
 
 @Category({ClusterIT.class}) // TODO After old StandAlone remove
-
 public class IoTDBWithoutNullAllFilterIT {
 
   private static String[] dataSet1 =
