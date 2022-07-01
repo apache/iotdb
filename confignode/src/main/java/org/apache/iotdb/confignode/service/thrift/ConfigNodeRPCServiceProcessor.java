@@ -26,9 +26,12 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
@@ -368,6 +371,21 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     return configManager.addConsensusGroup(registerResp.getConfigNodeList());
   }
 
+  @Override
+  public TSStatus notifyRegisterSuccess() throws TException {
+    try {
+      SystemPropertiesUtils.storeSystemParameters();
+    } catch (IOException e) {
+      LOGGER.error("Write confignode-system.properties failed", e);
+      return new TSStatus(TSStatusCode.WRITE_PROCESS_ERROR.getStatusCode());
+    }
+
+    // The initial startup of Non-Seed-ConfigNode finished
+    LOGGER.info(
+        "{} has successfully started and joined the cluster.", ConfigNodeConstant.GLOBAL_NAME);
+    return StatusUtils.OK;
+  }
+
   /**
    * For leader to remove ConfigNode configuration in consensus layer
    *
@@ -397,7 +415,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
    */
   @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    if (!configManager.getNodeManager().getOnlineConfigNodes().contains(configNodeLocation)) {
+    if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
           .setMessage("Stop ConfigNode failed because the ConfigNode not in current Cluster.");
     }

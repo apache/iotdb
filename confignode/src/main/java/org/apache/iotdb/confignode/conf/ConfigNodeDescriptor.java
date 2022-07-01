@@ -264,6 +264,18 @@ public class ConfigNodeDescriptor {
     }
   }
 
+  /**
+   * Check if the current ConfigNode is SeedConfigNode.
+   *
+   * @return True if the target_config_nodes points to itself
+   */
+  public boolean isSeedConfigNode() {
+    return conf.getInternalAddress().equals(conf.getTargetConfigNode().getAddress())
+            && conf.getInternalPort() == conf.getTargetConfigNode().getPort()
+        || conf.getInternalAddress().equals("0.0.0.0")
+            && conf.getTargetConfigNode().getAddress().equals("127.0.0.1");
+  }
+
   public static ConfigNodeDescriptor getInstance() {
     return ConfigNodeDescriptorHolder.INSTANCE;
   }

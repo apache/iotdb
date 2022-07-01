@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.confignode.exception;
 
-package org.apache.iotdb.confignode.procedure.state;
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 
-public enum AddConfigNodeState {
-  ADD_CONFIG_NODE_PREPARE,
-  ADD_CONSENSUS_GROUP,
-  ADD_PEER,
-  REGISTER_SUCCESS
+public class AddPeerException extends ConfigNodeException {
+
+  public AddPeerException(TConfigNodeLocation configNodeLocation) {
+    super(String.format("Add peer: %s failed.", configNodeLocation.toString()));
+  }
 }
