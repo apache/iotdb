@@ -37,12 +37,14 @@ import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumn
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
+import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.MappableUDFQueryRowTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryRowTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.TransparentTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutorFactory;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFTypeInferrer;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -247,7 +249,8 @@ public class FunctionExpression extends Expression {
     for (Expression expression : expressions) {
       expression.constructUdfExecutors(expressionName2Executor, zoneId);
     }
-    expressionName2Executor.put(expressionString, new UDTFExecutor(functionName, zoneId));
+    expressionName2Executor.put(
+        expressionString, UDTFExecutorFactory.createUDTFExecutor(functionName, zoneId));
   }
 
   @Override
@@ -406,6 +409,9 @@ public class FunctionExpression extends Expression {
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
+      case MAPPABLE_ROW_BY_ROW_ACCESS_STRATEGY:
+        return new MappableUDFQueryRowTransformer(
+            udfInputIntermediateLayer.constructRowReader(), executor);
       case ROW_BY_ROW:
         return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
       case SLIDING_SIZE_WINDOW:
@@ -517,6 +523,9 @@ public class FunctionExpression extends Expression {
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
+      case MAPPABLE_ROW_BY_ROW_ACCESS_STRATEGY:
+        return new MappableUDFQueryRowTransformer(
+            udfInputIntermediateLayer.constructRowReader(), executor);
       case ROW_BY_ROW:
         return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
       case SLIDING_SIZE_WINDOW:
