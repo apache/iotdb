@@ -217,7 +217,7 @@ public class FakePartitionFetcherImpl implements IPartitionFetcher {
 
   @Override
   public boolean updateRegionCache(TRegionRouteReq req) {
-    return false;
+    return true;
   }
 
   @Override
