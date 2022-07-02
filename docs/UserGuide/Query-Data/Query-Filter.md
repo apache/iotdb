@@ -74,10 +74,13 @@ An example is as follows:
     select status from root.sg1.d1 where status = true;
     ````
 
-3. Select data for the interval (36.5,40]:
+3. Select data for the interval [36.5,40] or not:
 
     ```sql
-    select temperature from root.sg1.d1 where temperature > 36.5 and temperature < 40;
+    select temperature from root.sg1.d1 where temperature between 36.5 and 40;
+    ````
+    ```sql
+    select temperature from root.sg1.d1 where temperature not between 36.5 and 40;
     ````
 
 4. Select data with values within a specific range:

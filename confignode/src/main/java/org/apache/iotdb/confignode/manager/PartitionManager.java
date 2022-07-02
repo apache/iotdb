@@ -425,8 +425,16 @@ public class PartitionManager {
     throw new TimeoutException("");
   }
 
-  public Set<TDataNodeLocation> getDataNodeLocation(String storageGroup, TConsensusGroupType type) {
-    return partitionInfo.getDataNodeLocation(storageGroup, type);
+  /**
+   * Get the DataNodes who contain the specific StorageGroup's Schema or Data
+   *
+   * @param storageGroup The specific StorageGroup's name
+   * @param type SchemaRegion or DataRegion
+   * @return Set<TDataNodeLocation>, the related DataNodes
+   */
+  public Set<TDataNodeLocation> getStorageGroupRelatedDataNodes(
+      String storageGroup, TConsensusGroupType type) {
+    return partitionInfo.getStorageGroupRelatedDataNodes(storageGroup, type);
   }
   /**
    * Only leader use this interface
