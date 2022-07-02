@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public class ConfigTaskVisitor
@@ -134,6 +135,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitShowDataNodes(
       ShowDataNodesStatement showDataNodesStatement, TaskContext context) {
     return new ShowDataNodesTask(showDataNodesStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowVersion(
+      ShowVersionStatement showVersionStatement, TaskContext context) {
+    return new ShowVersionTask(showVersionStatement);
   }
 
   public static class TaskContext {}
