@@ -118,27 +118,28 @@ public class ExpressionAnalyzer {
    * @param expression expression to be checked
    * @return true if this expression is valid
    */
-  public static ResultColumn.ColumnType identifyOutputColumnType(Expression expression, boolean isRoot) {
+  public static ResultColumn.ColumnType identifyOutputColumnType(
+      Expression expression, boolean isRoot) {
     if (expression instanceof TernaryExpression) {
       ResultColumn.ColumnType firstType =
-              identifyOutputColumnType(((TernaryExpression) expression).getFirstExpression(), false);
+          identifyOutputColumnType(((TernaryExpression) expression).getFirstExpression(), false);
       ResultColumn.ColumnType secondType =
-              identifyOutputColumnType(((TernaryExpression) expression).getSecondExpression(), false);
+          identifyOutputColumnType(((TernaryExpression) expression).getSecondExpression(), false);
       ResultColumn.ColumnType thirdType =
-              identifyOutputColumnType(((TernaryExpression) expression).getThirdExpression(), false);
+          identifyOutputColumnType(((TernaryExpression) expression).getThirdExpression(), false);
       boolean rawFlag = false, aggregationFlag = false;
       if (firstType == ResultColumn.ColumnType.RAW
-              || secondType == ResultColumn.ColumnType.RAW
-              || thirdType == ResultColumn.ColumnType.RAW) rawFlag = true;
+          || secondType == ResultColumn.ColumnType.RAW
+          || thirdType == ResultColumn.ColumnType.RAW) rawFlag = true;
       if (firstType == ResultColumn.ColumnType.AGGREGATION
-              || secondType == ResultColumn.ColumnType.AGGREGATION
-              || thirdType == ResultColumn.ColumnType.AGGREGATION) aggregationFlag = true;
+          || secondType == ResultColumn.ColumnType.AGGREGATION
+          || thirdType == ResultColumn.ColumnType.AGGREGATION) aggregationFlag = true;
       if (rawFlag && aggregationFlag)
         throw new SemanticException(
-                "Raw data and aggregation result hybrid calculation is not supported.");
+            "Raw data and aggregation result hybrid calculation is not supported.");
       if (firstType == ResultColumn.ColumnType.CONSTANT
-              && secondType == ResultColumn.ColumnType.CONSTANT
-              && thirdType == ResultColumn.ColumnType.CONSTANT) {
+          && secondType == ResultColumn.ColumnType.CONSTANT
+          && thirdType == ResultColumn.ColumnType.CONSTANT) {
         throw new SemanticException("Constant column is not supported.");
       }
       if (firstType != ResultColumn.ColumnType.CONSTANT) return firstType;
@@ -309,13 +310,6 @@ public class ExpressionAnalyzer {
           ((BinaryExpression) predicate).getLeftExpression(), prefixPaths, patternTree);
       constructPatternTreeFromExpression(
           ((BinaryExpression) predicate).getRightExpression(), prefixPaths, patternTree);
-    } else if (predicate instanceof TernaryExpression) {
-      constructPatternTreeFromExpression(
-          ((TernaryExpression) predicate).getFirstExpression(), prefixPaths, patternTree);
-      constructPatternTreeFromExpression(
-          ((TernaryExpression) predicate).getSecondExpression(), prefixPaths, patternTree);
-      constructPatternTreeFromExpression(
-          ((TernaryExpression) predicate).getThirdExpression(), prefixPaths, patternTree);
     } else if (predicate instanceof UnaryExpression) {
       constructPatternTreeFromExpression(
           ((UnaryExpression) predicate).getExpression(), prefixPaths, patternTree);
