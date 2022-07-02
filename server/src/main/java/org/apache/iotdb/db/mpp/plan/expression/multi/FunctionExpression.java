@@ -409,7 +409,7 @@ public class FunctionExpression extends Expression {
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
-      case MAPPABLE_ROW_BY_ROW_ACCESS_STRATEGY:
+      case MAPPABLE_ROW_BY_ROW:
         return new MappableUDFQueryRowTransformer(
             udfInputIntermediateLayer.constructRowReader(), executor);
       case ROW_BY_ROW:
@@ -523,7 +523,7 @@ public class FunctionExpression extends Expression {
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
-      case MAPPABLE_ROW_BY_ROW_ACCESS_STRATEGY:
+      case MAPPABLE_ROW_BY_ROW:
         return new MappableUDFQueryRowTransformer(
             udfInputIntermediateLayer.constructRowReader(), executor);
       case ROW_BY_ROW:

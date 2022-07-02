@@ -38,6 +38,6 @@ public class MappableRowByRowAccessStrategy implements AccessStrategy {
 
   @Override
   public AccessStrategyType getAccessStrategyType() {
-    return AccessStrategyType.MAPPABLE_ROW_BY_ROW_ACCESS_STRATEGY;
+    return AccessStrategyType.MAPPABLE_ROW_BY_ROW;
   }
 }
