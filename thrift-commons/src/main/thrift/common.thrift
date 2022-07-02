@@ -102,6 +102,15 @@ struct TFlushReq {
    3: optional i32 dataNodeId
 }
 
+struct TDataNodesInfo {
+  1: required i32 dataNodeId
+  2: required string status
+  3: required string rpcAddresss
+  4: required i32 rpcPort
+  5: required i32 dataRegionNum
+  6: required i32 schemaRegionNum
+}
+
 struct TSetTTLReq {
   1: required string storageGroup
   2: required i64 TTL

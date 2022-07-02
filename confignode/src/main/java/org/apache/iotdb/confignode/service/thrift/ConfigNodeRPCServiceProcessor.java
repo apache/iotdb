@@ -85,6 +85,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -479,6 +480,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public long getConfigNodeHeartBeat(long timestamp) throws TException {
     return timestamp;
+  }
+
+  @Override
+  public TShowDataNodesResp showDataNodes() throws TException {
+    DataNodeInfosResp dataSet = (DataNodeInfosResp) configManager.showDataNodes();
+    TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
+    showDataNodesResp.setStatus(dataSet.getStatus());
+    showDataNodesResp.setDataNodesInfoList(dataSet.getDataNodesInfoList());
+    return showDataNodesResp;
   }
 
   public void handleClientExit() {}

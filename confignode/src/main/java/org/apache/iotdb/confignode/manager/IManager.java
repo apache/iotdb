@@ -261,4 +261,7 @@ public interface IManager {
 
   /** Show (data/schema) regions */
   DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
+
+  /** Show datanodes */
+  DataSet showDataNodes();
 }
