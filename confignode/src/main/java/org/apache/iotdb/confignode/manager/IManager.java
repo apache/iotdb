@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
@@ -111,6 +112,14 @@ public interface IManager {
    * @return DataNodeConfigurationDataSet
    */
   DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan);
+
+  /**
+   * activate DataNode
+   *
+   * @param activateDataNodePlan ActivateDataNodePlan
+   * @return TSStatus
+   */
+  TSStatus activateDataNode(ActivateDataNodePlan activateDataNodePlan);
 
   /**
    * Get DataNode info
