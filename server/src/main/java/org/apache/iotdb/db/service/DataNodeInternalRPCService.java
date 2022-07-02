@@ -27,14 +27,15 @@ import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.thrift.handler.InternalServiceThriftHandler;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeRPCServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalRPCServiceImpl;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 
-public class ClientRPCService extends ThriftService implements ClientRPCServiceMBean {
+public class DataNodeInternalRPCService extends ThriftService
+    implements DataNodeInternalRPCServiceMBean {
 
-  private DataNodeRPCServiceImpl impl;
+  private DataNodeInternalRPCServiceImpl impl;
 
-  private ClientRPCService() {}
+  private DataNodeInternalRPCService() {}
 
   @Override
   public ServiceType getID() {
@@ -44,7 +45,7 @@ public class ClientRPCService extends ThriftService implements ClientRPCServiceM
   @Override
   public void initTProcessor()
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    impl = new DataNodeRPCServiceImpl();
+    impl = new DataNodeInternalRPCServiceImpl();
     initSyncedServiceImpl(null);
     processor = new Processor<>(impl);
   }
@@ -82,13 +83,13 @@ public class ClientRPCService extends ThriftService implements ClientRPCServiceM
     return IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
 
-  private static class ClientRPCServiceHolder {
-    private static final ClientRPCService INSTANCE = new ClientRPCService();
+  private static class DataNodeInternalRPCServiceHolder {
+    private static final DataNodeInternalRPCService INSTANCE = new DataNodeInternalRPCService();
 
-    private ClientRPCServiceHolder() {}
+    private DataNodeInternalRPCServiceHolder() {}
   }
 
-  public static ClientRPCService getInstance() {
-    return ClientRPCServiceHolder.INSTANCE;
+  public static DataNodeInternalRPCService getInstance() {
+    return DataNodeInternalRPCServiceHolder.INSTANCE;
   }
 }
