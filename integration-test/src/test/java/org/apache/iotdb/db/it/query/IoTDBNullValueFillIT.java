@@ -25,10 +25,12 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
@@ -59,7 +61,7 @@ public class IoTDBNullValueFillIT {
    * 3, null, 3, null, 3.0, null, t3<br>
    * 4, 4, null, 4.0, null, false, null<br>
    * 5, 5, 5, 5.0, 5.0, false, t5<br>
-   * 6, 6, null, 6.0, 6.0, null, t6<br>
+   * 6, 6, null, 6.0, null, false, null<br>
    * 7, null, null, null, null, null, null<br>
    * 8, 8, 8, 8.0, 8.0, true, t8<br>
    * 9, null, 9, null, 9.0, null, t9
@@ -120,7 +122,7 @@ public class IoTDBNullValueFillIT {
           "1,null,1,null,1.0,null,t1,",
           "2,2,2,2.0,2.0,true,t2,",
           "3,3,2,3.0,2.0,false,t2,",
-          "4,3,4,3.0,4.0,false,t4",
+          "4,3,4,3.0,4.0,false,t4,",
           "5,5,5,5.0,5.0,false,t5,",
           "6,5,6,5.0,6.0,false,t6,",
           "8,8,8,8.0,8.0,true,t8,",
@@ -160,6 +162,63 @@ public class IoTDBNullValueFillIT {
   }
 
   @Test
+  public void previousFillAlignByDeviceTest() {
+    String[] expectedHeader = new String[] {"Time", "Device", "s1", "s2", "s3", "s4", "s5", "s6"};
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,null,1,null,1.0,null,t1,",
+          "2,root.sg1.d1,2,2,2.0,2.0,true,t2,",
+          "3,root.sg1.d1,3,2,3.0,2.0,false,t2,",
+          "4,root.sg1.d1,3,4,3.0,4.0,false,t4,",
+          "5,root.sg1.d1,5,5,5.0,5.0,false,t5,",
+          "6,root.sg1.d1,5,6,5.0,6.0,false,t6,",
+          "8,root.sg1.d1,8,8,8.0,8.0,true,t8,",
+          "9,root.sg1.d1,9,8,9.0,8.0,true,t8,",
+          "1,root.sg1.d2,1,8,1.0,8.0,true,t8,",
+          "2,root.sg1.d2,2,2,2.0,2.0,true,t2,",
+          "3,root.sg1.d2,2,3,2.0,3.0,true,t3,",
+          "4,root.sg1.d2,4,3,4.0,3.0,false,t3,",
+          "5,root.sg1.d2,5,5,5.0,5.0,false,t5,",
+          "6,root.sg1.d2,6,5,6.0,5.0,false,t5,",
+          "8,root.sg1.d2,8,8,8.0,8.0,true,t8,",
+          "9,root.sg1.d2,8,9,8.0,9.0,true,t9,"
+        };
+    resultSetEqualTest(
+        "select s1, s2, s3, s4, s5, s6 from root.sg1.* fill(previous) align by device",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void previousDescFillAlignByDeviceTest() {
+    String[] expectedHeader = new String[] {"Time", "Device", "s1", "s2", "s3", "s4", "s5", "s6"};
+    String[] retArray =
+        new String[] {
+          "9,root.sg1.d1,9,null,9.0,null,true,null,",
+          "8,root.sg1.d1,8,8,8.0,8.0,true,t8,",
+          "6,root.sg1.d1,8,6,8.0,6.0,true,t6,",
+          "5,root.sg1.d1,5,5,5.0,5.0,false,t5,",
+          "4,root.sg1.d1,5,4,5.0,4.0,false,t4,",
+          "3,root.sg1.d1,3,4,3.0,4.0,false,t4,",
+          "2,root.sg1.d1,2,2,2.0,2.0,true,t2,",
+          "1,root.sg1.d1,2,1,2.0,1.0,true,t1,",
+          "9,root.sg1.d2,2,9,2.0,9.0,true,t9,",
+          "8,root.sg1.d2,8,8,8.0,8.0,true,t8,",
+          "6,root.sg1.d2,6,8,6.0,8.0,false,t8,",
+          "5,root.sg1.d2,5,5,5.0,5.0,false,t5,",
+          "4,root.sg1.d2,4,5,4.0,5.0,false,t5,",
+          "3,root.sg1.d2,4,3,4.0,3.0,false,t3,",
+          "2,root.sg1.d2,2,2,2.0,2.0,true,t2,",
+          "1,root.sg1.d2,1,2,1.0,2.0,true,t2,"
+        };
+    resultSetEqualTest(
+        "select s1, s2, s3, s4, s5, s6 from root.sg1.* fill(previous) order by time desc align by device",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  @Ignore // TODO fix IOTDB-3724
   public void linearFillTest() {
     String[] expectedHeader =
         new String[] {
@@ -181,6 +240,23 @@ public class IoTDBNullValueFillIT {
   }
 
   @Test
+  public void linearFillAlignByDeviceTest() {
+    assertTestFail(
+        "select s1, s2, s3, s4 from root.sg1.d1 fill(linear) align by device",
+        "Linear fill is not supported in align by device query yet.");
+  }
+
+  @Test
+  public void linearFillDataTypeMisMatchTest() {
+    assertTestFail(
+        "select s1, s5 from root.sg1.d1 fill(linear)",
+        "Data type mismatch: column 'root.sg1.d1.s5' (dataType 'BOOLEAN') doesn't support linear fill.");
+    assertTestFail(
+        "select s1, s6 from root.sg1.d1 fill(linear)",
+        "Data type mismatch: column 'root.sg1.d1.s6' (dataType 'TEXT') doesn't support linear fill.");
+  }
+
+  @Test
   public void intFillTest() {
     String[] expectedHeader =
         new String[] {
@@ -195,15 +271,22 @@ public class IoTDBNullValueFillIT {
         new String[] {
           "1,1000,1,1000.0,1.0,t1,",
           "2,2,2,2.0,2.0,t2,",
-          "3,3,1000,3.0,1000.0,1000",
+          "3,3,1000,3.0,1000.0,1000,",
           "4,1000,4,1000.0,4.0,t4,",
           "5,5,5,5.0,5.0,t5,",
           "6,1000,6,1000.0,6.0,t6,",
-          "8,8,8,8.0,8.0,1000,",
-          "9,9,1000,9.0,1000.0,t8,"
+          "8,8,8,8.0,8.0,t8,",
+          "9,9,1000,9.0,1000.0,1000,"
         };
     resultSetEqualWithDescOrderTest(
         "select s1, s2, s3, s4, s6 from root.sg1.d1 fill(1000)", expectedHeader, retArray);
+  }
+
+  @Test
+  public void intFillDataTypeMisMatchTest() {
+    assertTestFail(
+        "select s1, s5 from root.sg1.d1 fill(1000)",
+        "Data type mismatch: column 'root.sg1.d1.s5' (dataType 'BOOLEAN') doesn't support fill with '1000' (dataType 'INT64').");
   }
 
   @Test
@@ -226,6 +309,19 @@ public class IoTDBNullValueFillIT {
   }
 
   @Test
+  public void floatFillDataTypeMisMatchTest() {
+    assertTestFail(
+        "select s1, s3 from root.sg1.d1 fill(3.14)",
+        "Data type mismatch: column 'root.sg1.d1.s1' (dataType 'INT32') doesn't support fill with '3.14' (dataType 'DOUBLE').");
+    assertTestFail(
+        "select s2, s3 from root.sg1.d1 fill(3.14)",
+        "Data type mismatch: column 'root.sg1.d1.s2' (dataType 'INT64') doesn't support fill with '3.14' (dataType 'DOUBLE').");
+    assertTestFail(
+        "select s5, s3 from root.sg1.d1 fill(3.14)",
+        "Data type mismatch: column 'root.sg1.d1.s5' (dataType 'BOOLEAN') doesn't support fill with '3.14' (dataType 'DOUBLE').");
+  }
+
+  @Test
   public void booleanFillTest() {
     String[] expectedHeader = new String[] {"Time", "root.sg1.d1.s5", "root.sg1.d1.s6"};
     String[] retArray =
@@ -244,6 +340,22 @@ public class IoTDBNullValueFillIT {
   }
 
   @Test
+  public void booleanFillDataTypeMisMatchTest() {
+    assertTestFail(
+        "select s5, s1 from root.sg1.d1 fill(true)",
+        "Data type mismatch: column 'root.sg1.d1.s1' (dataType 'INT32') doesn't support fill with 'true' (dataType 'BOOLEAN').");
+    assertTestFail(
+        "select s5, s2 from root.sg1.d1 fill(true)",
+        "Data type mismatch: column 'root.sg1.d1.s2' (dataType 'INT64') doesn't support fill with 'true' (dataType 'BOOLEAN').");
+    assertTestFail(
+        "select s5, s3 from root.sg1.d1 fill(true)",
+        "Data type mismatch: column 'root.sg1.d1.s3' (dataType 'FLOAT') doesn't support fill with 'true' (dataType 'BOOLEAN').");
+    assertTestFail(
+        "select s5, s4 from root.sg1.d1 fill(true)",
+        "Data type mismatch: column 'root.sg1.d1.s4' (dataType 'DOUBLE') doesn't support fill with 'true' (dataType 'BOOLEAN').");
+  }
+
+  @Test
   public void textFillTest() {
     String[] expectedHeader = new String[] {"Time", "root.sg1.d1.s6", "root.sg1.d2.s6"};
     String[] retArray =
@@ -259,5 +371,24 @@ public class IoTDBNullValueFillIT {
         };
     resultSetEqualWithDescOrderTest(
         "select s6 from root.sg1.d1, root.sg1.d2 fill('t0')", expectedHeader, retArray);
+  }
+
+  @Test
+  public void textFillDataTypeMisMatchTest() {
+    assertTestFail(
+        "select s6, s1 from root.sg1.d1 fill('t0')",
+        "Data type mismatch: column 'root.sg1.d1.s1' (dataType 'INT32') doesn't support fill with 't0' (dataType 'TEXT').");
+    assertTestFail(
+        "select s6, s2 from root.sg1.d1 fill('t0')",
+        "Data type mismatch: column 'root.sg1.d1.s2' (dataType 'INT64') doesn't support fill with 't0' (dataType 'TEXT').");
+    assertTestFail(
+        "select s6, s3 from root.sg1.d1 fill('t0')",
+        "Data type mismatch: column 'root.sg1.d1.s3' (dataType 'FLOAT') doesn't support fill with 't0' (dataType 'TEXT').");
+    assertTestFail(
+        "select s6, s4 from root.sg1.d1 fill('t0')",
+        "Data type mismatch: column 'root.sg1.d1.s4' (dataType 'DOUBLE') doesn't support fill with 't0' (dataType 'TEXT').");
+    assertTestFail(
+        "select s6, s5 from root.sg1.d1 fill('t0')",
+        "Data type mismatch: column 'root.sg1.d1.s5' (dataType 'BOOLEAN') doesn't support fill with 't0' (dataType 'TEXT').");
   }
 }
