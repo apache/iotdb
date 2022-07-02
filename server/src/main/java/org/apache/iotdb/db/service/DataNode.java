@@ -56,7 +56,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
-import org.apache.iotdb.db.protocol.rest.RestService;
+import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -447,7 +447,7 @@ public class DataNode implements DataNodeMBean {
       registerManager.register(MQTTService.getInstance());
     }
     if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
-      registerManager.register(RestService.getInstance());
+      registerManager.register(MPPRestService.getInstance());
     }
   }
 

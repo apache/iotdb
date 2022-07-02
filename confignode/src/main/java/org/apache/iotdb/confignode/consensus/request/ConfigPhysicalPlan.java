@@ -32,7 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupC
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsPlan;
@@ -129,7 +129,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           req = new GetStorageGroupPlan();
           break;
         case CreateRegionGroups:
-          req = new CreateRegionsPlan();
+          req = new CreateRegionGroupsPlan();
           break;
         case DeleteRegions:
           req = new DeleteRegionsPlan();

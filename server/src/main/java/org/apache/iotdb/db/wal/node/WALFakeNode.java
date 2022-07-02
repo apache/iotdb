@@ -119,6 +119,11 @@ public class WALFakeNode implements IWALNode {
     // do nothing
   }
 
+  @Override
+  public long getCurrentSearchIndex() {
+    throw new UnsupportedOperationException();
+  }
+
   public static WALFakeNode getFailureInstance(Exception e) {
     return new WALFakeNode(
         WALFlushListener.Status.FAILURE,
