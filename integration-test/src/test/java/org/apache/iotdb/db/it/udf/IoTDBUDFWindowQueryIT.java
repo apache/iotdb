@@ -28,7 +28,6 @@ import org.apache.iotdb.itbase.constant.UDFTestConstant;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -45,7 +44,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBUDFWindowQueryIT {
 
-  protected static final int ITERATION_TIMES = 100;
+  protected static final int ITERATION_TIMES = 100000;
 
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
@@ -177,14 +176,12 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingSizeWindow7() {
     testSlidingSizeWindow(0);
   }
 
   // todo: remove ignore when fixed
   @Test
-  @Ignore
   public void testSlidingSizeWindow8() {
     testSlidingSizeWindow(-ITERATION_TIMES);
   }
@@ -286,7 +283,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow4() {
     testSlidingTimeWindow(
         (int) (0.033 * ITERATION_TIMES),
@@ -296,61 +292,52 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow5() {
     testSlidingTimeWindow(ITERATION_TIMES, ITERATION_TIMES, 0, ITERATION_TIMES);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow6() {
     testSlidingTimeWindow(
         (int) (1.01 * ITERATION_TIMES), (int) (0.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow7() {
     testSlidingTimeWindow(
         (int) (0.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow8() {
     testSlidingTimeWindow(
         (int) (1.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow9() {
     testSlidingTimeWindow(
         (int) (0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), ITERATION_TIMES / 2, 0);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow10() {
     testSlidingTimeWindow(
         (int) (-0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow11() {
     testSlidingTimeWindow(
         (int) (0.01 * ITERATION_TIMES), (int) (-0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow12() {
     testSlidingTimeWindow((int) (0.01 * ITERATION_TIMES), 0, 0, ITERATION_TIMES / 2);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow13() {
     testSlidingTimeWindow(0, (int) (0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
@@ -461,7 +448,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindowWithTimeIntervalOnly6() {
     testSlidingTimeWindowWithTimeIntervalOnly(-ITERATION_TIMES);
   }
@@ -724,31 +710,31 @@ public class IoTDBUDFWindowQueryIT {
         Statement statement = connection.createStatement()) {
 
       String query =
-          "SELECT accumulator(s1 + 1, 'access'='size', 'windowSize'='10') FROM root.vehicle.d1";
+          "SELECT accumulator(s1 + 1, 'access'='size', 'windowSize'='1000') FROM root.vehicle.d1";
       try (ResultSet rs = statement.executeQuery(query)) {
         int time = 0;
-        int value = 55;
-        for (int i = 0; i < ITERATION_TIMES / 10; i++) {
+        int value = 500500;
+        for (int i = 0; i < ITERATION_TIMES / 1000; i++) {
           Assert.assertTrue(rs.next());
           Assert.assertEquals(time, rs.getLong(1));
           Assert.assertEquals(value, rs.getLong(2));
-          time += 10;
-          value += 100;
+          time += 1000;
+          value += 1000000;
         }
         Assert.assertFalse(rs.next());
       }
 
       query =
-          "SELECT 1 + accumulator(s1 + 1, 'access'='size', 'windowSize'='10') FROM root.vehicle.d1";
+          "SELECT 1 + accumulator(s1 + 1, 'access'='size', 'windowSize'='1000') FROM root.vehicle.d1";
       try (ResultSet rs = statement.executeQuery(query)) {
         int time = 0;
-        double value = 56D;
-        for (int i = 0; i < ITERATION_TIMES / 10; i++) {
+        double value = 500501D;
+        for (int i = 0; i < ITERATION_TIMES / 1000; i++) {
           Assert.assertTrue(rs.next());
           Assert.assertEquals(time, rs.getLong(1));
           Assert.assertEquals(value, rs.getDouble(2), 0.001);
-          time += 10;
-          value += 100D;
+          time += 1000;
+          value += 1000000D;
         }
         Assert.assertFalse(rs.next());
       }
@@ -759,7 +745,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testTimeWindowUDFWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
