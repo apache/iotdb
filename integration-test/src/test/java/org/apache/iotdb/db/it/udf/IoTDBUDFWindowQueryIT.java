@@ -259,7 +259,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow1() {
     testSlidingTimeWindow(
         (int) (0.33 * ITERATION_TIMES),
@@ -269,7 +268,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow2() {
     testSlidingTimeWindow(
         (int) (0.033 * ITERATION_TIMES),
@@ -279,7 +277,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow3() {
     testSlidingTimeWindow(
         (int) (2 * 0.033 * ITERATION_TIMES),
@@ -722,37 +719,36 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSizeWindowUDFWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       String query =
-          "SELECT accumulator(s1 + 1, 'access'='size', 'windowSize'='1000') FROM root.vehicle.d1";
+          "SELECT accumulator(s1 + 1, 'access'='size', 'windowSize'='10') FROM root.vehicle.d1";
       try (ResultSet rs = statement.executeQuery(query)) {
         int time = 0;
-        int value = 500500;
-        for (int i = 0; i < ITERATION_TIMES / 1000; i++) {
+        int value = 55;
+        for (int i = 0; i < ITERATION_TIMES / 10; i++) {
           Assert.assertTrue(rs.next());
           Assert.assertEquals(time, rs.getLong(1));
           Assert.assertEquals(value, rs.getLong(2));
-          time += 1000;
-          value += 1000000;
+          time += 10;
+          value += 100;
         }
         Assert.assertFalse(rs.next());
       }
 
       query =
-          "SELECT 1 + accumulator(s1 + 1, 'access'='size', 'windowSize'='1000') FROM root.vehicle.d1";
+          "SELECT 1 + accumulator(s1 + 1, 'access'='size', 'windowSize'='10') FROM root.vehicle.d1";
       try (ResultSet rs = statement.executeQuery(query)) {
         int time = 0;
-        double value = 500501D;
-        for (int i = 0; i < ITERATION_TIMES / 1000; i++) {
+        double value = 56D;
+        for (int i = 0; i < ITERATION_TIMES / 10; i++) {
           Assert.assertTrue(rs.next());
           Assert.assertEquals(time, rs.getLong(1));
           Assert.assertEquals(value, rs.getDouble(2), 0.001);
-          time += 1000;
-          value += 1000000D;
+          time += 10;
+          value += 100D;
         }
         Assert.assertFalse(rs.next());
       }
