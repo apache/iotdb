@@ -19,17 +19,20 @@
 package org.apache.iotdb.confignode.consensus.response;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import java.util.List;
 import java.util.Map;
 
 public class DataNodeInfosResp implements DataSet {
 
   private TSStatus status;
   private Map<Integer, TDataNodeInfo> dataNodeInfoMap;
+  private List<TDataNodesInfo> dataNodesInfoList;
 
   public DataNodeInfosResp() {
     // empty constructor
@@ -45,6 +48,14 @@ public class DataNodeInfosResp implements DataSet {
 
   public void setDataNodeInfoMap(Map<Integer, TDataNodeInfo> dataNodeInfoMap) {
     this.dataNodeInfoMap = dataNodeInfoMap;
+  }
+
+  public List<TDataNodesInfo> getDataNodesInfoList() {
+    return dataNodesInfoList;
+  }
+
+  public void setDataNodesInfoList(List<TDataNodesInfo> dataNodesInfoList) {
+    this.dataNodesInfoList = dataNodesInfoList;
   }
 
   public void convertToRpcDataNodeLocationResp(TDataNodeInfoResp resp) {

@@ -20,9 +20,11 @@ package org.apache.iotdb.confignode.manager.load.balancer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.confignode.manager.Manager;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.IRouter;
+import org.apache.iotdb.confignode.manager.load.balancer.router.LeaderRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LoadScoreGreedyRouter;
 
 import java.util.List;
@@ -34,9 +36,12 @@ import java.util.Map;
  */
 public class RouteBalancer {
 
-  private final Manager configManager;
+  public static final String leaderPolicy = "leader";
+  public static final String greedyPolicy = "greedy";
 
-  public RouteBalancer(Manager configManager) {
+  private final IManager configManager;
+
+  public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
   }
 
@@ -46,8 +51,13 @@ public class RouteBalancer {
   }
 
   private IRouter genRouter() {
-    // TODO: The Router should be configurable
-    return new LoadScoreGreedyRouter(getLoadManager().getAllLoadScores());
+    String policy = ConfigNodeDescriptor.getInstance().getConf().getRoutingPolicy();
+    if (policy.equals(leaderPolicy)) {
+      return new LeaderRouter(
+          getLoadManager().getAllLeadership(), getLoadManager().getAllLoadScores());
+    } else {
+      return new LoadScoreGreedyRouter(getLoadManager().getAllLoadScores());
+    }
   }
 
   private LoadManager getLoadManager() {

@@ -157,6 +157,11 @@ DATA
     : D A T A
     ;
 
+DATANODES
+
+    : D A T A N O D E S
+    ;
+
 DEBUG
     : D E B U G
     ;
@@ -772,6 +777,8 @@ OPERATOR_GTE : '>=';
 OPERATOR_LT : '<';
 OPERATOR_LTE : '<=';
 OPERATOR_NEQ : '!=' | '<>';
+
+OPERATOR_BETWEEN : B E T W E E N;
 
 OPERATOR_IS : I S;
 

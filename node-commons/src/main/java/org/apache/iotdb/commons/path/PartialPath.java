@@ -568,4 +568,36 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   public PartialPath transformToPartialPath() {
     return this;
   }
+
+  /**
+   * PartialPath basic total, 52B
+   *
+   * <ul>
+   *   <li>Object header, 8B
+   *   <li>String[] reference + header + length, 8 + 4 + 8= 20B
+   *   <li>Path attributes' references, 8 * 3 = 24B
+   * </ul>
+   */
+  public static int estimateSize(PartialPath partialPath) {
+    int size = 52;
+    for (String node : partialPath.getNodes()) {
+      size += estimateStringSize(node);
+    }
+    size += estimateStringSize(partialPath.getFullPath());
+    return size;
+  }
+
+  /**
+   * String basic total, 32B
+   *
+   * <ul>
+   *   <li>Object header, 8B
+   *   <li>char[] reference + header + length, 8 + 4 + 8= 20B
+   *   <li>hash code, 4B
+   * </ul>
+   */
+  private static int estimateStringSize(String string) {
+    // each char takes 2B in Java
+    return string == null ? 0 : 32 + 2 * string.length();
+  }
 }

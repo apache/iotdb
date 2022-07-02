@@ -79,7 +79,7 @@ public class WALManager implements IService {
 
   /** WAL node will be registered only when using multi-leader consensus protocol */
   public void registerWALNode(
-      String applicantUniqueId, String logDirectory, int startFileVersion, long startSearchIndex) {
+      String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
     String s = config.getDataRegionConsensusProtocolClass();
     if (config.getWalMode() == WALMode.DISABLE
         || !config.isClusterMode()

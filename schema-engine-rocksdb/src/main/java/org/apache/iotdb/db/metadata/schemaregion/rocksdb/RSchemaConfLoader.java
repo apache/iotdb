@@ -46,9 +46,9 @@ public class RSchemaConfLoader {
   private long writeBufferSize = 64 * SizeUnit.KB;
   private long maxTotalWalSize = 64 * SizeUnit.KB;
   private long blockCache =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchema() * 2 / 3;
+      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion() * 2 / 3;
   private long blockCacheCompressed =
-      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchema() / 3;
+      IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForSchemaRegion() / 3;
 
   private static final String ROCKSDB_CONFIG_FILE_NAME = "schema-rocksdb.properties";
   private static final Logger logger = LoggerFactory.getLogger(RSchemaConfLoader.class);

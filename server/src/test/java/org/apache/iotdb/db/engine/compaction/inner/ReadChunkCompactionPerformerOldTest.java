@@ -24,7 +24,9 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -109,7 +111,10 @@ public class ReadChunkCompactionPerformerOldTest extends InnerCompactionTest {
         new CompactionLogger(
             new File(targetTsFileResource.getTsFilePath().concat(".compaction.log")));
     sizeTieredCompactionLogger.logFiles(seqResources, CompactionLogger.STR_SOURCE_FILES);
-    new ReadChunkCompactionPerformer(seqResources, targetTsFileResource).perform();
+    ICompactionPerformer performer =
+        new ReadChunkCompactionPerformer(seqResources, targetTsFileResource);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
     CompactionUtils.moveTargetFile(
         Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();

@@ -40,7 +40,7 @@ public class SyncConfigNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncConfigNodeClientPool.class);
 
-  private static final int retryNum = 5;
+  private static final int retryNum = 6;
 
   private final IClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
@@ -66,50 +66,69 @@ public class SyncConfigNodeClientPool {
   public TConfigNodeRegisterResp registerConfigNode(
       TEndPoint endPoint, TConfigNodeRegisterReq req) {
     // TODO: Unified retry logic
+    Throwable lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
         return client.registerConfigNode(req);
       } catch (Exception e) {
-        LOGGER.warn("Register ConfigNode failed, retrying {}...", retry, e);
-        doRetryWait();
+        lastException = e;
+        LOGGER.warn("Register ConfigNode failed because {}, retrying {}...", e.getMessage(), retry);
+        doRetryWait(retry);
       }
     }
-    LOGGER.error("Register ConfigNode failed");
+    LOGGER.error("Register ConfigNode failed", lastException);
     return new TConfigNodeRegisterResp()
         .setStatus(
             new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
-                .setMessage("All retry failed."));
+                .setMessage("All retry failed due to " + lastException.getMessage()));
   }
 
-  public TSStatus addConsensusGroup(
-      TEndPoint endPoint, List<TConfigNodeLocation> configNodeLocation) {
+  public void addConsensusGroup(TEndPoint endPoint, List<TConfigNodeLocation> configNodeLocation)
+      throws Exception {
     // TODO: Unified retry logic
+    Exception lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
         TConfigNodeRegisterResp registerResp = new TConfigNodeRegisterResp();
         registerResp.setConfigNodeList(configNodeLocation);
         registerResp.setStatus(StatusUtils.OK);
-        return client.addConsensusGroup(registerResp);
+        client.addConsensusGroup(registerResp);
+        return;
       } catch (Exception e) {
-        LOGGER.warn("Add Consensus Group failed, retrying {} ...", retry, e);
-        doRetryWait();
+        lastException = e;
+        LOGGER.warn(
+            "Add Consensus Group failed because {}, retrying {} ...", e.getMessage(), retry);
+        doRetryWait(retry);
       }
     }
-    LOGGER.error("Add ConsensusGroup failed");
-    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
-        .setMessage("All retry failed.");
+
+    throw lastException;
+  }
+
+  public void notifyRegisterSuccess(TEndPoint endPoint) {
+    // TODO: Unified retry logic
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
+        client.notifyRegisterSuccess();
+        return;
+      } catch (Exception e) {
+        LOGGER.warn("Notify register failed because {}, retrying {} ...", e.getMessage(), retry);
+        doRetryWait(retry);
+      }
+    }
   }
 
   /**
    * ConfigNode Leader stop any ConfigNode in the cluster
    *
-   * @param configNodeLocations confignode_list of confignode-system.properties
+   * @param configNodeLocations target_config_nodes of confignode-system.properties
    * @param configNodeLocation To be removed ConfigNode
    * @return SUCCESS_STATUS: remove ConfigNode success, other status remove failed
    */
   public TSStatus removeConfigNode(
       List<TConfigNodeLocation> configNodeLocations, TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
+    Throwable lastException = null;
     for (TConfigNodeLocation nodeLocation : configNodeLocations) {
       for (int retry = 0; retry < retryNum; retry++) {
         try (SyncConfigNodeIServiceClient client =
@@ -124,38 +143,42 @@ public class SyncConfigNodeClientPool {
             }
           }
           return status;
-        } catch (Exception e) {
-          LOGGER.warn("Remove ConfigNode failed, retrying...", e);
-          doRetryWait();
+        } catch (Throwable e) {
+          lastException = e;
+          LOGGER.warn(
+              "Remove ConfigNode failed because {}, retrying {} ...", e.getMessage(), retry);
+          doRetryWait(retry);
         }
       }
     }
 
-    LOGGER.error("Remove ConfigNode failed");
+    LOGGER.error("Remove ConfigNode failed", lastException);
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
-        .setMessage("All retry failed.");
+        .setMessage("All retry failed due to " + lastException.getMessage());
   }
 
   /** Only use stopConfigNode when the ConfigNode is removed. */
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
     // TODO: Unified retry logic
+    Throwable lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client =
           clientManager.borrowClient(configNodeLocation.getInternalEndPoint())) {
         return client.stopConfigNode(configNodeLocation);
       } catch (Exception e) {
-        LOGGER.warn("Stop ConfigNode failed, retrying...", e);
-        doRetryWait();
+        lastException = e;
+        LOGGER.warn("Stop ConfigNode failed because {}, retrying {}...", e.getMessage(), retry);
+        doRetryWait(retry);
       }
     }
-    LOGGER.error("Stop ConfigNode failed");
+    LOGGER.error("Stop ConfigNode failed", lastException);
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
-        .setMessage("All retry failed.");
+        .setMessage("All retry failed due to" + lastException.getMessage());
   }
 
-  private void doRetryWait() {
+  private void doRetryWait(int retryNum) {
     try {
-      TimeUnit.MILLISECONDS.sleep(100);
+      TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
     }

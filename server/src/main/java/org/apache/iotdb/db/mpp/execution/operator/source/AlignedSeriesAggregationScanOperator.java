@@ -150,30 +150,31 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
 
       // read from file first
       while (alignedSeriesScanUtil.hasNextFile()) {
-        Statistics fileTimeStatistics = alignedSeriesScanUtil.currentFileTimeStatistics();
-        if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
-          if (ascending) {
-            updateResultTsBlockFromAggregators();
-            return true;
-          } else {
+        if (canUseCurrentFileStatistics()) {
+          Statistics fileTimeStatistics = alignedSeriesScanUtil.currentFileTimeStatistics();
+          if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+            if (ascending) {
+              updateResultTsBlockFromAggregators();
+              return true;
+            } else {
+              alignedSeriesScanUtil.skipCurrentFile();
+              continue;
+            }
+          }
+          // calc from fileMetaData
+          if (curTimeRange.contains(
+              fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
+            Statistics[] statisticsList = new Statistics[subSensorSize];
+            for (int i = 0; i < subSensorSize; i++) {
+              statisticsList[i] = alignedSeriesScanUtil.currentFileStatistics(i);
+            }
+            calcFromStatistics(statisticsList);
             alignedSeriesScanUtil.skipCurrentFile();
-            continue;
-          }
-        }
-        // calc from fileMetaData
-        if (canUseCurrentFileStatistics()
-            && curTimeRange.contains(
-                fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
-          Statistics[] statisticsList = new Statistics[subSensorSize];
-          for (int i = 0; i < subSensorSize; i++) {
-            statisticsList[i] = alignedSeriesScanUtil.currentFileStatistics(i);
-          }
-          calcFromStatistics(statisticsList);
-          alignedSeriesScanUtil.skipCurrentFile();
-          if (isEndCalc(aggregators) && !isGroupByQuery) {
-            break;
-          } else {
-            continue;
+            if (isEndCalc(aggregators) && !isGroupByQuery) {
+              break;
+            } else {
+              continue;
+            }
           }
         }
 
@@ -279,9 +280,8 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean readAndCalcFromPage(TimeRange curTimeRange) throws IOException {
     while (alignedSeriesScanUtil.hasNextPage()) {
-      Statistics pageTimeStatistics = alignedSeriesScanUtil.currentPageTimeStatistics();
-      // must be non overlapped page
-      if (pageTimeStatistics != null) {
+      if (canUseCurrentPageStatistics()) {
+        Statistics pageTimeStatistics = alignedSeriesScanUtil.currentPageTimeStatistics();
         // There is no more eligible points in current time range
         if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
@@ -339,32 +339,34 @@ public class AlignedSeriesAggregationScanOperator implements DataSourceOperator 
 
   private boolean readAndCalcFromChunk(TimeRange curTimeRange) throws IOException {
     while (alignedSeriesScanUtil.hasNextChunk()) {
-      Statistics chunkTimeStatistics = alignedSeriesScanUtil.currentChunkTimeStatistics();
-      if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
-        if (ascending) {
-          return true;
-        } else {
-          alignedSeriesScanUtil.skipCurrentChunk();
-          continue;
+      if (canUseCurrentChunkStatistics()) {
+        Statistics chunkTimeStatistics = alignedSeriesScanUtil.currentChunkTimeStatistics();
+        if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+          if (ascending) {
+            return true;
+          } else {
+            alignedSeriesScanUtil.skipCurrentChunk();
+            continue;
+          }
         }
-      }
-      // calc from chunkMetaData
-      if (canUseCurrentChunkStatistics()
-          && curTimeRange.contains(
-              chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
         // calc from chunkMetaData
-        Statistics[] statisticsList = new Statistics[subSensorSize];
-        for (int i = 0; i < subSensorSize; i++) {
-          statisticsList[i] = alignedSeriesScanUtil.currentChunkStatistics(i);
-        }
-        calcFromStatistics(statisticsList);
-        alignedSeriesScanUtil.skipCurrentChunk();
-        if (isEndCalc(aggregators) && !isGroupByQuery) {
-          return true;
-        } else {
-          continue;
+        if (curTimeRange.contains(
+            chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
+          // calc from chunkMetaData
+          Statistics[] statisticsList = new Statistics[subSensorSize];
+          for (int i = 0; i < subSensorSize; i++) {
+            statisticsList[i] = alignedSeriesScanUtil.currentChunkStatistics(i);
+          }
+          calcFromStatistics(statisticsList);
+          alignedSeriesScanUtil.skipCurrentChunk();
+          if (isEndCalc(aggregators) && !isGroupByQuery) {
+            return true;
+          } else {
+            continue;
+          }
         }
       }
+
       // read page
       if (readAndCalcFromPage(curTimeRange)) {
         return true;

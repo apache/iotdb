@@ -33,13 +33,12 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.rpc.RpcUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.Map;
 
 public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataExecutionVisitor.class);
@@ -69,7 +68,13 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+      LOGGER.warn(
+          "Batch failure in executing a InsertTabletNode. device: {}, startTime: {}, measurements: {}, failing status: {}",
+          node.getDevicePath(),
+          node.getTimes()[0],
+          node.getMeasurements(),
+          e.getFailingStatus());
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
 
@@ -79,7 +84,18 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insert(node);
       return StatusUtils.OK;
     } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+      LOGGER.warn("Batch failure in executing a InsertRowsNode.");
+      // for each error
+      for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
+        InsertRowNode insertRowNode = node.getInsertRowNodeList().get(failedEntry.getKey());
+        LOGGER.warn(
+            "Insert row failed. device: {}, time: {}, measurements: {}, failing status: {}",
+            insertRowNode.getDevicePath(),
+            insertRowNode.getTime(),
+            insertRowNode.getMeasurements(),
+            failedEntry.getValue());
+      }
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
 
@@ -89,7 +105,18 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insertTablets(node);
       return StatusUtils.OK;
     } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+      LOGGER.warn("Batch failure in executing a InsertMultiTabletsNode.");
+      for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
+        InsertTabletNode insertTabletNode =
+            node.getInsertTabletNodeList().get(failedEntry.getKey());
+        LOGGER.warn(
+            "Insert tablet failed. device: {}, startTime: {}, measurements: {}, failing status: {}",
+            insertTabletNode.getDevicePath(),
+            insertTabletNode.getTimes()[0],
+            insertTabletNode.getMeasurements(),
+            failedEntry.getValue());
+      }
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
 
@@ -103,7 +130,17 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+      LOGGER.warn("Batch failure in executing a InsertRowsOfOneDeviceNode.");
+      for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
+        InsertRowNode insertRowNode = node.getInsertRowNodeList().get(failedEntry.getKey());
+        LOGGER.warn(
+            "Insert row failed. device: {}, time: {}, measurements: {}, failing status: {}",
+            insertRowNode.getDevicePath(),
+            insertRowNode.getTime(),
+            insertRowNode.getMeasurements(),
+            failedEntry.getValue());
+      }
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
 

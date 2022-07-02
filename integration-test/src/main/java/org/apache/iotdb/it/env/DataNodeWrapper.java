@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import org.apache.commons.lang3.SystemUtils;
 
 import java.io.File;
@@ -26,7 +28,7 @@ import java.util.Properties;
 public class DataNodeWrapper extends AbstractNodeWrapper {
 
   private final String targetConfigNode;
-  private final int dataBlockManagerPort;
+  private final int mppDataExchangePort;
   private final int internalPort;
   private final int dataRegionConsensusPort;
   private final int schemaRegionConsensusPort;
@@ -35,7 +37,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
       String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
     super(testClassName, testMethodName, portList);
     this.targetConfigNode = targetConfigNode;
-    this.dataBlockManagerPort = portList[1];
+    this.mppDataExchangePort = portList[1];
     this.internalPort = portList[2];
     this.dataRegionConsensusPort = portList[3];
     this.schemaRegionConsensusPort = portList[4];
@@ -43,32 +45,32 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
 
   @Override
   protected void updateConfig(Properties properties) {
-    properties.setProperty("rpc_address", super.getIp());
-    properties.setProperty("internal_ip", "127.0.0.1");
-    properties.setProperty("rpc_port", String.valueOf(getPort()));
-    properties.setProperty("data_block_manager_port", String.valueOf(this.dataBlockManagerPort));
-    properties.setProperty("internal_port", String.valueOf(this.internalPort));
+    properties.setProperty(IoTDBConstant.RPC_ADDRESS, super.getIp());
+    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, "127.0.0.1");
+    properties.setProperty(IoTDBConstant.RPC_PORT, String.valueOf(getPort()));
+    properties.setProperty("mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
+    properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(this.internalPort));
     properties.setProperty(
         "data_region_consensus_port", String.valueOf(this.dataRegionConsensusPort));
     properties.setProperty(
         "schema_region_consensus_port", String.valueOf(this.schemaRegionConsensusPort));
     properties.setProperty("connection_timeout_ms", "30000");
     if (this.targetConfigNode != null) {
-      properties.setProperty("config_nodes", this.targetConfigNode);
+      properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNode);
     }
   }
 
   @Override
   protected String getConfigPath() {
-    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-engine.properties");
+    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-datanode.properties");
   }
 
   @Override
   protected String getEnvConfigPath() {
     if (SystemUtils.IS_OS_WINDOWS) {
-      return workDirFilePath("datanode" + File.separator + "conf", "iotdb-env.bat");
+      return workDirFilePath("datanode" + File.separator + "conf", "datanode-env.bat");
     }
-    return workDirFilePath("datanode" + File.separator + "conf", "iotdb-env.sh");
+    return workDirFilePath("datanode" + File.separator + "conf", "datanode-env.sh");
   }
 
   @Override

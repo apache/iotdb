@@ -82,14 +82,14 @@
 
 ### 类型推断
 
-| 数据(String) | 字符串格式 | iotdb-engine.properties配置项 | 默认值 |
-|:---:|:---|:---|:---|
-| true | boolean | boolean\_string\_infer\_type | BOOLEAN |
-| 1 | integer | integer\_string\_infer\_type | FLOAT |
-| 17000000（大于 2^24 的整数） | integer | long\_string\_infer\_type | DOUBLE |
+| 数据(String) | 字符串格式 | iotdb-datanode.properties配置项  | 默认值 |
+|:---:|:---|:------------------------------|:---|
+| true | boolean | boolean\_string\_infer\_type  | BOOLEAN |
+| 1 | integer | integer\_string\_infer\_type  | FLOAT |
+| 17000000（大于 2^24 的整数） | integer | long\_string\_infer\_type     | DOUBLE |
 | 1.2 | floating | floating\_string\_infer\_type | FLOAT |
-| NaN | nan | nan\_string\_infer\_type | DOUBLE |
-| 'I am text' | text | 无 | 无 |
+| NaN | nan | nan\_string\_infer\_type      | DOUBLE |
+| 'I am text' | text | 无                             | 无 |
 
 * 可配置的数据类型包括：BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT
 
@@ -97,14 +97,14 @@
 
 ### 编码方式
 
-| 数据类型 | iotdb-engine.properties配置项 | 默认值 |
-|:---|:---|:---|
-| BOOLEAN | default\_boolean\_encoding | RLE |
-| INT32 | default\_int32\_encoding | RLE |
-| INT64 | default\_int64\_encoding | RLE |
-| FLOAT | default\_float\_encoding | GORILLA |
-| DOUBLE | default\_double\_encoding | GORILLA |
-| TEXT | default\_text\_encoding | PLAIN |
+| 数据类型 | iotdb-datanode.properties配置项 | 默认值 |
+|:---|:-----------------------------|:---|
+| BOOLEAN | default\_boolean\_encoding   | RLE |
+| INT32 | default\_int32\_encoding     | RLE |
+| INT64 | default\_int64\_encoding     | RLE |
+| FLOAT | default\_float\_encoding     | GORILLA |
+| DOUBLE | default\_double\_encoding    | GORILLA |
+| TEXT | default\_text\_encoding      | PLAIN |
 
 * 可配置的编码方式包括：PLAIN, RLE, TS_2DIFF, GORILLA, DICTIONARY
 

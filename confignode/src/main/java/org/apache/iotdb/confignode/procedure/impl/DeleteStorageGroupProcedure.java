@@ -22,7 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -79,7 +79,7 @@ public class DeleteStorageGroupProcedure
           break;
         case DELETE_PRE:
           LOG.info("Pre delete for Storage group {}", deleteSgSchema.getName());
-          env.preDelete(PreDeleteStorageGroupReq.PreDeleteType.EXECUTE, deleteSgSchema.getName());
+          env.preDelete(PreDeleteStorageGroupPlan.PreDeleteType.EXECUTE, deleteSgSchema.getName());
           setNextState(DeleteStorageGroupState.INVALIDATE_CACHE);
           break;
         case INVALIDATE_CACHE:
@@ -123,7 +123,7 @@ public class DeleteStorageGroupProcedure
       case DELETE_PRE:
       case INVALIDATE_CACHE:
         LOG.info("Rollback preDeleted:{}", deleteSgSchema.getName());
-        env.preDelete(PreDeleteStorageGroupReq.PreDeleteType.ROLLBACK, deleteSgSchema.getName());
+        env.preDelete(PreDeleteStorageGroupPlan.PreDeleteType.ROLLBACK, deleteSgSchema.getName());
         break;
     }
   }

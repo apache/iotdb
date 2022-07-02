@@ -166,7 +166,7 @@ public class ProcedureManager {
      GET-SET Region
   */
   // ======================================================
-  public Manager getConfigManager() {
+  public IManager getConfigManager() {
     return configManager;
   }
 
