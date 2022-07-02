@@ -973,8 +973,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public void parseFillClause(IoTDBSqlParser.FillClauseContext ctx) {
     FillComponent fillComponent = new FillComponent();
     if (ctx.linearClause() != null) {
+      if (ctx.linearClause().DURATION_LITERAL().size() > 0) {
+        throw new SemanticException("The specified fill time range is not supported.");
+      }
       fillComponent.setFillPolicy(FillPolicy.LINEAR);
     } else if (ctx.previousClause() != null) {
+      if (ctx.previousClause().DURATION_LITERAL() != null) {
+        throw new SemanticException("The specified fill time range is not supported.");
+      }
       fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
     } else if (ctx.specificValueClause() != null) {
       fillComponent.setFillPolicy(FillPolicy.VALUE);
@@ -984,6 +990,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } else {
         throw new SemanticException("fill value cannot be null");
       }
+    } else if (ctx.previousUntilLastClause() != null) {
+      throw new SemanticException("PREVIOUSUNTILLAST fill is not supported yet.");
+    } else if (ctx.oldTypeClause() != null) {
+      throw new SemanticException("The specified fill datatype is not supported.");
     }
     queryStatement.setFillComponent(fillComponent);
   }
