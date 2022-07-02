@@ -58,6 +58,11 @@ public class BooleanLiteral extends Literal {
   }
 
   @Override
+  public String getDataTypeString() {
+    return TSDataType.BOOLEAN.toString();
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

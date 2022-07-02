@@ -416,13 +416,19 @@ public class Analyzer {
               TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
               if (!fillComponent.getFillValue().isDataTypeConsistency(checkedDataType)) {
                 throw new SemanticException(
-                    "FILL: the data type of the fill value should be the same as the output column");
+                    String.format(
+                        "Data type mismatch: column '%s' (dataType '%s') doesn't support fill with '%s' (dataType '%s').",
+                        fillColumn.getExpressionString(),
+                        checkedDataType,
+                        fillComponent.getFillValue().getBinary(),
+                        fillComponent.getFillValue().getDataTypeString()));
               }
             }
           } else if (fillComponent.getFillPolicy() == FillPolicy.LINEAR) {
             // TODO support linear fill in align by device query
             if (queryStatement.isAlignByDevice()) {
-              throw new SemanticException("Linear fill is not supported in align by device query.");
+              throw new SemanticException(
+                  "Linear fill is not supported in align by device query yet.");
             }
 
             for (Expression fillColumn : fillColumnList) {
@@ -430,7 +436,8 @@ public class Analyzer {
               if (!checkedDataType.isNumeric()) {
                 throw new SemanticException(
                     String.format(
-                        "FILL: dataType %s doesn't support linear fill.", checkedDataType));
+                        "Data type mismatch: column '%s' (dataType '%s') doesn't support linear fill.",
+                        fillColumn.getExpressionString(), checkedDataType));
               }
             }
           }

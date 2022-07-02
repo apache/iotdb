@@ -59,6 +59,11 @@ public class DoubleLiteral extends Literal {
   }
 
   @Override
+  public String getDataTypeString() {
+    return TSDataType.DOUBLE.toString();
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

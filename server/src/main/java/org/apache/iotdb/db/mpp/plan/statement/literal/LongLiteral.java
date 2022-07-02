@@ -65,6 +65,11 @@ public class LongLiteral extends Literal {
   }
 
   @Override
+  public String getDataTypeString() {
+    return TSDataType.INT64.toString();
+  }
+
+  @Override
   public int getInt() {
     return Math.toIntExact(value);
   }
