@@ -87,7 +87,7 @@ public class MultiLeaderConsensus implements IConsensus {
   @Override
   public void start() throws IOException {
     initAndRecover();
-    service.initSyncedServiceImpl(new MultiLeaderRPCServiceProcessor(this));
+    service.initAsyncedServiceImpl(new MultiLeaderRPCServiceProcessor(this));
     try {
       registerManager.register(service);
     } catch (StartupException e) {

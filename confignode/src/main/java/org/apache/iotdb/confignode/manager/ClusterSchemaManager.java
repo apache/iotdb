@@ -19,22 +19,28 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountReq;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetTTLReq;
-import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.handlers.SetTTLHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -43,11 +49,18 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 
 /** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterSchemaManager.class);
+
+  private static final double schemaRegionPerDataNode =
+      ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionPerDataNode();
+  private static final double dataRegionPerProcessor =
+      ConfigNodeDescriptor.getInstance().getConf().getDataRegionPerProcessor();
 
   private final IManager configManager;
   private final ClusterSchemaInfo clusterSchemaInfo;
@@ -68,10 +81,10 @@ public class ClusterSchemaManager {
    *     the StorageGroup is already set. PERSISTENCE_FAILURE if fail to set StorageGroup in
    *     MTreeAboveSG.
    */
-  public TSStatus setStorageGroup(SetStorageGroupReq setStorageGroupReq) {
+  public TSStatus setStorageGroup(SetStorageGroupPlan setStorageGroupPlan) {
     TSStatus result;
     try {
-      clusterSchemaInfo.checkContainsStorageGroup(setStorageGroupReq.getSchema().getName());
+      clusterSchemaInfo.checkContainsStorageGroup(setStorageGroupPlan.getSchema().getName());
     } catch (MetadataException metadataException) {
       // Reject if StorageGroup already set
       if (metadataException instanceof IllegalPathException) {
@@ -84,7 +97,7 @@ public class ClusterSchemaManager {
     }
 
     // Cache StorageGroupSchema
-    result = getConsensusManager().write(setStorageGroupReq).getStatus();
+    result = getConsensusManager().write(setStorageGroupPlan).getStatus();
 
     // Adjust the maximum RegionGroup number of each StorageGroup
     adjustMaxRegionGroupCount();
@@ -92,10 +105,10 @@ public class ClusterSchemaManager {
     return result;
   }
 
-  public TSStatus deleteStorageGroup(DeleteStorageGroupReq deleteStorageGroupReq) {
+  public TSStatus deleteStorageGroup(DeleteStorageGroupPlan deleteStorageGroupPlan) {
     // Adjust the maximum RegionGroup number of each StorageGroup
     adjustMaxRegionGroupCount();
-    return getConsensusManager().write(deleteStorageGroupReq).getStatus();
+    return getConsensusManager().write(deleteStorageGroupPlan).getStatus();
   }
 
   /**
@@ -103,8 +116,8 @@ public class ClusterSchemaManager {
    *
    * @return CountStorageGroupResp
    */
-  public DataSet countMatchedStorageGroups(CountStorageGroupReq countStorageGroupReq) {
-    return getConsensusManager().read(countStorageGroupReq).getDataset();
+  public DataSet countMatchedStorageGroups(CountStorageGroupPlan countStorageGroupPlan) {
+    return getConsensusManager().read(countStorageGroupPlan).getDataset();
   }
 
   /**
@@ -112,31 +125,68 @@ public class ClusterSchemaManager {
    *
    * @return StorageGroupSchemaDataSet
    */
-  public DataSet getMatchedStorageGroupSchema(GetStorageGroupReq getStorageGroupReq) {
-    return getConsensusManager().read(getStorageGroupReq).getDataset();
+  public DataSet getMatchedStorageGroupSchema(GetStorageGroupPlan getStorageGroupPlan) {
+    return getConsensusManager().read(getStorageGroupPlan).getDataset();
   }
 
-  public TSStatus setTTL(SetTTLReq setTTLReq) {
-    // TODO: Inform DataNodes
-    return getConsensusManager().write(setTTLReq).getStatus();
+  /**
+   * Update TTL for the specific StorageGroup
+   *
+   * @param setTTLPlan setTTLPlan
+   * @return SUCCESS_STATUS if successfully update the TTL, STORAGE_GROUP_NOT_EXIST if the specific
+   *     StorageGroup doesn't exist
+   */
+  public TSStatus setTTL(SetTTLPlan setTTLPlan) {
+
+    if (!getStorageGroupNames().contains(setTTLPlan.getStorageGroup())) {
+      return RpcUtils.getStatus(
+          TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+          "storageGroup " + setTTLPlan.getStorageGroup() + " does not exist");
+    }
+
+    Set<TDataNodeLocation> dataNodeLocations =
+        getPartitionManager()
+            .getStorageGroupRelatedDataNodes(
+                setTTLPlan.getStorageGroup(), TConsensusGroupType.DataRegion);
+    if (dataNodeLocations.size() > 0) {
+      // TODO: Use procedure to protect SetTTL on DataNodes
+      CountDownLatch latch = new CountDownLatch(dataNodeLocations.size());
+      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+        SetTTLHandler handler = new SetTTLHandler(dataNodeLocation, latch);
+        AsyncDataNodeClientPool.getInstance()
+            .setTTL(
+                dataNodeLocation.getInternalEndPoint(),
+                new TSetTTLReq(setTTLPlan.getStorageGroup(), setTTLPlan.getTTL()),
+                handler);
+      }
+
+      try {
+        // Waiting until this batch of SetTTL requests done
+        latch.await();
+      } catch (InterruptedException e) {
+        LOGGER.error("ClusterSchemaManager was interrupted during SetTTL on DataNodes", e);
+      }
+    }
+
+    return getConsensusManager().write(setTTLPlan).getStatus();
   }
 
   public TSStatus setSchemaReplicationFactor(
-      SetSchemaReplicationFactorReq setSchemaReplicationFactorReq) {
+      SetSchemaReplicationFactorPlan setSchemaReplicationFactorPlan) {
     // TODO: Inform DataNodes
-    return getConsensusManager().write(setSchemaReplicationFactorReq).getStatus();
+    return getConsensusManager().write(setSchemaReplicationFactorPlan).getStatus();
   }
 
   public TSStatus setDataReplicationFactor(
-      SetDataReplicationFactorReq setDataReplicationFactorReq) {
+      SetDataReplicationFactorPlan setDataReplicationFactorPlan) {
     // TODO: Inform DataNodes
-    return getConsensusManager().write(setDataReplicationFactorReq).getStatus();
+    return getConsensusManager().write(setDataReplicationFactorPlan).getStatus();
   }
 
   public TSStatus setTimePartitionInterval(
-      SetTimePartitionIntervalReq setTimePartitionIntervalReq) {
+      SetTimePartitionIntervalPlan setTimePartitionIntervalPlan) {
     // TODO: Inform DataNodes
-    return getConsensusManager().write(setTimePartitionIntervalReq).getStatus();
+    return getConsensusManager().write(setTimePartitionIntervalPlan).getStatus();
   }
 
   /**
@@ -151,7 +201,8 @@ public class ClusterSchemaManager {
     int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     int storageGroupNum = storageGroupSchemaMap.size();
 
-    AdjustMaxRegionGroupCountReq adjustMaxRegionGroupCountReq = new AdjustMaxRegionGroupCountReq();
+    AdjustMaxRegionGroupCountPlan adjustMaxRegionGroupCountPlan =
+        new AdjustMaxRegionGroupCountPlan();
     for (TStorageGroupSchema storageGroupSchema : storageGroupSchemaMap.values()) {
       try {
         // Adjust maxSchemaRegionGroupCount.
@@ -164,8 +215,12 @@ public class ClusterSchemaManager {
             Math.max(
                 1,
                 Math.max(
-                    dataNodeNum
-                        / (storageGroupNum * storageGroupSchema.getSchemaReplicationFactor()),
+                    (int)
+                        (schemaRegionPerDataNode
+                            * dataNodeNum
+                            / (double)
+                                (storageGroupNum
+                                    * storageGroupSchema.getSchemaReplicationFactor())),
                     allocatedSchemaRegionGroupCount));
 
         // Adjust maxDataRegionGroupCount.
@@ -178,18 +233,21 @@ public class ClusterSchemaManager {
             Math.max(
                 2,
                 Math.max(
-                    totalCpuCoreNum
-                        / (3 * storageGroupNum * storageGroupSchema.getDataReplicationFactor()),
+                    (int)
+                        (dataRegionPerProcessor
+                            * totalCpuCoreNum
+                            / (double)
+                                (storageGroupNum * storageGroupSchema.getDataReplicationFactor())),
                     allocatedDataRegionGroupCount));
 
-        adjustMaxRegionGroupCountReq.putEntry(
+        adjustMaxRegionGroupCountPlan.putEntry(
             storageGroupSchema.getName(),
             new Pair<>(maxSchemaRegionGroupCount, maxDataRegionGroupCount));
       } catch (StorageGroupNotExistsException e) {
         LOGGER.warn("Adjust maxRegionGroupCount failed because StorageGroup doesn't exist", e);
       }
     }
-    getConsensusManager().write(adjustMaxRegionGroupCountReq);
+    getConsensusManager().write(adjustMaxRegionGroupCountPlan);
   }
 
   // ======================================================

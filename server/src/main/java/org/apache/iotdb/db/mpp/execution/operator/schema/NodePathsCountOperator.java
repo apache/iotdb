@@ -70,8 +70,8 @@ public class NodePathsCountOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
-    ListenableFuture<Void> blocked = child.isBlocked();
+  public ListenableFuture<?> isBlocked() {
+    ListenableFuture<?> blocked = child.isBlocked();
     while (child.hasNext() && blocked.isDone()) {
       TsBlock tsBlock = child.next();
       if (null != tsBlock && !tsBlock.isEmpty()) {

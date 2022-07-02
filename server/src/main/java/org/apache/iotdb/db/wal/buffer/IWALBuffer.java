@@ -40,6 +40,9 @@ public interface IWALBuffer extends AutoCloseable {
   /** Get current wal file's size */
   long getCurrentWALFileSize();
 
+  /** Get current search index */
+  long getCurrentSearchIndex();
+
   @Override
   void close();
 

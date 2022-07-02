@@ -144,7 +144,7 @@ public class IoTDBDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
+      conf.setRpcAddress(properties.getProperty(IoTDBConstant.RPC_ADDRESS, conf.getRpcAddress()));
 
       loadClusterProps(properties);
 
@@ -180,7 +180,7 @@ public class IoTDBDescriptor {
 
       conf.setRpcPort(
           Integer.parseInt(
-              properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
+              properties.getProperty(IoTDBConstant.RPC_PORT, Integer.toString(conf.getRpcPort()))));
 
       conf.setEnableInfluxDBRpcService(
           Boolean.parseBoolean(
@@ -476,6 +476,16 @@ public class IoTDBDescriptor {
         conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
       }
 
+      conf.setMaxAllowedConcurrentQueries(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_allowed_concurrent_queries",
+                  Integer.toString(conf.getMaxAllowedConcurrentQueries()))));
+
+      if (conf.getMaxAllowedConcurrentQueries() <= 0) {
+        conf.setMaxAllowedConcurrentQueries(1000);
+      }
+
       conf.setConcurrentSubRawQueryThread(
           Integer.parseInt(
               properties.getProperty(
@@ -591,6 +601,28 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
+
+      int rpcSelectorThreadNum =
+          Integer.parseInt(
+              properties.getProperty(
+                  "rpc_selector_thread_num",
+                  Integer.toString(conf.getRpcSelectorThreadNum()).trim()));
+      if (rpcSelectorThreadNum <= 0) {
+        rpcSelectorThreadNum = 1;
+      }
+
+      conf.setRpcSelectorThreadNum(rpcSelectorThreadNum);
+
+      int minConcurrentClientNum =
+          Integer.parseInt(
+              properties.getProperty(
+                  "rpc_min_concurrent_client_num",
+                  Integer.toString(conf.getRpcMinConcurrentClientNum()).trim()));
+      if (minConcurrentClientNum <= 0) {
+        minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
+      }
+
+      conf.setRpcMinConcurrentClientNum(minConcurrentClientNum);
 
       int maxConcurrentClientNum =
           Integer.parseInt(
@@ -920,12 +952,12 @@ public class IoTDBDescriptor {
       conf.setRpcAddress(InetAddress.getByName(conf.getRpcAddress()).getHostAddress());
     }
 
-    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalIp());
+    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalAddress());
     if (!isInvalidInternalIp) {
-      conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
+      conf.setInternalAddress(InetAddress.getByName(conf.getInternalAddress()).getHostAddress());
     }
 
-    for (TEndPoint configNode : conf.getConfigNodeList()) {
+    for (TEndPoint configNode : conf.getTargetConfigNodeList()) {
       boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
       if (!isInvalidNodeIp) {
         String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
@@ -936,8 +968,8 @@ public class IoTDBDescriptor {
     logger.debug(
         "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
         conf.getRpcAddress(),
-        conf.getInternalIp(),
-        conf.getConfigNodeList());
+        conf.getInternalAddress(),
+        conf.getTargetConfigNodeList());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1635,21 +1667,23 @@ public class IoTDBDescriptor {
   }
 
   public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty("config_nodes");
+    String configNodeUrls = properties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES);
     if (configNodeUrls != null) {
       try {
-        conf.setConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
-            "Config nodes are set in wrong format, please set them like 0.0.0.0:22277,0.0.0.0:22281");
+            "Config nodes are set in wrong format, please set them like 127.0.0.1:22277,127.0.0.1:22281");
       }
     }
 
-    conf.setInternalIp(properties.getProperty("internal_address", conf.getInternalIp()));
+    conf.setInternalAddress(
+        properties.getProperty(IoTDBConstant.INTERNAL_ADDRESS, conf.getInternalAddress()));
 
     conf.setInternalPort(
         Integer.parseInt(
-            properties.getProperty("internal_port", Integer.toString(conf.getInternalPort()))));
+            properties.getProperty(
+                IoTDBConstant.INTERNAL_PORT, Integer.toString(conf.getInternalPort()))));
 
     conf.setDataRegionConsensusPort(
         Integer.parseInt(
@@ -1712,9 +1746,6 @@ public class IoTDBDescriptor {
   // These configurations are received from config node when registering
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
-    conf.setDataRegionConsensusProtocolClass(globalConfig.getDataRegionConsensusProtocolClass());
-    conf.setSchemaRegionConsensusProtocolClass(
-        globalConfig.getSchemaRegionConsensusProtocolClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
   }

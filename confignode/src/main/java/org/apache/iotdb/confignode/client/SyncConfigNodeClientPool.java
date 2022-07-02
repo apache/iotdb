@@ -83,32 +83,45 @@ public class SyncConfigNodeClientPool {
                 .setMessage("All retry failed due to " + lastException.getMessage()));
   }
 
-  public TSStatus addConsensusGroup(
-      TEndPoint endPoint, List<TConfigNodeLocation> configNodeLocation) {
+  public void addConsensusGroup(TEndPoint endPoint, List<TConfigNodeLocation> configNodeLocation)
+      throws Exception {
     // TODO: Unified retry logic
-    Throwable lastException = null;
+    Exception lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
         TConfigNodeRegisterResp registerResp = new TConfigNodeRegisterResp();
         registerResp.setConfigNodeList(configNodeLocation);
         registerResp.setStatus(StatusUtils.OK);
-        return client.addConsensusGroup(registerResp);
-      } catch (Throwable e) {
+        client.addConsensusGroup(registerResp);
+        return;
+      } catch (Exception e) {
         lastException = e;
         LOGGER.warn(
             "Add Consensus Group failed because {}, retrying {} ...", e.getMessage(), retry);
         doRetryWait(retry);
       }
     }
-    LOGGER.error("Add ConsensusGroup failed", lastException);
-    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
-        .setMessage("All retry failed due to " + lastException.getMessage());
+
+    throw lastException;
+  }
+
+  public void notifyRegisterSuccess(TEndPoint endPoint) {
+    // TODO: Unified retry logic
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
+        client.notifyRegisterSuccess();
+        return;
+      } catch (Exception e) {
+        LOGGER.warn("Notify register failed because {}, retrying {} ...", e.getMessage(), retry);
+        doRetryWait(retry);
+      }
+    }
   }
 
   /**
    * ConfigNode Leader stop any ConfigNode in the cluster
    *
-   * @param configNodeLocations confignode_list of confignode-system.properties
+   * @param configNodeLocations target_config_nodes of confignode-system.properties
    * @param configNodeLocation To be removed ConfigNode
    * @return SUCCESS_STATUS: remove ConfigNode success, other status remove failed
    */

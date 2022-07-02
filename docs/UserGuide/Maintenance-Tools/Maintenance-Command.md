@@ -130,52 +130,98 @@ Currently, IoTDB supports Region query using the following SQL：
 - `SHOW DATA REGIONS`: Show all DataRegion distribution
 
 ```sql
+IoTDB> create timeseries root.sg.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> create timeseries root.sg.d2.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
+IoTDB> create timeseries root.ln.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
+Msg: The statement is executed successfully.
 IoTDB> show regions
-+--------+------------+------+-------------+-----+----------+----------+----+
-|RegionId|        Type|Status|storage group|Slots|DataNodeId|Host|Port|
-+--------+------------+------+-------------+-----+----------+----------+----+
-|       0|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|       1|SchemaRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|       2|SchemaRegion|    Up|      root.sg|    1|         4| 127.0.0.1|6671|
-|       3|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|       4|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|       5|  DataRegion|    Up|      root.sg|    1|         1| 127.0.0.1|6667|
-|       6|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
-|       7|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|       8|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
-|       9|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|      10|  DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
-|      11|  DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|      12|  DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-+--------+------------+------+-------------+-----+----------+----------+----+
-Total line number = 13
-It costs 0.107s
-IoTDB> show schema regions
-+--------+------------+------+-------------+-----+----------+----------+----+
-|RegionId|        Type|Status|storage group|Slots|DataNodeId|Host|Port|
-+--------+------------+------+-------------+-----+----------+----------+----+
-|       0|SchemaRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|       1|SchemaRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|       2|SchemaRegion|    Up|      root.sg|    1|         4| 127.0.0.1|6671|
-+--------+------------+------+-------------+-----+----------+----------+----+
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         3|127.0.0.1|6671|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|6667|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+Total line number = 2
+It costs 0.035s
+
+IoTDB> insert into root.sg.d1(timestamp,s1) values(1,true)
+Msg: The statement is executed successfully.
+IoTDB> show regions
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         3|127.0.0.1|6671|
+|       1|  DataRegion|    Up|      root.sg|           1|         1|         1|127.0.0.1|6669|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|6667|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
 Total line number = 3
-It costs 0.009s
+It costs 0.010s
+
+IoTDB> insert into root.ln.d1(timestamp,s1) values(1,true)
+Msg: The statement is executed successfully.
 IoTDB> show data regions
-+--------+----------+------+-------------+-----+----------+----------+----+
-|RegionId|      Type|Status|storage group|Slots|DataNodeId|Host|Port|
-+--------+----------+------+-------------+-----+----------+----------+----+
-|       3|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|       4|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|       5|DataRegion|    Up|      root.sg|    1|         1| 127.0.0.1|6667|
-|       6|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
-|       7|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|       8|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
-|       9|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-|      10|DataRegion|    Up|      root.sg|    0|         4| 127.0.0.1|6671|
-|      11|DataRegion|    Up|      root.sg|    0|         3| 127.0.0.1|6669|
-|      12|DataRegion|    Up|      root.sg|    0|         1| 127.0.0.1|6667|
-+--------+----------+------+-------------+-----+----------+----------+----+
-Total line number = 10
-It costs 0.023s
++--------+----------+------+-------------+------------+----------+----------+---------+----+
+|RegionId|      Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+----------+------+-------------+------------+----------+----------+---------+----+
+|       1|DataRegion|    Up|      root.sg|           1|         1|         1|127.0.0.1|6669|
+|       2|DataRegion|    Up|      root.ln|           1|         1|         1|127.0.0.1|6669|
++--------+----------+------+-------------+------------+----------+----------+---------+----+
+Total line number = 2
+It costs 0.011s
+IoTDB> show schema regions
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|       0|SchemaRegion|    Up|      root.sg|           2|         0|         3|127.0.0.1|6671|
+|       1|SchemaRegion|    Up|      root.ln|           1|         0|         2|127.0.0.1|6667|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+Total line number = 2
+It costs 0.012s
+```
+
+## Cluster node status viewing tool 
+
+Show all node information: 
+
+```
+SHOW CLUSTER
+```
+
+Eg：
+
+```
+IoTDB> show cluster
++------+----------+-------+---------+-----+
+|NodeID|  NodeType| Status|     Host| Port|
++------+----------+-------+---------+-----+
+|     4|ConfigNode|Running|  0.0.0.0|22279|
+|     0|ConfigNode|Running|  0.0.0.0|22277|
+|     5|ConfigNode|Running|  0.0.0.0|22281|
+|     1|  DataNode|Running|127.0.0.1| 9005|
+|     2|  DataNode|Running|127.0.0.1| 9003|
+|     3|  DataNode|Running|127.0.0.1| 9007|
++------+----------+-------+---------+-----+
+Total line number = 6
+It costs 0.011s
+```
+
+After a node is stopped, its status will change, as shown below:
+
+```
+IoTDB> show cluster
++------+----------+-------+---------+-----+
+|NodeID|  NodeType| Status|     Host| Port|
++------+----------+-------+---------+-----+
+|     4|ConfigNode|Running|  0.0.0.0|22279|
+|     0|ConfigNode|Running|  0.0.0.0|22277|
+|     5|ConfigNode|Unknown|  0.0.0.0|22281|
+|     1|  DataNode|Running|127.0.0.1| 9005|
+|     2|  DataNode|Running|127.0.0.1| 9003|
+|     3|  DataNode|Running|127.0.0.1| 9007|
++------+----------+-------+---------+-----+
+Total line number = 6
+It costs 0.012s
 ```
 

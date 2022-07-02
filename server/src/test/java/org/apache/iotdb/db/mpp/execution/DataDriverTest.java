@@ -186,7 +186,7 @@ public class DataDriverTest {
 
         while (!dataDriver.isFinished()) {
           assertEquals(FragmentInstanceState.RUNNING, stateMachine.getState());
-          ListenableFuture<Void> blocked = dataDriver.processFor(EXECUTION_TIME_SLICE);
+          ListenableFuture<?> blocked = dataDriver.processFor(EXECUTION_TIME_SLICE);
           assertTrue(blocked.isDone());
         }
 

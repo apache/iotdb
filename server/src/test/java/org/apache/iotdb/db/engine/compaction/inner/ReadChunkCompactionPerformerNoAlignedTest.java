@@ -25,7 +25,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -201,7 +203,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      new ReadChunkCompactionPerformer(sourceFiles, targetResource).perform();
+      ICompactionPerformer performer =
+          new ReadChunkCompactionPerformer(sourceFiles, targetResource);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       long[] points = new long[fileNum];
       for (int i = 1; i <= fileNum; i++) {
@@ -291,7 +296,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      new ReadChunkCompactionPerformer(sourceFiles, targetResource).perform();
+      ICompactionPerformer performer =
+          new ReadChunkCompactionPerformer(sourceFiles, targetResource);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -383,7 +391,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      new ReadChunkCompactionPerformer(sourceFiles, targetResource).perform();
+      ICompactionPerformer performer =
+          new ReadChunkCompactionPerformer(sourceFiles, targetResource);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -462,7 +473,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      new ReadChunkCompactionPerformer(sourceFiles, targetResource).perform();
+      ICompactionPerformer performer =
+          new ReadChunkCompactionPerformer(sourceFiles, targetResource);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -570,7 +584,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      new ReadChunkCompactionPerformer(sourceFiles, targetResource).perform();
+      ICompactionPerformer performer =
+          new ReadChunkCompactionPerformer(sourceFiles, targetResource);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -649,7 +666,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      new ReadChunkCompactionPerformer(sourceFiles, targetResource).perform();
+      ICompactionPerformer performer =
+          new ReadChunkCompactionPerformer(sourceFiles, targetResource);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -731,7 +751,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      new ReadChunkCompactionPerformer(sourceFiles, targetResource).perform();
+      ICompactionPerformer performer =
+          new ReadChunkCompactionPerformer(sourceFiles, targetResource);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       List<List<Long>> chunkPointsArray = new ArrayList<>();
@@ -807,7 +830,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      new ReadChunkCompactionPerformer(sourceFiles, targetResource).perform();
+      ICompactionPerformer performer =
+          new ReadChunkCompactionPerformer(sourceFiles, targetResource);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {
@@ -885,7 +911,10 @@ public class ReadChunkCompactionPerformerNoAlignedTest {
                       tsFileName.getVersion(),
                       tsFileName.getInnerCompactionCnt() + 1,
                       tsFileName.getCrossCompactionCnt())));
-      new ReadChunkCompactionPerformer(sourceFiles, targetResource).perform();
+      ICompactionPerformer performer =
+          new ReadChunkCompactionPerformer(sourceFiles, targetResource);
+      performer.setSummary(new CompactionTaskSummary());
+      performer.perform();
       Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
       // outer list is a chunk, inner list is point num in each page
       for (String path : fullPathSet) {

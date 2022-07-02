@@ -20,6 +20,7 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -27,7 +28,6 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -109,7 +109,7 @@ public class IoTDBJDBCResultSetTest {
   private long queryId;
   private long sessionId;
   @Mock private IoTDBConnection connection;
-  @Mock private TSIService.Iface client;
+  @Mock private IClientRPCService.Iface client;
   @Mock private Statement statement;
   @Mock private TSFetchMetadataResp fetchMetadataResp;
   @Mock private TSFetchResultsResp fetchResultsResp;

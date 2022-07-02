@@ -33,7 +33,7 @@ public class ExchangeOperator implements SourceOperator {
 
   private final PlanNodeId sourceId;
 
-  private ListenableFuture<Void> isBlocked = NOT_BLOCKED;
+  private ListenableFuture<?> isBlocked = NOT_BLOCKED;
 
   public ExchangeOperator(
       OperatorContext operatorContext, ISourceHandle sourceHandle, PlanNodeId sourceId) {
@@ -68,7 +68,7 @@ public class ExchangeOperator implements SourceOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     // Avoid registering a new callback in the source handle when one is already pending
     if (isBlocked.isDone()) {
       isBlocked = sourceHandle.isBlocked();

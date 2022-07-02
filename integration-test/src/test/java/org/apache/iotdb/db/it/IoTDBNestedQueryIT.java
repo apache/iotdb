@@ -549,6 +549,78 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
+  public void testBetweenExpression() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int start = 2, end = 8;
+      String query = "SELECT * FROM root.vehicle.d1 WHERE s1 BETWEEN " + start + " AND " + end;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+
+      query =
+          "SELECT * FROM root.vehicle.d1 WHERE s1 NOT BETWEEN " // test not between
+              + (end + 1)
+              + " AND "
+              + ITERATION_TIMES;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        Assert.assertTrue(rs.next());
+        Assert.assertEquals("1", rs.getString("Time"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s1"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s2"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s3"));
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+
+      query = "SELECT * FROM root.vehicle.d1 WHERE time BETWEEN " + start + " AND " + end;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+
+      query =
+          "SELECT * FROM root.vehicle.d1 WHERE time NOT BETWEEN " // test not between
+              + (end + 1)
+              + " AND "
+              + ITERATION_TIMES;
+      try (ResultSet rs = statement.executeQuery(query)) {
+        Assert.assertTrue(rs.next());
+        Assert.assertEquals("1", rs.getString("Time"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s1"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s2"));
+        Assert.assertEquals("1", rs.getString("root.vehicle.d1.s3"));
+        for (int i = start; i <= end; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(String.valueOf(i), rs.getString("Time"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s1"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s2"));
+          Assert.assertEquals(String.valueOf(i), rs.getString("root.vehicle.d1.s3"));
+        }
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void testRegularLikeInExpressions() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

@@ -21,7 +21,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,7 +50,7 @@ public class SessionDataSet implements AutoCloseable {
       Map<String, Integer> columnNameIndex,
       long queryId,
       long statementId,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       long sessionId,
       TSQueryDataSet queryDataSet,
       boolean ignoreTimeStamp) {
@@ -77,7 +77,7 @@ public class SessionDataSet implements AutoCloseable {
       Map<String, Integer> columnNameIndex,
       long queryId,
       long statementId,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       long sessionId,
       TSQueryDataSet queryDataSet,
       boolean ignoreTimeStamp,
