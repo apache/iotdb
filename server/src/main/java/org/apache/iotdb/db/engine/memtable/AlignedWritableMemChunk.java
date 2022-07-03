@@ -185,7 +185,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     for (int i = 0, failedIndicesIdx = 0, schemaListIdx = 0;
         i < failedIndices.size() + schemaListInInsertPlan.size();
         i++) {
-      if (failedIndices.get(failedIndicesIdx) == i) {
+      if (failedIndices.size() > failedIndicesIdx && failedIndices.get(failedIndicesIdx) == i) {
         schemaListWithNull.add(null);
         failedIndicesIdx++;
       } else {
