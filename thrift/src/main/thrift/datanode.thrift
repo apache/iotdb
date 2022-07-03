@@ -30,6 +30,11 @@ struct TCreateDataRegionReq {
     3: optional i64 ttl
 }
 
+struct TSetTTLReq {
+  1: required string storageGroup
+  2: required i64 TTL
+}
+
 struct TInvalidateCacheReq {
     1: required bool storageGroup
     2: required string fullPath
@@ -272,7 +277,7 @@ service IDataNodeRPCService {
 
   common.TSStatus flush(common.TFlushReq req)
 
-  common.TSStatus setTTL(common.TSetTTLReq req)
+  common.TSStatus setTTL(TSetTTLReq req)
 }
 
 service MPPDataExchangeService {

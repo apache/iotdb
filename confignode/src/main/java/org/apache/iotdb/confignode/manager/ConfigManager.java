@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -217,28 +216,36 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (!clusterSchemaManager
-          .getStorageGroupNames()
-          .contains(setTTLPlan.getStorageGroup().toString())) {
+
+      Map<String, TStorageGroupSchema> storageSchemaMap =
+          getClusterSchemaManager()
+              .getMatchedStorageGroupSchemasByOneName(setTTLPlan.getStorageGroupPathPattern());
+
+      if (storageSchemaMap.isEmpty()) {
         return RpcUtils.getStatus(
             TSStatusCode.STORAGE_GROUP_NOT_EXIST,
-            "storageGroup " + setTTLPlan.getStorageGroup() + " does not exist");
+            "storageGroup "
+                + Arrays.toString(setTTLPlan.getStorageGroupPathPattern())
+                + " does not exist");
       }
-      Set<TDataNodeLocation> dataNodeLocations =
-          getPartitionManager()
-              .getDataNodeLocation(setTTLPlan.getStorageGroup(), TConsensusGroupType.DataRegion);
-      if (dataNodeLocations.size() != 0) {
-        for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
-          List<TDataNodeInfo> onlineDataNodes =
-              getNodeManager().getOnlineDataNodes(dataNodeLocation.getDataNodeId());
-          for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
-            status =
-                SyncDataNodeClientPool.getInstance()
-                    .setTTL(
-                        dataNodeInfo.getLocation().getInternalEndPoint(),
-                        new TSetTTLReq(setTTLPlan.getStorageGroup(), setTTLPlan.getTTL()));
-            if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              return status;
+
+      for (String storageGroup : storageSchemaMap.keySet()) {
+        Set<TDataNodeLocation> dataNodeLocations =
+            getPartitionManager().getDataNodeLocation(storageGroup, TConsensusGroupType.DataRegion);
+        if (!dataNodeLocations.isEmpty()) {
+          for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+            List<TDataNodeInfo> onlineDataNodes =
+                getNodeManager().getOnlineDataNodes(dataNodeLocation.getDataNodeId());
+            for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+              status =
+                  SyncDataNodeClientPool.getInstance()
+                      .setTTL(
+                          dataNodeInfo.getLocation().getInternalEndPoint(),
+                          storageGroup,
+                          setTTLPlan.getTTL());
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                return status;
+              }
             }
           }
         }

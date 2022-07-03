@@ -23,11 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -151,10 +151,10 @@ public class SyncDataNodeClientPool {
     return ClientPoolHolder.INSTANCE;
   }
 
-  public TSStatus setTTL(TEndPoint endPoint, TSetTTLReq setTTLReq) {
+  public TSStatus setTTL(TEndPoint endPoint, String storageGroup, Long TTL) {
     TSStatus status;
     try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
-      status = client.setTTL(setTTLReq);
+      status = client.setTTL(new TSetTTLReq(storageGroup, TTL));
     } catch (IOException e) {
       LOGGER.error("Can't connect to DataNode {}", endPoint, e);
       status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());

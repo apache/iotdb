@@ -104,6 +104,11 @@ struct TStorageGroupSchema {
   7: optional i32 maxDataRegionGroupCount
 }
 
+struct TSetTTLReq {
+  1: required list<string> storageGroupPathPattern
+  2: required i64 TTL
+}
+
 // Schema
 struct TSchemaPartitionReq {
   1: required binary pathPatternTree
@@ -257,7 +262,7 @@ service IConfigNodeRPCService {
 
   common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
 
-  common.TSStatus setTTL(common.TSetTTLReq req)
+  common.TSStatus setTTL(TSetTTLReq req)
 
   common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
 
