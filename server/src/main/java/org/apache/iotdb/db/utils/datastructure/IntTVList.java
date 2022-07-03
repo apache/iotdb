@@ -95,11 +95,12 @@ public class IntTVList extends TVList {
   @Override
   public void sort() {
     if (sortedTimestamps == null
-        || sortedTimestamps.length < PrimitiveArrayManager.getRowCount(size)) {
+        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(size)) {
       sortedTimestamps =
           (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, size);
     }
-    if (sortedValues == null || sortedValues.length < PrimitiveArrayManager.getRowCount(size)) {
+    if (sortedValues == null
+        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(size)) {
       sortedValues = (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, size);
     }
     sort(0, size);

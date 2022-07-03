@@ -266,7 +266,7 @@ public class PrimitiveArrayManager {
    * @return an array of primitive data arrays
    */
   public static Object createDataListsByType(TSDataType dataType, int size) {
-    int arrayNumber = getRowCount(size);
+    int arrayNumber = getArrayRowCount(size);
     switch (dataType) {
       case BOOLEAN:
         boolean[][] booleans = new boolean[arrayNumber][];
@@ -309,7 +309,7 @@ public class PrimitiveArrayManager {
     }
   }
 
-  public static int getRowCount(int size) {
-    return size / ARRAY_SIZE + size % ARRAY_SIZE == 0 ? 0 : 1;
+  public static int getArrayRowCount(int size) {
+    return size / ARRAY_SIZE + (size % ARRAY_SIZE == 0 ? 0 : 1);
   }
 }
