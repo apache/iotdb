@@ -111,7 +111,3 @@ struct TDataNodesInfo {
   6: required i32 schemaRegionNum
 }
 
-struct TSetTTLReq {
-  1: required string storageGroup
-  2: required i64 TTL
-}

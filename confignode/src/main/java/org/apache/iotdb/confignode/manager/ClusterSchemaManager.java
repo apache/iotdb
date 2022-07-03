@@ -277,6 +277,11 @@ public class ClusterSchemaManager {
     return clusterSchemaInfo.getMatchedStorageGroupSchemasByName(rawPathList);
   }
 
+  public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByOneName(
+      String[] storageGroupPathPattern) {
+    return clusterSchemaInfo.getMatchedStorageGroupSchemasByOneName(storageGroupPathPattern);
+  }
+
   /**
    * Only leader use this interface.
    *

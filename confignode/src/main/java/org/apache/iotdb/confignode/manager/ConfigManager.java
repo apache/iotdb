@@ -229,6 +229,40 @@ public class ConfigManager implements IManager {
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+
+      Map<String, TStorageGroupSchema> storageSchemaMap =
+          getClusterSchemaManager()
+              .getMatchedStorageGroupSchemasByOneName(setTTLPlan.getStorageGroupPathPattern());
+
+      if (storageSchemaMap.isEmpty()) {
+        return RpcUtils.getStatus(
+            TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+            "storageGroup "
+                + Arrays.toString(setTTLPlan.getStorageGroupPathPattern())
+                + " does not exist");
+      }
+
+      for (String storageGroup : storageSchemaMap.keySet()) {
+        Set<TDataNodeLocation> dataNodeLocations =
+            getPartitionManager().getDataNodeLocation(storageGroup, TConsensusGroupType.DataRegion);
+        if (!dataNodeLocations.isEmpty()) {
+          for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+            List<TDataNodeInfo> onlineDataNodes =
+                getNodeManager().getOnlineDataNodes(dataNodeLocation.getDataNodeId());
+            for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+              status =
+                  SyncDataNodeClientPool.getInstance()
+                      .setTTL(
+                          dataNodeInfo.getLocation().getInternalEndPoint(),
+                          storageGroup,
+                          setTTLPlan.getTTL());
+              if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                return status;
+              }
+            }
+          }
+        }
+      }
       return clusterSchemaManager.setTTL(setTTLPlan);
     } else {
       return status;
