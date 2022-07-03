@@ -18,7 +18,7 @@
     under the License.
 
 -->
-[English](./README.md) | [中文](./README_ZH.md)
+[English](README_IOTDB.md) | [中文](README_IOTDB_ZH.md)
 
 # IoTDB
 [![Build Status](https://www.travis-ci.org/apache/iotdb.svg?branch=master)](https://www.travis-ci.org/apache/iotdb)
