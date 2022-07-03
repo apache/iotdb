@@ -135,10 +135,6 @@ public class TransformOperator implements ProcessOperator {
               .bindInputLayerColumnIndexWithExpression()
               .buildResultColumnPointReaders()
               .getOutputPointReaders();
-      LOGGER.info("transformers.length is {}", transformers.length);
-      for (int i = 0; i < transformers.length; i++) {
-        LOGGER.info("transformer {} is {}", i, transformers[i].toString());
-      }
     } finally {
       UDFRegistrationService.getInstance().releaseRegistrationLock();
     }
@@ -342,10 +338,6 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    LOGGER.info(
-        "input operator is finished is {}, timeHeap.isEmpty() is {}",
-        inputOperator.isFinished(),
-        timeHeap.isEmpty());
     return timeHeap.isEmpty() && (!hasNext() || inputOperator.isFinished());
   }
 

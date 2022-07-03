@@ -90,7 +90,6 @@ public class FilterOperator extends TransformOperator {
     super.initTransformers(inputLocations, outputExpressions, typeProvider);
 
     filterPointReader = transformers[transformers.length - 1];
-    LOGGER.info("filterPointReader is {}", transformers[transformers.length - 1].toString());
     if (filterPointReader.getDataType() != TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException(
           String.format(

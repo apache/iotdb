@@ -379,7 +379,6 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
       SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
 
-    LOGGER.info("start construct time window");
     final long timeInterval = strategy.getTimeInterval();
     final long slidingStep = strategy.getSlidingStep();
     final long displayWindowEnd = strategy.getDisplayWindowEnd();
@@ -392,46 +391,42 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
     return new LayerRowWindowReader() {
 
+      private boolean isFirstIteration = true;
       private boolean hasCached = false;
       private long nextWindowTimeBegin = nextWindowTimeBeginGivenByStrategy;
       private int nextIndexBegin = 0;
-      private boolean hasInitializeNextWindowTimeBegin = false;
       private boolean hasAtLeastOneRow;
-
-      private void initialize() throws IOException, QueryProcessException {
-        LOGGER.info("initialize begin");
-        hasInitializeNextWindowTimeBegin = true;
-        long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
-        if (tvList.size() == 0
-            && YieldableState.YIELDABLE.equals(
-                LayerCacheUtils.yieldPoint(
-                    parentLayerPointReaderDataType, parentLayerPointReader, tvList))
-            && nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
-          // display window begin should be set to the same as the min timestamp of the query result
-          // set
-          nextWindowTimeBegin = tvList.getTime(0);
-        }
-        hasAtLeastOneRow = tvList.size() != 0;
-      }
 
       @Override
       public YieldableState yield() throws IOException, QueryProcessException {
-        if (!hasInitializeNextWindowTimeBegin) {
-          initialize();
-          LOGGER.warn("initialized");
+        if (isFirstIteration) {
+          if (tvList.size() == 0) {
+            final YieldableState yieldableState =
+                LayerCacheUtils.yieldPoint(
+                    parentLayerPointReaderDataType, parentLayerPointReader, tvList);
+            if (yieldableState != YieldableState.YIELDABLE) {
+              return yieldableState;
+            }
+          }
+          if (nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
+            // display window begin should be set to the same as the min timestamp of the query
+            // result
+            // set
+            nextWindowTimeBegin = tvList.getTime(0);
+          }
+          hasAtLeastOneRow = tvList.size() != 0;
+          isFirstIteration = false;
         }
-        LOGGER.warn("before has Cached");
+
         if (hasCached) {
           return YieldableState.YIELDABLE;
         }
         if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
-          LOGGER.warn("No more data");
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
         long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
         while (tvList.getTime(tvList.size() - 1) < nextWindowTimeEnd) {
-          LOGGER.warn("in while");
           final YieldableState yieldableState =
               LayerCacheUtils.yieldPoint(
                   parentLayerPointReaderDataType, parentLayerPointReader, tvList);

@@ -163,8 +163,6 @@ import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
 
 import org.apache.commons.lang3.Validate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -189,7 +187,6 @@ import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode
  * run a fragment instance parallel and take full advantage of multi-cores
  */
 public class LocalExecutionPlanner {
-  private static final Logger LOGGER = LoggerFactory.getLogger(LocalExecutionPlanner.class);
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
@@ -772,7 +769,6 @@ public class LocalExecutionPlanner {
       final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
 
       try {
-        LOGGER.info("new transform operator");
         return new TransformOperator(
             operatorContext,
             inputOperator,

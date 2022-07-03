@@ -28,14 +28,9 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 
 public abstract class UDFQueryTransformer extends Transformer {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(UDFQueryTransformer.class);
 
   protected final UDTFExecutor executor;
 
@@ -68,7 +63,6 @@ public abstract class UDFQueryTransformer extends Transformer {
         return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
       }
       if (udfYieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA && !terminate()) {
-        LOGGER.info("no more data in udf query transformer");
         return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
       }
     }

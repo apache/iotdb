@@ -178,7 +178,6 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       throw new RuntimeException(e);
     }
 
-    LOGGER.info("time heap size in multi is {}", timeHeap.size());
     if (timeHeap.isEmpty()) {
       return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
     }
@@ -515,31 +514,27 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       @Override
       public YieldableState yield() throws IOException, QueryProcessException {
         if (isFirstIteration) {
-          LOGGER.info(
-              "First iteration in MultiInput, udfInputDataSet is {}", udfInputDataSet.toString());
-          if (rowRecordList.size() == 0 && nextWindowTimeBegin == Long.MIN_VALUE) {
+          if (rowRecordList.size() == 0) {
             final YieldableState yieldableState =
                 LayerCacheUtils.yieldRow(udfInputDataSet, rowRecordList);
-            LOGGER.info("First iteration in MultiInput, yieldableState is {}", yieldableState);
             if (yieldableState != YieldableState.YIELDABLE) {
               return yieldableState;
             }
+          }
+          if (nextWindowTimeBegin == Long.MIN_VALUE) {
             // display window begin should be set to the same as the min timestamp of the query
             // result set
             nextWindowTimeBegin = rowRecordList.getTime(0);
           }
           hasAtLeastOneRow = rowRecordList.size() != 0;
-          LOGGER.info("hasAtLeastOneRow is {}", hasAtLeastOneRow);
           isFirstIteration = false;
         }
 
         if (hasCached) {
-          LOGGER.info("not first iteration in Multi input, and has cached,line 536");
           return YieldableState.YIELDABLE;
         }
 
         if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
-          LOGGER.info("not first iteration in Multi input, no more data, line 541");
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
@@ -547,8 +542,6 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         while (rowRecordList.getTime(rowRecordList.size() - 1) < nextWindowTimeEnd) {
           final YieldableState yieldableState =
               LayerCacheUtils.yieldRow(udfInputDataSet, rowRecordList);
-          LOGGER.info(
-              "not first iteration in Multi input, yieldableState is {}, line 549", yieldableState);
           if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
             return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
           }
