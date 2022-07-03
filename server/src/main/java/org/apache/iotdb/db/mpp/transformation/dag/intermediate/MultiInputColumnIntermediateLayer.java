@@ -55,7 +55,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
   private final LayerPointReader[] layerPointReaders;
   private final TSDataType[] dataTypes;
   private final TimeSelector timeHeap;
-  private final boolean[] shouldIterateReadersToNextValid;
+  private final boolean[] shouldMoveNext;
 
   private boolean isFirstIteration = true;
   private Object[] cachedRow = null;
@@ -76,8 +76,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
     timeHeap = new TimeSelector(layerPointReaders.length << 1, true);
 
-    shouldIterateReadersToNextValid = new boolean[dataTypes.length];
-    Arrays.fill(shouldIterateReadersToNextValid, true);
+    shouldMoveNext = new boolean[dataTypes.length];
   }
 
   @Override
@@ -169,13 +168,47 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       return YieldableState.YIELDABLE;
     }
 
-    try {
-      if (iterateAllReadersToNextValid() == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
-        return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+    if (isFirstIteration) {
+      for (LayerPointReader reader : layerPointReaders) {
+        if (reader.isConstantPointReader()) {
+          continue;
+        }
+        try {
+          final YieldableState yieldableState = reader.yield();
+          if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+          }
+          if (yieldableState == YieldableState.YIELDABLE) {
+            timeHeap.add(reader.currentTime());
+          }
+        } catch (Exception e) {
+          throw new IOException(e);
+        }
       }
-    } catch (Exception e) {
-      LOGGER.error("MultiInputColumnIntermediateLayer#canYieldNextRowInObjects", e);
-      throw new RuntimeException(e);
+      isFirstIteration = false;
+    } else {
+      for (int i = 0, columnLength = layerPointReaders.length; i < columnLength; ++i) {
+        if (shouldMoveNext[i]) {
+          layerPointReaders[i].readyForNext();
+          shouldMoveNext[i] = false;
+        }
+      }
+
+      for (LayerPointReader layerPointReader : layerPointReaders) {
+        try {
+          if (!layerPointReader.isConstantPointReader()) {
+            final YieldableState yieldableState = layerPointReader.yield();
+            if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+              return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+            }
+            if (yieldableState == YieldableState.YIELDABLE) {
+              timeHeap.add(layerPointReader.currentTime());
+            }
+          }
+        } catch (Exception e) {
+          throw new IOException(e);
+        }
+      }
     }
 
     if (timeHeap.isEmpty()) {
@@ -195,7 +228,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         final YieldableState yieldableState = reader.yield();
         if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
           for (int j = 0; j <= i; ++j) {
-            shouldIterateReadersToNextValid[j] = false;
+            shouldMoveNext[j] = false;
           }
           return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
         }
@@ -231,7 +264,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
           }
         }
 
-        shouldIterateReadersToNextValid[i] = true;
+        shouldMoveNext[i] = true;
       }
 
       cachedRow = row;
@@ -240,36 +273,6 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
     }
 
     return YieldableState.YIELDABLE;
-  }
-
-  private YieldableState iterateAllReadersToNextValid() throws QueryProcessException, IOException {
-    for (int i = 0; i < shouldIterateReadersToNextValid.length; ++i) {
-      if (shouldIterateReadersToNextValid[i]) {
-        final YieldableState yieldableState = iterateReaderToNextValid(layerPointReaders[i]);
-        if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
-          return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
-        }
-        shouldIterateReadersToNextValid[i] = false;
-      }
-    }
-    return YieldableState.YIELDABLE;
-  }
-
-  private YieldableState iterateReaderToNextValid(LayerPointReader reader)
-      throws QueryProcessException, IOException {
-    // Since a constant operand is not allowed to be a result column, the reader will not be
-    // a ConstantLayerPointReader.
-    // If keepNull is false, we must iterate the reader until a non-null row is returned.
-    YieldableState yieldableState;
-    while ((yieldableState = reader.yield()) == YieldableState.YIELDABLE) {
-      if (reader.isCurrentNull()) {
-        reader.readyForNext();
-        continue;
-      }
-      timeHeap.add(reader.currentTime());
-      break;
-    }
-    return yieldableState;
   }
 
   @Override

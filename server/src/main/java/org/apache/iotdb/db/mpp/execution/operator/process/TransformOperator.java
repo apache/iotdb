@@ -341,7 +341,9 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return timeHeap.isEmpty() && (!hasNext() || inputOperator.isFinished());
+    // call hasNext first, or data of inputOperator could be missing
+    boolean flag = !hasNext();
+    return timeHeap.isEmpty() && (flag || inputOperator.isFinished());
   }
 
   @Override
