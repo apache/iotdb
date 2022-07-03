@@ -275,12 +275,18 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       @Override
       public YieldableState yield() throws IOException, QueryProcessException {
         if (isFirstIteration) {
-          if (tvList.size() == 0 && nextWindowTimeBegin == Long.MIN_VALUE) {
+          LOGGER.info("first iteration in singleInputColumnSingleReference");
+          if (tvList.size() == 0) {
             final YieldableState yieldableState =
                 LayerCacheUtils.yieldPoint(dataType, parentLayerPointReader, tvList);
+            LOGGER.info(
+                "yieldableState of first iteration in singleInputColumnSingleReference is {}",
+                yieldableState);
             if (yieldableState != YieldableState.YIELDABLE) {
               return yieldableState;
             }
+          }
+          if (nextWindowTimeBegin == Long.MIN_VALUE) {
             // display window begin should be set to the same as the min timestamp of the query
             // result set
             nextWindowTimeBegin = tvList.getTime(0);
@@ -301,6 +307,10 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         while (tvList.getTime(tvList.size() - 1) < nextWindowTimeEnd) {
           final YieldableState yieldableState =
               LayerCacheUtils.yieldPoint(dataType, parentLayerPointReader, tvList);
+          LOGGER.info(
+              "yieldableState of while iteration(304) in singleInputColumnSingleReference is {}, tvList.size()-1 is {}",
+              yieldableState,
+              tvList.size() - 1);
           if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
             return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
           }

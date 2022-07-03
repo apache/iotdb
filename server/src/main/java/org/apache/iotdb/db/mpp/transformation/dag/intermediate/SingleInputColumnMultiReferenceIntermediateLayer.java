@@ -379,7 +379,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
       SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
 
-    LOGGER.warn("start construct time window");
+    LOGGER.info("start construct time window");
     final long timeInterval = strategy.getTimeInterval();
     final long slidingStep = strategy.getSlidingStep();
     final long displayWindowEnd = strategy.getDisplayWindowEnd();
@@ -399,7 +399,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       private boolean hasAtLeastOneRow;
 
       private void initialize() throws IOException, QueryProcessException {
-        LOGGER.warn("initialize begin");
+        LOGGER.info("initialize begin");
         hasInitializeNextWindowTimeBegin = true;
         long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
         if (tvList.size() == 0

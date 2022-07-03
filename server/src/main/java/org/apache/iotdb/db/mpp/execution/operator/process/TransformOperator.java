@@ -94,7 +94,6 @@ public class TransformOperator implements ProcessOperator {
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
     initTransformers(inputLocations, outputExpressions, typeProvider);
-
     timeHeap = new TimeSelector(transformers.length << 1, isAscending);
     shouldIterateReadersToNextValid = new boolean[outputExpressions.length];
     Arrays.fill(shouldIterateReadersToNextValid, true);
@@ -136,6 +135,10 @@ public class TransformOperator implements ProcessOperator {
               .bindInputLayerColumnIndexWithExpression()
               .buildResultColumnPointReaders()
               .getOutputPointReaders();
+      LOGGER.info("transformers.length is {}", transformers.length);
+      for (int i = 0; i < transformers.length; i++) {
+        LOGGER.info("transformer {} is {}", i, transformers[i].toString());
+      }
     } finally {
       UDFRegistrationService.getInstance().releaseRegistrationLock();
     }
@@ -182,7 +185,6 @@ public class TransformOperator implements ProcessOperator {
       LOGGER.error("TransformOperator#hasNext()", e);
       throw new RuntimeException(e);
     }
-
     return !timeHeap.isEmpty();
   }
 
@@ -340,7 +342,11 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return inputOperator.isFinished() && timeHeap.isEmpty();
+    LOGGER.info(
+        "input operator is finished is {}, timeHeap.isEmpty() is {}",
+        inputOperator.isFinished(),
+        timeHeap.isEmpty());
+    return timeHeap.isEmpty() && (!hasNext() || inputOperator.isFinished());
   }
 
   @Override
