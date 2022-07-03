@@ -61,6 +61,7 @@ keyWords
     | CQS
     | CREATE
     | DATA
+    | DATANODES
     | DEBUG
     | DELETE
     | DESC

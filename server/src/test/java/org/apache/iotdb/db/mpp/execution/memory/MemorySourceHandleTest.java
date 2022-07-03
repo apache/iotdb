@@ -33,7 +33,7 @@ public class MemorySourceHandleTest {
     TsBlock rawResult = new TsBlock(0);
     MemorySourceHandle sourceHandle = new MemorySourceHandle(rawResult);
     Assert.assertFalse(sourceHandle.isFinished());
-    ListenableFuture<Void> blocked = sourceHandle.isBlocked();
+    ListenableFuture<?> blocked = sourceHandle.isBlocked();
     Assert.assertTrue(blocked.isDone());
     TsBlock result = sourceHandle.receive();
     Assert.assertEquals(rawResult, result);

@@ -44,7 +44,7 @@ public interface ISourceHandle {
   boolean isFinished();
 
   /** Get a future that will be completed when the input buffer is not empty. */
-  ListenableFuture<Void> isBlocked();
+  ListenableFuture<?> isBlocked();
 
   /** If this handle is aborted. */
   boolean isAborted();

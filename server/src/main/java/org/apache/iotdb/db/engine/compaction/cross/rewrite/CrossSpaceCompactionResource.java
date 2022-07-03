@@ -75,15 +75,7 @@ public class CrossSpaceCompactionResource {
     return seqFiles;
   }
 
-  public void setSeqFiles(List<TsFileResource> seqFiles) {
-    this.seqFiles = seqFiles;
-  }
-
   public List<TsFileResource> getUnseqFiles() {
     return unseqFiles;
-  }
-
-  public void setUnseqFiles(List<TsFileResource> unseqFiles) {
-    this.unseqFiles = unseqFiles;
   }
 }

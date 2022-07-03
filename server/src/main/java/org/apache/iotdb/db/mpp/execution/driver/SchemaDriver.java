@@ -34,7 +34,7 @@ public class SchemaDriver extends Driver {
   }
 
   @Override
-  protected boolean init(SettableFuture<Void> blockedFuture) {
+  protected boolean init(SettableFuture<?> blockedFuture) {
     return true;
   }
 

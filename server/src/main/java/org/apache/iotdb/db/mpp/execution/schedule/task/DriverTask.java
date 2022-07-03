@@ -194,7 +194,7 @@ public class DriverTask implements IDIndexedAccessible {
     }
 
     @Override
-    public ListenableFuture<Void> processFor(Duration duration) {
+    public ListenableFuture<?> processFor(Duration duration) {
       return null;
     }
 

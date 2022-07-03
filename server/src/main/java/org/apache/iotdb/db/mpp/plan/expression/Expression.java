@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
@@ -381,9 +382,9 @@ public abstract class Expression {
         expression = new IsNullExpression(byteBuffer);
         break;
 
-        /*case 16:
+      case 16:
         expression = new BetweenExpression(byteBuffer);
-        break;*/
+        break;
 
       case 17:
         expression = new InExpression(byteBuffer);

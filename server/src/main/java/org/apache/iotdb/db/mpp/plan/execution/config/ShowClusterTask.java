@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
-import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_STATUS_RUNNING;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_CONFIG_NODE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.NODE_TYPE_DATA_NODE;
 
@@ -74,7 +73,7 @@ public class ShowClusterTask implements IConfigTask {
                     builder,
                     e.getConfigNodeId(),
                     NODE_TYPE_CONFIG_NODE,
-                    NODE_STATUS_RUNNING,
+                    clusterNodeInfos.getNodeStatus().get(e.getConfigNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort()));
 
@@ -86,7 +85,7 @@ public class ShowClusterTask implements IConfigTask {
                     builder,
                     e.getDataNodeId(),
                     NODE_TYPE_DATA_NODE,
-                    NODE_STATUS_RUNNING,
+                    clusterNodeInfos.getNodeStatus().get(e.getDataNodeId()),
                     e.getInternalEndPoint().getIp(),
                     e.getInternalEndPoint().getPort()));
 

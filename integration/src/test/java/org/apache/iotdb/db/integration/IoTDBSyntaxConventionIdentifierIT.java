@@ -57,7 +57,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] createNodeNames = {
       "add",
       "as",
-      "between",
       "select",
       "drop_trigger",
       "REVOKE_USER_ROLE",
@@ -70,7 +69,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] resultTimeseries = {
       "root.sg1.d1.add",
       "root.sg1.d1.as",
-      "root.sg1.d1.between",
       "root.sg1.d1.select",
       "root.sg1.d1.drop_trigger",
       "root.sg1.d1.REVOKE_USER_ROLE",
@@ -83,7 +81,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] selectNodeNames = {
       "add",
       "as",
-      "between",
       "select",
       "drop_trigger",
       "REVOKE_USER_ROLE",
@@ -96,7 +93,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] suffixInResultColumns = {
       "add",
       "as",
-      "between",
       "select",
       "drop_trigger",
       "REVOKE_USER_ROLE",
