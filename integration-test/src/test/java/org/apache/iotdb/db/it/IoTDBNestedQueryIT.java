@@ -25,10 +25,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.UDFTestConstant;
 
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -390,6 +387,7 @@ public class IoTDBNestedQueryIT {
 
   // todo: Exception: Constant is not supported
   @Test
+  @Ignore
   public void testRawDataQueryWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -470,6 +468,7 @@ public class IoTDBNestedQueryIT {
 
   // todo: Exception: Constant is not supported
   @Test
+  @Ignore
   public void testAssociativeLaws() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -498,6 +497,7 @@ public class IoTDBNestedQueryIT {
 
   // todo: Exception: Constant is not supported
   @Test
+  @Ignore
   public void testDistributiveLaw() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -524,6 +524,7 @@ public class IoTDBNestedQueryIT {
 
   // todo: Exception: Constant is not supported
   @Test
+  @Ignore
   public void testOrderOfArithmeticOperations() {
     // Priority from high to low:
     //   1. exponentiation and root extraction (not supported yet)
@@ -656,6 +657,7 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
+  @Ignore
   public void testTimeExpressions() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
