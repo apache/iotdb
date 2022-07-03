@@ -321,6 +321,7 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
+  @Ignore
   public void testSelectEmptyColumns() {
     final int[] windows =
         new int[] {
