@@ -33,7 +33,6 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupCollector;
@@ -73,7 +72,8 @@ public class MTreeAboveSG {
   private final Logger logger = LoggerFactory.getLogger(MTreeAboveSG.class);
 
   private IMNode root;
-  private IMTreeStore store;
+  // this store is only used for traverser invoking
+  private MemMTreeStore store;
 
   public MTreeAboveSG() throws MetadataException {
     store = new MemMTreeStore(new PartialPath(PATH_ROOT), false);
@@ -109,7 +109,7 @@ public class MTreeAboveSG {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
-        store.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp.isStorageGroup()) {
         // before set storage group, check whether the storage group already exists
         throw new StorageGroupAlreadySetException(temp.getFullPath());
@@ -138,7 +138,7 @@ public class MTreeAboveSG {
             new StorageGroupMNode(
                 cur, nodeNames[i], CommonDescriptor.getInstance().getConfig().getDefaultTTL());
 
-        IMNode result = store.addChild(cur, nodeNames[i], storageGroupMNode);
+        IMNode result = cur.addChild(nodeNames[i], storageGroupMNode);
 
         if (result != storageGroupMNode) {
           throw new StorageGroupAlreadySetException(path.getFullPath(), true);
@@ -153,11 +153,11 @@ public class MTreeAboveSG {
     IMNode cur = storageGroupMNode.getParent();
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
-    store.deleteChild(cur, storageGroupMNode.getName());
+    cur.deleteChild(storageGroupMNode.getName());
 
     // delete node a while retain root.a.sg2
     while (cur.getParent() != null && cur.getChildren().size() == 0) {
-      store.deleteChild(cur.getParent(), cur.getName());
+      cur.getParent().deleteChild(cur.getName());
       cur = cur.getParent();
     }
   }

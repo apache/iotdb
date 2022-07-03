@@ -182,25 +182,26 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
 
       // read from file first
       while (seriesScanUtil.hasNextFile()) {
-        Statistics fileStatistics = seriesScanUtil.currentFileStatistics();
-        if (fileStatistics.getStartTime() > curTimeRange.getMax()) {
-          if (ascending) {
-            updateResultTsBlockFromAggregators();
-            return true;
-          } else {
-            seriesScanUtil.skipCurrentFile();
-            continue;
+        if (canUseCurrentFileStatistics()) {
+          Statistics fileStatistics = seriesScanUtil.currentFileStatistics();
+          if (fileStatistics.getStartTime() > curTimeRange.getMax()) {
+            if (ascending) {
+              updateResultTsBlockFromAggregators();
+              return true;
+            } else {
+              seriesScanUtil.skipCurrentFile();
+              continue;
+            }
           }
-        }
-        // calc from fileMetaData
-        if (canUseCurrentFileStatistics()
-            && curTimeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
-          calcFromStatistics(fileStatistics);
-          seriesScanUtil.skipCurrentFile();
-          if (isEndCalc(aggregators) && !isGroupByQuery) {
-            break;
-          } else {
-            continue;
+          // calc from fileMetaData
+          if (curTimeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
+            calcFromStatistics(fileStatistics);
+            seriesScanUtil.skipCurrentFile();
+            if (isEndCalc(aggregators) && !isGroupByQuery) {
+              break;
+            } else {
+              continue;
+            }
           }
         }
 
@@ -306,9 +307,8 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private boolean readAndCalcFromPage(TimeRange curTimeRange) throws IOException {
     while (seriesScanUtil.hasNextPage()) {
-      Statistics pageStatistics = seriesScanUtil.currentPageStatistics();
-      // must be non overlapped page
-      if (pageStatistics != null) {
+      if (canUseCurrentPageStatistics()) {
+        Statistics pageStatistics = seriesScanUtil.currentPageStatistics();
         // There is no more eligible points in current time range
         if (pageStatistics.getStartTime() > curTimeRange.getMax()) {
           if (ascending) {
@@ -319,8 +319,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
           }
         }
         // can use pageHeader
-        if (canUseCurrentPageStatistics()
-            && curTimeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
+        if (curTimeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
           calcFromStatistics(pageStatistics);
           seriesScanUtil.skipCurrentPage();
           if (isEndCalc(aggregators) && !isGroupByQuery) {
@@ -361,26 +360,28 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
 
   private boolean readAndCalcFromChunk(TimeRange curTimeRange) throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
-      Statistics chunkStatistics = seriesScanUtil.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() > curTimeRange.getMax()) {
-        if (ascending) {
-          return true;
-        } else {
+      if (canUseCurrentChunkStatistics()) {
+        Statistics chunkStatistics = seriesScanUtil.currentChunkStatistics();
+        if (chunkStatistics.getStartTime() > curTimeRange.getMax()) {
+          if (ascending) {
+            return true;
+          } else {
+            seriesScanUtil.skipCurrentChunk();
+            continue;
+          }
+        }
+        // calc from chunkMetaData
+        if (curTimeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+          calcFromStatistics(chunkStatistics);
           seriesScanUtil.skipCurrentChunk();
-          continue;
+          if (isEndCalc(aggregators) && !isGroupByQuery) {
+            return true;
+          } else {
+            continue;
+          }
         }
       }
-      // calc from chunkMetaData
-      if (canUseCurrentChunkStatistics()
-          && curTimeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-        calcFromStatistics(chunkStatistics);
-        seriesScanUtil.skipCurrentChunk();
-        if (isEndCalc(aggregators) && !isGroupByQuery) {
-          return true;
-        } else {
-          continue;
-        }
-      }
+
       // read page
       if (readAndCalcFromPage(curTimeRange)) {
         return true;

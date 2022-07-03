@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
-import org.apache.iotdb.mpp.rpc.thrift.InternalService;
+import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService;
 
 import org.apache.thrift.server.TServerEventHandler;
 
@@ -35,7 +35,7 @@ import static org.mockito.Mockito.mock;
 public class MockInternalRPCService extends ThriftService implements MockInternalRPCServiceMBean {
 
   private final TEndPoint thisNode;
-  private InternalService.Iface mockedProcessor;
+  private IDataNodeRPCService.Iface mockedProcessor;
 
   public MockInternalRPCService(TEndPoint thisNode) {
     this.thisNode = thisNode;
@@ -48,7 +48,7 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
 
   @Override
   public void initSyncedServiceImpl(Object mockedProcessor) {
-    this.mockedProcessor = (InternalService.Iface) mockedProcessor;
+    this.mockedProcessor = (IDataNodeRPCService.Iface) mockedProcessor;
     super.mbeanName =
         String.format(
             "%s:%s=%s", this.getClass().getPackage(), IoTDBConstant.JMX_TYPE, getID().getJmxName());
@@ -57,7 +57,7 @@ public class MockInternalRPCService extends ThriftService implements MockInterna
 
   @Override
   public void initTProcessor() {
-    processor = new InternalService.Processor<>(mockedProcessor);
+    processor = new IDataNodeRPCService.Processor<>(mockedProcessor);
   }
 
   @Override

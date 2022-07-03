@@ -73,12 +73,15 @@
    ```sql
    select status from root.sg1.d1 where status = true;
 
-3. 选择区间 (36.5,40] 的数据：
+3. 选择区间 [36.5,40] 内或之外的数据：
 
-   ```sql
-   select temperature from root.sg1.d1 where temperature > 36.5 and temperature < 40;
-   ```
-
+    ```sql
+    select temperature from root.sg1.d1 where temperature between 36.5 and 40;
+    ````
+    ```sql
+    select temperature from root.sg1.d1 where temperature not between 36.5 and 40;
+    ````
+   
 4. 选择值在特定范围内的数据：
 
    ```sql

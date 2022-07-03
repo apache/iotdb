@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+
 import org.apache.commons.lang3.SystemUtils;
 
 import java.io.File;
@@ -26,12 +28,12 @@ import java.util.Properties;
 public class ConfigNodeWrapper extends AbstractNodeWrapper {
 
   private final int consensusPort;
-  private final String targetConfigNode;
+  private final String targetConfigNodes;
   private final boolean isSeed;
 
   public ConfigNodeWrapper(
       boolean isSeed,
-      String targetConfigNode,
+      String targetConfigNodes,
       String testClassName,
       String testMethodName,
       int[] portList) {
@@ -39,18 +41,18 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
     this.consensusPort = portList[1];
     this.isSeed = isSeed;
     if (isSeed) {
-      this.targetConfigNode = getIpAndPortString();
+      this.targetConfigNodes = getIpAndPortString();
     } else {
-      this.targetConfigNode = targetConfigNode;
+      this.targetConfigNodes = targetConfigNodes;
     }
   }
 
   @Override
   protected void updateConfig(Properties properties) {
-    properties.setProperty("rpc_address", super.getIp());
-    properties.setProperty("rpc_port", String.valueOf(getPort()));
-    properties.setProperty("consensus_port", String.valueOf(this.consensusPort));
-    properties.setProperty("target_confignode", this.targetConfigNode);
+    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, super.getIp());
+    properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(getPort()));
+    properties.setProperty(IoTDBConstant.CONSENSUS_PORT, String.valueOf(this.consensusPort));
+    properties.setProperty(IoTDBConstant.TARGET_CONFIG_NODES, this.targetConfigNodes);
     properties.setProperty(
         "config_node_consensus_protocol_class",
         "org.apache.iotdb.consensus.standalone.StandAloneConsensus");

@@ -35,8 +35,10 @@ public class RegionGroup {
 
   private final TRegionReplicaSet replicaSet;
 
-  // For DataRegion, each SeriesSlot * TimeSlot form a slot,
-  // for SchemaRegion, each SeriesSlot is a slot
+  // For DataRegion, a SeriesSlot and a TimeSlot constitute a DataPartition.
+  // Eg: A DataRegion contains SeriesSlot-1 which has TimeSlot-1, TimeSlot-2 and Timeslot-3,
+  // then (SeriesSlot-1 -> TimeSlot-1) constitute a DataPartition.
+  // For SchemaRegion, each SeriesSlot constitute a SchemaPartition.
   private final AtomicLong slotCount;
 
   public RegionGroup() {

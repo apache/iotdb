@@ -561,6 +561,11 @@ public class DataRegion {
   }
 
   private void initCompaction() {
+    if (!config.isEnableSeqSpaceCompaction()
+        && !config.isEnableUnseqSpaceCompaction()
+        && !config.isEnableCrossSpaceCompaction()) {
+      return;
+    }
     timedCompactionScheduleTask =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.COMPACTION_SCHEDULE.getName()
@@ -1048,7 +1053,7 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, TriggerExecutionException, WriteProcessException {
+      throws TriggerExecutionException, BatchProcessException, WriteProcessException {
 
     writeLock("insertTablet");
     try {
@@ -1076,7 +1081,9 @@ public class DataRegion {
       }
       // loc pointing at first legal position
       if (loc == insertTabletNode.getRowCount()) {
-        throw new BatchProcessException(results);
+        throw new OutOfTTLException(
+            insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
+            (System.currentTimeMillis() - dataTTL));
       }
 
       //      TODO(Trigger)// fire trigger before insertion
@@ -2440,7 +2447,6 @@ public class DataRegion {
     for (long timePartition : timePartitions) {
       CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
     }
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
   }
 
   /**
@@ -3488,7 +3494,7 @@ public class DataRegion {
       writeUnlock();
     }
     if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertRowsOfOneDeviceNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting rows of one device");
     }
   }
 
@@ -3508,7 +3514,7 @@ public class DataRegion {
     }
 
     if (!insertRowsNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertRowsNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting rows");
     }
   }
 
@@ -3523,7 +3529,7 @@ public class DataRegion {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (TriggerExecutionException | BatchProcessException | WriteProcessException e) {
+      } catch (TriggerExecutionException | WriteProcessException | BatchProcessException e) {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -3531,7 +3537,7 @@ public class DataRegion {
     }
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting multi tablets");
     }
   }
 

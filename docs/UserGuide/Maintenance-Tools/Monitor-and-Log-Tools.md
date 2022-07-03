@@ -49,7 +49,7 @@ To grasp the performance of iotdb, this module is added to count the time-consum
 
 #### Configuration parameter
 
-location：conf/iotdb-engine.properties
+location：conf/iotdb-datanode.properties
 
 <center>
 

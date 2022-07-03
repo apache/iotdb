@@ -63,12 +63,12 @@ public class SchemaRegionTest {
     isMppMode = config.isMppMode();
     isClusterMode = config.isClusterMode();
     schemaRegionConsensusProtocolClass = config.getSchemaRegionConsensusProtocolClass();
-    schemaMemory = config.getAllocateMemoryForSchema();
+    schemaMemory = config.getAllocateMemoryForSchemaRegion();
 
     config.setMppMode(true);
     config.setClusterMode(true);
     config.setSchemaRegionConsensusProtocolClass(ConsensusFactory.RatisConsensus);
-    config.setAllocateMemoryForSchema(1024 * 1024 * 1024);
+    config.setAllocateMemoryForSchemaRegion(1024 * 1024 * 1024);
     EnvironmentUtils.envSetUp();
   }
 
@@ -78,7 +78,7 @@ public class SchemaRegionTest {
     config.setMppMode(isMppMode);
     config.setClusterMode(isClusterMode);
     config.setSchemaRegionConsensusProtocolClass(schemaRegionConsensusProtocolClass);
-    config.setAllocateMemoryForSchema(schemaMemory);
+    config.setAllocateMemoryForSchemaRegion(schemaMemory);
   }
 
   @Test

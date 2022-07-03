@@ -578,7 +578,8 @@ public class LogicalPlanBuilder {
       Expression queryFilter,
       Set<Expression> selectExpressions,
       boolean isGroupByTime,
-      ZoneId zoneId) {
+      ZoneId zoneId,
+      OrderBy scanOrder) {
     if (queryFilter == null) {
       return this;
     }
@@ -590,12 +591,16 @@ public class LogicalPlanBuilder {
             selectExpressions.toArray(new Expression[0]),
             queryFilter,
             isGroupByTime,
-            zoneId);
+            zoneId,
+            scanOrder);
     return this;
   }
 
   public LogicalPlanBuilder planTransform(
-      Set<Expression> transformExpressions, boolean isGroupByTime, ZoneId zoneId) {
+      Set<Expression> transformExpressions,
+      boolean isGroupByTime,
+      ZoneId zoneId,
+      OrderBy scanOrder) {
     boolean needTransform = false;
     for (Expression expression : transformExpressions) {
       if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
@@ -613,7 +618,8 @@ public class LogicalPlanBuilder {
             this.getRoot(),
             transformExpressions.toArray(new Expression[0]),
             isGroupByTime,
-            zoneId);
+            zoneId,
+            scanOrder);
     return this;
   }
 

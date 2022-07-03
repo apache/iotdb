@@ -20,8 +20,8 @@
 package org.apache.iotdb.confignode.procedure.store;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedureReq;
-import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedureReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
@@ -75,12 +75,12 @@ public class ConfigProcedureStore implements IProcedureStore {
 
   @Override
   public void update(Procedure procedure) {
-    UpdateProcedureReq updateProcedureReq = new UpdateProcedureReq();
+    UpdateProcedurePlan updateProcedurePlan = new UpdateProcedurePlan();
     ProcedureFactory.ProcedureType procedureType = ProcedureFactory.getProcedureType(procedure);
     if (procedureType != null) {
-      updateProcedureReq.setProcedure(procedure);
+      updateProcedurePlan.setProcedure(procedure);
     }
-    getConsensusManager().write(updateProcedureReq);
+    getConsensusManager().write(updateProcedurePlan);
   }
 
   @Override
@@ -92,9 +92,9 @@ public class ConfigProcedureStore implements IProcedureStore {
 
   @Override
   public void delete(long procId) {
-    DeleteProcedureReq deleteProcedureReq = new DeleteProcedureReq();
-    deleteProcedureReq.setProcId(procId);
-    getConsensusManager().write(deleteProcedureReq);
+    DeleteProcedurePlan deleteProcedurePlan = new DeleteProcedurePlan();
+    deleteProcedurePlan.setProcId(procId);
+    getConsensusManager().write(deleteProcedurePlan);
   }
 
   @Override

@@ -114,8 +114,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
         LOGGER.info(
             "{} [Compaction] submit a task with {} sequence file and {} unseq files",
             logicalStorageGroupName + "-" + dataRegionId,
-            compactionResource.getSeqFiles().size(),
-            compactionResource.getUnseqFiles().size());
+            mergeFiles[0].size(),
+            mergeFiles[1].size());
         return Collections.singletonList(new Pair<>(mergeFiles[0], mergeFiles[1]));
       }
 

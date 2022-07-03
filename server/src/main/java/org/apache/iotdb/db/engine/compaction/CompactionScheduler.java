@@ -58,18 +58,18 @@ public class CompactionScheduler {
     try {
       tryToSubmitCrossSpaceCompactionTask(
           tsFileManager.getStorageGroupName(),
-          tsFileManager.getDataRegion(),
+          tsFileManager.getDataRegionId(),
           timePartition,
           tsFileManager);
       tryToSubmitInnerSpaceCompactionTask(
           tsFileManager.getStorageGroupName(),
-          tsFileManager.getDataRegion(),
+          tsFileManager.getDataRegionId(),
           timePartition,
           tsFileManager,
           true);
       tryToSubmitInnerSpaceCompactionTask(
           tsFileManager.getStorageGroupName(),
-          tsFileManager.getDataRegion(),
+          tsFileManager.getDataRegionId(),
           timePartition,
           tsFileManager,
           false);

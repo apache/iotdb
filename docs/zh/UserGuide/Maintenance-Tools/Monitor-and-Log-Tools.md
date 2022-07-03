@@ -49,7 +49,7 @@
 
 #### 配置参数
 
-配置文件位置：conf/iotdb-engine.properties
+配置文件位置：conf/iotdb-datanode.properties
 
 <center>
 
