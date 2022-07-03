@@ -46,7 +46,7 @@ import java.io.IOException;
 public class SingleInputColumnMultiReferenceIntermediateLayer extends IntermediateLayer {
 
   private static final Logger LOGGER =
-          LoggerFactory.getLogger(SingleInputColumnMultiReferenceIntermediateLayer.class);
+      LoggerFactory.getLogger(SingleInputColumnMultiReferenceIntermediateLayer.class);
 
   private final LayerPointReader parentLayerPointReader;
   private final TSDataType parentLayerPointReaderDataType;
@@ -55,18 +55,18 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
   private final SafetyLine safetyLine;
 
   public SingleInputColumnMultiReferenceIntermediateLayer(
-          Expression expression,
-          long queryId,
-          float memoryBudgetInMB,
-          LayerPointReader parentLayerPointReader) {
+      Expression expression,
+      long queryId,
+      float memoryBudgetInMB,
+      LayerPointReader parentLayerPointReader) {
     super(expression, queryId, memoryBudgetInMB);
     this.parentLayerPointReader = parentLayerPointReader;
 
     parentLayerPointReaderDataType = parentLayerPointReader.getDataType();
     isParentLayerPointReaderConstant = parentLayerPointReader.isConstantPointReader();
     tvList =
-            ElasticSerializableTVList.newElasticSerializableTVList(
-                    parentLayerPointReaderDataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+        ElasticSerializableTVList.newElasticSerializableTVList(
+            parentLayerPointReaderDataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
     safetyLine = new SafetyLine();
   }
 
@@ -98,8 +98,8 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
         }
 
         final YieldableState yieldableState =
-                LayerCacheUtils.yieldPoint(
-                        parentLayerPointReaderDataType, parentLayerPointReader, tvList);
+            LayerCacheUtils.yieldPoint(
+                parentLayerPointReaderDataType, parentLayerPointReader, tvList);
         if (yieldableState == YieldableState.YIELDABLE) {
           ++currentPointIndex;
           hasCached = true;
@@ -110,9 +110,9 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       @Override
       public boolean next() throws QueryProcessException, IOException {
         if (!hasCached
-                && (currentPointIndex < tvList.size() - 1
+            && (currentPointIndex < tvList.size() - 1
                 || LayerCacheUtils.cachePoint(
-                parentLayerPointReaderDataType, parentLayerPointReader, tvList))) {
+                    parentLayerPointReaderDataType, parentLayerPointReader, tvList))) {
           ++currentPointIndex;
           hasCached = true;
         }
@@ -182,7 +182,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
       private final SafetyPile safetyPile = safetyLine.addSafetyPile();
       private final ElasticSerializableTVListBackedSingleColumnRow row =
-              new ElasticSerializableTVListBackedSingleColumnRow(tvList, -1);
+          new ElasticSerializableTVListBackedSingleColumnRow(tvList, -1);
 
       private boolean hasCached = false;
       private int currentRowIndex = -1;
@@ -200,8 +200,8 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
         }
 
         final YieldableState yieldableState =
-                LayerCacheUtils.yieldPoint(
-                        parentLayerPointReaderDataType, parentLayerPointReader, tvList);
+            LayerCacheUtils.yieldPoint(
+                parentLayerPointReaderDataType, parentLayerPointReader, tvList);
         if (yieldableState == YieldableState.YIELDABLE) {
           row.seek(++currentRowIndex);
           hasCached = true;
@@ -212,9 +212,9 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       @Override
       public boolean next() throws QueryProcessException, IOException {
         if (!hasCached
-                && ((currentRowIndex < tvList.size() - 1)
+            && ((currentRowIndex < tvList.size() - 1)
                 || LayerCacheUtils.cachePoint(
-                parentLayerPointReaderDataType, parentLayerPointReader, tvList))) {
+                    parentLayerPointReaderDataType, parentLayerPointReader, tvList))) {
           row.seek(++currentRowIndex);
           hasCached = true;
         }
@@ -254,7 +254,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
   @Override
   protected LayerRowWindowReader constructRowSlidingSizeWindowReader(
-          SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
+      SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB) {
 
     return new LayerRowWindowReader() {
 
@@ -263,7 +263,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
       private final SafetyPile safetyPile = safetyLine.addSafetyPile();
       private final ElasticSerializableTVListBackedSingleColumnWindow window =
-              new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
+          new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
       private boolean hasCached = false;
       private int beginIndex = -slidingStep;
@@ -278,21 +278,21 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
         final int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-                  "SingleInputColumnMultiReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
-                  beginIndex,
-                  endIndex,
-                  windowSize);
+              "SingleInputColumnMultiReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              beginIndex,
+              endIndex,
+              windowSize);
           return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
         }
 
         final int pointsToBeCollected = endIndex - tvList.size();
         if (0 < pointsToBeCollected) {
           final YieldableState yieldableState =
-                  LayerCacheUtils.yieldPoints(
-                          parentLayerPointReaderDataType,
-                          parentLayerPointReader,
-                          tvList,
-                          pointsToBeCollected);
+              LayerCacheUtils.yieldPoints(
+                  parentLayerPointReaderDataType,
+                  parentLayerPointReader,
+                  tvList,
+                  pointsToBeCollected);
           if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
             beginIndex -= slidingStep;
             return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
@@ -303,13 +303,13 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
           }
 
           window.seek(
-                  beginIndex,
-                  tvList.size(),
-                  tvList.getTime(beginIndex),
-                  tvList.getTime(tvList.size() - 1));
+              beginIndex,
+              tvList.size(),
+              tvList.getTime(beginIndex),
+              tvList.getTime(tvList.size() - 1));
         } else {
           window.seek(
-                  beginIndex, endIndex, tvList.getTime(beginIndex), tvList.getTime(endIndex - 1));
+              beginIndex, endIndex, tvList.getTime(beginIndex), tvList.getTime(endIndex - 1));
         }
 
         hasCached = true;
@@ -326,29 +326,29 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
         int endIndex = beginIndex + windowSize;
         if (beginIndex < 0 || endIndex < 0) {
           LOGGER.warn(
-                  "SingleInputColumnMultiReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
-                  beginIndex,
-                  endIndex,
-                  windowSize);
+              "SingleInputColumnMultiReferenceIntermediateLayer$LayerRowWindowReader: index overflow. beginIndex: {}, endIndex: {}, windowSize: {}.",
+              beginIndex,
+              endIndex,
+              windowSize);
           return false;
         }
 
         int pointsToBeCollected = endIndex - tvList.size();
         if (0 < pointsToBeCollected) {
           LayerCacheUtils.cachePoints(
-                  parentLayerPointReaderDataType, parentLayerPointReader, tvList, pointsToBeCollected);
+              parentLayerPointReaderDataType, parentLayerPointReader, tvList, pointsToBeCollected);
           if (tvList.size() <= beginIndex) {
             return false;
           }
 
           window.seek(
-                  beginIndex,
-                  tvList.size(),
-                  tvList.getTime(beginIndex),
-                  tvList.getTime(tvList.size() - 1));
+              beginIndex,
+              tvList.size(),
+              tvList.getTime(beginIndex),
+              tvList.getTime(tvList.size() - 1));
         } else {
           window.seek(
-                  beginIndex, endIndex, tvList.getTime(beginIndex), tvList.getTime(endIndex - 1));
+              beginIndex, endIndex, tvList.getTime(beginIndex), tvList.getTime(endIndex - 1));
         }
 
         hasCached = true;
@@ -377,7 +377,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
   @Override
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
-          SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
 
     final long timeInterval = strategy.getTimeInterval();
     final long slidingStep = strategy.getSlidingStep();
@@ -385,7 +385,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
     final SafetyPile safetyPile = safetyLine.addSafetyPile();
     final ElasticSerializableTVListBackedSingleColumnWindow window =
-            new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
+        new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
     final long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
 
@@ -402,8 +402,8 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
         if (isFirstIteration) {
           if (tvList.size() == 0) {
             final YieldableState yieldableState =
-                    LayerCacheUtils.yieldPoint(
-                            parentLayerPointReaderDataType, parentLayerPointReader, tvList);
+                LayerCacheUtils.yieldPoint(
+                    parentLayerPointReaderDataType, parentLayerPointReader, tvList);
             if (yieldableState != YieldableState.YIELDABLE) {
               return yieldableState;
             }
@@ -428,8 +428,8 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
         long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
         while (tvList.getTime(tvList.size() - 1) < nextWindowTimeEnd) {
           final YieldableState yieldableState =
-                  LayerCacheUtils.yieldPoint(
-                          parentLayerPointReaderDataType, parentLayerPointReader, tvList);
+              LayerCacheUtils.yieldPoint(
+                  parentLayerPointReaderDataType, parentLayerPointReader, tvList);
           if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
             return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
           }
@@ -456,10 +456,10 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
           }
         }
         window.seek(
-                nextIndexBegin,
-                nextIndexEnd,
-                nextWindowTimeBegin,
-                nextWindowTimeBegin + timeInterval - 1);
+            nextIndexBegin,
+            nextIndexEnd,
+            nextWindowTimeBegin,
+            nextWindowTimeBegin + timeInterval - 1);
 
         hasCached = nextIndexBegin != nextIndexEnd;
         return hasCached ? YieldableState.YIELDABLE : YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
@@ -469,9 +469,9 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       public boolean next() throws IOException, QueryProcessException {
         if (isFirstIteration) {
           if (tvList.size() == 0
-                  && LayerCacheUtils.cachePoint(
+              && LayerCacheUtils.cachePoint(
                   parentLayerPointReaderDataType, parentLayerPointReader, tvList)
-                  && nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
+              && nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
             // display window begin should be set to the same as the min timestamp of the query
             // result
             // set
@@ -490,7 +490,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
         long nextWindowTimeEnd = Math.min(nextWindowTimeBegin + timeInterval, displayWindowEnd);
         while (tvList.getTime(tvList.size() - 1) < nextWindowTimeEnd) {
           if (!LayerCacheUtils.cachePoint(
-                  parentLayerPointReaderDataType, parentLayerPointReader, tvList)) {
+              parentLayerPointReaderDataType, parentLayerPointReader, tvList)) {
             break;
           }
         }
@@ -513,10 +513,10 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
           }
         }
         window.seek(
-                nextIndexBegin,
-                nextIndexEnd,
-                nextWindowTimeBegin,
-                nextWindowTimeBegin + timeInterval - 1);
+            nextIndexBegin,
+            nextIndexEnd,
+            nextWindowTimeBegin,
+            nextWindowTimeBegin + timeInterval - 1);
 
         hasCached = nextIndexBegin != nextIndexEnd;
         return hasCached;
