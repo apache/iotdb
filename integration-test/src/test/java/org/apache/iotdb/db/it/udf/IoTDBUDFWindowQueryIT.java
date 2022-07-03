@@ -425,11 +425,6 @@ public class IoTDBUDFWindowQueryIT {
     testSlidingTimeWindowWithTimeIntervalOnly(2 * ITERATION_TIMES);
   }
 
-  @Test
-  public void testSlidingTimeWindowWithTimeIntervalOnly6() {
-    testSlidingTimeWindowWithTimeIntervalOnly(-ITERATION_TIMES);
-  }
-
   private void testSlidingTimeWindowWithTimeIntervalOnly(int timeInterval) {
     String sql =
         String.format(
@@ -738,7 +733,6 @@ public class IoTDBUDFWindowQueryIT {
         int time = 0;
         int value = 500500;
         for (int i = 0; i < 10; i++) {
-          System.out.println("i is " + i);
           Assert.assertTrue(rs.next());
           Assert.assertEquals(time, rs.getLong(1));
           Assert.assertEquals(value, rs.getLong(2));

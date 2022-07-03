@@ -173,6 +173,9 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public final boolean hasNext() {
+    if (!timeHeap.isEmpty()) {
+      return true;
+    }
     try {
       if (iterateAllColumnsToNextValid() == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
         return true;
