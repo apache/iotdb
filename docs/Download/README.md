@@ -102,9 +102,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
 
 ## About 0.14.0-preview1
 
-- About 0.14.0-preview1
-
-  - 0.14.0-preview1 is a preview release for the new IoTDB cluster, which you could download and have a try.
+- 0.14.0-preview1 is a preview release for the new IoTDB cluster, which you could download and have a try.
   We DO NOT recommend using preview release on-line, and DO NOT upgrade 0.13 to a preview release.
   - The UserGuide of 0.14.0-preview is still in the **latest**.
 
