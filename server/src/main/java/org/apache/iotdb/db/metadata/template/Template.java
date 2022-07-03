@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
+import java.io.ByteArrayInputStream;
+import java.io.ObjectInputStream;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -30,6 +32,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -135,6 +138,20 @@ public class Template {
         constructTemplateTree(plan.getMeasurements().get(i).get(0), curSchema);
       }
     }
+  }
+
+  /**
+   * build a template from a CreateSchemaTemplateStatement
+   *
+   * @param statement CreateSchemaTemplateStatement
+   */
+  public Template(CreateSchemaTemplateStatement statement) throws IllegalPathException{
+    this(new CreateTemplatePlan(statement.getName(),
+        statement.getSchemaNames(),
+        statement.getMeasurements(),
+        statement.getDataTypes(),
+        statement.getEncodings(),
+        statement.getCompressors()));
   }
 
   public String getName() {
@@ -712,5 +729,19 @@ public class Template {
    */
   public void setRehash(int code) {
     rehashCode = code;
+  }
+
+  public static ByteBuffer template2ByteBuffer(Template template) {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    ReadWriteIOUtils.writeObject(template,dataOutputStream);
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public static Template byteBuffer2Template(ByteBuffer byteBuffer) throws IOException,ClassNotFoundException{
+    ByteArrayInputStream byteArrayOutputStream = new ByteArrayInputStream(byteBuffer.array());
+    ObjectInputStream ois = new ObjectInputStream(byteArrayOutputStream);
+    Template template = (Template)ois.readObject();
+    return template;
   }
 }

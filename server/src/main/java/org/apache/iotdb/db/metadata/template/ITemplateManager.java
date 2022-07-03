@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.metadata.template;
 
 import java.util.List;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 
 /**
  * @author chenhuangyun
@@ -9,7 +9,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateTemplateSt
  **/
 public interface ITemplateManager {
 
-    void createSchemaTemplate(CreateTemplateStatement statement);
+    void createSchemaTemplate(CreateSchemaTemplateStatement statement);
 
     List<Template> getAllTemplates();
 

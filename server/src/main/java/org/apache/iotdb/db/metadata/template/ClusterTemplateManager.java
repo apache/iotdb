@@ -1,7 +1,7 @@
 package org.apache.iotdb.db.metadata.template;
 
 import java.util.List;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 
 /**
  * @author chenhuangyun
@@ -10,7 +10,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateTemplateSt
 public class ClusterTemplateManager implements  ITemplateManager{
 
     @Override
-    public void createSchemaTemplate(CreateTemplateStatement statement) {
+    public void createSchemaTemplate(CreateSchemaTemplateStatement statement) {
 
     }
 
