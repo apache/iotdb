@@ -107,6 +107,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -564,6 +565,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       showDevicesStatement.setSgCol(true);
     }
     return showDevicesStatement;
+  }
+
+  // Show version  ========================================================================
+
+  @Override
+  public Statement visitShowVersion(IoTDBSqlParser.ShowVersionContext ctx) {
+    return new ShowVersionStatement();
   }
 
   // Count Devices ========================================================================
