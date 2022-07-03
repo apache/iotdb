@@ -19,9 +19,13 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
@@ -36,6 +40,7 @@ import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -44,6 +49,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 
 /** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
@@ -122,8 +129,45 @@ public class ClusterSchemaManager {
     return getConsensusManager().read(getStorageGroupPlan).getDataset();
   }
 
+  /**
+   * Update TTL for the specific StorageGroup
+   *
+   * @param setTTLPlan setTTLPlan
+   * @return SUCCESS_STATUS if successfully update the TTL, STORAGE_GROUP_NOT_EXIST if the specific
+   *     StorageGroup doesn't exist
+   */
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
-    // TODO: Inform DataNodes
+
+    if (!getStorageGroupNames().contains(setTTLPlan.getStorageGroup())) {
+      return RpcUtils.getStatus(
+          TSStatusCode.STORAGE_GROUP_NOT_EXIST,
+          "storageGroup " + setTTLPlan.getStorageGroup() + " does not exist");
+    }
+
+    Set<TDataNodeLocation> dataNodeLocations =
+        getPartitionManager()
+            .getStorageGroupRelatedDataNodes(
+                setTTLPlan.getStorageGroup(), TConsensusGroupType.DataRegion);
+    if (dataNodeLocations.size() > 0) {
+      // TODO: Use procedure to protect SetTTL on DataNodes
+      CountDownLatch latch = new CountDownLatch(dataNodeLocations.size());
+      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+        SetTTLHandler handler = new SetTTLHandler(dataNodeLocation, latch);
+        AsyncDataNodeClientPool.getInstance()
+            .setTTL(
+                dataNodeLocation.getInternalEndPoint(),
+                new TSetTTLReq(setTTLPlan.getStorageGroup(), setTTLPlan.getTTL()),
+                handler);
+      }
+
+      try {
+        // Waiting until this batch of SetTTL requests done
+        latch.await();
+      } catch (InterruptedException e) {
+        LOGGER.error("ClusterSchemaManager was interrupted during SetTTL on DataNodes", e);
+      }
+    }
+
     return getConsensusManager().write(setTTLPlan).getStatus();
   }
 

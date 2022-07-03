@@ -168,16 +168,16 @@ public class IoTDBTtlIT {
       }
       statement.execute("SET STORAGE GROUP TO root.sg.TTL_SG3");
       statement.execute("SET STORAGE GROUP TO root.sg.TTL_SG4");
-      //SG2
+      // SG2
       for (int i = 0; i < 100; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 100 + i, i));
+            String.format(
+                "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 100 + i, i));
       }
       for (int i = 100; i < 200; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
+            String.format(
+                "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
       }
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.TTL_SG3")) {
@@ -187,16 +187,16 @@ public class IoTDBTtlIT {
         }
         assertEquals(200, cnt);
       }
-      //SG1
+      // SG1
       for (int i = 200; i < 300; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 100 + i, i));
+            String.format(
+                "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 100 + i, i));
       }
       for (int i = 300; i < 400; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
+            String.format(
+                "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
       }
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.TTL_SG4")) {
@@ -219,8 +219,9 @@ public class IoTDBTtlIT {
         boolean caught = false;
         try {
           statement.execute(
-                  String.format(
-                          "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 500000 + i, i));
+              String.format(
+                  "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)",
+                  now - 500000 + i, i));
         } catch (SQLException e) {
           if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
             caught = true;
@@ -232,8 +233,9 @@ public class IoTDBTtlIT {
         boolean caught = false;
         try {
           statement.execute(
-                  String.format(
-                          "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 500000 + i, i));
+              String.format(
+                  "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)",
+                  now - 500000 + i, i));
         } catch (SQLException e) {
           if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
             caught = true;
@@ -254,13 +256,13 @@ public class IoTDBTtlIT {
       Thread.sleep(1000);
       for (int i = 0; i < 100; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 30000 + i, i));
+            String.format(
+                "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 30000 + i, i));
       }
       for (int i = 100; i < 200; i++) {
         statement.execute(
-                String.format(
-                        "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 30000 + i, i));
+            String.format(
+                "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 30000 + i, i));
       }
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.**")) {
         int cnt = 0;
