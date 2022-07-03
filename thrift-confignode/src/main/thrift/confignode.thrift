@@ -30,7 +30,8 @@ struct TDataNodeRegisterReq {
 }
 
 struct TDataNodeActiveReq {
-  1: required common.TDataNodeInfo dataNodeInfo
+  1: required common.TDataNodeLocation location
+  2: required i32 dataNodeId
 }
 
 struct TGlobalConfig {
@@ -66,6 +67,12 @@ struct TDeleteStorageGroupReq {
 struct TDeleteStorageGroupsReq {
   1: required list<string> prefixPathList
 }
+
+struct TSetTTLReq {
+  1: required string storageGroup
+  2: required i64 TTL
+}
+
 
 struct TSetSchemaReplicationFactorReq {
   1: required string storageGroup
@@ -195,9 +202,7 @@ struct TConfigNodeRegisterReq {
   6: required i64 defaultTTL
   7: required i64 timePartitionInterval
   8: required i32 schemaReplicationFactor
-  9: required double schemaRegionPerDataNode
-  10: required i32 dataReplicationFactor
-  11: required double dataRegionPerProcessor
+  9: required i32 dataReplicationFactor
 }
 
 struct TConfigNodeRegisterResp {
@@ -211,7 +216,6 @@ struct TClusterNodeInfos {
   1: required common.TSStatus status
   2: required list<common.TConfigNodeLocation> configNodeList
   3: required list<common.TDataNodeLocation> dataNodeList
-  4: required map<i32, string> nodeStatus
 }
 
 // UDF
@@ -235,38 +239,7 @@ struct TShowRegionResp {
   2: optional list<common.TRegionInfo> regionInfoList;
 }
 
-// show datanodes
-struct TShowDataNodesResp {
-  1: required common.TSStatus status
-  2: optional list<common.TDataNodesInfo> dataNodesInfoList
-}
-
-struct TRegionRouteMapResp {
-  1: required common.TSStatus status
-  // For version stamp
-  2: optional i64 timestamp
-  // The routing policy of read/write requests for each RegionGroup is based on the order in the TRegionReplicaSet.
-  // The replica with higher sorting result in TRegionReplicaSet will have higher priority.
-  3: optional map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
-}
-
-// Template
-struct TCreateSchemaTemplateReq {
-  1: required string name
-  2: required binary serializedTemplate
-}
-
-struct TGetAllTemplatesResp {
-  1: required common.TSStatus status
-  2: optional list<binary> templateList
-}
-
-struct TGetTemplateResp {
-  1: required common.TSStatus status
-  2: optional binary template
-}
-
-service IConfigNodeRPCService {
+service ConfigIService {
 
   /* DataNode */
 
@@ -287,7 +260,7 @@ service IConfigNodeRPCService {
 
   common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
 
-  common.TSStatus setTTL(common.TSetTTLReq req)
+  common.TSStatus setTTL(TSetTTLReq req)
 
   common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
 
@@ -331,8 +304,6 @@ service IConfigNodeRPCService {
 
   common.TSStatus addConsensusGroup(TConfigNodeRegisterResp req)
 
-  common.TSStatus notifyRegisterSuccess()
-
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
@@ -350,26 +321,6 @@ service IConfigNodeRPCService {
   /* Show Region */
 
   TShowRegionResp showRegion(TShowRegionReq req)
-
-  /* Routing */
-
-  TRegionRouteMapResp getLatestRegionRouteMap()
-
-  /* Get confignode heartbeat */
-
-  i64 getConfigNodeHeartBeat(i64 timestamp)
-
-  /* Show DataNodes */
-
-  TShowDataNodesResp showDataNodes()
-
-  /* Template */
-
-    common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
-
-    TGetAllTemplatesResp getAllTemplates()
-
-    TGetTemplateResp getTemplate(string req)
 
 }
 
