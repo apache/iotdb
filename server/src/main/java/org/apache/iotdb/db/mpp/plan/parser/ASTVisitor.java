@@ -2306,7 +2306,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     List<List<TSEncoding>> encodingsList = new ArrayList<List<TSEncoding>>();
     List<List<CompressionType>> compressorsList = new ArrayList<List<CompressionType>>();
 
-
     if (ctx.ALIGNED() != null) {
       // aligned
       List<String> measurements = new ArrayList<>();
@@ -2324,16 +2323,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       dataTypesList.add(dataTypes);
       encodingsList.add(encodings);
       compressorsList.add(compressors);
-    }else {
+    } else {
       // non-aligned
       for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
           ctx.templateMeasurementClause()) {
-        //parseTemplateMeasurementClause(templateClauseContext, createTemplateStatement);
+        // parseTemplateMeasurementClause(templateClauseContext, createTemplateStatement);
         List<String> measurements = new ArrayList<>();
         List<TSDataType> dataTypes = new ArrayList<>();
         List<TSEncoding> encodings = new ArrayList<>();
         List<CompressionType> compressors = new ArrayList<>();
-        parseAttributeClause(templateClauseContext.attributeClauses(), dataTypes, encodings, compressors);
+        parseAttributeClause(
+            templateClauseContext.attributeClauses(), dataTypes, encodings, compressors);
         measurementsList.add(measurements);
         dataTypesList.add(dataTypes);
         encodingsList.add(encodings);
@@ -2341,7 +2341,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
-    createTemplateStatement = new CreateSchemaTemplateStatement(name,measurementsList,dataTypesList,encodingsList,compressorsList);
+    createTemplateStatement =
+        new CreateSchemaTemplateStatement(
+            name, measurementsList, dataTypesList, encodingsList, compressorsList);
     return createTemplateStatement;
   }
 
@@ -2355,10 +2357,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // single template measurement
     measurements.add(parseNodeNameWithoutWildCard(ctx.nodeNameWithoutWildcard()));
     parseAttributeClause(ctx.attributeClauses(), dataTypes, encodings, compressors);
-//    createTemplateStatement.addMeasurements(measurements);
-//    createTemplateStatement.addDataTypes(dataTypes);
-//    createTemplateStatement.addEncodings(encodings);
-//    createTemplateStatement.addCompressor(compressors);
+    //    createTemplateStatement.addMeasurements(measurements);
+    //    createTemplateStatement.addDataTypes(dataTypes);
+    //    createTemplateStatement.addEncodings(encodings);
+    //    createTemplateStatement.addCompressor(compressors);
   }
 
   void parseAttributeClause(
@@ -2453,15 +2455,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowSchemaTemplates(IoTDBSqlParser.ShowSchemaTemplatesContext ctx) {
     ShowSchemaTemplateStatement showSchemaTemplateStatement = new ShowSchemaTemplateStatement();
-    //createTemplateStatement.setType();
+    // createTemplateStatement.setType();
     return showSchemaTemplateStatement;
   }
 
   @Override
-  public Statement visitShowNodesInSchemaTemplate(IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
+  public Statement visitShowNodesInSchemaTemplate(
+      IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
     String templateName = "";
-    ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement = new ShowNodesInSchemaTemplateStatement(templateName);
-    //showNodesInSchemaTemplateStatement.setTemplateName(ctx.templateName.);
+    ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement =
+        new ShowNodesInSchemaTemplateStatement(templateName);
+    // showNodesInSchemaTemplateStatement.setTemplateName(ctx.templateName.);
     return showNodesInSchemaTemplateStatement;
   }
 }

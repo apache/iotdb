@@ -137,7 +137,7 @@ public class ConfigManager implements IManager {
   /** UDF */
   private final UDFManager udfManager;
 
-  /** Template **/
+  /** Template * */
   private final TemplateManager templateManager;
 
   public ConfigManager() throws IOException {
@@ -165,7 +165,7 @@ public class ConfigManager implements IManager {
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
     this.consensusManager = new ConsensusManager(this, stateMachine);
-    this.templateManager = new TemplateManager(this,templateInfo);
+    this.templateManager = new TemplateManager(this, templateInfo);
   }
 
   public void close() throws IOException {

@@ -315,5 +315,4 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
       ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
     return null;
   }
-
 }

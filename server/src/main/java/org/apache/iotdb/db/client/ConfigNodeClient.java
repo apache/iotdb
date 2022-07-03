@@ -740,17 +740,50 @@ public class ConfigNodeClient
 
   @Override
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
-    return null;
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus tsStatus = client.createSchemaTemplate(req);
+        if (!updateConfigNodeLeader(tsStatus)) {
+          return tsStatus;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TGetAllTemplatesResp getAllTemplates() throws TException {
-    return null;
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetAllTemplatesResp resp = client.getAllTemplates();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   @Override
   public TGetTemplateResp getTemplate(String req) throws TException {
-    return null;
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetTemplateResp resp = client.getTemplate(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
   }
 
   public static class Factory extends BaseClientFactory<PartitionRegionId, ConfigNodeClient> {

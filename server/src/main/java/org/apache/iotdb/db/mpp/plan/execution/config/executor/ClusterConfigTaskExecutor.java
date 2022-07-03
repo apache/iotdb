@@ -374,80 +374,82 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     return future;
   }
 
-    @Override
-    public SettableFuture<ConfigTaskResult> createSchemaTemplate(
-        CreateSchemaTemplateStatement createSchemaTemplateStatement) {
-        SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-        // Construct request using statement
-        TCreateSchemaTemplateReq req = CreateSchemaTemplateTask.constructTCreateSchemaTemplateReq(createSchemaTemplateStatement);
-        try (ConfigNodeClient configNodeClient =
-            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-            // Send request to some API server
-            TSStatus tsStatus = configNodeClient.createSchemaTemplate(req);
-            // Get response or throw exception
-            if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
-                LOGGER.error(
-                    "Failed to execute create schema template {} in config node, status is {}.",
-                    createSchemaTemplateStatement.getName(),
-                    tsStatus);
-                future.setException(new StatementExecutionException(tsStatus));
-            } else {
-                future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-            }
-        } catch (TException | IOException e) {
-            future.setException(e);
-        }
-        return future;
+  @Override
+  public SettableFuture<ConfigTaskResult> createSchemaTemplate(
+      CreateSchemaTemplateStatement createSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Construct request using statement
+    TCreateSchemaTemplateReq req =
+        CreateSchemaTemplateTask.constructTCreateSchemaTemplateReq(createSchemaTemplateStatement);
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      TSStatus tsStatus = configNodeClient.createSchemaTemplate(req);
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.error(
+            "Failed to execute create schema template {} in config node, status is {}.",
+            createSchemaTemplateStatement.getName(),
+            tsStatus);
+        future.setException(new StatementExecutionException(tsStatus));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
     }
+    return future;
+  }
 
-    @Override
-    public SettableFuture<ConfigTaskResult> showSchemaTemplate(
-        ShowSchemaTemplateStatement showSchemaTemplateStatement) {
-        SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-        TGetAllTemplatesResp tGetAllTemplatesResp = new TGetAllTemplatesResp();
-        try (ConfigNodeClient configNodeClient =
-            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-            // Send request to some API server
-            tGetAllTemplatesResp = configNodeClient.getAllTemplates();
-            // Get response or throw exception
-            if (tGetAllTemplatesResp.getStatus().getCode()!=TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                future.setException(new StatementExecutionException(tGetAllTemplatesResp.getStatus()));
-                return future;
-            } else {
-                future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-            }
-
-        } catch (TException | IOException e) {
-            future.setException(e);
-        }
-        // build TSBlock
-        ShowSchemaTemplateTask.buildTSBlock(tGetAllTemplatesResp, future);
+  @Override
+  public SettableFuture<ConfigTaskResult> showSchemaTemplate(
+      ShowSchemaTemplateStatement showSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TGetAllTemplatesResp tGetAllTemplatesResp = new TGetAllTemplatesResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      tGetAllTemplatesResp = configNodeClient.getAllTemplates();
+      // Get response or throw exception
+      if (tGetAllTemplatesResp.getStatus().getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new StatementExecutionException(tGetAllTemplatesResp.getStatus()));
         return future;
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+
+    } catch (TException | IOException e) {
+      future.setException(e);
     }
+    // build TSBlock
+    ShowSchemaTemplateTask.buildTSBlock(tGetAllTemplatesResp, future);
+    return future;
+  }
 
-    @Override
-    public SettableFuture<ConfigTaskResult> showNodesInSchemaTemplate(
-        ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
-        SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-        String req = showNodesInSchemaTemplateStatement.getTemplateName();
-        TGetTemplateResp tGetTemplateResp = new TGetTemplateResp();
-        try (ConfigNodeClient configNodeClient =
-            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-            // Send request to some API server
-            tGetTemplateResp = configNodeClient.getTemplate(req);
-            // Get response or throw exception
-            if (tGetTemplateResp.getStatus().getCode()!=TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-                future.setException(new StatementExecutionException(tGetTemplateResp.getStatus()));
-                return future;
-            } else {
-                future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-            }
-
-        } catch (TException | IOException e) {
-            future.setException(e);
-        }
-        // build TSBlock
-        ShowNodesInSchemaTemplateTask.buildTSBlock(tGetTemplateResp, future);
+  @Override
+  public SettableFuture<ConfigTaskResult> showNodesInSchemaTemplate(
+      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    String req = showNodesInSchemaTemplateStatement.getTemplateName();
+    TGetTemplateResp tGetTemplateResp = new TGetTemplateResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      tGetTemplateResp = configNodeClient.getTemplate(req);
+      // Get response or throw exception
+      if (tGetTemplateResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new StatementExecutionException(tGetTemplateResp.getStatus()));
         return future;
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+
+    } catch (TException | IOException e) {
+      future.setException(e);
     }
+    // build TSBlock
+    ShowNodesInSchemaTemplateTask.buildTSBlock(tGetTemplateResp, future);
+    return future;
+  }
 }

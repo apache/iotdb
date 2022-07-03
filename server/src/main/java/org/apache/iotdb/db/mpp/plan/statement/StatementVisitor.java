@@ -265,16 +265,18 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showDataNodesStatement, context);
   }
 
-    public R visitCreateSchemaTemplate(CreateSchemaTemplateStatement createTemplateStatement, C context) {
-        return visitStatement(createTemplateStatement, context);
-    }
+  public R visitCreateSchemaTemplate(
+      CreateSchemaTemplateStatement createTemplateStatement, C context) {
+    return visitStatement(createTemplateStatement, context);
+  }
 
-    public R visitShowNodesInSchemaTemplate(
-        ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement, C context) {
-        return visitStatement(showNodesInSchemaTemplateStatement, context);
-    }
+  public R visitShowNodesInSchemaTemplate(
+      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement, C context) {
+    return visitStatement(showNodesInSchemaTemplateStatement, context);
+  }
 
-    public R visitShowSchemaTemplate(ShowSchemaTemplateStatement showSchemaTemplateStatement, C context) {
-        return visitStatement(showSchemaTemplateStatement, context);
-    }
+  public R visitShowSchemaTemplate(
+      ShowSchemaTemplateStatement showSchemaTemplateStatement, C context) {
+    return visitStatement(showSchemaTemplateStatement, context);
+  }
 }

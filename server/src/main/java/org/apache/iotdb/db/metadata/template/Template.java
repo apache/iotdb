@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.metadata.template;
 
-import java.io.ByteArrayInputStream;
-import java.io.ObjectInputStream;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -45,9 +43,11 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -145,13 +145,15 @@ public class Template {
    *
    * @param statement CreateSchemaTemplateStatement
    */
-  public Template(CreateSchemaTemplateStatement statement) throws IllegalPathException{
-    this(new CreateTemplatePlan(statement.getName(),
-        statement.getSchemaNames(),
-        statement.getMeasurements(),
-        statement.getDataTypes(),
-        statement.getEncodings(),
-        statement.getCompressors()));
+  public Template(CreateSchemaTemplateStatement statement) throws IllegalPathException {
+    this(
+        new CreateTemplatePlan(
+            statement.getName(),
+            statement.getSchemaNames(),
+            statement.getMeasurements(),
+            statement.getDataTypes(),
+            statement.getEncodings(),
+            statement.getCompressors()));
   }
 
   public String getName() {
@@ -734,14 +736,15 @@ public class Template {
   public static ByteBuffer template2ByteBuffer(Template template) {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    ReadWriteIOUtils.writeObject(template,dataOutputStream);
+    ReadWriteIOUtils.writeObject(template, dataOutputStream);
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
-  public static Template byteBuffer2Template(ByteBuffer byteBuffer) throws IOException,ClassNotFoundException{
+  public static Template byteBuffer2Template(ByteBuffer byteBuffer)
+      throws IOException, ClassNotFoundException {
     ByteArrayInputStream byteArrayOutputStream = new ByteArrayInputStream(byteBuffer.array());
     ObjectInputStream ois = new ObjectInputStream(byteArrayOutputStream);
-    Template template = (Template)ois.readObject();
+    Template template = (Template) ois.readObject();
     return template;
   }
 }

@@ -270,7 +270,7 @@ public interface IManager {
 
   TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req);
 
-  TGetAllTemplatesResp getAllTemplates() ;
+  TGetAllTemplatesResp getAllTemplates();
 
   TGetTemplateResp getTemplate(String req);
 }
