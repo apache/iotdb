@@ -29,8 +29,11 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -42,10 +45,13 @@ import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowDataNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowRegionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
@@ -56,6 +62,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -364,4 +373,81 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     ShowDataNodesTask.buildTSBlock(showDataNodesResp, future);
     return future;
   }
+
+    @Override
+    public SettableFuture<ConfigTaskResult> createSchemaTemplate(
+        CreateSchemaTemplateStatement createSchemaTemplateStatement) {
+        SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+        // Construct request using statement
+        TCreateSchemaTemplateReq req = CreateSchemaTemplateTask.constructTCreateSchemaTemplateReq(createSchemaTemplateStatement);
+        try (ConfigNodeClient configNodeClient =
+            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+            // Send request to some API server
+            TSStatus tsStatus = configNodeClient.createSchemaTemplate(req);
+            // Get response or throw exception
+            if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+                LOGGER.error(
+                    "Failed to execute create schema template {} in config node, status is {}.",
+                    createSchemaTemplateStatement.getName(),
+                    tsStatus);
+                future.setException(new StatementExecutionException(tsStatus));
+            } else {
+                future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+            }
+        } catch (TException | IOException e) {
+            future.setException(e);
+        }
+        return future;
+    }
+
+    @Override
+    public SettableFuture<ConfigTaskResult> showSchemaTemplate(
+        ShowSchemaTemplateStatement showSchemaTemplateStatement) {
+        SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+        TGetAllTemplatesResp tGetAllTemplatesResp = new TGetAllTemplatesResp();
+        try (ConfigNodeClient configNodeClient =
+            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+            // Send request to some API server
+            tGetAllTemplatesResp = configNodeClient.getAllTemplates();
+            // Get response or throw exception
+            if (tGetAllTemplatesResp.getStatus().getCode()!=TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                future.setException(new StatementExecutionException(tGetAllTemplatesResp.getStatus()));
+                return future;
+            } else {
+                future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+            }
+
+        } catch (TException | IOException e) {
+            future.setException(e);
+        }
+        // build TSBlock
+        ShowSchemaTemplateTask.buildTSBlock(tGetAllTemplatesResp, future);
+        return future;
+    }
+
+    @Override
+    public SettableFuture<ConfigTaskResult> showNodesInSchemaTemplate(
+        ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
+        SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+        String req = showNodesInSchemaTemplateStatement.getTemplateName();
+        TGetTemplateResp tGetTemplateResp = new TGetTemplateResp();
+        try (ConfigNodeClient configNodeClient =
+            CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+            // Send request to some API server
+            tGetTemplateResp = configNodeClient.getTemplate(req);
+            // Get response or throw exception
+            if (tGetTemplateResp.getStatus().getCode()!=TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+                future.setException(new StatementExecutionException(tGetTemplateResp.getStatus()));
+                return future;
+            } else {
+                future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+            }
+
+        } catch (TException | IOException e) {
+            future.setException(e);
+        }
+        // build TSBlock
+        ShowNodesInSchemaTemplateTask.buildTSBlock(tGetTemplateResp, future);
+        return future;
+    }
 }
