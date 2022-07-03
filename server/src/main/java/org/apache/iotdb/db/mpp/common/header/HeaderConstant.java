@@ -80,6 +80,9 @@ public class HeaderConstant {
   public static final String COLUMN_DATA_REGION_NUM = "DataRegionNum";
   public static final String COLUMN_SCHEMA_REGION_NUM = "SchemaRegionNum";
 
+  //column names for show schema template statement
+  public static final String COLUMN_TEMPLATE_NAME = "template name";
+
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
   public static final DatasetHeader showDevicesHeader;
@@ -110,6 +113,12 @@ public class HeaderConstant {
 
   // dataset header for show datanodes
   public static final DatasetHeader showDataNodesHeader;
+
+    // dataset header for show nodes in schema template
+    public static final DatasetHeader showNodesInSchemaTemplate;
+
+    // dataset header for show schma template
+    public static final DatasetHeader showSchemaTemplate;
 
   static {
     countStorageGroupHeader =
@@ -246,4 +255,21 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32)),
             true);
   }
+
+    static {
+        showSchemaTemplate =
+            new DatasetHeader(
+                Arrays.asList(
+                    new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT)),
+                true);
+        showNodesInSchemaTemplate =
+            new DatasetHeader(
+                Arrays.asList(
+                    new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT),
+                    new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT),
+                    new ColumnHeader(COLUMN_TIMESERIES_ENCODING, TSDataType.TEXT),
+                    new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT)),
+                true);
+    }
+
 }

@@ -250,6 +250,23 @@ struct TRegionRouteMapResp {
   3: optional map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
 }
 
+
+// Template
+struct TCreateSchemaTemplateReq {
+  1: required string name
+  2: required binary serializedTemplate
+}
+
+struct TGetAllTemplatesResp {
+  1: required common.TSStatus status
+  2: optional list<binary> templateList
+}
+
+struct TGetTemplateResp {
+  1: required common.TSStatus status
+  2: optional binary template
+}
+
 service IConfigNodeRPCService {
 
   /* DataNode */
@@ -346,6 +363,14 @@ service IConfigNodeRPCService {
   /* Show DataNodes */
 
   TShowDataNodesResp showDataNodes()
+
+   /* Template */
+
+    common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
+
+    TGetAllTemplatesResp getAllTemplates()
+
+    TGetTemplateResp getTemplate(string req)
 
 }
 
