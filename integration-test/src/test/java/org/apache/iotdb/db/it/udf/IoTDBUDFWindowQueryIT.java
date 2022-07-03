@@ -303,23 +303,6 @@ public class IoTDBUDFWindowQueryIT {
         (int) (1.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
-  @Test
-  public void testSlidingTimeWindow9() {
-    testSlidingTimeWindow(
-        (int) (0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), ITERATION_TIMES / 2, 0);
-  }
-
-  @Test
-  public void testSlidingTimeWindow10() {
-    testSlidingTimeWindow(
-        (int) (-0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
-  }
-
-  @Test
-  public void testSlidingTimeWindow11() {
-    testSlidingTimeWindow((int) (0.01 * ITERATION_TIMES), 0, 0, ITERATION_TIMES / 2);
-  }
-
   private void testSlidingTimeWindow(
       int timeInterval, int slidingStep, int displayWindowBegin, int displayWindowEnd) {
     String sql =
