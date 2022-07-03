@@ -82,7 +82,7 @@ public class TSFileConfig implements Serializable {
   /** Max length limitation of input string. */
   private int maxStringLength = 128;
   /** Floating-point precision. */
-  private int floatPrecision = 2;
+  private int floatPrecision = 5;
   /**
    * Encoder of time column, TsFile supports TS_2DIFF, PLAIN and RLE(run-length encoding) Default
    * value is TS_2DIFF.
@@ -203,6 +203,7 @@ public class TSFileConfig implements Serializable {
   }
 
   public int getFloatPrecision() {
+    System.out.println(floatPrecision);
     return floatPrecision;
   }
 
