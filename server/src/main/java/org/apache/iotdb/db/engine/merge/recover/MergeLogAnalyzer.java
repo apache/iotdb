@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.merge.recover;
 
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.compaction.InvalidCompactionLogException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 import org.slf4j.Logger;
@@ -95,7 +96,14 @@ public class MergeLogAnalyzer {
         break;
       }
       Iterator<TsFileResource> iterator = resource.getSeqFiles().iterator();
-      MergeFileInfo toMatchedInfo = MergeFileInfo.getFileInfoFromString(currLine);
+      MergeFileInfo toMatchedInfo = null;
+      try {
+        toMatchedInfo = MergeFileInfo.getFileInfoFromString(currLine);
+      } catch (InvalidCompactionLogException e) {
+        // this line is invalid, skip it
+        logger.warn("Invalid file info line {}", currLine);
+        continue;
+      }
       boolean currentFileFound = false;
       while (iterator.hasNext()) {
         TsFileResource seqFile = iterator.next();
@@ -114,7 +122,7 @@ public class MergeLogAnalyzer {
             new TsFileResource(
                 new File(
                     resource.getSeqFiles().get(0).getTsFile().getParent(),
-                    MergeFileInfo.getFileInfoFromString(currLine).filename)));
+                    toMatchedInfo.filename)));
         allSourceFileExists = false;
       }
     }
@@ -140,7 +148,14 @@ public class MergeLogAnalyzer {
     boolean allSourceFileExists = true;
     while ((currLine = bufferedReader.readLine()) != null) {
       Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
-      MergeFileInfo toMatchInfo = MergeFileInfo.getFileInfoFromString(currLine);
+      MergeFileInfo toMatchInfo = null;
+      try {
+        toMatchInfo = MergeFileInfo.getFileInfoFromString(currLine);
+      } catch (InvalidCompactionLogException e) {
+        // the line is invalid, terminate the loop
+        logger.warn("Invalid file info line {}", currLine);
+        break;
+      }
       boolean currentFileFound = false;
       while (iterator.hasNext()) {
         TsFileResource unseqFile = iterator.next();
@@ -164,7 +179,7 @@ public class MergeLogAnalyzer {
                         .getTsFile()
                         .getParent()
                         .replace("sequence", "unsequence"),
-                    MergeFileInfo.getFileInfoFromString(currLine).filename)));
+                    toMatchInfo.filename)));
         allSourceFileExists = false;
       }
     }
