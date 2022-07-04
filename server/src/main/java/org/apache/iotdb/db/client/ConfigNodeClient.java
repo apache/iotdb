@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
@@ -59,6 +60,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
@@ -608,34 +610,12 @@ public class ConfigNodeClient
 
   @Override
   public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TConfigNodeRegisterResp resp = client.registerConfigNode(req);
-        if (!updateConfigNodeLeader(resp.status)) {
-          return resp;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
   }
 
   @Override
   public TSStatus addConsensusGroup(TConfigNodeRegisterResp registerResp) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.addConsensusGroup(registerResp);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    throw new TException("DataNode to ConfigNode client doesn't support addConsensusGroup.");
   }
 
   @Override
@@ -645,34 +625,12 @@ public class ConfigNodeClient
 
   @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.removeConfigNode(configNodeLocation);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    throw new TException("DataNode to ConfigNode client doesn't support removeConfigNode.");
   }
 
   @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.stopConfigNode(configNodeLocation);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
+    throw new TException("DataNode to ConfigNode client doesn't support stopConfigNode.");
   }
 
   @Override
@@ -724,16 +682,41 @@ public class ConfigNodeClient
   }
 
   @Override
-  public long getConfigNodeHeartBeat(long timestamp) throws TException {
+  public TShowDataNodesResp showDataNodes() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        return client.getConfigNodeHeartBeat(timestamp);
+        TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+        showDataNodesResp.setStatus(showDataNodesResp.getStatus());
+        if (!updateConfigNodeLeader(showDataNodesResp.getStatus())) {
+          return showDataNodesResp;
+        }
       } catch (TException e) {
         configLeader = null;
       }
       reconnect();
     }
     throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TRegionRouteMapResp regionRouteMapResp = client.getLatestRegionRouteMap();
+        if (!updateConfigNodeLeader(regionRouteMapResp.getStatus())) {
+          return regionRouteMapResp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public long getConfigNodeHeartBeat(long timestamp) throws TException {
+    throw new TException("DataNode to ConfigNode client doesn't support getConfigNodeHeartBeat.");
   }
 
   @Override

@@ -103,13 +103,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class DataNodeRPCServiceImpl implements IDataNodeRPCService.Iface {
+public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRPCServiceImpl.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(DataNodeInternalRPCServiceImpl.class);
   private final SchemaEngine schemaEngine = SchemaEngine.getInstance();
   private final StorageEngineV2 storageEngine = StorageEngineV2.getInstance();
 
-  public DataNodeRPCServiceImpl() {
+  public DataNodeInternalRPCServiceImpl() {
     super();
   }
 

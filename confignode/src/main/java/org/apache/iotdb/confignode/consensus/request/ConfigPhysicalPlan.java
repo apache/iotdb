@@ -28,11 +28,12 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsPlan;
@@ -101,6 +102,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RegisterDataNode:
           req = new RegisterDataNodePlan();
           break;
+        case ActivateDataNode:
+          req = new ActivateDataNodePlan();
+          break;
         case GetDataNodeInfo:
           req = new GetDataNodeInfoPlan();
           break;
@@ -129,7 +133,7 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           req = new GetStorageGroupPlan();
           break;
         case CreateRegionGroups:
-          req = new CreateRegionsPlan();
+          req = new CreateRegionGroupsPlan();
           break;
         case DeleteRegions:
           req = new DeleteRegionsPlan();

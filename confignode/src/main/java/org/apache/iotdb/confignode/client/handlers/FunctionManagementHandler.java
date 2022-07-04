@@ -44,15 +44,15 @@ public class FunctionManagementHandler implements AsyncMethodCallback<TSStatus> 
 
   @Override
   public void onComplete(TSStatus response) {
-    countDownLatch.countDown();
     dataNodeResponseStatus.add(response);
+    countDownLatch.countDown();
   }
 
   @Override
   public void onError(Exception exception) {
-    countDownLatch.countDown();
     dataNodeResponseStatus.add(
         new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
             .setMessage("DataNode[" + ip + ":" + port + "] " + exception.getMessage()));
+    countDownLatch.countDown();
   }
 }
