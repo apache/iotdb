@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
@@ -42,6 +43,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -110,6 +112,14 @@ public interface IManager {
    * @return DataNodeConfigurationDataSet
    */
   DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan);
+
+  /**
+   * activate DataNode
+   *
+   * @param activateDataNodePlan ActivateDataNodePlan
+   * @return TSStatus
+   */
+  TSStatus activateDataNode(ActivateDataNodePlan activateDataNodePlan);
 
   /**
    * Get DataNode info
@@ -240,8 +250,18 @@ public interface IManager {
 
   TSStatus flush(TFlushReq req);
 
+  /**
+   * Get the latest RegionRouteMap
+   *
+   * @return TRegionRouteMapResp
+   */
+  TRegionRouteMapResp getLatestRegionRouteMap();
+
   void addMetrics();
 
   /** Show (data/schema) regions */
   DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
+
+  /** Show datanodes */
+  DataSet showDataNodes();
 }

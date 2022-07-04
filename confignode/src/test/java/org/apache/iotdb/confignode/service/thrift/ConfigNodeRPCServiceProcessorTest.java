@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -142,9 +143,10 @@ public class ConfigNodeRPCServiceProcessorTest {
         globalConfig.getSeriesPartitionExecutorClass());
   }
 
-  private void registerDataNodes() throws TException {
+  private void registerAndActivateDataNodes() throws TException {
     for (int i = 0; i < 3; i++) {
       TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+      dataNodeLocation.setDataNodeId(-1);
       dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667 + i));
       dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003 + i));
       dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777 + i));
@@ -162,32 +164,63 @@ public class ConfigNodeRPCServiceProcessorTest {
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
       Assert.assertEquals(i, resp.getDataNodeId());
       checkGlobalConfig(resp.getGlobalConfig());
+      // activate dataNode
+      dataNodeLocation.setDataNodeId(resp.getDataNodeId());
+      TDataNodeActiveReq dataNodeActiveReq = new TDataNodeActiveReq(dataNodeInfo);
+      TSStatus activeDataNodeRsp = processor.activeDataNode(dataNodeActiveReq);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), activeDataNodeRsp.getCode());
     }
   }
 
   @Test
   public void testRegisterAndQueryDataNode() throws TException {
-    registerDataNodes();
-
-    // test success re-register
+    registerAndActivateDataNodes();
     TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
-    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6668));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8778));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50011));
-
     TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
     dataNodeInfo.setLocation(dataNodeLocation);
     dataNodeInfo.setCpuCoreNum(8);
     dataNodeInfo.setMaxMemory(1024 * 1024);
 
     TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeInfo);
-    TDataNodeRegisterResp resp = processor.registerDataNode(req);
+    TDataNodeRegisterResp resp;
+
+    // test only register not activate
+    dataNodeLocation.setDataNodeId(-1);
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6670));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9007));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8781));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40014));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50014));
+    resp = processor.registerDataNode(req);
+    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
+    Assert.assertEquals(3, resp.getDataNodeId());
+
+    // test success re-register
+    dataNodeLocation.setDataNodeId(1);
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6668));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8778));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50011));
+
+    resp = processor.registerDataNode(req);
     Assert.assertEquals(
         TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode(), resp.getStatus().getCode());
     Assert.assertEquals(1, resp.getDataNodeId());
     checkGlobalConfig(resp.getGlobalConfig());
+
+    // test success re-activated
+    dataNodeLocation.setDataNodeId(1);
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6668));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9004));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8778));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40011));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50011));
+
+    TDataNodeActiveReq activateReq = new TDataNodeActiveReq(dataNodeInfo);
+    TSStatus activateRlt = processor.activeDataNode(activateReq);
+    Assert.assertEquals(
+        TSStatusCode.DATANODE_ALREADY_ACTIVATED.getStatusCode(), activateRlt.getCode());
 
     // test query DataNodeInfo
     TDataNodeInfoResp infoResp = processor.getDataNodeInfo(-1);
@@ -207,6 +240,12 @@ public class ConfigNodeRPCServiceProcessorTest {
       Assert.assertEquals(dataNodeLocation, infoList.get(i).getValue().getLocation());
     }
 
+    infoResp = processor.getDataNodeInfo(3);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), infoResp.getStatus().getCode());
+    infoMap = infoResp.getDataNodeInfoMap();
+    Assert.assertEquals(0, infoMap.size());
+
     infoResp = processor.getDataNodeInfo(0);
     Assert.assertEquals(
         TSStatusCode.SUCCESS_STATUS.getStatusCode(), infoResp.getStatus().getCode());
@@ -224,7 +263,7 @@ public class ConfigNodeRPCServiceProcessorTest {
 
   @Test
   public void getAllClusterNodeInfosTest() throws TException {
-    registerDataNodes();
+    registerAndActivateDataNodes();
 
     TClusterNodeInfos clusterNodes = processor.getAllClusterNodeInfos();
 
@@ -249,7 +288,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     final String sg1 = "root.sg1";
 
     // register DataNodes
-    registerDataNodes();
+    registerAndActivateDataNodes();
 
     // set StorageGroup0 by default values
     TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
@@ -383,7 +422,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertNull(schemaPartitionResp.getSchemaRegionMap());
 
     // register DataNodes
-    registerDataNodes();
+    registerAndActivateDataNodes();
 
     // Test getSchemaPartition, the result should be empty
     buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
@@ -582,7 +621,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertNull(dataPartitionResp.getDataPartitionMap());
 
     // register DataNodes
-    registerDataNodes();
+    registerAndActivateDataNodes();
 
     // Test getDataPartition, the result should be empty
     dataPartitionReq = new TDataPartitionReq(partitionSlotsMap0);
@@ -959,7 +998,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
     // register DataNodes
-    registerDataNodes();
+    registerAndActivateDataNodes();
     ConfigNodeProcedureEnv.setSkipForTest(true);
     TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
     // set StorageGroup0 by default values
@@ -985,7 +1024,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
     // register DataNodes
-    registerDataNodes();
+    registerAndActivateDataNodes();
     ConfigNodeProcedureEnv.setSkipForTest(true);
     ConfigNodeProcedureEnv.setInvalidCacheResult(false);
     TSetStorageGroupReq setReq0 = new TSetStorageGroupReq(new TStorageGroupSchema(sg0));
@@ -1070,7 +1109,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     TSchemaNodeManagementResp nodeManagementResp;
 
     // register DataNodes
-    registerDataNodes();
+    registerAndActivateDataNodes();
 
     // set StorageGroups
     for (int i = 0; i < storageGroupNum; i++) {

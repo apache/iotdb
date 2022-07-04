@@ -21,13 +21,16 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
@@ -98,29 +101,42 @@ public class NodeManager {
    */
   public DataSet registerDataNode(RegisterDataNodePlan req) {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
-
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    status.setMessage("registerDataNode success.");
     if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
-      // Reset client
-      AsyncDataNodeClientPool.getInstance()
-          .resetClient(req.getInfo().getLocation().getInternalEndPoint());
-
-      TSStatus status = new TSStatus(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
+      status.setCode(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
-      dataSet.setStatus(status);
-    } else {
-      // Persist DataNodeInfo
+    } else if (req.getInfo().getLocation().getDataNodeId() < 0) {
+      // only when new dataNode is registered, generate new dataNodeId
       req.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextNodeId());
-      ConsensusWriteResponse resp = getConsensusManager().write(req);
-      dataSet.setStatus(resp.getStatus());
-
-      // Adjust the maximum RegionGroup number of each StorageGroup
-      getClusterSchemaManager().adjustMaxRegionGroupCount();
+      status = getConsensusManager().write(req).getStatus();
     }
-
+    dataSet.setStatus(status);
     dataSet.setDataNodeId(req.getInfo().getLocation().getDataNodeId());
     dataSet.setConfigNodeList(nodeInfo.getRegisteredConfigNodes());
     setGlobalConfig(dataSet);
     return dataSet;
+  }
+
+  /**
+   * Active DataNode
+   *
+   * @param req ActiveDataNodeReq
+   * @return TSStatus The TSStatus will be set to SUCCESS_STATUS when active success, and
+   *     DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
+   */
+  public TSStatus activateDataNode(ActivateDataNodePlan req) {
+    TSStatus status = new TSStatus();
+    if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
+      status.setCode(TSStatusCode.DATANODE_ALREADY_ACTIVATED.getStatusCode());
+      status.setMessage("DataNode already activated.");
+    } else {
+      ConsensusWriteResponse resp = getConsensusManager().write(req);
+      status = resp.getStatus();
+      // Adjust the maximum RegionGroup number of each StorageGroup
+      getClusterSchemaManager().adjustMaxRegionGroupCount();
+    }
+    return status;
   }
 
   /**
@@ -133,7 +149,6 @@ public class NodeManager {
   public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoPlan req) {
     return (DataNodeInfosResp) getConsensusManager().read(req).getDataset();
   }
-
   /**
    * Only leader use this interface
    *
@@ -161,6 +176,27 @@ public class NodeManager {
    */
   public List<TDataNodeInfo> getOnlineDataNodes(int dataNodeId) {
     return nodeInfo.getOnlineDataNodes(dataNodeId);
+  }
+
+  public List<TDataNodesInfo> getOnlineDataNodesInfoList() {
+    List<TDataNodesInfo> dataNodesLocations = new ArrayList<>();
+    List<TDataNodeInfo> onlineDataNodes = this.getOnlineDataNodes(-1);
+    if (onlineDataNodes != null) {
+      onlineDataNodes.forEach(
+          (dataNodeInfo) -> {
+            TDataNodesInfo tDataNodesLocation = new TDataNodesInfo();
+            tDataNodesLocation.setDataNodeId(dataNodeInfo.getLocation().getDataNodeId());
+            tDataNodesLocation.setStatus(NodeStatus.Running.getStatus());
+            tDataNodesLocation.setRpcAddresss(
+                dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
+            tDataNodesLocation.setRpcPort(
+                dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
+            tDataNodesLocation.setDataRegionNum(0);
+            tDataNodesLocation.setSchemaRegionNum(0);
+            dataNodesLocations.add(tDataNodesLocation);
+          });
+    }
+    return dataNodesLocations;
   }
 
   /**

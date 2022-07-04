@@ -54,7 +54,7 @@ public class SyncStatusTest {
   /** Confirm success from front to back */
   @Test
   public void sequenceTest() throws InterruptedException {
-    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);
+    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
     SyncStatus status = new SyncStatus(controller, config);
@@ -79,7 +79,7 @@ public class SyncStatusTest {
   /** Confirm success from back to front */
   @Test
   public void reverseTest() throws InterruptedException {
-    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);
+    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -111,7 +111,7 @@ public class SyncStatusTest {
   /** Confirm success first from front to back, then back to front */
   @Test
   public void mixedTest() throws InterruptedException {
-    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);
+    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix);
     Assert.assertEquals(0, controller.getCurrentIndex());
     Assert.assertEquals(0, controller.getLastFlushedIndex());
 
@@ -153,7 +153,7 @@ public class SyncStatusTest {
   /** Test Blocking while addNextBatch */
   @Test
   public void waitTest() throws InterruptedException, ExecutionException {
-    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix, true);
+    IndexController controller = new IndexController(storageDir.getAbsolutePath(), prefix);
     Assert.assertEquals(0, controller.getCurrentIndex());
 
     SyncStatus status = new SyncStatus(controller, config);
