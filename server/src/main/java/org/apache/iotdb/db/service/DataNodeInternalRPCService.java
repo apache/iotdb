@@ -32,7 +32,6 @@ import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.service.thrift.handler.InternalServiceThriftHandler;
 import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalRPCServiceImpl;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeRPCServiceImpl;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.IDataNodeRPCService.Processor;
 
