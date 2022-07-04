@@ -173,6 +173,7 @@ alterClause
     | ADD TAGS attributePair (COMMA attributePair)*
     | ADD ATTRIBUTES attributePair (COMMA attributePair)*
     | UPSERT aliasClause? tagClause? attributeClause?
+    | SETTYPE attributePair (COMMA attributePair)*
     ;
 
 aliasClause

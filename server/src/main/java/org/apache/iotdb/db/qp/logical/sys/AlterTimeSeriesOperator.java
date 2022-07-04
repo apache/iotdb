@@ -25,6 +25,8 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import java.util.Map;
 
@@ -45,6 +47,8 @@ public class AlterTimeSeriesOperator extends Operator {
   private String alias;
   private Map<String, String> tagsMap;
   private Map<String, String> attributesMap;
+  private TSEncoding encoding;
+  private CompressionType compressor;
 
   public AlterTimeSeriesOperator(int tokenIntType) {
     super(tokenIntType);
@@ -99,10 +103,27 @@ public class AlterTimeSeriesOperator extends Operator {
     this.alias = alias;
   }
 
+  public TSEncoding getEncoding() {
+    return encoding;
+  }
+
+  public void setEncoding(TSEncoding encoding) {
+    this.encoding = encoding;
+  }
+
+  public CompressionType getCompressor() {
+    return compressor;
+  }
+
+  public void setCompressor(CompressionType compressor) {
+    this.compressor = compressor;
+  }
+
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new AlterTimeSeriesPlan(path, alterType, alterMap, alias, tagsMap, attributesMap);
+    return new AlterTimeSeriesPlan(
+        path, alterType, alterMap, alias, tagsMap, attributesMap, encoding, compressor);
   }
 
   public enum AlterType {
@@ -111,6 +132,7 @@ public class AlterTimeSeriesOperator extends Operator {
     DROP,
     ADD_TAGS,
     ADD_ATTRIBUTES,
-    UPSERT
+    UPSERT,
+    SET_TYPE
   }
 }

@@ -578,6 +578,10 @@ UPSERT
     : U P S E R T
     ;
 
+SETTYPE
+    : S E T T Y P E
+    ;
+
 USER
     : U S E R
     ;

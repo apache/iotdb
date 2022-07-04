@@ -287,6 +287,8 @@ public class PhysicalPlanSerializeTest {
             Collections.singletonMap("root.sg.d1.s1", "root.sg.device1.temperature"),
             null,
             null,
+            null,
+            null,
             null);
 
     ByteBuffer byteBuffer = serializePlan(alterTimeSeriesPlan);

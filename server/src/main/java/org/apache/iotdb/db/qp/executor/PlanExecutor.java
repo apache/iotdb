@@ -2084,6 +2084,22 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
+  protected void alterTimeSeriesType(AlterTimeSeriesPlan alterTimeSeriesPlan)
+      throws QueryProcessException {
+
+    AUDIT_LOGGER.info(
+        "alter timeseries {} {} {}",
+        alterTimeSeriesPlan.getPaths(),
+        alterTimeSeriesPlan.getEncoding(),
+        alterTimeSeriesPlan.getCompressor());
+    // TODO check (clustr,encoding,compression)
+
+    // schema alter
+
+    // storage alter
+
+  }
+
   protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)
       throws QueryProcessException {
     AUDIT_LOGGER.info("delete timeseries {}", deleteTimeSeriesPlan.getPaths());
@@ -2150,6 +2166,9 @@ public class PlanExecutor implements IPlanExecutor {
               alterTimeSeriesPlan.getTagsMap(),
               alterTimeSeriesPlan.getAttributesMap(),
               path);
+          break;
+        case SET_TYPE:
+          alterTimeSeriesType(alterTimeSeriesPlan);
           break;
       }
     } catch (MetadataException e) {

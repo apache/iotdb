@@ -807,6 +807,51 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return alterTimeSeriesOperator;
   }
 
+  /** check and set datatype, encoding, compressor */
+  private void checkPropsInAlterTimeSeries(AlterTimeSeriesOperator altrTimeSeriesOperator) {
+    Map<String, String> props = altrTimeSeriesOperator.getAlterMap();
+
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+      try {
+        altrTimeSeriesOperator.setEncoding(TSEncoding.valueOf(encodingString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported encoding: %s", encodingString));
+      }
+    }
+
+    if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      String compressionString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
+      try {
+        altrTimeSeriesOperator.setCompressor(CompressionType.valueOf(compressionString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(
+            String.format("Unsupported compression: %s", compressionString));
+      }
+    } else if (props != null
+        && props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      String compressorString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
+      try {
+        altrTimeSeriesOperator.setCompressor(CompressionType.valueOf(compressorString));
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("Unsupported compression: %s", compressorString));
+      }
+    }
+
+    if (altrTimeSeriesOperator.getCompressor() == null
+        && altrTimeSeriesOperator.getEncoding() == null) {
+      throw new SemanticException(String.format("encoding & compressor is null"));
+    }
+  }
+
   private void parseAlterClause(
       IoTDBSqlParser.AlterClauseContext ctx, AlterTimeSeriesOperator alterTimeSeriesOperator) {
     Map<String, String> alterMap = new HashMap<>();
@@ -832,6 +877,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       // add attribute
       alterTimeSeriesOperator.setAlterType(AlterType.ADD_ATTRIBUTES);
       setMap(ctx, alterMap);
+    } else if (ctx.SETTYPE() != null) {
+      // alter encoding & compression
+      alterTimeSeriesOperator.setAlterType(AlterType.SET_TYPE);
+      setMap(ctx, alterMap);
     } else {
       // upsert
       alterTimeSeriesOperator.setAlterType(AlterType.UPSERT);
@@ -846,6 +895,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
     }
     alterTimeSeriesOperator.setAlterMap(alterMap);
+
+    // check type
+    if (ctx.SETTYPE() != null) {
+      checkPropsInAlterTimeSeries(alterTimeSeriesOperator);
+    }
   }
 
   public void parseAliasClause(
