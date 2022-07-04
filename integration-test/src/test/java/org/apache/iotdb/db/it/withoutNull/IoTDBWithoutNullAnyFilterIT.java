@@ -16,18 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.withoutNullFilter;
+package org.apache.iotdb.db.it.withoutNull;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -39,7 +36,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@Category({ClusterIT.class}) // TODO After old StandAlone remove
 public class IoTDBWithoutNullAnyFilterIT {
 
   private static String[] dataSet1 =
@@ -103,7 +100,6 @@ public class IoTDBWithoutNullAnyFilterIT {
       };
 
   private static final String TIMESTAMP_STR = "Time";
-  private long prevPartitionInterval;
 
   private void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -120,8 +116,6 @@ public class IoTDBWithoutNullAnyFilterIT {
 
   @Before
   public void setUp() throws Exception {
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeTest();
     prepareData();
   }
@@ -129,7 +123,6 @@ public class IoTDBWithoutNullAnyFilterIT {
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
-    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   @Test
@@ -161,11 +154,11 @@ public class IoTDBWithoutNullAnyFilterIT {
         new String[] {"1,true,1,1.0,1", "6,true,6,6.0,6", "9,false,9,9.0,9", "10,true,10,10.0,10"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select * from root.test.sg1 without null any (s2, s3)");
-      Assert.assertTrue(hasResultSet);
+
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select * from root.test.sg1 where s2 is not null && s3 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -184,10 +177,8 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet = statement.execute("select * from root.test.sg1 without null any (s1)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.test.sg1 where s1 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -206,10 +197,8 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet = statement.execute("select * from root.test.sg1 without null any");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.test.sg1 where * is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -228,11 +217,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray3.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute("select * from root.test.sg1 without null any(s1, s2, s3, s4)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select * from root.test.sg1 where s1 is not null && s2 is not null && s3 is not null && s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -265,12 +252,11 @@ public class IoTDBWithoutNullAnyFilterIT {
     String[] retArray4 = new String[] {"1,true,1,1.0,1", "6,true,6,6.0,6", "10,true,10,10.0,10"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select * from root.test.sg1 where s1 = false without null any (s2, s3)");
-      Assert.assertTrue(hasResultSet);
+
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select * from root.test.sg1 where s1 = false && s2 is not null && s3 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -289,11 +275,8 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute("select * from root.test.sg1 where s2 = 1 without null any (s1)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.test.sg1 where s2 = 1 && s1 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -312,17 +295,13 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute("select * from root.test.sg1 where s2 = 2 without null any (s1)");
+      Assert.assertFalse(
+          statement
+              .executeQuery("select * from root.test.sg1 where s2 = 2 && s1 is not null")
+              .next());
 
-      Assert.assertTrue(hasResultSet);
-      Assert.assertFalse(statement.getResultSet().next());
-
-      hasResultSet =
-          statement.execute("select * from root.test.sg1 where s1 = true without null any");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select * from root.test.sg1 where s1 = true && * is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -341,12 +320,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray3.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select * from root.test.sg1 where s1 = true without null any(s1,s2,s3,s4)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select * from root.test.sg1 where s1 = true && s1 is not null && s2 is not null && s3 is not null && s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -411,12 +387,11 @@ public class IoTDBWithoutNullAnyFilterIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null any (s2+s4)");
-      Assert.assertTrue(hasResultSet);
+
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 where (s2+s4) is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -445,12 +420,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null any (s2+s4, s2)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 where s2+s4 is not null && s2 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -479,13 +451,10 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without "
-                  + "null any(s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 "
+                  + "where s2 is not null && s4 is not null && s2 / s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -514,13 +483,10 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray3.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without "
-                  + "null any");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 "
+                  + "where s2 is not null && s4 is not null && s2 / s4 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -543,178 +509,6 @@ public class IoTDBWithoutNullAnyFilterIT {
                   + resultSet.getString("root.test.sg1.s2 / root.test.sg1.s4")
                   + ","
                   + resultSet.getString("root.test.sg1.s2 % root.test.sg1.s4");
-          Assert.assertEquals(retArray4[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(retArray4.length, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void withAliasQueryTest() {
-    System.out.println("withAliasQueryTest");
-    String[] retArray1 =
-        new String[] {
-          "1,1,-1,1,1,2.0,0.0,1.0,1.0,0.0",
-          "2,2,-2,2,2,4.0,0.0,4.0,1.0,0.0",
-          "5,5,-5,5,5,10.0,0.0,25.0,1.0,0.0",
-          "6,6,-6,6,6,12.0,0.0,36.0,1.0,0.0",
-          "9,9,-9,9,9,18.0,0.0,81.0,1.0,0.0",
-          "10,10,-10,10,10,20.0,0.0,100.0,1.0,0.0"
-        };
-    String[] retArray2 =
-        new String[] {
-          "1,1,-1,1,1,2.0,0.0,1.0,1.0,0.0",
-          "2,2,-2,2,2,4.0,0.0,4.0,1.0,0.0",
-          "5,5,-5,5,5,10.0,0.0,25.0,1.0,0.0",
-          "6,6,-6,6,6,12.0,0.0,36.0,1.0,0.0",
-          "9,9,-9,9,9,18.0,0.0,81.0,1.0,0.0",
-          "10,10,-10,10,10,20.0,0.0,100.0,1.0,0.0"
-        };
-    String[] retArray3 =
-        new String[] {
-          "1,true,1.38,-0.33",
-          "2,null,0.49,0.32",
-          "5,null,-0.68,-0.25",
-          "6,true,0.68,0.68",
-          "9,false,-0.50,-0.38",
-          "10,true,-1.38,-0.08"
-        };
-    String[] retArray4 =
-        new String[] {
-          "1,true,-0.33",
-          "2,null,0.32",
-          "5,null,-0.25",
-          "6,true,0.68",
-          "9,false,-0.38",
-          "10,true,-0.08"
-        };
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s2, - s2, s4, + s4, s2 + s4 as t, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null any (t)");
-      Assert.assertTrue(hasResultSet);
-      int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString("root.test.sg1.s2")
-                  + ","
-                  + resultSet.getString("-root.test.sg1.s2")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s4")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s4")
-                  + ","
-                  + resultSet.getString("t")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s2 - root.test.sg1.s4")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s2 * root.test.sg1.s4")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s2 / root.test.sg1.s4")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s2 % root.test.sg1.s4");
-          Assert.assertEquals(retArray1[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(retArray1.length, cnt);
-      }
-
-      hasResultSet =
-          statement.execute(
-              "select s2 as t1, - s2, s4, + s4, s2 + s4 as t2, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null any (t2, t1)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString("t1")
-                  + ","
-                  + resultSet.getString("-root.test.sg1.s2")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s4")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s4")
-                  + ","
-                  + resultSet.getString("t2")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s2 - root.test.sg1.s4")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s2 * root.test.sg1.s4")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s2 / root.test.sg1.s4")
-                  + ","
-                  + resultSet.getString("root.test.sg1.s2 % root.test.sg1.s4");
-          Assert.assertEquals(retArray2[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(retArray2.length, cnt);
-      }
-
-      hasResultSet =
-          statement.execute(
-              "select s1, sin(s2) + cos(s2) as t1, cos(sin(s2 + s4) + s2) as t2 from root.test.sg1 without null any (t1, t2)");
-
-      String[] columns = new String[] {"root.test.sg1.s1", "t1", "t2"};
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(columns[0])
-                  + ","
-                  + (resultSet.getString(columns[1]) == null
-                          || resultSet.getString(columns[1]).equals("null")
-                      ? "null"
-                      : new BigDecimal(resultSet.getString(columns[1]))
-                          .setScale(2, RoundingMode.HALF_UP)
-                          .toPlainString())
-                  + ","
-                  + (resultSet.getString(columns[2]) == null
-                          || resultSet.getString(columns[2]).equals("null")
-                      ? "null"
-                      : new BigDecimal(resultSet.getString(columns[2]))
-                          .setScale(2, RoundingMode.HALF_UP)
-                          .toPlainString());
-          Assert.assertEquals(retArray3[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(retArray3.length, cnt);
-      }
-
-      hasResultSet =
-          statement.execute(
-              "select s1, cos(sin(s2 + s4) + s2) as t2 from root.test.sg1 without null any (t2)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(columns[0])
-                  + ","
-                  + (resultSet.getString(columns[2]) == null
-                          || resultSet.getString(columns[2]).equals("null")
-                      ? "null"
-                      : new BigDecimal(resultSet.getString(columns[2]))
-                          .setScale(2, RoundingMode.HALF_UP)
-                          .toPlainString());
           Assert.assertEquals(retArray4[cnt], ans);
           cnt++;
         }
@@ -761,12 +555,11 @@ public class IoTDBWithoutNullAnyFilterIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s1, sin(s2), cos(s2), tan(s2) from root.test.sg1 without null any(sin(s2), s1)");
-      Assert.assertTrue(hasResultSet);
+
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s1, sin(s2), cos(s2), tan(s2) from root.test.sg1 where sin(s2) is not null && s1 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -800,18 +593,16 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select s1, sin(s2) + cos(s2), cos(sin(s2 + s4) + s2) from root.test.sg1 without null any (sin(s2) + cos(s2), cos(sin(s2 + s4) + s2))");
-
       String[] columns =
           new String[] {
             "root.test.sg1.s1",
             "sin(root.test.sg1.s2) + cos(root.test.sg1.s2)",
             "cos(sin(root.test.sg1.s2 + root.test.sg1.s4) + root.test.sg1.s2)"
           };
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s1, sin(s2) + cos(s2), cos(sin(s2 + s4) + s2) from root.test.sg1 where sin(s2) + cos(s2) is not null && cos(sin(s2 + s4) + s2) is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -838,12 +629,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select s1, cos(sin(s2 + s4) + s2) from root.test.sg1 without null any (cos(sin(s2 + s4) + s2))");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s1, cos(sin(s2 + s4) + s2) from root.test.sg1 where cos(sin(s2 + s4) + s2) is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -863,12 +651,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray3.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select s1, sin(s2) + cos(s2), cos(sin(s2 + s4) + s2) from root.test.sg1 without null any");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s1, sin(s2) + cos(s2), cos(sin(s2 + s4) + s2) from root.test.sg1 where s1 is not null && sin(s2) + cos(s2) is not null && cos(sin(s2 + s4) + s2) is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -900,6 +685,7 @@ public class IoTDBWithoutNullAnyFilterIT {
     }
   }
 
+  @Ignore
   @Test
   public void withGroupByTimeQueryTest() {
     System.out.println("withGroupByTimeQueryTest");
@@ -913,12 +699,11 @@ public class IoTDBWithoutNullAnyFilterIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select avg(s4), sum(s2) from root.test.sg1 group by ([1,10), 2ms) without null any(sum(s2))");
-      Assert.assertTrue(hasResultSet);
+
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select avg(s4), sum(s2) from root.test.sg1 group by ([1,10), 2ms) without null any(sum(s2))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -943,16 +728,14 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select avg(s4), sum(s2), count(s3) from root.test.sg1 group by ([1,10), 2ms) without null any(avg(s4), sum(s2))");
-
       String[] columns =
           new String[] {
             "avg(root.test.sg1.s4)", "sum(root.test.sg1.s2)", "count(root.test.sg1.s3)"
           };
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select avg(s4), sum(s2), count(s3) from root.test.sg1 group by ([1,10), 2ms) without null any(avg(s4), sum(s2))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -979,12 +762,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select avg(s4) as t, avg(s2) from root.test.sg1 group by ([1,10), 1ms) without null any(t, avg(s2))");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select avg(s4) as t, avg(s2) from root.test.sg1 group by ([1,10), 1ms) without null any(t, avg(s2))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1008,12 +788,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray3.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select avg(s4), sum(s3) as t, avg(s2) from root.test.sg1 group by ([1,10), 2ms) without null any(t, avg(s2))");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select avg(s4), sum(s3) as t, avg(s2) from root.test.sg1 group by ([1,10), 2ms) without null any(t, avg(s2))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1049,6 +826,7 @@ public class IoTDBWithoutNullAnyFilterIT {
     }
   }
 
+  @Ignore
   @Test
   public void withGroupByLevelQueryTest() {
     System.out.println("withGroupByLevelQueryTest");
@@ -1066,16 +844,16 @@ public class IoTDBWithoutNullAnyFilterIT {
     String[] retArray4 = new String[] {"5.79"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select avg(s2), sum(s4) from root.test.** group by ([1, 10), 2ms), level = 2 without null any(avg(s2))");
+
       String[] columns =
           new String[] {
             "avg(root.*.sg1.s2)", "avg(root.*.sg2.s2)", "sum(root.*.sg1.s4)", "sum(root.*.sg2.s4)"
           };
-      Assert.assertTrue(hasResultSet);
+
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select avg(s2), sum(s4) from root.test.** group by ([1, 10), 2ms), level = 2 without null any(avg(s2))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1114,12 +892,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select avg(s2), sum(s4) from root.test.** group by ([1, 10), 2ms), level = 2 without null any(avg(s2), sum(s4))");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select avg(s2), sum(s4) from root.test.** group by ([1, 10), 2ms), level = 2 without null any(avg(s2), sum(s4))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1158,12 +933,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select avg(s2), sum(s4) as t from root.*.sg1 group by ([1, 10), 2ms), level = 1 without null any (avg(s2), t)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select avg(s2), sum(s4) as t from root.*.sg1 group by ([1, 10), 2ms), level = 1 without null any (avg(s2), t)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1187,12 +959,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray3.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select avg(sg1.s2), avg(sg2.s2) from root.test group by level = 1 without null any(avg(sg1.s2), avg(sg2.s2))");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select avg(sg1.s2), avg(sg2.s2) from root.test group by level = 1 without null any(avg(sg1.s2), avg(sg2.s2))")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1210,6 +979,7 @@ public class IoTDBWithoutNullAnyFilterIT {
     }
   }
 
+  @Ignore
   @Test
   public void withoutNullColumnsIsFullPathQueryTest() {
     System.out.println("withoutNullColumnsIsFullPathQueryTest");
@@ -1252,16 +1022,16 @@ public class IoTDBWithoutNullAnyFilterIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s2, s3 from root.test.** without null any(root.test.sg1.s2, root.test.sg2.s3)");
+
       String[] columns =
           new String[] {
             "root.test.sg1.s2", "root.test.sg1.s3", "root.test.sg2.s2", "root.test.sg2.s3"
           };
-      Assert.assertTrue(hasResultSet);
+
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s2, s3 from root.test.** without null any(root.test.sg1.s2, root.test.sg2.s3)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1280,12 +1050,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(root.test.sg1.s2)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(root.test.sg1.s2)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1304,12 +1071,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(root.test.sg1.s2, s3)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(root.test.sg1.s2, s3)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1328,12 +1092,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray3.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(root.test.*.s2)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s2, s3 from root.test.sg1, root.test.sg2 without null any(root.test.*.s2)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1373,66 +1134,33 @@ public class IoTDBWithoutNullAnyFilterIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute("select * from root.test.sg1 without null any(s1, usag)");
 
-      String[] columns =
-          new String[] {
-            "root.test.sg1.s1", "root.test.sg1.s2", "root.test.sg1.s3", "root.test.sg1.s4"
-          };
-      Assert.assertTrue(hasResultSet);
-      int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(columns[0])
-                  + ","
-                  + resultSet.getString(columns[1])
-                  + ","
-                  + resultSet.getString(columns[2])
-                  + ","
-                  + resultSet.getString(columns[3]);
-          Assert.assertEquals(retArray1[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(retArray1.length, cnt);
-      }
+      statement.executeQuery(
+          "select * from root.test.sg1 where s1 is not null && usag is not null");
+      fail();
     } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
     }
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.test.sg1 without null any (s1+s2, s2)");
+
+      statement.executeQuery(
+          "select s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.test.sg1 where s1+s2 is not null && s2 is not null");
+      fail();
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE));
     }
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s1 as d, sin(s1), cos(s1), tan(s1) as t, s2 from root.test.sg1 without null any(d,  tan(s1), t) limit 5");
-    } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE));
-    }
 
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.test.** group by([1,10), 2ms) without null any(last_value(root.test.sg1.s2)) align by device");
+      statement.executeQuery(
+          "select s1 as d, sin(s1), cos(s1), tan(s1) as t, s2 from root.test.sg1 where d is not null && tan(s1) is not null && t is not null limit 5");
+      fail();
     } catch (Exception e) {
-      Assert.assertTrue(e.getMessage().contains(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE));
     }
   }
 
+  @Ignore
   @Test
   public void alignByDeviceQueryTest() {
     System.out.println("alignByDeviceQueryTest");
@@ -1474,14 +1202,14 @@ public class IoTDBWithoutNullAnyFilterIT {
         };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null any(last_value(s2), last_value(s3)) align by device");
+
       String[] columns =
           new String[] {"last_value(s1)", "last_value(s2)", "last_value(s3)", "last_value(s4)"};
-      Assert.assertTrue(hasResultSet);
+
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null any(last_value(s2), last_value(s3)) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1500,12 +1228,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null any(last_value(s2)) align by device");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null any(last_value(s2)) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1524,12 +1249,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.test.* group by([1,10), 2ms) without null any(last_value(s2)) align by device");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.test.* group by([1,10), 2ms) without null any(last_value(s2)) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1548,11 +1270,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray3.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.test.* group by([1,10), 2ms) without null any(last_value(s2), last_value(s3)) align by device");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.test.* group by([1,10), 2ms) without null any(last_value(s2), last_value(s3)) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1571,11 +1291,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray4.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select last_value(s2) as t, last_value(s3), last_value(s4) from root.test.sg1 group by([1,10), 2ms) without null any(t, last_value(s3)) align by device");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(s2) as t, last_value(s3), last_value(s4) from root.test.sg1 group by([1,10), 2ms) without null any(t, last_value(s3)) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1592,11 +1310,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray5.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select s1,s2,s9 from root.test.sg1,root.test.sg5 without null any(s2) align by device");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select s1,s2,s9 from root.test.sg1,root.test.sg5 without null any(s2) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1626,12 +1342,11 @@ public class IoTDBWithoutNullAnyFilterIT {
     String[] retArray5 = new String[] {"1,true,1,1.0,1,true,1.0,1"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.*, sg1.s2)");
-      Assert.assertTrue(hasResultSet);
+
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test where sg3.* is not null && sg1.s2 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1656,12 +1371,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.*)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test where sg3.* is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1686,12 +1398,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.s5, sg3.s6)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test where sg3.s5 is not null && sg3.s6 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1716,12 +1425,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray3.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any (sg3.s5, sg3.s6, sg2.s3)");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test where sg3.s5 is not null && sg3.s6 is not null && sg2.s3 is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1746,11 +1452,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray4.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute("select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test without null any");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select sg1.s1, sg1.s2, sg2.s3, sg3.* from root.test where sg1.s1 is not null && sg1.s2 is not null && sg2.s3 is not null && sg3.* is not null")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1780,6 +1484,7 @@ public class IoTDBWithoutNullAnyFilterIT {
     }
   }
 
+  @Ignore
   @Test
   public void withLimitOffsetQueryTest() {
     // last_value(s3) | last_value(s4) | last_value(s1) | last_value(s2)
@@ -1791,12 +1496,11 @@ public class IoTDBWithoutNullAnyFilterIT {
         new String[] {"last_value(s1)", "last_value(s2)", "last_value(s3)", "last_value(s4)"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null any(last_value(s2), last_value(s3)) limit 5 offset 3 align by device");
-      Assert.assertTrue(hasResultSet);
+
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null any(last_value(s2), last_value(s3)) limit 5 offset 3 align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1815,12 +1519,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray1.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null any(last_value(s4), last_value(s3)) limit 5 offset 2 slimit 3 align by device");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null any(last_value(s4), last_value(s3)) limit 5 offset 2 slimit 3 align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -1837,12 +1538,9 @@ public class IoTDBWithoutNullAnyFilterIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
-      hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null any(last_value(s2)) limit 5 offset 2 slimit 3 soffset 1 align by device");
-
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.test.sg1 group by([1,10), 2ms) without null any(last_value(s2)) limit 5 offset 2 slimit 3 soffset 1 align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
