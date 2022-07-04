@@ -152,34 +152,34 @@ public class IOTDBGroupByIT {
     String[] retArray2 =
         new String[] {
           "50,1,50.5,50.5",
-          "60,0,0.0,null",
-          "70,0,0.0,null",
-          "80,0,0.0,null",
-          "90,0,0.0,null",
+          "60,0,null,null",
+          "70,0,null,null",
+          "80,0,null,null",
+          "90,0,null,null",
           "100,1,100.1,100.1",
-          "110,0,0.0,null",
-          "120,0,0.0,null",
-          "130,0,0.0,null",
-          "140,0,0.0,null",
+          "110,0,null,null",
+          "120,0,null,null",
+          "130,0,null,null",
+          "140,0,null,null",
           "150,1,200.2,200.2"
         };
     String[] retArray3 =
         new String[] {
           "25,2,70.7,35.35",
           "45,1,50.5,50.5",
-          "65,0,0.0,null",
+          "65,0,null,null",
           "85,1,100.1,100.1",
-          "105,0,0.0,null",
-          "125,0,0.0,null",
+          "105,0,null,null",
+          "125,0,null,null",
           "145,1,200.2,200.2",
-          "165,0,0.0,null",
+          "165,0,null,null",
           "185,1,300.3,300.3",
-          "205,0,0.0,null",
-          "225,0,0.0,null",
+          "205,0,null,null",
+          "225,0,null,null",
           "245,1,400.4,400.4",
-          "265,0,0.0,null",
+          "265,0,null,null",
           "285,1,500.5,500.5",
-          "305,0,0.0,null"
+          "305,0,null,null"
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -741,24 +741,24 @@ public class IOTDBGroupByIT {
         new String[] {
           "0,2,7.7,3.85",
           "30,1,30.3,30.3",
-          "60,0,0.0,null",
-          "90,0,0.0,null",
-          "120,0,0.0,null",
+          "60,0,null,null",
+          "90,0,null,null",
+          "120,0,null,null",
           "150,1,200.2,200.2",
-          "180,0,0.0,null",
-          "210,0,0.0,null",
-          "240,0,0.0,null",
-          "270,0,0.0,null",
+          "180,0,null,null",
+          "210,0,null,null",
+          "240,0,null,null",
+          "270,0,null,null",
           "300,1,500.5,500.5",
-          "330,0,0.0,null",
-          "360,0,0.0,null",
-          "390,0,0.0,null",
-          "420,0,0.0,null",
-          "450,0,0.0,null",
-          "480,0,0.0,null",
+          "330,0,null,null",
+          "360,0,null,null",
+          "390,0,null,null",
+          "420,0,null,null",
+          "450,0,null,null",
+          "480,0,null,null",
           "510,1,200.2,200.2",
           "540,1,500.5,500.5",
-          "570,0,0.0,null"
+          "570,0,null,null"
         };
 
     try (Connection connection =
@@ -823,12 +823,12 @@ public class IOTDBGroupByIT {
     System.out.println("countSumAvgNoDataTest");
     String[] retArray1 =
         new String[] {
-          "10000,0,0.0,null",
-          "10005,0,0.0,null",
-          "10010,0,0.0,null",
-          "10015,0,0.0,null",
-          "10020,0,0.0,null",
-          "10025,0,0.0,null",
+          "10000,0,null,null",
+          "10005,0,null,null",
+          "10010,0,null,null",
+          "10015,0,null,null",
+          "10020,0,null,null",
+          "10025,0,null,null",
         };
 
     try (Connection connection =
@@ -868,7 +868,11 @@ public class IOTDBGroupByIT {
   public void usingLimit() {
     String[] retArray1 =
         new String[] {
-          "90,0,0.0,null", "120,0,0.0,null", "150,1,200.2,200.2", "180,0,0.0,null", "210,0,0.0,null"
+          "90,0,null,null",
+          "120,0,null,null",
+          "150,1,200.2,200.2",
+          "180,0,null,null",
+          "210,0,null,null"
         };
 
     try (Connection connection =
