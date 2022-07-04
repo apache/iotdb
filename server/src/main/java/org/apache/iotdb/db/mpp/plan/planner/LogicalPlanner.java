@@ -170,7 +170,7 @@ public class LogicalPlanner {
       planBuilder =
           planBuilder
               .planFilterNull(analysis.getFilterNullParameter())
-              .planFill(analysis.getFillDescriptor())
+              .planFill(analysis.getFillDescriptor(), queryStatement.getResultOrder())
               .planOffset(queryStatement.getRowOffset())
               .planLimit(queryStatement.getRowLimit());
 
