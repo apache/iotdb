@@ -42,10 +42,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipOutOfTimeRangePoints;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.updateResultTsBlockFromAggregators;
 
 /**
  * This operator is responsible to do the aggregation calculation for one series based on global
@@ -72,8 +72,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
 
   protected TsBlock preCachedData;
 
-  protected final TsBlockBuilder tsBlockBuilder;
-  protected TsBlock resultTsBlock;
+  protected final TsBlockBuilder resultTsBlockBuilder;
   protected boolean finished = false;
 
   public SeriesAggregationScanOperator(
@@ -118,7 +117,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
-    tsBlockBuilder = new TsBlockBuilder(dataTypes);
+    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
     this.isGroupByQuery = groupByTimeParameter != null;
   }
@@ -135,20 +134,25 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
 
   @Override
   public TsBlock next() {
-    if (!timeRangeIterator.hasNextTimeRange()) {
+    resultTsBlockBuilder.reset();
+    while (timeRangeIterator.hasNextTimeRange() && !resultTsBlockBuilder.isFull()) {
+      curTimeRange = timeRangeIterator.nextTimeRange();
+
+      // 1. Clear previous aggregation result
+      for (Aggregator aggregator : aggregators) {
+        aggregator.reset();
+        aggregator.updateTimeRange(curTimeRange);
+      }
+
+      // 2. Calculate aggregation result based on current time window
+      calculateNextResult();
+    }
+
+    if (resultTsBlockBuilder.getPositionCount() > 0) {
+      return resultTsBlockBuilder.build();
+    } else {
       return null;
     }
-    curTimeRange = timeRangeIterator.nextTimeRange();
-
-    // 1. Clear previous aggregation result
-    for (Aggregator aggregator : aggregators) {
-      aggregator.reset();
-      aggregator.updateTimeRange(curTimeRange);
-    }
-
-    // 2. Calculate aggregation result based on current time window
-    calculateNextResult();
-    return resultTsBlock;
   }
 
   @Override
@@ -224,8 +228,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
   }
 
   protected void updateResultTsBlock() {
-    resultTsBlock =
-        updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
+    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
   }
 
   /** @return if already get the result */

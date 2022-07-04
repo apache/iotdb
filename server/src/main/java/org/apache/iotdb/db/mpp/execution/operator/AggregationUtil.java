@@ -35,11 +35,10 @@ import java.util.List;
 
 public class AggregationUtil {
 
-  public static TsBlock updateResultTsBlockFromAggregators(
+  public static void appendAggregationResult(
       TsBlockBuilder tsBlockBuilder,
       List<? extends Aggregator> aggregators,
       ITimeRangeIterator timeRangeIterator) {
-    tsBlockBuilder.reset();
     TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
     // Use start time of current time range as time column
     timeColumnBuilder.writeLong(timeRangeIterator.currentOutputTime());
@@ -54,6 +53,14 @@ public class AggregationUtil {
       aggregator.outputResult(columnBuilder);
     }
     tsBlockBuilder.declarePosition();
+  }
+
+  public static TsBlock updateResultTsBlockFromAggregators(
+      TsBlockBuilder tsBlockBuilder,
+      List<? extends Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator) {
+    tsBlockBuilder.reset();
+    appendAggregationResult(tsBlockBuilder, aggregators, timeRangeIterator);
     return tsBlockBuilder.build();
   }
 
