@@ -621,6 +621,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new CountStorageGroupStatement(path);
   }
 
+  // Show version
+  @Override
+  public Statement visitShowVersion(IoTDBSqlParser.ShowVersionContext ctx) {
+    return new ShowVersionStatement();
+  }
+
   // Create Function
   @Override
   public Statement visitCreateFunction(CreateFunctionContext ctx) {
@@ -2293,12 +2299,5 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowDataNodes(IoTDBSqlParser.ShowDataNodesContext ctx) {
     return new ShowDataNodesStatement();
-  }
-
-  // show version
-
-  @Override
-  public Statement visitShowVersion(IoTDBSqlParser.ShowVersionContext ctx) {
-    return new ShowVersionStatement();
   }
 }
