@@ -39,7 +39,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateTimeSeriesNode;
-import org.apache.iotdb.db.service.thrift.impl.DataNodeRPCServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.DataNodeInternalRPCServiceImpl;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TPlanNode;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
@@ -64,9 +64,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ClientRPCServiceImplTest {
+public class DataNodeInternalRPCServiceImplTest {
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-  DataNodeRPCServiceImpl dataNodeRPCServiceImpl;
+  DataNodeInternalRPCServiceImpl dataNodeInternalRPCServiceImpl;
   static LocalConfigNode configNode;
 
   @BeforeClass
@@ -85,7 +85,7 @@ public class ClientRPCServiceImplTest {
         .addConsensusGroup(
             ConsensusGroupId.Factory.createFromTConsensusGroupId(regionReplicaSet.getRegionId()),
             genSchemaRegionPeerList(regionReplicaSet));
-    dataNodeRPCServiceImpl = new DataNodeRPCServiceImpl();
+    dataNodeInternalRPCServiceImpl = new DataNodeInternalRPCServiceImpl();
   }
 
   @After
@@ -146,7 +146,7 @@ public class ClientRPCServiceImplTest {
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
 
     // Use consensus layer to execute request
-    TSendPlanNodeResp response = dataNodeRPCServiceImpl.sendPlanNode(request);
+    TSendPlanNodeResp response = dataNodeInternalRPCServiceImpl.sendPlanNode(request);
 
     Assert.assertTrue(response.accepted);
   }
@@ -222,7 +222,7 @@ public class ClientRPCServiceImplTest {
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
 
     // Use consensus layer to execute request
-    TSendPlanNodeResp response = dataNodeRPCServiceImpl.sendPlanNode(request);
+    TSendPlanNodeResp response = dataNodeInternalRPCServiceImpl.sendPlanNode(request);
 
     Assert.assertTrue(response.accepted);
   }
@@ -309,7 +309,7 @@ public class ClientRPCServiceImplTest {
     request.setConsensusGroupId(regionReplicaSet.getRegionId());
 
     // Use consensus layer to execute request
-    TSendPlanNodeResp response = dataNodeRPCServiceImpl.sendPlanNode(request);
+    TSendPlanNodeResp response = dataNodeInternalRPCServiceImpl.sendPlanNode(request);
 
     Assert.assertTrue(response.accepted);
   }

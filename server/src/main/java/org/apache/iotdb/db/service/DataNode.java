@@ -163,7 +163,7 @@ public class DataNode implements DataNodeMBean {
 
     // start InternalService first so that it can respond to configNode's heartbeat before joining
     // cluster
-    registerManager.register(ClientRPCService.getInstance());
+    registerManager.register(DataNodeInternalRPCService.getInstance());
   }
 
   /** register DataNode with ConfigNode */

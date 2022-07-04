@@ -25,10 +25,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.UDFTestConstant;
 
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
@@ -175,6 +172,20 @@ public class IoTDBUDFWindowQueryIT {
     testSlidingSizeWindow(3 * ITERATION_TIMES);
   }
 
+  // todo: remove ignore when exception handler in IT finishes
+  @Test
+  @Ignore
+  public void testSlidingSizeWindow7() {
+    testSlidingSizeWindow(0);
+  }
+
+  // todo: remove ignore when fixed
+  @Test
+  @Ignore
+  public void testSlidingSizeWindow8() {
+    testSlidingSizeWindow(-ITERATION_TIMES);
+  }
+
   private void testSlidingSizeWindow(int windowSize) {
     String sql =
         String.format(
@@ -205,7 +216,7 @@ public class IoTDBUDFWindowQueryIT {
         ++count;
       }
     } catch (SQLException throwable) {
-      if (0 < windowSize) {
+      if (0 < windowSize || !throwable.getMessage().contains(String.valueOf(windowSize))) {
         fail(throwable.getMessage());
       }
     }
@@ -238,7 +249,7 @@ public class IoTDBUDFWindowQueryIT {
         ++count;
       }
     } catch (SQLException throwable) {
-      if (0 < windowSize) {
+      if (0 < windowSize || !throwable.getMessage().contains(String.valueOf(windowSize))) {
         fail(throwable.getMessage());
       }
     }
@@ -301,6 +312,39 @@ public class IoTDBUDFWindowQueryIT {
   public void testSlidingTimeWindow8() {
     testSlidingTimeWindow(
         (int) (1.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
+  }
+
+  @Test
+  @Ignore
+  public void testSlidingTimeWindow9() {
+    testSlidingTimeWindow(
+        (int) (0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), ITERATION_TIMES / 2, 0);
+  }
+
+  @Test
+  @Ignore
+  public void testSlidingTimeWindow10() {
+    testSlidingTimeWindow(
+        (int) (-0.01 * ITERATION_TIMES), (int) (0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
+  }
+
+  @Test
+  @Ignore
+  public void testSlidingTimeWindow11() {
+    testSlidingTimeWindow(
+        (int) (0.01 * ITERATION_TIMES), (int) (-0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
+  }
+
+  @Test
+  @Ignore
+  public void testSlidingTimeWindow12() {
+    testSlidingTimeWindow((int) (0.01 * ITERATION_TIMES), 0, 0, ITERATION_TIMES / 2);
+  }
+
+  @Test
+  @Ignore
+  public void testSlidingTimeWindow13() {
+    testSlidingTimeWindow(0, (int) (0.05 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   private void testSlidingTimeWindow(
@@ -406,6 +450,12 @@ public class IoTDBUDFWindowQueryIT {
   @Test
   public void testSlidingTimeWindowWithTimeIntervalOnly5() {
     testSlidingTimeWindowWithTimeIntervalOnly(2 * ITERATION_TIMES);
+  }
+
+  @Test
+  @Ignore
+  public void testSlidingTimeWindowWithTimeIntervalOnly6() {
+    testSlidingTimeWindowWithTimeIntervalOnly(-ITERATION_TIMES);
   }
 
   private void testSlidingTimeWindowWithTimeIntervalOnly(int timeInterval) {

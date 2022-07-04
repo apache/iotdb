@@ -20,9 +20,12 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
@@ -84,6 +87,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,6 +100,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -767,6 +772,62 @@ public class ConfigManager implements IManager {
       regionResp.setStatus(status);
       return regionResp;
     }
+  }
+
+  @Override
+  public DataSet showDataNodes() {
+    TSStatus status = confirmLeader();
+    GetRegionInfoListPlan getRegionsinfoReq = new GetRegionInfoListPlan();
+    DataNodeInfosResp dataNodeInfosResp = new DataNodeInfosResp();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      dataNodeInfosResp.setStatus(status);
+      return dataNodeInfosResp;
+    }
+    List<TDataNodesInfo> dataNodesInfoList = nodeManager.getOnlineDataNodesInfoList();
+    RegionInfoListResp regionsInfoDataSet =
+        (RegionInfoListResp) partitionManager.getRegionInfoList(getRegionsinfoReq);
+
+    // Map<DataNodeId, DataRegionNum>
+    Map<Integer, AtomicInteger> dataRegionNumMap = new HashMap<>();
+    // Map<DataNodeId, SchemaRegionNum>
+    Map<Integer, AtomicInteger> schemaRegionNumMap = new HashMap<>();
+
+    List<TRegionInfo> regionInfoList = regionsInfoDataSet.getRegionInfoList();
+    if (CollectionUtils.isNotEmpty(regionInfoList)) {
+
+      regionInfoList.forEach(
+          (regionInfo) -> {
+            int dataNodeId = regionInfo.getDataNodeId();
+            int regionTypeValue = regionInfo.getConsensusGroupId().getType().getValue();
+            int dataRegionNum =
+                regionTypeValue == TConsensusGroupType.DataRegion.getValue() ? 1 : 0;
+            int schemaRegionNum =
+                regionTypeValue == TConsensusGroupType.SchemaRegion.getValue() ? 1 : 0;
+            dataRegionNumMap
+                .computeIfAbsent(dataNodeId, key -> new AtomicInteger())
+                .addAndGet(dataRegionNum);
+            schemaRegionNumMap
+                .computeIfAbsent(dataNodeId, key -> new AtomicInteger())
+                .addAndGet(schemaRegionNum);
+          });
+
+      dataNodesInfoList.forEach(
+          (dataNodesInfo -> {
+            if (dataRegionNumMap.containsKey(dataNodesInfo.getDataNodeId())) {
+              dataNodesInfo.setDataRegionNum(
+                  dataRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
+            }
+            if (schemaRegionNumMap.containsKey(dataNodesInfo.getDataNodeId())) {
+              dataNodesInfo.setSchemaRegionNum(
+                  schemaRegionNumMap.get(dataNodesInfo.getDataNodeId()).get());
+            }
+          }));
+    }
+
+    dataNodeInfosResp.setStatus(regionsInfoDataSet.getStatus());
+    dataNodeInfosResp.setDataNodesInfoList(dataNodesInfoList);
+
+    return dataNodeInfosResp;
   }
 
   public ProcedureManager getProcedureManager() {

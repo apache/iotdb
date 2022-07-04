@@ -21,8 +21,10 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
@@ -147,7 +149,6 @@ public class NodeManager {
   public DataNodeInfosResp getDataNodeInfo(GetDataNodeInfoPlan req) {
     return (DataNodeInfosResp) getConsensusManager().read(req).getDataset();
   }
-
   /**
    * Only leader use this interface
    *
@@ -175,6 +176,27 @@ public class NodeManager {
    */
   public List<TDataNodeInfo> getOnlineDataNodes(int dataNodeId) {
     return nodeInfo.getOnlineDataNodes(dataNodeId);
+  }
+
+  public List<TDataNodesInfo> getOnlineDataNodesInfoList() {
+    List<TDataNodesInfo> dataNodesLocations = new ArrayList<>();
+    List<TDataNodeInfo> onlineDataNodes = this.getOnlineDataNodes(-1);
+    if (onlineDataNodes != null) {
+      onlineDataNodes.forEach(
+          (dataNodeInfo) -> {
+            TDataNodesInfo tDataNodesLocation = new TDataNodesInfo();
+            tDataNodesLocation.setDataNodeId(dataNodeInfo.getLocation().getDataNodeId());
+            tDataNodesLocation.setStatus(NodeStatus.Running.getStatus());
+            tDataNodesLocation.setRpcAddresss(
+                dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
+            tDataNodesLocation.setRpcPort(
+                dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
+            tDataNodesLocation.setDataRegionNum(0);
+            tDataNodesLocation.setSchemaRegionNum(0);
+            dataNodesLocations.add(tDataNodesLocation);
+          });
+    }
+    return dataNodesLocations;
   }
 
   /**

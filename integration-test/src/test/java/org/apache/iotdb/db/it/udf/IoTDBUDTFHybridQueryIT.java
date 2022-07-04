@@ -32,9 +32,12 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -56,6 +59,8 @@ public class IoTDBUDTFHybridQueryIT {
       statement.execute("SET STORAGE GROUP TO root.vehicle");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s2 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.vehicle.d2.s1 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.vehicle.d2.s2 with datatype=INT32,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -64,10 +69,21 @@ public class IoTDBUDTFHybridQueryIT {
   private static void generateData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (int i = 0; i < 10; ++i) {
+      for (int i = 0; i < 5; ++i) {
         statement.execute(
             (String.format(
                 "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+        statement.execute(
+            (String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+      }
+      for (int i = 2; i < 4; ++i) {
+        statement.execute(
+            (String.format("insert into root.vehicle.d1(timestamp,s3) values(%d,%d)", i, i)));
+      }
+      for (int i = 7; i < 10; ++i) {
+        statement.execute(
+            (String.format("insert into root.vehicle.d1(timestamp,s3) values(%d,%d)", i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -89,7 +105,6 @@ public class IoTDBUDTFHybridQueryIT {
     EnvFactory.getEnv().cleanAfterClass();
   }
 
-  @Ignore
   @Test
   public void testUserDefinedBuiltInHybridAggregationQuery() {
     String sql =
@@ -101,33 +116,85 @@ public class IoTDBUDTFHybridQueryIT {
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
       fail();
-    } catch (SQLException throwable) {
-      assertTrue(
-          throwable
-              .getMessage()
-              .contains("User-defined and built-in hybrid aggregation is not supported together."));
+    } catch (SQLException e) {
+      assertTrue(e.getMessage(), e.getMessage().contains("not supported"));
     }
   }
 
-  @Ignore
   @Test
-  public void testUserDefinedFunctionFillFunctionHybridQuery() {
-    String sql =
-        String.format(
-            "select temperature, counter(temperature, '%s'='%s') from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])",
-            UDFTestConstant.ACCESS_STRATEGY_KEY, UDFTestConstant.ACCESS_STRATEGY_ROW_BY_ROW);
+  public void testUserDefinedBuiltInHybridAggregationQuery2() {
+    String[] retArray = new String[] {"0,2.0,0.9092974268256817,3.0,-10.0,12.0"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
-      fail();
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select avg(s1), sin(avg(s2)), avg(s1) + 1, -sum(s2), avg(s1) + sum(s2) from root.vehicle.d1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("avg(root.vehicle.d1.s1)")
+                  + ","
+                  + resultSet.getString("sin(avg(root.vehicle.d1.s2))")
+                  + ","
+                  + resultSet.getString("avg(root.vehicle.d1.s1) + 1")
+                  + ","
+                  + resultSet.getString("-sum(root.vehicle.d1.s2)")
+                  + ","
+                  + resultSet.getString("avg(root.vehicle.d1.s1) + sum(root.vehicle.d1.s2)");
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
     } catch (SQLException throwable) {
-      assertTrue(
-          throwable.getMessage().contains("Fill functions are not supported in UDF queries."));
+      throwable.printStackTrace();
+      fail(throwable.getMessage());
     }
   }
 
-  @Ignore
+  @Test
+  @Ignore // TODO fill function incompatible
+  public void testUserDefinedFunctionFillFunctionHybridQuery() {
+    String[] retArray =
+        new String[] {
+          "0,0.0,1.0,3.14",
+          "1,0.8414709848078965,2.0,3.14",
+          "2,0.9092974268256817,3.0,2.0",
+          "3,0.1411200080598672,4.0,3.0",
+          "4,-0.7568024953079282,5.0,3.14",
+          "7,3.14,3.14,7.0",
+          "8,3.14,3.14,8.0",
+          "9,3.14,3.14,9.0"
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      try (ResultSet resultSet =
+          statement.executeQuery("select sin(s1), s1 + 1, s3 from root.vehicle.d1 fill(3.14)")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("sin(root.vehicle.d1.s1)")
+                  + ","
+                  + resultSet.getString("root.vehicle.d1.s1 + 1")
+                  + ","
+                  + resultSet.getString("root.vehicle.d1.s3");
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (SQLException throwable) {
+      throwable.printStackTrace();
+      fail(throwable.getMessage());
+    }
+  }
+
   @Test
   public void testLastUserDefinedFunctionQuery() {
     String sql =
@@ -145,23 +212,45 @@ public class IoTDBUDTFHybridQueryIT {
     }
   }
 
-  @Ignore
   @Test
+  @Ignore // TODO remove after IOTDB-3674
   public void testUserDefinedFunctionAlignByDeviceQuery() {
-    String sql =
-        String.format(
-            "select adder(temperature), counter(temperature, '%s'='%s') from root.sgcc.wf03.wt01 align by device",
-            UDFTestConstant.ACCESS_STRATEGY_KEY, UDFTestConstant.ACCESS_STRATEGY_ROW_BY_ROW);
+    String[] retArray =
+        new String[] {
+          "0,root.vehicle.d1,1.0,0.0",
+          "1,root.vehicle.d1,2.0,0.8414709848078965",
+          "2,root.vehicle.d1,3.0,0.9092974268256817",
+          "3,root.vehicle.d1,4.0,0.1411200080598672",
+          "4,root.vehicle.d1,5.0,0.1411200080598672",
+          "0,root.vehicle.d2,1.0,0.0",
+          "1,root.vehicle.d2,2.0,0.8414709848078965",
+          "2,root.vehicle.d2,3.0,0.9092974268256817",
+          "3,root.vehicle.d2,4.0,0.1411200080598672",
+          "4,root.vehicle.d2,5.0,0.1411200080598672"
+        };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.executeQuery(sql);
-      fail();
-    } catch (SQLException throwable) {
-      assertTrue(
-          throwable
-              .getMessage()
-              .contains("ALIGN BY DEVICE clause is not supported in UDF queries."));
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1 + 1, sin(s2) from root.vehicle.* align by device")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString("s1 + 1")
+                  + ","
+                  + resultSet.getString("sin(s2)");
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }
