@@ -59,7 +59,9 @@ public enum Metric {
   DATA_NODE,
   STORAGE_GROUP,
   REGION,
-  SLOT;
+  SLOT,
+  THRIFT_CONNECTIONS,
+  THRIFT_ACTIVE_THREADS;
 
   @Override
   public String toString() {
