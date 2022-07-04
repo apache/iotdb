@@ -38,6 +38,11 @@ public class ShowStatement extends Statement {
     statementType = StatementType.SHOW;
   }
 
+  public ShowStatement(StatementType statementType) {
+    super();
+    this.statementType = statementType;
+  }
+
   @Override
   public List<PartialPath> getPaths() {
     return Collections.emptyList();

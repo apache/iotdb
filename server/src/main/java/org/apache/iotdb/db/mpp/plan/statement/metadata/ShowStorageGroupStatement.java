@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
@@ -39,7 +40,7 @@ public class ShowStorageGroupStatement extends ShowStatement implements IConfigS
   private final PartialPath pathPattern;
 
   public ShowStorageGroupStatement(PartialPath pathPattern) {
-    super();
+    super(StatementType.READ_STORAGE_GROUP);
     this.pathPattern = pathPattern;
   }
 
