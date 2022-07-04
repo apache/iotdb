@@ -91,7 +91,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
             thriftServiceThread,
             AbstractThriftServiceThread::getActiveThreadCount,
             Tag.NAME.toString(),
-            "RPC");
+            ThreadName.RPC_SERVICE.getName());
   }
 
   @Override
