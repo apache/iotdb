@@ -81,6 +81,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
@@ -1368,6 +1369,16 @@ public class Analyzer {
           showChildNodesStatement,
           showChildNodesStatement.getPartialPath(),
           HeaderConstant.showChildNodesHeader);
+    }
+
+    @Override
+    public Analysis visitShowVersion(
+        ShowVersionStatement showVersionStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showVersionStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showVersionHeader);
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
     }
 
     private Analysis visitSchemaNodeManagementPartition(
