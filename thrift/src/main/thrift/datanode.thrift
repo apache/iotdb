@@ -173,6 +173,11 @@ struct THeartbeatResp {
   4: optional i16 memory
 }
 
+struct TRegionRouteReq {
+  1: required i64 timestamp
+  2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -249,6 +254,13 @@ service IDataNodeRPCService {
   * @param ConfigNode will send the latest config_node_list and load balancing policies in THeartbeatReq
   **/
   THeartbeatResp getDataNodeHeartBeat(THeartbeatReq req)
+
+  /**
+  * ConfigNode will ask DataNode to update region cache
+  *
+  * @param ConfigNode will send timestamp and new regionRouteMap in TRegionRouteReq
+  **/
+  common.TSStatus updateRegionCache(TRegionRouteReq req)
 
   /**
    * Config node will create a function on a list of data nodes.

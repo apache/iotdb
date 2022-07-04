@@ -128,9 +128,7 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
   @Test
-  @Ignore
   public void testNestedArithmeticExpressions() {
     String sqlStr =
         "select d1.s1, d2.s2, d1.s1 + d1.s2 - (d2.s1 + d2.s2), d1.s2 * (d2.s1 / d1.s1), d1.s2 + d1.s2 * d2.s1 - d2.s1, d1.s1 - (d1.s1 - (-d1.s1)), (-d2.s1) * (-d2.s2) / (-d1.s2) from root.vehicle";
@@ -161,8 +159,6 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
   public void testNestedRowByRowUDFExpressions() {
     String sqlStr =
@@ -194,8 +190,6 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
   public void testUDFTerminateMethodInNestedExpressions() {
     String sqlStr =
@@ -223,8 +217,6 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
   public void testUDFWithMultiInputsInNestedExpressions() {
     String sqlStr =
@@ -372,8 +364,6 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
   public void testInvalidNestedBuiltInAggregation() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -392,9 +382,7 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: Exception: Constant is not supported
   @Test
-  @Ignore
   public void testRawDataQueryWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -424,8 +412,6 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
   public void testDuplicatedRawDataQueryWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -447,8 +433,6 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
   public void testCommutativeLaws() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -473,9 +457,7 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: Exception: Constant is not supported
   @Test
-  @Ignore
   public void testAssociativeLaws() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -502,9 +484,7 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: Exception: Constant is not supported
   @Test
-  @Ignore
   public void testDistributiveLaw() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -529,9 +509,7 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: Exception: Constant is not supported
   @Test
-  @Ignore
   public void testOrderOfArithmeticOperations() {
     // Priority from high to low:
     //   1. exponentiation and root extraction (not supported yet)
@@ -642,8 +620,6 @@ public class IoTDBNestedQueryIT {
     }
   }
 
-  // todo: remove ignore after iotdb-3349 is merged
-  @Ignore
   @Test
   public void testRegularLikeInExpressions() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -664,7 +640,7 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
-  @Ignore
+  @Ignore // not supported in 0.13
   public void testTimeExpressions() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

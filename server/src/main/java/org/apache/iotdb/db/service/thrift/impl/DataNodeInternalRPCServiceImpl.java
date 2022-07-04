@@ -81,6 +81,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionResp;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -354,6 +355,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     }
     return resp;
+  }
+
+  @Override
+  public TSStatus updateRegionCache(TRegionRouteReq req) throws TException {
+    boolean result = ClusterPartitionFetcher.getInstance().updateRegionCache(req);
+    if (result) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } else {
+      return RpcUtils.getStatus(TSStatusCode.CACHE_UPDATE_FAIL);
+    }
   }
 
   private Map<TConsensusGroupId, Boolean> getJudgedLeaders() {

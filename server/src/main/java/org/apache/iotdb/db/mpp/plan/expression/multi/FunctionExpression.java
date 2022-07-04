@@ -259,7 +259,7 @@ public class FunctionExpression extends Expression {
         expression.inferTypes(typeProvider);
       }
 
-      if (isTimeSeriesGeneratingFunctionExpression()) {
+      if (!isBuiltInAggregationFunctionExpression()) {
         typeProvider.setType(
             expressionString,
             new UDTFTypeInferrer(functionName)

@@ -102,25 +102,6 @@ select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root
 select s2, - s2, s4, + s4, s2 + s4, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null any (s2+s4, s2)
 ```
 
-### With alias query
-
-specified columns can be alias
-
-1. If both `t2` and `t1` aliases of one row are null in the result set of the query, the row will be filtered out.
-
-```sql
-select s2 as t1, - s2, s4, + s4, s2 + s4 as t2, s2 - s4, s2 * s4, s2 / s4, s2 % s4 from root.test.sg1 without null all (t2, t1)
-```
-
-```sql
-select s1, sin(s2) + cos(s2) as t1, cos(sin(s2 + s4) + s2) as t2 from root.test.sg1 without null all (t1, t2)
-```
-
-2. When you specify aliases in the column set that queried, if you use the original name of the column with an alias in the column set specified without null, an error will be reported：`The without null columns don't match the columns queried.If has alias, please use the alias.` For example, `tan(s1)` and `t` columns are used at the same time in the following query.
-
-```sql
-select s1 as d, sin(s1), cos(s1), tan(s1) as t, s2 from root.test.sg1 without null all(d,  tan(s1), t) limit 5
-```
 
 ### With function query
 
