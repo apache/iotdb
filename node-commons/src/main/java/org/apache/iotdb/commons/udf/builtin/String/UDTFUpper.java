@@ -19,7 +19,7 @@
 package org.apache.iotdb.commons.udf.builtin.String;
 
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.udf.api.MappableUDTF;
+import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
@@ -31,7 +31,7 @@ import org.apache.iotdb.udf.api.type.Type;
 import java.io.IOException;
 
 /*Returns a string with all characters of target changed to uppercase, or NULL if target is NULL.*/
-public class UDTFUpper implements MappableUDTF {
+public class UDTFUpper implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {

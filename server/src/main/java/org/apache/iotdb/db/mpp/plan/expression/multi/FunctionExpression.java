@@ -44,7 +44,6 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryTran
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.TransparentTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutorFactory;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFTypeInferrer;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -249,8 +248,7 @@ public class FunctionExpression extends Expression {
     for (Expression expression : expressions) {
       expression.constructUdfExecutors(expressionName2Executor, zoneId);
     }
-    expressionName2Executor.put(
-        expressionString, UDTFExecutorFactory.createUDTFExecutor(functionName, zoneId));
+    expressionName2Executor.put(expressionString, new UDTFExecutor(functionName, zoneId));
   }
 
   @Override

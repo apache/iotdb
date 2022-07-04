@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.udf;
 
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -36,7 +37,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
-public abstract class UDTFExecutor {
+public class UDTFExecutor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDTFExecutor.class);
 
@@ -44,6 +45,8 @@ public abstract class UDTFExecutor {
   protected final UDTFConfigurations configurations;
 
   protected UDTF udtf;
+  protected ElasticSerializableTVList collector;
+  protected Object currentValue;
 
   public UDTFExecutor(String functionName, ZoneId zoneId) {
     this.functionName = functionName;
@@ -56,6 +59,7 @@ public abstract class UDTFExecutor {
       List<String> childExpressions,
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
+    udtf = (UDTF) UDFRegistrationService.getInstance().reflect(functionName);
 
     final UDFParameters parameters =
         new UDFParameters(
@@ -75,21 +79,55 @@ public abstract class UDTFExecutor {
       onError("beforeStart(UDFParameters, UDTFConfigurations)", e);
     }
     configurations.check();
+
+    collector =
+        ElasticSerializableTVList.newElasticSerializableTVList(
+            UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType()),
+            queryId,
+            collectorMemoryBudgetInMB,
+            1);
   }
 
   public void execute(Row row, boolean isCurrentRowNull) {
-    throw new UnsupportedOperationException();
+    try {
+      if (isCurrentRowNull) {
+        // A null row will never trigger any UDF computing
+        collector.putNull(row.getTime());
+      } else {
+        udtf.transform(row, collector);
+      }
+    } catch (Exception e) {
+      onError("transform(Row, PointCollector)", e);
+    }
   }
 
   public void execute(Row row) {
-    throw new UnsupportedOperationException();
+    try {
+      currentValue = udtf.transform(row);
+    } catch (Exception e) {
+      onError("transform(Row)", e);
+    }
+  }
+
+  public Object getCurrentValue() {
+    return currentValue;
   }
 
   public void execute(RowWindow rowWindow) {
-    throw new UnsupportedOperationException();
+    try {
+      udtf.transform(rowWindow, collector);
+    } catch (Exception e) {
+      onError("transform(RowWindow, PointCollector)", e);
+    }
   }
 
-  public abstract void terminate();
+  public void terminate() {
+    try {
+      udtf.terminate(collector);
+    } catch (Exception e) {
+      onError("terminate(PointCollector)", e);
+    }
+  }
 
   public void beforeDestroy() {
     if (udtf != null) {
@@ -97,7 +135,7 @@ public abstract class UDTFExecutor {
     }
   }
 
-  protected void onError(String methodName, Exception e) {
+  private void onError(String methodName, Exception e) {
     LOGGER.warn("Error occurred during executing UDTF", e);
     throw new RuntimeException(
         String.format(
@@ -109,11 +147,7 @@ public abstract class UDTFExecutor {
     return configurations;
   }
 
-  public Object getCurrentValue() {
-    throw new UnsupportedOperationException();
-  }
-
   public ElasticSerializableTVList getCollector() {
-    throw new UnsupportedOperationException();
+    return collector;
   }
 }
