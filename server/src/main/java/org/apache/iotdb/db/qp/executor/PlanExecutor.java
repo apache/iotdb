@@ -2084,18 +2084,24 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  protected void alterTimeSeriesType(AlterTimeSeriesPlan alterTimeSeriesPlan)
-      throws QueryProcessException {
+  /**
+   * alter timeseris encoding & compression type
+   * @param fullPath timeseries full path
+   * @param curEncoding
+   * @param curCompressionType
+   * @throws QueryProcessException
+   * @throws IOException
+   * @throws MetadataException
+   */
+  protected void alterTimeSeriesType(PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+          throws QueryProcessException, IOException, MetadataException {
 
     AUDIT_LOGGER.info(
-        "alter timeseries {} {} {}",
-        alterTimeSeriesPlan.getPaths(),
-        alterTimeSeriesPlan.getEncoding(),
-        alterTimeSeriesPlan.getCompressor());
+        "alter timeseries {} {} {}", fullPath, curEncoding, curCompressionType);
     // TODO check (clustr,encoding,compression)
 
     // schema alter
-
+    IoTDB.schemaProcessor.alterTimeseries(fullPath, curEncoding, curCompressionType);
     // storage alter
 
   }
@@ -2168,7 +2174,7 @@ public class PlanExecutor implements IPlanExecutor {
               path);
           break;
         case SET_TYPE:
-          alterTimeSeriesType(alterTimeSeriesPlan);
+          alterTimeSeriesType(path, alterTimeSeriesPlan.getEncoding(), alterTimeSeriesPlan.getCompressor());
           break;
       }
     } catch (MetadataException e) {

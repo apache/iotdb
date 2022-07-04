@@ -33,12 +33,15 @@ import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Generated entity implements IMeasurementMNode interface to unify insert logic through id table
@@ -96,6 +99,14 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
 
   @Override
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {}
+
+  @Override
+  public void updateSchemaInfo(String measurementId,
+                               TSEncoding encoding,
+                               CompressionType compressionType,
+                               Map<String, String> props) {
+    throw new UnsupportedOperationException("only for alter timeSeries");
+  }
 
   @Override
   public IMeasurementSchema getSchema() {

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.template.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -340,6 +341,20 @@ public class LocalSchemaProcessor {
    */
   public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan) throws MetadataException {
     getBelongedSchemaRegionWithAutoCreate(plan.getPrefixPath()).createAlignedTimeSeries(plan);
+  }
+
+  /**
+   * alter timeseris encoding & compression type
+   * @param fullPath timeseries full path
+   * @param curEncoding
+   * @param curCompressionType
+   * @throws QueryProcessException
+   * @throws IOException
+   * @throws MetadataException
+   */
+  public void alterTimeseries(PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+          throws MetadataException, IOException {
+    getBelongedSchemaRegion(fullPath).alterTimeseriesEncodingCompressionTYpe(fullPath, curEncoding, curCompressionType);
   }
 
   /**

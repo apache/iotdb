@@ -40,6 +40,8 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.File;
@@ -364,4 +366,13 @@ public interface ISchemaRegion {
 
   void releaseMNodeAfterDropTrigger(IMNode node) throws MetadataException;
   // endregion
+
+  /**
+   * alter schema encoding & compression type
+   * @param curEncoding
+   * @param curCompressionType
+   * @throws MetadataException
+   * @throws IOException
+   */
+  void alterTimeseriesEncodingCompressionTYpe(PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType) throws MetadataException, IOException;
 }

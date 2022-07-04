@@ -1850,5 +1850,10 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     mtree.unPinMNode(node);
   }
 
+  @Override
+  public void alterTimeseriesEncodingCompressionTYpe(PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType) throws MetadataException, IOException {
+    throw new UnsupportedOperationException();
+  }
+
   // endregion
 }

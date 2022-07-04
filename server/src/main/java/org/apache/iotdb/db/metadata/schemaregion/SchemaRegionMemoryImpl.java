@@ -56,21 +56,12 @@ import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -86,6 +77,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -414,6 +406,14 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       case UNSET_TEMPLATE:
         UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
         unsetSchemaTemplate(unsetTemplatePlan);
+        break;
+      case ALTER_TIMESERIES:
+        AlterTimeSeriesPlan alterTimeSeriesPlan = (AlterTimeSeriesPlan) plan;
+        if(alterTimeSeriesPlan == null || alterTimeSeriesPlan.getAlterType() != AlterTimeSeriesOperator.AlterType.SET_TYPE) {
+          logger.warn("mlog: AlterTimeSeriesPlan alterType invalid, only support SET_TYPE");
+          break;
+        }
+        alterTimeseriesEncodingCompressionTYpe(alterTimeSeriesPlan.getPath(), alterTimeSeriesPlan.getEncoding(), alterTimeSeriesPlan.getCompressor());
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -757,6 +757,29 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
       idTable.createAlignedTimeseries(plan);
     }
+  }
+
+  @Override
+  public void alterTimeseriesEncodingCompressionTYpe(PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType) throws MetadataException, IOException {
+    // find mnode
+    IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(fullPath);
+    if(measurementMNode == null) {
+      throw new PathNotExistException("path not exist", true);
+    }
+    IMeasurementSchema schema = measurementMNode.getSchema();
+    if(schema == null) {
+      throw new MetadataException("schema(" + fullPath + ") is null", false);
+    }
+    logger.info("alterTimeseriesEncodingCompressionTYpe->old encoding:{}, compressionType:{}. cur ecoding:{}, compressionType:{}",
+            schema.getEncodingType(), schema.getCompressor(), curEncoding, curCompressionType);
+    // lock tree node TODO
+    // trigger TODO
+    // alter type
+    measurementMNode.updateSchemaInfo(null, curEncoding, curCompressionType, null);
+    // cache
+    mNodeCache.invalidate(fullPath);
+    // mlog
+    writeToMLog(new AlterTimeSeriesPlan(fullPath, AlterTimeSeriesOperator.AlterType.SET_TYPE, null, null, null, null, curEncoding, curCompressionType));
   }
 
   /**

@@ -21,8 +21,12 @@ package org.apache.iotdb.db.metadata.mnode;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import java.util.Map;
 
 /** This interface defines a MeasurementMNode's operation interfaces. */
 public interface IMeasurementMNode extends IMNode {
@@ -51,4 +55,16 @@ public interface IMeasurementMNode extends IMNode {
   ILastCacheContainer getLastCacheContainer();
 
   void setLastCacheContainer(ILastCacheContainer lastCacheContainer);
+
+  /**
+   * update schema info(encoding & compressionType)
+   * @param measurementId unsupported now
+   * @param encoding
+   * @param compressionType
+   * @param props unsupported now
+   */
+  void updateSchemaInfo(String measurementId,
+                        TSEncoding encoding,
+                        CompressionType compressionType,
+                        Map<String, String> props);
 }
