@@ -231,8 +231,8 @@ public class LoadManager {
   /** loop body of the heartbeat thread */
   private void heartbeatLoopBody() {
     if (getConsensusManager().isLeader()) {
-      // Send heartbeat requests to all the online DataNodes
-      pingOnlineDataNodes(getNodeManager().getOnlineDataNodes(-1));
+      // Send heartbeat requests to all the registered DataNodes
+      pingRegisteredDataNodes(getNodeManager().getRegisteredDataNodes(-1));
       // Send heartbeat requests to all the registered ConfigNodes
       pingRegisteredConfigNodes(getNodeManager().getRegisteredConfigNodes());
       // Do load balancing
@@ -263,11 +263,11 @@ public class LoadManager {
   }
 
   /**
-   * Send heartbeat requests to all the online DataNodes
+   * Send heartbeat requests to all the Registered DataNodes
    *
-   * @param onlineDataNodes DataNodes that currently online
+   * @param onlineDataNodes DataNodes that registered in cluster
    */
-  private void pingOnlineDataNodes(List<TDataNodeInfo> onlineDataNodes) {
+  private void pingRegisteredDataNodes(List<TDataNodeInfo> onlineDataNodes) {
     // Send heartbeat requests
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
       DataNodeHeartbeatHandler handler =
@@ -285,7 +285,7 @@ public class LoadManager {
   }
 
   /**
-   * Send heartbeat requests to all the online ConfigNodes
+   * Send heartbeat requests to all the Registered ConfigNodes
    *
    * @param registeredConfigNodes ConfigNodes that registered in cluster
    */
@@ -322,6 +322,17 @@ public class LoadManager {
             registeredConfigNode ->
                 heartbeatCacheMap
                     .get(registeredConfigNode.getConfigNodeId())
+                    .getNodeStatus()
+                    .equals(NodeStatus.Running))
+        .collect(Collectors.toList());
+  }
+
+  public List<TDataNodeInfo> getOnlineDataNodes(int dataNodeId) {
+    return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
+        .filter(
+            registeredDataNode ->
+                heartbeatCacheMap
+                    .get(registeredDataNode.getLocation().getDataNodeId())
                     .getNodeStatus()
                     .equals(NodeStatus.Running))
         .collect(Collectors.toList());

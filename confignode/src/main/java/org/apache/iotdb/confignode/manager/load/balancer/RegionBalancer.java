@@ -27,8 +27,8 @@ import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.NodeManager;
 import org.apache.iotdb.confignode.manager.PartitionManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.CopySetRegionAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionAllocator;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
@@ -62,7 +62,7 @@ public class RegionBalancer {
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
     IRegionAllocator regionAllocator = genRegionAllocator();
 
-    List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
+    List<TDataNodeInfo> onlineDataNodes = getLoadManager().getOnlineDataNodes(-1);
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllReplicaSets();
 
     for (Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
@@ -105,8 +105,8 @@ public class RegionBalancer {
     return new CopySetRegionAllocator();
   }
 
-  private NodeManager getNodeManager() {
-    return configManager.getNodeManager();
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 
   private ClusterSchemaManager getClusterSchemaManager() {
