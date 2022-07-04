@@ -32,8 +32,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,11 +154,18 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   }
 
   @Override
-  public void updateSchemaInfo(String measurementId,
-                               TSEncoding encoding,
-                               CompressionType compressionType,
-                               Map<String, String> props) {
-    this.schema = new MeasurementSchema(this.schema.getMeasurementId(), this.schema.getType(), encoding, compressionType, this.schema.getProps());
+  public void updateSchemaInfo(
+      String measurementId,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      Map<String, String> props) {
+    this.schema =
+        new MeasurementSchema(
+            this.schema.getMeasurementId(),
+            this.schema.getType(),
+            encoding,
+            compressionType,
+            this.schema.getProps());
   }
 
   @Override

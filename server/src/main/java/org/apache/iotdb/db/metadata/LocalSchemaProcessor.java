@@ -345,6 +345,7 @@ public class LocalSchemaProcessor {
 
   /**
    * alter timeseris encoding & compression type
+   *
    * @param fullPath timeseries full path
    * @param curEncoding
    * @param curCompressionType
@@ -352,9 +353,11 @@ public class LocalSchemaProcessor {
    * @throws IOException
    * @throws MetadataException
    */
-  public void alterTimeseries(PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
-          throws MetadataException, IOException {
-    getBelongedSchemaRegion(fullPath).alterTimeseriesEncodingCompressionTYpe(fullPath, curEncoding, curCompressionType);
+  public void alterTimeseries(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws MetadataException, IOException {
+    getBelongedSchemaRegion(fullPath)
+        .alterTimeseriesEncodingCompressionTYpe(fullPath, curEncoding, curCompressionType);
   }
 
   /**

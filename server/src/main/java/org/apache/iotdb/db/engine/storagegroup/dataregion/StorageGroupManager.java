@@ -32,6 +32,8 @@ import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -331,6 +333,17 @@ public class StorageGroupManager {
     for (DataRegion dataRegion : this.dataRegion) {
       if (dataRegion != null) {
         dataRegion.delete(path, startTime, endTime, planIndex, timePartitionFilter);
+      }
+    }
+  }
+
+  /** alter timeseries encoding & compressionType */
+  public void alterTimeseries(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws IOException {
+    for (DataRegion dataRegion : this.dataRegion) {
+      if (dataRegion != null) {
+        dataRegion.alter(fullPath, curEncoding, curCompressionType);
       }
     }
   }

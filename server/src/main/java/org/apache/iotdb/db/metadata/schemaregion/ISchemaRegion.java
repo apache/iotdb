@@ -369,10 +369,13 @@ public interface ISchemaRegion {
 
   /**
    * alter schema encoding & compression type
+   *
    * @param curEncoding
    * @param curCompressionType
    * @throws MetadataException
    * @throws IOException
    */
-  void alterTimeseriesEncodingCompressionTYpe(PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType) throws MetadataException, IOException;
+  void alterTimeseriesEncodingCompressionTYpe(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws MetadataException, IOException;
 }

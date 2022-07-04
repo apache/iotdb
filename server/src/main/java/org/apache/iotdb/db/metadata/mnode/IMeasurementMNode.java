@@ -58,13 +58,15 @@ public interface IMeasurementMNode extends IMNode {
 
   /**
    * update schema info(encoding & compressionType)
+   *
    * @param measurementId unsupported now
    * @param encoding
    * @param compressionType
    * @param props unsupported now
    */
-  void updateSchemaInfo(String measurementId,
-                        TSEncoding encoding,
-                        CompressionType compressionType,
-                        Map<String, String> props);
+  void updateSchemaInfo(
+      String measurementId,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      Map<String, String> props);
 }

@@ -101,10 +101,11 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {}
 
   @Override
-  public void updateSchemaInfo(String measurementId,
-                               TSEncoding encoding,
-                               CompressionType compressionType,
-                               Map<String, String> props) {
+  public void updateSchemaInfo(
+      String measurementId,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      Map<String, String> props) {
     throw new UnsupportedOperationException("only for alter timeSeries");
   }
 

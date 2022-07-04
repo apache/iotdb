@@ -77,7 +77,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -409,11 +408,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
         break;
       case ALTER_TIMESERIES:
         AlterTimeSeriesPlan alterTimeSeriesPlan = (AlterTimeSeriesPlan) plan;
-        if(alterTimeSeriesPlan == null || alterTimeSeriesPlan.getAlterType() != AlterTimeSeriesOperator.AlterType.SET_TYPE) {
+        if (alterTimeSeriesPlan == null
+            || alterTimeSeriesPlan.getAlterType() != AlterTimeSeriesOperator.AlterType.SET_TYPE) {
           logger.warn("mlog: AlterTimeSeriesPlan alterType invalid, only support SET_TYPE");
           break;
         }
-        alterTimeseriesEncodingCompressionTYpe(alterTimeSeriesPlan.getPath(), alterTimeSeriesPlan.getEncoding(), alterTimeSeriesPlan.getCompressor());
+        alterTimeseriesEncodingCompressionTYpe(
+            alterTimeSeriesPlan.getPath(),
+            alterTimeSeriesPlan.getEncoding(),
+            alterTimeSeriesPlan.getCompressor());
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -760,18 +763,24 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void alterTimeseriesEncodingCompressionTYpe(PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType) throws MetadataException, IOException {
+  public void alterTimeseriesEncodingCompressionTYpe(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws MetadataException, IOException {
     // find mnode
     IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(fullPath);
-    if(measurementMNode == null) {
+    if (measurementMNode == null) {
       throw new PathNotExistException("path not exist", true);
     }
     IMeasurementSchema schema = measurementMNode.getSchema();
-    if(schema == null) {
+    if (schema == null) {
       throw new MetadataException("schema(" + fullPath + ") is null", false);
     }
-    logger.info("alterTimeseriesEncodingCompressionTYpe->old encoding:{}, compressionType:{}. cur ecoding:{}, compressionType:{}",
-            schema.getEncodingType(), schema.getCompressor(), curEncoding, curCompressionType);
+    logger.info(
+        "alterTimeseriesEncodingCompressionTYpe->old encoding:{}, compressionType:{}. cur ecoding:{}, compressionType:{}",
+        schema.getEncodingType(),
+        schema.getCompressor(),
+        curEncoding,
+        curCompressionType);
     // lock tree node TODO
     // trigger TODO
     // alter type
@@ -779,7 +788,16 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // cache
     mNodeCache.invalidate(fullPath);
     // mlog
-    writeToMLog(new AlterTimeSeriesPlan(fullPath, AlterTimeSeriesOperator.AlterType.SET_TYPE, null, null, null, null, curEncoding, curCompressionType));
+    writeToMLog(
+        new AlterTimeSeriesPlan(
+            fullPath,
+            AlterTimeSeriesOperator.AlterType.SET_TYPE,
+            null,
+            null,
+            null,
+            null,
+            curEncoding,
+            curCompressionType));
   }
 
   /**

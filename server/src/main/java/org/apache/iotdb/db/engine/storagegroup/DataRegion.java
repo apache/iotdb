@@ -52,14 +52,7 @@ import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.DataRegionException;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
@@ -101,6 +94,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -2065,6 +2060,41 @@ public class DataRegion {
       }
     }
     return tsfileResourcesForQuery;
+  }
+
+  /**
+   * alter timeseries encoding & compressionType 1、flush and close tsfile 2、locks 3、write temp
+   * tsfiles 4、unregister old tsfiles and release locks 5、rename temp tsfiles 6、register tsfiles
+   *
+   * @param fullPath
+   * @param curEncoding
+   * @param curCompressionType
+   * @throws StorageEngineException
+   */
+  public void alter(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws IOException {
+
+    // If there are still some old version tsfiles, the delete won't succeeded.
+    if (upgradeFileCount.get() != 0) {
+      throw new IOException(
+          "Delete failed. " + "Please do not delete until the old files upgraded.");
+    }
+    if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
+      throw new IOException(
+          "Delete failed. " + "Please do not delete until the old files settled.");
+    }
+    // flush & close
+    syncCloseAllWorkingTsFileProcessors();
+    // locks?
+    // mod files in mergingModification, sequenceFileList, and unsequenceFileList ?
+    writeLock("alter");
+    // write temp tsfiles
+    try {
+      // TODO
+    } finally {
+      writeUnlock();
+    }
   }
 
   /**

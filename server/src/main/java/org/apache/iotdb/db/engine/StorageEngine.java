@@ -67,6 +67,8 @@ import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -770,6 +772,35 @@ public class StorageEngine implements IService {
               .get(storageGroupPath)
               .delete(possiblePath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex, timePartitionFilter);
         }
+      }
+    } catch (IOException | MetadataException e) {
+      throw new StorageEngineException(e.getMessage());
+    }
+  }
+
+  /**
+   * alter timeseries encoding & compressionType
+   *
+   * @param fullPath
+   * @param curEncoding
+   * @param curCompressionType
+   * @throws StorageEngineException
+   */
+  public void alterTimeseries(
+      PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
+      throws StorageEngineException {
+
+    try {
+      List<PartialPath> sgPaths = IoTDB.schemaProcessor.getBelongedStorageGroups(fullPath);
+      for (PartialPath storageGroupPath : sgPaths) {
+        // storage group has no data
+        if (!processorMap.containsKey(storageGroupPath)) {
+          continue;
+        }
+        // process alter
+        processorMap
+            .get(storageGroupPath)
+            .alterTimeseries(fullPath, curEncoding, curCompressionType);
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
