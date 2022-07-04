@@ -180,9 +180,9 @@ public class NodeManager {
 
   public List<TDataNodesInfo> getRegisteredDataNodesInfoList() {
     List<TDataNodesInfo> dataNodesLocations = new ArrayList<>();
-    List<TDataNodeInfo> onlineDataNodes = this.getRegisteredDataNodes(-1);
-    if (onlineDataNodes != null) {
-      onlineDataNodes.forEach(
+    List<TDataNodeInfo> registeredDataNodes = this.getRegisteredDataNodes(-1);
+    if (registeredDataNodes != null) {
+      registeredDataNodes.forEach(
           (dataNodeInfo) -> {
             TDataNodesInfo tDataNodesLocation = new TDataNodesInfo();
             tDataNodesLocation.setDataNodeId(dataNodeInfo.getLocation().getDataNodeId());
@@ -386,12 +386,12 @@ public class NodeManager {
   }
 
   public List<TSStatus> flush(TFlushReq req) {
-    List<TDataNodeInfo> onlineDataNodes =
+    List<TDataNodeInfo> registeredDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes(req.dataNodeId);
     List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(onlineDataNodes.size()));
-    CountDownLatch countDownLatch = new CountDownLatch(onlineDataNodes.size());
-    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
+    CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
+    for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
       AsyncDataNodeClientPool.getInstance()
           .flush(
               dataNodeInfo.getLocation().getInternalEndPoint(),

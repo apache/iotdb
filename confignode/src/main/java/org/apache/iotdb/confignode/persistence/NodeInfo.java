@@ -126,18 +126,18 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   /** @return true if the specific DataNode is registered */
-  public boolean isRegisteredDataNode(TDataNodeLocation info) {
+  public boolean isRegisteredDataNode(TDataNodeLocation dataNodeLocation) {
     boolean result = false;
     dataNodeInfoReadWriteLock.readLock().lock();
-    int originalDataNodeId = info.getDataNodeId();
+    int originalDataNodeId = dataNodeLocation.getDataNodeId();
     try {
       for (Map.Entry<Integer, TDataNodeInfo> entry : registeredDataNodes.entrySet()) {
-        info.setDataNodeId(entry.getKey());
-        if (entry.getValue().getLocation().equals(info)) {
+        dataNodeLocation.setDataNodeId(entry.getKey());
+        if (entry.getValue().getLocation().equals(dataNodeLocation)) {
           result = true;
           break;
         }
-        info.setDataNodeId(originalDataNodeId);
+        dataNodeLocation.setDataNodeId(originalDataNodeId);
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();

@@ -265,11 +265,11 @@ public class LoadManager {
   /**
    * Send heartbeat requests to all the Registered DataNodes
    *
-   * @param onlineDataNodes DataNodes that registered in cluster
+   * @param registeredDataNodes DataNodes that registered in cluster
    */
-  private void pingRegisteredDataNodes(List<TDataNodeInfo> onlineDataNodes) {
+  private void pingRegisteredDataNodes(List<TDataNodeInfo> registeredDataNodes) {
     // Send heartbeat requests
-    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+    for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
       DataNodeHeartbeatHandler handler =
           new DataNodeHeartbeatHandler(
               dataNodeInfo.getLocation(),
