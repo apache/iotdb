@@ -114,13 +114,13 @@ public class FilePathUtils {
   }
 
   /**
-   * @return a long array whose length is 2, the first long value is tsfile version, second long
+   * @return a long array whose length is 3, the first long value is tsfile version, second long
    *     value is compaction version, high 32 bit is in-space compaction count, low 32 bit is
-   *     cross-space compaction count
+   *     cross-space compaction count, the third long value is timestamp.
    */
   private static long[] splitAndGetVersionArray(String tsFileName) {
     String[] names = tsFileName.split(FILE_NAME_SEPARATOR);
-    long[] versionArray = new long[2];
+    long[] versionArray = new long[3];
     if (names.length != 4) {
       return versionArray;
     }
@@ -128,6 +128,7 @@ public class FilePathUtils {
     versionArray[1] =
         (Long.parseLong(names[2]) << 32)
             | Long.parseLong(names[3].substring(0, names[3].length() - TSFILE_SUFFIX.length()));
+    versionArray[2] = Long.parseLong(names[0]);
     return versionArray;
   }
 
@@ -141,8 +142,8 @@ public class FilePathUtils {
 
   /**
    * pair.left tsFilePrefixPath, like data/data/sequence/root.sg1/0/0 pair.right is a long array
-   * whose length is 2 pair.right[0] is tsfile version pair.right[1] is compaction version, high 32
-   * bit is compaction level, low 32 bit is merge count
+   * whose length is 3, pair.right[0] is tsfile version, pair.right[1] is compaction version, high
+   * 32 bit is compaction level, low 32 bit is merge count, pair.right[2] is tsfile timestamp.
    */
   public static Pair<String, long[]> getTsFilePrefixPathAndTsFileVersionPair(
       String tsFileAbsolutePath) {

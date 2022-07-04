@@ -103,6 +103,10 @@ public class AlignedChunkMetadata implements IChunkMetadata {
     }
   }
 
+  public long getTimestamp() {
+    return timeChunkMetadata.getTimestamp();
+  }
+
   @Override
   public long getOffsetOfChunkHeader() {
     return timeChunkMetadata.getOffsetOfChunkHeader();

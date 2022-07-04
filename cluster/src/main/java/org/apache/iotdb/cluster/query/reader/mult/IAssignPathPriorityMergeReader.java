@@ -39,7 +39,7 @@ public interface IAssignPathPriorityMergeReader extends IPointReader {
                   getFullPath(),
                   reader,
                   reader.nextTimeValuePair(getFullPath()),
-                  new PriorityMergeReader.MergeReaderPriority(priority, 0)));
+                  new PriorityMergeReader.MergeReaderPriority(priority, 0, 0)));
     } else {
       reader.close();
     }
