@@ -266,10 +266,10 @@ public class LinearFillOperatorTest {
       TimeComparator timeComparator = new DescTimeComparator();
       LinearFill[] fillArray =
           new LinearFill[] {
-              new FloatLinearFill(ascending, timeComparator),
-              new FloatLinearFill(ascending, timeComparator),
-              new FloatLinearFill(ascending, timeComparator),
-              new FloatLinearFill(ascending, timeComparator)
+            new FloatLinearFill(ascending, timeComparator),
+            new FloatLinearFill(ascending, timeComparator),
+            new FloatLinearFill(ascending, timeComparator),
+            new FloatLinearFill(ascending, timeComparator)
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
@@ -279,51 +279,51 @@ public class LinearFillOperatorTest {
                 private int index = 0;
                 private final float[][][] value =
                     new float[][][] {
-                        {
-                            {1.0f, 0.0f, 3.0f, 4.0f},
-                            {11.0f, 12.0f, 13.0f, 0.0f},
-                            {21.0f, 22.0f, 0.0f, 0.0f},
-                            {0.0f, 32.0f, 0.0f, 0.0f},
-                            {0.0f, 0.0f, 43.0f, 0.0f}
-                        },
-                        {
-                            {51.0f, 0.0f, 53.0f, 0.0f},
-                            {61.0f, 62.0f, 63.0f, 0.0f},
-                            {71.0f, 72.0f, 0.0f, 74.0f},
-                            {0.0f, 82.0f, 0.0f, 0.0f},
-                            {0.0f, 0.0f, 93.0f, 0.0f}
-                        },
-                        {
-                            {101.0f, 0.0f, 103.0f, 0.0f},
-                            {111.0f, 112.0f, 113.0f, 114.0f},
-                            {121.0f, 122.0f, 0.0f, 124.0f},
-                            {0.0f, 132.0f, 0.0f, 0.0f},
-                            {0.0f, 0.0f, 143.0f, 0.0f}
-                        }
+                      {
+                        {1.0f, 0.0f, 3.0f, 4.0f},
+                        {11.0f, 12.0f, 13.0f, 0.0f},
+                        {21.0f, 22.0f, 0.0f, 0.0f},
+                        {0.0f, 32.0f, 0.0f, 0.0f},
+                        {0.0f, 0.0f, 43.0f, 0.0f}
+                      },
+                      {
+                        {51.0f, 0.0f, 53.0f, 0.0f},
+                        {61.0f, 62.0f, 63.0f, 0.0f},
+                        {71.0f, 72.0f, 0.0f, 74.0f},
+                        {0.0f, 82.0f, 0.0f, 0.0f},
+                        {0.0f, 0.0f, 93.0f, 0.0f}
+                      },
+                      {
+                        {101.0f, 0.0f, 103.0f, 0.0f},
+                        {111.0f, 112.0f, 113.0f, 114.0f},
+                        {121.0f, 122.0f, 0.0f, 124.0f},
+                        {0.0f, 132.0f, 0.0f, 0.0f},
+                        {0.0f, 0.0f, 143.0f, 0.0f}
+                      }
                     };
                 final boolean[][][] isNull =
                     new boolean[][][] {
-                        {
-                            {false, true, false, false},
-                            {false, false, false, true},
-                            {false, false, true, true},
-                            {true, false, true, true},
-                            {true, true, false, true}
-                        },
-                        {
-                            {false, true, false, true},
-                            {false, false, false, true},
-                            {false, false, true, false},
-                            {true, false, true, true},
-                            {true, true, false, true}
-                        },
-                        {
-                            {false, true, false, true},
-                            {false, false, false, false},
-                            {false, false, true, false},
-                            {true, false, true, true},
-                            {true, true, false, true}
-                        }
+                      {
+                        {false, true, false, false},
+                        {false, false, false, true},
+                        {false, false, true, true},
+                        {true, false, true, true},
+                        {true, true, false, true}
+                      },
+                      {
+                        {false, true, false, true},
+                        {false, false, false, true},
+                        {false, false, true, false},
+                        {true, false, true, true},
+                        {true, true, false, true}
+                      },
+                      {
+                        {false, true, false, true},
+                        {false, false, false, false},
+                        {false, false, true, false},
+                        {true, false, true, true},
+                        {true, true, false, true}
+                      }
                     };
 
                 @Override
@@ -368,51 +368,51 @@ public class LinearFillOperatorTest {
 
       float[][][] res =
           new float[][][] {
-              {
-                  {1.0f, 0.0f, 3.0f, 4.0f},
-                  {11.0f, 12.0f, 13.0f, 39.0f},
-                  {21.0f, 22.0f, 28.0f, 39.0f},
-                  {36.0f, 32.0f, 28.0f, 39.0f},
-                  {36.0f, 47.0f, 43.0f, 39.0f}
-              },
-              {
-                  {51.0f, 47.0f, 53.0f, 39.0f},
-                  {61.0f, 62.0f, 63.0f, 39.0f},
-                  {71.0f, 72.0f, 78.0f, 74.0f},
-                  {86.0f, 82.0f, 78.0f, 94.0f},
-                  {86.0f, 97.0f, 93.0f, 94.0f}
-              },
-              {
-                  {101.0f, 97.0f, 103.0f, 94.0f},
-                  {111.0f, 112.0f, 113.0f, 114.0f},
-                  {121.0f, 122.0f, 128.0f, 124.0f},
-                  {0.0f, 132.0f, 128.0f, 0.0f},
-                  {0.0f, 0.0f, 143.0f, 0.0f}
-              }
+            {
+              {1.0f, 0.0f, 3.0f, 4.0f},
+              {11.0f, 12.0f, 13.0f, 39.0f},
+              {21.0f, 22.0f, 28.0f, 39.0f},
+              {36.0f, 32.0f, 28.0f, 39.0f},
+              {36.0f, 47.0f, 43.0f, 39.0f}
+            },
+            {
+              {51.0f, 47.0f, 53.0f, 39.0f},
+              {61.0f, 62.0f, 63.0f, 39.0f},
+              {71.0f, 72.0f, 78.0f, 74.0f},
+              {86.0f, 82.0f, 78.0f, 94.0f},
+              {86.0f, 97.0f, 93.0f, 94.0f}
+            },
+            {
+              {101.0f, 97.0f, 103.0f, 94.0f},
+              {111.0f, 112.0f, 113.0f, 114.0f},
+              {121.0f, 122.0f, 128.0f, 124.0f},
+              {0.0f, 132.0f, 128.0f, 0.0f},
+              {0.0f, 0.0f, 143.0f, 0.0f}
+            }
           };
       boolean[][][] isNull =
           new boolean[][][] {
-              {
-                  {false, true, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false}
-              },
-              {
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false}
-              },
-              {
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {true, false, false, true},
-                  {true, true, false, true}
-              }
+            {
+              {false, true, false, false},
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false}
+            },
+            {
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false}
+            },
+            {
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false},
+              {true, false, false, true},
+              {true, true, false, true}
+            }
           };
 
       boolean[] nullBlock = new boolean[] {true, false, false, false};
@@ -666,10 +666,10 @@ public class LinearFillOperatorTest {
       TimeComparator timeComparator = new DescTimeComparator();
       LinearFill[] fillArray =
           new LinearFill[] {
-              new FloatLinearFill(ascending, timeComparator),
-              new FloatLinearFill(ascending, timeComparator),
-              new FloatLinearFill(ascending, timeComparator),
-              new FloatLinearFill(ascending, timeComparator)
+            new FloatLinearFill(ascending, timeComparator),
+            new FloatLinearFill(ascending, timeComparator),
+            new FloatLinearFill(ascending, timeComparator),
+            new FloatLinearFill(ascending, timeComparator)
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
@@ -679,51 +679,51 @@ public class LinearFillOperatorTest {
                 private int index = 0;
                 private final float[][][] value =
                     new float[][][] {
-                        {
-                            {1.0f, 0.0f, 3.0f, 4.0f},
-                            {11.0f, 12.0f, 13.0f, 0.0f},
-                            {21.0f, 22.0f, 0.0f, 0.0f},
-                            {0.0f, 32.0f, 0.0f, 0.0f},
-                            {0.0f, 0.0f, 0.0f, 0.0f}
-                        },
-                        {
-                            {51.0f, 0.0f, 0.0f, 0.0f},
-                            {61.0f, 62.0f, 0.0f, 0.0f},
-                            {71.0f, 72.0f, 0.0f, 74.0f},
-                            {0.0f, 82.0f, 0.0f, 0.0f},
-                            {0.0f, 0.0f, 0.0f, 0.0f}
-                        },
-                        {
-                            {101.0f, 0.0f, 103.0f, 0.0f},
-                            {111.0f, 112.0f, 0.0f, 114.0f},
-                            {121.0f, 122.0f, 0.0f, 124.0f},
-                            {0.0f, 132.0f, 0.0f, 0.0f},
-                            {0.0f, 0.0f, 0.0f, 0.0f}
-                        }
+                      {
+                        {1.0f, 0.0f, 3.0f, 4.0f},
+                        {11.0f, 12.0f, 13.0f, 0.0f},
+                        {21.0f, 22.0f, 0.0f, 0.0f},
+                        {0.0f, 32.0f, 0.0f, 0.0f},
+                        {0.0f, 0.0f, 0.0f, 0.0f}
+                      },
+                      {
+                        {51.0f, 0.0f, 0.0f, 0.0f},
+                        {61.0f, 62.0f, 0.0f, 0.0f},
+                        {71.0f, 72.0f, 0.0f, 74.0f},
+                        {0.0f, 82.0f, 0.0f, 0.0f},
+                        {0.0f, 0.0f, 0.0f, 0.0f}
+                      },
+                      {
+                        {101.0f, 0.0f, 103.0f, 0.0f},
+                        {111.0f, 112.0f, 0.0f, 114.0f},
+                        {121.0f, 122.0f, 0.0f, 124.0f},
+                        {0.0f, 132.0f, 0.0f, 0.0f},
+                        {0.0f, 0.0f, 0.0f, 0.0f}
+                      }
                     };
                 final boolean[][][] isNull =
                     new boolean[][][] {
-                        {
-                            {false, true, false, false},
-                            {false, false, false, true},
-                            {false, false, true, true},
-                            {true, false, true, true},
-                            {true, true, true, true}
-                        },
-                        {
-                            {false, true, true, true},
-                            {false, false, true, true},
-                            {false, false, true, false},
-                            {true, false, true, true},
-                            {true, true, true, true}
-                        },
-                        {
-                            {false, true, false, true},
-                            {false, false, true, false},
-                            {false, false, true, false},
-                            {true, false, true, true},
-                            {true, true, true, true}
-                        }
+                      {
+                        {false, true, false, false},
+                        {false, false, false, true},
+                        {false, false, true, true},
+                        {true, false, true, true},
+                        {true, true, true, true}
+                      },
+                      {
+                        {false, true, true, true},
+                        {false, false, true, true},
+                        {false, false, true, false},
+                        {true, false, true, true},
+                        {true, true, true, true}
+                      },
+                      {
+                        {false, true, false, true},
+                        {false, false, true, false},
+                        {false, false, true, false},
+                        {true, false, true, true},
+                        {true, true, true, true}
+                      }
                     };
 
                 @Override
@@ -769,51 +769,51 @@ public class LinearFillOperatorTest {
       int count = 0;
       float[][][] res =
           new float[][][] {
-              {
-                  {1.0f, 0.0f, 3.0f, 4.0f},
-                  {11.0f, 12.0f, 13.0f, 39.0f},
-                  {21.0f, 22.0f, 58.0f, 39.0f},
-                  {36.0f, 32.0f, 58.0f, 39.0f},
-                  {36.0f, 47.0f, 58.0f, 39.0f}
-              },
-              {
-                  {51.0f, 47.0f, 58.0f, 39.0f},
-                  {61.0f, 62.0f, 58.0f, 39.0f},
-                  {71.0f, 72.0f, 58.0f, 74.0f},
-                  {86.0f, 82.0f, 58.0f, 94.0f},
-                  {86.0f, 97.0f, 58.0f, 94.0f}
-              },
-              {
-                  {101.0f, 97.0f, 103.0f, 94.0f},
-                  {111.0f, 112.0f, 0.0f, 114.0f},
-                  {121.0f, 122.0f, 0.0f, 124.0f},
-                  {0.0f, 132.0f, 0.0f, 0.0f},
-                  {0.0f, 0.0f, 0.0f, 0.0f}
-              }
+            {
+              {1.0f, 0.0f, 3.0f, 4.0f},
+              {11.0f, 12.0f, 13.0f, 39.0f},
+              {21.0f, 22.0f, 58.0f, 39.0f},
+              {36.0f, 32.0f, 58.0f, 39.0f},
+              {36.0f, 47.0f, 58.0f, 39.0f}
+            },
+            {
+              {51.0f, 47.0f, 58.0f, 39.0f},
+              {61.0f, 62.0f, 58.0f, 39.0f},
+              {71.0f, 72.0f, 58.0f, 74.0f},
+              {86.0f, 82.0f, 58.0f, 94.0f},
+              {86.0f, 97.0f, 58.0f, 94.0f}
+            },
+            {
+              {101.0f, 97.0f, 103.0f, 94.0f},
+              {111.0f, 112.0f, 0.0f, 114.0f},
+              {121.0f, 122.0f, 0.0f, 124.0f},
+              {0.0f, 132.0f, 0.0f, 0.0f},
+              {0.0f, 0.0f, 0.0f, 0.0f}
+            }
           };
       boolean[][][] isNull =
           new boolean[][][] {
-              {
-                  {false, true, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false}
-              },
-              {
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false},
-                  {false, false, false, false}
-              },
-              {
-                  {false, false, false, false},
-                  {false, false, true, false},
-                  {false, false, true, false},
-                  {true, false, true, true},
-                  {true, true, true, true}
-              }
+            {
+              {false, true, false, false},
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false}
+            },
+            {
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false},
+              {false, false, false, false}
+            },
+            {
+              {false, false, false, false},
+              {false, false, true, false},
+              {false, false, true, false},
+              {true, false, true, true},
+              {true, true, true, true}
+            }
           };
 
       boolean[] nullBlock = new boolean[] {true, true, false, false, false};
@@ -978,11 +978,11 @@ public class LinearFillOperatorTest {
                 private int index = 0;
                 private final float[][][] value =
                     new float[][][] {
-                        {{0.0f}}, {{2.0f}}, {{3.0f}}, {{4.0f}}, {{0.0f}}, {{0.0f}}, {{0.0f}}
+                      {{0.0f}}, {{2.0f}}, {{3.0f}}, {{4.0f}}, {{0.0f}}, {{0.0f}}, {{0.0f}}
                     };
                 final boolean[][][] isNull =
                     new boolean[][][] {
-                        {{true}}, {{false}}, {{false}}, {{false}}, {{true}}, {{true}}, {{true}}
+                      {{true}}, {{false}}, {{false}}, {{false}}, {{true}}, {{true}}, {{true}}
                     };
 
                 @Override
@@ -1024,7 +1024,7 @@ public class LinearFillOperatorTest {
           new float[][][] {{{0.0f}}, {{2.0f}}, {{3.0f}}, {{4.0f}}, {{0.0f}}, {{0.0f}}, {{0.0f}}};
       boolean[][][] isNull =
           new boolean[][][] {
-              {{true}}, {{false}}, {{false}}, {{false}}, {{true}}, {{true}}, {{true}}
+            {{true}}, {{false}}, {{false}}, {{false}}, {{true}}, {{true}}, {{true}}
           };
 
       boolean[] nullBlock =

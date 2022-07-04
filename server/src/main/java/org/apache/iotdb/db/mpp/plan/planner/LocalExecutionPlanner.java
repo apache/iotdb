@@ -665,7 +665,8 @@ public class LocalExecutionPlanner {
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
                   LinearFillOperator.class.getSimpleName()),
-              getLinearFill(inputColumns, inputDataTypes, false),
+              getLinearFill(
+                  inputColumns, inputDataTypes, node.getScanOrder() == OrderBy.TIMESTAMP_ASC),
               child);
         default:
           throw new IllegalArgumentException("Unknown fill policy: " + fillPolicy);
