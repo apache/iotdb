@@ -41,7 +41,7 @@ public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
             Metric.THRIFT_CONNECTIONS.toString(),
             MetricLevel.CORE,
             Tag.NAME.toString(),
-            "ConfigNode")
+            "ConfigNodeRPC")
         .incr(1L);
     return null;
   }
@@ -56,7 +56,7 @@ public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
             Metric.THRIFT_CONNECTIONS.toString(),
             MetricLevel.CORE,
             Tag.NAME.toString(),
-            "ConfigNode")
+            "ConfigNodeRPC")
         .decr(1L);
   }
 
