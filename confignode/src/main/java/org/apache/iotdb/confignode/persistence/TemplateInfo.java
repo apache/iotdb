@@ -15,15 +15,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,7 +54,7 @@ public class TemplateInfo implements SnapshotProcessor {
       templateReadWriteLock.readLock().lock();
       Template template = templateMap.get(name);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-      resp.setTemplate(template2ByteBuffer(template));
+      resp.setTemplate(Template.template2ByteBuffer(template));
     } catch (Exception e) {
       LOGGER.warn("Error TemplateInfo name", e);
       resp.setStatus(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
@@ -75,7 +72,7 @@ public class TemplateInfo implements SnapshotProcessor {
       this.templateMap.values().stream()
           .forEach(
               item -> {
-                templates.add(template2ByteBuffer(item));
+                templates.add(Template.template2ByteBuffer(item));
               });
       resp.setTemplateList(templates);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
@@ -88,26 +85,11 @@ public class TemplateInfo implements SnapshotProcessor {
     return resp;
   }
 
-  public ByteBuffer template2ByteBuffer(Template template) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    ReadWriteIOUtils.writeObject(template, dataOutputStream);
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-  }
-
-  public Template byteBuffer2Template(ByteBuffer byteBuffer)
-      throws IOException, ClassNotFoundException {
-    ByteArrayInputStream byteArrayOutputStream = new ByteArrayInputStream(byteBuffer.array());
-    ObjectInputStream ois = new ObjectInputStream(byteArrayOutputStream);
-    Template template = (Template) ois.readObject();
-    return template;
-  }
-
   public TSStatus createTemplate(Template template) {
     try {
       templateReadWriteLock.readLock().lock();
       Template temp = this.templateMap.get(template.getName());
-      if (template.getName().equalsIgnoreCase(temp.getName())) {
+      if (temp != null && template.getName().equalsIgnoreCase(temp.getName())) {
         LOGGER.error(
             "Failed to create template, because template name {} is exists", template.getName());
         return new TSStatus(TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode());

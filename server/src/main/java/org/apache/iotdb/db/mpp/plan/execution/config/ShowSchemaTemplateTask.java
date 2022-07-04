@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
@@ -13,7 +12,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -37,24 +35,18 @@ public class ShowSchemaTemplateTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      TGetAllTemplatesResp resp, SettableFuture<ConfigTaskResult> future) {
+      List<Template> templateList, SettableFuture<ConfigTaskResult> future) {
     TsBlockBuilder builder =
         new TsBlockBuilder(HeaderConstant.showSchemaTemplate.getRespDataTypes());
-    List<ByteBuffer> list = resp.getTemplateList();
-    Optional<List<ByteBuffer>> optional = Optional.ofNullable(list);
+    Optional<List<Template>> optional = Optional.ofNullable(templateList);
     optional.orElse(new ArrayList<>()).stream()
         .forEach(
-            item -> {
-              try {
-                Template template = Template.byteBuffer2Template(item);
-                builder.getTimeColumnBuilder().writeLong(0L);
-                builder.getColumnBuilder(0).writeBinary(new Binary(template.getName()));
-                builder.declarePosition();
-              } catch (Exception e) {
-
-              }
+            template -> {
+              builder.getTimeColumnBuilder().writeLong(0L);
+              builder.getColumnBuilder(0).writeBinary(new Binary(template.getName()));
+              builder.declarePosition();
             });
-    DatasetHeader datasetHeader = HeaderConstant.showNodesInSchemaTemplate;
+    DatasetHeader datasetHeader = HeaderConstant.showSchemaTemplate;
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

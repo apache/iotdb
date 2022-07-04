@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.metadata.template;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 
 import java.util.List;
@@ -10,7 +11,7 @@ import java.util.List;
  */
 public interface ITemplateManager {
 
-  void createSchemaTemplate(CreateSchemaTemplateStatement statement);
+  TSStatus createSchemaTemplate(CreateSchemaTemplateStatement statement);
 
   List<Template> getAllTemplates();
 

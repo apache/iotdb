@@ -48,6 +48,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -62,7 +64,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Template {
+public class Template implements Serializable {
   private String name;
   private Map<String, IMNode> directNodes;
   private boolean isDirectAligned;
@@ -149,7 +151,6 @@ public class Template {
     this(
         new CreateTemplatePlan(
             statement.getName(),
-            statement.getSchemaNames(),
             statement.getMeasurements(),
             statement.getDataTypes(),
             statement.getEncodings(),
@@ -735,15 +736,19 @@ public class Template {
 
   public static ByteBuffer template2ByteBuffer(Template template) {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    ReadWriteIOUtils.writeObject(template, dataOutputStream);
+    try {
+      ObjectOutputStream dataOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+      dataOutputStream.writeObject(template);
+    } catch (Exception e) {
+
+    }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   public static Template byteBuffer2Template(ByteBuffer byteBuffer)
       throws IOException, ClassNotFoundException {
-    ByteArrayInputStream byteArrayOutputStream = new ByteArrayInputStream(byteBuffer.array());
-    ObjectInputStream ois = new ObjectInputStream(byteArrayOutputStream);
+    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteBuffer.array());
+    ObjectInputStream ois = new ObjectInputStream(byteArrayInputStream);
     Template template = (Template) ois.readObject();
     return template;
   }

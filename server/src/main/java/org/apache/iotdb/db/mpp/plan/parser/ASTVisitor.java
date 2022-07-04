@@ -2332,6 +2332,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         List<TSDataType> dataTypes = new ArrayList<>();
         List<TSEncoding> encodings = new ArrayList<>();
         List<CompressionType> compressors = new ArrayList<>();
+        measurements.add(
+            parseNodeNameWithoutWildCard(templateClauseContext.nodeNameWithoutWildcard()));
         parseAttributeClause(
             templateClauseContext.attributeClauses(), dataTypes, encodings, compressors);
         measurementsList.add(measurements);
@@ -2462,7 +2464,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowNodesInSchemaTemplate(
       IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
-    String templateName = "";
+    String templateName = ctx.templateName.children.get(0).getText();
     ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement =
         new ShowNodesInSchemaTemplateStatement(templateName);
     // showNodesInSchemaTemplateStatement.setTemplateName(ctx.templateName.);

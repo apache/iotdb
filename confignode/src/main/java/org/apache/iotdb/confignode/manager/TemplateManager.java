@@ -28,7 +28,7 @@ public class TemplateManager {
 
   public TSStatus createTemplate(TCreateSchemaTemplateReq req) {
     try {
-      Template template = templateInfo.byteBuffer2Template(req.bufferForSerializedTemplate());
+      Template template = Template.byteBuffer2Template(req.bufferForSerializedTemplate());
       TSStatus tsStatus = templateInfo.createTemplate(template);
       return tsStatus;
     } catch (Exception e) {

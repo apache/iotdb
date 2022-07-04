@@ -29,10 +29,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -43,9 +41,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.CountStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.CreateSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowDataNodesTask;
@@ -379,12 +378,10 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       CreateSchemaTemplateStatement createSchemaTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     // Construct request using statement
-    TCreateSchemaTemplateReq req =
-        CreateSchemaTemplateTask.constructTCreateSchemaTemplateReq(createSchemaTemplateStatement);
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+    try {
       // Send request to some API server
-      TSStatus tsStatus = configNodeClient.createSchemaTemplate(req);
+      TSStatus tsStatus =
+          ClusterTemplateManager.getInstance().createSchemaTemplate(createSchemaTemplateStatement);
       // Get response or throw exception
       if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
         LOGGER.error(
@@ -395,7 +392,7 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
-    } catch (TException | IOException e) {
+    } catch (Exception e) {
       future.setException(e);
     }
     return future;
@@ -405,25 +402,15 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   public SettableFuture<ConfigTaskResult> showSchemaTemplate(
       ShowSchemaTemplateStatement showSchemaTemplateStatement) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TGetAllTemplatesResp tGetAllTemplatesResp = new TGetAllTemplatesResp();
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
-      tGetAllTemplatesResp = configNodeClient.getAllTemplates();
-      // Get response or throw exception
-      if (tGetAllTemplatesResp.getStatus().getCode()
-          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(new StatementExecutionException(tGetAllTemplatesResp.getStatus()));
-        return future;
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
-
-    } catch (TException | IOException e) {
+      List<Template> templateList = ClusterTemplateManager.getInstance().getAllTemplates();
+      // build TSBlock
+      ShowSchemaTemplateTask.buildTSBlock(templateList, future);
+    } catch (Exception e) {
       future.setException(e);
     }
-    // build TSBlock
-    ShowSchemaTemplateTask.buildTSBlock(tGetAllTemplatesResp, future);
     return future;
   }
 
@@ -436,20 +423,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
-      tGetTemplateResp = configNodeClient.getTemplate(req);
-      // Get response or throw exception
-      if (tGetTemplateResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.setException(new StatementExecutionException(tGetTemplateResp.getStatus()));
-        return future;
-      } else {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      }
-
-    } catch (TException | IOException e) {
+      Template template = ClusterTemplateManager.getInstance().getTemplate(req);
+      // build TSBlock
+      ShowNodesInSchemaTemplateTask.buildTSBlock(template, future);
+    } catch (Exception e) {
       future.setException(e);
     }
-    // build TSBlock
-    ShowNodesInSchemaTemplateTask.buildTSBlock(tGetTemplateResp, future);
     return future;
   }
 }

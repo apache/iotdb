@@ -1,6 +1,5 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
@@ -14,7 +13,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
-import java.nio.ByteBuffer;
 import java.util.Map;
 
 /**
@@ -36,13 +34,11 @@ public class ShowNodesInSchemaTemplateTask implements IConfigTask {
     return configTaskExecutor.showNodesInSchemaTemplate(this.showNodesInSchemaTemplateStatement);
   }
 
-  public static void buildTSBlock(TGetTemplateResp resp, SettableFuture<ConfigTaskResult> future) {
+  public static void buildTSBlock(Template template, SettableFuture<ConfigTaskResult> future) {
     TsBlockBuilder builder =
         new TsBlockBuilder(HeaderConstant.showNodesInSchemaTemplate.getRespDataTypes());
     try {
-      byte[] templateBytes = resp.getTemplate();
-      if (templateBytes != null && templateBytes.length > 0) {
-        Template template = Template.byteBuffer2Template(ByteBuffer.wrap(templateBytes));
+      if (template != null) {
         // template.get
         for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
           String keyName = entry.getKey();

@@ -1,6 +1,8 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata.template;
 
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
@@ -8,7 +10,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
  * @author chenhuangyun
  * @date 2022/6/30
  */
-public class ShowNodesInSchemaTemplateStatement extends ShowStatement {
+public class ShowNodesInSchemaTemplateStatement extends ShowStatement implements IConfigStatement {
 
   private String templateName;
 
@@ -29,5 +31,10 @@ public class ShowNodesInSchemaTemplateStatement extends ShowStatement {
 
   public void setTemplateName(String templateName) {
     this.templateName = templateName;
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.READ;
   }
 }

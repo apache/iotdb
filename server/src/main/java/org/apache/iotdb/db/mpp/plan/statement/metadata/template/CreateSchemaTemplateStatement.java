@@ -1,7 +1,9 @@
 package org.apache.iotdb.db.mpp.plan.statement.metadata.template;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -18,7 +20,7 @@ import java.util.Set;
  * @author chenhuangyun
  * @date 2022/6/28
  */
-public class CreateSchemaTemplateStatement extends Statement {
+public class CreateSchemaTemplateStatement extends Statement implements IConfigStatement {
 
   String name;
   Set<String> alignedDeviceId;
@@ -166,5 +168,10 @@ public class CreateSchemaTemplateStatement extends Statement {
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitCreateSchemaTemplate(this, context);
+  }
+
+  @Override
+  public QueryType getQueryType() {
+    return QueryType.WRITE;
   }
 }

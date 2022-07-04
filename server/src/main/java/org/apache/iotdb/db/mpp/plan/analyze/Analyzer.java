@@ -80,6 +80,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
@@ -1435,6 +1438,54 @@ public class Analyzer {
       DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
       analysis.setDataPartitionInfo(dataPartition);
 
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateSchemaTemplate(
+        CreateSchemaTemplateStatement createTemplateStatement, MPPQueryContext context) {
+
+      context.setQueryType(QueryType.WRITE);
+      List<List<String>> measurementsList = createTemplateStatement.getMeasurements();
+      for (List measurements : measurementsList) {
+        Set<String> measurementsSet = new HashSet<>(measurements);
+        if (measurementsSet.size() < measurements.size()) {
+          throw new SemanticException(
+              "Measurement under an aligned device is not allowed to have the same measurement name");
+        }
+      }
+      Analysis analysis = new Analysis();
+      analysis.setStatement(createTemplateStatement);
+
+      /*PathPatternTree pathPatternTree = new PathPatternTree();
+      PartialPath partialPath = new PartialPath(createTemplateStatement.getName());
+      for (String measurement : createAlignedTimeSeriesStatement.getMeasurements()) {
+        pathPatternTree.appendFullPath(
+            createTemplateStatement.getPaths(), measurement);
+      }
+
+      SchemaPartition schemaPartitionInfo;
+      schemaPartitionInfo = partitionFetcher.getOrCreateSchemaPartition(pathPatternTree);
+      analysis.setSchemaPartitionInfo(schemaPartitionInfo);*/
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowNodesInSchemaTemplate(
+        ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement,
+        MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showNodesInSchemaTemplateStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showNodesInSchemaTemplate);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowSchemaTemplate(
+        ShowSchemaTemplateStatement showSchemaTemplateStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showSchemaTemplateStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showSchemaTemplate);
       return analysis;
     }
   }
