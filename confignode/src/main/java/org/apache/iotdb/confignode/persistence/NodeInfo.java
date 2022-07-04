@@ -230,7 +230,7 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** Return the number of online DataNodes */
+  /** Return the number of registered DataNodes */
   public int getRegisteredDataNodeCount() {
     int result;
     dataNodeInfoReadWriteLock.readLock().lock();
