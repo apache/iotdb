@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
@@ -26,8 +25,6 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeConfig {
@@ -44,14 +41,8 @@ public class ConfigNodeConfig {
   /** Used for connecting to the ConfigNodeGroup */
   private TEndPoint targetConfigNode = new TEndPoint("0.0.0.0", 22277);
 
-  /** Mark if the ConfigNode needs to apply */
-  private boolean needApply = false;
-
   // TODO: Read from iotdb-confignode.properties
   private int partitionRegionId = 0;
-
-  /** Used for building the PartitionRegion */
-  private List<TConfigNodeLocation> configNodeList = new ArrayList<>();
 
   /** Thrift socket and connection timeout between nodes */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
@@ -149,7 +140,7 @@ public class ConfigNodeConfig {
   /** The routing policy of read/write requests */
   private String routingPolicy = RouteBalancer.greedyPolicy;
 
-  ConfigNodeConfig() {
+  public ConfigNodeConfig() {
     // empty constructor
   }
 
@@ -201,14 +192,6 @@ public class ConfigNodeConfig {
     this.consensusPort = consensusPort;
   }
 
-  public boolean isNeedApply() {
-    return needApply;
-  }
-
-  public void setNeedApply(boolean needApply) {
-    this.needApply = needApply;
-  }
-
   public TEndPoint getTargetConfigNode() {
     return targetConfigNode;
   }
@@ -223,14 +206,6 @@ public class ConfigNodeConfig {
 
   public void setPartitionRegionId(int partitionRegionId) {
     this.partitionRegionId = partitionRegionId;
-  }
-
-  public List<TConfigNodeLocation> getConfigNodeList() {
-    return configNodeList;
-  }
-
-  public void setConfigNodeList(List<TConfigNodeLocation> configNodeList) {
-    this.configNodeList = configNodeList;
   }
 
   public int getSeriesPartitionSlotNum() {

@@ -30,8 +30,7 @@ struct TDataNodeRegisterReq {
 }
 
 struct TDataNodeActiveReq {
-  1: required common.TDataNodeLocation location
-  2: required i32 dataNodeId
+  1: required common.TDataNodeInfo dataNodeInfo
 }
 
 struct TGlobalConfig {
@@ -236,6 +235,21 @@ struct TShowRegionResp {
   2: optional list<common.TRegionInfo> regionInfoList;
 }
 
+// show datanodes
+struct TShowDataNodesResp {
+  1: required common.TSStatus status
+  2: optional list<common.TDataNodesInfo> dataNodesInfoList
+}
+
+struct TRegionRouteMapResp {
+  1: required common.TSStatus status
+  // For version stamp
+  2: optional i64 timestamp
+  // The routing policy of read/write requests for each RegionGroup is based on the order in the TRegionReplicaSet.
+  // The replica with higher sorting result in TRegionReplicaSet will have higher priority.
+  3: optional map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
+}
+
 service IConfigNodeRPCService {
 
   /* DataNode */
@@ -301,6 +315,8 @@ service IConfigNodeRPCService {
 
   common.TSStatus addConsensusGroup(TConfigNodeRegisterResp req)
 
+  common.TSStatus notifyRegisterSuccess()
+
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
@@ -319,8 +335,17 @@ service IConfigNodeRPCService {
 
   TShowRegionResp showRegion(TShowRegionReq req)
 
+  /* Routing */
+
+  TRegionRouteMapResp getLatestRegionRouteMap()
+
   /* Get confignode heartbeat */
+
   i64 getConfigNodeHeartBeat(i64 timestamp)
+
+  /* Show DataNodes */
+
+  TShowDataNodesResp showDataNodes()
 
 }
 

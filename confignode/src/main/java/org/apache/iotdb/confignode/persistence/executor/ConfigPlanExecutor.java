@@ -31,11 +31,12 @@ import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionP
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateRegionsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
@@ -145,6 +146,8 @@ public class ConfigPlanExecutor {
     switch (req.getType()) {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodePlan) req);
+      case ActivateDataNode:
+        return nodeInfo.activateDataNode((ActivateDataNodePlan) req);
       case SetStorageGroup:
         TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupPlan) req);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -167,7 +170,7 @@ public class ConfigPlanExecutor {
       case SetTimePartitionInterval:
         return clusterSchemaInfo.setTimePartitionInterval((SetTimePartitionIntervalPlan) req);
       case CreateRegionGroups:
-        return partitionInfo.createRegionGroups((CreateRegionsPlan) req);
+        return partitionInfo.createRegionGroups((CreateRegionGroupsPlan) req);
       case CreateSchemaPartition:
         return partitionInfo.createSchemaPartition((CreateSchemaPartitionPlan) req);
       case CreateDataPartition:
@@ -189,9 +192,9 @@ public class ConfigPlanExecutor {
       case UpdateUser:
         return authorInfo.authorNonQuery((AuthorPlan) req);
       case ApplyConfigNode:
-        return nodeInfo.updateConfigNodeList((ApplyConfigNodePlan) req);
+        return nodeInfo.applyConfigNode((ApplyConfigNodePlan) req);
       case RemoveConfigNode:
-        return nodeInfo.removeConfigNodeList((RemoveConfigNodePlan) req);
+        return nodeInfo.removeConfigNode((RemoveConfigNodePlan) req);
       case CreateFunction:
         return udfInfo.createFunction((CreateFunctionPlan) req);
       case DropFunction:
