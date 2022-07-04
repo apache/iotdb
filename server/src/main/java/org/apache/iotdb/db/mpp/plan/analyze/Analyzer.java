@@ -1253,16 +1253,6 @@ public class Analyzer {
     }
 
     @Override
-    public Analysis visitShowVersion(
-        ShowVersionStatement showVersionStatement, MPPQueryContext context) {
-      Analysis analysis = new Analysis();
-      analysis.setStatement(showVersionStatement);
-      analysis.setRespDatasetHeader(HeaderConstant.showVersionHeader);
-      analysis.setFinishQueryAfterAnalyze(true);
-      return analysis;
-    }
-
-    @Override
     public Analysis visitCountStorageGroup(
         CountStorageGroupStatement countStorageGroupStatement, MPPQueryContext context) {
       Analysis analysis = new Analysis();
@@ -1367,6 +1357,16 @@ public class Analyzer {
           showChildNodesStatement,
           showChildNodesStatement.getPartialPath(),
           HeaderConstant.showChildNodesHeader);
+    }
+
+    @Override
+    public Analysis visitShowVersion(
+        ShowVersionStatement showVersionStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showVersionStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showVersionHeader);
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
     }
 
     private Analysis visitSchemaNodeManagementPartition(

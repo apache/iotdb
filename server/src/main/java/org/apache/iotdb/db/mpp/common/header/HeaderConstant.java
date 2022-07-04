@@ -49,6 +49,7 @@ public class HeaderConstant {
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
   public static final String COLUMN_CHILDPATHS = "child paths";
   public static final String COLUMN_CHILDNODES = "child nodes";
+  public static final String COLUMN_VERSION = "version";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -79,9 +80,6 @@ public class HeaderConstant {
   // column names for show datanodes
   public static final String COLUMN_DATA_REGION_NUM = "DataRegionNum";
   public static final String COLUMN_SCHEMA_REGION_NUM = "SchemaRegionNum";
-
-  // column names for show version
-  public static final String COLUMN_VERSION = "version";
 
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
@@ -190,6 +188,9 @@ public class HeaderConstant {
     showChildNodesHeader =
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
+    showVersionHeader =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT)), true);
   }
 
   static {
@@ -251,11 +252,5 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_DATA_REGION_NUM, TSDataType.INT32),
                 new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32)),
             true);
-  }
-
-  static {
-    showVersionHeader =
-        new DatasetHeader(
-            Collections.singletonList(new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT)), true);
   }
 }

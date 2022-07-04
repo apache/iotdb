@@ -115,6 +115,18 @@ public class StatementMemorySourceVisitor
   }
 
   @Override
+  public StatementMemorySource visitShowVersion(
+      ShowVersionStatement showVersionStatement, StatementMemorySourceContext context) {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.showVersionHeader.getRespDataTypes());
+    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+    tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(IoTDBConstant.VERSION));
+    tsBlockBuilder.declarePosition();
+    return new StatementMemorySource(
+        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  @Override
   public StatementMemorySource visitCountNodes(
       CountNodesStatement countStatement, StatementMemorySourceContext context) {
     TsBlockBuilder tsBlockBuilder =
@@ -122,18 +134,6 @@ public class StatementMemorySourceVisitor
     Set<String> matchedChildNodes = new TreeSet<>(context.getAnalysis().getMatchedNodes());
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeInt(matchedChildNodes.size());
-    tsBlockBuilder.declarePosition();
-    return new StatementMemorySource(
-        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
-  }
-
-  @Override
-  public StatementMemorySource visitShowVersion(
-      ShowVersionStatement showVersionStatement, StatementMemorySourceContext context) {
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showVersionHeader.getRespDataTypes());
-    tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-    tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(IoTDBConstant.VERSION));
     tsBlockBuilder.declarePosition();
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
