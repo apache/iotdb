@@ -138,7 +138,7 @@ public class MultiLeaderConsensusTest {
       while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex()
           < IndexController.FLUSH_INTERVAL) {
         long current = System.currentTimeMillis();
-        if ((current - start) > 20 * 1000) {
+        if ((current - start) > 60 * 1000) {
           Assert.fail("Unable to replicate entries");
         }
         Thread.sleep(100);
@@ -179,7 +179,7 @@ public class MultiLeaderConsensusTest {
       while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex()
           < IndexController.FLUSH_INTERVAL) {
         long current = System.currentTimeMillis();
-        if ((current - start) > 20 * 1000) {
+        if ((current - start) > 60 * 1000) {
           Assert.fail("Unable to recover entries");
         }
         Thread.sleep(100);
@@ -241,7 +241,7 @@ public class MultiLeaderConsensusTest {
       while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex()
           < IndexController.FLUSH_INTERVAL) {
         long current = System.currentTimeMillis();
-        if ((current - start) > 20 * 1000) {
+        if ((current - start) > 60 * 1000) {
           logger.error("{}", servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
           Assert.fail("Unable to replicate entries");
         }
