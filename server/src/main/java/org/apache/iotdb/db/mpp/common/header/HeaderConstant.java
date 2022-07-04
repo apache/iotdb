@@ -89,6 +89,7 @@ public class HeaderConstant {
   public static final DatasetHeader showTTLHeader;
   public static final DatasetHeader showChildPathsHeader;
   public static final DatasetHeader showChildNodesHeader;
+  public static final DatasetHeader showVersionHeader;
 
   // dataset header for count statement
   public static final DatasetHeader countStorageGroupHeader;
@@ -111,9 +112,6 @@ public class HeaderConstant {
 
   // dataset header for show datanodes
   public static final DatasetHeader showDataNodesHeader;
-
-  // dataset header for show version
-  public static final DatasetHeader showVersionHeader;
 
   static {
     countStorageGroupHeader =
