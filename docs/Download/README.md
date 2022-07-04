@@ -106,6 +106,9 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
   We DO NOT recommend using preview release on-line, and DO NOT upgrade 0.13 to a preview release.
   - The UserGuide of 0.14.0-preview is still in the **latest**.
 
+**<font color=red>NOTE: Do not use the stop-confignode.bat/sh script, which has a bug that may kill other process</font>**:
+ 
+
 - **After we release 0.14.0, how to upgrade from v.13.x to v0.14.x?**
   
   - **Version 0.14 has changed the SQL syntax conventions (please refer to the syntax conventions section of the user manual), the incompatibilities are as follows:**
