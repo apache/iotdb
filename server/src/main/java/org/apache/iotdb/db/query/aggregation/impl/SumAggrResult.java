@@ -42,7 +42,6 @@ public class SumAggrResult extends AggregateResult {
     super(TSDataType.DOUBLE, AggregationType.SUM);
     this.seriesDataType = seriesDataType;
     reset();
-    setDoubleValue(0.0);
   }
 
   @Override
