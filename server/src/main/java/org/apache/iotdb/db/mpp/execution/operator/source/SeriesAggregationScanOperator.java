@@ -109,7 +109,8 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
               null,
               ascending);
     } else {
-      throw new UnsupportedOperationException("");
+      throw new IllegalArgumentException(
+          "The seriesPath should be MeasurementPath or AlignedPath.");
     }
 
     this.aggregators = aggregators;
