@@ -62,6 +62,8 @@ public class RegionBalancer {
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
     IRegionAllocator regionAllocator = genRegionAllocator();
 
+    // TODO: After waiting for the IT framework to complete, change the following code to:
+    //  List<TDataNodeInfo> onlineDataNodes = getLoadManager().getOnlineDataNodes(-1);
     List<TDataNodeInfo> registeredDataNodes = getNodeManager().getRegisteredDataNodes(-1);
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllReplicaSets();
 
