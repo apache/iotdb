@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 
 import java.util.LinkedList;
 
@@ -28,12 +30,14 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
   private static final int maximumWindowSize = 100;
   private final LinkedList<NodeHeartbeatSample> slidingWindow;
 
+  private final TConfigNodeLocation configNodeLocation;
+
   // For showing cluster
   private volatile NodeStatus status;
 
-  public ConfigNodeHeartbeatCache() {
+  public ConfigNodeHeartbeatCache(TConfigNodeLocation configNodeLocation) {
+    this.configNodeLocation = configNodeLocation;
     this.slidingWindow = new LinkedList<>();
-
     this.status = NodeStatus.Running;
   }
 
@@ -55,6 +59,11 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
 
   @Override
   public boolean updateLoadStatistic() {
+    if (configNodeLocation.getInternalEndPoint().equals(LoadManager.currentNode)) {
+      // We don't need to update itself
+      return false;
+    }
+
     long lastSendTime = 0;
     synchronized (slidingWindow) {
       if (slidingWindow.size() > 0) {

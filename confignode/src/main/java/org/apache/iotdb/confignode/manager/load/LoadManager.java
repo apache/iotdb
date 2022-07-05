@@ -81,7 +81,7 @@ public class LoadManager {
 
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
   private static final long heartbeatInterval = conf.getHeartbeatInterval();
-  private static final TEndPoint currentNode =
+  public static final TEndPoint currentNode =
       new TEndPoint(conf.getInternalAddress(), conf.getInternalPort());
 
   private final IManager configManager;
@@ -299,6 +299,8 @@ public class LoadManager {
     List<TDataNodeInfo> onlineDataNodes = getOnlineDataNodes(-1);
     CountDownLatch latch = new CountDownLatch(onlineDataNodes.size());
 
+    LOGGER.info("Begin to broadcast RegionRouteMap: {}", latestRegionRouteMap);
+
     onlineDataNodes.forEach(
         dataNodeInfo ->
             AsyncDataNodeClientPool.getInstance()
@@ -357,23 +359,23 @@ public class LoadManager {
    * @param registeredConfigNodes ConfigNodes that registered in cluster
    */
   private void pingRegisteredConfigNodes(List<TConfigNodeLocation> registeredConfigNodes) {
-    // Refresh cache map
-    registeredConfigNodes.forEach(
-        configNodeLocation ->
-            nodeCacheMap.putIfAbsent(
-                configNodeLocation.getConfigNodeId(), new ConfigNodeHeartbeatCache()));
 
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
       if (configNodeLocation.getInternalEndPoint().equals(currentNode)) {
         // Skip itself
+        nodeCacheMap.putIfAbsent(
+            configNodeLocation.getConfigNodeId(), new ConfigNodeHeartbeatCache(configNodeLocation));
         continue;
       }
 
       ConfigNodeHeartbeatHandler handler =
           new ConfigNodeHeartbeatHandler(
               configNodeLocation,
-              (ConfigNodeHeartbeatCache) nodeCacheMap.get(configNodeLocation.getConfigNodeId()));
+              (ConfigNodeHeartbeatCache)
+                  nodeCacheMap.computeIfAbsent(
+                      configNodeLocation.getConfigNodeId(),
+                      empty -> new ConfigNodeHeartbeatCache(configNodeLocation)));
       AsyncConfigNodeClientPool.getInstance()
           .getConfigNodeHeartBeat(
               configNodeLocation.getInternalEndPoint(),
