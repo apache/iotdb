@@ -83,6 +83,12 @@ public class IoTDBLoaderToolIT {
 
       statement.execute("delete from root.sg.d1.s where timestamp <= 2");
 
+      statement.execute("create aligned timeseries root.sg.a(s1 INT32, s2 TEXT)");
+      statement.execute("insert into root.sg.a(time, s1, s2) aligned values(1, 1, '1')");
+      statement.execute("insert into root.sg.a(time, s1, s2) aligned values(2, 2, '2')");
+      statement.execute("insert into root.sg.a(time, s2) aligned values(3, '3')");
+      statement.execute("flush");
+
       for (TsFileResource resource :
           StorageEngine.getInstance()
               .getProcessor(new PartialPath("root.sg"))
@@ -132,9 +138,10 @@ public class IoTDBLoaderToolIT {
       try (Connection connection =
               DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667", "root", "root");
           Statement statement = connection.createStatement()) {
-        checkRes(statement.executeQuery("select * from root.sg.d1"), 3, 6);
+//        checkRes(statement.executeQuery("select * from root.sg.d1"), 3, 6);
         checkRes(statement.executeQuery("select * from root.sg.d2"), 1, 6);
         checkRes(statement.executeQuery("select * from root.sg.d3"), 1, 6);
+        checkRes(statement.executeQuery("select s1 from root.sg.a"), 1, 2);
       }
     } catch (Exception e) {
       e.printStackTrace();
