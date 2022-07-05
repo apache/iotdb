@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
@@ -37,7 +37,7 @@ import static java.util.Objects.requireNonNull;
 public class LinearFillOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  private final LinearFill[] fillArray;
+  private final ILinearFill[] fillArray;
   private final Operator child;
   private final int outputColumnCount;
   // TODO need to spill it to disk if it consumes too much memory
@@ -52,7 +52,7 @@ public class LinearFillOperator implements ProcessOperator {
   private boolean noMoreTsBlock;
 
   public LinearFillOperator(
-      OperatorContext operatorContext, LinearFill[] fillArray, Operator child) {
+      OperatorContext operatorContext, ILinearFill[] fillArray, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     checkArgument(
         fillArray != null && fillArray.length > 0, "fillArray should not be null or empty");

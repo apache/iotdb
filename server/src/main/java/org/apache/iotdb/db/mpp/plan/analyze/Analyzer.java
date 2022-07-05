@@ -49,7 +49,6 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -412,36 +411,6 @@ public class Analyzer {
           FillComponent fillComponent = queryStatement.getFillComponent();
           List<Expression> fillColumnList =
               outputExpressions.stream().map(Pair::getLeft).distinct().collect(Collectors.toList());
-          if (fillComponent.getFillPolicy() == FillPolicy.VALUE) {
-            for (Expression fillColumn : fillColumnList) {
-              TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
-              if (!fillComponent.getFillValue().isDataTypeConsistency(checkedDataType)) {
-                throw new SemanticException(
-                    String.format(
-                        "Data type mismatch: column '%s' (dataType '%s') doesn't support fill with '%s' (dataType '%s').",
-                        fillColumn.getExpressionString(),
-                        checkedDataType,
-                        fillComponent.getFillValue().getBinary(),
-                        fillComponent.getFillValue().getDataTypeString()));
-              }
-            }
-          } else if (fillComponent.getFillPolicy() == FillPolicy.LINEAR) {
-            // TODO support linear fill in align by device query
-            if (queryStatement.isAlignByDevice()) {
-              throw new SemanticException(
-                  "Linear fill is not supported in align by device query yet.");
-            }
-
-            for (Expression fillColumn : fillColumnList) {
-              TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
-              if (!checkedDataType.isNumeric()) {
-                throw new SemanticException(
-                    String.format(
-                        "Data type mismatch: column '%s' (dataType '%s') doesn't support linear fill.",
-                        fillColumn.getExpressionString(), checkedDataType));
-              }
-            }
-          }
           analysis.setFillDescriptor(
               new FillDescriptor(fillComponent.getFillPolicy(), fillComponent.getFillValue()));
         }

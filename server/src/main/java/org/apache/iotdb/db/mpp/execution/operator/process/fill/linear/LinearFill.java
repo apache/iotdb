@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.fill.linear;
 
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
@@ -31,7 +32,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  * the closest timestamp after T. Linear Fill function calculation only supports numeric types
  * including long, int, double and float.
  */
-public abstract class LinearFill {
+public abstract class LinearFill implements ILinearFill {
 
   private final TimeComparator timeComparator;
 
@@ -56,6 +57,7 @@ public abstract class LinearFill {
    * @param valueColumn valueColumn that need to be filled
    * @return Value Column that has been filled
    */
+  @Override
   public Column fill(TimeColumn timeColumn, Column valueColumn) {
     int size = valueColumn.getPositionCount();
     // if this valueColumn is empty, just return itself;
@@ -119,6 +121,7 @@ public abstract class LinearFill {
    *     TsBlock and then call prepareForNext. false if valueColumn can be filled using current
    *     information, and we can directly call fill() function
    */
+  @Override
   public boolean needPrepareForNext(long time, Column valueColumn) {
     return timeComparator.inFillBound(nextTime, time)
         && valueColumn.isNull(valueColumn.getPositionCount() - 1);
@@ -132,6 +135,7 @@ public abstract class LinearFill {
    *     TsBlock and calling prepareForNext. false if we still don't get enough information to fill
    *     current column, and still need to keep getting next TsBlock and then call prepareForNext
    */
+  @Override
   public boolean prepareForNext(long time, TimeColumn nextTimeColumn, Column nextValueColumn) {
     checkArgument(
         nextTimeColumn.getPositionCount() > 0
