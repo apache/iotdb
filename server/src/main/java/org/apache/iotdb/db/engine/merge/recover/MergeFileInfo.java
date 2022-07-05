@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.merge.recover;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.compaction.InvalidCompactionLogException;
 
 import java.io.File;
 
@@ -60,10 +61,15 @@ public class MergeFileInfo {
         paths[pathLength - 5].equals("sequence"));
   }
 
-  public static MergeFileInfo getFileInfoFromString(String infoString) {
+  public static MergeFileInfo getFileInfoFromString(String infoString)
+      throws InvalidCompactionLogException {
     if (!infoString.contains(File.separator)) {
       // the info string records info of merge files
       String[] splits = infoString.split(" ");
+      if (splits.length != 5) {
+        throw new InvalidCompactionLogException("Invalid file info string " + infoString);
+      }
+
       return new MergeFileInfo(
           splits[0],
           splits[1],
