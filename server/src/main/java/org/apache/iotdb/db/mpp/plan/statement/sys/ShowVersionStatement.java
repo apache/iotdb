@@ -16,17 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
 
-public class StandaloneDataNodeWrapper extends DataNodeWrapper {
+package org.apache.iotdb.db.mpp.plan.statement.sys;
 
-  public StandaloneDataNodeWrapper(
-      String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
-    super(targetConfigNode, testClassName, testMethodName, portList);
-  }
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
+
+public class ShowVersionStatement extends ShowStatement {
+
+  public ShowVersionStatement() {}
 
   @Override
-  protected String mainClassName() {
-    return "org.apache.iotdb.db.service.NewIoTDB";
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowVersion(this, context);
   }
 }

@@ -247,7 +247,6 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
-  @Ignore
   public void testNestedWindowingFunctionExpressions() {
     final int[] windows =
         new int[] {
