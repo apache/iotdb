@@ -94,7 +94,6 @@ public class TransformOperator implements ProcessOperator {
     initInputLayer(inputDataTypes);
     initUdtfContext(outputExpressions, zoneId);
     initTransformers(inputLocations, outputExpressions, typeProvider);
-
     timeHeap = new TimeSelector(transformers.length << 1, isAscending);
     shouldIterateReadersToNextValid = new boolean[outputExpressions.length];
     Arrays.fill(shouldIterateReadersToNextValid, true);
@@ -174,6 +173,9 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public final boolean hasNext() {
+    if (!timeHeap.isEmpty()) {
+      return true;
+    }
     try {
       if (iterateAllColumnsToNextValid() == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
         return true;
@@ -182,7 +184,6 @@ public class TransformOperator implements ProcessOperator {
       LOGGER.error("TransformOperator#hasNext()", e);
       throw new RuntimeException(e);
     }
-
     return !timeHeap.isEmpty();
   }
 
@@ -340,7 +341,9 @@ public class TransformOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return inputOperator.isFinished() && timeHeap.isEmpty();
+    // call hasNext first, or data of inputOperator could be missing
+    boolean flag = !hasNext();
+    return timeHeap.isEmpty() && (flag || inputOperator.isFinished());
   }
 
   @Override

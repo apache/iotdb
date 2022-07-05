@@ -16,15 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+package org.apache.iotdb.db.it.withoutNull;
+
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -34,10 +34,10 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@Ignore // TODO When filtering data after group by is supported
+@Category({ClusterIT.class}) // TODO After old StandAlone remove
 public class IoTDBWithoutAllNullIT {
 
   private static final String[] dataSet =
@@ -62,7 +62,6 @@ public class IoTDBWithoutAllNullIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeClass();
     prepareData();
   }
@@ -82,7 +81,6 @@ public class IoTDBWithoutAllNullIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    ConfigFactory.getConfig().setPartitionInterval(86400);
     EnvFactory.getEnv().cleanAfterClass();
   }
 
@@ -91,13 +89,11 @@ public class IoTDBWithoutAllNullIT {
     String[] retArray1 = new String[] {"6,20,true,null", "11,24,true,55.5"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) WITHOUT NULL ALL");
 
-      assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.testWithoutAllNull.d1 where s1 is not null || s2 is not null || s3 is not null GROUP BY([1, 21), 5ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -124,13 +120,11 @@ public class IoTDBWithoutAllNullIT {
     String[] retArray1 = new String[] {"11,24,true,55.5"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) WITHOUT NULL ALL limit 1 offset 1");
 
-      assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.testWithoutAllNull.d1 where s1 is not null || s2 is not null || s3 is not null GROUP BY([1, 21), 5ms) limit 1 offset 1")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -157,13 +151,11 @@ public class IoTDBWithoutAllNullIT {
     String[] retArray1 = new String[] {"11,24,true,55.5"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) WITHOUT NULL ANY");
 
-      assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.testWithoutAllNull.d1 where s1 is not null || s2 is not null || s3 is not null GROUP BY([1, 21), 5ms)")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -190,13 +182,11 @@ public class IoTDBWithoutAllNullIT {
     String[] retArray1 = new String[] {"11,root.testWithoutAllNull.d1,24,true,55.5"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) WITHOUT NULL ALL LIMIT 1 OFFSET 1 ALIGN BY DEVICE");
 
-      assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.testWithoutAllNull.d1 where s1 is not null || s2 is not null || s3 is not null GROUP BY([1, 21), 5ms) LIMIT 1 OFFSET 1 ALIGN BY DEVICE")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -225,13 +215,12 @@ public class IoTDBWithoutAllNullIT {
     String[] retArray1 = new String[] {"6,root.testWithoutAllNull.d1,20,true,null"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(*) from root.testWithoutAllNull.d1 GROUP BY([1, 21), 5ms) ORDER BY TIME DESC WITHOUT NULL ALL LIMIT 1 OFFSET 1 ALIGN BY DEVICE");
 
-      assertTrue(hasResultSet);
       int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select last_value(*) from root.testWithoutAllNull.d1 where s1 is not null || s2 is not null || s3 is not null GROUP BY([1, 21), 5ms)"
+                  + "ORDER BY TIME DESC LIMIT 1 OFFSET 1 ALIGN BY DEVICE")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =

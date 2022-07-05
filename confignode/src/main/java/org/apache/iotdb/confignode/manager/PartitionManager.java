@@ -298,7 +298,7 @@ public class PartitionManager {
         unreadyStorageGroupMap.put(storageGroup, 1);
       }
     }
-    if (getNodeManager().getOnlineDataNodeCount() < leastDataNode) {
+    if (getNodeManager().getRegisteredDataNodeCount() < leastDataNode) {
       // Make sure DataNodes enough
       throw new NotEnoughDataNodeException();
     }

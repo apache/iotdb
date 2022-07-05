@@ -25,6 +25,7 @@
   <allow pkg="java.util"/>
   <allow pkg="java.sql"/>
   <allow pkg="java.io"/>
+  <allow pkg="java.math"/>
   <allow pkg="java.text"/>
   <allow pkg="org\.junit.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.itbase" regex="true"/>

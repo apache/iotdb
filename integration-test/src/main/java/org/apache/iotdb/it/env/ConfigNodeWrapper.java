@@ -20,9 +20,9 @@ package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
-import org.apache.commons.lang3.SystemUtils;
-
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 public class ConfigNodeWrapper extends AbstractNodeWrapper {
@@ -73,36 +73,23 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected String getEnvConfigPath() {
-    if (SystemUtils.IS_OS_WINDOWS) {
-      return workDirFilePath("confignode" + File.separator + "conf", "confignode-env.bat");
-    }
-    return workDirFilePath("confignode" + File.separator + "conf", "confignode-env.sh");
-  }
-
-  @Override
-  protected String getStartScriptPath() {
-    String scriptName = "start-confignode.sh";
-    if (SystemUtils.IS_OS_WINDOWS) {
-      scriptName = "start-confignode.bat";
-    }
-    return workDirFilePath("confignode" + File.separator + "sbin", scriptName);
-  }
-
-  @Override
-  protected String getStopScriptPath() {
-    String scriptName = "stop-confignode.sh";
-    if (SystemUtils.IS_OS_WINDOWS) {
-      scriptName = "stop-confignode.bat";
-    }
-    return workDirFilePath("confignode" + File.separator + "sbin", scriptName);
-  }
-
-  @Override
   public final String getId() {
     if (isSeed) {
       return "SeedConfigNode" + getPort();
     }
     return "ConfigNode" + getPort();
+  }
+
+  @Override
+  protected void addStartCmdParams(List<String> params) {
+    final String workDir = getNodePath() + File.separator + "confignode";
+    final String confDir = workDir + File.separator + "conf";
+    params.addAll(
+        Arrays.asList(
+            "-Dlogback.configurationFile=" + confDir + File.separator + "logback.xml",
+            "-DCONFIGNODE_HOME=" + workDir,
+            "-DCONFIGNODE_CONF=" + confDir,
+            "org.apache.iotdb.confignode.service.ConfigNode",
+            "-s"));
   }
 }

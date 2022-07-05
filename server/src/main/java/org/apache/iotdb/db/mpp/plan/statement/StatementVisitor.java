@@ -59,6 +59,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 
 /**
  * This class provides a visitor of {@link org.apache.iotdb.db.mpp.plan.statement.StatementNode},
@@ -260,5 +261,9 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowDataNodes(ShowDataNodesStatement showDataNodesStatement, C context) {
     return visitStatement(showDataNodesStatement, context);
+  }
+
+  public R visitShowVersion(ShowVersionStatement showVersionStatement, C context) {
+    return visitStatement(showVersionStatement, context);
   }
 }

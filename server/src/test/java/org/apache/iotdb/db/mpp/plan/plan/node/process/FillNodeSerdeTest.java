@@ -44,7 +44,8 @@ public class FillNodeSerdeTest {
         new FillNode(
             new PlanNodeId("TestFillNode"),
             timeJoinNode,
-            new FillDescriptor(FillPolicy.VALUE, new LongLiteral("100")));
+            new FillDescriptor(FillPolicy.VALUE, new LongLiteral("100")),
+            OrderBy.TIMESTAMP_ASC);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     fillNode.serialize(byteBuffer);

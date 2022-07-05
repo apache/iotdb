@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.fill.linear;
 
+import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
@@ -32,6 +33,10 @@ public class LongLinearFill extends LinearFill {
   private long nextValue;
 
   private long nextValueInCurrentColumn;
+
+  public LongLinearFill(boolean ascending, TimeComparator timeComparator) {
+    super(ascending, timeComparator);
+  }
 
   @Override
   void fillValue(Column column, int index, Object array) {

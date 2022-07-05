@@ -28,6 +28,16 @@
 	    <th colspan="3">IoTDB Sources</th>
 	    <th>release notes</th>  
 	</tr>
+	<tr>
+            <td rowspan="1">0.14.0-preview1</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-all-bin.zip">Cluster</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="1"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-source-release.zip">Sources</a></td>
+            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="1"><a href="https://downloads.apache.org/iotdb/0.14.0-preview1/apache-iotdb-0.14.0-preview1-source-release.zip.asc">ASC</a></td>
+            <td rowspan="1"><a href="https://raw.githubusercontent.com/apache/iotdb/master/RELEASE_NOTES.md">release notes</a></td>
+      </tr>
       <tr>
             <td rowspan="3">0.13.0</td>
             <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.13.0/apache-iotdb-0.13.0-all-bin.zip">All-in-one</a></td>
@@ -78,7 +88,7 @@
 Legacy version are available here: [https://archive.apache.org/dist/iotdb/](https://archive.apache.org/dist/iotdb/)
 
 
-**<font color=red>Attention</font>**:
+## Configurations
 
 - Recommended OS parameters
   * Set the somaxconn as 65535 to avoid "connection reset" error when the system is under high load.
@@ -90,20 +100,31 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
     > sudo sysctl -w kern.ipc.somaxconn=65535
     ```
 
-- How to upgrade a minor version (e.g., from v0.12.3 to v0.12.5)?
-  * versions which have the same major version are compatible.
-  * Just download and unzip the new version. Then modify the configuration files to keep consistent 
-  with what you set in the old version.
-  * stop the old vesion instance, and start the new one.
+## About 0.14.0-preview1
 
-- **How to upgrade from v.13.x to v0.14.x?**
+- 0.14.0-preview1 is a preview release for the new IoTDB cluster, which you could download and have a try.
+  We DO NOT recommend using preview release on-line, and DO NOT upgrade 0.13 to a preview release.
+  - The UserGuide of 0.14.0-preview is still in the **latest**.
+
+**<font color=red>NOTE: Do not use the stop-confignode.bat/sh script, which has a bug that may kill other process</font>**:
+ 
+
+- **After we release 0.14.0, how to upgrade from v.13.x to v0.14.x?**
   
   - **Version 0.14 has changed the SQL syntax conventions (please refer to the syntax conventions section of the user manual), the incompatibilities are as follows:**
     - **Identifiers that are not quoted with backquotes are not allowed to be pure numbers and only allowed to contain letters, Chinese characters, and underscores. If the above occurs in an identifier, use backquotes to enclose the identifier.**
     - **Identifiers no longer support quoting with single and double quotes, please use backquotes instead.**
     - **When using the path node name in the Session API, it needs to be consistent with that in the SQL statement. If the path node is a pure number 111, it needs to be enclosed in backquotes in the SQL statement and written as \`111\`, then when using the Session API, the corresponding parameter also needs to be written as \`111\`.**
-  - In order to ensure the stability of UDF-related APIs, in version 0.14, UDF-related APIs are separated into an independent module and no longer depend on the tsfile package. The implemented UDFs need to rewrite the code, replace `TsDataType` with `Type`, and replace `org .apache.iotdb.tsfile.utils.Binary` with `org.apache.iotdb.udf.api.type.Binary`, then redo the packaging and loading process.
-  
+  - In order to ensure the stability of UDF-related APIs, in version 0.14, UDF-related APIs are seperated into an independent module and no longer depend on the tsfile package. The implemented UDFs need to rewrite the code, replace `TsDataType` with `Type`, and replace `org .apache.iotdb.tsfile.utils.Binary` with `org.apache.iotdb.udf.api.type.Binary`, then redo the packaging and loading process.
+
+## How to Upgrade
+
+- How to upgrade a minor version (e.g., from v0.12.3 to v0.12.5)?
+  * versions which have the same major version are compatible.
+  * Just download and unzip the new version. Then modify the configuration files to keep consistent
+    with what you set in the old version.
+  * stop the old version instance, and start the new one.
+
 - How to upgrade from v.12.x to v0.13.x?
 
   * The data format (i.e., TsFile data) of v0.12.x and v0.13.x are compatible, but the WAL file is
@@ -138,15 +159,15 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
   * __NOTICE 1: V0.12 changes many settings in conf/iotdb-engine.properties, so do not use previous 
     configuration file directly.__
   * __NOTICE 2: V0.12 doesn't support upgrade from v0.9 or lower version, please upgrade to v0.10 first if needed.__
-  * __NOTICE 3: We don't recommend to delete data before the upgrading finished. The deletion will fail if you try to delete data in the storage group with upgrading files.__
+  * __NOTICE 3: We don't recommend deleting data before the upgrading finished. The deletion will fail if you try to delete data in the storage group with upgrading files.__
 
 - How to upgrade from v.10.x to v0.11.x?
   * The data format (i.e., TsFile data) of v0.10.x and v0.11 are compatible, but the WAL file is 
   incompatible. So, you can follow the steps:
   * **<font color=red>Stop writing new data.</font>**
   * Call `flush` command using `sbin/start-cli.sh` in v0.10.x to close all TsFiles.
-  * We recommend to backup the the wal files and mlog.txt before upgrading for rolling back.
-  * Just download, unzip v0.11.x.zip, and modify conf/iotdb-engine.proeprties to let all the 
+  * We recommend to backup the wal files and mlog.txt before upgrading for rolling back.
+  * Just download, unzip v0.11.x.zip, and modify conf/iotdb-engine.properties to let all the 
     directories point to the data folder set in v0.10.x (or the backup folder). You can also modify 
     other settings if you want.
   * Stop IoTDB v0.10.x instance, and start v0.11.x, then the IoTDB will upgrade data file format 
@@ -166,7 +187,7 @@ Legacy version are available here: [https://archive.apache.org/dist/iotdb/](http
 
 - How to upgrade from 0.8.x to v0.9.x?
   * We recommend to backup the data file (also the wal files and mlog.txt) before upgrading for rolling back.
-  * Just download, unzip v0.9.x.zip, and modify conf/iotdb-engine.proeprties to let all the 
+  * Just download, unzip v0.9.x.zip, and modify conf/iotdb-engine.properties to let all the 
   directories point to the folders set in v0.8.x (or the backup folder). 
   You can also modify other settings if you want. 
   * Stop IoTDB v0.8 instance, and start v0.9.x, then the IoTDB will upgrade data file format automatically.

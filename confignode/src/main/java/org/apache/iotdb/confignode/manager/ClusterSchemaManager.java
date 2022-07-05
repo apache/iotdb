@@ -197,7 +197,7 @@ public class ClusterSchemaManager {
     // Get all StorageGroupSchemas
     Map<String, TStorageGroupSchema> storageGroupSchemaMap =
         getMatchedStorageGroupSchemasByName(getStorageGroupNames());
-    int dataNodeNum = getNodeManager().getOnlineDataNodeCount();
+    int dataNodeNum = getNodeManager().getRegisteredDataNodeCount();
     int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     int storageGroupNum = storageGroupSchemaMap.size();
 

@@ -81,6 +81,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
@@ -416,16 +417,28 @@ public class Analyzer {
               TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
               if (!fillComponent.getFillValue().isDataTypeConsistency(checkedDataType)) {
                 throw new SemanticException(
-                    "FILL: the data type of the fill value should be the same as the output column");
+                    String.format(
+                        "Data type mismatch: column '%s' (dataType '%s') doesn't support fill with '%s' (dataType '%s').",
+                        fillColumn.getExpressionString(),
+                        checkedDataType,
+                        fillComponent.getFillValue().getBinary(),
+                        fillComponent.getFillValue().getDataTypeString()));
               }
             }
           } else if (fillComponent.getFillPolicy() == FillPolicy.LINEAR) {
+            // TODO support linear fill in align by device query
+            if (queryStatement.isAlignByDevice()) {
+              throw new SemanticException(
+                  "Linear fill is not supported in align by device query yet.");
+            }
+
             for (Expression fillColumn : fillColumnList) {
               TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
               if (!checkedDataType.isNumeric()) {
                 throw new SemanticException(
                     String.format(
-                        "FILL: dataType %s doesn't support linear fill.", checkedDataType));
+                        "Data type mismatch: column '%s' (dataType '%s') doesn't support linear fill.",
+                        fillColumn.getExpressionString(), checkedDataType));
               }
             }
           }
@@ -1356,6 +1369,16 @@ public class Analyzer {
           showChildNodesStatement,
           showChildNodesStatement.getPartialPath(),
           HeaderConstant.showChildNodesHeader);
+    }
+
+    @Override
+    public Analysis visitShowVersion(
+        ShowVersionStatement showVersionStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showVersionStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showVersionHeader);
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
     }
 
     private Analysis visitSchemaNodeManagementPartition(

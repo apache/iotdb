@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.fill.linear;
 
+import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
@@ -28,16 +29,24 @@ import static com.google.common.base.Preconditions.checkArgument;
  * The result of Linear Fill functions at timestamp "T" is calculated by performing a linear fitting
  * method on two time series values, one is at the closest timestamp before T, and the other is at
  * the closest timestamp after T. Linear Fill function calculation only supports numeric types
- * including int, double and float.
+ * including long, int, double and float.
  */
 public abstract class LinearFill {
+
+  private final TimeComparator timeComparator;
 
   // whether previous value is null
   protected boolean previousIsNull = true;
   // time of next value
-  protected long nextTime = Long.MIN_VALUE;
+  protected long nextTime;
 
   protected long nextTimeInCurrentColumn;
+
+  public LinearFill(boolean ascending, TimeComparator timeComparator) {
+    this.nextTime = ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+    this.nextTimeInCurrentColumn = ascending ? Long.MIN_VALUE : Long.MAX_VALUE;
+    this.timeComparator = timeComparator;
+  }
 
   /**
    * Before we call this method, we need to make sure the nextValue has been prepared or noMoreNext
@@ -65,7 +74,7 @@ public abstract class LinearFill {
     // if its values are all null
     if (valueColumn instanceof RunLengthEncodedColumn) {
       // previous value is null or next value is null, we just return NULL_VALUE_BLOCK
-      if (previousIsNull || nextTime < timeColumn.getStartTime()) {
+      if (previousIsNull || timeComparator.inFillBound(nextTime, timeColumn.getStartTime())) {
         return new RunLengthEncodedColumn(createNullValueColumn(), size);
       } else {
         prepareForNextValueInCurrentColumn(
@@ -111,7 +120,8 @@ public abstract class LinearFill {
    *     information, and we can directly call fill() function
    */
   public boolean needPrepareForNext(long time, Column valueColumn) {
-    return time > nextTime && valueColumn.isNull(valueColumn.getPositionCount() - 1);
+    return timeComparator.inFillBound(nextTime, time)
+        && valueColumn.isNull(valueColumn.getPositionCount() - 1);
   }
 
   /**
@@ -124,9 +134,10 @@ public abstract class LinearFill {
    */
   public boolean prepareForNext(long time, TimeColumn nextTimeColumn, Column nextValueColumn) {
     checkArgument(
-        nextTimeColumn.getPositionCount() > 0 && nextTimeColumn.getLong(0) > time,
+        nextTimeColumn.getPositionCount() > 0
+            && timeComparator.inFillBound(time, nextTimeColumn.getLong(0)),
         "nextColumn's time should be greater than current time");
-    if (time <= nextTime) {
+    if (timeComparator.satisfyCurEndTime(time, nextTime)) {
       return true;
     }
 
@@ -141,12 +152,12 @@ public abstract class LinearFill {
   }
 
   private boolean nextIsNull(long time) {
-    return nextTimeInCurrentColumn <= time;
+    return timeComparator.satisfyCurEndTime(nextTimeInCurrentColumn, time);
   }
 
   private void prepareForNextValueInCurrentColumn(
       long time, int startIndex, TimeColumn timeColumn, Column valueColumn) {
-    if (time <= nextTimeInCurrentColumn) {
+    if (timeComparator.satisfyCurEndTime(time, nextTimeInCurrentColumn)) {
       return;
     }
     for (int i = startIndex; i < valueColumn.getPositionCount(); i++) {
