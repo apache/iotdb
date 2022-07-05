@@ -49,6 +49,7 @@ public class HeaderConstant {
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
   public static final String COLUMN_CHILDPATHS = "child paths";
   public static final String COLUMN_CHILDNODES = "child nodes";
+  public static final String COLUMN_VERSION = "version";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -91,6 +92,7 @@ public class HeaderConstant {
   public static final DatasetHeader showTTLHeader;
   public static final DatasetHeader showChildPathsHeader;
   public static final DatasetHeader showChildNodesHeader;
+  public static final DatasetHeader showVersionHeader;
 
   // dataset header for count statement
   public static final DatasetHeader countStorageGroupHeader;
@@ -193,6 +195,9 @@ public class HeaderConstant {
     showChildNodesHeader =
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
+    showVersionHeader =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT)), true);
   }
 
   static {

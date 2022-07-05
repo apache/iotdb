@@ -16,23 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.merge;
 
-public class DescTimeComparator implements TimeComparator {
+package org.apache.iotdb.db.mpp.plan.statement.sys;
 
-  /** @return if order by time desc, return true if time >= endTime, otherwise false */
-  @Override
-  public boolean satisfyCurEndTime(long time, long endTime) {
-    return time >= endTime;
-  }
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-  @Override
-  public long getCurrentEndTime(long time1, long time2) {
-    return Math.max(time1, time2);
-  }
+public class ShowVersionStatement extends ShowStatement {
+
+  public ShowVersionStatement() {}
 
   @Override
-  public boolean inFillBound(long time, long timeBound) {
-    return time > timeBound;
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowVersion(this, context);
   }
 }

@@ -16,23 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.merge;
 
-public class DescTimeComparator implements TimeComparator {
+package org.apache.iotdb.db.utils.datastructure;
 
-  /** @return if order by time desc, return true if time >= endTime, otherwise false */
-  @Override
-  public boolean satisfyCurEndTime(long time, long endTime) {
-    return time >= endTime;
-  }
+import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 
-  @Override
-  public long getCurrentEndTime(long time1, long time2) {
-    return Math.max(time1, time2);
-  }
+import org.junit.Assert;
+import org.junit.Test;
 
-  @Override
-  public boolean inFillBound(long time, long timeBound) {
-    return time > timeBound;
+public class PrimitiveArrayManagerTest {
+
+  @Test
+  public void testGetArrayRowCount() {
+
+    Assert.assertEquals(1224827, PrimitiveArrayManager.getArrayRowCount(1224826 * 32 + 1));
+
+    Assert.assertEquals(1224826, PrimitiveArrayManager.getArrayRowCount(1224826 * 32));
+
+    Assert.assertEquals(1, PrimitiveArrayManager.getArrayRowCount(32));
+
+    Assert.assertEquals(1, PrimitiveArrayManager.getArrayRowCount(5));
+
+    Assert.assertEquals(2, PrimitiveArrayManager.getArrayRowCount(33));
   }
 }

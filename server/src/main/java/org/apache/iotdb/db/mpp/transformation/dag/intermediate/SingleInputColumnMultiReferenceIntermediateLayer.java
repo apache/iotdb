@@ -377,8 +377,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
   @Override
   protected LayerRowWindowReader constructRowSlidingTimeWindowReader(
-      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
-      throws IOException, QueryProcessException {
+      SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB) {
 
     final long timeInterval = strategy.getTimeInterval();
     final long slidingStep = strategy.getSlidingStep();
@@ -388,27 +387,37 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
     final ElasticSerializableTVListBackedSingleColumnWindow window =
         new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
 
-    long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
-    if (tvList.size() == 0
-        && LayerCacheUtils.cachePoint(
-            parentLayerPointReaderDataType, parentLayerPointReader, tvList)
-        && nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
-      // display window begin should be set to the same as the min timestamp of the query result
-      // set
-      nextWindowTimeBeginGivenByStrategy = tvList.getTime(0);
-    }
-    long finalNextWindowTimeBeginGivenByStrategy = nextWindowTimeBeginGivenByStrategy;
-
-    final boolean hasAtLeastOneRow = tvList.size() != 0;
+    final long nextWindowTimeBeginGivenByStrategy = strategy.getDisplayWindowBegin();
 
     return new LayerRowWindowReader() {
 
+      private boolean isFirstIteration = true;
       private boolean hasCached = false;
-      private long nextWindowTimeBegin = finalNextWindowTimeBeginGivenByStrategy;
+      private long nextWindowTimeBegin = nextWindowTimeBeginGivenByStrategy;
       private int nextIndexBegin = 0;
+      private boolean hasAtLeastOneRow;
 
       @Override
       public YieldableState yield() throws IOException, QueryProcessException {
+        if (isFirstIteration) {
+          if (tvList.size() == 0) {
+            final YieldableState yieldableState =
+                LayerCacheUtils.yieldPoint(
+                    parentLayerPointReaderDataType, parentLayerPointReader, tvList);
+            if (yieldableState != YieldableState.YIELDABLE) {
+              return yieldableState;
+            }
+          }
+          if (nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
+            // display window begin should be set to the same as the min timestamp of the query
+            // result
+            // set
+            nextWindowTimeBegin = tvList.getTime(0);
+          }
+          hasAtLeastOneRow = tvList.size() != 0;
+          isFirstIteration = false;
+        }
+
         if (hasCached) {
           return YieldableState.YIELDABLE;
         }
@@ -458,6 +467,19 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
 
       @Override
       public boolean next() throws IOException, QueryProcessException {
+        if (isFirstIteration) {
+          if (tvList.size() == 0
+              && LayerCacheUtils.cachePoint(
+                  parentLayerPointReaderDataType, parentLayerPointReader, tvList)
+              && nextWindowTimeBeginGivenByStrategy == Long.MIN_VALUE) {
+            // display window begin should be set to the same as the min timestamp of the query
+            // result
+            // set
+            nextWindowTimeBegin = tvList.getTime(0);
+          }
+          hasAtLeastOneRow = tvList.size() != 0;
+          isFirstIteration = false;
+        }
         if (hasCached) {
           return true;
         }

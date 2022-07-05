@@ -542,6 +542,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           StatementGenerator.createStatement(
               statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
 
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR, "This operation type is not supported"));
+      }
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

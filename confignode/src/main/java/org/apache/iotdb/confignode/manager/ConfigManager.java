@@ -219,7 +219,7 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<TConfigNodeLocation> configNodeLocations = getNodeManager().getRegisteredConfigNodes();
       List<TDataNodeLocation> dataNodeInfoLocations =
-          getNodeManager().getOnlineDataNodes(-1).stream()
+          getNodeManager().getRegisteredDataNodes(-1).stream()
               .map(TDataNodeInfo::getLocation)
               .collect(Collectors.toList());
       Map<Integer, String> nodeStatus = new HashMap<>();
@@ -792,7 +792,7 @@ public class ConfigManager implements IManager {
       dataNodeInfosResp.setStatus(status);
       return dataNodeInfosResp;
     }
-    List<TDataNodesInfo> dataNodesInfoList = nodeManager.getOnlineDataNodesInfoList();
+    List<TDataNodesInfo> dataNodesInfoList = nodeManager.getRegisteredDataNodesInfoList();
     RegionInfoListResp regionsInfoDataSet =
         (RegionInfoListResp) partitionManager.getRegionInfoList(getRegionsinfoReq);
 

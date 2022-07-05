@@ -110,6 +110,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTempla
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -623,6 +624,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new CountStorageGroupStatement(path);
   }
 
+  // Show version
+  @Override
+  public Statement visitShowVersion(IoTDBSqlParser.ShowVersionContext ctx) {
+    return new ShowVersionStatement();
+  }
+
   // Create Function
   @Override
   public Statement visitCreateFunction(CreateFunctionContext ctx) {
@@ -750,7 +757,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (resultColumnContext.AS() != null) {
       alias = parseAlias(resultColumnContext.alias());
     }
-    ResultColumn.ColumnType columnType = ExpressionAnalyzer.identifyOutputColumnType(expression);
+    ResultColumn.ColumnType columnType =
+        ExpressionAnalyzer.identifyOutputColumnType(expression, true);
     return new ResultColumn(expression, alias, columnType);
   }
 
@@ -978,8 +986,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public void parseFillClause(IoTDBSqlParser.FillClauseContext ctx) {
     FillComponent fillComponent = new FillComponent();
     if (ctx.linearClause() != null) {
+      if (ctx.linearClause().DURATION_LITERAL().size() > 0) {
+        throw new SemanticException("The specified fill time range is not supported.");
+      }
       fillComponent.setFillPolicy(FillPolicy.LINEAR);
     } else if (ctx.previousClause() != null) {
+      if (ctx.previousClause().DURATION_LITERAL() != null) {
+        throw new SemanticException("The specified fill time range is not supported.");
+      }
       fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
     } else if (ctx.specificValueClause() != null) {
       fillComponent.setFillPolicy(FillPolicy.VALUE);
@@ -989,6 +1003,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } else {
         throw new SemanticException("fill value cannot be null");
       }
+    } else if (ctx.previousUntilLastClause() != null) {
+      throw new SemanticException("PREVIOUSUNTILLAST fill is not supported yet.");
+    } else if (ctx.oldTypeClause() != null) {
+      throw new SemanticException("The specified fill datatype is not supported.");
     }
     queryStatement.setFillComponent(fillComponent);
   }
