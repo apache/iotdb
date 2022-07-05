@@ -61,12 +61,16 @@ public class IoTDBDeletionIT {
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4" + ") VALUES(%d,%d,%d,%f,%s,%b)";
   private String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
   private long prevPartitionInterval;
+  private long size;
 
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
     prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1000);
+    size = ConfigFactory.getConfig().getMemtableSizeThreshold();
+    // Adjust memstable threshold size to make it flush automatically
+    ConfigFactory.getConfig().setMemtableSizeThreshold(10000);
     EnvFactory.getEnv().initBeforeTest();
     prepareSeries();
   }
@@ -75,6 +79,7 @@ public class IoTDBDeletionIT {
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
+    ConfigFactory.getConfig().setMemtableSizeThreshold(size);
   }
 
   /**
@@ -315,9 +320,6 @@ public class IoTDBDeletionIT {
 
   @Test
   public void testDelFlushingMemtable() throws SQLException {
-    long size = ConfigFactory.getConfig().getMemtableSizeThreshold();
-    // Adjust memstable threshold size to make it flush automatically
-    ConfigFactory.getConfig().setMemtableSizeThreshold(10000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
@@ -336,44 +338,39 @@ public class IoTDBDeletionIT {
       }
       cleanData();
     }
-    ConfigFactory.getConfig().setMemtableSizeThreshold(size);
   }
 
   @Test
   public void testDelMultipleFlushingMemtable() throws SQLException {
-    long size = ConfigFactory.getConfig().getMemtableSizeThreshold();
-    // Adjust memstable threshold size to make it flush automatically
-    ConfigFactory.getConfig().setMemtableSizeThreshold(1000000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       // todo improve to executeBatch
-      for (int i = 1; i <= 100000; i++) {
+      for (int i = 1; i <= 1000; i++) {
         statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
 
-      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 15000 and time <= 30000");
-      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 30000 and time <= 40000");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150 and time <= 300");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 300 and time <= 400");
       // todo improve to executeBatch
-      for (int i = 100001; i <= 200000; i++) {
+      for (int i = 1001; i <= 2000; i++) {
         statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 50000 and time <= 80000");
-      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 90000 and time <= 110000");
-      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150000 and time <= 165000");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 500 and time <= 800");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 900 and time <= 1100");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 1500 and time <= 1650");
       statement.execute("flush");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
         }
-        assertEquals(110000, cnt);
+        assertEquals(1100, cnt);
       }
       cleanData();
     }
-    ConfigFactory.getConfig().setMemtableSizeThreshold(size);
   }
 
   @Test
