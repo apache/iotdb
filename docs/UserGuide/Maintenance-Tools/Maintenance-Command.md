@@ -257,7 +257,7 @@ Total line number = 3
 It costs 0.009s
 ```
 
-### Show all node information
+### Show all Node information
 
  Currently, iotdb supports the following SQL to view the information of all nodes : 
 
