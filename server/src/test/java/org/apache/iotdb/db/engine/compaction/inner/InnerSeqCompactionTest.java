@@ -119,9 +119,9 @@ public class InnerSeqCompactionTest {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.configManager.clear();
+    EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanAllDir();
     TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(prevMaxDegreeOfIndexNode);
-    EnvironmentUtils.cleanEnv();
   }
 
   @Test
