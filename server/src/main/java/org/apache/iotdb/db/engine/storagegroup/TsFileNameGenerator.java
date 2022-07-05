@@ -142,6 +142,26 @@ public class TsFileNameGenerator {
     return tsFileResource;
   }
 
+  public static TsFileResource increaseInnerCompactionCnt(TsFileResource tsFileResource)
+      throws IOException {
+    File tsFile = tsFileResource.getTsFile();
+    String path = tsFile.getParent();
+    TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
+    tsFileName.setInnerCompactionCnt(tsFileName.getInnerCompactionCnt() + 1);
+    tsFileResource.setFile(
+        new File(
+            path,
+            tsFileName.time
+                + FILE_NAME_SEPARATOR
+                + tsFileName.version
+                + FILE_NAME_SEPARATOR
+                + tsFileName.innerCompactionCnt
+                + FILE_NAME_SEPARATOR
+                + tsFileName.crossCompactionCnt
+                + TSFILE_SUFFIX));
+    return tsFileResource;
+  }
+
   public static File increaseCrossCompactionCnt(File tsFile) throws IOException {
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFile.getName());
