@@ -763,6 +763,7 @@ public class LocalExecutionPlanner {
           case BOOLEAN:
           case TEXT:
             linearFill[i] = IDENTITY_LINEAR_FILL;
+            break;
           default:
             throw new IllegalArgumentException("Unknown data type: " + inputDataTypes.get(i));
         }
