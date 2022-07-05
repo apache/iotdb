@@ -25,4 +25,9 @@ public interface TimeComparator {
 
   /** @return min(time1, time2) if order by time asc, max(time1, time2) if order by desc */
   long getCurrentEndTime(long time1, long time2);
+
+  /**
+   * @return true if time < timeBound && order by time asc, time > timeBound && order by time desc
+   */
+  boolean inFillBound(long time, long timeBound);
 }

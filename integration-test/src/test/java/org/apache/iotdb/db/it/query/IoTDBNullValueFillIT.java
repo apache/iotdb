@@ -25,7 +25,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -218,7 +217,6 @@ public class IoTDBNullValueFillIT {
   }
 
   @Test
-  @Ignore // TODO fix IOTDB-3724
   public void linearFillTest() {
     String[] expectedHeader =
         new String[] {
