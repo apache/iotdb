@@ -80,15 +80,15 @@ public class UDFManager {
 
   private List<TSStatus> createFunctionOnDataNodes(
       String functionName, String className, List<String> uris) {
-    final List<TDataNodeInfo> onlineDataNodes =
-        configManager.getNodeManager().getOnlineDataNodes(-1);
+    final List<TDataNodeInfo> registeredDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes(-1);
     final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(onlineDataNodes.size()));
-    final CountDownLatch countDownLatch = new CountDownLatch(onlineDataNodes.size());
+        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
+    final CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
     final TCreateFunctionRequest request =
         new TCreateFunctionRequest(functionName, className, uris);
 
-    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+    for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
       final TEndPoint endPoint = dataNodeInfo.getLocation().getInternalEndPoint();
       AsyncDataNodeClientPool.getInstance()
           .createFunction(
@@ -125,14 +125,14 @@ public class UDFManager {
   }
 
   private List<TSStatus> dropFunctionOnDataNodes(String functionName) {
-    final List<TDataNodeInfo> onlineDataNodes =
-        configManager.getNodeManager().getOnlineDataNodes(-1);
+    final List<TDataNodeInfo> registeredDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes(-1);
     final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(onlineDataNodes.size()));
-    final CountDownLatch countDownLatch = new CountDownLatch(onlineDataNodes.size());
+        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
+    final CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
     final TDropFunctionRequest request = new TDropFunctionRequest(functionName);
 
-    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+    for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
       final TEndPoint endPoint = dataNodeInfo.getLocation().getInternalEndPoint();
       AsyncDataNodeClientPool.getInstance()
           .dropFunction(

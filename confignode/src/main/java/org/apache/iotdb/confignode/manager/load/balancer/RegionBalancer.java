@@ -62,7 +62,9 @@ public class RegionBalancer {
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
     IRegionAllocator regionAllocator = genRegionAllocator();
 
-    List<TDataNodeInfo> onlineDataNodes = getNodeManager().getOnlineDataNodes(-1);
+    // TODO: After waiting for the IT framework to complete, change the following code to:
+    //  List<TDataNodeInfo> onlineDataNodes = getLoadManager().getOnlineDataNodes(-1);
+    List<TDataNodeInfo> registeredDataNodes = getNodeManager().getRegisteredDataNodes(-1);
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllReplicaSets();
 
     for (Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
@@ -78,7 +80,7 @@ public class RegionBalancer {
               : storageGroupSchema.getDataReplicationFactor();
 
       // Check validity
-      if (onlineDataNodes.size() < replicationFactor) {
+      if (registeredDataNodes.size() < replicationFactor) {
         throw new NotEnoughDataNodeException();
       }
 
@@ -86,7 +88,7 @@ public class RegionBalancer {
         // Generate allocation plan
         TRegionReplicaSet newRegion =
             regionAllocator.allocateRegion(
-                onlineDataNodes,
+                registeredDataNodes,
                 allocatedRegions,
                 replicationFactor,
                 new TConsensusGroupId(
