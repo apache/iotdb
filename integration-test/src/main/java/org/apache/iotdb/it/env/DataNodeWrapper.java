@@ -21,6 +21,8 @@ package org.apache.iotdb.it.env;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 public class DataNodeWrapper extends AbstractNodeWrapper {
@@ -44,7 +46,7 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   @Override
   protected void updateConfig(Properties properties) {
     properties.setProperty(IoTDBConstant.RPC_ADDRESS, super.getIp());
-    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, "127.0.0.1");
+    properties.setProperty(IoTDBConstant.INTERNAL_ADDRESS, super.getIp());
     properties.setProperty(IoTDBConstant.RPC_PORT, String.valueOf(getPort()));
     properties.setProperty("mpp_data_exchange_port", String.valueOf(this.mppDataExchangePort));
     properties.setProperty(IoTDBConstant.INTERNAL_PORT, String.valueOf(this.internalPort));
@@ -69,6 +71,20 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
+  protected void addStartCmdParams(List<String> params) {
+    final String workDir = getNodePath() + File.separator + "datanode";
+    final String confDir = workDir + File.separator + "conf";
+    params.addAll(
+        Arrays.asList(
+            "-Dlogback.configurationFile=" + confDir + File.separator + "logback.xml",
+            "-DIOTDB_HOME=" + workDir,
+            "-DTSFILE_HOME=" + workDir,
+            "-DIOTDB_CONF=" + confDir,
+            "-DTSFILE_CONF=" + confDir,
+            mainClassName(),
+            "-s"));
+  }
+
   protected String mainClassName() {
     return "org.apache.iotdb.db.service.DataNode";
   }

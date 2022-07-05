@@ -24,4 +24,9 @@ public class StandaloneDataNodeWrapper extends DataNodeWrapper {
       String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
     super(targetConfigNode, testClassName, testMethodName, portList);
   }
+
+  @Override
+  protected String mainClassName() {
+    return "org.apache.iotdb.db.service.NewIoTDB";
+  }
 }

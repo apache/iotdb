@@ -21,6 +21,8 @@ package org.apache.iotdb.it.env;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 public class ConfigNodeWrapper extends AbstractNodeWrapper {
@@ -79,7 +81,15 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected String mainClassName() {
-    return "org.apache.iotdb.db.service.DataNode";
+  protected void addStartCmdParams(List<String> params) {
+    final String workDir = getNodePath() + File.separator + "confignode";
+    final String confDir = workDir + File.separator + "conf";
+    params.addAll(
+        Arrays.asList(
+            "-Dlogback.configurationFile=" + confDir + File.separator + "logback.xml",
+            "-DCONFIGNODE_HOME=" + workDir,
+            "-DCONFIGNODE_CONF=" + confDir,
+            "org.apache.iotdb.confignode.service.ConfigNode",
+            "-s"));
   }
 }
