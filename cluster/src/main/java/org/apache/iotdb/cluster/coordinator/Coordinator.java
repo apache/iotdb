@@ -47,7 +47,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
@@ -139,8 +138,9 @@ public class Coordinator {
         return StatusUtils.getStatus(StatusUtils.UNSUPPORTED_OPERATION, e.getMessage());
       }
     } else {
-      result = RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR,
-          "Unsupported request: " + request);
+      result =
+          RpcUtils.getStatus(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unsupported request: " + request);
     }
     Timer.Statistic.COORDINATOR_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
     return result;
@@ -291,7 +291,8 @@ public class Coordinator {
         status =
             metaGroupMember
                 .getLocalDataMember(partitionGroup.getHeader())
-                .executeRequest(plan).getStatus();
+                .executeRequest(plan)
+                .getStatus();
         logger.debug(
             "Execute {} in a local group of {} with status {}",
             plan,
@@ -471,7 +472,8 @@ public class Coordinator {
       result =
           metaGroupMember
               .getLocalDataMember(entry.getValue().getHeader())
-              .executeRequest(entry.getKey()).getStatus();
+              .executeRequest(entry.getKey())
+              .getStatus();
       logger.debug(
           "Execute {} in a local group of {}, {}",
           entry.getKey(),

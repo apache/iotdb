@@ -74,7 +74,8 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       Node header,
       Node thisNode,
       SnapshotFactory<T> factory,
-      DataGroupMember dataGroupMember, IStateMachine stateMachine) {
+      DataGroupMember dataGroupMember,
+      IStateMachine stateMachine) {
     super(
         new SyncLogDequeSerializer(header.nodeIdentifier),
         logApplier,

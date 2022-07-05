@@ -52,7 +52,9 @@ public class RequestLog extends Log {
   public int getDefaultBufferSize() {
     if (request instanceof DummyPlan) {
       int workloadSize =
-          ((DummyPlan) request).getWorkload() == null ? 0 : ((DummyPlan) request).getWorkload().length;
+          ((DummyPlan) request).getWorkload() == null
+              ? 0
+              : ((DummyPlan) request).getWorkload().length;
       return workloadSize + 512;
     }
     return DEFAULT_BUFFER_SIZE;
@@ -68,8 +70,8 @@ public class RequestLog extends Log {
       dataOutputStream.writeLong(getCurrLogTerm());
 
       ByteBuffer byteBuffer = request.serializeToByteBuffer();
-      dataOutputStream.write(byteBuffer.array(), byteBuffer.arrayOffset(),
-          byteBuffer.limit() - byteBuffer.position());
+      dataOutputStream.write(
+          byteBuffer.array(), byteBuffer.arrayOffset(), byteBuffer.limit() - byteBuffer.position());
     } catch (IOException e) {
       // unreachable
     }

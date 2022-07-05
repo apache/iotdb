@@ -116,9 +116,9 @@ public class AsyncDataLogApplier implements LogApplier {
   private PartialPath getLogKey(Log log) throws StorageGroupNotSetException {
     // we can only apply some kinds of plans in parallel, for other logs, we must wait until all
     // previous logs are applied, or the order of deletions and insertions may get wrong
-    if (log instanceof RequestLog) {
+    if (log instanceof RequestLog && ((RequestLog) log).getRequest() instanceof PhysicalPlan) {
       RequestLog requestLog = (RequestLog) log;
-      PhysicalPlan plan = requestLog.getRequest();
+      PhysicalPlan plan = ((PhysicalPlan) requestLog.getRequest());
       // this plan only affects one sg, so we can run it with other plans in parallel
       return getPlanKey(plan);
     } else if (log instanceof CloseFileLog) {

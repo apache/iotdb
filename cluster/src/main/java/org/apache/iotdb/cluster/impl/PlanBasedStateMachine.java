@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.impl;
 
-import java.io.File;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.StatusUtils;
@@ -31,8 +30,11 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
 
 public class PlanBasedStateMachine implements IStateMachine {
 
@@ -41,8 +43,7 @@ public class PlanBasedStateMachine implements IStateMachine {
   private ClusterPlanExecutor planExecutor;
   private MetaGroupMember metaGroupMember;
 
-  public PlanBasedStateMachine() {
-  }
+  public PlanBasedStateMachine() {}
 
   public PlanBasedStateMachine(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
@@ -58,23 +59,20 @@ public class PlanBasedStateMachine implements IStateMachine {
   }
 
   @Override
-  public void stop() {
-
-  }
+  public void stop() {}
 
   @Override
   public TSStatus write(IConsensusRequest request) {
     if (!(request instanceof PhysicalPlan)) {
-      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
-          "Not supported request: " + request);
+      return StatusUtils.getStatus(
+          StatusUtils.EXECUTE_STATEMENT_ERROR, "Not supported request: " + request);
     }
     try {
       planExecutor.processNonQuery(((PhysicalPlan) request));
       return StatusUtils.OK;
     } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
       logger.warn("Plan execution error", e);
-      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR,
-          e.getMessage());
+      return StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, e.getMessage());
     }
   }
 
@@ -89,9 +87,7 @@ public class PlanBasedStateMachine implements IStateMachine {
   }
 
   @Override
-  public void loadSnapshot(File latestSnapshotRootDir) {
-
-  }
+  public void loadSnapshot(File latestSnapshotRootDir) {}
 
   public void setMetaGroupMember(MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;

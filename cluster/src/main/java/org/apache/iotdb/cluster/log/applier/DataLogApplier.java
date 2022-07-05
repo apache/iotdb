@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,8 +50,7 @@ public class DataLogApplier extends BaseApplier {
 
   protected DataGroupMember dataGroupMember;
 
-  public DataLogApplier(DataGroupMember dataGroupMember,
-      IStateMachine stateMachine) {
+  public DataLogApplier(DataGroupMember dataGroupMember, IStateMachine stateMachine) {
     super(stateMachine);
     this.dataGroupMember = dataGroupMember;
   }

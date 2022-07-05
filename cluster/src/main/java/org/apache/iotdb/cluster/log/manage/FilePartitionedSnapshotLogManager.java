@@ -38,7 +38,6 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.mpp.execution.StateMachine;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -72,8 +71,14 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
       Node header,
       Node thisNode,
       DataGroupMember dataGroupMember) {
-    super(createLogApplier(dataGroupMember, stateMachine), partitionTable, header, thisNode, Factory.INSTANCE,
-        dataGroupMember, stateMachine);
+    super(
+        createLogApplier(dataGroupMember, stateMachine),
+        partitionTable,
+        header,
+        thisNode,
+        Factory.INSTANCE,
+        dataGroupMember,
+        stateMachine);
   }
 
   private static LogApplier createLogApplier(

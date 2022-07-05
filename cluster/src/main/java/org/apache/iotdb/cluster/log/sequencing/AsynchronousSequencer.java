@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,8 +105,8 @@ public class AsynchronousSequencer implements LogSequencer {
         log.setSequenceStartTime(sequenceStartTime);
         log.setCurrLogTerm(member.getTerm().get());
         log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-        if (log instanceof RequestLog) {
-          ((RequestLog) log).getRequest().setIndex(log.getCurrLogIndex());
+        if (log instanceof RequestLog && ((RequestLog) log).getRequest() instanceof PhysicalPlan) {
+          ((PhysicalPlan) ((RequestLog) log).getRequest()).setIndex(log.getCurrLogIndex());
         }
 
         startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();

@@ -36,8 +36,8 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,7 +157,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
       // process the plan locally
       PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
 
-      TSStatus answer = member.executeRequest(plan);
+      TSStatus answer = member.executeRequest(plan).getStatus();
       logger.debug("{}: Received a plan {}, executed answer: {}", name, plan, answer);
       return answer;
     } catch (Exception e) {

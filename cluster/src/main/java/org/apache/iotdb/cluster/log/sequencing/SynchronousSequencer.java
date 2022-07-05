@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 
 import java.util.concurrent.TimeUnit;
@@ -71,8 +72,10 @@ public class SynchronousSequencer implements LogSequencer {
           // if the log contains a physical plan which is not a LogPlan, assign the same index to
           // the plan so the state machine can be bridged with the consensus
           if (log instanceof RequestLog
+              && (((RequestLog) log).getRequest() instanceof PhysicalPlan)
               && !(((RequestLog) log).getRequest() instanceof LogPlan)) {
-            ((RequestLog) log).getRequest().setIndex(logManager.getLastLogIndex() + 1);
+            ((PhysicalPlan) ((RequestLog) log).getRequest())
+                .setIndex(logManager.getLastLogIndex() + 1);
           }
           log.setCurrLogTerm(member.getTerm().get());
           log.setCurrLogIndex(logManager.getLastLogIndex() + 1);

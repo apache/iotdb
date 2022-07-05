@@ -31,13 +31,12 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
-import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.utils.TestOnly;
-
 import org.apache.iotdb.consensus.IStateMachine;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,8 +114,11 @@ public abstract class RaftLogManager {
 
   protected IStateMachine stateMachine;
 
-  protected RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name
-      , IStateMachine stateMachine) {
+  protected RaftLogManager(
+      StableEntryManager stableEntryManager,
+      LogApplier applier,
+      String name,
+      IStateMachine stateMachine) {
     this.logApplier = applier;
     this.name = name;
     this.stateMachine = stateMachine;

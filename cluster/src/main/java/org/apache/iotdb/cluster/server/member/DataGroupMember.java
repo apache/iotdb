@@ -207,7 +207,10 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     logSequencer = SEQUENCER_FACTORY.create(this, logManager);
   }
 
-  DataGroupMember(Node thisNode, PartitionGroup nodes, MetaGroupMember metaGroupMember,
+  DataGroupMember(
+      Node thisNode,
+      PartitionGroup nodes,
+      MetaGroupMember metaGroupMember,
       IStateMachine stateMachine) {
     // The name is used in JMX, so we have to avoid to use "(" "," "=" ")"
     super(
@@ -344,8 +347,8 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     }
 
     public DataGroupMember create(Node thisNode, PartitionGroup partitionGroup) {
-      return new DataGroupMember(thisNode, partitionGroup, metaGroupMember,
-          new PlanBasedStateMachine(metaGroupMember));
+      return new DataGroupMember(
+          thisNode, partitionGroup, metaGroupMember, new PlanBasedStateMachine(metaGroupMember));
     }
   }
 
@@ -735,8 +738,8 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
           }
         } catch (MetadataException | CheckConsistencyException ex) {
           logger.error("{}: Cannot auto-create timeseries for {}", name, request, e);
-          return new ConsensusWriteResponse(null,
-              StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, ex.getMessage()));
+          return new ConsensusWriteResponse(
+              null, StatusUtils.getStatus(StatusUtils.EXECUTE_STATEMENT_ERROR, ex.getMessage()));
         }
         if (hasCreated) {
           return executeRequest(request);
