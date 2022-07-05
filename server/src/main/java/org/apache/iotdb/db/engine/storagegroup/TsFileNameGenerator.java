@@ -239,6 +239,22 @@ public class TsFileNameGenerator {
                     + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX));
   }
 
+  public static TsFileResource generateNewAlterTsFileResource(TsFileResource oldTsFileResource) throws IOException {
+    if(oldTsFileResource != null) {
+      TsFileName tsFileName = getTsFileName(oldTsFileResource.getTsFile().getName());
+      return new TsFileResource(new File(oldTsFileResource.getTsFile().getParent(),
+              tsFileName.time
+                      + FILE_NAME_SEPARATOR
+                      + tsFileName.version
+                      + FILE_NAME_SEPARATOR
+                      + tsFileName.innerCompactionCnt
+                      + FILE_NAME_SEPARATOR
+                      + tsFileName.crossCompactionCnt
+                      + IoTDBConstant.ALTER_TMP_FILE_SUFFIX));
+    }
+    return null;
+  }
+
   public static class TsFileName {
     private static final String FILE_NAME_PATTERN = "(\\d+)-(\\d+)-(\\d+)-(\\d+).tsfile$";
     private static final Pattern FILE_NAME_MATCHER = Pattern.compile(TsFileName.FILE_NAME_PATTERN);

@@ -233,6 +233,10 @@ public class IoTDBConstant {
   // compaction mods of previous version (<0.13)
   public static final String COMPACTION_MODIFICATION_FILE_NAME_FROM_OLD = "merge.mods";
 
+  // alter timeseries temp file
+  public static final String ALTER_TMP_FILE_SUFFIX = ".alter";
+  public static final String ALTER_OLD_TMP_FILE_SUFFIX = ".alter.old";
+
   // write ahead log
   public static final String WAL_FILE_PREFIX = "_";
   public static final String WAL_FILE_SUFFIX = ".wal";

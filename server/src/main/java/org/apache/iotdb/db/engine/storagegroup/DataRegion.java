@@ -37,6 +37,7 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -93,16 +94,22 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2063,8 +2070,13 @@ public class DataRegion {
   }
 
   /**
-   * alter timeseries encoding & compressionType 1、flush and close tsfile 2、locks 3、write temp
-   * tsfiles 4、unregister old tsfiles and release locks 5、rename temp tsfiles 6、register tsfiles
+   * alter timeseries encoding & compressionType<br/>
+   *
+   * 1、flush and close tsfile<br/>
+   * 2、locks<br/>
+   * 3、write temp tsfiles<br/>
+   * 4、unregister old tsfiles and release locks<br/>
+   * 5、rename temp tsfiles 6、register tsfiles<br/>
    *
    * @param fullPath
    * @param curEncoding
@@ -2084,17 +2096,129 @@ public class DataRegion {
       throw new IOException(
           "Delete failed. " + "Please do not delete until the old files settled.");
     }
+    logger.info("[alter timeseries] syncCloseAllWorkingTsFileProcessors");
     // flush & close
     syncCloseAllWorkingTsFileProcessors();
+    logger.info("[alter timeseries] writeLock");
     // locks?
     // mod files in mergingModification, sequenceFileList, and unsequenceFileList ?
     writeLock("alter");
     // write temp tsfiles
     try {
-      // TODO
+
+      Set<Long> timePartitions = tsFileManager.getTimePartitions();
+      timePartitions.forEach(timePartition -> {
+        logger.info("[alter timeseries] alterDataInTsFiles seq({})", timePartition);
+        rewriteDataInTsFiles(tsFileManager.getSequenceListByTimePartition(timePartition), fullPath, curEncoding, curCompressionType, timePartition, true);
+        logger.info("[alter timeseries] alterDataInTsFiles unseq({})", timePartition);
+        rewriteDataInTsFiles(tsFileManager.getUnsequenceListByTimePartition(timePartition), fullPath, curEncoding, curCompressionType, timePartition, false);
+      });
+    } catch (Exception e) {
+      // roll back TODO
+      logger.error("[alter timeseries] error", e);
     } finally {
+      logger.info("[alter timeseries] unlock");
       writeUnlock();
     }
+  }
+
+  private void rewriteDataInTsFiles(List<TsFileResource> tsFileList, PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType, long timePartition, boolean sequence) {
+
+    if(tsFileList == null) {
+      return;
+    }
+    tsFileList.forEach(tsFileResource -> {
+      if(tsFileResource == null) {
+        return;
+      }
+      tsFileResource.tryReadLock();
+      try {
+        logger.info("[alter timeseries] rewriteDataInTsFile {} start", tsFileResource.getTsFilePath());
+        // TODO if compacting,What should I do？
+        // TODO ad alter log
+        // TODO if file exsit, delete
+        // gen target tsFileResource
+        TsFileResource targetTsFileResource = TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
+        // read .tsfile to .alter
+        rewriteTsFile(tsFileResource, targetTsFileResource, fullPath, curEncoding, curCompressionType, timePartition, sequence);
+        // move tsfile
+        tsFileResource.moveTsFile(TSFILE_SUFFIX, IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX);
+        targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
+        // replace
+        if(sequence) {
+          tsFileManager.replace(new ArrayList<>(Collections.singletonList(tsFileResource)),
+                  Collections.emptyList(),
+                  new ArrayList<>(Collections.singletonList(tsFileResource)),
+                  timePartition,
+                  sequence);
+        } else {
+          tsFileManager.replace(Collections.emptyList(),
+                  new ArrayList<>(Collections.singletonList(tsFileResource)),
+                  new ArrayList<>(Collections.singletonList(tsFileResource)),
+                  timePartition,
+                  sequence);
+        }
+
+        // check
+        if (targetTsFileResource.getTsFile().exists()
+                && targetTsFileResource.getTsFile().length()
+                < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
+          // the file size is smaller than magic string and version number
+          throw new TsFileNotCompleteException(
+                  String.format(
+                          "target file %s is smaller than magic string and version number size",
+                          targetTsFileResource));
+        }
+
+        // TODO open them, when tests ok
+        logger.info(
+                "[alter timeseries] {}-{} alter {} finish, start to delete old files",
+                logicalStorageGroupName,
+                dataRegionId, tsFileResource.getTsFilePath());
+        // delete the old files
+        CompactionUtils.deleteTsFilesInDisk(
+                new ArrayList<>(Collections.singletonList(tsFileResource)), logicalStorageGroupName + "-" + dataRegionId);
+        CompactionUtils.deleteModificationForSourceFile(
+                new ArrayList<>(Collections.singletonList(tsFileResource)), logicalStorageGroupName + "-" + dataRegionId);
+        logger.info("[alter timeseries] rewriteDataInTsFile {} end", tsFileResource.getTsFilePath());
+      } catch (Exception e) {
+        // TODO
+        logger.error("[alter timeseries]", e);
+      } finally {
+        tsFileResource.readUnlock();
+      }
+    });
+  }
+
+  private void rewriteTsFile(TsFileResource tsFileResource,TsFileResource targetTsFileResource, PartialPath fullPath,
+                             TSEncoding curEncoding, CompressionType curCompressionType, long timePartition, boolean sequence) throws IOException {
+    targetTsFileResource.writeLock();
+    try(TsFileSequenceReader reader = new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
+        TsFileIOWriter writer = new TsFileIOWriter(targetTsFileResource.getTsFile())) {
+      // read devices
+      TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
+      while (deviceIterator.hasNext()) {
+        Pair<String, Boolean> deviceInfo = deviceIterator.next();
+        String device = deviceInfo.left;
+        boolean aligned = deviceInfo.right;
+        // write chunkGroup header
+        writer.startChunkGroup(device);
+        // write chunk & page data
+        if (aligned) {
+
+        } else {
+
+        }
+        // chunkGroup end
+        writer.endChunkGroup();
+      }
+
+      targetTsFileResource.updatePlanIndexes(tsFileResource);
+      // write index,booloom,footer, end file
+      writer.endFile();
+      targetTsFileResource.close();
+    }
+    targetTsFileResource.writeUnlock();
   }
 
   /**
