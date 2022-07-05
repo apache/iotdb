@@ -25,17 +25,18 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 public class IdentityLinearFill implements ILinearFill {
 
   @Override
-  public Column fill(TimeColumn timeColumn, Column valueColumn) {
+  public Column fill(TimeColumn timeColumn, Column valueColumn, long currentRowIndex) {
     return valueColumn;
   }
 
   @Override
-  public boolean needPrepareForNext(long time, Column valueColumn) {
+  public boolean needPrepareForNext(long rowIndex, Column valueColumn) {
     return false;
   }
 
   @Override
-  public boolean prepareForNext(long time, TimeColumn nextTimeColumn, Column nextValueColumn) {
+  public boolean prepareForNext(
+      long startRowIndex, long endRowIndex, TimeColumn nextTimeColumn, Column nextValueColumn) {
     throw new IllegalArgumentException(
         "We won't call prepareForNext in IdentityLinearFill, because needPrepareForNext() method will always return false.");
   }

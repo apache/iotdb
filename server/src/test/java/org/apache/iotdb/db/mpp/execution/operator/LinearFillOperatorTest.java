@@ -29,9 +29,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.identity.IdentityLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.FloatLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.DescTimeComparator;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -65,14 +62,12 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      boolean ascending = true;
-      TimeComparator timeComparator = new AscTimeComparator();
       LinearFill[] fillArray =
           new LinearFill[] {
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator)
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill()
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
@@ -265,14 +260,12 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      boolean ascending = false;
-      TimeComparator timeComparator = new DescTimeComparator();
       LinearFill[] fillArray =
           new LinearFill[] {
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator)
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill()
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
@@ -465,14 +458,12 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      boolean ascending = true;
-      TimeComparator timeComparator = new AscTimeComparator();
       LinearFill[] fillArray =
           new LinearFill[] {
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator)
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill()
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
@@ -665,14 +656,12 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      boolean ascending = false;
-      TimeComparator timeComparator = new DescTimeComparator();
       LinearFill[] fillArray =
           new LinearFill[] {
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator)
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill()
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
@@ -865,8 +854,7 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      LinearFill[] fillArray =
-          new LinearFill[] {new FloatLinearFill(true, new AscTimeComparator())};
+      LinearFill[] fillArray = new LinearFill[] {new FloatLinearFill()};
       LinearFillOperator fillOperator =
           new LinearFillOperator(
               fragmentInstanceContext.getOperatorContexts().get(0),
@@ -971,8 +959,7 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      LinearFill[] fillArray =
-          new LinearFill[] {new FloatLinearFill(false, new DescTimeComparator())};
+      LinearFill[] fillArray = new LinearFill[] {new FloatLinearFill()};
       LinearFillOperator fillOperator =
           new LinearFillOperator(
               fragmentInstanceContext.getOperatorContexts().get(0),

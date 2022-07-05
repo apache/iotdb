@@ -25,7 +25,6 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -226,7 +225,6 @@ public class IoTDBNullValueFillIT {
   }
 
   @Test
-  @Ignore // TODO bug fix
   public void linearFillAlignByDeviceTest() {
     String[] retArray =
         new String[] {

@@ -29,26 +29,29 @@ public interface ILinearFill {
    *
    * @param timeColumn TimeColumn of valueColumn
    * @param valueColumn valueColumn that need to be filled
+   * @param currentRowIndex current row index for start time in timeColumn
    * @return Value Column that has been filled
    */
-  Column fill(TimeColumn timeColumn, Column valueColumn);
+  Column fill(TimeColumn timeColumn, Column valueColumn, long currentRowIndex);
 
   /**
-   * @param time end time of current valueColumn that need to be filled
+   * @param rowIndex row index for end time of current valueColumn that need to be filled
    * @param valueColumn valueColumn that need to be filled
    * @return true if valueColumn can't be filled using current information, and we need to get next
    *     TsBlock and then call prepareForNext. false if valueColumn can be filled using current
    *     information, and we can directly call fill() function
    */
-  boolean needPrepareForNext(long time, Column valueColumn);
+  boolean needPrepareForNext(long rowIndex, Column valueColumn);
 
   /**
-   * @param time end time of current valueColumn that need to be filled
+   * @param startRowIndex row index for start time of nextValueColumn
+   * @param endRowIndex row index for end time of current valueColumn that need to be filled
    * @param nextTimeColumn TimeColumn of next TsBlock
    * @param nextValueColumn Value Column of next TsBlock
    * @return true if we get enough information to fill current column, and we can stop getting next
    *     TsBlock and calling prepareForNext. false if we still don't get enough information to fill
    *     current column, and still need to keep getting next TsBlock and then call prepareForNext
    */
-  boolean prepareForNext(long time, TimeColumn nextTimeColumn, Column nextValueColumn);
+  boolean prepareForNext(
+      long startRowIndex, long endRowIndex, TimeColumn nextTimeColumn, Column nextValueColumn);
 }

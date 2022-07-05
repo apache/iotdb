@@ -671,8 +671,7 @@ public class LocalExecutionPlanner {
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
                   LinearFillOperator.class.getSimpleName()),
-              getLinearFill(
-                  inputColumns, inputDataTypes, node.getScanOrder() == OrderBy.TIMESTAMP_ASC),
+              getLinearFill(inputColumns, inputDataTypes),
               child);
         default:
           throw new IllegalArgumentException("Unknown fill policy: " + fillPolicy);
@@ -742,23 +741,21 @@ public class LocalExecutionPlanner {
       return previousFill;
     }
 
-    private ILinearFill[] getLinearFill(
-        int inputColumns, List<TSDataType> inputDataTypes, boolean ascending) {
+    private ILinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
       ILinearFill[] linearFill = new ILinearFill[inputColumns];
-      TimeComparator timeComparator = ascending ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
       for (int i = 0; i < inputColumns; i++) {
         switch (inputDataTypes.get(i)) {
           case INT32:
-            linearFill[i] = new IntLinearFill(ascending, timeComparator);
+            linearFill[i] = new IntLinearFill();
             break;
           case INT64:
-            linearFill[i] = new LongLinearFill(ascending, timeComparator);
+            linearFill[i] = new LongLinearFill();
             break;
           case FLOAT:
-            linearFill[i] = new FloatLinearFill(ascending, timeComparator);
+            linearFill[i] = new FloatLinearFill();
             break;
           case DOUBLE:
-            linearFill[i] = new DoubleLinearFill(ascending, timeComparator);
+            linearFill[i] = new DoubleLinearFill();
             break;
           case BOOLEAN:
           case TEXT:
