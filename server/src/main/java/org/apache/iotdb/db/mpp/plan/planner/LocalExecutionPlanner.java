@@ -187,7 +187,6 @@ import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode
  * run a fragment instance parallel and take full advantage of multi-cores
  */
 public class LocalExecutionPlanner {
-
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
