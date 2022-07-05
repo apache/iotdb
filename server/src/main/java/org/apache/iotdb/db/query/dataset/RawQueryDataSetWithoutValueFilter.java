@@ -130,7 +130,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
           reader.setManagedByQueryManager(false);
         }
       } catch (InterruptedException e) {
-        LOGGER.error("Interrupted while putting into the blocking queue: ", e);
+        LOGGER.warn("Interrupted while putting into the blocking queue: ", e);
         Thread.currentThread().interrupt();
         reader.setHasRemaining(false);
       } catch (IOException e) {
@@ -145,11 +145,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
     private void putExceptionBatchData(Throwable e, String logMessage) {
       try {
-        LOGGER.error(logMessage, e);
+        LOGGER.warn(logMessage, e);
         reader.setHasRemaining(false);
         blockingQueue.put(new ExceptionBatchData(e));
       } catch (InterruptedException ex) {
-        LOGGER.error("Interrupted while putting ExceptionBatchData into the blocking queue: ", ex);
+        LOGGER.warn("Interrupted while putting ExceptionBatchData into the blocking queue: ", ex);
         Thread.currentThread().interrupt();
       }
     }
