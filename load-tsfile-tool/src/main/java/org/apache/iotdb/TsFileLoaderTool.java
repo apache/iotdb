@@ -19,68 +19,61 @@
 
 package org.apache.iotdb;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.MetaMarker;
-import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileReader;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
-import org.apache.iotdb.tsfile.read.reader.page.ValuePageReader;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
+import org.apache.iotdb.tsfile.file.MetaMarker;
+import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
+import org.apache.iotdb.tsfile.file.header.ChunkHeader;
+import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.controller.IMetadataQuerier;
+import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
+import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.EmptyFileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
+import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class TsFileLoaderTool {
   private static final int MAX_TABLET_LENGTH = 1024 * 64;
-  private static final long MAX_TABLET_SIZE = 1024 * 1024;
 
   private static String host = "localhost";
   private static String port = "6667";
@@ -88,7 +81,6 @@ public class TsFileLoaderTool {
   private static String password = "root";
   private static String filePath = "";
 
-  private static Map<String, LinkedList<Tablet>> device2Tablets;
   private static Map<String, Set<MeasurementSchema>> device2Measurements;
 
   public static void main(String[] args) {
@@ -201,6 +193,12 @@ public class TsFileLoaderTool {
     return list;
   }
 
+  /**
+   * write a list of file to IoTDB with session.
+   *
+   * @param files a list of file to write to IoTDB
+   * @param session IoTDB session
+   */
   public static void writeToIoTDB(List<File> files, Session session) {
     int size = files.size();
     List<File> unloadTsFiles = new ArrayList<>();
@@ -236,24 +234,35 @@ public class TsFileLoaderTool {
   }
 
   /**
-   * Read a TsFile and write into IoTDB session. This method can load TsFile with IoTDB version
-   * 0.12-0.14
+   * Read a TsFile and write into IoTDB session. This method can load TsFile with IoTDB version.
+   * Support TsFile generated from IoTDB version 0.12 - 0.14(including Aligned Timeseries).
    *
    * @param filename the file path to be loaded
    * @param session IoTDB session
    */
   public static void writeTsFile(String filename, Session session)
       throws IOException, IllegalPathException, IoTDBConnectionException,
-          StatementExecutionException {
+          StatementExecutionException, NoMeasurementException {
+    // parse modifications from .mods
+    List<Modification> modifications = null;
+    if (FSFactoryProducer.getFSFactory()
+        .getFile(filename + ModificationFile.FILE_SUFFIX)
+        .exists()) {
+      modifications =
+          (List<Modification>)
+              new ModificationFile(filename + ModificationFile.FILE_SUFFIX).getModifications();
+    }
 
-    // read all device and establish tablet
+    // read all device and their measurements
     parseDeviceFromTsFile(filename);
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(filename);
-        TsFileReader readTsFile = new TsFileReader(reader)) {
+
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       for (Map.Entry<String, Set<MeasurementSchema>> entry : device2Measurements.entrySet()) {
+        // collect measurements for device
         boolean isAligned = false;
         String curDevice = entry.getKey();
         List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+        ArrayList<Path> paths = new ArrayList<>();
         for (MeasurementSchema measurementSchema : entry.getValue()) {
           if (!measurementSchema.getType().equals(TSDataType.VECTOR)) {
             measurementSchemas.add(measurementSchema);
@@ -261,15 +270,35 @@ public class TsFileLoaderTool {
             isAligned = true;
           }
         }
-
-        Tablet tablet = new Tablet(curDevice, measurementSchemas, MAX_TABLET_LENGTH);
-        tablet.initBitMaps();
-        ArrayList<Path> paths = new ArrayList<>();
         for (MeasurementSchema measurementSchema : measurementSchemas) {
           paths.add(new Path(curDevice, measurementSchema.getMeasurementId()));
         }
+
+        // construct query to this tsfile
+        List<AbstractFileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+        List<TSDataType> dataTypes = new ArrayList<>();
+        IMetadataQuerier metadataQuerier = new MetadataQuerierByFileImpl(reader);
+        IChunkLoader chunkLoader = new CachedChunkLoaderImpl(reader);
+        for (Path path : paths) {
+          List<IChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(path);
+          modifyChunkMetadata(isAligned, path, chunkMetadataList, modifications);
+          AbstractFileSeriesReader seriesReader;
+          if (chunkMetadataList.isEmpty()) {
+            seriesReader = new EmptyFileSeriesReader();
+            dataTypes.add(metadataQuerier.getDataType(path));
+          } else {
+            seriesReader = new FileSeriesReader(chunkLoader, chunkMetadataList, null);
+            dataTypes.add(chunkMetadataList.get(0).getDataType());
+          }
+          readersOfSelectedSeries.add(seriesReader);
+        }
+
+        // read data from tsfile and construct session to send to IoTDB
+        QueryDataSet dataSet =
+            new DataSetWithoutTimeGenerator(paths, dataTypes, readersOfSelectedSeries);
+        Tablet tablet = new Tablet(curDevice, measurementSchemas, MAX_TABLET_LENGTH);
+        tablet.initBitMaps();
         int measurementSize = measurementSchemas.size();
-        QueryDataSet dataSet = readTsFile.query(QueryExpression.create(paths, null));
         while (dataSet.hasNext()) {
           RowRecord rowRecord = dataSet.next();
           tablet.addTimestamp(tablet.rowSize, rowRecord.getTimestamp());
@@ -295,192 +324,12 @@ public class TsFileLoaderTool {
     }
   }
 
-  private void parseAndWrite(String filename, Session session) throws Exception {
-    // read mods file
-    List<Modification> modifications = null;
-    if (FSFactoryProducer.getFSFactory()
-        .getFile(filename + ModificationFile.FILE_SUFFIX)
-        .exists()) {
-      modifications =
-          (List<Modification>)
-              new ModificationFile(filename + ModificationFile.FILE_SUFFIX).getModifications();
-    }
-
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
-      // Sequential reading of one ChunkGroup now follows this order:
-      // first the CHUNK_GROUP_HEADER, then SeriesChunks (headers and data) in one ChunkGroup
-      // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the
-      // marker) ahead and judge accordingly.
-      reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
-      byte marker;
-      List<long[]> timeBatch = new ArrayList<>();
-      String curDevice = null;
-      long curMemorySize = 0;
-      long chunkHeaderOffset = -1;
-      boolean isAligned = false;
-      Tablet curTablet = null;
-      Map<Long, Integer> timestamp2Row = null;
-      while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
-        switch (marker) {
-          case MetaMarker.CHUNK_HEADER:
-          case MetaMarker.TIME_CHUNK_HEADER:
-          case MetaMarker.VALUE_CHUNK_HEADER:
-          case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
-          case MetaMarker.ONLY_ONE_PAGE_TIME_CHUNK_HEADER:
-          case MetaMarker.ONLY_ONE_PAGE_VALUE_CHUNK_HEADER:
-            chunkHeaderOffset = reader.position() - 1;
-            ChunkHeader header = reader.readChunkHeader(marker);
-            Decoder defaultTimeDecoder =
-                Decoder.getDecoderByType(
-                    TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-                    TSDataType.INT64);
-            Decoder valueDecoder =
-                Decoder.getDecoderByType(header.getEncodingType(), header.getDataType());
-            // 1. construct MeasurementSchema from chunkHeader
-            String measurement = header.getMeasurementID();
-            MeasurementSchema measurementSchema =
-                new MeasurementSchema(
-                    measurement,
-                    header.getDataType(),
-                    header.getEncodingType(),
-                    header.getCompressionType());
-            int measurementIndex = curTablet.getSchemas().indexOf(measurementSchema);
-            // 2. record data point of each measurement
-            int dataSize = header.getDataSize();
-            int pageIndex = 0;
-            if (header.getDataType() == TSDataType.VECTOR) {
-              isAligned = true;
-              timeBatch.clear();
-            }
-            List<TimeRange> deleteIntervalList =
-                getSortedDeleteIntervals(
-                    curDevice, measurementSchema, chunkHeaderOffset, modifications);
-            while (dataSize > 0) {
-              valueDecoder.reset();
-              PageHeader pageHeader =
-                  reader.readPageHeader(
-                      header.getDataType(), header.getChunkType() == MetaMarker.CHUNK_HEADER);
-              ByteBuffer pageData = reader.readPage(pageHeader, header.getCompressionType());
-              if ((header.getChunkType() & TsFileConstant.TIME_COLUMN_MASK)
-                  == TsFileConstant.TIME_COLUMN_MASK) { // Time Chunk
-                TimePageReader timePageReader =
-                    new TimePageReader(pageHeader, pageData, defaultTimeDecoder);
-                timePageReader.setDeleteIntervalList(deleteIntervalList);
-                timeBatch.add(timePageReader.getNextTimeBatch());
-                for (int i = 0; i < timeBatch.get(pageIndex).length; i++) {
-                  int rowIndex = curTablet.rowSize++;
-                  long timestamp = timeBatch.get(pageIndex)[i];
-                  curTablet.addTimestamp(rowIndex, timestamp);
-                  timestamp2Row.put(timestamp, rowIndex);
-                }
-              } else if ((header.getChunkType() & TsFileConstant.VALUE_COLUMN_MASK)
-                  == TsFileConstant.VALUE_COLUMN_MASK) { // Value Chunk
-                ValuePageReader valuePageReader =
-                    new ValuePageReader(pageHeader, pageData, header.getDataType(), valueDecoder);
-                valuePageReader.setDeleteIntervalList(deleteIntervalList);
-                TsPrimitiveType[] valueBatch =
-                    valuePageReader.nextValueBatch(timeBatch.get(pageIndex));
-                for (int i = 0; i < timeBatch.get(pageIndex).length; i++) {
-                  int rowIndex = timestamp2Row.get(timeBatch.get(pageIndex)[i]);
-                  curTablet.addValue(measurement, rowIndex, valueBatch[i].getValue());
-                  curTablet.bitMaps[measurementIndex].unmark(rowIndex);
-                }
-              } else { // NonAligned Chunk
-                PageReader reader1 =
-                    new PageReader(
-                        pageData, header.getDataType(), valueDecoder, defaultTimeDecoder, null);
-                // read delete time range from old modification file
-                reader1.setDeleteIntervalList(deleteIntervalList);
-                BatchData batchData = reader1.getAllSatisfiedPageData();
-                int maxRow;
-                if (header.getChunkType() == MetaMarker.CHUNK_HEADER) {
-                  maxRow = (int) pageHeader.getNumOfValues();
-                } else {
-                  maxRow = batchData.length();
-                }
-
-                Tablet tablet =
-                    new Tablet(curDevice, Collections.singletonList(measurementSchema), maxRow);
-                long curTabletSize = 0;
-                while (batchData.hasCurrent()) {
-                  tablet.addTimestamp(tablet.rowSize, batchData.currentTime());
-                  tablet.addValue(measurement, tablet.rowSize, batchData.currentValue());
-                  tablet.rowSize++;
-                  // calculate curTabletSize based on timestamp and value
-                  curTabletSize += 8;
-                  switch (header.getDataType()) {
-                    case BOOLEAN:
-                      curTabletSize += 1;
-                      break;
-                    case INT32:
-                    case FLOAT:
-                      curTabletSize += 4;
-                      break;
-                    case INT64:
-                    case DOUBLE:
-                      curTabletSize += 8;
-                      break;
-                    case TEXT:
-                      curTabletSize += 4 + ((Binary) batchData.currentValue()).getLength();
-                      break;
-                    default:
-                      throw new UnSupportedDataTypeException(
-                          String.format("Data type %s is not supported.", header.getDataType()));
-                  }
-                  // if curTabletSize is over the threshold
-                  if (curTabletSize >= MAX_TABLET_SIZE) {
-                    session.insertTablet(tablet);
-                    curTabletSize = 0;
-                    tablet.reset();
-                  }
-                  batchData.next();
-                }
-                if (tablet.rowSize > 0) {
-                  session.insertTablet(tablet);
-                }
-              }
-              dataSize -= pageHeader.getSerializedPageSize();
-            }
-            break;
-          case MetaMarker.CHUNK_GROUP_HEADER:
-            if (curTablet != null) {
-              if (isAligned) {
-                session.insertAlignedTablet(curTablet);
-              } else {
-                session.insertTablet(curTablet);
-              }
-            }
-            ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
-            curDevice = chunkGroupHeader.getDeviceID();
-            curMemorySize = 0;
-            isAligned = false;
-            timestamp2Row = new HashMap<>();
-            curTablet = device2Tablets.get(curDevice).pollFirst();
-            curTablet.initBitMaps();
-            for (BitMap bitMap : curTablet.bitMaps) {
-              bitMap.markAll();
-            }
-            break;
-          case MetaMarker.OPERATION_INDEX_RANGE:
-            reader.readPlanIndex();
-            reader.getMinPlanIndex();
-            reader.getMaxPlanIndex();
-            break;
-          default:
-            MetaMarker.handleUnexpectedMarker(marker);
-        }
-      }
-    }
-  }
-
   private static void parseDeviceFromTsFile(String filename) throws IOException {
-    device2Tablets = new HashMap<>();
     device2Measurements = new HashMap<>();
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
       String curDevice = null;
       byte marker;
-      List<MeasurementSchema> measurementSchemas = null;
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
@@ -499,9 +348,6 @@ public class TsFileLoaderTool {
             device2Measurements
                 .computeIfAbsent(curDevice, o -> new HashSet<>())
                 .add(measurementSchema);
-            if (header.getDataType() != TSDataType.VECTOR) {
-              measurementSchemas.add(measurementSchema);
-            }
             int dataSize = header.getDataSize();
             while (dataSize > 0) {
               PageHeader pageHeader =
@@ -513,14 +359,8 @@ public class TsFileLoaderTool {
             }
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
-            if (measurementSchemas != null) {
-              device2Tablets
-                  .computeIfAbsent(curDevice, o -> new LinkedList<>())
-                  .add(new Tablet(curDevice, measurementSchemas, MAX_TABLET_LENGTH));
-            }
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             curDevice = chunkGroupHeader.getDeviceID();
-            measurementSchemas = new ArrayList<>();
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
@@ -529,37 +369,38 @@ public class TsFileLoaderTool {
             MetaMarker.handleUnexpectedMarker(marker);
         }
       }
-      if (measurementSchemas != null) {
-        device2Tablets
-            .computeIfAbsent(curDevice, o -> new LinkedList<>())
-            .add(new Tablet(curDevice, measurementSchemas, MAX_TABLET_LENGTH));
-      }
     }
   }
 
-  private static List<TimeRange> getSortedDeleteIntervals(
-      String deviceId,
-      MeasurementSchema schema,
-      long chunkHeaderOffset,
+  private static void modifyChunkMetadata(
+      boolean isAligned,
+      Path path,
+      List<IChunkMetadata> chunkMetadataList,
       List<Modification> modifications)
       throws IllegalPathException {
-    if (modifications != null && modifications.size() != 0) {
-      Iterator<Modification> modsIterator = modifications.listIterator();
-      ChunkMetadata chunkMetadata = new ChunkMetadata();
-      Deletion currentDeletion = null;
-      while (modsIterator.hasNext()) {
-        currentDeletion = (Deletion) modsIterator.next();
-        // if deletion path match the chunkPath, then add the deletion to the list
-        if (currentDeletion
-                .getPath()
-                .matchFullPath(new PartialPath(deviceId + "." + schema.getMeasurementId()))
-            && currentDeletion.getFileOffset() > chunkHeaderOffset) {
-          chunkMetadata.insertIntoSortedDeletions(
-              currentDeletion.getStartTime(), currentDeletion.getEndTime());
-        }
-      }
-      return chunkMetadata.getDeleteIntervalList();
+    if (modifications == null || modifications.isEmpty()) {
+      return;
     }
-    return null;
+    List<Modification> measurementModifications = new ArrayList<>();
+    Iterator<Modification> modsIterator = modifications.listIterator();
+    Deletion currentDeletion;
+    while (modsIterator.hasNext()) {
+      currentDeletion = (Deletion) modsIterator.next();
+      // if deletion path match the chunkPath, then add the deletion to the list
+      if (currentDeletion.getPath().matchFullPath(new PartialPath(path.getFullPath()))) {
+        measurementModifications.add(currentDeletion);
+      }
+    }
+    if (!isAligned) {
+      QueryUtils.modifyChunkMetaData(chunkMetadataList, measurementModifications);
+    } else {
+      List<AlignedChunkMetadata> alignedChunkMetadataList = new ArrayList<>();
+      for (IChunkMetadata chunkMetadata : chunkMetadataList) {
+        alignedChunkMetadataList.add((AlignedChunkMetadata) chunkMetadata);
+      }
+      // AlignedChunk only contains one valueChunkMetadata which is measurement with this path
+      QueryUtils.modifyAlignedChunkMetaData(
+          alignedChunkMetadataList, Collections.singletonList(measurementModifications));
+    }
   }
 }
