@@ -56,15 +56,13 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 
 /**
- * This class provides a visitor of {@link org.apache.iotdb.db.mpp.plan.statement.StatementNode},
+ * This class provides a visitor of {@link StatementNode},
  * which can be extended to create a visitor which only needs to handle a subset of the available
  * methods.
  *
@@ -265,18 +263,7 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showDataNodesStatement, context);
   }
 
-  public R visitCreateSchemaTemplate(
-      CreateSchemaTemplateStatement createTemplateStatement, C context) {
-    return visitStatement(createTemplateStatement, context);
-  }
-
-  public R visitShowNodesInSchemaTemplate(
-      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement, C context) {
-    return visitStatement(showNodesInSchemaTemplateStatement, context);
-  }
-
-  public R visitShowSchemaTemplate(
-      ShowSchemaTemplateStatement showSchemaTemplateStatement, C context) {
-    return visitStatement(showSchemaTemplateStatement, context);
+  public R visitShowVersion(ShowVersionStatement showVersionStatement, C context) {
+    return visitStatement(showVersionStatement, context);
   }
 }
