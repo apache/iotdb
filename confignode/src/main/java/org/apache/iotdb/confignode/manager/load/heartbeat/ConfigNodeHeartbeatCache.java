@@ -22,11 +22,11 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 
 import java.util.LinkedList;
 
-public class ConfigNodeHeartbeatCache implements IHeartbeatStatistic {
+public class ConfigNodeHeartbeatCache implements INodeCache {
 
   // Cache heartbeat samples
   private static final int maximumWindowSize = 100;
-  private final LinkedList<HeartbeatPackage> slidingWindow;
+  private final LinkedList<NodeHeartbeatSample> slidingWindow;
 
   // For showing cluster
   private volatile NodeStatus status;
@@ -38,13 +38,13 @@ public class ConfigNodeHeartbeatCache implements IHeartbeatStatistic {
   }
 
   @Override
-  public void cacheHeartBeat(HeartbeatPackage newHeartbeat) {
+  public void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample) {
     synchronized (slidingWindow) {
       // Only sequential heartbeats are accepted.
       // And un-sequential heartbeats will be discarded.
       if (slidingWindow.size() == 0
-          || slidingWindow.getLast().getSendTimestamp() < newHeartbeat.getSendTimestamp()) {
-        slidingWindow.add(newHeartbeat);
+          || slidingWindow.getLast().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
+        slidingWindow.add(newHeartbeatSample);
       }
 
       while (slidingWindow.size() > maximumWindowSize) {
@@ -54,7 +54,7 @@ public class ConfigNodeHeartbeatCache implements IHeartbeatStatistic {
   }
 
   @Override
-  public void updateLoadStatistic() {
+  public boolean updateLoadStatistic() {
     long lastSendTime = 0;
     synchronized (slidingWindow) {
       if (slidingWindow.size() > 0) {
@@ -62,12 +62,23 @@ public class ConfigNodeHeartbeatCache implements IHeartbeatStatistic {
       }
     }
 
-    // TODO: Optimize
+    NodeStatus originStatus;
+    switch (status) {
+      case Running:
+        originStatus = NodeStatus.Running;
+        break;
+      case Unknown:
+      default:
+        originStatus = NodeStatus.Unknown;
+    }
+
+    // TODO: Optimize judge logic
     if (System.currentTimeMillis() - lastSendTime > 20_000) {
       status = NodeStatus.Unknown;
     } else {
       status = NodeStatus.Running;
     }
+    return !status.getStatus().equals(originStatus.getStatus());
   }
 
   @Override

@@ -215,7 +215,7 @@ public class ConfigManager implements IManager {
               .collect(Collectors.toList());
       Map<Integer, String> nodeStatus = new HashMap<>();
       getLoadManager()
-          .getHeartbeatCacheMap()
+          .getNodeCacheMap()
           .forEach(
               (nodeId, heartbeatCache) ->
                   nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus()));

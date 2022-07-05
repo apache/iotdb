@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -34,6 +35,8 @@ import org.apache.iotdb.confignode.client.AsyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.handlers.DataNodeHeartbeatHandler;
+import org.apache.iotdb.confignode.client.handlers.UpdateRegionRouteMapHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
@@ -48,9 +51,10 @@ import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.IHeartbeatStatistic;
+import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,9 +63,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -73,14 +79,16 @@ public class LoadManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
-  private final IManager configManager;
+  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final long heartbeatInterval = conf.getHeartbeatInterval();
+  private static final TEndPoint currentNode =
+      new TEndPoint(conf.getInternalAddress(), conf.getInternalPort());
 
-  private final long heartbeatInterval =
-      ConfigNodeDescriptor.getInstance().getConf().getHeartbeatInterval();
+  private final IManager configManager;
 
   /** Heartbeat sample cache */
   // Map<NodeId, IHeartbeatStatistic>
-  private final Map<Integer, IHeartbeatStatistic> heartbeatCacheMap;
+  private final Map<Integer, INodeCache> nodeCacheMap;
   // Map<RegionId, RegionGroupCache>
   private final Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap;
 
@@ -108,7 +116,7 @@ public class LoadManager {
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
-    this.heartbeatCacheMap = new ConcurrentHashMap<>();
+    this.nodeCacheMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
 
     this.regionBalancer = new RegionBalancer(configManager);
@@ -183,7 +191,7 @@ public class LoadManager {
   public Map<Integer, Float> getAllLoadScores() {
     Map<Integer, Float> result = new ConcurrentHashMap<>();
 
-    heartbeatCacheMap.forEach(
+    nodeCacheMap.forEach(
         (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
 
     return result;
@@ -256,7 +264,55 @@ public class LoadManager {
   }
 
   private void updateNodeLoadStatistic() {
-    heartbeatCacheMap.values().forEach(IHeartbeatStatistic::updateLoadStatistic);
+    AtomicBoolean isNeedBroadcast = new AtomicBoolean(false);
+
+    nodeCacheMap
+        .values()
+        .forEach(
+            nodeCache -> {
+              boolean updateResult = nodeCache.updateLoadStatistic();
+              if (conf.getRoutingPolicy().equals(RouteBalancer.greedyPolicy)
+                  && nodeCache instanceof DataNodeHeartbeatCache) {
+                // We need a broadcast when some DataNode fail down
+                isNeedBroadcast.compareAndSet(false, updateResult);
+              }
+            });
+
+    regionGroupCacheMap
+        .values()
+        .forEach(
+            regionGroupCache -> {
+              boolean updateResult = regionGroupCache.updateLoadStatistic();
+              if (conf.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)) {
+                // We need a broadcast when the leadership changed
+                isNeedBroadcast.compareAndSet(false, updateResult);
+              }
+            });
+
+    if (isNeedBroadcast.get()) {
+      broadcastLatestRegionRouteMap();
+    }
+  }
+
+  private void broadcastLatestRegionRouteMap() {
+    Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genRealTimeRoutingPolicy();
+    List<TDataNodeInfo> onlineDataNodes = getOnlineDataNodes(-1);
+    CountDownLatch latch = new CountDownLatch(onlineDataNodes.size());
+
+    onlineDataNodes.forEach(
+        dataNodeInfo ->
+            AsyncDataNodeClientPool.getInstance()
+                .updateRegionRouteMap(
+                    dataNodeInfo.getLocation().getInternalEndPoint(),
+                    new TRegionRouteReq(System.currentTimeMillis(), latestRegionRouteMap),
+                    new UpdateRegionRouteMapHandler(dataNodeInfo.getLocation(), latch)));
+
+    try {
+      latch.await();
+    } catch (InterruptedException e) {
+      LOGGER.warn("Broadcast the latest RegionRouteMap was interrupted!");
+    }
+    LOGGER.info("Broadcast the latest RegionRouteMap finished.");
   }
 
   private THeartbeatReq genHeartbeatReq() {
@@ -285,7 +341,7 @@ public class LoadManager {
           new DataNodeHeartbeatHandler(
               dataNodeInfo.getLocation(),
               (DataNodeHeartbeatCache)
-                  heartbeatCacheMap.computeIfAbsent(
+                  nodeCacheMap.computeIfAbsent(
                       dataNodeInfo.getLocation().getDataNodeId(),
                       empty -> new DataNodeHeartbeatCache()),
               regionGroupCacheMap);
@@ -301,15 +357,23 @@ public class LoadManager {
    * @param registeredConfigNodes ConfigNodes that registered in cluster
    */
   private void pingRegisteredConfigNodes(List<TConfigNodeLocation> registeredConfigNodes) {
+    // Refresh cache map
+    registeredConfigNodes.forEach(
+        configNodeLocation ->
+            nodeCacheMap.putIfAbsent(
+                configNodeLocation.getConfigNodeId(), new ConfigNodeHeartbeatCache()));
+
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
+      if (configNodeLocation.getInternalEndPoint().equals(currentNode)) {
+        // Skip itself
+        continue;
+      }
+
       ConfigNodeHeartbeatHandler handler =
           new ConfigNodeHeartbeatHandler(
               configNodeLocation,
-              (ConfigNodeHeartbeatCache)
-                  heartbeatCacheMap.computeIfAbsent(
-                      configNodeLocation.getConfigNodeId(),
-                      empty -> new ConfigNodeHeartbeatCache()));
+              (ConfigNodeHeartbeatCache) nodeCacheMap.get(configNodeLocation.getConfigNodeId()));
       AsyncConfigNodeClientPool.getInstance()
           .getConfigNodeHeartBeat(
               configNodeLocation.getInternalEndPoint(),
@@ -324,14 +388,14 @@ public class LoadManager {
    * @param nodeId removed node id
    */
   public void removeNodeHeartbeatHandCache(Integer nodeId) {
-    heartbeatCacheMap.remove(nodeId);
+    nodeCacheMap.remove(nodeId);
   }
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
     return getNodeManager().getRegisteredConfigNodes().stream()
         .filter(
             registeredConfigNode ->
-                heartbeatCacheMap
+                nodeCacheMap
                     .get(registeredConfigNode.getConfigNodeId())
                     .getNodeStatus()
                     .equals(NodeStatus.Running))
@@ -342,7 +406,7 @@ public class LoadManager {
     return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
         .filter(
             registeredDataNode ->
-                heartbeatCacheMap
+                nodeCacheMap
                     .get(registeredDataNode.getLocation().getDataNodeId())
                     .getNodeStatus()
                     .equals(NodeStatus.Running))
@@ -365,7 +429,7 @@ public class LoadManager {
     return configManager.getPartitionManager();
   }
 
-  public Map<Integer, IHeartbeatStatistic> getHeartbeatCacheMap() {
-    return heartbeatCacheMap;
+  public Map<Integer, INodeCache> getNodeCacheMap() {
+    return nodeCacheMap;
   }
 }

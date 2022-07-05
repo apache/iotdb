@@ -18,26 +18,39 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
-public interface IRegionGroupCache {
+public class RegionHeartbeatSample {
 
-  /**
-   * Cache the newest HeartbeatSample
-   *
-   * @param newHeartbeatSample The newest HeartbeatSample
-   */
-  void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample);
+  // Unit: ms
+  private final long sendTimestamp;
+  private final long receiveTimestamp;
 
-  /**
-   * Invoking periodically to update RegionGroups' load statistics
-   *
-   * @return true if some load statistic changed
-   */
-  boolean updateLoadStatistic();
+  private final int belongedDataNodeId;
+  private final boolean isLeader;
 
-  /**
-   * Get RegionGroup's latest leader
-   *
-   * @return The DataNodeId of the latest leader
-   */
-  int getLeaderDataNodeId();
+  // TODO: Add load sample
+
+  public RegionHeartbeatSample(
+      long sendTimestamp, long receiveTimestamp, int belongedDataNodeId, boolean isLeader) {
+    this.sendTimestamp = sendTimestamp;
+    this.receiveTimestamp = receiveTimestamp;
+
+    this.belongedDataNodeId = belongedDataNodeId;
+    this.isLeader = isLeader;
+  }
+
+  public long getSendTimestamp() {
+    return sendTimestamp;
+  }
+
+  public long getReceiveTimestamp() {
+    return receiveTimestamp;
+  }
+
+  public int getBelongedDataNodeId() {
+    return belongedDataNodeId;
+  }
+
+  public boolean isLeader() {
+    return isLeader;
+  }
 }
