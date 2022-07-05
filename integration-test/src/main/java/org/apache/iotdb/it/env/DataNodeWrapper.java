@@ -20,8 +20,6 @@ package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
-import org.apache.commons.lang3.SystemUtils;
-
 import java.io.File;
 import java.util.Properties;
 
@@ -66,33 +64,12 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected String getEnvConfigPath() {
-    if (SystemUtils.IS_OS_WINDOWS) {
-      return workDirFilePath("datanode" + File.separator + "conf", "datanode-env.bat");
-    }
-    return workDirFilePath("datanode" + File.separator + "conf", "datanode-env.sh");
-  }
-
-  @Override
-  protected String getStartScriptPath() {
-    String scriptName = "start-datanode.sh";
-    if (SystemUtils.IS_OS_WINDOWS) {
-      scriptName = "start-datanode.bat";
-    }
-    return workDirFilePath("datanode" + File.separator + "sbin", scriptName);
-  }
-
-  @Override
-  protected String getStopScriptPath() {
-    String scriptName = "stop-datanode.sh";
-    if (SystemUtils.IS_OS_WINDOWS) {
-      scriptName = "stop-datanode.bat";
-    }
-    return workDirFilePath("datanode" + File.separator + "sbin", scriptName);
-  }
-
-  @Override
   public final String getId() {
     return "DataNode" + getPort();
+  }
+
+  @Override
+  protected String mainClassName() {
+    return "org.apache.iotdb.db.service.DataNode";
   }
 }

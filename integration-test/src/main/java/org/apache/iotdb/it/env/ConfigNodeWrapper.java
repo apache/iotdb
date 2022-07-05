@@ -20,8 +20,6 @@ package org.apache.iotdb.it.env;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 
-import org.apache.commons.lang3.SystemUtils;
-
 import java.io.File;
 import java.util.Properties;
 
@@ -73,36 +71,15 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
   }
 
   @Override
-  protected String getEnvConfigPath() {
-    if (SystemUtils.IS_OS_WINDOWS) {
-      return workDirFilePath("confignode" + File.separator + "conf", "confignode-env.bat");
-    }
-    return workDirFilePath("confignode" + File.separator + "conf", "confignode-env.sh");
-  }
-
-  @Override
-  protected String getStartScriptPath() {
-    String scriptName = "start-confignode.sh";
-    if (SystemUtils.IS_OS_WINDOWS) {
-      scriptName = "start-confignode.bat";
-    }
-    return workDirFilePath("confignode" + File.separator + "sbin", scriptName);
-  }
-
-  @Override
-  protected String getStopScriptPath() {
-    String scriptName = "stop-confignode.sh";
-    if (SystemUtils.IS_OS_WINDOWS) {
-      scriptName = "stop-confignode.bat";
-    }
-    return workDirFilePath("confignode" + File.separator + "sbin", scriptName);
-  }
-
-  @Override
   public final String getId() {
     if (isSeed) {
       return "SeedConfigNode" + getPort();
     }
     return "ConfigNode" + getPort();
+  }
+
+  @Override
+  protected String mainClassName() {
+    return "org.apache.iotdb.db.service.DataNode";
   }
 }

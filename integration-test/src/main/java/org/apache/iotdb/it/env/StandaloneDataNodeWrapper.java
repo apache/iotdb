@@ -18,32 +18,10 @@
  */
 package org.apache.iotdb.it.env;
 
-import org.apache.commons.lang3.SystemUtils;
-
-import java.io.File;
-
 public class StandaloneDataNodeWrapper extends DataNodeWrapper {
 
   public StandaloneDataNodeWrapper(
       String targetConfigNode, String testClassName, String testMethodName, int[] portList) {
     super(targetConfigNode, testClassName, testMethodName, portList);
-  }
-
-  @Override
-  protected String getStartScriptPath() {
-    String scriptName = "start-new-server.sh";
-    if (SystemUtils.IS_OS_WINDOWS) {
-      scriptName = "start-new-server.bat";
-    }
-    return workDirFilePath("datanode" + File.separator + "sbin", scriptName);
-  }
-
-  @Override
-  protected String getStopScriptPath() {
-    String scriptName = "stop-server.sh";
-    if (SystemUtils.IS_OS_WINDOWS) {
-      scriptName = "stop-server.bat";
-    }
-    return workDirFilePath("datanode" + File.separator + "sbin", scriptName);
   }
 }
