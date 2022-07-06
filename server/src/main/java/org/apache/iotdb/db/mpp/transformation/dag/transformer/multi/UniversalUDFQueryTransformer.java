@@ -38,10 +38,6 @@ public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
     isLayerPointReaderConstant = layerPointReader.isConstantPointReader();
   }
 
-  protected abstract YieldableState tryExecuteUDFOnce() throws QueryProcessException, IOException;
-
-  protected abstract boolean executeUDFOnce() throws QueryProcessException, IOException;
-
   @Override
   protected final YieldableState yieldValue() throws QueryProcessException, IOException {
     while (!cacheValueFromUDFOutput()) {
@@ -65,6 +61,10 @@ public abstract class UniversalUDFQueryTransformer extends UDFQueryTransformer {
     }
     return true;
   }
+
+  protected abstract YieldableState tryExecuteUDFOnce() throws QueryProcessException, IOException;
+
+  protected abstract boolean executeUDFOnce() throws QueryProcessException, IOException;
 
   protected final boolean cacheValueFromUDFOutput() throws QueryProcessException, IOException {
     if (!layerPointReader.next()) {

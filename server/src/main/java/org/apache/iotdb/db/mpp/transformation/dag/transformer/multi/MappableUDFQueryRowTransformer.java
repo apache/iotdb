@@ -25,8 +25,10 @@ import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.access.Row;
 
 import java.io.IOException;
+import java.util.Objects;
 
 public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
 
@@ -49,7 +51,12 @@ public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
       cachedTime = layerRowReader.currentTime();
     }
 
-    executeUDFOnce();
+    if (layerRowReader.isCurrentNull()) {
+      currentNull = true;
+    } else {
+      Row row = layerRowReader.currentRow();
+      execute(row);
+    }
 
     layerRowReader.readyForNext();
     return true;
@@ -69,20 +76,21 @@ public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
     if (layerRowReader.isCurrentNull()) {
       currentNull = true;
     } else {
-      executeUDFOnce();
+      Row row = layerRowReader.currentRow();
+      execute(row);
     }
 
     layerRowReader.readyForNext();
     return YieldableState.YIELDABLE;
   }
 
-  protected boolean executeUDFOnce() throws IOException {
-    if (layerRowReader.isCurrentNull()) {
-      currentNull = true;
-      return true;
-    }
-    executor.execute(layerRowReader.currentRow());
+  private void execute(Row row) {
+    executor.execute(row);
     Object currentValue = executor.getCurrentValue();
+    if (Objects.isNull(currentValue)) {
+      currentNull = true;
+      return;
+    }
     switch (tsDataType) {
       case INT32:
         cachedInt = (int) currentValue;
@@ -105,7 +113,6 @@ public class MappableUDFQueryRowTransformer extends UDFQueryTransformer {
       default:
         throw new UnSupportedDataTypeException(tsDataType.toString());
     }
-    return true;
   }
 
   @Override
