@@ -51,7 +51,7 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
         slidingWindow.add(newHeartbeatSample);
       }
 
-      while (slidingWindow.size() > maximumWindowSize) {
+      if (slidingWindow.size() > maximumWindowSize) {
         slidingWindow.removeFirst();
       }
     }

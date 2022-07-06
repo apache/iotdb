@@ -58,7 +58,7 @@ public class RegionGroupCache implements IRegionGroupCache {
         samples.add(newHeartbeatSample);
       }
 
-      while (samples.size() > maximumWindowSize) {
+      if (samples.size() > maximumWindowSize) {
         samples.removeFirst();
       }
     }
