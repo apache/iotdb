@@ -38,10 +38,7 @@ public class QueryTaskManager extends AbstractPoolManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryTaskManager.class);
 
   private QueryTaskManager() {
-    int threadCnt =
-        Math.min(
-            Runtime.getRuntime().availableProcessors(),
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread());
+    int threadCnt = IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread();
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
   }
 
@@ -62,10 +59,7 @@ public class QueryTaskManager extends AbstractPoolManager {
   @Override
   public void start() {
     if (pool == null) {
-      int threadCnt =
-          Math.min(
-              Runtime.getRuntime().availableProcessors(),
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread());
+      int threadCnt = IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread();
       pool =
           IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
     }
@@ -85,6 +79,6 @@ public class QueryTaskManager extends AbstractPoolManager {
       // allowed to do nothing
     }
 
-    private static QueryTaskManager instance = new QueryTaskManager();
+    private static final QueryTaskManager instance = new QueryTaskManager();
   }
 }
