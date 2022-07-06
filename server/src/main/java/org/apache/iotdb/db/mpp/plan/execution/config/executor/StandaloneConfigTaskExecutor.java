@@ -301,18 +301,36 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> createSchemaTemplate(
       CreateSchemaTemplateStatement createSchemaTemplateStatement) {
-    return null;
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing create schema template is not supported")));
+    return future;
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> showSchemaTemplate(
       ShowSchemaTemplateStatement showSchemaTemplateStatement) {
-    return null;
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing show schema template is not supported")));
+    return future;
   }
 
   @Override
   public SettableFuture<ConfigTaskResult> showNodesInSchemaTemplate(
       ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
-    return null;
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing show nodes in schema template is not supported")));
+    return future;
   }
 }

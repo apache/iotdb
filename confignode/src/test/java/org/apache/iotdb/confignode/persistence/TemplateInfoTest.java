@@ -1,0 +1,122 @@
+package org.apache.iotdb.confignode.persistence;
+
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.thrift.TException;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
+
+/**
+ * @author chenhuangyun
+ * @date 2022/7/6
+ */
+public class TemplateInfoTest {
+
+  private static TemplateInfo templateInfo;
+  private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
+
+  @BeforeClass
+  public static void setup() throws IOException {
+    templateInfo = new TemplateInfo();
+    if (!snapshotDir.exists()) {
+      snapshotDir.mkdirs();
+    }
+  }
+
+  @AfterClass
+  public static void cleanup() throws IOException {
+    templateInfo.clear();
+    if (snapshotDir.exists()) {
+      FileUtils.deleteDirectory(snapshotDir);
+    }
+  }
+
+  @Test
+  public void testSnapshot()
+      throws IOException, TException, IllegalPathException, ClassNotFoundException {
+    int n = 2;
+    String templateName = "template_test";
+
+    List<Template> templates = new ArrayList<>();
+    // 创建模板
+    for (int i = 0; i < n; i++) {
+      String templateNameTmp = templateName + "_" + i;
+      CreateSchemaTemplateStatement statement = null;
+      if (i == 1) {
+        statement = newCreateSchemaTemplateStatementAlign(templateNameTmp);
+      } else {
+        statement = newCreateSchemaTemplateStatement(templateNameTmp);
+      }
+      Template template = new Template(statement);
+      templates.add(template);
+      CreateSchemaTemplatePlan createSchemaTemplatePlan =
+          new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
+      templateInfo.createTemplate(createSchemaTemplatePlan);
+    }
+
+    templateInfo.processTakeSnapshot(snapshotDir);
+    templateInfo.clear();
+    templateInfo.processLoadSnapshot(snapshotDir);
+    // 查询全部模板
+    TGetAllTemplatesResp allTemplatesResp = templateInfo.getAllTemplate();
+
+    // 显示模板详细信息
+    for (int i = 0; i < n; i++) {
+      String templateNameTmp = templateName + "_" + i;
+      TGetTemplateResp templateResp = templateInfo.getMatchedTemplateByName(templateNameTmp);
+      Template template = templates.get(i);
+      Template serTemplate =
+          Template.byteBuffer2Template(ByteBuffer.wrap(templateResp.getTemplate()));
+      Assert.assertEquals(template, serTemplate);
+    }
+  }
+
+  private CreateSchemaTemplateStatement newCreateSchemaTemplateStatement(String name) {
+    List<List<String>> measurements =
+        Arrays.asList(
+            Arrays.asList(name + "_" + "temperature"), Arrays.asList(name + "_" + "status"));
+    List<List<TSDataType>> dataTypes =
+        Arrays.asList(Arrays.asList(TSDataType.FLOAT), Arrays.asList(TSDataType.BOOLEAN));
+    List<List<TSEncoding>> encodings =
+        Arrays.asList(Arrays.asList(TSEncoding.RLE), Arrays.asList(TSEncoding.PLAIN));
+    List<List<CompressionType>> compressors =
+        Arrays.asList(Arrays.asList(CompressionType.SNAPPY), Arrays.asList(CompressionType.SNAPPY));
+    CreateSchemaTemplateStatement createSchemaTemplateStatement =
+        new CreateSchemaTemplateStatement(name, measurements, dataTypes, encodings, compressors);
+    return createSchemaTemplateStatement;
+  }
+
+  private CreateSchemaTemplateStatement newCreateSchemaTemplateStatementAlign(String name) {
+    List<List<String>> measurements =
+        Arrays.asList(Arrays.asList(name + "_" + "lat", name + "_" + "lon"));
+    List<List<TSDataType>> dataTypes =
+        Arrays.asList(Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT));
+    List<List<TSEncoding>> encodings =
+        Arrays.asList(Arrays.asList(TSEncoding.GORILLA, TSEncoding.GORILLA));
+    List<List<CompressionType>> compressors =
+        Arrays.asList(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
+    CreateSchemaTemplateStatement createSchemaTemplateStatement =
+        new CreateSchemaTemplateStatement(name, measurements, dataTypes, encodings, compressors);
+    return createSchemaTemplateStatement;
+  }
+}

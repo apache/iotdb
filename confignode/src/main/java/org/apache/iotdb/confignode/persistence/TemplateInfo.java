@@ -2,26 +2,27 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
-import java.io.DataOutputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +42,7 @@ public class TemplateInfo implements SnapshotProcessor {
   // StorageGroup read write lock
   private final ReentrantReadWriteLock templateReadWriteLock;
 
-  private Map<String, Template> templateMap = new ConcurrentHashMap<>();
+  private final Map<String, Template> templateMap = new ConcurrentHashMap<>();
 
   private final String snapshotFileName = "template_info.bin";
 
@@ -89,7 +90,8 @@ public class TemplateInfo implements SnapshotProcessor {
   public TSStatus createTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
     try {
       templateReadWriteLock.readLock().lock();
-      Template template = Template.byteBuffer2Template(ByteBuffer.wrap(createSchemaTemplatePlan.getTemplate()));
+      Template template =
+          Template.byteBuffer2Template(ByteBuffer.wrap(createSchemaTemplatePlan.getTemplate()));
       Template temp = this.templateMap.get(template.getName());
       if (temp != null && template.getName().equalsIgnoreCase(temp.getName())) {
         LOGGER.error(
@@ -106,31 +108,29 @@ public class TemplateInfo implements SnapshotProcessor {
     }
   }
 
-  private void serialize(DataOutputStream outputStream) throws IOException {
+  private void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(templateMap.size(), outputStream);
     for (Map.Entry<String, Template> entry : templateMap.entrySet()) {
       serializeTemplate(entry.getValue(), outputStream);
     }
   }
 
-  private void serializeTemplate(Template template, DataOutputStream outputStream) {
+  private void serializeTemplate(Template template, OutputStream outputStream) {
     // SerializeUtils.serialize(template.getName(), outputStream);
     try {
-      ReadWriteIOUtils.write(template.getName(), outputStream);
-      outputStream.write(template.getSchemaMap().size());
-      for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
-        SerializeUtils.serialize(entry.getKey(), outputStream);
-        entry.getValue().partialSerializeTo(outputStream);
-      }
+      ByteBuffer dataBuffer = template.serialize();
+      //      byte[] data = dataBuffer.array();
+      //      int length = data.length;
+      //      ReadWriteIOUtils.write(length,outputStream);
+      ReadWriteIOUtils.write(dataBuffer, outputStream);
     } catch (IOException e) {
-
+      e.printStackTrace();
     }
   }
 
   private void deserialize(InputStream inputStream) throws IOException {
-    ByteBuffer byteBuffer =
-        ByteBuffer.wrap(ReadWriteIOUtils.readBytes(inputStream, inputStream.available()));
-    int size = ReadWriteIOUtils.readInt(inputStream);
+    ByteBuffer byteBuffer = ByteBuffer.wrap(IOUtils.toByteArray(inputStream));
+    int size = ReadWriteIOUtils.readInt(byteBuffer);
     while (size > 0) {
       Template template = deserializeTemplate(byteBuffer);
       templateMap.put(template.getName(), template);
@@ -140,7 +140,9 @@ public class TemplateInfo implements SnapshotProcessor {
 
   private Template deserializeTemplate(ByteBuffer byteBuffer) {
     Template template = new Template();
-    template.deserialize(byteBuffer);
+    int length = ReadWriteIOUtils.readInt(byteBuffer);
+    byte[] data = ReadWriteIOUtils.readBytes(byteBuffer, length);
+    template.deserialize(ByteBuffer.wrap(data));
     return template;
   }
 
@@ -156,9 +158,12 @@ public class TemplateInfo implements SnapshotProcessor {
     File tmpFile = new File(snapshotFile.getAbsolutePath() + "-" + UUID.randomUUID());
     templateReadWriteLock.writeLock().lock();
     try (FileOutputStream fileOutputStream = new FileOutputStream(tmpFile);
-        DataOutputStream outputStream = new DataOutputStream(fileOutputStream)) {
+        BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
       serialize(outputStream);
       outputStream.flush();
+      fileOutputStream.flush();
+      outputStream.close();
+      fileOutputStream.close();
       return tmpFile.renameTo(snapshotFile);
     } finally {
       for (int retry = 0; retry < 5; retry++) {
@@ -187,9 +192,16 @@ public class TemplateInfo implements SnapshotProcessor {
         BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream)) {
       // Load snapshot of template
       this.templateMap.clear();
-      deserialize(fileInputStream);
+      deserialize(bufferedInputStream);
+      bufferedInputStream.close();
+      fileInputStream.close();
     } finally {
       templateReadWriteLock.writeLock().unlock();
     }
+  }
+
+  @TestOnly
+  public void clear() {
+    this.templateMap.clear();
   }
 }

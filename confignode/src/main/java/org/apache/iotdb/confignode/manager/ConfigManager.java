@@ -155,7 +155,13 @@ public class ConfigManager implements IManager {
     // Build state machine and executor
     ConfigPlanExecutor executor =
         new ConfigPlanExecutor(
-            nodeInfo, clusterSchemaInfo, partitionInfo, authorInfo, procedureInfo, udfInfo,templateInfo);
+            nodeInfo,
+            clusterSchemaInfo,
+            partitionInfo,
+            authorInfo,
+            procedureInfo,
+            udfInfo,
+            templateInfo);
     PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -877,7 +883,8 @@ public class ConfigManager implements IManager {
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      CreateSchemaTemplatePlan createSchemaTemplatePlan = new CreateSchemaTemplatePlan(req.getSerializedTemplate());
+      CreateSchemaTemplatePlan createSchemaTemplatePlan =
+          new CreateSchemaTemplatePlan(req.getSerializedTemplate());
       return templateManager.createTemplate(createSchemaTemplatePlan);
     } else {
       return status;

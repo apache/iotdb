@@ -111,7 +111,6 @@ public class ConfigPlanExecutor {
     this.templateInfo = templateInfo;
   }
 
-
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
