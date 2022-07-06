@@ -51,16 +51,14 @@ public class SchemaQueryMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    if (children.get(currentIndex).hasNext()) {
-      return children.get(currentIndex).next();
-    } else {
-      currentIndex++;
-      return null;
-    }
+    return children.get(currentIndex).next();
   }
 
   @Override
   public boolean hasNext() {
+    while (currentIndex < children.size() && !children.get(currentIndex).hasNext()) {
+      currentIndex++;
+    }
     return currentIndex < children.size();
   }
 
