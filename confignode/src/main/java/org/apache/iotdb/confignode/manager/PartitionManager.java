@@ -282,6 +282,7 @@ public class PartitionManager {
                   (int) maxRegionCount,
                   Math.max(1, (int) Math.ceil(slotCount * maxRegionCount / maxSlotCount)));
           allotmentMap.put(entry.getKey(), delta);
+          continue;
         }
 
         // 2. The average number of partitions held by each Region is greater than the expected
