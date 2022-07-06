@@ -38,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPl
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
@@ -56,6 +57,7 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
+import org.apache.iotdb.confignode.persistence.TemplateInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -90,20 +92,25 @@ public class ConfigPlanExecutor {
 
   private final UDFInfo udfInfo;
 
+  private final TemplateInfo templateInfo;
+
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
       PartitionInfo partitionInfo,
       AuthorInfo authorInfo,
       ProcedureInfo procedureInfo,
-      UDFInfo udfInfo) {
+      UDFInfo udfInfo,
+      TemplateInfo templateInfo) {
     this.nodeInfo = nodeInfo;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.partitionInfo = partitionInfo;
     this.authorInfo = authorInfo;
     this.procedureInfo = procedureInfo;
     this.udfInfo = udfInfo;
+    this.templateInfo = templateInfo;
   }
+
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
       throws UnknownPhysicalPlanTypeException, AuthException {
@@ -199,6 +206,8 @@ public class ConfigPlanExecutor {
         return udfInfo.createFunction((CreateFunctionPlan) req);
       case DropFunction:
         return udfInfo.dropFunction((DropFunctionPlan) req);
+      case CreateSchemaTemplate:
+        return templateInfo.createTemplate((CreateSchemaTemplatePlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -313,6 +322,7 @@ public class ConfigPlanExecutor {
     allAttributes.add(partitionInfo);
     allAttributes.add(nodeInfo);
     allAttributes.add(udfInfo);
+    allAttributes.add(templateInfo);
     return allAttributes;
   }
 }

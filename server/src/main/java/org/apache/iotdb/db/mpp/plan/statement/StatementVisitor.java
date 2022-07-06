@@ -65,9 +65,8 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 
 /**
- * This class provides a visitor of {@link StatementNode},
- * which can be extended to create a visitor which only needs to handle a subset of the available
- * methods.
+ * This class provides a visitor of {@link StatementNode}, which can be extended to create a visitor
+ * which only needs to handle a subset of the available methods.
  *
  * @param <R> The return type of the visit operation.
  * @param <C> The context information during visiting.

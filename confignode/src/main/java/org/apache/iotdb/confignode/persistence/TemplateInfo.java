@@ -3,6 +3,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.SerializeUtils;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -85,9 +86,10 @@ public class TemplateInfo implements SnapshotProcessor {
     return resp;
   }
 
-  public TSStatus createTemplate(Template template) {
+  public TSStatus createTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
     try {
       templateReadWriteLock.readLock().lock();
+      Template template = Template.byteBuffer2Template(ByteBuffer.wrap(createSchemaTemplatePlan.getTemplate()));
       Template temp = this.templateMap.get(template.getName());
       if (temp != null && template.getName().equalsIgnoreCase(temp.getName())) {
         LOGGER.error(

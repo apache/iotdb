@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
@@ -153,7 +154,7 @@ public class ConfigManager implements IManager {
     // Build state machine and executor
     ConfigPlanExecutor executor =
         new ConfigPlanExecutor(
-            nodeInfo, clusterSchemaInfo, partitionInfo, authorInfo, procedureInfo, udfInfo);
+            nodeInfo, clusterSchemaInfo, partitionInfo, authorInfo, procedureInfo, udfInfo,templateInfo);
     PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
@@ -870,7 +871,8 @@ public class ConfigManager implements IManager {
   public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return templateManager.createTemplate(req);
+      CreateSchemaTemplatePlan createSchemaTemplatePlan = new CreateSchemaTemplatePlan(req.getSerializedTemplate());
+      return templateManager.createTemplate(createSchemaTemplatePlan);
     } else {
       return status;
     }

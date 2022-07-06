@@ -1,6 +1,8 @@
 package org.apache.iotdb.confignode.manager;
 
+import java.nio.ByteBuffer;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.TemplateInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -26,15 +28,14 @@ public class TemplateManager {
     this.templateInfo = templateInfo;
   }
 
-  public TSStatus createTemplate(TCreateSchemaTemplateReq req) {
+  public TSStatus createTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
     try {
-      Template template = Template.byteBuffer2Template(req.bufferForSerializedTemplate());
-      TSStatus tsStatus = templateInfo.createTemplate(template);
+      TSStatus tsStatus = getConsensusManager().write(createSchemaTemplatePlan).getStatus();
       return tsStatus;
     } catch (Exception e) {
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(
-              "ConfigNode failed to allocate DataPartition because some StorageGroup doesn't exist.");
+              "schema template failed to create  because some error.");
     }
   }
 
@@ -44,5 +45,9 @@ public class TemplateManager {
 
   TGetTemplateResp getTemplate(String req) {
     return templateInfo.getMatchedTemplateByName(req);
+  }
+
+  private ConsensusManager getConsensusManager() {
+    return configManager.getConsensusManager();
   }
 }
