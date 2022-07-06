@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -93,6 +95,12 @@ public class LimitNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.LIMIT.serialize(byteBuffer);
     ReadWriteIOUtils.write(limit, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.LIMIT.serialize(stream);
+    ReadWriteIOUtils.write(limit, stream);
   }
 
   public static LimitNode deserialize(ByteBuffer byteBuffer) {

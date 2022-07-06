@@ -20,6 +20,7 @@ package org.apache.iotdb.db.wal;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -57,9 +58,10 @@ public class WALManager implements IService {
   private ScheduledExecutorService walDeleteThread;
 
   private WALManager() {
-    if (config
-        .getDataRegionConsensusProtocolClass()
-        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+    if (config.isClusterMode()
+        && config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
       walNodesManager = new FirstCreateStrategy();
     } else {
       walNodesManager = new RoundRobinStrategy(MAX_WAL_NODE_NUM);
@@ -75,8 +77,12 @@ public class WALManager implements IService {
     return walNodesManager.applyForWALNode(applicantUniqueId);
   }
 
-  public void registerWALNode(String applicantUniqueId, String logDirectory, int startFileVersion) {
+  /** WAL node will be registered only when using multi-leader consensus protocol */
+  public void registerWALNode(
+      String applicantUniqueId, String logDirectory, long startFileVersion, long startSearchIndex) {
+    String s = config.getDataRegionConsensusProtocolClass();
     if (config.getWalMode() == WALMode.DISABLE
+        || !config.isClusterMode()
         || !config
             .getDataRegionConsensusProtocolClass()
             .equals(ConsensusFactory.MultiLeaderConsensus)) {
@@ -84,7 +90,20 @@ public class WALManager implements IService {
     }
 
     ((FirstCreateStrategy) walNodesManager)
-        .registerWALNode(applicantUniqueId, logDirectory, startFileVersion);
+        .registerWALNode(applicantUniqueId, logDirectory, startFileVersion, startSearchIndex);
+  }
+
+  /** WAL node will be deleted only when using multi-leader consensus protocol */
+  public void deleteWALNode(String applicantUniqueId) {
+    if (config.getWalMode() == WALMode.DISABLE
+        || !config.isClusterMode()
+        || !config
+            .getDataRegionConsensusProtocolClass()
+            .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      return;
+    }
+
+    ((FirstCreateStrategy) walNodesManager).deleteWALNode(applicantUniqueId);
   }
 
   @Override
@@ -94,13 +113,8 @@ public class WALManager implements IService {
     }
 
     try {
-      walDeleteThread =
-          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
-      walDeleteThread.scheduleWithFixedDelay(
-          this::deleteOutdatedFiles,
-          config.getDeleteWalFilesPeriodInMs(),
-          config.getDeleteWalFilesPeriodInMs(),
-          TimeUnit.MILLISECONDS);
+      registerScheduleTask(
+          config.getDeleteWalFilesPeriodInMs(), config.getDeleteWalFilesPeriodInMs());
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
@@ -117,10 +131,7 @@ public class WALManager implements IService {
       shutdownThread(walDeleteThread, ThreadName.WAL_DELETE);
     }
     logger.info("Stop wal delete thread successfully, and now restart it.");
-    walDeleteThread =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
-    walDeleteThread.scheduleWithFixedDelay(
-        this::deleteOutdatedFiles, 0, config.getDeleteWalFilesPeriodInMs(), TimeUnit.MILLISECONDS);
+    registerScheduleTask(0, config.getDeleteWalFilesPeriodInMs());
     logger.info(
         "Reboot wal delete thread successfully, current period is {} ms",
         config.getDeleteWalFilesPeriodInMs());
@@ -176,6 +187,13 @@ public class WALManager implements IService {
       logger.warn("Thread {} still doesn't exit after 30s", threadName.getName());
       Thread.currentThread().interrupt();
     }
+  }
+
+  private void registerScheduleTask(long initDelayMs, long periodMs) {
+    walDeleteThread =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_DELETE.getName());
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        walDeleteThread, this::deleteOutdatedFiles, initDelayMs, periodMs, TimeUnit.MILLISECONDS);
   }
 
   @TestOnly

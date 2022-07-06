@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.execution.StateMachine.StateChangeListener;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +76,11 @@ public class FragmentInstanceStateMachine {
         new StateMachine<>(
             "FragmentInstance " + fragmentInstanceId, executor, RUNNING, TERMINAL_INSTANCE_STATES);
     instanceState.addStateChangeListener(
-        newState -> LOGGER.debug("Fragment Instance {} is {}", fragmentInstanceId, newState));
+        newState -> {
+          try (SetThreadName threadName = new SetThreadName(fragmentInstanceId.getFullId())) {
+            LOGGER.info("State transfer to {}", newState);
+          }
+        });
   }
 
   public long getCreatedTime() {

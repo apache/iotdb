@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.multileader.client;
 
-import org.apache.iotdb.consensus.multileader.conf.MultiLeaderConsensusConfig;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher.LogDispatcherThread;
 import org.apache.iotdb.consensus.multileader.logdispatcher.PendingBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
@@ -79,9 +78,11 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
           try {
             long defaultSleepTime =
                 (long)
-                    (MultiLeaderConsensusConfig.BASIC_RETRY_WAIT_TIME_MS * Math.pow(2, retryCount));
+                    (thread.getConfig().getReplication().getBasicRetryWaitTimeMs()
+                        * Math.pow(2, retryCount));
             Thread.sleep(
-                Math.min(defaultSleepTime, MultiLeaderConsensusConfig.MAX_RETRY_WAIT_TIME_MS));
+                Math.min(
+                    defaultSleepTime, thread.getConfig().getReplication().getMaxRetryWaitTimeMs()));
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             logger.warn("Unexpected interruption during retry pending batch");

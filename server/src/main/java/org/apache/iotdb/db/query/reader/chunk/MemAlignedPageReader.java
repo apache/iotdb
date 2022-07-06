@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
@@ -91,42 +91,46 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
 
     boolean[] satisfyInfo = new boolean[tsBlock.getPositionCount()];
 
-    // Time column and first value column
-    // if all the sub sensors' value are null in current time
-    // or current row is not satisfied with the filter, just discard it
-    // currently, if it's a value filter, it will only
-    // accept AlignedPath with only one sub sensor
-    TimeColumn timeColumn = tsBlock.getTimeColumn();
-    Column valueColumn = tsBlock.getColumn(0);
     for (int row = 0; row < tsBlock.getPositionCount(); row++) {
       long time = tsBlock.getTimeByIndex(row);
-      Object value = tsBlock.getColumn(0).getObject(row);
-      boolean valueIsNull = tsBlock.getColumn(0).isNull(row);
-      if ((valueFilter == null || !valueIsNull && valueFilter.satisfy(time, value))) {
-        builder.getTimeColumnBuilder().write(timeColumn, row);
-        if (!valueIsNull) {
-          builder.getColumnBuilder(0).write(valueColumn, row);
-        } else {
-          builder.getColumnBuilder(0).appendNull();
-        }
+      // ValueFilter in MPP will only contain time filter now.
+      if ((valueFilter == null || valueFilter.satisfy(time, null))) {
         satisfyInfo[row] = true;
+      }
+    }
+
+    boolean[] hasValue = new boolean[tsBlock.getPositionCount()];
+    // other value column
+    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+      Column valueColumn = tsBlock.getColumn(column);
+      for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+        hasValue[row] = hasValue[row] || !valueColumn.isNull(row);
+      }
+    }
+
+    // build time column
+    for (int row = 0; row < tsBlock.getPositionCount(); row++) {
+      if (satisfyInfo[row] && hasValue[row]) {
+        builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(row));
         builder.declarePosition();
       }
     }
 
-    // other value column
-    for (int column = 1; column < tsBlock.getValueColumnCount(); column++) {
-      valueColumn = tsBlock.getColumn(column);
+    // build value column
+    for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
+      Column valueColumn = tsBlock.getColumn(column);
+      ColumnBuilder valueBuilder = builder.getColumnBuilder(column);
       for (int row = 0; row < tsBlock.getPositionCount(); row++) {
-        if (satisfyInfo[row]) {
-          if (!tsBlock.getColumn(column).isNull(row)) {
-            builder.getColumnBuilder(column).write(valueColumn, row);
+        if (satisfyInfo[row] && hasValue[row]) {
+          if (!valueColumn.isNull(row)) {
+            valueBuilder.write(valueColumn, row);
           } else {
-            builder.getColumnBuilder(column).appendNull();
+            valueBuilder.appendNull();
           }
         }
       }
     }
+
     return builder.build();
   }
 

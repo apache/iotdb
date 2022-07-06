@@ -20,17 +20,19 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.commons.udf.api.exception.UDFException;
-import org.apache.iotdb.commons.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.commons.udf.api.exception.UDFOutputSeriesDataTypeNotValidException;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.exception.UDFOutputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import org.apache.commons.jexl3.JexlBuilder;
 import org.apache.commons.jexl3.JexlEngine;
@@ -49,16 +51,10 @@ public class UDTFJexl implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws UDFException {
-    inputSeriesNumber = validator.getParameters().getPaths().size();
+    inputSeriesNumber = validator.getParameters().getChildExpressionsSize();
     for (int i = 0; i < inputSeriesNumber; i++) {
       validator.validateInputSeriesDataType(
-          i,
-          TSDataType.INT32,
-          TSDataType.INT64,
-          TSDataType.FLOAT,
-          TSDataType.DOUBLE,
-          TSDataType.TEXT,
-          TSDataType.BOOLEAN);
+          i, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE, Type.TEXT, Type.BOOLEAN);
     }
     validator.validateRequiredAttribute("expr");
   }
@@ -73,7 +69,7 @@ public class UDTFJexl implements UDTF {
 
     inputDataType = new TSDataType[inputSeriesNumber];
     for (int i = 0; i < inputSeriesNumber; i++) {
-      inputDataType[i] = parameters.getDataType(i);
+      inputDataType[i] = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(i));
     }
     outputDataType = probeOutputDataType();
 
@@ -100,13 +96,13 @@ public class UDTFJexl implements UDTF {
         default:
           throw new UDFInputSeriesDataTypeNotValidException(
               0,
-              inputDataType[0],
-              TSDataType.INT32,
-              TSDataType.INT64,
-              TSDataType.FLOAT,
-              TSDataType.DOUBLE,
-              TSDataType.TEXT,
-              TSDataType.BOOLEAN);
+              UDFDataTypeTransformer.transformToUDFDataType(inputDataType[0]),
+              Type.INT32,
+              Type.INT64,
+              Type.FLOAT,
+              Type.DOUBLE,
+              Type.TEXT,
+              Type.BOOLEAN);
       }
     } else {
       evaluator = new EvaluatorMulInput();
@@ -114,7 +110,7 @@ public class UDTFJexl implements UDTF {
 
     configurations
         .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(outputDataType);
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(outputDataType));
   }
 
   // 23, 23L, 23f, 23d, "string", true are hard codes for probing
@@ -338,13 +334,13 @@ public class UDTFJexl implements UDTF {
           default:
             throw new UDFInputSeriesDataTypeNotValidException(
                 i,
-                inputDataType[i],
-                TSDataType.INT32,
-                TSDataType.INT64,
-                TSDataType.FLOAT,
-                TSDataType.DOUBLE,
-                TSDataType.TEXT,
-                TSDataType.BOOLEAN);
+                UDFDataTypeTransformer.transformToUDFDataType(inputDataType[i]),
+                Type.INT32,
+                Type.INT64,
+                Type.FLOAT,
+                Type.DOUBLE,
+                Type.TEXT,
+                Type.BOOLEAN);
         }
       }
     }

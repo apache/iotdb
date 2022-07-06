@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.udf;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.access.RowWindow;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,14 +56,15 @@ public class UDTFExecutor {
       long queryId,
       float collectorMemoryBudgetInMB,
       List<String> childExpressions,
-      List<PartialPath> maybeTimeSeriesPaths,
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
     udtf = (UDTF) UDFRegistrationService.getInstance().reflect(functionName);
 
     final UDFParameters parameters =
         new UDFParameters(
-            childExpressions, maybeTimeSeriesPaths, childExpressionDataTypes, attributes);
+            childExpressions,
+            UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
+            attributes);
 
     try {
       udtf.validate(new UDFParameterValidator(parameters));
@@ -80,7 +81,10 @@ public class UDTFExecutor {
 
     collector =
         ElasticSerializableTVList.newElasticSerializableTVList(
-            configurations.getOutputDataType(), queryId, collectorMemoryBudgetInMB, 1);
+            UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType()),
+            queryId,
+            collectorMemoryBudgetInMB,
+            1);
   }
 
   public void execute(Row row, boolean isCurrentRowNull) {

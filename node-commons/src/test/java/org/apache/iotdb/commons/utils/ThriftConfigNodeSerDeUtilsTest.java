@@ -19,8 +19,6 @@
 package org.apache.iotdb.commons.utils;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
@@ -29,7 +27,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 
 public class ThriftConfigNodeSerDeUtilsTest {
 
@@ -49,17 +46,6 @@ public class ThriftConfigNodeSerDeUtilsTest {
     storageGroupSchema0.setDataReplicationFactor(3);
     storageGroupSchema0.setTimePartitionInterval(604800);
 
-    storageGroupSchema0.setSchemaRegionGroupIds(new ArrayList<>());
-    storageGroupSchema0.setDataRegionGroupIds(new ArrayList<>());
-    for (int i = 0; i < 3; i++) {
-      storageGroupSchema0
-          .getSchemaRegionGroupIds()
-          .add(new TConsensusGroupId(TConsensusGroupType.SchemaRegion, i * 2));
-      storageGroupSchema0
-          .getDataRegionGroupIds()
-          .add(new TConsensusGroupId(TConsensusGroupType.DataRegion, i * 2 + 1));
-    }
-
     ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(storageGroupSchema0, buffer);
     buffer.flip();
     TStorageGroupSchema storageGroupSchema1 =
@@ -70,7 +56,8 @@ public class ThriftConfigNodeSerDeUtilsTest {
   @Test
   public void readWriteTConfigNodeLocationTest() {
     TConfigNodeLocation configNodeLocation0 =
-        new TConfigNodeLocation(new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278));
+        new TConfigNodeLocation(
+            0, new TEndPoint("0.0.0.0", 22277), new TEndPoint("0.0.0.0", 22278));
 
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(configNodeLocation0, buffer);
     buffer.flip();

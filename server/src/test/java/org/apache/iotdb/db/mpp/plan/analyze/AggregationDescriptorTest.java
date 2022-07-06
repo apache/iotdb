@@ -61,38 +61,38 @@ public class AggregationDescriptorTest {
   static {
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.AVG,
+            AggregationType.AVG.name().toLowerCase(),
             AggregationStep.SINGLE,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.SUM,
+            AggregationType.SUM.name().toLowerCase(),
             AggregationStep.PARTIAL,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.AVG,
+            AggregationType.AVG.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.LAST_VALUE,
+            AggregationType.LAST_VALUE.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.MAX_VALUE,
+            AggregationType.MAX_VALUE.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
     aggregationDescriptorList.add(
         new AggregationDescriptor(
-            AggregationType.COUNT,
+            AggregationType.COUNT.name().toLowerCase(),
             AggregationStep.FINAL,
             Collections.singletonList(new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")))));
 
     groupByLevelDescriptorList.add(
         new GroupByLevelDescriptor(
-            AggregationType.COUNT,
+            AggregationType.COUNT.name().toLowerCase(),
             AggregationStep.FINAL,
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")),
@@ -100,7 +100,7 @@ public class AggregationDescriptorTest {
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
         new GroupByLevelDescriptor(
-            AggregationType.AVG,
+            AggregationType.AVG.name().toLowerCase(),
             AggregationStep.FINAL,
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")),
@@ -108,7 +108,7 @@ public class AggregationDescriptorTest {
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
         new GroupByLevelDescriptor(
-            AggregationType.COUNT,
+            AggregationType.COUNT.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d2.s1")),
@@ -116,7 +116,7 @@ public class AggregationDescriptorTest {
             new TimeSeriesOperand(pathMap.get("root.sg.*.s1"))));
     groupByLevelDescriptorList.add(
         new GroupByLevelDescriptor(
-            AggregationType.AVG,
+            AggregationType.AVG.name().toLowerCase(),
             AggregationStep.INTERMEDIATE,
             Arrays.asList(
                 new TimeSeriesOperand(pathMap.get("root.sg.d1.s1")),
@@ -145,20 +145,19 @@ public class AggregationDescriptorTest {
 
   @Test
   public void testInputColumnNames() {
-    List<String> expectedInputColumnNames =
+    List<List<List<String>>> expectedInputColumnNames =
         Arrays.asList(
-            "root.sg.d1.s1",
-            "count(root.sg.d1.s1)",
-            "sum(root.sg.d1.s1)",
-            "last_value(root.sg.d1.s1)",
-            "max_time(root.sg.d1.s1)",
-            "max_value(root.sg.d1.s1)");
+            Collections.singletonList(Collections.singletonList("root.sg.d1.s1")),
+            Collections.singletonList(Collections.singletonList("root.sg.d1.s1")),
+            Collections.singletonList(Arrays.asList("count(root.sg.d1.s1)", "sum(root.sg.d1.s1)")),
+            Collections.singletonList(
+                Arrays.asList("last_value(root.sg.d1.s1)", "max_time(root.sg.d1.s1)")),
+            Collections.singletonList(Collections.singletonList("max_value(root.sg.d1.s1)")),
+            Collections.singletonList(Collections.singletonList("count(root.sg.d1.s1)")));
     Assert.assertEquals(
         expectedInputColumnNames,
         aggregationDescriptorList.stream()
-            .map(AggregationDescriptor::getInputColumnNames)
-            .flatMap(List::stream)
-            .distinct()
+            .map(AggregationDescriptor::getInputColumnNamesList)
             .collect(Collectors.toList()));
   }
 
@@ -177,18 +176,24 @@ public class AggregationDescriptorTest {
 
   @Test
   public void testInputColumnNamesInGroupByLevel() {
-    List<String> expectedInputColumnNames =
+    List<List<List<String>>> expectedInputColumnNames =
         Arrays.asList(
-            "count(root.sg.d2.s1)",
-            "count(root.sg.d1.s1)",
-            "sum(root.sg.d1.s1)",
-            "sum(root.sg.d2.s1)");
+            Arrays.asList(
+                Collections.singletonList("count(root.sg.d2.s1)"),
+                Collections.singletonList("count(root.sg.d1.s1)")),
+            Arrays.asList(
+                Arrays.asList("count(root.sg.d1.s1)", "sum(root.sg.d1.s1)"),
+                Arrays.asList("count(root.sg.d2.s1)", "sum(root.sg.d2.s1)")),
+            Arrays.asList(
+                Collections.singletonList("count(root.sg.d2.s1)"),
+                Collections.singletonList("count(root.sg.d1.s1)")),
+            Arrays.asList(
+                Arrays.asList("count(root.sg.d1.s1)", "sum(root.sg.d1.s1)"),
+                Arrays.asList("count(root.sg.d2.s1)", "sum(root.sg.d2.s1)")));
     Assert.assertEquals(
         expectedInputColumnNames,
         groupByLevelDescriptorList.stream()
-            .map(GroupByLevelDescriptor::getInputColumnNames)
-            .flatMap(List::stream)
-            .distinct()
+            .map(GroupByLevelDescriptor::getInputColumnNamesList)
             .collect(Collectors.toList()));
   }
 

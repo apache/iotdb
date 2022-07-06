@@ -35,7 +35,13 @@ public interface IWALBuffer extends AutoCloseable {
   void write(WALEntry walEntry);
 
   /** Get current log version id */
-  int getCurrentWALFileVersion();
+  long getCurrentWALFileVersion();
+
+  /** Get current wal file's size */
+  long getCurrentWALFileSize();
+
+  /** Get current search index */
+  long getCurrentSearchIndex();
 
   @Override
   void close();

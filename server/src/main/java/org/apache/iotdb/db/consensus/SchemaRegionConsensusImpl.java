@@ -23,12 +23,11 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.IConsensus;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.SchemaRegionStateMachine;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
-
-import java.io.File;
 
 /**
  * We can use SchemaRegionConsensusImpl.getInstance() to obtain a consensus layer reference for
@@ -36,30 +35,38 @@ import java.io.File;
  */
 public class SchemaRegionConsensusImpl {
 
+  private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+
+  private static IConsensus INSTANCE = null;
+
   private SchemaRegionConsensusImpl() {}
 
+  // need to create instance before calling this method
   public static IConsensus getInstance() {
-    return SchemaRegionConsensusImplHolder.INSTANCE;
+    return INSTANCE;
   }
 
-  private static class SchemaRegionConsensusImplHolder {
-
-    private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    private static final IConsensus INSTANCE =
-        ConsensusFactory.getConsensusImpl(
-                conf.getSchemaRegionConsensusProtocolClass(),
-                new TEndPoint(conf.getInternalIp(), conf.getSchemaRegionConsensusPort()),
-                new File(conf.getSchemaRegionConsensusDir()),
-                gid ->
-                    new SchemaRegionStateMachine(
-                        SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid)))
-            .orElseThrow(
-                () ->
-                    new IllegalArgumentException(
-                        String.format(
-                            ConsensusFactory.CONSTRUCT_FAILED_MSG,
-                            conf.getSchemaRegionConsensusProtocolClass())));
-
-    private SchemaRegionConsensusImplHolder() {}
+  public static synchronized IConsensus setupAndGetInstance() {
+    if (INSTANCE == null) {
+      INSTANCE =
+          ConsensusFactory.getConsensusImpl(
+                  conf.getSchemaRegionConsensusProtocolClass(),
+                  ConsensusConfig.newBuilder()
+                      .setThisNode(
+                          new TEndPoint(
+                              conf.getInternalAddress(), conf.getSchemaRegionConsensusPort()))
+                      .setStorageDir(conf.getSchemaRegionConsensusDir())
+                      .build(),
+                  gid ->
+                      new SchemaRegionStateMachine(
+                          SchemaEngine.getInstance().getSchemaRegion((SchemaRegionId) gid)))
+              .orElseThrow(
+                  () ->
+                      new IllegalArgumentException(
+                          String.format(
+                              ConsensusFactory.CONSTRUCT_FAILED_MSG,
+                              conf.getSchemaRegionConsensusProtocolClass())));
+    }
+    return INSTANCE;
   }
 }

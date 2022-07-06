@@ -25,9 +25,16 @@ public class IoTDBConstant {
 
   private IoTDBConstant() {}
 
-  public static final String ENV_FILE_NAME = "iotdb-env";
+  public static final String ENV_FILE_NAME = "datanode-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
+
+  public static final String RPC_ADDRESS = "rpc_address";
+  public static final String RPC_PORT = "rpc_port";
+  public static final String INTERNAL_ADDRESS = "internal_address";
+  public static final String INTERNAL_PORT = "internal_port";
+  public static final String CONSENSUS_PORT = "consensus_port";
+  public static final String TARGET_CONFIG_NODES = "target_config_nodes";
 
   // when running the program in IDE, we can not get the version info using
   // getImplementationVersion()
@@ -93,6 +100,7 @@ public class IoTDBConstant {
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
   public static final String COLUMN_IS_ALIGNED = "isAligned";
+  public static final String COLUMN_DISTRIBUTION_PLAN = "distribution plan";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
 
@@ -231,6 +239,13 @@ public class IoTDBConstant {
   public static final String WAL_CHECKPOINT_FILE_SUFFIX = ".checkpoint";
   public static final String WAL_VERSION_ID = "versionId";
   public static final String WAL_START_SEARCH_INDEX = "startSearchIndex";
+  public static final String WAL_STATUS_CODE = "statusCode";
+
+  // show cluster status
+  public static final String NODE_TYPE_CONFIG_NODE = "ConfigNode";
+  public static final String NODE_TYPE_DATA_NODE = "DataNode";
+  public static final String NODE_STATUS_RUNNING = "Running";
+  public static final String NODE_STATUS_Down = "Down";
 
   // client version number
   public enum ClientVersion {

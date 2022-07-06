@@ -38,13 +38,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TsFileManager.class);
   private String storageGroupName;
-  private String dataRegion;
+  private String dataRegionId;
   private String storageGroupDir;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
@@ -59,11 +60,12 @@ public class TsFileManager {
   private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
 
   private boolean allowCompaction = true;
+  private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
-  public TsFileManager(String storageGroupName, String dataRegion, String storageGroupDir) {
+  public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
-    this.dataRegion = dataRegion;
+    this.dataRegionId = dataRegionId;
   }
 
   public List<TsFileResource> getTsFileList(boolean sequence) {
@@ -501,12 +503,12 @@ public class TsFileManager {
     this.allowCompaction = allowCompaction;
   }
 
-  public String getDataRegion() {
-    return dataRegion;
+  public String getDataRegionId() {
+    return dataRegionId;
   }
 
-  public void setDataRegion(String dataRegion) {
-    this.dataRegion = dataRegion;
+  public void setDataRegionId(String dataRegionId) {
+    this.dataRegionId = dataRegionId;
   }
 
   public List<TsFileResource> getSequenceRecoverTsFileResources() {
@@ -552,5 +554,27 @@ public class TsFileManager {
         }
       }
     }
+  }
+
+  // ({systemTime}-{versionNum}-{innerCompactionNum}-{crossCompactionNum}.tsfile)
+  public static int compareFileName(File o1, File o2) {
+    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    long ver1 = Long.parseLong(items1[0]);
+    long ver2 = Long.parseLong(items2[0]);
+    int cmp = Long.compare(ver1, ver2);
+    if (cmp == 0) {
+      int cmpVersion = Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
+      if (cmpVersion == 0) {
+        return Long.compare(Long.parseLong(items1[2]), Long.parseLong(items2[2]));
+      }
+      return cmpVersion;
+    } else {
+      return cmp;
+    }
+  }
+
+  public long getNextCompactionTaskId() {
+    return currentCompactionTaskSerialId.getAndIncrement();
   }
 }

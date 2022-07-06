@@ -36,6 +36,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,9 +53,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
   private List<String> aliasList;
   private List<Map<String, String>> tagsList;
   private List<Map<String, String>> attributesList;
-
-  private List<String> versionList;
-
   private TRegionReplicaSet regionReplicaSet;
 
   public CreateAlignedTimeSeriesNode(
@@ -65,8 +64,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
       List<CompressionType> compressors,
       List<String> aliasList,
       List<Map<String, String>> tagsList,
-      List<Map<String, String>> attributesList,
-      List<String> versionList) {
+      List<Map<String, String>> attributesList) {
     super(id);
     this.devicePath = devicePath;
     this.measurements = measurements;
@@ -76,7 +74,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
     this.aliasList = aliasList;
     this.tagsList = tagsList;
     this.attributesList = attributesList;
-    this.versionList = versionList;
   }
 
   public PartialPath getDevicePath() {
@@ -141,10 +138,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
 
   public void setAttributesList(List<Map<String, String>> attributesList) {
     this.attributesList = attributesList;
-  }
-
-  public List<String> getVersionList() {
-    return versionList;
   }
 
   @Override
@@ -246,11 +239,6 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
       }
     }
 
-    List<String> versionList = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      versionList.add(ReadWriteIOUtils.readString(byteBuffer));
-    }
-
     id = ReadWriteIOUtils.readString(byteBuffer);
 
     return new CreateAlignedTimeSeriesNode(
@@ -262,8 +250,7 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
         compressors,
         aliasList,
         tagsList,
-        attributesList,
-        versionList);
+        attributesList);
   }
 
   @Override
@@ -349,9 +336,70 @@ public class CreateAlignedTimeSeriesNode extends WritePlanNode {
         ReadWriteIOUtils.write(attributes, byteBuffer);
       }
     }
+  }
 
-    for (String version : versionList) {
-      ReadWriteIOUtils.write(version, byteBuffer);
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.CREATE_ALIGNED_TIME_SERIES.serialize(stream);
+    byte[] bytes = devicePath.getFullPath().getBytes();
+    stream.writeInt(bytes.length);
+    stream.write(bytes);
+
+    // measurements
+    stream.writeInt(measurements.size());
+    for (String measurement : measurements) {
+      ReadWriteIOUtils.write(measurement, stream);
+    }
+
+    // dataTypes
+    for (TSDataType dataType : dataTypes) {
+      stream.write((byte) dataType.ordinal());
+    }
+
+    // encodings
+    for (TSEncoding encoding : encodings) {
+      stream.write((byte) encoding.ordinal());
+    }
+
+    // compressors
+    for (CompressionType compressor : compressors) {
+      stream.write((byte) compressor.ordinal());
+    }
+
+    // alias
+    if (aliasList == null) {
+      stream.write((byte) -1);
+    } else if (aliasList.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      for (String alias : aliasList) {
+        ReadWriteIOUtils.write(alias, stream);
+      }
+    }
+
+    // tags
+    if (tagsList == null) {
+      stream.write((byte) -1);
+    } else if (tagsList.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      for (Map<String, String> tags : tagsList) {
+        ReadWriteIOUtils.write(tags, stream);
+      }
+    }
+
+    // attributes
+    if (attributesList == null) {
+      stream.write((byte) -1);
+    } else if (attributesList.isEmpty()) {
+      stream.write((byte) 0);
+    } else {
+      stream.write((byte) 1);
+      for (Map<String, String> attributes : attributesList) {
+        ReadWriteIOUtils.write(attributes, stream);
+      }
     }
   }
 

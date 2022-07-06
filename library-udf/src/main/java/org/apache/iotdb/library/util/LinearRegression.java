@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.library.util;
 
-import org.apache.iotdb.commons.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.exception.UDFException;
 
 import java.util.Arrays;
 

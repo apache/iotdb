@@ -40,19 +40,20 @@ import static java.util.Objects.requireNonNull;
 public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  private final Operator left;
-  private final Operator right;
   private boolean isFinished = false;
-  private final List<TsBlock> leftResult;
-  private final List<TsBlock> rightResult;
+  private final List<Operator> operators;
+  private final List<TsBlock> showTimeSeriesResult;
+  private final List<TsBlock> lastQueryResult;
 
-  public SchemaQueryOrderByHeatOperator(
-      OperatorContext operatorContext, Operator left, Operator right) {
+  private int currentIndex;
+
+  public SchemaQueryOrderByHeatOperator(OperatorContext operatorContext, List<Operator> operators) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
-    this.left = requireNonNull(left, "left child operator is null");
-    this.right = requireNonNull(right, "right child operator is null");
-    this.leftResult = new ArrayList<>();
-    this.rightResult = new ArrayList<>();
+    this.operators = operators;
+    this.showTimeSeriesResult = new ArrayList<>();
+    this.lastQueryResult = new ArrayList<>();
+
+    currentIndex = 0;
   }
 
   @Override
@@ -64,10 +65,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
     // Step 1: get last point result
     Map<String, Long> timeseriesToLastTimestamp = new HashMap<>();
-    for (TsBlock tsBlock : rightResult) {
-      if (null == tsBlock || tsBlock.isEmpty()) {
-        continue;
-      }
+    for (TsBlock tsBlock : lastQueryResult) {
       for (int i = 0; i < tsBlock.getPositionCount(); i++) {
         String timeseries = tsBlock.getColumn(0).getBinary(i).toString();
         long time = tsBlock.getTimeByIndex(i);
@@ -77,10 +75,7 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
     // Step 2: get last point timestamp to timeseries map
     Map<Long, List<Object[]>> lastTimestampToTsSchema = new HashMap<>();
-    for (TsBlock tsBlock : leftResult) {
-      if (null == tsBlock || tsBlock.isEmpty()) {
-        continue;
-      }
+    for (TsBlock tsBlock : showTimeSeriesResult) {
       TsBlock.TsBlockRowIterator tsBlockRowIterator = tsBlock.getTsBlockRowIterator();
       while (tsBlockRowIterator.hasNext()) {
         Object[] line = tsBlockRowIterator.next();
@@ -123,24 +118,47 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
-    ListenableFuture<Void> blocked = left.isBlocked();
-    while (left.hasNext() && blocked.isDone()) {
-      leftResult.add(left.next());
-      blocked = left.isBlocked();
+  public ListenableFuture<?> isBlocked() {
+    Operator operator;
+    ListenableFuture<?> blocked;
+    while (currentIndex < operators.size()) {
+      operator = operators.get(currentIndex);
+      blocked = readCurrentChild(operator);
+      if (blocked != null) {
+        // not null means blocked
+        return blocked;
+      } else {
+        // null means current operator is finished
+        currentIndex++;
+      }
     }
-    if (!blocked.isDone()) {
-      return blocked;
-    }
-    blocked = right.isBlocked();
-    while (right.hasNext() && blocked.isDone()) {
-      rightResult.add(right.next());
-      blocked = right.isBlocked();
-    }
-    if (!blocked.isDone()) {
-      return blocked;
-    }
+
     return NOT_BLOCKED;
+  }
+
+  private ListenableFuture<?> readCurrentChild(Operator operator) {
+    while (!operator.isFinished()) {
+      ListenableFuture<?> blocked = operator.isBlocked();
+      if (!blocked.isDone()) {
+        return blocked;
+      }
+      if (operator.hasNext()) {
+        TsBlock tsBlock = operator.next();
+        if (null != tsBlock && !tsBlock.isEmpty()) {
+          if (isShowTimeSeriesBlock(tsBlock)) {
+            showTimeSeriesResult.add(tsBlock);
+          } else {
+            lastQueryResult.add(tsBlock);
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  private boolean isShowTimeSeriesBlock(TsBlock tsBlock) {
+    return tsBlock.getValueColumnCount()
+        == HeaderConstant.showTimeSeriesHeader.getOutputValueColumnCount();
   }
 
   @Override
@@ -150,8 +168,9 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    left.close();
-    right.close();
+    for (Operator operator : operators) {
+      operator.close();
+    }
   }
 
   @Override

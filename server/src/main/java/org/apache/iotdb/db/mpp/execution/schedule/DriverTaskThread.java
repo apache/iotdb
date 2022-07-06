@@ -25,6 +25,7 @@ import org.apache.iotdb.db.utils.stats.CpuTimer;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
+import io.airlift.concurrent.SetThreadName;
 import io.airlift.units.Duration;
 
 import java.util.concurrent.Executor;
@@ -54,7 +55,7 @@ public class DriverTaskThread extends AbstractDriverThread {
     }
     IDriver instance = task.getFragmentInstance();
     CpuTimer timer = new CpuTimer();
-    ListenableFuture<Void> future = instance.processFor(EXECUTION_TIME_SLICE);
+    ListenableFuture<?> future = instance.processFor(EXECUTION_TIME_SLICE);
     CpuTimer.CpuDuration duration = timer.elapsedTime();
     // long cost = System.nanoTime() - startTime;
     // If the future is cancelled, the task is in an error and should be thrown.
@@ -77,7 +78,10 @@ public class DriverTaskThread extends AbstractDriverThread {
       scheduler.runningToBlocked(task, context);
       future.addListener(
           () -> {
-            scheduler.blockedToReady(task);
+            try (SetThreadName fragmentInstanceName2 =
+                new SetThreadName(task.getFragmentInstance().getInfo().getFullId())) {
+              scheduler.blockedToReady(task);
+            }
           },
           listeningExecutor);
     }

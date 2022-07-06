@@ -126,6 +126,10 @@ public class PathUtils {
     }
   }
 
+  public static boolean isStartWith(String deviceName, String storageGroup) {
+    return deviceName.equals(storageGroup) || deviceName.startsWith(storageGroup + ".");
+  }
+
   private static boolean checkBackQuotes(String src) {
     int num = src.length() - src.replace("`", "").length();
     if (num % 2 == 1) {

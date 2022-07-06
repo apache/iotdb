@@ -20,21 +20,15 @@
 package org.apache.iotdb.consensus.multileader;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.ConsensusGroup;
-import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
-import org.apache.iotdb.consensus.multileader.thrift.TLogType;
-import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
-import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.consensus.multileader.util.TestEntry;
+import org.apache.iotdb.consensus.multileader.util.TestStateMachine;
 
 import org.apache.ratis.util.FileUtils;
 import org.junit.After;
@@ -46,13 +40,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 
 public class MultiLeaderConsensusTest {
 
@@ -100,8 +90,10 @@ public class MultiLeaderConsensusTest {
           (MultiLeaderConsensus)
               ConsensusFactory.getConsensusImpl(
                       ConsensusFactory.MultiLeaderConsensus,
-                      peers.get(i).getEndpoint(),
-                      peersStorage.get(i),
+                      ConsensusConfig.newBuilder()
+                          .setThisNode(peers.get(i).getEndpoint())
+                          .setStorageDir(peersStorage.get(i).getAbsolutePath())
+                          .build(),
                       groupId -> stateMachines.get(finalI))
                   .orElseThrow(
                       () ->
@@ -128,35 +120,25 @@ public class MultiLeaderConsensusTest {
     servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
     servers.get(2).addConsensusGroup(group.getGroupId(), group.getPeers());
 
-    Assert.assertEquals(0, servers.get(0).getImpl(gid).getController().getCurrentIndex());
-    Assert.assertEquals(0, servers.get(1).getImpl(gid).getController().getCurrentIndex());
-    Assert.assertEquals(0, servers.get(2).getImpl(gid).getController().getCurrentIndex());
+    Assert.assertEquals(0, servers.get(0).getImpl(gid).getIndex());
+    Assert.assertEquals(0, servers.get(1).getImpl(gid).getIndex());
+    Assert.assertEquals(0, servers.get(2).getImpl(gid).getIndex());
 
     for (int i = 0; i < IndexController.FLUSH_INTERVAL; i++) {
       servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
       servers.get(1).write(gid, new TestEntry(i, peers.get(1)));
       servers.get(2).write(gid, new TestEntry(i, peers.get(2)));
-      Assert.assertEquals(i + 1, servers.get(0).getImpl(gid).getController().getCurrentIndex());
-      Assert.assertEquals(i + 1, servers.get(1).getImpl(gid).getController().getCurrentIndex());
-      Assert.assertEquals(i + 1, servers.get(2).getImpl(gid).getController().getCurrentIndex());
+      Assert.assertEquals(i + 1, servers.get(0).getImpl(gid).getIndex());
+      Assert.assertEquals(i + 1, servers.get(1).getImpl(gid).getIndex());
+      Assert.assertEquals(i + 1, servers.get(2).getImpl(gid).getIndex());
     }
-
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(0).getImpl(gid).getController().getLastFlushedIndex());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(1).getImpl(gid).getController().getLastFlushedIndex());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(2).getImpl(gid).getController().getLastFlushedIndex());
 
     for (int i = 0; i < 3; i++) {
       long start = System.currentTimeMillis();
       while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex()
           < IndexController.FLUSH_INTERVAL) {
         long current = System.currentTimeMillis();
-        if ((current - start) > 20 * 1000) {
+        if ((current - start) > 60 * 1000) {
           Assert.fail("Unable to replicate entries");
         }
         Thread.sleep(100);
@@ -188,22 +170,16 @@ public class MultiLeaderConsensusTest {
     Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
     Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
 
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2,
-        servers.get(0).getImpl(gid).getController().getCurrentIndex());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2,
-        servers.get(1).getImpl(gid).getController().getCurrentIndex());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2,
-        servers.get(2).getImpl(gid).getController().getCurrentIndex());
+    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(0).getImpl(gid).getIndex());
+    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(1).getImpl(gid).getIndex());
+    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(2).getImpl(gid).getIndex());
 
     for (int i = 0; i < 3; i++) {
       long start = System.currentTimeMillis();
       while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex()
           < IndexController.FLUSH_INTERVAL) {
         long current = System.currentTimeMillis();
-        if ((current - start) > 20 * 1000) {
+        if ((current - start) > 60 * 1000) {
           Assert.fail("Unable to recover entries");
         }
         Thread.sleep(100);
@@ -212,7 +188,7 @@ public class MultiLeaderConsensusTest {
 
     Assert.assertEquals(
         IndexController.FLUSH_INTERVAL,
-        servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
+        servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(
         IndexController.FLUSH_INTERVAL,
         servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
@@ -232,22 +208,15 @@ public class MultiLeaderConsensusTest {
     servers.get(0).addConsensusGroup(group.getGroupId(), group.getPeers());
     servers.get(1).addConsensusGroup(group.getGroupId(), group.getPeers());
 
-    Assert.assertEquals(0, servers.get(0).getImpl(gid).getController().getCurrentIndex());
-    Assert.assertEquals(0, servers.get(1).getImpl(gid).getController().getCurrentIndex());
+    Assert.assertEquals(0, servers.get(0).getImpl(gid).getIndex());
+    Assert.assertEquals(0, servers.get(1).getImpl(gid).getIndex());
 
     for (int i = 0; i < IndexController.FLUSH_INTERVAL; i++) {
       servers.get(0).write(gid, new TestEntry(i, peers.get(0)));
       servers.get(1).write(gid, new TestEntry(i, peers.get(1)));
-      Assert.assertEquals(i + 1, servers.get(0).getImpl(gid).getController().getCurrentIndex());
-      Assert.assertEquals(i + 1, servers.get(1).getImpl(gid).getController().getCurrentIndex());
+      Assert.assertEquals(i + 1, servers.get(0).getImpl(gid).getIndex());
+      Assert.assertEquals(i + 1, servers.get(1).getImpl(gid).getIndex());
     }
-
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(0).getImpl(gid).getController().getLastFlushedIndex());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL,
-        servers.get(1).getImpl(gid).getController().getLastFlushedIndex());
 
     Assert.assertEquals(0, servers.get(0).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
     Assert.assertEquals(0, servers.get(1).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
@@ -261,13 +230,9 @@ public class MultiLeaderConsensusTest {
     Assert.assertEquals(peers, servers.get(1).getImpl(gid).getConfiguration());
     Assert.assertEquals(peers, servers.get(2).getImpl(gid).getConfiguration());
 
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2,
-        servers.get(0).getImpl(gid).getController().getCurrentIndex());
-    Assert.assertEquals(
-        IndexController.FLUSH_INTERVAL * 2,
-        servers.get(1).getImpl(gid).getController().getCurrentIndex());
-    Assert.assertEquals(0, servers.get(2).getImpl(gid).getController().getCurrentIndex());
+    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(0).getImpl(gid).getIndex());
+    Assert.assertEquals(IndexController.FLUSH_INTERVAL, servers.get(1).getImpl(gid).getIndex());
+    Assert.assertEquals(0, servers.get(2).getImpl(gid).getIndex());
 
     for (int i = 0; i < 2; i++) {
       long start = System.currentTimeMillis();
@@ -276,7 +241,7 @@ public class MultiLeaderConsensusTest {
       while (servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex()
           < IndexController.FLUSH_INTERVAL) {
         long current = System.currentTimeMillis();
-        if ((current - start) > 20 * 1000) {
+        if ((current - start) > 60 * 1000) {
           logger.error("{}", servers.get(i).getImpl(gid).getCurrentSafelyDeletedSearchIndex());
           Assert.fail("Unable to replicate entries");
         }
@@ -293,127 +258,5 @@ public class MultiLeaderConsensusTest {
 
     Assert.assertEquals(stateMachines.get(0).getData(), stateMachines.get(1).getData());
     Assert.assertEquals(stateMachines.get(2).getData(), stateMachines.get(1).getData());
-  }
-
-  private static class TestEntry implements IConsensusRequest {
-
-    private final int num;
-    private final Peer peer;
-
-    public TestEntry(int num, Peer peer) {
-      this.num = num;
-      this.peer = peer;
-    }
-
-    @Override
-    public void serializeRequest(ByteBuffer buffer) {
-      buffer.putInt(num);
-      peer.serialize(buffer);
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      TestEntry testEntry = (TestEntry) o;
-      return num == testEntry.num && Objects.equals(peer, testEntry.peer);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(num, peer);
-    }
-
-    @Override
-    public String toString() {
-      return "TestEntry{" + "num=" + num + ", peer=" + peer + '}';
-    }
-  }
-
-  private static class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
-
-    private final Set<IndexedConsensusRequest> requestSet = new HashSet<>();
-
-    public Set<IndexedConsensusRequest> getRequestSet() {
-      return requestSet;
-    }
-
-    public Set<TestEntry> getData() {
-      Set<TestEntry> data = new HashSet<>();
-      requestSet.forEach(x -> data.add((TestEntry) x.getRequest()));
-      return data;
-    }
-
-    @Override
-    public void start() {}
-
-    @Override
-    public void stop() {}
-
-    @Override
-    public synchronized TSStatus write(IConsensusRequest request) {
-      IConsensusRequest innerRequest = ((IndexedConsensusRequest) request).getRequest();
-      if (innerRequest instanceof ByteBufferConsensusRequest) {
-        ByteBuffer buffer = ((ByteBufferConsensusRequest) innerRequest).getContent();
-        requestSet.add(
-            new IndexedConsensusRequest(
-                ((IndexedConsensusRequest) request).getSearchIndex(),
-                -1,
-                TLogType.FragmentInstance,
-                new TestEntry(buffer.getInt(), Peer.deserialize(buffer))));
-      } else {
-        requestSet.add(((IndexedConsensusRequest) request));
-      }
-      return new TSStatus();
-    }
-
-    @Override
-    public synchronized DataSet read(IConsensusRequest request) {
-      if (request instanceof GetConsensusReqReaderPlan) {
-        return new FakeConsensusReqReader(new ArrayList<>(requestSet));
-      }
-      return null;
-    }
-
-    @Override
-    public boolean takeSnapshot(File snapshotDir) {
-      return false;
-    }
-
-    @Override
-    public void loadSnapshot(File latestSnapshotRootDir) {}
-  }
-
-  public static class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
-
-    private final List<IndexedConsensusRequest> requestList;
-
-    public FakeConsensusReqReader(List<IndexedConsensusRequest> requestList) {
-      this.requestList = requestList;
-    }
-
-    @Override
-    public IConsensusRequest getReq(long index) {
-      for (IndexedConsensusRequest indexedConsensusRequest : requestList) {
-        if (indexedConsensusRequest.getSearchIndex() == index) {
-          return indexedConsensusRequest;
-        }
-      }
-      return null;
-    }
-
-    @Override
-    public List<IConsensusRequest> getReqs(long startIndex, int num) {
-      return null;
-    }
-
-    @Override
-    public ReqIterator getReqIterator(long startIndex) {
-      return null;
-    }
   }
 }

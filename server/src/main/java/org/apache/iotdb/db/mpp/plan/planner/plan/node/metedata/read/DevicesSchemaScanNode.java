@@ -26,6 +26,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -72,6 +74,16 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(hasSgCol, byteBuffer);
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DEVICES_SCHEMA_SCAN.serialize(stream);
+    ReadWriteIOUtils.write(path.getFullPath(), stream);
+    ReadWriteIOUtils.write(limit, stream);
+    ReadWriteIOUtils.write(offset, stream);
+    ReadWriteIOUtils.write(isPrefixPath, stream);
+    ReadWriteIOUtils.write(hasSgCol, stream);
+  }
+
   public static DevicesSchemaScanNode deserialize(ByteBuffer byteBuffer) {
     String fullPath = ReadWriteIOUtils.readString(byteBuffer);
     PartialPath path;
@@ -106,5 +118,10 @@ public class DevicesSchemaScanNode extends SchemaQueryScanNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), hasSgCol);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("DevicesSchemaScanNode-%s[Path: %s]", getPlanNodeId(), path);
   }
 }

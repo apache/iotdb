@@ -30,14 +30,11 @@ public class SchemaCacheEntry {
 
   private final boolean isAligned;
 
-  private final String version;
-
   private volatile ILastCacheContainer lastCacheContainer = null;
 
-  SchemaCacheEntry(MeasurementSchema measurementSchema, boolean isAligned, String version) {
+  SchemaCacheEntry(MeasurementSchema measurementSchema, boolean isAligned) {
     this.measurementSchema = measurementSchema;
     this.isAligned = isAligned;
-    this.version = version;
   }
 
   public String getSchemaEntryId() {
@@ -56,10 +53,6 @@ public class SchemaCacheEntry {
     return isAligned;
   }
 
-  public String getVersion() {
-    return version;
-  }
-
   public ILastCacheContainer getLastCacheContainer() {
     if (lastCacheContainer == null) {
       synchronized (this) {
@@ -73,5 +66,28 @@ public class SchemaCacheEntry {
 
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {
     this.lastCacheContainer = lastCacheContainer;
+  }
+
+  /**
+   * Total basic 100B
+   *
+   * <ul>
+   *   <li>SchemaCacheEntry Object header, 8B
+   *   <li>isAligned, 1B
+   *   <li>LastCacheContainer reference, 8B
+   *   <li>MeasurementSchema
+   *       <ul>
+   *         <li>Reference, 8B
+   *         <li>Object header, 8B
+   *         <li>String measurementId basic, 8 + 8 + 4 + 8 + 4 = 32B
+   *         <li>type, encoding, compressor, 3 B
+   *         <li>encodingConverter, 8 + 8 + 8 = 24B
+   *         <li>props, 8B
+   *       </ul>
+   * </ul>
+   */
+  public static int estimateSize(SchemaCacheEntry schemaCacheEntry) {
+    // each char takes 2B in Java
+    return 100 + 2 * schemaCacheEntry.getMeasurementSchema().getMeasurementId().length();
   }
 }

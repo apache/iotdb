@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.library.anomaly;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.RowWindow;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.library.util.Util;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.RowWindow;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
 
 /** This function is used to detect density anomaly of time series. */
 public class UDTFLOF implements UDTF {
@@ -118,8 +118,7 @@ public class UDTFLOF implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesDataType(
-        0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+    validator.validateInputSeriesDataType(0, Type.INT32, Type.INT64, Type.FLOAT, Type.DOUBLE);
   }
 
   @Override
@@ -128,9 +127,9 @@ public class UDTFLOF implements UDTF {
     configurations
         .setAccessStrategy(
             new SlidingSizeWindowAccessStrategy(parameters.getIntOrDefault("window", 10000)))
-        .setOutputDataType(TSDataType.DOUBLE);
+        .setOutputDataType(Type.DOUBLE);
     this.multipleK = parameters.getIntOrDefault("k", 3);
-    this.dim = parameters.getPaths().size();
+    this.dim = parameters.getChildExpressionsSize();
     this.method = parameters.getStringOrDefault("method", "default");
     this.window = parameters.getIntOrDefault("window", 5);
   }

@@ -316,6 +316,7 @@ public class AggregationOperatorTest {
         finalAggregators,
         children,
         true,
-        groupByTimeParameter);
+        groupByTimeParameter,
+        true);
   }
 }

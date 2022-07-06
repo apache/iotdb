@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.mpp.plan.statement.literal;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class NullLiteral extends Literal {
@@ -32,8 +35,23 @@ public class NullLiteral extends Literal {
   }
 
   @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(LiteralType.NULL.ordinal(), stream);
+  }
+
+  @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
     return false;
+  }
+
+  @Override
+  public String getDataTypeString() {
+    return "NULL";
+  }
+
+  @Override
+  public Binary getBinary() {
+    return new Binary("null");
   }
 
   @Override

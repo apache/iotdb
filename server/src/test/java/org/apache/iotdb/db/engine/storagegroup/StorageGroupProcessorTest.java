@@ -669,7 +669,7 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
     processor.compact();
     long totalWaitingTime = 0;
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+    do {
       // wait
       try {
         Thread.sleep(100);
@@ -684,7 +684,7 @@ public class StorageGroupProcessorTest {
         Assert.fail();
         break;
       }
-    }
+    } while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0);
 
     QueryDataSource queryDataSource =
         processor.query(
@@ -729,8 +729,9 @@ public class StorageGroupProcessorTest {
               processor.getSequenceFileList(),
               true,
               new ReadChunkCompactionPerformer(processor.getSequenceFileList()),
-              new AtomicInteger(0));
-      CompactionTaskManager.getInstance().submitTask(task);
+              new AtomicInteger(0),
+              0);
+      CompactionTaskManager.getInstance().addTaskToWaitingQueue(task);
       Thread.sleep(20);
       StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
       Thread.sleep(500);

@@ -22,6 +22,17 @@ package org.apache.iotdb.consensus.common.request;
 import java.nio.ByteBuffer;
 
 public interface IConsensusRequest {
-
-  void serializeRequest(ByteBuffer buffer);
+  /**
+   * Serialize all the data to a ByteBuffer.
+   *
+   * <p>In a specific implementation, ByteBuf or PublicBAOS can be used to reduce the number of
+   * memory copies.
+   *
+   * <p>To improve efficiency, a specific implementation could return a DirectByteBuffer to reduce
+   * the memory copy required to send an RPC
+   *
+   * <p>Note: The implementation needs to ensure that the data in the returned Bytebuffer cannot be
+   * changed or an error may occur
+   */
+  ByteBuffer serializeToByteBuffer();
 }

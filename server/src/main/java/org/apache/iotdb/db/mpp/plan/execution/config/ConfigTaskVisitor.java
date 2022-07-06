@@ -28,10 +28,15 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStateme
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 public class ConfigTaskVisitor
@@ -87,8 +92,14 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitShowCluster(
+      ShowClusterStatement showClusterStatement, TaskContext context) {
+    return new ShowClusterTask(showClusterStatement);
+  }
+
+  @Override
   public IConfigTask visitAuthor(AuthorStatement statement, TaskContext context) {
-    return new AuthorizerConfigTask(statement);
+    return new AuthorizerTask(statement);
   }
 
   @Override
@@ -98,9 +109,31 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitFlush(FlushStatement flushStatement, TaskContext context) {
+    return new FlushTask(flushStatement);
+  }
+
+  @Override
   public IConfigTask visitDropFunction(
       DropFunctionStatement dropFunctionStatement, TaskContext context) {
     return new DropFunctionTask(dropFunctionStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowFunctions(
+      ShowFunctionsStatement showFunctionsStatement, TaskContext context) {
+    return new ShowFunctionsTask();
+  }
+
+  @Override
+  public IConfigTask visitShowRegion(ShowRegionStatement showRegionStatement, TaskContext context) {
+    return new ShowRegionTask(showRegionStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowDataNodes(
+      ShowDataNodesStatement showDataNodesStatement, TaskContext context) {
+    return new ShowDataNodesTask(showDataNodesStatement);
   }
 
   public static class TaskContext {}

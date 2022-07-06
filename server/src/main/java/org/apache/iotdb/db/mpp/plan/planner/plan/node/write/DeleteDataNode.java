@@ -33,6 +33,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -118,6 +120,17 @@ public class DeleteDataNode extends WritePlanNode {
     ReadWriteIOUtils.write(deleteEndTime, byteBuffer);
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DELETE_DATA.serialize(stream);
+    ReadWriteIOUtils.write(pathList.size(), stream);
+    for (PartialPath path : pathList) {
+      path.serialize(stream);
+    }
+    ReadWriteIOUtils.write(deleteStartTime, stream);
+    ReadWriteIOUtils.write(deleteEndTime, stream);
+  }
+
   public static DeleteDataNode deserialize(ByteBuffer byteBuffer) {
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<PartialPath> pathList = new ArrayList<>(size);
@@ -161,21 +174,12 @@ public class DeleteDataNode extends WritePlanNode {
     Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap = new HashMap<>();
 
     for (PartialPath pathPattern : pathList) {
-      PartialPath devicePattern = pathPattern;
-      if (!pathPattern.getTailNode().equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        devicePattern = pathPattern.getDevicePath();
+      if (pathPattern.getTailNode().equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        splitPathPatternByDevice(
+            pathPattern, pathPattern, schemaTree, dataPartition, regionToPatternMap);
       }
-      for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getMatchedDevices(devicePattern)) {
-        PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-        // todo implement time slot
-        for (TRegionReplicaSet regionReplicaSet :
-            dataPartition.getDataRegionReplicaSet(
-                devicePath.getFullPath(), Collections.emptyList())) {
-          regionToPatternMap
-              .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
-              .addAll(pathPattern.alterPrefixPath(devicePath));
-        }
-      }
+      splitPathPatternByDevice(
+          pathPattern.getDevicePath(), pathPattern, schemaTree, dataPartition, regionToPatternMap);
     }
 
     return regionToPatternMap.keySet().stream()
@@ -184,5 +188,24 @@ public class DeleteDataNode extends WritePlanNode {
                 new DeleteDataNode(
                     getPlanNodeId(), regionToPatternMap.get(o), deleteStartTime, deleteEndTime, o))
         .collect(Collectors.toList());
+  }
+
+  private void splitPathPatternByDevice(
+      PartialPath devicePattern,
+      PartialPath pathPattern,
+      SchemaTree schemaTree,
+      DataPartition dataPartition,
+      Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap) {
+    for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getMatchedDevices(devicePattern)) {
+      PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+      // todo implement time slot
+      for (TRegionReplicaSet regionReplicaSet :
+          dataPartition.getDataRegionReplicaSet(
+              devicePath.getFullPath(), Collections.emptyList())) {
+        regionToPatternMap
+            .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
+            .addAll(pathPattern.alterPrefixPath(devicePath));
+      }
+    }
   }
 }

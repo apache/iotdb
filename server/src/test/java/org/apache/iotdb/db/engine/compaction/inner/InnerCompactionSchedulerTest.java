@@ -94,7 +94,6 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     tsFileManager.addAll(seqResources, true);
 
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask("testSG", "0", 0L, tsFileManager, true);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     try {
       Thread.sleep(5000);
     } catch (Exception e) {
@@ -116,7 +115,6 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask("testSG", "0", 0L, tsFileManager, true);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
 
     long waitingTime = 0;
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
@@ -146,8 +144,6 @@ public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
     TsFileManager tsFileManager = new TsFileManager("testSG", "0", "tmp");
     tsFileManager.addAll(seqResources, true);
     CompactionScheduler.tryToSubmitInnerSpaceCompactionTask("testSG", "0", 0L, tsFileManager, true);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-
     long waitingTime = 0;
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
       try {

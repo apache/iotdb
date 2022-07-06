@@ -19,33 +19,38 @@
 
 package org.apache.iotdb.consensus.multileader;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.multileader.logdispatcher.IndexController;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
+import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
-import org.apache.iotdb.consensus.multileader.thrift.TLogType;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
-import org.apache.iotdb.consensus.ratis.Utils;
+import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MultiLeaderServerImpl {
 
   private static final String CONFIGURATION_FILE_NAME = "configuration.dat";
-  private static final int DEFAULT_CONFIGURATION_BUFFER_SIZE = 1024 * 4;
 
   private final Logger logger = LoggerFactory.getLogger(MultiLeaderServerImpl.class);
 
@@ -53,23 +58,33 @@ public class MultiLeaderServerImpl {
   private final IStateMachine stateMachine;
   private final String storageDir;
   private final List<Peer> configuration;
-  private final IndexController controller;
+  private final AtomicLong index;
   private final LogDispatcher logDispatcher;
+  private final MultiLeaderConfig config;
 
   public MultiLeaderServerImpl(
-      String storageDir, Peer thisNode, List<Peer> configuration, IStateMachine stateMachine) {
+      String storageDir,
+      Peer thisNode,
+      List<Peer> configuration,
+      IStateMachine stateMachine,
+      IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager,
+      MultiLeaderConfig config) {
     this.storageDir = storageDir;
     this.thisNode = thisNode;
     this.stateMachine = stateMachine;
-    this.controller =
-        new IndexController(storageDir, Utils.fromTEndPointToString(thisNode.getEndpoint()), true);
     this.configuration = configuration;
     if (configuration.isEmpty()) {
       recoverConfiguration();
     } else {
       persistConfiguration();
     }
-    logDispatcher = new LogDispatcher(this);
+    this.config = config;
+    this.logDispatcher = new LogDispatcher(this, clientManager);
+    // restart
+    ConsensusReqReader reader =
+        (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
+    long currentSearchIndex = reader.getCurrentSearchIndex();
+    this.index = new AtomicLong(currentSearchIndex);
   }
 
   public IStateMachine getStateMachine() {
@@ -93,8 +108,26 @@ public class MultiLeaderServerImpl {
     synchronized (stateMachine) {
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
+      if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
+        logger.info(
+            "DataRegion[{}]: index after build: safeIndex: {}, searchIndex: {}",
+            thisNode.getGroupId(),
+            indexedConsensusRequest.getSafelyDeletedSearchIndex(),
+            indexedConsensusRequest.getSearchIndex());
+      }
+      // TODO wal and memtable
       TSStatus result = stateMachine.write(indexedConsensusRequest);
-      logDispatcher.offer(indexedConsensusRequest);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        logDispatcher.offer(indexedConsensusRequest);
+      } else {
+        logger.debug(
+            "{}: write operation failed. searchIndex: {}. Code: {}",
+            thisNode.getGroupId(),
+            indexedConsensusRequest.getSearchIndex(),
+            result.getCode());
+        index.decrementAndGet();
+      }
+
       return result;
     }
   }
@@ -112,15 +145,15 @@ public class MultiLeaderServerImpl {
   }
 
   public void persistConfiguration() {
-    ByteBuffer buffer = ByteBuffer.allocate(DEFAULT_CONFIGURATION_BUFFER_SIZE);
-    buffer.putInt(configuration.size());
-    for (Peer peer : configuration) {
-      peer.serialize(buffer);
-    }
-    try {
+    try (PublicBAOS publicBAOS = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+      outputStream.writeInt(configuration.size());
+      for (Peer peer : configuration) {
+        peer.serialize(outputStream);
+      }
       Files.write(
           Paths.get(new File(storageDir, CONFIGURATION_FILE_NAME).getAbsolutePath()),
-          buffer.array());
+          publicBAOS.getBuf());
     } catch (IOException e) {
       logger.error("Unexpected error occurs when persisting configuration", e);
     }
@@ -145,19 +178,13 @@ public class MultiLeaderServerImpl {
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
     return new IndexedConsensusRequest(
-        controller.incrementAndGet(),
-        getCurrentSafelyDeletedSearchIndex(),
-        TLogType.FragmentInstance,
-        request);
+        index.incrementAndGet(), getCurrentSafelyDeletedSearchIndex(), request);
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
-      ByteBufferConsensusRequest request, TLogType type) {
+      ByteBufferConsensusRequest request) {
     return new IndexedConsensusRequest(
-        ConsensusReqReader.DEFAULT_SEARCH_INDEX,
-        getCurrentSafelyDeletedSearchIndex(),
-        type,
-        request);
+        ConsensusReqReader.DEFAULT_SEARCH_INDEX, getCurrentSafelyDeletedSearchIndex(), request);
   }
 
   /**
@@ -165,7 +192,7 @@ public class MultiLeaderServerImpl {
    * single copies, the current index is selected
    */
   public long getCurrentSafelyDeletedSearchIndex() {
-    return logDispatcher.getMinSyncIndex().orElseGet(controller::getCurrentIndex);
+    return logDispatcher.getMinSyncIndex().orElseGet(index::get);
   }
 
   public String getStorageDir() {
@@ -180,7 +207,11 @@ public class MultiLeaderServerImpl {
     return configuration;
   }
 
-  public IndexController getController() {
-    return controller;
+  public long getIndex() {
+    return index.get();
+  }
+
+  public MultiLeaderConfig getConfig() {
+    return config;
   }
 }

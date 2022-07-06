@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -30,14 +31,14 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockManager;
-import org.apache.iotdb.db.mpp.execution.datatransfer.DataBlockService;
-import org.apache.iotdb.db.mpp.execution.datatransfer.ISinkHandle;
-import org.apache.iotdb.db.mpp.execution.datatransfer.ISourceHandle;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriverContext;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriver;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
+import org.apache.iotdb.db.mpp.execution.exchange.ISinkHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.ISourceHandle;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeManager;
+import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
@@ -58,16 +59,18 @@ import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.UpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.BinaryConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.BooleanConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.DoubleConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.FloatConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.IntConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.LongConstantFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.identity.IdentityFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.identity.IdentityLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.DoubleLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.FloatLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.IntLinearFill;
-import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LongLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.BinaryPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.BooleanPreviousFill;
@@ -178,6 +181,8 @@ import java.util.stream.Collectors;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFilter;
+import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
 
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -185,9 +190,8 @@ import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFi
  * run a fragment instance parallel and take full advantage of multi-cores
  */
 public class LocalExecutionPlanner {
-
-  private static final DataBlockManager DATA_BLOCK_MANAGER =
-      DataBlockService.getInstance().getDataBlockManager();
+  private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
+      MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
   private static final DataNodeSchemaCache DATA_NODE_SCHEMA_CACHE =
       DataNodeSchemaCache.getInstance();
@@ -195,6 +199,10 @@ public class LocalExecutionPlanner {
   private static final TimeComparator ASC_TIME_COMPARATOR = new AscTimeComparator();
 
   private static final TimeComparator DESC_TIME_COMPARATOR = new DescTimeComparator();
+
+  private static final IdentityFill IDENTITY_FILL = new IdentityFill();
+
+  private static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();
 
   public static LocalExecutionPlanner getInstance() {
     return InstanceHolder.INSTANCE;
@@ -349,8 +357,10 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitSchemaQueryOrderByHeat(
         SchemaQueryOrderByHeatNode node, LocalExecutionPlanContext context) {
-      Operator left = node.getLeft().accept(this, context);
-      Operator right = node.getRight().accept(this, context);
+      List<Operator> children =
+          node.getChildren().stream()
+              .map(n -> n.accept(this, context))
+              .collect(Collectors.toList());
 
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
@@ -358,7 +368,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               SchemaQueryOrderByHeatOperator.class.getSimpleName());
 
-      return new SchemaQueryOrderByHeatOperator(operatorContext, left, right);
+      return new SchemaQueryOrderByHeatOperator(operatorContext, children);
     }
 
     @Override
@@ -672,6 +682,10 @@ public class LocalExecutionPlanner {
         int inputColumns, List<TSDataType> inputDataTypes, Literal literal) {
       IFill[] constantFill = new IFill[inputColumns];
       for (int i = 0; i < inputColumns; i++) {
+        if (!literal.isDataTypeConsistency(inputDataTypes.get(i))) {
+          constantFill[i] = IDENTITY_FILL;
+          continue;
+        }
         switch (inputDataTypes.get(i)) {
           case BOOLEAN:
             constantFill[i] = new BooleanConstantFill(literal.getBoolean());
@@ -727,8 +741,8 @@ public class LocalExecutionPlanner {
       return previousFill;
     }
 
-    private LinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
-      LinearFill[] linearFill = new LinearFill[inputColumns];
+    private ILinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
+      ILinearFill[] linearFill = new ILinearFill[inputColumns];
       for (int i = 0; i < inputColumns; i++) {
         switch (inputDataTypes.get(i)) {
           case INT32:
@@ -745,8 +759,8 @@ public class LocalExecutionPlanner {
             break;
           case BOOLEAN:
           case TEXT:
-            throw new UnsupportedOperationException(
-                "DataType: " + inputDataTypes.get(i) + " doesn't support linear fill.");
+            linearFill[i] = IDENTITY_LINEAR_FILL;
+            break;
           default:
             throw new IllegalArgumentException("Unknown data type: " + inputDataTypes.get(i));
         }
@@ -774,7 +788,8 @@ public class LocalExecutionPlanner {
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
-            context.getTypeProvider());
+            context.getTypeProvider(),
+            node.getScanOrder() == OrderBy.TIMESTAMP_ASC);
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
@@ -801,7 +816,8 @@ public class LocalExecutionPlanner {
             node.getOutputExpressions(),
             node.isKeepNull(),
             node.getZoneId(),
-            context.getTypeProvider());
+            context.getTypeProvider(),
+            node.getScanOrder() == OrderBy.TIMESTAMP_ASC);
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
@@ -825,21 +841,16 @@ public class LocalExecutionPlanner {
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (GroupByLevelDescriptor descriptor : node.getGroupByLevelDescriptors()) {
-        List<String> inputColumnNames = descriptor.getInputColumnNames();
-        List<InputLocation[]> inputLocationList = new ArrayList<>(inputColumnNames.size());
-        inputColumnNames.forEach(
-            inputColumnName ->
-                inputLocationList.add(layout.get(inputColumnName).toArray(new InputLocation[0])));
-
+        List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
+        TSDataType seriesDataType =
+            context
+                .getTypeProvider()
+                // get the type of first inputExpression
+                .getType(descriptor.getInputExpressions().get(0).getExpressionString());
         aggregators.add(
             new Aggregator(
                 AccumulatorFactory.createAccumulator(
-                    descriptor.getAggregationType(),
-                    context
-                        .getTypeProvider()
-                        // get the type of first inputExpression
-                        .getType(descriptor.getInputExpressions().get(0).toString()),
-                    ascending),
+                    descriptor.getAggregationType(), seriesDataType, ascending),
                 descriptor.getStep(),
                 inputLocationList));
       }
@@ -849,7 +860,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               AggregationOperator.class.getSimpleName());
       return new AggregationOperator(
-          operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
+          operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter(), false);
     }
 
     @Override
@@ -909,8 +920,7 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitRowBasedSeriesAggregate(
-        AggregationNode node, LocalExecutionPlanContext context) {
+    public Operator visitAggregation(AggregationNode node, LocalExecutionPlanContext context) {
       checkArgument(
           node.getAggregationDescriptorList().size() >= 1,
           "Aggregation descriptorList cannot be empty");
@@ -956,26 +966,33 @@ public class LocalExecutionPlanner {
                 node.getPlanNodeId(),
                 AggregationOperator.class.getSimpleName());
         return new AggregationOperator(
-            operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter());
+            operatorContext,
+            aggregators,
+            children,
+            ascending,
+            node.getGroupByTimeParameter(),
+            true);
       }
     }
 
     private List<InputLocation[]> calcInputLocationList(
         AggregationDescriptor descriptor, Map<String, List<InputLocation>> layout) {
-      List<String> inputColumnNames = descriptor.getInputColumnNames();
-      // it may include double parts
-      List<List<InputLocation>> inputLocationParts = new ArrayList<>(inputColumnNames.size());
-      inputColumnNames.forEach(o -> inputLocationParts.add(layout.get(o)));
-
+      List<List<String>> inputColumnNames = descriptor.getInputColumnNamesList();
       List<InputLocation[]> inputLocationList = new ArrayList<>();
-      for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
-        if (inputColumnNames.size() == 1) {
-          inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
-        } else {
-          inputLocationList.add(
-              new InputLocation[] {
-                inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
-              });
+
+      for (List<String> inputColumnNamesOfOneInput : inputColumnNames) {
+        // it may include double parts
+        List<List<InputLocation>> inputLocationParts = new ArrayList<>();
+        inputColumnNamesOfOneInput.forEach(o -> inputLocationParts.add(layout.get(o)));
+        for (int i = 0; i < inputLocationParts.get(0).size(); i++) {
+          if (inputColumnNamesOfOneInput.size() == 1) {
+            inputLocationList.add(new InputLocation[] {inputLocationParts.get(0).get(i)});
+          } else {
+            inputLocationList.add(
+                new InputLocation[] {
+                  inputLocationParts.get(0).get(i), inputLocationParts.get(1).get(i)
+                });
+          }
         }
       }
       return inputLocationList;
@@ -1047,17 +1064,24 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              SeriesScanOperator.class.getSimpleName());
+              ExchangeOperator.class.getSimpleName());
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId remoteInstanceId = node.getUpstreamInstanceId();
 
+      TEndPoint upstreamEndPoint = node.getUpstreamEndpoint();
       ISourceHandle sourceHandle =
-          DATA_BLOCK_MANAGER.createSourceHandle(
-              localInstanceId.toThrift(),
-              node.getPlanNodeId().getId(),
-              node.getUpstreamEndpoint(),
-              remoteInstanceId.toThrift(),
-              context.instanceContext::failed);
+          isSameNode(upstreamEndPoint)
+              ? MPP_DATA_EXCHANGE_MANAGER.createLocalSourceHandle(
+                  localInstanceId.toThrift(),
+                  node.getPlanNodeId().getId(),
+                  remoteInstanceId.toThrift(),
+                  context.instanceContext::failed)
+              : MPP_DATA_EXCHANGE_MANAGER.createSourceHandle(
+                  localInstanceId.toThrift(),
+                  node.getPlanNodeId().getId(),
+                  upstreamEndPoint,
+                  remoteInstanceId.toThrift(),
+                  context.instanceContext::failed);
       return new ExchangeOperator(operatorContext, sourceHandle, node.getUpstreamPlanNodeId());
     }
 
@@ -1067,13 +1091,24 @@ public class LocalExecutionPlanner {
 
       FragmentInstanceId localInstanceId = context.instanceContext.getId();
       FragmentInstanceId targetInstanceId = node.getDownStreamInstanceId();
+      TEndPoint downStreamEndPoint = node.getDownStreamEndpoint();
+
+      checkArgument(
+          MPP_DATA_EXCHANGE_MANAGER != null, "MPP_DATA_EXCHANGE_MANAGER should not be null");
+
       ISinkHandle sinkHandle =
-          DATA_BLOCK_MANAGER.createSinkHandle(
-              localInstanceId.toThrift(),
-              node.getDownStreamEndpoint(),
-              targetInstanceId.toThrift(),
-              node.getDownStreamPlanNodeId().getId(),
-              context.instanceContext);
+          isSameNode(downStreamEndPoint)
+              ? MPP_DATA_EXCHANGE_MANAGER.createLocalSinkHandle(
+                  localInstanceId.toThrift(),
+                  targetInstanceId.toThrift(),
+                  node.getDownStreamPlanNodeId().getId(),
+                  context.instanceContext)
+              : MPP_DATA_EXCHANGE_MANAGER.createSinkHandle(
+                  localInstanceId.toThrift(),
+                  downStreamEndPoint,
+                  targetInstanceId.toThrift(),
+                  node.getDownStreamPlanNodeId().getId(),
+                  context.instanceContext);
       context.setSinkHandle(sinkHandle);
       return child;
     }
@@ -1090,7 +1125,7 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               SchemaFetchMergeOperator.class.getSimpleName());
-      return new SchemaFetchMergeOperator(node.getPlanNodeId(), operatorContext, children);
+      return new SchemaFetchMergeOperator(operatorContext, children);
     }
 
     @Override

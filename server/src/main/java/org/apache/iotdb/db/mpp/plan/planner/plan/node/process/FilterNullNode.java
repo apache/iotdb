@@ -28,6 +28,8 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullPolicy;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -98,6 +100,12 @@ public class FilterNullNode extends ProcessNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.FILTER_NULL.serialize(byteBuffer);
     filterNullParameter.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.FILTER_NULL.serialize(stream);
+    filterNullParameter.serialize(stream);
   }
 
   public static FilterNullNode deserialize(ByteBuffer byteBuffer) {

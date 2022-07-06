@@ -26,6 +26,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -64,6 +66,13 @@ public class NodePathsSchemaScanNode extends SchemaQueryScanNode {
     PlanNodeType.NODE_PATHS_SCAN.serialize(byteBuffer);
     prefixPath.serialize(byteBuffer);
     byteBuffer.putInt(level);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.NODE_PATHS_SCAN.serialize(stream);
+    prefixPath.serialize(stream);
+    stream.writeInt(level);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {

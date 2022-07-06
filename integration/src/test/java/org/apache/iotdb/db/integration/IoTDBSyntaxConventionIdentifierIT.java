@@ -19,11 +19,15 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterTest;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.itbase.category.RemoteTest;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -36,6 +40,7 @@ import java.util.Set;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
+@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBSyntaxConventionIdentifierIT {
   @Before
   public void setUp() throws Exception {
@@ -52,7 +57,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] createNodeNames = {
       "add",
       "as",
-      "between",
       "select",
       "drop_trigger",
       "REVOKE_USER_ROLE",
@@ -65,7 +69,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] resultTimeseries = {
       "root.sg1.d1.add",
       "root.sg1.d1.as",
-      "root.sg1.d1.between",
       "root.sg1.d1.select",
       "root.sg1.d1.drop_trigger",
       "root.sg1.d1.REVOKE_USER_ROLE",
@@ -78,7 +81,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] selectNodeNames = {
       "add",
       "as",
-      "between",
       "select",
       "drop_trigger",
       "REVOKE_USER_ROLE",
@@ -91,7 +93,6 @@ public class IoTDBSyntaxConventionIdentifierIT {
     String[] suffixInResultColumns = {
       "add",
       "as",
-      "between",
       "select",
       "drop_trigger",
       "REVOKE_USER_ROLE",

@@ -26,7 +26,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
+import org.apache.iotdb.db.engine.compaction.performer.ICompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadChunkCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
@@ -229,7 +231,10 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              new ReadChunkCompactionPerformer(sourceResources, targetTsFileResource).perform();
+              ICompactionPerformer performer =
+                  new ReadChunkCompactionPerformer(sourceResources, targetTsFileResource);
+              performer.setSummary(new CompactionTaskSummary());
+              performer.perform();
               CompactionUtils.moveTargetFile(
                   Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
               CompactionUtils.combineModsInInnerCompaction(sourceResources, targetTsFileResource);
@@ -456,7 +461,10 @@ public class InnerSeqCompactionTest {
                   timeValuePair ->
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
-            new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource).perform();
+            ICompactionPerformer performer =
+                new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource);
+            performer.setSummary(new CompactionTaskSummary());
+            performer.perform();
             CompactionUtils.moveTargetFile(
                 Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
             CompactionUtils.combineModsInInnerCompaction(toMergeResources, targetTsFileResource);
@@ -733,7 +741,10 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource).perform();
+              ICompactionPerformer performer =
+                  new ReadChunkCompactionPerformer(toMergeResources, targetTsFileResource);
+              performer.setSummary(new CompactionTaskSummary());
+              performer.perform();
               CompactionUtils.moveTargetFile(
                   Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
               CompactionUtils.combineModsInInnerCompaction(toMergeResources, targetTsFileResource);

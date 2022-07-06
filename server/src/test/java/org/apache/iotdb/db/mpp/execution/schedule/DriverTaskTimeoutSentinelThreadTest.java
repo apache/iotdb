@@ -157,7 +157,8 @@ public class DriverTaskTimeoutSentinelThreadTest {
     PlanFragmentId fragmentId = new PlanFragmentId(queryId, 0);
     FragmentInstanceId instanceId = new FragmentInstanceId(fragmentId, "inst-0");
     Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
-    Mockito.when(mockDriver.processFor(Mockito.any())).thenReturn(Futures.immediateVoidFuture());
+    Mockito.when(mockDriver.processFor(Mockito.any()))
+        .thenAnswer(ans -> Futures.immediateVoidFuture());
     Mockito.when(mockDriver.isFinished()).thenReturn(true);
     AbstractDriverThread executor =
         new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
@@ -189,7 +190,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
         new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a blocked future
-    ListenableFuture<Void> mockFuture = Mockito.mock(ListenableFuture.class);
+    ListenableFuture<?> mockFuture = Mockito.mock(ListenableFuture.class);
     Mockito.when(mockFuture.isDone()).thenReturn(false);
     Mockito.doAnswer(
             ans -> {
@@ -205,7 +206,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
     PlanFragmentId fragmentId = new PlanFragmentId(queryId, 0);
     FragmentInstanceId instanceId = new FragmentInstanceId(fragmentId, "inst-0");
     Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
-    Mockito.when(mockDriver.processFor(Mockito.any())).thenReturn(mockFuture);
+    Mockito.when(mockDriver.processFor(Mockito.any())).thenAnswer(ans -> mockFuture);
     Mockito.when(mockDriver.isFinished()).thenReturn(false);
     AbstractDriverThread executor =
         new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);
@@ -237,7 +238,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
         new L1PriorityQueue<>(100, new DriverTask.TimeoutComparator(), new DriverTask());
 
     // Mock the instance with a ready future
-    ListenableFuture<Void> mockFuture = Mockito.mock(ListenableFuture.class);
+    ListenableFuture<?> mockFuture = Mockito.mock(ListenableFuture.class);
     Mockito.when(mockFuture.isDone()).thenReturn(true);
     Mockito.doAnswer(
             ans -> {
@@ -253,7 +254,7 @@ public class DriverTaskTimeoutSentinelThreadTest {
     PlanFragmentId fragmentId = new PlanFragmentId(queryId, 0);
     FragmentInstanceId instanceId = new FragmentInstanceId(fragmentId, "inst-0");
     Mockito.when(mockDriver.getInfo()).thenReturn(instanceId);
-    Mockito.when(mockDriver.processFor(Mockito.any())).thenReturn(mockFuture);
+    Mockito.when(mockDriver.processFor(Mockito.any())).thenAnswer(ans -> mockFuture);
     Mockito.when(mockDriver.isFinished()).thenReturn(false);
     AbstractDriverThread executor =
         new DriverTaskThread("0", new ThreadGroup("timeout-test"), taskQueue, mockScheduler);

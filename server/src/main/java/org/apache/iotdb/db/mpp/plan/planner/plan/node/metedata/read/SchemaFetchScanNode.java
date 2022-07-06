@@ -26,11 +26,14 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
@@ -82,10 +85,26 @@ public class SchemaFetchScanNode extends SourceNode {
   }
 
   @Override
+  public String toString() {
+    return String.format(
+        "SchemaFetchScan-%s:[StorageGroup: %s, DataRegion: %s]",
+        this.getPlanNodeId(),
+        storageGroup,
+        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
+  }
+
+  @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SCHEMA_FETCH_SCAN.serialize(byteBuffer);
     storageGroup.serialize(byteBuffer);
     patternTree.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.SCHEMA_FETCH_SCAN.serialize(stream);
+    storageGroup.serialize(stream);
+    patternTree.serialize(stream);
   }
 
   public static SchemaFetchScanNode deserialize(ByteBuffer byteBuffer) {

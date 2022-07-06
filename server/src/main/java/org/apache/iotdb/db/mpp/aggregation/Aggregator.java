@@ -56,13 +56,14 @@ public class Aggregator {
   }
 
   // Used for SeriesAggregateScanOperator and RawDataAggregateOperator
-  public void processTsBlock(TsBlock tsBlock) {
+  public int processTsBlock(TsBlock tsBlock) {
     checkArgument(
         step.isInputRaw(),
         "Step in SeriesAggregateScanOperator and RawDataAggregateOperator can only process raw input");
     if (inputLocationList == null) {
-      accumulator.addInput(tsBlock.getTimeAndValueColumn(0), curTimeRange);
+      return accumulator.addInput(tsBlock.getTimeAndValueColumn(0), curTimeRange);
     } else {
+      int lastReadReadIndex = 0;
       for (InputLocation[] inputLocations : inputLocationList) {
         checkArgument(
             inputLocations[0].getTsBlockIndex() == 0,
@@ -70,8 +71,10 @@ public class Aggregator {
         Column[] timeValueColumn = new Column[2];
         timeValueColumn[0] = tsBlock.getTimeColumn();
         timeValueColumn[1] = tsBlock.getColumn(inputLocations[0].getValueColumnIndex());
-        accumulator.addInput(timeValueColumn, curTimeRange);
+        lastReadReadIndex =
+            Math.max(lastReadReadIndex, accumulator.addInput(timeValueColumn, curTimeRange));
       }
+      return lastReadReadIndex;
     }
   }
 

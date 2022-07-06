@@ -43,7 +43,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.ByteBuffer;
+import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -66,8 +66,8 @@ public class SchemaFetchScanOperatorTest {
     ISchemaRegion schemaRegion = prepareSchemaRegion();
 
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPath(new PartialPath("root.**.status"));
-    patternTree.appendPath(new PartialPath("root.**.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.**.status"));
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.constructTree();
 
     SchemaFetchScanOperator schemaFetchScanOperator =
@@ -80,7 +80,7 @@ public class SchemaFetchScanOperatorTest {
     Assert.assertFalse(schemaFetchScanOperator.hasNext());
 
     Binary binary = tsBlock.getColumn(0).getBinary(0);
-    SchemaTree schemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
+    SchemaTree schemaTree = SchemaTree.deserialize(new ByteArrayInputStream(binary.getValues()));
 
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(
@@ -101,9 +101,6 @@ public class SchemaFetchScanOperatorTest {
     Assert.assertEquals(
         Arrays.asList("root.sg.d1.s2", "root.sg.d2.a.s2", "root.sg.d2.s2"),
         pair.left.stream().map(MeasurementPath::getFullPath).collect(Collectors.toList()));
-    Assert.assertEquals(
-        Arrays.asList("0", "2", "1"),
-        pair.left.stream().map(MeasurementPath::getVersion).collect(Collectors.toList()));
   }
 
   private ISchemaRegion prepareSchemaRegion() throws Exception {
@@ -129,10 +126,10 @@ public class SchemaFetchScanOperatorTest {
 
     createTimeSeriesPlan.setAlias("status");
     createTimeSeriesPlan.setPath(new PartialPath("root.sg.d1.s2"));
-    schemaRegion.createTimeseries(createTimeSeriesPlan, -1, "0");
+    schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
 
     createTimeSeriesPlan.setPath(new PartialPath("root.sg.d2.s2"));
-    schemaRegion.createTimeseries(createTimeSeriesPlan, -1, "1");
+    schemaRegion.createTimeseries(createTimeSeriesPlan, -1);
 
     CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
         new CreateAlignedTimeSeriesPlan(
@@ -145,7 +142,7 @@ public class SchemaFetchScanOperatorTest {
             Collections.emptyList(),
             Collections.emptyList());
 
-    schemaRegion.createAlignedTimeSeries(createAlignedTimeSeriesPlan, Arrays.asList(null, "2"));
+    schemaRegion.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
 
     return schemaRegion;
   }

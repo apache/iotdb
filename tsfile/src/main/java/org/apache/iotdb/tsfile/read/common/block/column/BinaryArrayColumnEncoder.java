@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 public class BinaryArrayColumnEncoder implements ColumnEncoder {
 
   @Override
-  public void readColumn(ColumnBuilder columnBuilder, ByteBuffer input, int positionCount) {
+  public Column readColumn(ByteBuffer input, TSDataType dataType, int positionCount) {
     // Serialized data layout:
     //    +---------------+-----------------+-------------+
     //    | may have null | null indicators |   values    |
@@ -46,8 +46,8 @@ public class BinaryArrayColumnEncoder implements ColumnEncoder {
 
     boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
 
-    TSDataType dataType = columnBuilder.getDataType();
     if (TSDataType.TEXT.equals(dataType)) {
+      ColumnBuilder columnBuilder = new BinaryColumnBuilder(null, positionCount);
       for (int i = 0; i < positionCount; i++) {
         if (nullIndicators == null || !nullIndicators[i]) {
           int length = input.getInt();
@@ -58,6 +58,7 @@ public class BinaryArrayColumnEncoder implements ColumnEncoder {
           columnBuilder.appendNull();
         }
       }
+      return columnBuilder.build();
     } else {
       throw new IllegalArgumentException("Invalid data type: " + dataType);
     }

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.commons.utils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -66,6 +68,23 @@ public class BasicStructureSerDeUtil {
   }
 
   /**
+   * write string to byteBuffer.
+   *
+   * @return the length of string represented by byte[].
+   */
+  public static int write(String s, DataOutputStream stream) throws IOException {
+    if (s == null) {
+      return write(-1, stream);
+    }
+    int len = 0;
+    byte[] bytes = s.getBytes();
+    len += write(bytes.length, stream);
+    stream.write(bytes);
+    len += bytes.length;
+    return len;
+  }
+
+  /**
    * write a int n to byteBuffer.
    *
    * @return The number of bytes used to represent n.
@@ -76,10 +95,18 @@ public class BasicStructureSerDeUtil {
   }
 
   /**
+   * write a int n to dataOutputStream.
+   *
+   * @return The number of bytes used to represent n.
+   */
+  public static int write(int n, DataOutputStream stream) throws IOException {
+    stream.writeInt(n);
+    return INT_LEN;
+  }
+
+  /**
    * write a map to buffer
    *
-   * @param map Map<String, String>
-   * @param buffer
    * @return length
    */
   public static int write(Map<String, String> map, ByteBuffer buffer) {
@@ -107,11 +134,35 @@ public class BasicStructureSerDeUtil {
   }
 
   /**
-   * read map from buffer
+   * write a map to dataOutputStream
    *
-   * @param buffer ByteBuffer
-   * @return Map<String, String>
+   * @return length
    */
+  public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
+    if (map == null) {
+      return write(-1, stream);
+    }
+
+    int length = 0;
+    byte[] bytes;
+    stream.writeInt(map.size());
+    length += 4;
+    for (Map.Entry<String, String> entry : map.entrySet()) {
+      bytes = entry.getKey().getBytes();
+      stream.writeInt(bytes.length);
+      length += 4;
+      stream.write(bytes);
+      length += bytes.length;
+      bytes = entry.getValue().getBytes();
+      stream.writeInt(bytes.length);
+      length += 4;
+      stream.write(bytes);
+      length += bytes.length;
+    }
+    return length;
+  }
+
+  /** read map from buffer */
   public static Map<String, String> readMap(ByteBuffer buffer) {
     int length = readInt(buffer);
     if (length == -1) {
@@ -131,8 +182,6 @@ public class BasicStructureSerDeUtil {
   /**
    * write a string map to buffer
    *
-   * @param map Map<String, String>
-   * @param buffer
    * @return length
    */
   public static int writeStringMapLists(Map<String, List<String>> map, ByteBuffer buffer) {
@@ -159,12 +208,7 @@ public class BasicStructureSerDeUtil {
     return length;
   }
 
-  /**
-   * read string map from buffer
-   *
-   * @param buffer ByteBuffer
-   * @return Map<String, String>
-   */
+  /** read string map from buffer */
   public static Map<String, List<String>> readStringMapLists(ByteBuffer buffer) {
     int length = readInt(buffer);
     if (length == -1) {
@@ -189,8 +233,6 @@ public class BasicStructureSerDeUtil {
   /**
    * write a string map to buffer
    *
-   * @param map Map<String, String>
-   * @param buffer
    * @return length
    */
   public static int writeIntMapLists(Map<Integer, List<Integer>> map, ByteBuffer buffer) {
@@ -203,22 +245,12 @@ public class BasicStructureSerDeUtil {
     for (Map.Entry<Integer, List<Integer>> entry : map.entrySet()) {
       buffer.putInt(entry.getKey());
       buffer.putInt(entry.getValue().size());
-      entry
-          .getValue()
-          .forEach(
-              b -> {
-                buffer.putInt(b);
-              });
+      entry.getValue().forEach(buffer::putInt);
     }
     return length;
   }
 
-  /**
-   * read string map from buffer
-   *
-   * @param buffer ByteBuffer
-   * @return Map<String, String>
-   */
+  /** read string map from buffer */
   public static Map<Integer, List<Integer>> readIntMapLists(ByteBuffer buffer) {
     int length = readInt(buffer);
     if (length == -1) {

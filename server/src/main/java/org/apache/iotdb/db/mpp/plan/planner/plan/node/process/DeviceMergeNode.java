@@ -26,6 +26,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -106,6 +108,17 @@ public class DeviceMergeNode extends MultiChildNode {
     ReadWriteIOUtils.write(devices.size(), byteBuffer);
     for (String deviceName : devices) {
       ReadWriteIOUtils.write(deviceName, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DEVICE_MERGE.serialize(stream);
+    ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), stream);
+    ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), stream);
+    ReadWriteIOUtils.write(devices.size(), stream);
+    for (String deviceName : devices) {
+      ReadWriteIOUtils.write(deviceName, stream);
     }
   }
 

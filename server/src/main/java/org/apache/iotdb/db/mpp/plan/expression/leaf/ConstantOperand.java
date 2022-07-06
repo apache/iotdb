@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -167,5 +168,11 @@ public class ConstantOperand extends LeafOperand {
   protected void serialize(ByteBuffer byteBuffer) {
     dataType.serializeTo(byteBuffer);
     ReadWriteIOUtils.write(valueString, byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    dataType.serializeTo(stream);
+    ReadWriteIOUtils.write(valueString, stream);
   }
 }

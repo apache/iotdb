@@ -18,19 +18,24 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
-/** All the interfaces that provided by HeartbeatCache */
+import org.apache.iotdb.commons.cluster.NodeStatus;
+
+/** All the statistic interfaces that provided by HeartbeatCache */
 public interface IHeartbeatStatistic {
 
   /**
-   * Cache the newest HeartbeatData of the specific DataNode
+   * Cache the newest HeartbeatPackage
    *
-   * @param dataNodeId The specific DataNodeId
    * @param newHeartbeat The newest HeartbeatData
    */
-  void cacheHeartBeat(int dataNodeId, HeartbeatPackage newHeartbeat);
+  void cacheHeartBeat(HeartbeatPackage newHeartbeat);
 
-  // TODO: Interfaces for statistics
+  /** Invoking periodically to update node load statistics */
+  void updateLoadStatistic();
 
-  /** Only use this interface when current ConfigNode is not the leader */
-  void discardAllCache();
+  /** @return The latest load score of a node, the higher the score the higher the load */
+  float getLoadScore();
+
+  /** @return The latest status of a node for showing cluster */
+  NodeStatus getNodeStatus();
 }

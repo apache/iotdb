@@ -92,7 +92,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     this.aggregations = alignByDevicePlan.getAggregations();
     this.queryRouter = queryRouter;
     this.context = context;
-    this.deviceIterator = alignByDevicePlan.getDeviceToPathIndex().keySet().iterator();
+    this.deviceIterator =
+        alignByDevicePlan.getDeviceToPathIndex().keySet().stream().sorted().iterator();
     this.deviceToPathIndex = alignByDevicePlan.getDeviceToPathIndex();
     this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
 

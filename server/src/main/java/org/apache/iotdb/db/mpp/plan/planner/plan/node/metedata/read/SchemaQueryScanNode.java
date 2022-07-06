@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 
@@ -123,6 +124,13 @@ public abstract class SchemaQueryScanNode extends SourceNode {
 
   public void setHasLimit(boolean hasLimit) {
     this.hasLimit = hasLimit;
+  }
+
+  @Override
+  public String toString() {
+    return String.format(
+        "SchemaQueryScan-%s:[Path: %s, DataRegion: %s]",
+        this.getPlanNodeId(), path, PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
   }
 
   @Override

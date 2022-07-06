@@ -74,6 +74,10 @@ public class TimeColumn implements Column {
     return values[position + arrayOffset];
   }
 
+  public long getLongWithoutCheck(int position) {
+    return values[position + arrayOffset];
+  }
+
   @Override
   public Object getObject(int position) {
     return getLong(position);
