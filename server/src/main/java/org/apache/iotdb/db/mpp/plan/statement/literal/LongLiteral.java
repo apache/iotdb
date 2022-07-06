@@ -57,8 +57,14 @@ public class LongLiteral extends Literal {
 
   @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
+    if (dataType == TSDataType.INT32) {
+      try {
+        Math.toIntExact(value);
+      } catch (ArithmeticException e) {
+        return false;
+      }
+    }
     return dataType == TSDataType.INT32
-        || dataType == TSDataType.INT64
         || dataType == TSDataType.FLOAT
         || dataType == TSDataType.DOUBLE
         || dataType == TSDataType.TEXT;
