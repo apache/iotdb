@@ -53,12 +53,9 @@ public class MergeNewSeriesTest extends MergeTest {
 
   @Override
   public void setUp() throws IOException, WriteProcessException, MetadataException {
-    measurementNum = 3;
     deviceNum = 2;
     seqFileNum = 2;
-    // unseq files are manually prepared because they will have new time series
     unseqFileNum = 0;
-    super.setUp();
   }
 
   @Override
@@ -87,6 +84,8 @@ public class MergeNewSeriesTest extends MergeTest {
 
   @Test
   public void testFullMerge() throws Exception {
+    measurementNum = 1;
+    super.setUp();
     MergeTask mergeTask =
         new MergeTask(
             new MergeResource(seqResources, unseqResources),
@@ -132,6 +131,8 @@ public class MergeNewSeriesTest extends MergeTest {
    */
   @Test
   public void testNewSeriesInUnseqFiles() throws Exception {
+    measurementNum = 3;
+    super.setUp();
     List<TsFileResource> seqTsFileResources = new ArrayList<>();
     List<TsFileResource> unseqTsFileResources = new ArrayList<>();
     TsFileResource seq1 = prepareResource(0);
