@@ -60,6 +60,9 @@ public class NodePathsConvertOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     TsBlock block = child.next();
+    if (block == null || block.isEmpty()) {
+      return null;
+    }
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(HeaderConstant.showChildNodesHeader.getRespDataTypes());
 

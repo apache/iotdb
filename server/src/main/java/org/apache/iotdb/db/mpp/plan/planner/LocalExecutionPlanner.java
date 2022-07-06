@@ -59,16 +59,18 @@ import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.UpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.BinaryConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.BooleanConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.DoubleConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.FloatConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.IntConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.LongConstantFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.identity.IdentityFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.identity.IdentityLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.DoubleLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.FloatLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.IntLinearFill;
-import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LongLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.BinaryPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.BooleanPreviousFill;
@@ -180,6 +182,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFilter;
 import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
 
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -187,7 +190,6 @@ import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode
  * run a fragment instance parallel and take full advantage of multi-cores
  */
 public class LocalExecutionPlanner {
-
   private static final MPPDataExchangeManager MPP_DATA_EXCHANGE_MANAGER =
       MPPDataExchangeService.getInstance().getMPPDataExchangeManager();
 
@@ -197,6 +199,10 @@ public class LocalExecutionPlanner {
   private static final TimeComparator ASC_TIME_COMPARATOR = new AscTimeComparator();
 
   private static final TimeComparator DESC_TIME_COMPARATOR = new DescTimeComparator();
+
+  private static final IdentityFill IDENTITY_FILL = new IdentityFill();
+
+  private static final IdentityLinearFill IDENTITY_LINEAR_FILL = new IdentityLinearFill();
 
   public static LocalExecutionPlanner getInstance() {
     return InstanceHolder.INSTANCE;
@@ -665,8 +671,7 @@ public class LocalExecutionPlanner {
                   context.getNextOperatorId(),
                   node.getPlanNodeId(),
                   LinearFillOperator.class.getSimpleName()),
-              getLinearFill(
-                  inputColumns, inputDataTypes, node.getScanOrder() == OrderBy.TIMESTAMP_ASC),
+              getLinearFill(inputColumns, inputDataTypes),
               child);
         default:
           throw new IllegalArgumentException("Unknown fill policy: " + fillPolicy);
@@ -677,6 +682,10 @@ public class LocalExecutionPlanner {
         int inputColumns, List<TSDataType> inputDataTypes, Literal literal) {
       IFill[] constantFill = new IFill[inputColumns];
       for (int i = 0; i < inputColumns; i++) {
+        if (!literal.isDataTypeConsistency(inputDataTypes.get(i))) {
+          constantFill[i] = IDENTITY_FILL;
+          continue;
+        }
         switch (inputDataTypes.get(i)) {
           case BOOLEAN:
             constantFill[i] = new BooleanConstantFill(literal.getBoolean());
@@ -732,28 +741,26 @@ public class LocalExecutionPlanner {
       return previousFill;
     }
 
-    private LinearFill[] getLinearFill(
-        int inputColumns, List<TSDataType> inputDataTypes, boolean ascending) {
-      LinearFill[] linearFill = new LinearFill[inputColumns];
-      TimeComparator timeComparator = ascending ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
+    private ILinearFill[] getLinearFill(int inputColumns, List<TSDataType> inputDataTypes) {
+      ILinearFill[] linearFill = new ILinearFill[inputColumns];
       for (int i = 0; i < inputColumns; i++) {
         switch (inputDataTypes.get(i)) {
           case INT32:
-            linearFill[i] = new IntLinearFill(ascending, timeComparator);
+            linearFill[i] = new IntLinearFill();
             break;
           case INT64:
-            linearFill[i] = new LongLinearFill(ascending, timeComparator);
+            linearFill[i] = new LongLinearFill();
             break;
           case FLOAT:
-            linearFill[i] = new FloatLinearFill(ascending, timeComparator);
+            linearFill[i] = new FloatLinearFill();
             break;
           case DOUBLE:
-            linearFill[i] = new DoubleLinearFill(ascending, timeComparator);
+            linearFill[i] = new DoubleLinearFill();
             break;
           case BOOLEAN:
           case TEXT:
-            throw new UnsupportedOperationException(
-                "DataType: " + inputDataTypes.get(i) + " doesn't support linear fill.");
+            linearFill[i] = IDENTITY_LINEAR_FILL;
+            break;
           default:
             throw new IllegalArgumentException("Unknown data type: " + inputDataTypes.get(i));
         }

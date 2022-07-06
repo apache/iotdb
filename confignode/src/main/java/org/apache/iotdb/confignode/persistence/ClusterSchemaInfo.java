@@ -152,7 +152,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock.readLock().lock();
     try {
       PartialPath patternPath = new PartialPath(plan.getStorageGroupPattern());
-      result.setCount(mTree.getBelongedStorageGroups(patternPath).size());
+      result.setCount(mTree.getStorageGroupNum(patternPath, false));
       result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
     } catch (MetadataException e) {
       LOGGER.error("Error StorageGroup name", e);
@@ -172,7 +172,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
       PartialPath patternPath = new PartialPath(plan.getStorageGroupPattern());
-      List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
+      List<PartialPath> matchedPaths = mTree.getMatchedStorageGroups(patternPath, false);
       for (PartialPath path : matchedPaths) {
         schemaMap.put(
             path.getFullPath(),

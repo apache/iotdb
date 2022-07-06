@@ -142,52 +142,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- If the test starts separate processes, we can set maximum-heap and new-heap size -->
-            <plugin>
-                <groupId>com.google.code.maven-replacer-plugin</groupId>
-                <artifactId>replacer</artifactId>
-                <version>1.5.3</version>
-                <configuration>
-                    <skip>${integrationTest.launchNodeInSameJVM}</skip>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>replace</goal>
-                        </goals>
-                        <configuration>
-                            <basedir>${project.build.directory}/template-node</basedir>
-                            <regex>true</regex>
-                            <commentsEnabled>false</commentsEnabled>
-                            <includes>
-                                <include>datanode/conf/datanode-env.sh</include>
-                                <include>confignode/conf/confignode-env.sh</include>
-                                <include>datanode/conf/datanode-env.bat</include>
-                                <include>confignode/conf/confignode-env.bat</include>
-                            </includes>
-                            <replacements>
-                                <replacement>
-                                    <token>#HEAP_NEWSIZE=.*</token>
-                                    <value>HEAP_NEWSIZE="${integrationTest.nodeNewHeapSize}"</value>
-                                </replacement>
-                                <replacement>
-                                    <token>#MAX_HEAP_SIZE=.*</token>
-                                    <value>MAX_HEAP_SIZE="${integrationTest.nodeMaxHeapSize}"</value>
-                                </replacement>
-                                <replacement>
-                                    <token>@REM set HEAP_NEWSIZE.*</token>
-                                    <value>set HEAP_NEWSIZE="${integrationTest.nodeNewHeapSize}"</value>
-                                </replacement>
-                                <replacement>
-                                    <token>@REM set MAX_HEAP_SIZE=.*</token>
-                                    <value>set MAX_HEAP_SIZE="${integrationTest.nodeMaxHeapSize}"</value>
-                                </replacement>
-                            </replacements>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <!-- Run integration tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
