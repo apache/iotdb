@@ -111,7 +111,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
       targetTsFileResource =
           TsFileNameGenerator.getInnerCompactionTargetFileResource(
               selectedTsFileResourceList, sequence);
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOGGER.error("Failed to get target file for {}", selectedTsFileResourceList, e);
       return;
     }

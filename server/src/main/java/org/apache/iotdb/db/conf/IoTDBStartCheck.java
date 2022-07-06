@@ -114,6 +114,8 @@ public class IoTDBStartCheck {
   private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
+  private boolean upgradeFromOldVersion = false;
+
   public static IoTDBStartCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
@@ -237,6 +239,7 @@ public class IoTDBStartCheck {
       logger.error("IoTDB version is too old, please upgrade to 0.12 firstly.");
       System.exit(-1);
     } else if (versionString.startsWith("0.12") || versionString.startsWith("0.13")) {
+      upgradeFromOldVersion = true;
       checkWALNotExists();
       upgradePropertiesFile();
       MetadataUpgrader.upgrade();
@@ -473,5 +476,9 @@ public class IoTDBStartCheck {
 
     logger.error("Unexpected consensus group type");
     return false;
+  }
+
+  public boolean isUpgradeFromOldVersion() {
+    return upgradeFromOldVersion;
   }
 }
