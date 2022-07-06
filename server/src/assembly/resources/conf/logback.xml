@@ -125,7 +125,7 @@
             <charset>utf-8</charset>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>DEBUG</level>
+            <level>${CONSOLE_LOG_LEVEL:-DEBUG}</level>
         </filter>
     </appender>
     <!-- a log appender that collect all log records whose level is greater than debug-->

@@ -225,8 +225,9 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
-    task.call();
+            new AtomicInteger(0),
+            0);
+    task.start();
 
     for (TsFileResource resource : seqResources) {
       resource.resetModFile();
@@ -456,8 +457,9 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
-    task.call();
+            new AtomicInteger(0),
+            0);
+    task.start();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getModFile().exists());
@@ -602,7 +604,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data in source file during compaction
@@ -637,7 +640,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
       Assert.assertTrue(resource.getModFile().exists());
       Assert.assertEquals(2, resource.getModFile().getModifications().size());
     }
-    task.call();
+    task.start();
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.getModFile().exists());
@@ -708,7 +711,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data in source file during compaction
@@ -755,7 +759,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
       Assert.assertTrue(resource.getModFile().exists());
       Assert.assertEquals(3, resource.getModFile().getModifications().size());
     }
-    task.call();
+    task.start();
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.getModFile().exists());

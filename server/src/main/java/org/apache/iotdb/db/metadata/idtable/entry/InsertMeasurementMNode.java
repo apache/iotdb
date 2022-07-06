@@ -29,6 +29,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -95,16 +96,6 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
 
   @Override
   public void setLastCacheContainer(ILastCacheContainer lastCacheContainer) {}
-
-  @Override
-  public String getVersion() {
-    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
-  }
-
-  @Override
-  public void setVersion(String version) {
-    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
-  }
 
   @Override
   public IMeasurementSchema getSchema() {
@@ -271,6 +262,11 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
 
   @Override
   public void setCacheEntry(CacheEntry cacheEntry) {}
+
+  @Override
+  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
+  }
 
   @Override
   public MeasurementPath getMeasurementPath() {

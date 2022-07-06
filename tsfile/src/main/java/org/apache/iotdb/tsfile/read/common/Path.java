@@ -26,6 +26,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
@@ -175,14 +177,25 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.put((byte) 3); // org.apache.iotdb.db.metadata.path#PathType
+    ReadWriteIOUtils.write((byte) 3, byteBuffer); // org.apache.iotdb.db.metadata.path#PathType
     serializeWithoutType(byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write((byte) 3, stream); // org.apache.iotdb.db.metadata.path#PathType
+    serializeWithoutType(stream);
   }
 
   protected void serializeWithoutType(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(measurement, byteBuffer);
     ReadWriteIOUtils.write(device, byteBuffer);
     ReadWriteIOUtils.write(fullPath, byteBuffer);
+  }
+
+  protected void serializeWithoutType(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(measurement, stream);
+    ReadWriteIOUtils.write(device, stream);
+    ReadWriteIOUtils.write(fullPath, stream);
   }
 
   public static Path deserialize(ByteBuffer byteBuffer) {

@@ -287,7 +287,7 @@ IoTDB> SHOW PIPESERVER STATUS
 
 ##### **Receiver**
 
-- `vi conf/iotdb-engine.properties`  to config the parameters，set the IP white list to 192.168.0.1/1 to receive and only receive data from sender.
+- `vi conf/iotdb-datanode.properties`  to config the parameters，set the IP white list to 192.168.0.1/1 to receive and only receive data from sender.
 
 ```
 ####################
@@ -420,7 +420,7 @@ It costs 0.134s
   ```
 
   - Cause by: The receiver is not started or the receiver cannot be connected.
-  - Solution: Execute `SHOW PIPESERVER` on the receiver side to check if the receiver side is started, if not use `START PIPESERVER` to start; check if the whitelist in `iotdb-engine.properties` on the receiver side contains the sender ip.
+  - Solution: Execute `SHOW PIPESERVER` on the receiver side to check if the receiver side is started, if not use `START PIPESERVER` to start; check if the whitelist in `iotdb-datanode.properties` on the receiver side contains the sender ip.
 
 - Execute 
 

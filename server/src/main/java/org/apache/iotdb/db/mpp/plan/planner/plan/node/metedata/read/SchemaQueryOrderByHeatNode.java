@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 
-import com.google.common.collect.ImmutableList;
-
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
@@ -35,32 +36,14 @@ public class SchemaQueryOrderByHeatNode extends MultiChildNode {
     super(id);
   }
 
-  /** show timeseries */
-  private PlanNode left;
-
-  /** last point */
-  private PlanNode right;
-
-  public PlanNode getLeft() {
-    return left;
-  }
-
-  public PlanNode getRight() {
-    return right;
-  }
-
   @Override
   public List<PlanNode> getChildren() {
-    return ImmutableList.of(left, right);
+    return children;
   }
 
   @Override
   public void addChild(PlanNode child) {
-    if (child instanceof SchemaQueryMergeNode) {
-      left = child;
-    } else {
-      right = child;
-    }
+    children.add(child);
   }
 
   @Override
@@ -75,7 +58,13 @@ public class SchemaQueryOrderByHeatNode extends MultiChildNode {
 
   @Override
   public List<String> getOutputColumnNames() {
-    return left.getOutputColumnNames();
+    for (PlanNode child : children) {
+      if (child.getOutputColumnNames().size()
+          == HeaderConstant.showTimeSeriesHeader.getOutputValueColumnCount() + 1) {
+        return child.getOutputColumnNames();
+      }
+    }
+    return children.get(0).getOutputColumnNames();
   }
 
   @Override
@@ -86,6 +75,11 @@ public class SchemaQueryOrderByHeatNode extends MultiChildNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.SCHEMA_QUERY_ORDER_BY_HEAT.serialize(byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.SCHEMA_QUERY_ORDER_BY_HEAT.serialize(stream);
   }
 
   public static SchemaQueryOrderByHeatNode deserialize(ByteBuffer byteBuffer) {

@@ -33,6 +33,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -116,6 +118,17 @@ public class DeleteDataNode extends WritePlanNode {
     }
     ReadWriteIOUtils.write(deleteStartTime, byteBuffer);
     ReadWriteIOUtils.write(deleteEndTime, byteBuffer);
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.DELETE_DATA.serialize(stream);
+    ReadWriteIOUtils.write(pathList.size(), stream);
+    for (PartialPath path : pathList) {
+      path.serialize(stream);
+    }
+    ReadWriteIOUtils.write(deleteStartTime, stream);
+    ReadWriteIOUtils.write(deleteEndTime, stream);
   }
 
   public static DeleteDataNode deserialize(ByteBuffer byteBuffer) {

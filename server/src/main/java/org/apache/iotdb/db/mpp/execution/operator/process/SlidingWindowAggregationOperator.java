@@ -52,6 +52,8 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
   private final List<SlidingWindowAggregator> aggregators;
 
   private final ITimeRangeIterator timeRangeIterator;
+  // current interval of aggregation window [curStartTime, curEndTime)
+  private TimeRange curTimeRange;
 
   private final boolean ascending;
 
@@ -81,38 +83,60 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return timeRangeIterator.hasNextTimeRange();
+    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
   }
 
   @Override
   public TsBlock next() {
-    // 1. Clear previous aggregation result
-    TimeRange curTimeRange = timeRangeIterator.nextTimeRange();
-    for (SlidingWindowAggregator aggregator : aggregators) {
-      aggregator.updateTimeRange(curTimeRange);
+    // Move to next timeRange
+    if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
+      curTimeRange = timeRangeIterator.nextTimeRange();
+      for (Aggregator aggregator : aggregators) {
+        aggregator.updateTimeRange(curTimeRange);
+      }
     }
 
-    // 2. Calculate aggregation result based on current time window
+    // 1. Calculate aggregation result based on current time window
+    boolean canCallNext = true;
     while (!calcFromTsBlock(cachedTsBlock, curTimeRange)) {
-      if (child.hasNext()) {
+      cachedTsBlock = null;
+      // child.next can only be invoked once
+      if (child.hasNext() && canCallNext) {
         cachedTsBlock = child.next();
+        canCallNext = false;
+        // if child still has next but can't be invoked now
+      } else if (child.hasNext()) {
+        return null;
       } else {
-        cachedTsBlock = null;
         break;
       }
     }
 
-    // 3. Update result using aggregators
+    // 2. Update result using aggregators
+    curTimeRange = null;
     return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
   }
 
   private boolean calcFromTsBlock(TsBlock inputTsBlock, TimeRange timeRange) {
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return false;
+    }
     // check if the batchData does not contain points in current interval
-    if (inputTsBlock != null && satisfied(inputTsBlock, timeRange, ascending)) {
+    if (satisfied(inputTsBlock, timeRange, ascending)) {
       // skip points that cannot be calculated
-      inputTsBlock = skipOutOfTimeRangePoints(inputTsBlock, timeRange, ascending);
+      if ((ascending && inputTsBlock.getStartTime() < timeRange.getMin())
+          || (!ascending && inputTsBlock.getStartTime() > timeRange.getMax())) {
+        inputTsBlock = skipOutOfTimeRangePoints(inputTsBlock, timeRange, ascending);
+      }
+
+      int lastReadRowIndex = 0;
       for (SlidingWindowAggregator aggregator : aggregators) {
-        aggregator.processTsBlock(inputTsBlock);
+        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+      }
+      if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+        inputTsBlock = null;
+      } else {
+        inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
       }
     }
     // The result is calculated from the cache
@@ -128,7 +152,7 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return child.isBlocked();
   }
 

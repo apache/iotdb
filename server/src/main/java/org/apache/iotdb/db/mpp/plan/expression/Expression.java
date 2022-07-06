@@ -41,7 +41,9 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
+import org.apache.iotdb.db.mpp.plan.expression.unary.IsNullExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
@@ -56,6 +58,7 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -296,6 +299,17 @@ public abstract class Expression {
     }
   }
 
+  public static void serialize(Expression expression, DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(expression.getExpressionType().getExpressionTypeInShortEnum(), stream);
+
+    expression.serialize(stream);
+
+    ReadWriteIOUtils.write(expression.inputColumnIndex != null, stream);
+    if (expression.inputColumnIndex != null) {
+      ReadWriteIOUtils.write(expression.inputColumnIndex, stream);
+    }
+  }
+
   public static Expression deserialize(ByteBuffer byteBuffer) {
     short type = ReadWriteIOUtils.readShort(byteBuffer);
 
@@ -365,14 +379,22 @@ public abstract class Expression {
         break;
 
       case 15:
-        expression = new InExpression(byteBuffer);
+        expression = new IsNullExpression(byteBuffer);
         break;
 
       case 16:
-        expression = new LogicAndExpression(byteBuffer);
+        expression = new BetweenExpression(byteBuffer);
         break;
 
       case 17:
+        expression = new InExpression(byteBuffer);
+        break;
+
+      case 18:
+        expression = new LogicAndExpression(byteBuffer);
+        break;
+
+      case 19:
         expression = new LogicOrExpression(byteBuffer);
         break;
 
@@ -391,4 +413,6 @@ public abstract class Expression {
   public abstract ExpressionType getExpressionType();
 
   protected abstract void serialize(ByteBuffer byteBuffer);
+
+  protected abstract void serialize(DataOutputStream stream) throws IOException;
 }

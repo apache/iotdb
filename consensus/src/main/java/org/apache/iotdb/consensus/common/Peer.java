@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 
+import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -45,10 +46,10 @@ public class Peer {
     return endpoint;
   }
 
-  public void serialize(ByteBuffer buffer) {
+  public void serialize(DataOutputStream stream) {
     ThriftCommonsSerDeUtils.serializeTConsensusGroupId(
-        groupId.convertToTConsensusGroupId(), buffer);
-    ThriftCommonsSerDeUtils.serializeTEndPoint(endpoint, buffer);
+        groupId.convertToTConsensusGroupId(), stream);
+    ThriftCommonsSerDeUtils.serializeTEndPoint(endpoint, stream);
   }
 
   public static Peer deserialize(ByteBuffer buffer) {

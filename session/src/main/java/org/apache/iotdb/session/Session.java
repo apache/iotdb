@@ -127,7 +127,6 @@ public class Session {
 
   // Cluster version cache
   protected boolean enableCacheLeader;
-  protected SessionConnection metaSessionConnection;
   protected volatile Map<String, TEndPoint> deviceIdToEndpoint;
   protected volatile Map<TEndPoint, SessionConnection> endPointToSessionConnection;
 
@@ -402,7 +401,6 @@ public class Session {
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     defaultSessionConnection = constructSessionConnection(this, defaultEndPoint, zoneId);
     defaultSessionConnection.setEnableRedirect(enableQueryRedirection);
-    metaSessionConnection = defaultSessionConnection;
     isClosed = false;
     if (enableCacheLeader || enableQueryRedirection) {
       deviceIdToEndpoint = new ConcurrentHashMap<>();
@@ -447,29 +445,17 @@ public class Session {
 
   public void setStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    try {
-      metaSessionConnection.setStorageGroup(storageGroup);
-    } catch (RedirectException e) {
-      handleMetaRedirection(storageGroup, e);
-    }
+    defaultSessionConnection.setStorageGroup(storageGroup);
   }
 
   public void deleteStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    try {
-      metaSessionConnection.deleteStorageGroups(Collections.singletonList(storageGroup));
-    } catch (RedirectException e) {
-      handleMetaRedirection(storageGroup, e);
-    }
+    defaultSessionConnection.deleteStorageGroups(Collections.singletonList(storageGroup));
   }
 
   public void deleteStorageGroups(List<String> storageGroups)
       throws IoTDBConnectionException, StatementExecutionException {
-    try {
-      metaSessionConnection.deleteStorageGroups(storageGroups);
-    } catch (RedirectException e) {
-      handleMetaRedirection(storageGroups.toString(), e);
-    }
+    defaultSessionConnection.deleteStorageGroups(storageGroups);
   }
 
   public void createTimeseries(
@@ -871,29 +857,6 @@ public class Session {
           it.remove();
         }
       }
-    }
-  }
-
-  private void handleMetaRedirection(String storageGroup, RedirectException e)
-      throws IoTDBConnectionException {
-    if (enableCacheLeader) {
-      logger.debug("storageGroup[{}]:{}", storageGroup, e.getMessage());
-      AtomicReference<IoTDBConnectionException> exceptionReference = new AtomicReference<>();
-      SessionConnection connection =
-          endPointToSessionConnection.computeIfAbsent(
-              e.getEndPoint(),
-              k -> {
-                try {
-                  return constructSessionConnection(this, e.getEndPoint(), zoneId);
-                } catch (IoTDBConnectionException ex) {
-                  exceptionReference.set(ex);
-                  return null;
-                }
-              });
-      if (connection == null) {
-        throw new IoTDBConnectionException(exceptionReference.get());
-      }
-      metaSessionConnection = connection;
     }
   }
 

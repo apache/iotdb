@@ -491,8 +491,8 @@ public class LogicalPlannerTest {
       Assert.assertFalse(showTimeSeriesNode.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode.getKey());
       Assert.assertEquals("tagV", showTimeSeriesNode.getValue());
-      Assert.assertEquals(20, showTimeSeriesNode.getLimit());
-      Assert.assertEquals(10, showTimeSeriesNode.getOffset());
+      Assert.assertEquals(30, showTimeSeriesNode.getLimit());
+      Assert.assertEquals(0, showTimeSeriesNode.getOffset());
       Assert.assertTrue(showTimeSeriesNode.isHasLimit());
 
       // test serialize and deserialize
@@ -509,8 +509,8 @@ public class LogicalPlannerTest {
       Assert.assertFalse(showTimeSeriesNode2.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode2.getKey());
       Assert.assertEquals("tagV", showTimeSeriesNode2.getValue());
-      Assert.assertEquals(20, showTimeSeriesNode2.getLimit());
-      Assert.assertEquals(10, showTimeSeriesNode2.getOffset());
+      Assert.assertEquals(30, showTimeSeriesNode2.getLimit());
+      Assert.assertEquals(0, showTimeSeriesNode2.getOffset());
       Assert.assertTrue(showTimeSeriesNode2.isHasLimit());
     } catch (Exception e) {
       e.printStackTrace();
@@ -530,8 +530,8 @@ public class LogicalPlannerTest {
       Assert.assertNotNull(showDevicesNode);
       Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode.getPath());
       Assert.assertTrue(showDevicesNode.isHasSgCol());
-      Assert.assertEquals(20, showDevicesNode.getLimit());
-      Assert.assertEquals(10, showDevicesNode.getOffset());
+      Assert.assertEquals(30, showDevicesNode.getLimit());
+      Assert.assertEquals(0, showDevicesNode.getOffset());
       Assert.assertTrue(showDevicesNode.isHasLimit());
 
       // test serialize and deserialize
@@ -542,8 +542,8 @@ public class LogicalPlannerTest {
           (DevicesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertNotNull(showDevicesNode2);
       Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode2.getPath());
-      Assert.assertEquals(20, showDevicesNode2.getLimit());
-      Assert.assertEquals(10, showDevicesNode2.getOffset());
+      Assert.assertEquals(30, showDevicesNode2.getLimit());
+      Assert.assertEquals(0, showDevicesNode2.getOffset());
       Assert.assertTrue(showDevicesNode2.isHasLimit());
     } catch (Exception e) {
       e.printStackTrace();

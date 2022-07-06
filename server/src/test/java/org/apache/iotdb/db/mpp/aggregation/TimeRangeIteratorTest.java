@@ -28,6 +28,8 @@ import org.junit.Test;
 
 public class TimeRangeIteratorTest {
 
+  private static final long MS_TO_MONTH = 30 * 86400_000L;
+
   @Test
   public void testNotSplitTimeRange() {
     String[] res = {
@@ -260,27 +262,35 @@ public class TimeRangeIteratorTest {
     };
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, 1, 1, true, true, true, true, false),
+            1604102400000L,
+            1617148800000L,
+            MS_TO_MONTH,
+            MS_TO_MONTH,
+            true,
+            true,
+            true,
+            true,
+            false),
         res1);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, 1, 1, true, true, true, true, true),
+            1604102400000L, 1617148800000L, MS_TO_MONTH, MS_TO_MONTH, true, true, true, true, true),
         res1);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, 864000000, 1, true, false, true, true, false),
+            1604102400000L, 1617148800000L, 864000000, MS_TO_MONTH, true, false, true, true, false),
         res2);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, 864000000, 1, true, false, true, true, true),
+            1604102400000L, 1617148800000L, 864000000, MS_TO_MONTH, true, false, true, true, true),
         res2);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, 1, 864000000, true, true, false, true, false),
+            1604102400000L, 1617148800000L, MS_TO_MONTH, 864000000, true, true, false, true, false),
         res3);
     checkRes(
         TimeRangeIteratorFactory.getTimeRangeIterator(
-            1604102400000L, 1617148800000L, 1, 864000000, true, true, false, true, true),
+            1604102400000L, 1617148800000L, MS_TO_MONTH, 864000000, true, true, false, true, true),
         res4);
   }
 

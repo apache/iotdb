@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.consensus;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
@@ -42,15 +41,13 @@ public class ConsensusFactory {
   private static final Logger logger = LoggerFactory.getLogger(ConsensusFactory.class);
 
   public static Optional<IConsensus> getConsensusImpl(
-      String className, TEndPoint endpoint, File storageDir, IStateMachine.Registry registry) {
+      String className, ConsensusConfig config, IStateMachine.Registry registry) {
     try {
       Class<?> executor = Class.forName(className);
       Constructor<?> executorConstructor =
-          executor.getDeclaredConstructor(
-              TEndPoint.class, File.class, IStateMachine.Registry.class);
+          executor.getDeclaredConstructor(ConsensusConfig.class, IStateMachine.Registry.class);
       executorConstructor.setAccessible(true);
-      return Optional.of(
-          (IConsensus) executorConstructor.newInstance(endpoint, storageDir, registry));
+      return Optional.of((IConsensus) executorConstructor.newInstance(config, registry));
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InstantiationException

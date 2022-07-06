@@ -27,16 +27,16 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.thrift.ProcessorWithMetrics;
 import org.apache.iotdb.db.service.thrift.handler.RPCServiceThriftHandler;
-import org.apache.iotdb.db.service.thrift.impl.TSIEventHandler;
+import org.apache.iotdb.db.service.thrift.impl.IClientRPCServiceWithHandler;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService.Processor;
 
 import java.lang.reflect.InvocationTargetException;
 
 /** A service to handle jdbc request from client. */
 public class RPCService extends ThriftService implements RPCServiceMBean {
 
-  private TSIEventHandler impl;
+  private IClientRPCServiceWithHandler impl;
 
   public static RPCService getInstance() {
     return RPCServiceHolder.INSTANCE;
@@ -47,7 +47,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
       throws ClassNotFoundException, IllegalAccessException, InstantiationException,
           NoSuchMethodException, InvocationTargetException {
     impl =
-        (TSIEventHandler)
+        (IClientRPCServiceWithHandler)
             Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
                 .getDeclaredConstructor()
                 .newInstance();

@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.rpc.ConfigNodeConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -104,8 +103,7 @@ public class AuthorityChecker {
    * @return if permission-check is passed
    */
   public static boolean checkPermission(
-      String username, List<? extends PartialPath> paths, StatementType type, String targetUser)
-      throws AuthException, ConfigNodeConnectionException {
+      String username, List<? extends PartialPath> paths, StatementType type, String targetUser) {
     if (SUPER_USER.equals(username)) {
       return true;
     }
@@ -128,7 +126,7 @@ public class AuthorityChecker {
       allPath.add(AuthUtils.ROOT_PATH_PRIVILEGE);
     }
 
-    TSStatus status = authorizerManager.checkPermissionCache(username, allPath, permission);
+    TSStatus status = authorizerManager.checkPath(username, allPath, permission);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return true;
     } else {
@@ -170,7 +168,7 @@ public class AuthorityChecker {
 
   /** Check whether specific user has the authorization to given plan. */
   public static boolean checkAuthorization(Statement statement, String username)
-      throws AuthException, ConfigNodeConnectionException {
+      throws AuthException {
     if (!statement.isAuthenticationRequired()) {
       return true;
     }

@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.standalone;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.IStateMachine.Registry;
@@ -29,6 +30,7 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
@@ -42,7 +44,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,9 +65,9 @@ class StandAloneConsensus implements IConsensus {
   private final Map<ConsensusGroupId, StandAloneServerImpl> stateMachineMap =
       new ConcurrentHashMap<>();
 
-  public StandAloneConsensus(TEndPoint thisNode, File storageDir, Registry registry) {
-    this.thisNode = thisNode;
-    this.storageDir = storageDir;
+  public StandAloneConsensus(ConsensusConfig config, Registry registry) {
+    this.thisNode = config.getThisNode();
+    this.storageDir = new File(config.getStorageDir());
     this.registry = registry;
   }
 
@@ -167,13 +169,7 @@ class StandAloneConsensus implements IConsensus {
         (k, v) -> {
           exist.set(true);
           v.stop();
-          String path = buildPeerDir(groupId);
-          try {
-            Files.delete(Paths.get(path));
-          } catch (IOException e) {
-            logger.warn(
-                "Unable to delete consensus dir for group {} at {} because {}", groupId, path, e);
-          }
+          FileUtils.deleteDirectory(new File(buildPeerDir(groupId)));
           return null;
         });
 
@@ -221,6 +217,11 @@ class StandAloneConsensus implements IConsensus {
       return null;
     }
     return new Peer(groupId, thisNode);
+  }
+
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIds() {
+    return new ArrayList<>(stateMachineMap.keySet());
   }
 
   private String buildPeerDir(ConsensusGroupId groupId) {

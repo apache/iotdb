@@ -80,8 +80,5 @@ public class CompletedProcedureRecycler<Env> extends InternalProcedure<Env> {
     if (batchCount > 0) {
       store.delete(batchIds, 0, batchCount);
     }
-    // let the store do some cleanup works, i.e, delete the place marker for preserving the max
-    // procedure id.
-    store.cleanup();
   }
 }

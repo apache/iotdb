@@ -24,5 +24,7 @@ import org.apache.iotdb.service.transport.thrift.SyncRequest;
 import org.apache.iotdb.service.transport.thrift.SyncResponse;
 
 public interface ITransportClient extends Runnable {
+
+  /** send control message */
   SyncResponse heartbeat(SyncRequest syncRequest) throws SyncConnectionException;
 }

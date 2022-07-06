@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -32,13 +33,16 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
+import org.apache.iotdb.db.engine.flush.FlushStatus;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -127,6 +131,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -179,6 +184,10 @@ public class DataRegion {
    * partitionLatestFlushedTimeForEachDevice)
    */
   private final ReadWriteLock insertLock = new ReentrantReadWriteLock();
+  /** condition to safely delete data region */
+  private final Condition deletedCondition = insertLock.writeLock().newCondition();
+  /** data region has been deleted or not */
+  private volatile boolean deleted = false;
   /** closeStorageGroupCondition is used to wait for all currently closing TsFiles to be done. */
   private final Object closeStorageGroupCondition = new Object();
   /**
@@ -303,8 +312,39 @@ public class DataRegion {
     } else {
       lastFlushTimeManager = new LastFlushTimeManager();
     }
-    // recover tsfiles
-    recover();
+
+    // recover tsfiles unless consensus protocol is ratis and storage engine is not ready
+    if (config.isClusterMode()
+        && config.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.RatisConsensus)
+        && !StorageEngineV2.getInstance().isAllSgReady()) {
+      logger.debug(
+          "Skip recovering data region {}[{}] when consensus protocol is ratis and storage engine is not ready.",
+          logicalStorageGroupName,
+          dataRegionId);
+      for (String fileFolder : DirectoryManager.getInstance().getAllFilesFolders()) {
+        File dataRegionFolder =
+            fsFactory.getFile(fileFolder, logicalStorageGroupName + File.separator + dataRegionId);
+        if (dataRegionFolder.exists()) {
+          File[] timePartitions = dataRegionFolder.listFiles();
+          if (timePartitions != null) {
+            for (File timePartition : timePartitions) {
+              try {
+                FileUtils.forceDelete(timePartition);
+              } catch (IOException e) {
+                logger.error(
+                    "Exception occurs when deleting time partition directory {} for {}-{}",
+                    timePartitions,
+                    logicalStorageGroupName,
+                    dataRegionId,
+                    e);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      recover();
+    }
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
@@ -508,11 +548,25 @@ public class DataRegion {
     // recover and start timed compaction thread
     initCompaction();
 
-    logger.info(
-        "The data region {}[{}] is recovered successfully", logicalStorageGroupName, dataRegionId);
+    if (config.isMppMode()
+        ? StorageEngineV2.getInstance().isAllSgReady()
+        : StorageEngine.getInstance().isAllSgReady()) {
+      logger.info(
+          "The data region {}[{}] is created successfully", logicalStorageGroupName, dataRegionId);
+    } else {
+      logger.info(
+          "The data region {}[{}] is recovered successfully",
+          logicalStorageGroupName,
+          dataRegionId);
+    }
   }
 
   private void initCompaction() {
+    if (!config.isEnableSeqSpaceCompaction()
+        && !config.isEnableUnseqSpaceCompaction()
+        && !config.isEnableCrossSpaceCompaction()) {
+      return;
+    }
     timedCompactionScheduleTask =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.COMPACTION_SCHEDULE.getName()
@@ -520,7 +574,8 @@ public class DataRegion {
                 + logicalStorageGroupName
                 + "-"
                 + dataRegionId);
-    timedCompactionScheduleTask.scheduleWithFixedDelay(
+    ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
+        timedCompactionScheduleTask,
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
         IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleIntervalInMs(),
@@ -871,13 +926,6 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
-
-    if (insertRowNode.hasFailedMeasurements()) {
-      logger.warn(
-          "Fail to insert measurements {} caused by {}",
-          insertRowNode.getFailedMeasurements(),
-          insertRowNode.getFailedMessages());
-    }
   }
 
   /**
@@ -1006,7 +1054,7 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
-      throws BatchProcessException, TriggerExecutionException {
+      throws TriggerExecutionException, BatchProcessException, WriteProcessException {
 
     writeLock("insertTablet");
     try {
@@ -1034,7 +1082,9 @@ public class DataRegion {
       }
       // loc pointing at first legal position
       if (loc == insertTabletNode.getRowCount()) {
-        throw new BatchProcessException(results);
+        throw new OutOfTTLException(
+            insertTabletNode.getTimes()[insertTabletNode.getTimes().length - 1],
+            (System.currentTimeMillis() - dataTTL));
       }
 
       //      TODO(Trigger)// fire trigger before insertion
@@ -1045,7 +1095,7 @@ public class DataRegion {
       int before = loc;
       // before time partition
       long beforeTimePartition =
-          StorageEngine.getTimePartition(insertTabletNode.getTimes()[before]);
+          StorageEngineV2.getTimePartition(insertTabletNode.getTimes()[before]);
       // init map
       long lastFlushTime =
           lastFlushTimeManager.ensureFlushedTimePartitionAndInit(
@@ -1092,16 +1142,13 @@ public class DataRegion {
     } finally {
       writeUnlock();
     }
-
-    if (insertTabletNode.hasFailedMeasurements()) {
-      logger.warn(
-          "Fail to insert measurements {} caused by {}",
-          insertTabletNode.getFailedMeasurements(),
-          insertTabletNode.getFailedMessages());
-    }
   }
 
-  /** @return whether the given time falls in ttl */
+  /**
+   * Check whether the time falls in TTL.
+   *
+   * @return whether the given time falls in ttl
+   */
   private boolean isAlive(long time) {
     return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
   }
@@ -1371,19 +1418,26 @@ public class DataRegion {
    *
    * @return True if flush task is submitted successfully
    */
-  public boolean submitAFlushTask(long timeRangeId, boolean sequence) {
+  public boolean submitAFlushTask(long timeRangeId, boolean sequence, IMemTable memTable) {
     writeLock("submitAFlushTask");
     try {
+      if (memTable.getFlushStatus() != FlushStatus.WORKING) {
+        return false;
+      }
+
       TsFileProcessor tsFileProcessor;
       if (sequence) {
         tsFileProcessor = workSequenceTsFileProcessors.get(timeRangeId);
       } else {
         tsFileProcessor = workUnsequenceTsFileProcessors.get(timeRangeId);
       }
-      if (tsFileProcessor != null) {
+      // only submit when tsFileProcessor exists and memTables are same
+      boolean shouldSubmit =
+          tsFileProcessor != null && tsFileProcessor.getWorkMemTable() == memTable;
+      if (shouldSubmit) {
         fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
       }
-      return tsFileProcessor != null;
+      return shouldSubmit;
     } finally {
       writeUnlock();
     }
@@ -1619,10 +1673,11 @@ public class DataRegion {
         systemDir);
     writeLock("deleteFolder");
     try {
-      File storageGroupFolder = SystemFileFactory.INSTANCE.getFile(systemDir, dataRegionId);
-      if (storageGroupFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
-      }
+      File dataRegionSystemFolder =
+          SystemFileFactory.INSTANCE.getFile(
+              systemDir + File.separator + logicalStorageGroupName, dataRegionId);
+      org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+          dataRegionSystemFolder);
     } finally {
       writeUnlock();
     }
@@ -1658,9 +1713,7 @@ public class DataRegion {
       // normally, mergingModification is just need to be closed by after a merge task is finished.
       // we close it here just for IT test.
       closeAllResources();
-      List<String> folder = DirectoryManager.getInstance().getAllSequenceFileFolders();
-      folder.addAll(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
-      deleteAllSGFolders(folder);
+      deleteAllSGFolders(DirectoryManager.getInstance().getAllFilesFolders());
 
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
@@ -1675,10 +1728,11 @@ public class DataRegion {
 
   private void deleteAllSGFolders(List<String> folder) {
     for (String tsfilePath : folder) {
-      File storageGroupFolder =
+      File dataRegionDataFolder =
           fsFactory.getFile(tsfilePath, logicalStorageGroupName + File.separator + dataRegionId);
-      if (storageGroupFolder.exists()) {
-        org.apache.iotdb.commons.utils.FileUtils.deleteDirectory(storageGroupFolder);
+      if (dataRegionDataFolder.exists()) {
+        org.apache.iotdb.commons.utils.FileUtils.deleteDirectoryAndEmptyParent(
+            dataRegionDataFolder);
       }
     }
   }
@@ -2404,7 +2458,6 @@ public class DataRegion {
     for (long timePartition : timePartitions) {
       CompactionScheduler.scheduleCompaction(tsFileManager, timePartition);
     }
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
   }
 
   /**
@@ -3166,7 +3219,11 @@ public class DataRegion {
     return dataRegionId;
   }
 
-  /** @return data region path, like root.sg1/0 */
+  /**
+   * Get the storageGroupPath with dataRegionId.
+   *
+   * @return data region path, like root.sg1/0
+   */
   public String getStorageGroupPath() {
     return logicalStorageGroupName + File.separator + dataRegionId;
   }
@@ -3434,7 +3491,7 @@ public class DataRegion {
       writeUnlock();
     }
     if (!insertRowsOfOneDeviceNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertRowsOfOneDeviceNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting rows of one device");
     }
   }
 
@@ -3454,7 +3511,7 @@ public class DataRegion {
     }
 
     if (!insertRowsNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertRowsNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting rows");
     }
   }
 
@@ -3469,7 +3526,7 @@ public class DataRegion {
       InsertTabletNode insertTabletNode = insertMultiTabletsNode.getInsertTabletNodeList().get(i);
       try {
         insertTablet(insertTabletNode);
-      } catch (TriggerExecutionException | BatchProcessException e) {
+      } catch (TriggerExecutionException | WriteProcessException | BatchProcessException e) {
         insertMultiTabletsNode
             .getResults()
             .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
@@ -3477,7 +3534,7 @@ public class DataRegion {
     }
 
     if (!insertMultiTabletsNode.getResults().isEmpty()) {
-      throw new BatchProcessException(insertMultiTabletsNode.getFailingStatus());
+      throw new BatchProcessException("Partial failed inserting multi tablets");
     }
   }
 
@@ -3620,6 +3677,7 @@ public class DataRegion {
     return idTable;
   }
 
+  /** This method could only be used in multi-leader consensus */
   public IWALNode getWALNode() {
     if (!config
         .getDataRegionConsensusProtocolClass()
@@ -3629,6 +3687,32 @@ public class DataRegion {
     // identifier should be same with getTsFileProcessor method
     return WALManager.getInstance()
         .applyForWALNode(logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId);
+  }
+
+  /** Wait for this data region successfully deleted */
+  public void waitForDeleted() {
+    writeLock("waitForDeleted");
+    try {
+      if (!deleted) {
+        deletedCondition.await();
+      }
+    } catch (InterruptedException e) {
+      logger.error("Interrupted When waiting for data region deleted.");
+      Thread.currentThread().interrupt();
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /** Release all threads waiting for this data region successfully deleted */
+  public void markDeleted() {
+    deleted = true;
+    writeLock("markDeleted");
+    try {
+      deletedCondition.signalAll();
+    } finally {
+      writeUnlock();
+    }
   }
 
   @TestOnly

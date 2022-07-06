@@ -22,10 +22,12 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 
+import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,8 +59,12 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   @Override
   public void start() {
     trackTask =
-        scheduledExecutor.scheduleAtFixedRate(
-            this::fetchStateAndUpdate, 0, STATE_FETCH_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
+        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+            scheduledExecutor,
+            this::fetchStateAndUpdate,
+            0,
+            STATE_FETCH_INTERVAL_IN_MS,
+            TimeUnit.MILLISECONDS);
   }
 
   @Override
@@ -70,9 +76,9 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   private void fetchStateAndUpdate() {
     for (FragmentInstance instance : instances) {
-      try {
+      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         FragmentInstanceState state = fetchState(instance);
-        logger.info("Instance {}'s State is {}", instance.getId(), state);
+        logger.info("State is {}", state);
 
         if (state != null) {
           stateMachine.updateFragInstanceState(instance.getId(), state);

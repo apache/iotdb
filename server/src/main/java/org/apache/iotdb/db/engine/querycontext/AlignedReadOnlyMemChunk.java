@@ -82,9 +82,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
     for (int column = 0; column < tsBlock.getValueColumnCount(); column++) {
       Statistics valueStatistics = Statistics.getStatsByType(dataTypes.get(column));
       valueStatistics.setEmpty(true);
-      IChunkMetadata valueChunkMetadata =
-          new ChunkMetadata(valueChunkNames.get(column), dataTypes.get(column), 0, valueStatistics);
-      valueChunkMetadataList.add(valueChunkMetadata);
       switch (dataTypes.get(column)) {
         case BOOLEAN:
           for (int row = 0; row < tsBlock.getPositionCount(); row++) {
@@ -137,7 +134,15 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
         default:
           throw new QueryProcessException("Unsupported data type:" + dataTypes.get(column));
       }
-      valueStatistics.setEmpty(false);
+      if (valueStatistics.getCount() > 0) {
+        IChunkMetadata valueChunkMetadata =
+            new ChunkMetadata(
+                valueChunkNames.get(column), dataTypes.get(column), 0, valueStatistics);
+        valueChunkMetadataList.add(valueChunkMetadata);
+        valueStatistics.setEmpty(false);
+      } else {
+        valueChunkMetadataList.add(null);
+      }
     }
     IChunkMetadata alignedChunkMetadata =
         new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);

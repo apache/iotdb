@@ -19,10 +19,12 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
-import org.apache.iotdb.commons.udf.api.access.Row;
+import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.type.Binary;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
@@ -66,7 +68,7 @@ public class LayerPointReaderBackedSingleColumnRow implements Row {
 
   @Override
   public Binary getBinary(int columnIndex) throws IOException {
-    return layerPointReader.currentBinary();
+    return UDFBinaryTransformer.transformToUDFBinary(layerPointReader.currentBinary());
   }
 
   @Override
@@ -75,8 +77,8 @@ public class LayerPointReaderBackedSingleColumnRow implements Row {
   }
 
   @Override
-  public TSDataType getDataType(int columnIndex) {
-    return layerPointReader.getDataType();
+  public Type getDataType(int columnIndex) {
+    return UDFDataTypeTransformer.transformToUDFDataType(layerPointReader.getDataType());
   }
 
   @Override

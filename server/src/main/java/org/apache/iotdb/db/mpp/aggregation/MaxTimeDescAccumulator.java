@@ -27,14 +27,21 @@ public class MaxTimeDescAccumulator extends MaxTimeAccumulator {
   // Column should be like: | Time | Value |
   // Value is used to judge isNull()
   @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
-    for (int i = 0; i < column[0].getPositionCount(); i++) {
+  public int addInput(Column[] column, TimeRange timeRange) {
+    int curPositionCount = column[0].getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = column[0].getLong(i);
-      if (timeRange.contains(curTime) && !column[1].isNull(i)) {
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
+      }
+      if (!column[1].isNull(i)) {
         updateMaxTime(curTime);
-        break;
+        return i;
       }
     }
+    return column[0].getPositionCount();
   }
 
   @Override

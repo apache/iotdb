@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.parameter;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -80,6 +82,11 @@ public enum AggregationStep {
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(isInputRaw(), byteBuffer);
     ReadWriteIOUtils.write(isOutputPartial(), byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(isInputRaw(), stream);
+    ReadWriteIOUtils.write(isOutputPartial(), stream);
   }
 
   public static AggregationStep deserialize(ByteBuffer byteBuffer) {

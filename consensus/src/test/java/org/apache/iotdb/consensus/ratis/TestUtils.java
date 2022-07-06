@@ -53,7 +53,7 @@ public class TestUtils {
     }
   }
 
-  public static class TestRequest {
+  public static class TestRequest implements IConsensusRequest {
     private final int cmd;
 
     public TestRequest(ByteBuffer buffer) {
@@ -62,6 +62,13 @@ public class TestUtils {
 
     public boolean isIncr() {
       return cmd == 1;
+    }
+
+    @Override
+    public ByteBuffer serializeToByteBuffer() {
+      ByteBuffer buffer = ByteBuffer.allocate(4).putInt(cmd);
+      buffer.flip();
+      return buffer;
     }
   }
 
@@ -83,7 +90,7 @@ public class TestUtils {
     public TSStatus write(IConsensusRequest request) {
       TestRequest testRequest;
       if (request instanceof ByteBufferConsensusRequest) {
-        testRequest = new TestRequest(((ByteBufferConsensusRequest) request).getContent());
+        testRequest = new TestRequest(request.serializeToByteBuffer());
       } else {
         testRequest = (TestRequest) request;
       }

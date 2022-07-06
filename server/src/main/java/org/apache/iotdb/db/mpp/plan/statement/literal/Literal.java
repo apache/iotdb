@@ -24,6 +24,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public abstract class Literal extends StatementNode {
@@ -56,7 +58,11 @@ public abstract class Literal extends StatementNode {
 
   public abstract void serialize(ByteBuffer byteBuffer);
 
+  public abstract void serialize(DataOutputStream stream) throws IOException;
+
   public abstract boolean isDataTypeConsistency(TSDataType dataType);
+
+  public abstract String getDataTypeString();
 
   public boolean getBoolean() {
     throw new UnsupportedOperationException(getClass().getName());

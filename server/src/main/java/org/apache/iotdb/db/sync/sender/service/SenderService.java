@@ -247,6 +247,7 @@ public class SenderService implements IService {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
+        sendMsg(RequestType.START);
         runningPipe.start();
         transportHandler.start();
       } else { // for external PIPE
@@ -350,6 +351,10 @@ public class SenderService implements IService {
               "Pipe %s is %s, please retry after drop it.",
               runningPipe.getName(), runningPipe.getStatus()));
     }
+  }
+
+  public void setConnecting(boolean isConnecting) {
+    runningPipe.setDisconnected(isConnecting);
   }
 
   /** transport */

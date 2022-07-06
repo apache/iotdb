@@ -457,6 +457,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   @Override
   public IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException {
     String[] nodeNames = deviceId.getNodes();
+    MetaFormatUtils.checkTimeseries(deviceId);
     IMNode cur = storageGroupMNode;
     IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();

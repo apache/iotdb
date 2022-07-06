@@ -624,9 +624,6 @@ public class TsFileResource {
         }
         break;
       case UNCLOSED:
-        // Print a stack trace in a warn statement.
-        RuntimeException e = new RuntimeException();
-        LOGGER.error("Setting the status of a TsFileResource to UNCLOSED", e);
         this.status = TsFileResourceStatus.UNCLOSED;
         break;
       case DELETED:
@@ -881,8 +878,10 @@ public class TsFileResource {
     return newResource;
   }
 
-  public synchronized void setModFile(ModificationFile modFile) {
-    this.modFile = modFile;
+  public void setModFile(ModificationFile modFile) {
+    synchronized (this) {
+      this.modFile = modFile;
+    }
   }
 
   /** @return resource map size */

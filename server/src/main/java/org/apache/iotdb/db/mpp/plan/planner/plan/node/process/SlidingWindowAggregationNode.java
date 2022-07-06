@@ -30,6 +30,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +42,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
 
   // The list of aggregate functions, each AggregateDescriptor will be output as one column of
   // result TsBlock
-  private final List<AggregationDescriptor> aggregationDescriptorList;
+  private List<AggregationDescriptor> aggregationDescriptorList;
 
   // The parameter of `group by time`.
   private final GroupByTimeParameter groupByTimeParameter;
@@ -72,6 +74,10 @@ public class SlidingWindowAggregationNode extends ProcessNode {
 
   public List<AggregationDescriptor> getAggregationDescriptorList() {
     return aggregationDescriptorList;
+  }
+
+  public void setAggregationDescriptorList(List<AggregationDescriptor> aggregationDescriptorList) {
+    this.aggregationDescriptorList = aggregationDescriptorList;
   }
 
   public GroupByTimeParameter getGroupByTimeParameter() {
@@ -136,6 +142,22 @@ public class SlidingWindowAggregationNode extends ProcessNode {
     ReadWriteIOUtils.write(scanOrder.ordinal(), byteBuffer);
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.SLIDING_WINDOW_AGGREGATION.serialize(stream);
+    ReadWriteIOUtils.write(aggregationDescriptorList.size(), stream);
+    for (AggregationDescriptor aggregationDescriptor : aggregationDescriptorList) {
+      aggregationDescriptor.serialize(stream);
+    }
+    if (groupByTimeParameter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      groupByTimeParameter.serialize(stream);
+    }
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+  }
+
   public static SlidingWindowAggregationNode deserialize(ByteBuffer byteBuffer) {
     int descriptorSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
@@ -174,5 +196,9 @@ public class SlidingWindowAggregationNode extends ProcessNode {
   @Override
   public int hashCode() {
     return Objects.hash(super.hashCode(), aggregationDescriptorList, groupByTimeParameter, child);
+  }
+
+  public String toString() {
+    return String.format("SlidingWindowAggregationNode-%s", getPlanNodeId());
   }
 }

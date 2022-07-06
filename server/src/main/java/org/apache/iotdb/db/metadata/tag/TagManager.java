@@ -36,6 +36,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -104,6 +105,24 @@ public class TagManager {
       return false;
     } finally {
       tagLogSnapshotTmp.delete();
+    }
+  }
+
+  public static TagManager loadFromSnapshot(File snapshotDir, String sgSchemaDirPath)
+      throws IOException {
+    File tagSnapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+    File tagFile = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
+    if (tagFile.exists()) {
+      tagFile.delete();
+    }
+
+    try {
+      FileUtils.copyFile(tagSnapshot, tagFile);
+      return new TagManager(sgSchemaDirPath);
+    } catch (IOException e) {
+      tagFile.delete();
+      throw e;
     }
   }
 

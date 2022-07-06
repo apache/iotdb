@@ -23,21 +23,19 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
-import org.apache.iotdb.commons.utils.AuthUtils;
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
-import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
+import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.rpc.ConfigNodeConnectionException;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -46,11 +44,9 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class AuthorizerManager implements IAuthorizer {
@@ -60,23 +56,17 @@ public class AuthorizerManager implements IAuthorizer {
   private IAuthorizer iAuthorizer;
   private ReentrantReadWriteLock authReadWriteLock;
   private IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
-
-  private Cache<String, User> userCache =
-      Caffeine.newBuilder()
-          .maximumSize(conf.getConfig().getAuthorCacheSize())
-          .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
-          .build();
-
-  private Cache<String, Role> roleCache =
-      Caffeine.newBuilder()
-          .maximumSize(conf.getConfig().getAuthorCacheSize())
-          .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
-          .build();
+  private IAuthorityFetcher authorityFetcher;
 
   public AuthorizerManager() {
     try {
       iAuthorizer = BasicAuthorizer.getInstance();
       authReadWriteLock = new ReentrantReadWriteLock();
+      if (conf.getConfig().isClusterMode()) {
+        authorityFetcher = ClusterAuthorityFetcher.getInstance();
+      } else {
+        authorityFetcher = StandaloneAuthorityFetcher.getInstance();
+      }
     } catch (AuthException e) {
       logger.error(e.getMessage());
     }
@@ -373,55 +363,13 @@ public class AuthorizerManager implements IAuthorizer {
     }
   }
 
-  public TSStatus checkPermissionCache(String username, List<String> allPath, int permission)
-      throws AuthException, ConfigNodeConnectionException {
+  /** Check the path */
+  public TSStatus checkPath(String username, List<String> allPath, int permission) {
     authReadWriteLock.readLock().lock();
     try {
-      User user = userCache.getIfPresent(username);
-      if (user != null) {
-        for (String path : allPath) {
-          if (!user.checkPrivilege(path, permission)) {
-            if (user.getRoleList().isEmpty()) {
-              return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
-            }
-            boolean status = false;
-            for (String roleName : user.getRoleList()) {
-              Role role = roleCache.getIfPresent(roleName);
-              // It is detected that the role of the user does not exist in the cache, indicating
-              // that the permission information of the role has changed.
-              // The user cache needs to be initialized
-              if (role == null) {
-                invalidateCache(username, "");
-                return checkPath(username, allPath, permission);
-              }
-              status = role.checkPrivilege(path, permission);
-              if (status) {
-                break;
-              }
-            }
-            if (!status) {
-              return RpcUtils.getStatus(TSStatusCode.NO_PERMISSION_ERROR);
-            }
-          }
-        }
-        return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-      } else {
-        return checkPath(username, allPath, permission);
-      }
+      return authorityFetcher.checkUserPrivileges(username, allPath, permission);
     } finally {
       authReadWriteLock.readLock().unlock();
-    }
-  }
-
-  public TSStatus checkPath(String username, List<String> allPath, int permission)
-      throws ConfigNodeConnectionException {
-    TPermissionInfoResp tPermissionInfoResp =
-        AuthorityFetcher.checkPath(username, allPath, permission);
-    if (tPermissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      userCache.put(username, cacheUser(tPermissionInfoResp));
-      return tPermissionInfoResp.getStatus();
-    } else {
-      return tPermissionInfoResp.getStatus();
     }
   }
 
@@ -429,133 +377,61 @@ public class AuthorizerManager implements IAuthorizer {
   public TSStatus checkUser(String username, String password) throws ConfigNodeConnectionException {
     authReadWriteLock.readLock().lock();
     try {
-      User user = userCache.getIfPresent(username);
-      if (user != null) {
-        if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
-          return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
-        } else {
-          return RpcUtils.getStatus(
-              TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR, "Authentication failed.");
-        }
-      } else {
-        TPermissionInfoResp tPermissionInfoResp = AuthorityFetcher.checkUser(username, password);
-        if (tPermissionInfoResp.getStatus().getCode()
-            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          userCache.put(username, cacheUser(tPermissionInfoResp));
-          return tPermissionInfoResp.getStatus();
-        } else {
-          return tPermissionInfoResp.getStatus();
-        }
-      }
+      return authorityFetcher.checkUser(username, password);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
   }
 
-  public SettableFuture<ConfigTaskResult> queryPermission(
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
+  public boolean invalidateCache(String username, String roleName) {
+    return ClusterAuthorityFetcher.getInstance().invalidateCache(username, roleName);
+  }
+
+  public SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement) {
     authReadWriteLock.readLock().lock();
     try {
-      return AuthorityFetcher.queryPermission(authorizerReq, configNodeClient);
+      return authorityFetcher.queryPermission(authorStatement);
     } finally {
       authReadWriteLock.readLock().unlock();
     }
   }
 
-  public SettableFuture<ConfigTaskResult> operatePermission(
-      TAuthorizerReq authorizerReq, ConfigNodeClient configNodeClient) {
+  public SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement) {
     authReadWriteLock.writeLock().lock();
     try {
-      return AuthorityFetcher.operatePermission(authorizerReq, configNodeClient);
+      return authorityFetcher.operatePermission(authorStatement);
     } finally {
       authReadWriteLock.writeLock().unlock();
     }
   }
 
-  /** cache user */
-  public User cacheUser(TPermissionInfoResp tPermissionInfoResp) {
-    User user = new User();
-    List<String> privilegeList = tPermissionInfoResp.getUserInfo().getPrivilegeList();
-    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-    user.setName(tPermissionInfoResp.getUserInfo().getUsername());
-    user.setPassword(tPermissionInfoResp.getUserInfo().getPassword());
-    for (int i = 0; i < privilegeList.size(); i++) {
-      String path = privilegeList.get(i);
-      String privilege = privilegeList.get(++i);
-      pathPrivilegeList.add(toPathPrivilege(path, privilege));
+  /** build TSBlock */
+  public void buildTSBlock(
+      Map<String, List<String>> authorizerInfo, SettableFuture<ConfigTaskResult> future) {
+    List<TSDataType> types = new ArrayList<>();
+    for (int i = 0; i < authorizerInfo.size(); i++) {
+      types.add(TSDataType.TEXT);
     }
-    user.setPrivilegeList(pathPrivilegeList);
-    user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
-    for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
-      roleCache.put(roleName, cacheRole(roleName, tPermissionInfoResp));
-    }
-    return user;
-  }
+    TsBlockBuilder builder = new TsBlockBuilder(types);
+    List<ColumnHeader> headerList = new ArrayList<>();
 
-  /** cache role */
-  public Role cacheRole(String roleName, TPermissionInfoResp tPermissionInfoResp) {
-    Role role = new Role();
-    List<String> privilegeList = tPermissionInfoResp.getRoleInfo().get(roleName).getPrivilegeList();
-    List<PathPrivilege> pathPrivilegeList = new ArrayList<>();
-    role.setName(tPermissionInfoResp.getRoleInfo().get(roleName).getRoleName());
-    for (int i = 0; i < privilegeList.size(); i++) {
-      String path = privilegeList.get(i);
-      String privilege = privilegeList.get(++i);
-      pathPrivilegeList.add(toPathPrivilege(path, privilege));
+    for (String header : authorizerInfo.keySet()) {
+      headerList.add(new ColumnHeader(header, TSDataType.TEXT));
     }
-    role.setPrivilegeList(pathPrivilegeList);
-    return role;
-  }
-
-  /**
-   * Initialize user and role cache information.
-   *
-   * <p>If the permission information of the role changes, only the role cache information is
-   * cleared. During permission checking, if the role belongs to a user, the user will be
-   * initialized.
-   */
-  public boolean invalidateCache(String username, String roleName) {
-    if (userCache.getIfPresent(username) != null) {
-      List<String> roleList = userCache.getIfPresent(username).getRoleList();
-      if (!roleList.isEmpty()) {
-        roleCache.invalidateAll(roleList);
+    // The Time column will be ignored by the setting of ColumnHeader.
+    // So we can put a meaningless value here
+    for (String value : authorizerInfo.get(headerList.get(0).getColumnName())) {
+      builder.getTimeColumnBuilder().writeLong(0L);
+      builder.getColumnBuilder(0).writeBinary(new Binary(value));
+      builder.declarePosition();
+    }
+    for (int i = 1; i < headerList.size(); i++) {
+      for (String value : authorizerInfo.get(headerList.get(i).getColumnName())) {
+        builder.getColumnBuilder(i).writeBinary(new Binary(value));
       }
-      userCache.invalidate(username);
     }
-    if (roleCache.getIfPresent(roleName) != null) {
-      roleCache.invalidate(roleName);
-    }
-    if (userCache.getIfPresent(username) != null && roleCache.getIfPresent(roleName) != null) {
-      logger.error("datanode cache initialization failed");
-      return false;
-    }
-    return true;
-  }
 
-  /**
-   * Convert user privilege information obtained from confignode to PathPrivilege
-   *
-   * @param path permission path
-   * @param privilege privilegeIds
-   * @return
-   */
-  private PathPrivilege toPathPrivilege(String path, String privilege) {
-    PathPrivilege pathPrivilege = new PathPrivilege();
-    String[] privileges = privilege.replace(" ", "").split(",");
-    Set<Integer> privilegeIds = new HashSet<>();
-    for (String p : privileges) {
-      privilegeIds.add(Integer.parseInt(p));
-    }
-    pathPrivilege.setPrivileges(privilegeIds);
-    pathPrivilege.setPath(path);
-    return pathPrivilege;
-  }
-
-  public Cache<String, User> getUserCache() {
-    return userCache;
-  }
-
-  public Cache<String, Role> getRoleCache() {
-    return roleCache;
+    DatasetHeader datasetHeader = new DatasetHeader(headerList, true);
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }

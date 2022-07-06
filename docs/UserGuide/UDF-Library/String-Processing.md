@@ -21,6 +21,583 @@
 
 # String Processing
 
+## Length
+
+### Usage
+
+The function is used to get the length of input series.
+
+**Name:** LENGTH
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Output Series:** Output a single series. The type is INT32.
+
+**Note:** Returns NULL if input is NULL.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+
+|                         Time|root.sg1.d1.s1|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|
+|1970-01-01T08:00:00.002+08:00|      22test22|
++-----------------------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, length(s1) from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+----------------------+
+|                         Time|root.sg1.d1.s1|length(root.sg1.d1.s1)|
++-----------------------------+--------------+----------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|                     6|
+|1970-01-01T08:00:00.002+08:00|      22test22|                     8|
++-----------------------------+--------------+----------------------+
+```
+
+## StrLocate
+
+### Usage
+
+The function is used to get the position of the first occurrence of substring `target` in input series. Returns -1 if there are no `target` in input.
+
+**Name:** LENGTH
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Parameter:**
+
++ `target`: The substring to be located.
++ `reverse`: Indicates whether reverse locate is required. The default value is `false`, means left-to-right locate.
+
+**Output Series:** Output a single series. The type is INT32.
+
+**Note:** The index begins from 0.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+
+|                         Time|root.sg1.d1.s1|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|
+|1970-01-01T08:00:00.002+08:00|      22test22|
++-----------------------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, locate(s1, "target"="1") from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+------------------------------------+
+|                         Time|root.sg1.d1.s1|locate(root.sg1.d1.s1, "target"="1")|
++-----------------------------+--------------+------------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|                                   0|
+|1970-01-01T08:00:00.002+08:00|      22test22|                                  -1|
++-----------------------------+--------------+------------------------------------+
+```
+
+Another SQL for query:
+
+```sql
+select s1, locate(s1, "target"="1", "reverse"="true") from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+------------------------------------------------------+
+|                         Time|root.sg1.d1.s1|locate(root.sg1.d1.s1, "target"="1", "reverse"="true")|
++-----------------------------+--------------+------------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|                                                     5|
+|1970-01-01T08:00:00.002+08:00|      22test22|                                                    -1|
++-----------------------------+--------------+------------------------------------------------------+
+```
+
+## StartsWith
+
+### Usage
+
+The function is used to check whether input series starts with the specified prefix.
+
+**Name:** STARTSWITH
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Parameter:**
++ `target`: The prefix to be checked.
+
+**Output Series:** Output a single series. The type is BOOLEAN.
+
+**Note:** Returns NULL if input is NULL.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+
+|                         Time|root.sg1.d1.s1|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|
+|1970-01-01T08:00:00.002+08:00|      22test22|
++-----------------------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, startswith(s1, "target"="1") from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+----------------------------------------+
+|                         Time|root.sg1.d1.s1|startswith(root.sg1.d1.s1, "target"="1")|
++-----------------------------+--------------+----------------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|                                    true|
+|1970-01-01T08:00:00.002+08:00|      22test22|                                   false|
++-----------------------------+--------------+----------------------------------------+
+```
+
+## EndsWith
+
+### Usage
+
+The function is used to check whether input series ends with the specified suffix.
+
+**Name:** ENDSWITH
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Parameter:**
++ `target`: The suffix to be checked.
+
+**Output Series:** Output a single series. The type is BOOLEAN.
+
+**Note:** Returns NULL if input is NULL.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+
+|                         Time|root.sg1.d1.s1|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|
+|1970-01-01T08:00:00.002+08:00|      22test22|
++-----------------------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, endswith(s1, "target"="1") from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+--------------------------------------+
+|                         Time|root.sg1.d1.s1|endswith(root.sg1.d1.s1, "target"="1")|
++-----------------------------+--------------+--------------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|                                  true|
+|1970-01-01T08:00:00.002+08:00|      22test22|                                 false|
++-----------------------------+--------------+--------------------------------------+
+```
+
+## Concat
+
+### Usage
+
+The function is used to concat input series and target strings.
+
+**Name:** CONCAT
+
+**Input Series:** At least one input series. The data type is TEXT.
+
+**Parameter:**
++ `targets`: A series of K-V, key needs to start with `target` and be not duplicated, value is the string you want to concat.
++ `series_behind`: Indicates whether series behind targets. The default value is `false`.
+
+**Output Series:** Output a single series. The type is TEXT.
+
+**Note:** 
++ If value of input series is NULL, it will be skipped.
++ We can only concat input series and `targets` separately. `concat(s1, "target1"="IoT", s2, "target2"="DB")` and
+  `concat(s1, s2, "target1"="IoT", "target2"="DB")` gives the same result.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+--------------+
+|                         Time|root.sg1.d1.s1|root.sg1.d1.s2|
++-----------------------------+--------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|          null|
+|1970-01-01T08:00:00.002+08:00|      22test22|      2222test|
++-----------------------------+--------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, s2, concat(s1, s2, "target1"="IoT", "target2"="DB") from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+--------------+-----------------------------------------------------------------------+
+|                         Time|root.sg1.d1.s1|root.sg1.d1.s2|concat(root.sg1.d1.s1, root.sg1.d1.s2, "target1"="IoT", "target2"="DB")|
++-----------------------------+--------------+--------------+-----------------------------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|          null|                                                            1test1IoTDB|
+|1970-01-01T08:00:00.002+08:00|      22test22|      2222test|                                                  22test222222testIoTDB|
++-----------------------------+--------------+--------------+-----------------------------------------------------------------------+
+```
+
+Another SQL for query:
+
+```sql
+select s1, s2, concat(s1, s2, "target1"="IoT", "target2"="DB", "series_behind"="true") from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+--------------+-----------------------------------------------------------------------------------------------+
+|                         Time|root.sg1.d1.s1|root.sg1.d1.s2|concat(root.sg1.d1.s1, root.sg1.d1.s2, "target1"="IoT", "target2"="DB", "series_behind"="true")|
++-----------------------------+--------------+--------------+-----------------------------------------------------------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|          null|                                                                                    IoTDB1test1|
+|1970-01-01T08:00:00.002+08:00|      22test22|      2222test|                                                                          IoTDB22test222222test|
++-----------------------------+--------------+--------------+-----------------------------------------------------------------------------------------------+
+```
+
+## Substr
+
+### Usage
+
+The function is used to get the substring `start` to `end - 1`. 
+
+**Name:** SUBSTR
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Parameter:**
++ `start`: Indicates the start position of substring.
++ `end`: Indicates the end position of substring.
+
+**Output Series:** Output a single series. The type is TEXT.
+
+**Note:** Returns NULL if input is NULL.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+
+|                         Time|root.sg1.d1.s1|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|
+|1970-01-01T08:00:00.002+08:00|      22test22|
++-----------------------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, substr(s1, "start"="0", "end"="2") from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+----------------------------------------------+
+|                         Time|root.sg1.d1.s1|substr(root.sg1.d1.s1, "start"="0", "end"="2")|
++-----------------------------+--------------+----------------------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|                                            1t|
+|1970-01-01T08:00:00.002+08:00|      22test22|                                            22|
++-----------------------------+--------------+----------------------------------------------+
+```
+
+## Upper
+
+### Usage
+
+The function is used to get the string of input series with all characters changed to uppercase.
+
+**Name:** UPPER
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Output Series:** Output a single series. The type is TEXT.
+
+**Note:** Returns NULL if input is NULL.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+
+|                         Time|root.sg1.d1.s1|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|
+|1970-01-01T08:00:00.002+08:00|      22test22|
++-----------------------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, upper(s1) from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+---------------------+
+|                         Time|root.sg1.d1.s1|upper(root.sg1.d1.s1)|
++-----------------------------+--------------+---------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|               1TEST1|
+|1970-01-01T08:00:00.002+08:00|      22test22|             22TEST22|
++-----------------------------+--------------+---------------------+
+```
+
+## Lower
+
+### Usage
+
+The function is used to get the string of input series with all characters changed to lowercase.
+
+**Name:** LOWER
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Output Series:** Output a single series. The type is TEXT.
+
+**Note:** Returns NULL if input is NULL.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+
+|                         Time|root.sg1.d1.s1|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1TEST1|
+|1970-01-01T08:00:00.002+08:00|      22TEST22|
++-----------------------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, lower(s1) from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+---------------------+
+|                         Time|root.sg1.d1.s1|lower(root.sg1.d1.s1)|
++-----------------------------+--------------+---------------------+
+|1970-01-01T08:00:00.001+08:00|        1TEST1|               1test1|
+|1970-01-01T08:00:00.002+08:00|      22TEST22|             22test22|
++-----------------------------+--------------+---------------------+
+```
+
+## Trim
+
+### Usage
+
+The function is used to get the string whose value is same to input series, with all leading and trailing space removed.
+
+**Name:** TRIM
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Output Series:** Output a single series. The type is TEXT.
+
+**Note:** Returns NULL if input is NULL.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+
+|                         Time|root.sg1.d1.s3|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.002+08:00|   3querytest3|
+|1970-01-01T08:00:00.003+08:00|  3querytest3 |
++-----------------------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s3, trim(s3) from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+--------------------+
+|                         Time|root.sg1.d1.s3|trim(root.sg1.d1.s3)|
++-----------------------------+--------------+--------------------+
+|1970-01-01T08:00:00.002+08:00|   3querytest3|         3querytest3|
+|1970-01-01T08:00:00.003+08:00|  3querytest3 |         3querytest3|
++-----------------------------+--------------+--------------------+
+```
+
+## StrCmp
+
+### Usage
+
+The function is used to get the compare result of two input series. Returns `0` if series value are the same, a `negative integer` if value of series1 is smaller than series2, 
+a `positive integer` if value of series1  is more than series2.
+
+**Name:** StrCmp
+
+**Input Series:** Support two input series. Data types are all the TEXT.
+
+**Output Series:** Output a single series. The type is INT32.
+
+**Note:** Returns NULL either series value is NULL.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+--------------+--------------+
+|                         Time|root.sg1.d1.s1|root.sg1.d1.s2|
++-----------------------------+--------------+--------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|          null|
+|1970-01-01T08:00:00.002+08:00|      22test22|      2222test|
++-----------------------------+--------------+--------------+
+```
+
+SQL for query:
+
+```sql
+select s1, s2, strcmp(s1, s2) from root.sg1.d1
+```
+
+Output series:
+
+```
++-----------------------------+--------------+--------------+--------------------------------------+
+|                         Time|root.sg1.d1.s1|root.sg1.d1.s2|strcmp(root.sg1.d1.s1, root.sg1.d1.s2)|
++-----------------------------+--------------+--------------+--------------------------------------+
+|1970-01-01T08:00:00.001+08:00|        1test1|          null|                                  null|
+|1970-01-01T08:00:00.002+08:00|      22test22|      2222test|                                    66|
++-----------------------------+--------------+--------------+--------------------------------------+
+```
+
+
+## StrReplace
+
+### Usage
+
+The function is used to replace the specific substring with given string.
+
+**Name:** STRREPLACE
+
+**Input Series:** Only support a single input series. The data type is TEXT.
+
+**Parameter:**
+
++ `target`: The target substring to be replaced.
++ `replace`: The string to be put on.
++ `limit`: The number of matches to be replaced which should be an integer no less than -1,
+  default to -1 which means all matches will be replaced.
++ `offset`: The number of matches to be skipped, which means the first `offset` matches will not be replaced, default to 0.
++ `reverse`: Whether to count all the matches reversely, default to 'false'.
+
+**Output Series:** Output a single series. The type is TEXT.
+
+### Examples
+
+Input series:
+
+```
++-----------------------------+---------------+
+|                         Time|root.test.d1.s1|
++-----------------------------+---------------+
+|2021-01-01T00:00:01.000+08:00|      A,B,A+,B-|
+|2021-01-01T00:00:02.000+08:00|      A,A+,A,B+|
+|2021-01-01T00:00:03.000+08:00|         B+,B,B|
+|2021-01-01T00:00:04.000+08:00|      A+,A,A+,A|
+|2021-01-01T00:00:05.000+08:00|       A,B-,B,B|
++-----------------------------+---------------+
+```
+
+SQL for query:
+
+```sql
+select strreplace(s1, "target"=",", "replace"="/", "limit"="2") from root.test.d1
+```
+
+Output series:
+
+```
++-----------------------------+-----------------------------------------+
+|                         Time|strreplace(root.test.d1.s1, "target"=",",|
+|                             |              "replace"="/", "limit"="2")|
++-----------------------------+-----------------------------------------+
+|2021-01-01T00:00:01.000+08:00|                                A/B/A+,B-|
+|2021-01-01T00:00:02.000+08:00|                                A/A+/A,B+|
+|2021-01-01T00:00:03.000+08:00|                                   B+/B/B|
+|2021-01-01T00:00:04.000+08:00|                                A+/A/A+,A|
+|2021-01-01T00:00:05.000+08:00|                                 A/B-/B,B|
++-----------------------------+-----------------------------------------+
+```
+
+Another SQL for query:
+
+```sql
+select strreplace(s1, "target"=",", "replace"="/", "limit"="1", "offset"="1", "reverse"="true") from root.test.d1
+```
+
+Output series:
+
+```
++-----------------------------+-----------------------------------------------------+
+|                         Time|strreplace(root.test.d1.s1, "target"=",", "replace"= | 
+|                             |    "|", "limit"="1", "offset"="1", "reverse"="true")|
++-----------------------------+-----------------------------------------------------+
+|2021-01-01T00:00:01.000+08:00|                                            A,B/A+,B-|
+|2021-01-01T00:00:02.000+08:00|                                            A,A+/A,B+|
+|2021-01-01T00:00:03.000+08:00|                                               B+/B,B|
+|2021-01-01T00:00:04.000+08:00|                                            A+,A/A+,A|
+|2021-01-01T00:00:05.000+08:00|                                             A,B-/B,B|
++-----------------------------+-----------------------------------------------------+
+```
+
 ## RegexMatch
 
 ### Usage
@@ -216,84 +793,5 @@ Output series:
 |2021-01-01T00:00:02.000+08:00|                                                   B+|
 |2021-01-01T00:00:04.000+08:00|                                                    A|
 |2021-01-01T00:00:05.000+08:00|                                                    B|
-+-----------------------------+-----------------------------------------------------+
-```
-
-## StrReplace
-
-### Usage
-
-The function is used to replace the specific substring with given string.
-
-**Name:** STRREPLACE
-
-**Input Series:** Only support a single input series. The data type is TEXT.
-
-**Parameter:**
-
-+ `target`: The target substring to be replaced.
-+ `replace`: The string to be put on.
-+ `limit`: The number of matches to be replaced which should be an integer no less than -1,
-  default to -1 which means all matches will be replaced.
-+ `offset`: The number of matches to be skipped, which means the first `offset` matches will not be replaced, default to 0.
-+ `reverse`: Whether to count all the matches reversely, default to 'false'.
-
-**Output Series:** Output a single series. The type is TEXT.
-
-### Examples
-
-Input series:
-
-```
-+-----------------------------+---------------+
-|                         Time|root.test.d1.s1|
-+-----------------------------+---------------+
-|2021-01-01T00:00:01.000+08:00|      A,B,A+,B-|
-|2021-01-01T00:00:02.000+08:00|      A,A+,A,B+|
-|2021-01-01T00:00:03.000+08:00|         B+,B,B|
-|2021-01-01T00:00:04.000+08:00|      A+,A,A+,A|
-|2021-01-01T00:00:05.000+08:00|       A,B-,B,B|
-+-----------------------------+---------------+
-```
-
-SQL for query:
-
-```sql
-select strreplace(s1, "target"=",", "replace"="/", "limit"="2") from root.test.d1
-```
-
-Output series:
-
-```
-+-----------------------------+-----------------------------------------+
-|                         Time|strreplace(root.test.d1.s1, "target"=",",|
-|                             |              "replace"="/", "limit"="2")|
-+-----------------------------+-----------------------------------------+
-|2021-01-01T00:00:01.000+08:00|                                A/B/A+,B-|
-|2021-01-01T00:00:02.000+08:00|                                A/A+/A,B+|
-|2021-01-01T00:00:03.000+08:00|                                   B+/B/B|
-|2021-01-01T00:00:04.000+08:00|                                A+/A/A+,A|
-|2021-01-01T00:00:05.000+08:00|                                 A/B-/B,B|
-+-----------------------------+-----------------------------------------+
-```
-
-Another SQL for query:
-
-```sql
-select strreplace(s1, "target"=",", "replace"="/", "limit"="1", "offset"="1", "reverse"="true") from root.test.d1
-```
-
-Output series:
-
-```
-+-----------------------------+-----------------------------------------------------+
-|                         Time|strreplace(root.test.d1.s1, "target"=",", "replace"= | 
-|                             |    "|", "limit"="1", "offset"="1", "reverse"="true")|
-+-----------------------------+-----------------------------------------------------+
-|2021-01-01T00:00:01.000+08:00|                                            A,B/A+,B-|
-|2021-01-01T00:00:02.000+08:00|                                            A,A+/A,B+|
-|2021-01-01T00:00:03.000+08:00|                                               B+/B,B|
-|2021-01-01T00:00:04.000+08:00|                                            A+,A/A+,A|
-|2021-01-01T00:00:05.000+08:00|                                             A,B-/B,B|
 +-----------------------------+-----------------------------------------------------+
 ```

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.udf.service;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
+import org.apache.iotdb.udf.api.UDTF;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;

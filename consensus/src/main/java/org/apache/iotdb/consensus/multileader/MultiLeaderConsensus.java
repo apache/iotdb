@@ -20,9 +20,11 @@
 package org.apache.iotdb.consensus.multileader;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.RegisterManager;
+import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.consensus.IConsensus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.IStateMachine.Registry;
@@ -31,10 +33,14 @@ import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.consensus.config.ConsensusConfig;
+import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.exception.ConsensusGroupAlreadyExistException;
 import org.apache.iotdb.consensus.exception.ConsensusGroupNotExistException;
 import org.apache.iotdb.consensus.exception.IllegalPeerEndpointException;
 import org.apache.iotdb.consensus.exception.IllegalPeerNumException;
+import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
+import org.apache.iotdb.consensus.multileader.client.MultiLeaderConsensusClientPool.AsyncMultiLeaderServiceClientPoolFactory;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCService;
 import org.apache.iotdb.consensus.multileader.service.MultiLeaderRPCServiceProcessor;
 
@@ -46,7 +52,6 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -64,18 +69,25 @@ public class MultiLeaderConsensus implements IConsensus {
       new ConcurrentHashMap<>();
   private final MultiLeaderRPCService service;
   private final RegisterManager registerManager = new RegisterManager();
+  private final MultiLeaderConfig config;
+  private final IClientManager<TEndPoint, AsyncMultiLeaderServiceClient> clientManager;
 
-  public MultiLeaderConsensus(TEndPoint thisNode, File storageDir, Registry registry) {
-    this.thisNode = thisNode;
-    this.storageDir = storageDir;
+  public MultiLeaderConsensus(ConsensusConfig config, Registry registry) {
+    this.thisNode = config.getThisNode();
+    this.storageDir = new File(config.getStorageDir());
+    this.config = config.getMultiLeaderConfig();
     this.registry = registry;
-    this.service = new MultiLeaderRPCService(thisNode);
+    this.service = new MultiLeaderRPCService(thisNode, config.getMultiLeaderConfig());
+    this.clientManager =
+        new IClientManager.Factory<TEndPoint, AsyncMultiLeaderServiceClient>()
+            .createClientManager(
+                new AsyncMultiLeaderServiceClientPoolFactory(config.getMultiLeaderConfig()));
   }
 
   @Override
   public void start() throws IOException {
     initAndRecover();
-    service.initSyncedServiceImpl(new MultiLeaderRPCServiceProcessor(this));
+    service.initAsyncedServiceImpl(new MultiLeaderRPCServiceProcessor(this));
     try {
       registerManager.register(service);
     } catch (StartupException e) {
@@ -100,7 +112,9 @@ public class MultiLeaderConsensus implements IConsensus {
                   path.toString(),
                   new Peer(consensusGroupId, thisNode),
                   new ArrayList<>(),
-                  registry.apply(consensusGroupId));
+                  registry.apply(consensusGroupId),
+                  clientManager,
+                  config);
           stateMachineMap.put(consensusGroupId, consensus);
           consensus.start();
         }
@@ -110,6 +124,7 @@ public class MultiLeaderConsensus implements IConsensus {
 
   @Override
   public void stop() {
+    clientManager.close();
     stateMachineMap.values().parallelStream().forEach(MultiLeaderServerImpl::stop);
     registerManager.deregisterAll();
   }
@@ -161,7 +176,12 @@ public class MultiLeaderConsensus implements IConsensus {
           }
           MultiLeaderServerImpl impl =
               new MultiLeaderServerImpl(
-                  path, new Peer(groupId, thisNode), peers, registry.apply(groupId));
+                  path,
+                  new Peer(groupId, thisNode),
+                  peers,
+                  registry.apply(groupId),
+                  clientManager,
+                  config);
           impl.start();
           return impl;
         });
@@ -181,13 +201,7 @@ public class MultiLeaderConsensus implements IConsensus {
         (k, v) -> {
           exist.set(true);
           v.stop();
-          String path = buildPeerDir(groupId);
-          try {
-            Files.delete(Paths.get(path));
-          } catch (IOException e) {
-            logger.warn(
-                "Unable to delete consensus dir for group {} at {} because {}", groupId, path, e);
-          }
+          FileUtils.deleteDirectory(new File(buildPeerDir(groupId)));
           return null;
         });
 
@@ -235,6 +249,11 @@ public class MultiLeaderConsensus implements IConsensus {
       return null;
     }
     return new Peer(groupId, thisNode);
+  }
+
+  @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIds() {
+    return new ArrayList<>(stateMachineMap.keySet());
   }
 
   public MultiLeaderServerImpl getImpl(ConsensusGroupId groupId) {
