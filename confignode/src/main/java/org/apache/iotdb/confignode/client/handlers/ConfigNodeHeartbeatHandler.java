@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.client.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatPackage;
+import org.apache.iotdb.confignode.manager.load.heartbeat.NodeHeartbeatSample;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -42,8 +42,8 @@ public class ConfigNodeHeartbeatHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onComplete(Long timestamp) {
-    configNodeHeartbeatCache.cacheHeartBeat(
-        new HeartbeatPackage(timestamp, System.currentTimeMillis()));
+    configNodeHeartbeatCache.cacheHeartbeatSample(
+        new NodeHeartbeatSample(timestamp, System.currentTimeMillis()));
   }
 
   @Override
