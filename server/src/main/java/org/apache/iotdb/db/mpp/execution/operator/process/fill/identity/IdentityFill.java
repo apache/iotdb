@@ -16,18 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.merge;
+package org.apache.iotdb.db.mpp.execution.operator.process.fill.identity;
 
-public class AscTimeComparator implements TimeComparator {
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-  /** @return if order by time asc, return true if time <= endTime, otherwise false */
-  @Override
-  public boolean satisfyCurEndTime(long time, long endTime) {
-    return time <= endTime;
-  }
+public class IdentityFill implements IFill {
 
   @Override
-  public long getCurrentEndTime(long time1, long time2) {
-    return Math.min(time1, time2);
+  public Column fill(Column valueColumn) {
+    return valueColumn;
   }
 }
