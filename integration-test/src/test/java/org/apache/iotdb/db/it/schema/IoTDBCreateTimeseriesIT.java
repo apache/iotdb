@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it;
+package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.env.IoTDBTestRunner;

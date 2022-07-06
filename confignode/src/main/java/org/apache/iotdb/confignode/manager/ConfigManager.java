@@ -100,6 +100,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -219,10 +220,14 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       List<TConfigNodeLocation> configNodeLocations = getNodeManager().getRegisteredConfigNodes();
+      configNodeLocations.sort(
+          Comparator.comparingInt(configNodeLocation -> configNodeLocation.getConfigNodeId()));
       List<TDataNodeLocation> dataNodeInfoLocations =
           getNodeManager().getRegisteredDataNodes(-1).stream()
               .map(TDataNodeInfo::getLocation)
               .collect(Collectors.toList());
+      dataNodeInfoLocations.sort(
+          Comparator.comparingInt(dataNodeInfoLocation -> dataNodeInfoLocation.getDataNodeId()));
       Map<Integer, String> nodeStatus = new HashMap<>();
       getLoadManager()
           .getHeartbeatCacheMap()
@@ -834,6 +839,7 @@ public class ConfigManager implements IManager {
           }));
     }
 
+    dataNodesInfoList.sort(Comparator.comparingInt(dataNodeInfo -> dataNodeInfo.getDataNodeId()));
     dataNodeInfosResp.setStatus(regionsInfoDataSet.getStatus());
     dataNodeInfosResp.setDataNodesInfoList(dataNodesInfoList);
 

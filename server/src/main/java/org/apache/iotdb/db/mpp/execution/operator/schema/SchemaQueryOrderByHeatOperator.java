@@ -42,16 +42,18 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
   private boolean isFinished = false;
   private final List<Operator> operators;
-  private final boolean[] noMoreTsBlocks;
   private final List<TsBlock> showTimeSeriesResult;
   private final List<TsBlock> lastQueryResult;
+
+  private int currentIndex;
 
   public SchemaQueryOrderByHeatOperator(OperatorContext operatorContext, List<Operator> operators) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.operators = operators;
-    this.noMoreTsBlocks = new boolean[operators.size()];
     this.showTimeSeriesResult = new ArrayList<>();
     this.lastQueryResult = new ArrayList<>();
+
+    currentIndex = 0;
   }
 
   @Override
@@ -117,28 +119,41 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    for (int i = 0; i < operators.size(); i++) {
-      if (!noMoreTsBlocks[i]) {
-        Operator operator = operators.get(i);
-        ListenableFuture<?> blocked = operator.isBlocked();
-        while (operator.hasNext() && blocked.isDone()) {
-          TsBlock tsBlock = operator.next();
-          if (null != tsBlock && !tsBlock.isEmpty()) {
-            if (isShowTimeSeriesBlock(tsBlock)) {
-              showTimeSeriesResult.add(tsBlock);
-            } else {
-              lastQueryResult.add(tsBlock);
-            }
-          }
-          blocked = operator.isBlocked();
-        }
-        if (!blocked.isDone()) {
-          return blocked;
-        }
-        noMoreTsBlocks[i] = true;
+    Operator operator;
+    ListenableFuture<?> blocked;
+    while (currentIndex < operators.size()) {
+      operator = operators.get(currentIndex);
+      blocked = readCurrentChild(operator);
+      if (blocked != null) {
+        // not null means blocked
+        return blocked;
+      } else {
+        // null means current operator is finished
+        currentIndex++;
       }
     }
+
     return NOT_BLOCKED;
+  }
+
+  private ListenableFuture<?> readCurrentChild(Operator operator) {
+    while (!operator.isFinished()) {
+      ListenableFuture<?> blocked = operator.isBlocked();
+      if (!blocked.isDone()) {
+        return blocked;
+      }
+      if (operator.hasNext()) {
+        TsBlock tsBlock = operator.next();
+        if (null != tsBlock && !tsBlock.isEmpty()) {
+          if (isShowTimeSeriesBlock(tsBlock)) {
+            showTimeSeriesResult.add(tsBlock);
+          } else {
+            lastQueryResult.add(tsBlock);
+          }
+        }
+      }
+    }
+    return null;
   }
 
   private boolean isShowTimeSeriesBlock(TsBlock tsBlock) {

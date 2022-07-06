@@ -180,11 +180,17 @@ IoTDB> show schema regions
 Total line number = 2
 It costs 0.012s
 ```
-## Monitoring tool for cluster DataNode distribution
+## Monitoring tool for cluster Node distribution
+
+### Show all DataNode information
 
 Currently, IoTDB supports DataNode query using the following SQL：
 
-- `SHOW DATANODES`: Show all DataNode
+```
+SHOW DATANODES
+```
+
+Eg :
 
 ```sql
 IoTDB> create timeseries root.sg.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
@@ -236,9 +242,24 @@ Total line number = 2
 It costs 0.006s
 ```
 
-## Cluster node status viewing tool 
+After a DataNode is stopped, its status will change, as shown below:
 
-Show all node information: 
+```
+IoTDB> show datanodes
++------+-------+---------+----+-------------+---------------+
+|NodeID| Status|     Host|Port|DataRegionNum|SchemaRegionNum|
++------+-------+---------+----+-------------+---------------+
+|     3|Running|127.0.0.1|6667|            0|              0|
+|     4|Unknown|127.0.0.1|6669|            0|              0|
+|     5|Running|127.0.0.1|6671|            0|              0|
++------+-------+---------+----+-------------+---------------+
+Total line number = 3
+It costs 0.009s
+```
+
+### Show all Node information
+
+ Currently, iotdb supports the following SQL to view the information of all nodes : 
 
 ```
 SHOW CLUSTER
@@ -251,12 +272,12 @@ IoTDB> show cluster
 +------+----------+-------+---------+-----+
 |NodeID|  NodeType| Status|     Host| Port|
 +------+----------+-------+---------+-----+
-|     4|ConfigNode|Running|  0.0.0.0|22279|
 |     0|ConfigNode|Running|  0.0.0.0|22277|
-|     5|ConfigNode|Running|  0.0.0.0|22281|
-|     1|  DataNode|Running|127.0.0.1| 9005|
-|     2|  DataNode|Running|127.0.0.1| 9003|
-|     3|  DataNode|Running|127.0.0.1| 9007|
+|     1|ConfigNode|Running|  0.0.0.0|22279|
+|     2|ConfigNode|Running|  0.0.0.0|22281|
+|     3|  DataNode|Running|127.0.0.1| 9003|
+|     4|  DataNode|Running|127.0.0.1| 9005|
+|     5|  DataNode|Running|127.0.0.1| 9007|
 +------+----------+-------+---------+-----+
 Total line number = 6
 It costs 0.011s
@@ -269,12 +290,12 @@ IoTDB> show cluster
 +------+----------+-------+---------+-----+
 |NodeID|  NodeType| Status|     Host| Port|
 +------+----------+-------+---------+-----+
-|     4|ConfigNode|Running|  0.0.0.0|22279|
 |     0|ConfigNode|Running|  0.0.0.0|22277|
-|     5|ConfigNode|Unknown|  0.0.0.0|22281|
-|     1|  DataNode|Running|127.0.0.1| 9005|
-|     2|  DataNode|Running|127.0.0.1| 9003|
-|     3|  DataNode|Running|127.0.0.1| 9007|
+|     1|ConfigNode|Unknown|  0.0.0.0|22279|
+|     2|ConfigNode|Running|  0.0.0.0|22281|
+|     3|  DataNode|Running|127.0.0.1| 9003|
+|     4|  DataNode|Running|127.0.0.1| 9005|
+|     5|  DataNode|Running|127.0.0.1| 9007|
 +------+----------+-------+---------+-----+
 Total line number = 6
 It costs 0.012s

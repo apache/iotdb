@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -133,7 +134,7 @@ public class InfluxDBMetaManager {
       serviceProvider.executeNonQuery(setStorageGroupPlan);
     } catch (QueryProcessException e) {
       // errCode = 300 means sg has already set
-      if (e.getErrorCode() != 300) {
+      if (e.getErrorCode() != TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
         throw new InfluxDBException(e.getMessage());
       }
     } catch (IllegalPathException | StorageGroupNotSetException | StorageEngineException e) {

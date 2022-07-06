@@ -106,6 +106,7 @@ struct TSendPlanNodeReq {
 struct TSendPlanNodeResp {
   1: required bool accepted
   2: optional string message
+  3: optional common.TSStatus status
 }
 
 struct TFetchFragmentInstanceStateReq {
