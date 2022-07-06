@@ -34,7 +34,7 @@ import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -253,12 +253,10 @@ public class ReadPointCompactionPerformer
     allResources.sort(
         (o1, o2) -> {
           try {
-            TsFileNameGenerator.TsFileName n1 =
-                TsFileNameGenerator.getTsFileName(o1.getTsFile().getName());
-            TsFileNameGenerator.TsFileName n2 =
-                TsFileNameGenerator.getTsFileName(o2.getTsFile().getName());
+            TsFileName n1 = TsFileName.parse(o1.getTsFile().getName());
+            TsFileName n2 = TsFileName.parse(o2.getTsFile().getName());
             return (int) (n2.getVersion() - n1.getVersion());
-          } catch (IOException e) {
+          } catch (Exception e) {
             return 0;
           }
         });

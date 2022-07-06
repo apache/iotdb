@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBStartCheck;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -118,6 +119,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -426,6 +428,12 @@ public class DataRegion {
     }
 
     try {
+      // check whether upgrading from v0.12, v.13
+      // Notice: delete this when release v0.15
+      if (IoTDBStartCheck.getInstance().isUpgradeFromOldVersion()) {
+        upgradeTsFileName();
+      }
+
       // collect candidate TsFiles from sequential and unsequential data directory
       Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair =
           getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
@@ -561,6 +569,46 @@ public class DataRegion {
     }
   }
 
+  private void upgradeTsFileName() {
+    List<File> tsFiles = new ArrayList<>();
+    for (String baseDir : DirectoryManager.getInstance().getAllFilesFolders()) {
+      File fileFolder =
+          fsFactory.getFile(baseDir + File.separator + logicalStorageGroupName, dataRegionId);
+      if (!fileFolder.exists()) {
+        continue;
+      }
+      File[] subFiles = fileFolder.listFiles();
+      if (subFiles != null) {
+        for (File partitionFolder : subFiles) {
+          if (!partitionFolder.isDirectory()) {
+            logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
+          } else if (!partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
+            // some TsFileResource may be being persisted when the system crashed, try recovering
+            // such resources
+            continueFailedRenames(partitionFolder, TEMP_SUFFIX);
+            Collections.addAll(
+                tsFiles,
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
+          }
+        }
+      }
+    }
+
+    tsFiles.sort(Comparator.comparingLong(file -> TsFileName.parseVersion(file.getName())));
+    int curr = 0, next = 1;
+    while (next < tsFiles.size()) {
+      TsFileName currFileName = TsFileName.parse(tsFiles.get(curr).getName());
+      TsFileName nextFileName = TsFileName.parse(tsFiles.get(next).getName());
+      if (currFileName.getTime() > nextFileName.getTime()) {
+        currFileName.setTime(nextFileName.getTime());
+        TsFileResource tsFileResource = new TsFileResource(tsFiles.get(curr));
+        tsFileResource.renameTo(currFileName.toFileName());
+      }
+      curr = next;
+      next++;
+    }
+  }
+
   private void initCompaction() {
     if (!config.isEnableSeqSpaceCompaction()
         && !config.isEnableUnseqSpaceCompaction()
@@ -617,7 +665,6 @@ public class DataRegion {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void updateLatestFlushedTime() throws IOException {
-
     VersionController versionController =
         new SimpleFileVersionController(storageGroupSysDir.getPath());
     long currentVersion = versionController.currVersion();
@@ -656,7 +703,7 @@ public class DataRegion {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders)
-      throws IOException, DataRegionException {
+      throws IOException {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
@@ -732,20 +779,19 @@ public class DataRegion {
   }
 
   /** check if the tsfile's time is smaller than system current time */
-  private void checkTsFileTime(File tsFile) throws DataRegionException {
+  private void checkTsFileTime(File tsFile) {
     String[] items = tsFile.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
     long fileTime = Long.parseLong(items[0]);
     long currentTime = System.currentTimeMillis();
     if (fileTime > currentTime) {
-      throw new DataRegionException(
-          String.format(
-              "data region %s[%s] is down, because the time of tsfile %s is larger than system current time, "
-                  + "file time is %d while system current time is %d, please check it.",
-              logicalStorageGroupName,
-              dataRegionId,
-              tsFile.getAbsolutePath(),
-              fileTime,
-              currentTime));
+      logger.error(
+          "data region {}[{}] is down, because the time of tsfile {} is larger than system current time, file time is {} while system current time is {}, please check it.",
+          logicalStorageGroupName,
+          dataRegionId,
+          tsFile.getAbsolutePath(),
+          fileTime,
+          currentTime);
+      System.exit(-1);
     }
   }
 
@@ -1538,14 +1584,7 @@ public class DataRegion {
 
     String filePath =
         TsFileNameGenerator.generateNewTsFilePathWithMkdir(
-            sequence,
-            logicalStorageGroupName,
-            dataRegionId,
-            timePartitionId,
-            createdTime,
-            version, // TODO: change version to 0L when field partitionMaxFileVersions is removed
-            0,
-            0);
+            sequence, logicalStorageGroupName, dataRegionId, timePartitionId, createdTime, 0, 0, 0);
 
     return getTsFileProcessor(sequence, filePath, timePartitionId);
   }
