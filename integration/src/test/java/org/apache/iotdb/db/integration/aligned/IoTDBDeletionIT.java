@@ -85,11 +85,11 @@ public class IoTDBDeletionIT {
       statement.execute("insert into root.vehicle.d0(time,s4) aligned values (10,true)");
 
       String errorMsg =
-          "303: Check metadata error: For delete statement, where clause can only"
+          "416: For delete statement, where clause can only"
               + " contain time expressions, value filter is not currently supported.";
 
       String errorMsg2 =
-          "303: Check metadata error: For delete statement, where clause can only contain"
+          "416: For delete statement, where clause can only contain"
               + " atomic expressions like : time > XXX, time <= XXX,"
               + " or two atomic expressions connected by 'AND'";
 

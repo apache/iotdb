@@ -502,8 +502,8 @@ public class StorageEngineV2 implements IService {
   }
 
   /** Write data into DataRegion. For standalone mode only. */
-  public void write(DataRegionId groupId, PlanNode planNode) {
-    planNode.accept(new DataExecutionVisitor(), dataRegionMap.get(groupId));
+  public TSStatus write(DataRegionId groupId, PlanNode planNode) {
+    return planNode.accept(new DataExecutionVisitor(), dataRegionMap.get(groupId));
   }
 
   /** This function is just for unit test. */

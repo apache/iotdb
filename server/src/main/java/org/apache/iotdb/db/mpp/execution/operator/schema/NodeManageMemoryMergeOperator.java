@@ -38,12 +38,14 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
   private final Set<String> data;
   private final Operator child;
+  private boolean isReadingMemory;
 
   public NodeManageMemoryMergeOperator(
       OperatorContext operatorContext, Set<String> data, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.data = data;
     this.child = requireNonNull(child, "child operator is null");
+    isReadingMemory = true;
   }
 
   @Override
@@ -53,18 +55,36 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return child.isBlocked();
+    return isReadingMemory ? NOT_BLOCKED : child.isBlocked();
   }
 
   @Override
   public TsBlock next() {
-    TsBlock block = child.next();
+    if (isReadingMemory) {
+      isReadingMemory = false;
+      return transferToTsBlock(data);
+    } else {
+      TsBlock block = child.next();
+      if (block == null) {
+        return null;
+      }
+
+      Set<String> nodePaths = new TreeSet<>();
+      String nodePath;
+      for (int i = 0; i < block.getPositionCount(); i++) {
+        nodePath = block.getColumn(0).getBinary(i).toString();
+        if (!data.contains(nodePath)) {
+          nodePaths.add(nodePath);
+          data.add(nodePath);
+        }
+      }
+      return transferToTsBlock(nodePaths);
+    }
+  }
+
+  private TsBlock transferToTsBlock(Set<String> nodePaths) {
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
-    Set<String> nodePaths = new TreeSet<>(data);
-    for (int i = 0; i < block.getPositionCount(); i++) {
-      nodePaths.add(block.getColumn(0).getBinary(i).toString());
-    }
 
     nodePaths.forEach(
         path -> {
@@ -77,7 +97,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return child.hasNext();
+    return isReadingMemory || child.hasNext();
   }
 
   @Override
@@ -87,6 +107,6 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
 
   @Override
   public boolean isFinished() {
-    return child.isFinished();
+    return !isReadingMemory && child.isFinished();
   }
 }

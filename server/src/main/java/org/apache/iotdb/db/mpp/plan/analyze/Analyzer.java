@@ -1458,6 +1458,10 @@ public class Analyzer {
       DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
       analysis.setDataPartitionInfo(dataPartition);
 
+      if (dataPartition.isEmpty()) {
+        analysis.setFinishQueryAfterAnalyze(true);
+      }
+
       return analysis;
     }
   }

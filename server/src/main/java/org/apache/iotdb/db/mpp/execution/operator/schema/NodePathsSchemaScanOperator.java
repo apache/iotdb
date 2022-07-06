@@ -74,7 +74,8 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
       } else {
         nodePaths =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-                .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, true, null).stream()
+                .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, false, null)
+                    .stream()
                     .map(PartialPath::getFullPath)
                     .collect(Collectors.toSet());
       }

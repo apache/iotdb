@@ -17,17 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -37,11 +39,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.fail;
+
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@Category({LocalStandaloneTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBCreateStorageGroupIT {
   private Statement statement;
   private Connection connection;
@@ -75,19 +80,18 @@ public class IoTDBCreateStorageGroupIT {
 
     statement.close();
     connection.close();
-    EnvironmentUtils.stopDaemon();
-    setUp();
-
-    // ensure StorageGroup in cache is right after recovering.
-    createStorageGroupTool(storageGroups);
+    // todo test restart
+    //    EnvironmentUtils.stopDaemon();
+    //    setUp();
+    //
+    //    // ensure StorageGroup in cache is right after recovering.
+    //    createStorageGroupTool(storageGroups);
   }
 
   private void createStorageGroupTool(String[] storageGroups) throws SQLException {
-    boolean hasResult = statement.execute("show storage group");
-    Assert.assertTrue(hasResult);
 
     List<String> resultList = new ArrayList<>();
-    try (ResultSet resultSet = statement.getResultSet()) {
+    try (ResultSet resultSet = statement.executeQuery("show storage group")) {
       while (resultSet.next()) {
         String storageGroupPath = resultSet.getString("storage group");
         resultList.add(storageGroupPath);
@@ -111,8 +115,9 @@ public class IoTDBCreateStorageGroupIT {
 
     try {
       statement.execute(String.format("create storage group %s", storageGroup));
+      fail();
     } catch (SQLException e) {
-      Assert.assertEquals(e.getMessage(), "903: root.sg has already been set to storage group");
+      Assert.assertEquals("903: root.sg has already been set to storage group", e.getMessage());
     }
   }
 
@@ -124,8 +129,9 @@ public class IoTDBCreateStorageGroupIT {
 
     try {
       statement.execute("create storage group root.sg.`device`");
+      fail();
     } catch (SQLException e) {
-      Assert.assertEquals(e.getMessage(), "903: root.sg has already been set to storage group");
+      Assert.assertEquals("903: root.sg has already been set to storage group", e.getMessage());
     }
   }
 }
