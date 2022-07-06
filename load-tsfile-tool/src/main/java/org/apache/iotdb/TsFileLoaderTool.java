@@ -211,7 +211,6 @@ public class TsFileLoaderTool {
       try {
         writeTsFile(file.getPath(), session);
       } catch (Exception e) {
-        System.out.println("Error");
         System.out.println(
             "------------------------------Error Message------------------------------");
         e.printStackTrace();
@@ -315,6 +314,14 @@ public class TsFileLoaderTool {
             }
           }
           tablet.rowSize++;
+          if (tablet.rowSize == MAX_TABLET_LENGTH) {
+            if (isAligned) {
+              session.insertAlignedTablet(tablet);
+            } else {
+              session.insertTablet(tablet);
+            }
+            tablet.reset();
+          }
         }
         if (isAligned) {
           session.insertAlignedTablet(tablet);

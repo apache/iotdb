@@ -65,10 +65,7 @@ public class TimePageReader {
     long[] timeBatch = new long[(int) pageHeader.getStatistics().getCount()];
     int index = 0;
     while (timeDecoder.hasNext(timeBuffer)) {
-      long timestamp = timeDecoder.readLong(timeBuffer);
-      if (!isDeleted(timestamp)) {
-        timeBatch[index++] = timeDecoder.readLong(timeBuffer);
-      }
+      timeBatch[index++] = timeDecoder.readLong(timeBuffer);
     }
     return timeBatch;
   }
@@ -83,10 +80,7 @@ public class TimePageReader {
     } else {
       List<Long> timeList = new ArrayList<>();
       while (timeDecoder.hasNext(timeBuffer)) {
-        long timestamp = timeDecoder.readLong(timeBuffer);
-        if (!isDeleted(timestamp)) {
-          timeList.add(timestamp);
-        }
+        timeList.add(timeDecoder.readLong(timeBuffer));
       }
       return timeList.stream().mapToLong(t -> t).toArray();
     }
