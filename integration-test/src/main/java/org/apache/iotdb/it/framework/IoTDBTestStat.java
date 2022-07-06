@@ -16,24 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.framework;
 
-import org.apache.iotdb.it.framework.IoTDBTestLogger;
+import org.jetbrains.annotations.NotNull;
 
-import org.slf4j.Logger;
+public class IoTDBTestStat implements Comparable<IoTDBTestStat> {
+  private final String name;
+  private final double seconds;
 
-public class Cluster1Env extends AbstractEnv {
-  private static final Logger logger = IoTDBTestLogger.logger;
-
-  @Override
-  public void initBeforeClass() throws InterruptedException {
-    logger.debug("=======start init class=======");
-    super.initEnvironment(1, 3);
+  public IoTDBTestStat(String name, double seconds) {
+    this.name = name;
+    this.seconds = seconds;
   }
 
   @Override
-  public void initBeforeTest() throws InterruptedException {
-    logger.debug("=======start init test=======");
-    super.initEnvironment(1, 3);
+  public int compareTo(@NotNull IoTDBTestStat o) {
+    // Compare in a reverse order
+    return Double.compare(o.seconds, seconds);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("%.3f\t%s", seconds, name);
   }
 }
