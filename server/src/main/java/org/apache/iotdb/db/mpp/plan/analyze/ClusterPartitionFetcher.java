@@ -230,12 +230,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           client.getOrCreateDataPartition(constructDataPartitionReq(sgNameToQueryParamsMap));
       if (dataPartitionResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return parseDataPartitionResp(dataPartitionResp);
+      } else {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getOrCreateDataPartition():"
+                + dataPartitionResp.getStatus().getMessage());
       }
     } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
-    return null;
   }
 
   @Override
