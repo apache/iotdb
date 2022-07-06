@@ -1369,7 +1369,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |名字| compressor |
 |:---:|:---|
 |描述| 数据压缩方法 |
-|类型| 枚举 String : “UNCOMPRESSED”, “SNAPPY”, “LZ4” |
+|类型| 枚举 String : “UNCOMPRESSED”, “SNAPPY”, “LZ4”, “ZSTD” |
 |默认值| SNAPPY |
 |改后生效方式|触发生效|
 
