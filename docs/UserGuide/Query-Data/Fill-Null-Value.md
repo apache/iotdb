@@ -21,7 +21,7 @@
 
 # Fill Null Value
 
-When performing segment aggregation on a time series, there may be no data for a certain period of time, and the aggregated result of this segment of data is null, but this kind of null value is not conducive to data visualization and analysis, and the null value needs to be filled.
+When executing some queries, there may be no data for some columns in some rows, and data in these locations will be null, but this kind of null value is not conducive to data visualization and analysis, and the null value needs to be filled.
 
 Fill null value allows the user to fill the query result with null values according to a specific method, such as taking the previous value that is not null, or linear interpolation. The query result after filling the null value can better reflect the data distribution, which is beneficial for users to perform data analysis.
 
@@ -32,49 +32,38 @@ In IoTDB, users can use the FILL clause to specify the fill mode when data is mi
 IoTDB supports previous, linear, and value fill methods. Following table lists the data types and supported fill methods.
 
 | Data Type | Supported Fill Methods  |
-| :-------- | :---------------------- |
+| :-------- |:------------------------|
 | boolean   | previous, value         |
 | int32     | previous, linear, value |
 | int64     | previous, linear, value |
 | float     | previous, linear, value |
 | double    | previous, linear, value |
-| text      | previous                |
+| text      | previous, value         |
 | </center> |                         |
 
-> Note: Only one Fill method can be specified in a Fill statement. Null value fill is compatible with version 0.12 and previous syntax (fill((<data_type>[<fill_method>(, <before_range>, <after_range>)?])+)), but the old syntax could not specify multiple fill methods at the same time
+> Note: Only one Fill method can be specified in a Fill statement. Null value fill is not compatible with version 0.13 and previous syntax (fill((<data_type>[<fill_method>(, <before_range>, <after_range>)?])+)) is not supported anymore.
 
-## Single Point Fill
-
-When data in a particular timestamp is null, the null values can be filled using single fill, as described below:
 
 ### Previous Fill
 
-When the value in the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
+When the value is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
 
 ```sql
-select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
+fill(previous)
 ```
-
-Detailed descriptions of all parameters are given in following table:
-
-
-| Parameter name (case insensitive) | Interpretation                                               |
-| :-------------------------------- | :----------------------------------------------------------- |
-| path, prefixPath                  | query path; mandatory field                                  |
-| T                                 | query timestamp (only one can be specified); mandatory field |
-| before\_range                     | represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value default\_fill\_interval; -1 represents infinit; optional field |
-| </center>                         |                                                              |
 
 Here we give an example of filling null values using the previous method. The SQL statement is as follows:
 
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1s) 
+select temperature from root.sgcc.wf03.wt01 where time => 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000
 ```
-which means:
+if we don't use any fill methods, the original result will be like:
 
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
 
-On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
+
+```sql
+select temperature from root.sgcc.wf03.wt01 where time => 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(previous)
+```
 
 ```
 +-----------------------------+-------------------------------+
