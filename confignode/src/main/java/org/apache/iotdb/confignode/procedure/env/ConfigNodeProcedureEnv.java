@@ -113,19 +113,17 @@ public class ConfigNodeProcedureEnv {
     invalidateCacheReq.setFullPath(storageGroupName);
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       final TSStatus invalidateSchemaStatus =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNode(
-                      dataNodeInfo.getLocation().getInternalEndPoint(),
-                      invalidateCacheReq,
-                      ConfigNodeRequestType.invalidateSchemaCache);
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNode(
+                  dataNodeInfo.getLocation().getInternalEndPoint(),
+                  invalidateCacheReq,
+                  ConfigNodeRequestType.invalidateSchemaCache);
       final TSStatus invalidatePartitionStatus =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNode(
-                      dataNodeInfo.getLocation().getInternalEndPoint(),
-                      invalidateCacheReq,
-                      ConfigNodeRequestType.invalidatePartitionCache);
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNode(
+                  dataNodeInfo.getLocation().getInternalEndPoint(),
+                  invalidateCacheReq,
+                  ConfigNodeRequestType.invalidatePartitionCache);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
         LOG.error(
             "Invalidate cache failed, invalidate partition cache status is {}， invalidate schema cache status is {}",

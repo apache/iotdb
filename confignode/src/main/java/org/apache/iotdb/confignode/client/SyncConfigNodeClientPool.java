@@ -92,14 +92,15 @@ public class SyncConfigNodeClientPool {
       } catch (Throwable e) {
         lastException = e;
         LOGGER.warn(
-            requestType + " failed on ConfigNode {}, because {}, retrying {}...",
+            "{} failed on ConfigNode {}, because {}, retrying {}...",
+            requestType,
             endPoint,
             e.getMessage(),
             retry);
         doRetryWait(retry);
       }
     }
-    LOGGER.error(requestType + " failed on ConfigNode {}", endPoint, lastException);
+    LOGGER.error("{} failed on ConfigNode {}", requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
         .setMessage("All retry failed due to" + lastException.getMessage());
   }

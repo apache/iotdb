@@ -58,7 +58,7 @@ public class SyncDataNodeClientPool {
                 new ConfigNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
-  public Object sendSyncRequestToDataNode(
+  public TSStatus sendSyncRequestToDataNode(
       TEndPoint endPoint, Object req, ConfigNodeRequestType requestType) {
     Throwable lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {
@@ -79,14 +79,15 @@ public class SyncDataNodeClientPool {
       } catch (TException | IOException e) {
         lastException = e;
         LOGGER.warn(
-            requestType + " failed on DataNode {}, because {}, retrying {}...",
+            "{} failed on DataNode {}, because {}, retrying {}...",
+            requestType,
             endPoint,
             e.getMessage(),
             retry);
         doRetryWait(retry);
       }
     }
-    LOGGER.error(requestType + " failed on DataNode {}", endPoint, lastException);
+    LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
         .setMessage("All retry failed due to" + lastException.getMessage());
   }
@@ -114,8 +115,7 @@ public class SyncDataNodeClientPool {
     for (TConsensusGroupId regionId : regionIds) {
       LOGGER.debug("Delete region {} ", regionId);
       final TSStatus status =
-          (TSStatus)
-              sendSyncRequestToDataNode(endPoint, regionId, ConfigNodeRequestType.deleteRegions);
+          sendSyncRequestToDataNode(endPoint, regionId, ConfigNodeRequestType.deleteRegions);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info("DELETE Region {} successfully", regionId);
         deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));

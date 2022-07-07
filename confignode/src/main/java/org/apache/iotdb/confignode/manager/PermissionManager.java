@@ -106,12 +106,11 @@ public class PermissionManager {
     req.setRoleName(roleName);
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       status =
-          (TSStatus)
-              SyncDataNodeClientPool.getInstance()
-                  .sendSyncRequestToDataNode(
-                      dataNodeInfo.getLocation().getInternalEndPoint(),
-                      req,
-                      ConfigNodeRequestType.invalidatePermissionCache);
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNode(
+                  dataNodeInfo.getLocation().getInternalEndPoint(),
+                  req,
+                  ConfigNodeRequestType.invalidatePermissionCache);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }

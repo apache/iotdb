@@ -82,7 +82,9 @@ public class ConfigNodeRemoveCheck {
                       configNodeLocation.getInternalEndPoint(),
                       nodeLocation,
                       ConfigNodeRequestType.removeConfigNode);
-      break;
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        break;
+      }
     }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(status.getMessage());
@@ -90,7 +92,7 @@ public class ConfigNodeRemoveCheck {
     }
   }
 
-  /** target_config_nodes of confignode-system.properties * */
+  /** target_config_nodes of confignode-system.properties */
   public List<TConfigNodeLocation> getConfigNodeList() throws BadNodeUrlException {
     return NodeUrlUtils.parseTConfigNodeUrls(
         systemProperties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES));
