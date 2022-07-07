@@ -19,6 +19,17 @@
 
 -->
 
+# Apache IoTDB 0.12.6
+
+## Improvements
+* [IOTDB-3515] Make the message clear when loading empty TsFile
+
+## Bug Fixes
+* [IOTDB-3392] Fix File doesn't exist when moving TsFile when virtual_storage_group > 1
+* [IOTDB-3398] Remove the exception when query meet a device is not in TsFile, which is a normal case
+* [ISSUE-5809] Fix bug: sum aggregation result return 0 when no data
+* Fix data in seq files overlapped
+  
 # Apache IoTDB 0.12.5
 
 ## New Features
