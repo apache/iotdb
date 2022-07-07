@@ -2271,6 +2271,10 @@ public class DataRegion {
             logicalStorageGroupName, tsFileResource.getTimePartition())) {
       return true;
     }
+    if (!tsFileResource.isClosed()) {
+      // tsfile is not closed
+      return false;
+    }
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
       long endTime = tsFileResource.getEndTime(deviceId);
