@@ -229,7 +229,7 @@ public class WALNode implements IWALNode {
         }
       }
 
-      logger.info(
+      logger.debug(
           "Start deleting outdated wal files for wal node-{}, the first valid version id is {}, and the safely deleted search index is {}.",
           identifier,
           firstValidVersionId,
@@ -687,7 +687,7 @@ public class WALNode implements IWALNode {
       if (needUpdatingFilesToSearch || filesToSearch == null) {
         updateFilesToSearch();
         if (needUpdatingFilesToSearch) {
-          logger.warn("update file to search failed");
+          logger.debug("update file to search failed, the next search index is {}", nextSearchIndex);
           return false;
         }
       }
