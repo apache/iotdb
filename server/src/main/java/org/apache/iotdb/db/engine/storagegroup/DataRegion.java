@@ -95,21 +95,17 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
-import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -2140,7 +2136,7 @@ public class DataRegion {
         // gen target tsFileResource
         TsFileResource targetTsFileResource = TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
         // read .tsfile to .alter
-        rewriteTsFile(tsFileResource, targetTsFileResource, fullPath, curEncoding, curCompressionType, timePartition, sequence);
+        tsFileResource.getProcessor().rewriteTsFile(targetTsFileResource, fullPath, curEncoding, curCompressionType, timePartition, sequence);
         // move tsfile
         tsFileResource.moveTsFile(TSFILE_SUFFIX, IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX);
         targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
@@ -2188,37 +2184,6 @@ public class DataRegion {
         tsFileResource.readUnlock();
       }
     });
-  }
-
-  private void rewriteTsFile(TsFileResource tsFileResource,TsFileResource targetTsFileResource, PartialPath fullPath,
-                             TSEncoding curEncoding, CompressionType curCompressionType, long timePartition, boolean sequence) throws IOException {
-    targetTsFileResource.writeLock();
-    try(TsFileSequenceReader reader = new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
-        TsFileIOWriter writer = new TsFileIOWriter(targetTsFileResource.getTsFile())) {
-      // read devices
-      TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
-      while (deviceIterator.hasNext()) {
-        Pair<String, Boolean> deviceInfo = deviceIterator.next();
-        String device = deviceInfo.left;
-        boolean aligned = deviceInfo.right;
-        // write chunkGroup header
-        writer.startChunkGroup(device);
-        // write chunk & page data
-        if (aligned) {
-
-        } else {
-
-        }
-        // chunkGroup end
-        writer.endChunkGroup();
-      }
-
-      targetTsFileResource.updatePlanIndexes(tsFileResource);
-      // write index,booloom,footer, end file
-      writer.endFile();
-      targetTsFileResource.close();
-    }
-    targetTsFileResource.writeUnlock();
   }
 
   /**
