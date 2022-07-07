@@ -122,25 +122,32 @@ public class AggregationUtil {
       TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     long targetTime = ascending ? curTimeRange.getMax() : curTimeRange.getMin();
+    if (timeColumn.getPositionCount() == 1) {
+      long checkedTime = timeColumn.getLongWithoutCheck(0);
+      return tsBlock.subTsBlock(
+          ((ascending && checkedTime <= targetTime) || (!ascending && checkedTime >= targetTime))
+              ? 1
+              : 0);
+    }
+
     int left = 0, right = timeColumn.getPositionCount() - 1, mid;
-    // if ascending, find the first greater than or equal to targetTime
-    // else, find the first less than or equal to targetTime
+    // if ascending, find the first greater than targetTime
+    // else, find the first less than targetTime
     while (left < right) {
       mid = (left + right) >> 1;
-      if (timeColumn.getLongWithoutCheck(mid) < targetTime) {
-        if (ascending) {
+      long checkedTime = timeColumn.getLongWithoutCheck(mid);
+      if (ascending) {
+        if (checkedTime <= targetTime) {
           left = mid + 1;
         } else {
           right = mid;
         }
-      } else if (timeColumn.getLongWithoutCheck(mid) > targetTime) {
-        if (ascending) {
-          right = mid;
-        } else {
+      } else {
+        if (checkedTime >= targetTime) {
           left = mid + 1;
+        } else {
+          right = mid;
         }
-      } else if (timeColumn.getLongWithoutCheck(mid) == targetTime) {
-        return tsBlock.subTsBlock(mid + 1);
       }
     }
     return tsBlock.subTsBlock(left);
