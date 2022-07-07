@@ -245,13 +245,13 @@ IoTDB> exit
 Linux 系统与 MacOS 系统停止命令如下：
 
 ```
-> $sbin/stop-server.sh
+> sbin/stop-server.sh
 ```
 
 Windows 系统停止命令如下：
 
 ```
-> $sbin\stop-server.bat
+> sbin\stop-server.bat
 ```
 
 ## 基础配置
