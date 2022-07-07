@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -86,8 +85,7 @@ public class TsFileNameGenerator {
   }
 
   @TestOnly
-  public static TsFileResource increaseCrossCompactionCnt(TsFileResource tsFileResource)
-          throws IOException {
+  public static TsFileResource increaseCrossCompactionCnt(TsFileResource tsFileResource) {
     File tsFile = tsFileResource.getTsFile();
     String path = tsFile.getParent();
     TsFileName tsFileName = TsFileName.parse(tsFileResource.getTsFile().getName());
@@ -100,10 +98,9 @@ public class TsFileNameGenerator {
   public static TsFileResource increaseInnerCompactionCnt(TsFileResource tsFileResource) {
     File tsFile = tsFileResource.getTsFile();
     String path = tsFile.getParent();
-    TsFileName tsFileName = getTsFileName(tsFileResource.getTsFile().getName());
+    TsFileName tsFileName = TsFileName.parse(tsFileResource.getTsFile().getName());
     tsFileName.setInnerCompactionCnt(tsFileName.getInnerCompactionCnt() + 1);
-    tsFileResource.setFile(
-        new File(path, tsFileName.toFileName()));
+    tsFileResource.setFile(new File(path, tsFileName.toFileName()));
     return tsFileResource;
   }
 
