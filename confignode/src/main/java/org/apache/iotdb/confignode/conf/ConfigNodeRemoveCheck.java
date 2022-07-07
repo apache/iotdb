@@ -90,7 +90,7 @@ public class ConfigNodeRemoveCheck {
     }
   }
 
-  /** target_config_nodes of confignode-system.properties **/
+  /** target_config_nodes of confignode-system.properties * */
   public List<TConfigNodeLocation> getConfigNodeList() throws BadNodeUrlException {
     return NodeUrlUtils.parseTConfigNodeUrls(
         systemProperties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES));
