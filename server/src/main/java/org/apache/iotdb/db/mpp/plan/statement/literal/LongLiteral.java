@@ -64,7 +64,7 @@ public class LongLiteral extends Literal {
         return false;
       }
     }
-    return dataType == TSDataType.INT32
+    return dataType == TSDataType.INT64
         || dataType == TSDataType.FLOAT
         || dataType == TSDataType.DOUBLE
         || dataType == TSDataType.TEXT;
