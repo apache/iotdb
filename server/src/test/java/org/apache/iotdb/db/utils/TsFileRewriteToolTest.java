@@ -55,6 +55,7 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.File;
@@ -168,6 +169,7 @@ public class TsFileRewriteToolTest {
   }
 
   @Test
+  @Ignore
   public void loadFileTest() {
     HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
     List<String> sensors = new ArrayList<>();
@@ -184,6 +186,7 @@ public class TsFileRewriteToolTest {
   }
 
   @Test
+  @Ignore
   public void loadFileWithOnlyOnePageTest() {
     HashMap<String, List<String>> deviceSensorsMap = new HashMap<>();
     List<String> sensors = new ArrayList<>();
