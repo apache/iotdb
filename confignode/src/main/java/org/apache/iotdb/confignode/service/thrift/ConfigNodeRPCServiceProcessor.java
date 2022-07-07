@@ -131,12 +131,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
-    RegisterDataNodePlan registerReq = new RegisterDataNodePlan(req.getDataNodeInfo());
-    DataNodeConfigurationResp registerResp =
-        (DataNodeConfigurationResp) configManager.registerDataNode(registerReq);
-
-    TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
-    registerResp.convertToRpcDataNodeRegisterResp(resp);
+    TDataNodeRegisterResp resp =
+        ((DataNodeConfigurationResp)
+                configManager.registerDataNode(new RegisterDataNodePlan(req.getDataNodeInfo())))
+            .convertToRpcDataNodeRegisterResp();
 
     // Print log to record the ConfigNode that performs the RegisterDatanodeRequest
     LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
