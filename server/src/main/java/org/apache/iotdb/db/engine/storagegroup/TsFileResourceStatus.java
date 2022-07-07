@@ -22,6 +22,5 @@ public enum TsFileResourceStatus {
   UNCLOSED,
   CLOSED,
   COMPACTION_CANDIDATE,
-  COMPACTING,
-  DELETED
+  COMPACTING
 }
