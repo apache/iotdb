@@ -201,6 +201,10 @@ public class LogDispatcher {
           syncStatus.addNextBatch(batch);
           // sends batch asynchronously and migrates the retry logic into the callback handler
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));
+          // update safely deleted search index to delete outdated info,
+          // indicating that insert nodes whose search index are before this value can be deleted
+          // safely
+          reader.setSafelyDeletedSearchIndex(impl.getCurrentSafelyDeletedSearchIndex());
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

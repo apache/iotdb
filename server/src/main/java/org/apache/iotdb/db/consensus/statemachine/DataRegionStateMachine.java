@@ -106,9 +106,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
         if (planNode instanceof InsertNode) {
           ((InsertNode) planNode)
               .setSearchIndex(((IndexedConsensusRequest) request).getSearchIndex());
-          ((InsertNode) planNode)
-              .setSafelyDeletedSearchIndex(
-                  ((IndexedConsensusRequest) request).getSafelyDeletedSearchIndex());
         }
       } else {
         planNode = getPlanNode(request);

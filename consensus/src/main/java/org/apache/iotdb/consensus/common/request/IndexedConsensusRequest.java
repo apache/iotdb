@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.consensus.common.request;
 
+import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
+
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -31,6 +33,10 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   private final long safelyDeletedSearchIndex;
 
   private final IConsensusRequest request;
+
+  public IndexedConsensusRequest(long searchIndex, IConsensusRequest request) {
+    this(searchIndex, ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX, request);
+  }
 
   public IndexedConsensusRequest(
       long searchIndex, long safelyDeletedSearchIndex, IConsensusRequest request) {
