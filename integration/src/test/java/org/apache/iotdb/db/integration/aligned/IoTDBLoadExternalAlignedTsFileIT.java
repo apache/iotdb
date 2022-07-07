@@ -33,7 +33,6 @@ import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -154,7 +153,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
     IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(prevVirtualPartitionNum);
   }
 
-  @Test
+  //  @Test
   public void unloadTsfileTest() throws SQLException {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -218,7 +217,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
     }
   }
 
-  @Test
+  //  @Test
   public void loadSequenceTsfileTest() throws SQLException {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -326,7 +325,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
     }
   }
 
-  @Test
+  //  @Test
   public void loadUnsequenceTsfileTest() throws SQLException {
     prepareData(insertUnsequenceSqls);
     String[] queryRes =
@@ -532,7 +531,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
     }
   }
 
-  @Test
+  //  @Test
   public void loadTsfileWithModsTest() throws SQLException {
     prepareData(insertUnsequenceSqls);
     prepareData(deleteTimeseiresSqls);
@@ -733,7 +732,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
     }
   }
 
-  @Test
+  //  @Test
   public void loadTsFileTestWithAutoCreateSchema() throws SQLException {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -858,7 +857,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
     }
   }
 
-  @Test
+  //  @Test
   public void loadTsFileTestWithVerifyMetadata() throws Exception {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -971,7 +970,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
     }
   }
 
-  @Test
+  //  @Test
   public void removeTsFileTest() throws SQLException {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
