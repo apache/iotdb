@@ -65,6 +65,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Template implements Serializable {
+
+  private int id;
   private String name;
   private Map<String, IMNode> directNodes;
   private boolean isDirectAligned;
@@ -155,6 +157,14 @@ public class Template implements Serializable {
             statement.getDataTypes(),
             statement.getEncodings(),
             statement.getCompressors()));
+  }
+
+  public int getId() {
+    return id;
+  }
+
+  public void setId(int id) {
+    this.id = id;
   }
 
   public String getName() {

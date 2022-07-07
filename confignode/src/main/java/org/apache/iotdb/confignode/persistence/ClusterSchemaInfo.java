@@ -42,7 +42,7 @@ import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
+import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -76,7 +76,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   // StorageGroup read write lock
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
-  private final MTreeAboveSG mTree;
+  private final ConfigMTree mTree;
 
   private final String snapshotFileName = "cluster_schema.bin";
 
@@ -86,7 +86,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
 
     try {
-      mTree = new MTreeAboveSG();
+      mTree = new ConfigMTree();
       templateTable = new TemplateTable();
     } catch (MetadataException e) {
       LOGGER.error("Can't construct StorageGroupInfo", e);

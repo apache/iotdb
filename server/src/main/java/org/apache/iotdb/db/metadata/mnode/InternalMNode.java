@@ -27,6 +27,8 @@ import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 
 import java.io.IOException;
 
+import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
+
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
@@ -45,6 +47,8 @@ public class InternalMNode extends MNode {
   protected transient volatile IMNodeContainer children = null;
 
   // schema template
+  protected int schemaTemplateId = NON_TEMPLATE;
+
   protected Template schemaTemplate = null;
 
   private volatile boolean useTemplate = false;
@@ -199,6 +203,16 @@ public class InternalMNode extends MNode {
     }
 
     return null;
+  }
+
+  @Override
+  public int getSchemaTemplateId() {
+    return schemaTemplateId;
+  }
+
+  @Override
+  public void setSchemaTemplateId(int schemaTemplateId) {
+    this.schemaTemplateId = schemaTemplateId;
   }
 
   @Override
