@@ -56,7 +56,6 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
     chunkMetadataList.forEach(
         chunkMetadata -> {
           if (chunkMetadata.needSetChunkLoader()) {
-            chunkMetadata.setFilePath(resource.getTsFilePath());
             chunkMetadata.setClosed(resource.isClosed());
             chunkMetadata.setChunkLoader(new DiskChunkLoader(context.isDebug()));
           }
@@ -81,6 +80,7 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
                 || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
 
     for (IChunkMetadata metadata : chunkMetadataList) {
+      metadata.setFilePath(resource.getTsFilePath());
       metadata.setVersion(resource.getVersion());
     }
     return chunkMetadataList;
