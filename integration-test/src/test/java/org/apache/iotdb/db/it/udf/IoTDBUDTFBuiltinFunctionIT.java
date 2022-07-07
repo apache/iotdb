@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -258,8 +257,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
     }
   }
 
-  // TODO remove @Ignore while completely supporting udf in LocalStandaloneOnMpp
-  @Ignore
   @Test
   public void testConstantTimeSeriesGeneratingFunctions() {
     String[] expected = {
@@ -912,8 +909,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
     }
   }
 
-  // TODO remove @Ignore while completely supporting udf in LocalStandaloneOnMpp
-  @Ignore
   @Test
   public void testUDTFJexl() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1044,8 +1039,6 @@ public class IoTDBUDTFBuiltinFunctionIT {
     }
   }
 
-  // TODO remove @Ignore while completely supporting udf in LocalStandaloneOnMpp
-  @Ignore
   @Test
   public void testStringFunctions() {
     String[] createSqls =

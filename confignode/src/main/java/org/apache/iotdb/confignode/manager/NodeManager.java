@@ -187,11 +187,7 @@ public class NodeManager {
             int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
             tDataNodesLocation.setDataNodeId(dataNodeId);
             tDataNodesLocation.setStatus(
-                getLoadManager()
-                    .getHeartbeatCacheMap()
-                    .get(dataNodeId)
-                    .getNodeStatus()
-                    .getStatus());
+                getLoadManager().getNodeCacheMap().get(dataNodeId).getNodeStatus().getStatus());
             tDataNodesLocation.setRpcAddresss(
                 dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
             tDataNodesLocation.setRpcPort(

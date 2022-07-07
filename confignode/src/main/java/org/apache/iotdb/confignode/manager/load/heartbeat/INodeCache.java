@@ -18,22 +18,28 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
-public class HeartbeatPackage {
+import org.apache.iotdb.commons.cluster.NodeStatus;
 
-  // Unit: ms
-  private final long sendTimestamp;
-  private final long receiveTimestamp;
+/** All the statistic interfaces that provided by HeartbeatCache */
+public interface INodeCache {
 
-  public HeartbeatPackage(long sendTimestamp, long receiveTimestamp) {
-    this.sendTimestamp = sendTimestamp;
-    this.receiveTimestamp = receiveTimestamp;
-  }
+  /**
+   * Cache the newest HeartbeatSample
+   *
+   * @param newHeartbeatSample The newest HeartbeatSample
+   */
+  void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample);
 
-  public long getSendTimestamp() {
-    return sendTimestamp;
-  }
+  /**
+   * Invoking periodically to update Nodes' load statistics
+   *
+   * @return true if some load statistic changed
+   */
+  boolean updateLoadStatistic();
 
-  public long getReceiveTimestamp() {
-    return receiveTimestamp;
-  }
+  /** @return The latest load score of a node, the higher the score the higher the load */
+  float getLoadScore();
+
+  /** @return The latest status of a node for showing cluster */
+  NodeStatus getNodeStatus();
 }

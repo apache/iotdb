@@ -240,7 +240,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
     for (TsFileResource seqResource : tsFileManager.getTsFileList(true)) {
       seqResource.resetModFile();
       Assert.assertTrue(seqResource.getModFile().exists());
-      Assert.assertEquals(24, seqResource.getModFile().getModifications().size());
+      Assert.assertEquals(4, seqResource.getModFile().getModifications().size());
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -477,7 +477,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
         continue;
       }
       Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(180, resource.getModFile().getModifications().size());
+      Assert.assertEquals(30, resource.getModFile().getModifications().size());
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
@@ -653,7 +653,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
     }
     for (TsFileResource seqResource : vsgp.getTsFileManager().getTsFileList(true)) {
       Assert.assertTrue(seqResource.getModFile().exists());
-      Assert.assertEquals(6, seqResource.getModFile().getModifications().size());
+      Assert.assertEquals(1, seqResource.getModFile().getModifications().size());
       Assert.assertFalse(seqResource.getCompactionModFile().exists());
     }
   }
@@ -772,7 +772,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
     }
     for (TsFileResource seqResource : vsgp.getTsFileManager().getTsFileList(true)) {
       Assert.assertTrue(seqResource.getModFile().exists());
-      Assert.assertEquals(12, seqResource.getModFile().getModifications().size());
+      Assert.assertEquals(2, seqResource.getModFile().getModifications().size());
       Assert.assertFalse(seqResource.getCompactionModFile().exists());
     }
   }

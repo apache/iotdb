@@ -220,7 +220,7 @@ public class ConfigManager implements IManager {
           Comparator.comparingInt(dataNodeInfoLocation -> dataNodeInfoLocation.getDataNodeId()));
       Map<Integer, String> nodeStatus = new HashMap<>();
       getLoadManager()
-          .getHeartbeatCacheMap()
+          .getNodeCacheMap()
           .forEach(
               (nodeId, heartbeatCache) ->
                   nodeStatus.put(nodeId, heartbeatCache.getNodeStatus().getStatus()));

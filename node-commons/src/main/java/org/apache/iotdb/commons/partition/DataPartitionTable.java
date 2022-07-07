@@ -79,9 +79,13 @@ public class DataPartitionTable {
                   .getDataPartition(timePartitionSlots, seriesPartitionTable)) {
                 result.set(false);
               }
-              dataPartitionTable
-                  .getDataPartitionMap()
-                  .put(seriesPartitionSlot, seriesPartitionTable);
+
+              if (!seriesPartitionTable.getSeriesPartitionMap().isEmpty()) {
+                // Only return those non-empty DataPartitions
+                dataPartitionTable
+                    .getDataPartitionMap()
+                    .put(seriesPartitionSlot, seriesPartitionTable);
+              }
             } else {
               result.set(false);
             }
