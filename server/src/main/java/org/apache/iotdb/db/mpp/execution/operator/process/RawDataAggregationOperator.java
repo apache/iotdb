@@ -39,7 +39,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendA
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.satisfied;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipToTimeRangePoints;
 
 /**
  * RawDataAggregationOperator is used to process raw data tsBlock input calculating using value
@@ -62,6 +62,8 @@ public class RawDataAggregationOperator implements ProcessOperator {
   private TimeRange curTimeRange;
 
   private TsBlock preCachedData;
+
+  private boolean canCallNext;
 
   // Using for building result tsBlock
   private final TsBlockBuilder resultTsBlockBuilder;
@@ -98,6 +100,7 @@ public class RawDataAggregationOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     resultTsBlockBuilder.reset();
+    canCallNext = true;
     while ((curTimeRange != null || timeRangeIterator.hasNextTimeRange())
         && !resultTsBlockBuilder.isFull()) {
       if (!calculateNextResult()) {
@@ -124,7 +127,6 @@ public class RawDataAggregationOperator implements ProcessOperator {
     }
 
     // 1. Calculate aggregation result based on current time window
-    boolean canCallNext = true;
     while (!calcFromCacheData(curTimeRange)) {
       preCachedData = null;
       // child.next can only be invoked once
@@ -171,7 +173,7 @@ public class RawDataAggregationOperator implements ProcessOperator {
       // skip points that cannot be calculated
       if ((ascending && preCachedData.getStartTime() < curTimeRange.getMin())
           || (!ascending && preCachedData.getStartTime() > curTimeRange.getMax())) {
-        preCachedData = skipOutOfTimeRangePoints(preCachedData, curTimeRange, ascending);
+        preCachedData = skipToTimeRangePoints(preCachedData, curTimeRange, ascending);
       }
 
       int lastReadRowIndex = 0;
