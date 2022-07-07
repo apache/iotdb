@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -49,14 +49,14 @@ import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
  * @author chenhuangyun
  * @date 2022/7/6
  */
-public class TemplateInfoTest {
+public class TemplateTableTest {
 
-  private static TemplateInfo templateInfo;
+  private static TemplateTable templateTable;
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
   @BeforeClass
   public static void setup() throws IOException {
-    templateInfo = new TemplateInfo();
+    templateTable = new TemplateTable();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
@@ -64,7 +64,7 @@ public class TemplateInfoTest {
 
   @AfterClass
   public static void cleanup() throws IOException {
-    templateInfo.clear();
+    templateTable.clear();
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
     }
@@ -90,17 +90,17 @@ public class TemplateInfoTest {
       templates.add(template);
       CreateSchemaTemplatePlan createSchemaTemplatePlan =
           new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
-      templateInfo.createTemplate(createSchemaTemplatePlan);
+      templateTable.createTemplate(createSchemaTemplatePlan);
     }
 
-    templateInfo.processTakeSnapshot(snapshotDir);
-    templateInfo.clear();
-    templateInfo.processLoadSnapshot(snapshotDir);
+    templateTable.processTakeSnapshot(snapshotDir);
+    templateTable.clear();
+    templateTable.processLoadSnapshot(snapshotDir);
 
     // show nodes in schema template
     for (int i = 0; i < n; i++) {
       String templateNameTmp = templateName + "_" + i;
-      TGetTemplateResp templateResp = templateInfo.getMatchedTemplateByName(templateNameTmp);
+      TGetTemplateResp templateResp = templateTable.getMatchedTemplateByName(templateNameTmp);
       Template template = templates.get(i);
       Template serTemplate =
           Template.byteBuffer2Template(ByteBuffer.wrap(templateResp.getTemplate()));

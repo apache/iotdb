@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
-import org.apache.iotdb.confignode.persistence.TemplateInfo;
+import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -37,9 +37,9 @@ public class TemplateManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(TemplateManager.class);
 
   private final IManager configManager;
-  private final TemplateInfo templateInfo;
+  private final TemplateTable templateInfo;
 
-  public TemplateManager(IManager configManager, TemplateInfo templateInfo) {
+  public TemplateManager(IManager configManager, TemplateTable templateInfo) {
     this.configManager = configManager;
     this.templateInfo = templateInfo;
   }

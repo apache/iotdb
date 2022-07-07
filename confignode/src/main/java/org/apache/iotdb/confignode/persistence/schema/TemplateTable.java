@@ -17,11 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.persistence;
+package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
@@ -55,9 +53,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @author chenhuangyun
  * @date 2022/6/28
  */
-public class TemplateInfo implements SnapshotProcessor {
+public class TemplateTable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(TemplateInfo.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TemplateTable.class);
 
   // StorageGroup read write lock
   private final ReentrantReadWriteLock templateReadWriteLock;
@@ -66,7 +64,7 @@ public class TemplateInfo implements SnapshotProcessor {
 
   private final String snapshotFileName = "template_info.bin";
 
-  public TemplateInfo() throws IOException {
+  public TemplateTable() throws IOException {
     templateReadWriteLock = new ReentrantReadWriteLock();
   }
 
@@ -167,8 +165,7 @@ public class TemplateInfo implements SnapshotProcessor {
     return template;
   }
 
-  @Override
-  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+  public boolean processTakeSnapshot(File snapshotDir) throws IOException {
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
@@ -199,8 +196,7 @@ public class TemplateInfo implements SnapshotProcessor {
     }
   }
 
-  @Override
-  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+  public void processLoadSnapshot(File snapshotDir) throws IOException {
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(

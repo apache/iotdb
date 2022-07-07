@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.confignode.consensus.request.write;
 
+import java.util.Arrays;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -67,7 +68,7 @@ public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     CreateSchemaTemplatePlan that = (CreateSchemaTemplatePlan) o;
-    return template.equals(that.template);
+    return Arrays.equals(that.template,template);
   }
 
   @Override

@@ -18,6 +18,21 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -27,6 +42,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
@@ -35,29 +51,18 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
+import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * The ClusterSchemaInfo stores cluster schema. The cluster schema including: 1. StorageGroupSchema
@@ -73,11 +78,14 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   private final String snapshotFileName = "cluster_schema.bin";
 
+  private final TemplateTable templateTable;
+
   public ClusterSchemaInfo() throws IOException {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
 
     try {
       mTree = new MTreeAboveSG();
+      templateTable = new TemplateTable();
     } catch (MetadataException e) {
       LOGGER.error("Can't construct StorageGroupInfo", e);
       throw new IOException(e);
@@ -436,7 +444,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   @Override
   public boolean processTakeSnapshot(File snapshotDir) throws IOException {
+    processMtreeTakeSnapshot(snapshotDir);
+    return templateTable.processTakeSnapshot(snapshotDir);
+  }
 
+
+  public boolean processMtreeTakeSnapshot(File snapshotDir) throws IOException {
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (snapshotFile.exists() && snapshotFile.isFile()) {
       LOGGER.error(
@@ -472,7 +485,12 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   @Override
   public void processLoadSnapshot(File snapshotDir) throws IOException {
+    processMtreeLoadSnapshot(snapshotDir);
+    templateTable.processLoadSnapshot(snapshotDir);
+  }
 
+
+  public void processMtreeLoadSnapshot(File snapshotDir) throws IOException {
     File snapshotFile = new File(snapshotDir, snapshotFileName);
     if (!snapshotFile.exists() || !snapshotFile.isFile()) {
       LOGGER.error(
@@ -532,6 +550,48 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       storageGroupReadWriteLock.readLock().unlock();
     }
     return matchedNamesInNextLevel;
+  }
+
+  public TSStatus createSchemaTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan){
+    return templateTable.createTemplate(createSchemaTemplatePlan);
+  }
+
+  public TemplateInfoResp getAllTemplates(){
+    TemplateInfoResp result = new TemplateInfoResp();
+    TGetAllTemplatesResp resp = templateTable.getAllTemplate();
+    result.setStatus(resp.getStatus());
+    if(resp.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()){
+      if(resp.getTemplateList() != null) {
+        List<Template> list = new ArrayList<Template>();
+        resp.getTemplateList().stream().forEach(item->{
+          try {
+            list.add(Template.byteBuffer2Template(item));
+          }catch (IOException|ClassNotFoundException e){
+            throw new RuntimeException("template deserialization error.",e);
+          }
+        });
+        result.setTemplateList(list);
+      }
+    }
+    return result;
+  }
+
+  public TemplateInfoResp getTemplate(String req){
+    TemplateInfoResp result = new TemplateInfoResp();
+    TGetTemplateResp resp = templateTable.getMatchedTemplateByName(req);
+    result.setStatus(resp.getStatus());
+    if(resp.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()){
+      if(resp.getTemplate()!=null) {
+        List<Template> list = new ArrayList<Template>();
+        try {
+          Template template = Template.byteBuffer2Template(ByteBuffer.wrap(resp.getTemplate()));
+          list.add(template);
+        }catch (IOException|ClassNotFoundException e){
+          throw new RuntimeException("template deserialization error.",e);
+        }
+      }
+    }
+    return result;
   }
 
   @TestOnly

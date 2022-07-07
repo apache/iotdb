@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
@@ -47,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
@@ -61,6 +63,11 @@ import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
@@ -596,5 +603,28 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0.getType(), req1.getType());
     Assert.assertEquals(req0.getRegionType(), req1.getRegionType());
+  }
+
+  @Test
+  public void CreateSchemaTemplatePlanTest() throws IOException, IllegalPathException {
+    Template template = new Template(newCreateSchemaTemplateStatement("template_name"));
+    CreateSchemaTemplatePlan createSchemaTemplatePlan0 = new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
+    CreateSchemaTemplatePlan createSchemaTemplatePlan1 = (CreateSchemaTemplatePlan)ConfigPhysicalPlan.Factory.create(createSchemaTemplatePlan0.serializeToByteBuffer());
+    Assert.assertEquals(createSchemaTemplatePlan0, createSchemaTemplatePlan1);
+  }
+
+  private CreateSchemaTemplateStatement newCreateSchemaTemplateStatement(String name) {
+    List<List<String>> measurements =
+        Arrays.asList(
+            Arrays.asList(name + "_" + "temperature"), Arrays.asList(name + "_" + "status"));
+    List<List<TSDataType>> dataTypes =
+        Arrays.asList(Arrays.asList(TSDataType.FLOAT), Arrays.asList(TSDataType.BOOLEAN));
+    List<List<TSEncoding>> encodings =
+        Arrays.asList(Arrays.asList(TSEncoding.RLE), Arrays.asList(TSEncoding.PLAIN));
+    List<List<CompressionType>> compressors =
+        Arrays.asList(Arrays.asList(CompressionType.SNAPPY), Arrays.asList(CompressionType.SNAPPY));
+    CreateSchemaTemplateStatement createSchemaTemplateStatement =
+        new CreateSchemaTemplateStatement(name, measurements, dataTypes, encodings, compressors);
+    return createSchemaTemplateStatement;
   }
 }

@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.metadata.template;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
@@ -29,19 +34,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
-import org.apache.iotdb.db.exception.metadata.template.SchemaTemplateException;
+import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
-
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * @author chenhuangyun
@@ -82,7 +80,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       }
       return tsStatus;
     } catch (TException | IOException e) {
-      throw new RuntimeException(new SchemaTemplateException("create template error.", e));
+      throw new RuntimeException(new TemplateIsInUseException("create template error."));
     }
   }
 
@@ -118,14 +116,14 @@ public class ClusterTemplateManager implements ITemplateManager {
                     templatesList.add(template);
                   } catch (IOException | ClassNotFoundException e) {
                     throw new RuntimeException(
-                        new SchemaTemplateException("deserialize template error.", e));
+                        new TemplateIsInUseException("deserialize template error."));
                   }
                 });
       } else {
-        throw new RuntimeException(new SchemaTemplateException(tGetAllTemplatesResp.getStatus()));
+        throw new RuntimeException(new TemplateIsInUseException(tGetAllTemplatesResp.getStatus().getMessage()));
       }
     } catch (TException | IOException e) {
-      throw new RuntimeException(new SchemaTemplateException("get all template error.", e));
+      throw new RuntimeException(new TemplateIsInUseException("get all template error."));
     }
     return templatesList;
   }
@@ -142,10 +140,10 @@ public class ClusterTemplateManager implements ITemplateManager {
           template = Template.byteBuffer2Template(ByteBuffer.wrap(templateBytes));
         }
       } else {
-        throw new RuntimeException(new SchemaTemplateException(resp.getStatus()));
+        throw new RuntimeException(new TemplateIsInUseException(resp.status.getMessage()));
       }
     } catch (Exception e) {
-      throw new RuntimeException(new SchemaTemplateException("get template info error.", e));
+      throw new RuntimeException(new TemplateIsInUseException("get template info error."));
     }
     return template;
   }

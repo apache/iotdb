@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
@@ -57,7 +58,7 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
-import org.apache.iotdb.confignode.persistence.TemplateInfo;
+import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -92,23 +93,19 @@ public class ConfigPlanExecutor {
 
   private final UDFInfo udfInfo;
 
-  private final TemplateInfo templateInfo;
-
   public ConfigPlanExecutor(
       NodeInfo nodeInfo,
       ClusterSchemaInfo clusterSchemaInfo,
       PartitionInfo partitionInfo,
       AuthorInfo authorInfo,
       ProcedureInfo procedureInfo,
-      UDFInfo udfInfo,
-      TemplateInfo templateInfo) {
+      UDFInfo udfInfo) {
     this.nodeInfo = nodeInfo;
     this.clusterSchemaInfo = clusterSchemaInfo;
     this.partitionInfo = partitionInfo;
     this.authorInfo = authorInfo;
     this.procedureInfo = procedureInfo;
     this.udfInfo = udfInfo;
-    this.templateInfo = templateInfo;
   }
 
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
@@ -142,6 +139,11 @@ public class ConfigPlanExecutor {
         return getSchemaNodeManagementPartition(req);
       case GetRegionInfoList:
         return partitionInfo.getRegionInfoList((GetRegionInfoListPlan) req);
+      case ShowSchemaTemplate:
+        return clusterSchemaInfo.getAllTemplates();
+      case ShowNodesInSchemaTemplate:
+        GetNodesInSchemaTemplatePlan plan = (GetNodesInSchemaTemplatePlan)req;
+        return clusterSchemaInfo.getTemplate(plan.getTemplateName());
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -206,7 +208,7 @@ public class ConfigPlanExecutor {
       case DropFunction:
         return udfInfo.dropFunction((DropFunctionPlan) req);
       case CreateSchemaTemplate:
-        return templateInfo.createTemplate((CreateSchemaTemplatePlan) req);
+        return clusterSchemaInfo.createSchemaTemplate((CreateSchemaTemplatePlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -321,7 +323,6 @@ public class ConfigPlanExecutor {
     allAttributes.add(partitionInfo);
     allAttributes.add(nodeInfo);
     allAttributes.add(udfInfo);
-    allAttributes.add(templateInfo);
     return allAttributes;
   }
 }
