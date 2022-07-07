@@ -90,6 +90,34 @@ public class AggregationUtil {
   }
 
   // skip points that cannot be calculated
+  public static TsBlock skipToTimeRangePoints(
+      TsBlock tsBlock, TimeRange targetTimeRange, boolean ascending) {
+    TimeColumn timeColumn = tsBlock.getTimeColumn();
+    long targetTime = ascending ? targetTimeRange.getMin() : targetTimeRange.getMax();
+    int left = 0, right = timeColumn.getPositionCount() - 1, mid;
+    // if ascending, find the first greater than or equal to targetTime
+    // else, find the first less than or equal to targetTime
+    while (left < right) {
+      mid = (left + right) >> 1;
+      if (timeColumn.getLongWithoutCheck(mid) < targetTime) {
+        if (ascending) {
+          left = mid + 1;
+        } else {
+          right = mid;
+        }
+      } else if (timeColumn.getLongWithoutCheck(mid) > targetTime) {
+        if (ascending) {
+          right = mid;
+        } else {
+          left = mid + 1;
+        }
+      } else if (timeColumn.getLongWithoutCheck(mid) == targetTime) {
+        return tsBlock.subTsBlock(mid);
+      }
+    }
+    return tsBlock.subTsBlock(left);
+  }
+
   public static TsBlock skipOutOfTimeRangePoints(
       TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
     TimeColumn timeColumn = tsBlock.getTimeColumn();
@@ -112,7 +140,7 @@ public class AggregationUtil {
           left = mid + 1;
         }
       } else if (timeColumn.getLongWithoutCheck(mid) == targetTime) {
-        return tsBlock.subTsBlock(mid);
+        return tsBlock.subTsBlock(mid + 1);
       }
     }
     return tsBlock.subTsBlock(left);

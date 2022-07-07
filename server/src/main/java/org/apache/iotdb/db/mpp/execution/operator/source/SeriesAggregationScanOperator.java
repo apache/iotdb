@@ -45,7 +45,7 @@ import java.util.Set;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipToTimeRangePoints;
 
 /**
  * This operator is responsible to do the aggregation calculation for one series based on global
@@ -248,7 +248,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
       // skip points that cannot be calculated
       if ((ascending && tsBlock.getStartTime() < curTimeRange.getMin())
           || (!ascending && tsBlock.getStartTime() > curTimeRange.getMax())) {
-        tsBlock = skipOutOfTimeRangePoints(tsBlock, curTimeRange, ascending);
+        tsBlock = skipToTimeRangePoints(tsBlock, curTimeRange, ascending);
       }
 
       int lastReadRowIndex = 0;
