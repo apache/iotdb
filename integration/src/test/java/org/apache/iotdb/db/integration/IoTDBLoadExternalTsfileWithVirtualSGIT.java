@@ -30,7 +30,6 @@ import org.apache.iotdb.jdbc.Config;
 
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.io.File;
@@ -57,7 +56,7 @@ public class IoTDBLoadExternalTsfileWithVirtualSGIT extends IoTDBLoadExternalTsf
     prepareData(insertSequenceSqls);
   }
 
-  @Test
+  //  @Test
   public void unloadTsfileWithVSGTest() throws SQLException {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -107,7 +106,7 @@ public class IoTDBLoadExternalTsfileWithVirtualSGIT extends IoTDBLoadExternalTsf
     }
   }
 
-  @Test
+  //  @Test
   public void removeTsfileWithVSGTest() throws SQLException {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
