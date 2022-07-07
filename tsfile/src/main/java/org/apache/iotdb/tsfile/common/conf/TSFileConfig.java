@@ -154,7 +154,7 @@ public class TSFileConfig implements Serializable {
   private int maxTsBlockSizeInBytes = 1024 * 1024;
 
   /** Maximum number of lines in a single TsBlock */
-  private int maxTsBlockLineNumber = 1024;
+  private int maxTsBlockLineNumber = 1000;
 
   public TSFileConfig() {}
 

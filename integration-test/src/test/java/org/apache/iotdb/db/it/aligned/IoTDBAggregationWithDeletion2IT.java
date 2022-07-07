@@ -47,11 +47,13 @@ public class IoTDBAggregationWithDeletion2IT extends IoTDBAggregationWithDeletio
     enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
     numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
+    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
 
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(3);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
     EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
 
@@ -74,5 +76,6 @@ public class IoTDBAggregationWithDeletion2IT extends IoTDBAggregationWithDeletio
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
   }
 }

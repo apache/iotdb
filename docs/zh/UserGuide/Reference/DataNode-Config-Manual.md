@@ -214,7 +214,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |:---:|:---|
 |描述| 单个 TsBlock 的最大行数 |
 |类型| int |
-|默认值| 1024 |
+|默认值| 1000 |
 |改后生效方式|重启服务生效|
 
 ### DataNode 内部服务参数

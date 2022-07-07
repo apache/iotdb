@@ -232,7 +232,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| Maximum number of lines in a single TsBlock |
 |Type| int |
-|Default| 1024 |
+|Default| 1000 |
 |Effective|After restarting system|
 
 ### DataNode Internal Service

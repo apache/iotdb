@@ -198,4 +198,10 @@ public class MppConfig implements BaseConfig {
         "avg_series_point_number_threshold", String.valueOf(avgSeriesPointNumberThreshold));
     return this;
   }
+
+  @Override
+  public BaseConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    engineProperties.setProperty("max_tsblock_line_number", String.valueOf(maxTsBlockLineNumber));
+    return this;
+  }
 }
