@@ -136,6 +136,7 @@ public class NodeManager {
       getConsensusManager().write(activateDataNodePlan);
       // Adjust the maximum RegionGroup number of each StorageGroup
       getClusterSchemaManager().adjustMaxRegionGroupCount();
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("activateDataNode success.");
     }
     return status;
