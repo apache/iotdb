@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.consensus.request.read;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.utils.BasicStructureSerDeUtil;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -36,11 +35,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Get or create DataPartition by the specific partitionSlotsMap. */
 public class GetDataPartitionPlan extends ConfigPhysicalPlan {
 
-  private Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap;
+  // Map<StorageGroup, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
+  protected Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap;
 
   public GetDataPartitionPlan() {
     super(ConfigPhysicalPlanType.GetDataPartition);
@@ -50,45 +51,24 @@ public class GetDataPartitionPlan extends ConfigPhysicalPlan {
     super(configPhysicalPlanType);
   }
 
+  public GetDataPartitionPlan(
+      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap) {
+    this();
+    this.partitionSlotsMap = partitionSlotsMap;
+  }
+
   public Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> getPartitionSlotsMap() {
     return partitionSlotsMap;
   }
 
-  @TestOnly
-  public void setPartitionSlotsMap(
-      Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap) {
-    this.partitionSlotsMap = partitionSlotsMap;
-  }
-
   /**
-   * Convert TDataPartitionReq to GetOrCreateDataPartitionPlan
+   * Convert TDataPartitionReq to GetDataPartitionPlan
    *
    * @param req TDataPartitionReq
+   * @return GetDataPartitionPlan
    */
-  public void convertFromRpcTDataPartitionReq(TDataPartitionReq req) {
-    partitionSlotsMap = new HashMap<>();
-    req.getPartitionSlotsMap()
-        .forEach(
-            ((storageGroup, tSeriesPartitionTimePartitionSlots) -> {
-              // Extract StorageGroupName
-              partitionSlotsMap.putIfAbsent(storageGroup, new HashMap<>());
-
-              tSeriesPartitionTimePartitionSlots.forEach(
-                  ((tSeriesPartitionSlot, tTimePartitionSlots) -> {
-                    // Extract SeriesPartitionSlot
-                    partitionSlotsMap
-                        .get(storageGroup)
-                        .putIfAbsent(tSeriesPartitionSlot, new ArrayList<>());
-
-                    // Extract TimePartitionSlots
-                    tTimePartitionSlots.forEach(
-                        tTimePartitionSlot ->
-                            partitionSlotsMap
-                                .get(storageGroup)
-                                .get(tSeriesPartitionSlot)
-                                .add(tTimePartitionSlot));
-                  }));
-            }));
+  public static GetDataPartitionPlan convertFromRpcTDataPartitionReq(TDataPartitionReq req) {
+    return new GetDataPartitionPlan(new ConcurrentHashMap<>(req.getPartitionSlotsMap()));
   }
 
   @Override

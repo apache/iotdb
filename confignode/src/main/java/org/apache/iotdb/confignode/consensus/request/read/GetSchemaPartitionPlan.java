@@ -40,7 +40,7 @@ public class GetSchemaPartitionPlan extends ConfigPhysicalPlan {
   // Map<StorageGroup, List<SeriesPartitionSlot>>
   // Get all SchemaPartitions when the partitionSlotsMap is empty
   // Get all exists SchemaPartitions in one StorageGroup when the SeriesPartitionSlot is empty
-  private Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap;
+  protected Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap;
 
   public GetSchemaPartitionPlan() {
     super(ConfigPhysicalPlanType.GetSchemaPartition);
@@ -50,7 +50,8 @@ public class GetSchemaPartitionPlan extends ConfigPhysicalPlan {
     super(configPhysicalPlanType);
   }
 
-  public void setPartitionSlotsMap(Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
+  public GetSchemaPartitionPlan(Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
+    this();
     this.partitionSlotsMap = partitionSlotsMap;
   }
 
