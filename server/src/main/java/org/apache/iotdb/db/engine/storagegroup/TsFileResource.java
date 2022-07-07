@@ -1015,8 +1015,7 @@ public class TsFileResource {
     return prev != null || next != null;
   }
 
-  public void moveTsFile(String oldFileSuffix, String newFileSuffix)
-          throws IOException {
+  public void moveTsFile(String oldFileSuffix, String newFileSuffix) throws IOException {
     // move to target file and delete old tmp target file
     if (!getTsFile().exists()) {
       return;

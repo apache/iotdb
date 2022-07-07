@@ -153,10 +153,11 @@ public class RMeasurementMNode extends RMNode implements IMeasurementMNode {
   }
 
   @Override
-  public void updateSchemaInfo(String measurementId,
-                               TSEncoding encoding,
-                               CompressionType compressionType,
-                               Map<String, String> props) {
+  public void updateSchemaInfo(
+      String measurementId,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      Map<String, String> props) {
     // TODO not support now
     throw new UnsupportedOperationException("only for alter timeSeries");
   }

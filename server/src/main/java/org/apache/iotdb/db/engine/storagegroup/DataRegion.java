@@ -2066,13 +2066,12 @@ public class DataRegion {
   }
 
   /**
-   * alter timeseries encoding & compressionType<br/>
-   *
-   * 1、flush and close tsfile<br/>
-   * 2、locks<br/>
-   * 3、write temp tsfiles<br/>
-   * 4、unregister old tsfiles and release locks<br/>
-   * 5、rename temp tsfiles 6、register tsfiles<br/>
+   * alter timeseries encoding & compressionType<br>
+   * 1、flush and close tsfile<br>
+   * 2、locks<br>
+   * 3、write temp tsfiles<br>
+   * 4、unregister old tsfiles and release locks<br>
+   * 5、rename temp tsfiles 6、register tsfiles<br>
    *
    * @param fullPath
    * @param curEncoding
@@ -2103,12 +2102,25 @@ public class DataRegion {
     try {
 
       Set<Long> timePartitions = tsFileManager.getTimePartitions();
-      timePartitions.forEach(timePartition -> {
-        logger.info("[alter timeseries] alterDataInTsFiles seq({})", timePartition);
-        rewriteDataInTsFiles(tsFileManager.getSequenceListByTimePartition(timePartition), fullPath, curEncoding, curCompressionType, timePartition, true);
-        logger.info("[alter timeseries] alterDataInTsFiles unseq({})", timePartition);
-        rewriteDataInTsFiles(tsFileManager.getUnsequenceListByTimePartition(timePartition), fullPath, curEncoding, curCompressionType, timePartition, false);
-      });
+      timePartitions.forEach(
+          timePartition -> {
+            logger.info("[alter timeseries] alterDataInTsFiles seq({})", timePartition);
+            rewriteDataInTsFiles(
+                tsFileManager.getSequenceListByTimePartition(timePartition),
+                fullPath,
+                curEncoding,
+                curCompressionType,
+                timePartition,
+                true);
+            logger.info("[alter timeseries] alterDataInTsFiles unseq({})", timePartition);
+            rewriteDataInTsFiles(
+                tsFileManager.getUnsequenceListByTimePartition(timePartition),
+                fullPath,
+                curEncoding,
+                curCompressionType,
+                timePartition,
+                false);
+          });
     } catch (Exception e) {
       // roll back TODO
       logger.error("[alter timeseries] error", e);
@@ -2118,72 +2130,95 @@ public class DataRegion {
     }
   }
 
-  private void rewriteDataInTsFiles(List<TsFileResource> tsFileList, PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType, long timePartition, boolean sequence) {
+  private void rewriteDataInTsFiles(
+      List<TsFileResource> tsFileList,
+      PartialPath fullPath,
+      TSEncoding curEncoding,
+      CompressionType curCompressionType,
+      long timePartition,
+      boolean sequence) {
 
-    if(tsFileList == null) {
+    if (tsFileList == null) {
       return;
     }
-    tsFileList.forEach(tsFileResource -> {
-      if(tsFileResource == null) {
-        return;
-      }
-      tsFileResource.tryReadLock();
-      try {
-        logger.info("[alter timeseries] rewriteDataInTsFile {} start", tsFileResource.getTsFilePath());
-        // TODO if compacting,What should I do？
-        // TODO ad alter log
-        // TODO if file exsit, delete
-        // gen target tsFileResource
-        TsFileResource targetTsFileResource = TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
-        // read .tsfile to .alter
-        tsFileResource.getProcessor().rewriteTsFile(targetTsFileResource, fullPath, curEncoding, curCompressionType, timePartition, sequence);
-        // move tsfile
-        tsFileResource.moveTsFile(TSFILE_SUFFIX, IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX);
-        targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
-        // replace
-        if(sequence) {
-          tsFileManager.replace(new ArrayList<>(Collections.singletonList(tsFileResource)),
+    tsFileList.forEach(
+        tsFileResource -> {
+          if (tsFileResource == null) {
+            return;
+          }
+          tsFileResource.tryReadLock();
+          try {
+            logger.info(
+                "[alter timeseries] rewriteDataInTsFile {} start", tsFileResource.getTsFilePath());
+            // TODO if compacting,What should I do？
+            // TODO ad alter log
+            // TODO if file exsit, delete
+            // gen target tsFileResource
+            TsFileResource targetTsFileResource =
+                TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
+            // read .tsfile to .alter
+            tsFileResource
+                .getProcessor()
+                .rewriteTsFile(
+                    targetTsFileResource,
+                    fullPath,
+                    curEncoding,
+                    curCompressionType,
+                    timePartition,
+                    sequence);
+            // move tsfile
+            tsFileResource.moveTsFile(TSFILE_SUFFIX, IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX);
+            targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
+            // replace
+            if (sequence) {
+              tsFileManager.replace(
+                  new ArrayList<>(Collections.singletonList(tsFileResource)),
                   Collections.emptyList(),
                   new ArrayList<>(Collections.singletonList(tsFileResource)),
                   timePartition,
                   sequence);
-        } else {
-          tsFileManager.replace(Collections.emptyList(),
+            } else {
+              tsFileManager.replace(
+                  Collections.emptyList(),
                   new ArrayList<>(Collections.singletonList(tsFileResource)),
                   new ArrayList<>(Collections.singletonList(tsFileResource)),
                   timePartition,
                   sequence);
-        }
+            }
 
-        // check
-        if (targetTsFileResource.getTsFile().exists()
+            // check
+            if (targetTsFileResource.getTsFile().exists()
                 && targetTsFileResource.getTsFile().length()
-                < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
-          // the file size is smaller than magic string and version number
-          throw new TsFileNotCompleteException(
+                    < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
+              // the file size is smaller than magic string and version number
+              throw new TsFileNotCompleteException(
                   String.format(
-                          "target file %s is smaller than magic string and version number size",
-                          targetTsFileResource));
-        }
+                      "target file %s is smaller than magic string and version number size",
+                      targetTsFileResource));
+            }
 
-        // TODO open them, when tests ok
-        logger.info(
+            // TODO open them, when tests ok
+            logger.info(
                 "[alter timeseries] {}-{} alter {} finish, start to delete old files",
                 logicalStorageGroupName,
-                dataRegionId, tsFileResource.getTsFilePath());
-        // delete the old files
-        CompactionUtils.deleteTsFilesInDisk(
-                new ArrayList<>(Collections.singletonList(tsFileResource)), logicalStorageGroupName + "-" + dataRegionId);
-        CompactionUtils.deleteModificationForSourceFile(
-                new ArrayList<>(Collections.singletonList(tsFileResource)), logicalStorageGroupName + "-" + dataRegionId);
-        logger.info("[alter timeseries] rewriteDataInTsFile {} end", tsFileResource.getTsFilePath());
-      } catch (Exception e) {
-        // TODO
-        logger.error("[alter timeseries]", e);
-      } finally {
-        tsFileResource.readUnlock();
-      }
-    });
+                dataRegionId,
+                tsFileResource.getTsFilePath());
+            // delete the old files
+            CompactionUtils.deleteTsFilesInDisk(
+                new ArrayList<>(Collections.singletonList(tsFileResource)),
+                logicalStorageGroupName + "-" + dataRegionId);
+            CompactionUtils.deleteModificationForSourceFile(
+                new ArrayList<>(Collections.singletonList(tsFileResource)),
+                logicalStorageGroupName + "-" + dataRegionId);
+            logger.info(
+                "[alter timeseries] rewriteDataInTsFile {} end", tsFileResource.getTsFilePath());
+          } catch (Exception e) {
+            // TODO
+            logger.error("[alter timeseries]", e);
+          } finally {
+            tsFileResource.readUnlock();
+          }
+        });
   }
 
   /**

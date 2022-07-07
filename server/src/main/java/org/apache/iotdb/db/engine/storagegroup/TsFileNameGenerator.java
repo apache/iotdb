@@ -239,18 +239,21 @@ public class TsFileNameGenerator {
                     + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX));
   }
 
-  public static TsFileResource generateNewAlterTsFileResource(TsFileResource oldTsFileResource) throws IOException {
-    if(oldTsFileResource != null) {
+  public static TsFileResource generateNewAlterTsFileResource(TsFileResource oldTsFileResource)
+      throws IOException {
+    if (oldTsFileResource != null) {
       TsFileName tsFileName = getTsFileName(oldTsFileResource.getTsFile().getName());
-      return new TsFileResource(new File(oldTsFileResource.getTsFile().getParent(),
+      return new TsFileResource(
+          new File(
+              oldTsFileResource.getTsFile().getParent(),
               tsFileName.time
-                      + FILE_NAME_SEPARATOR
-                      + tsFileName.version
-                      + FILE_NAME_SEPARATOR
-                      + tsFileName.innerCompactionCnt
-                      + FILE_NAME_SEPARATOR
-                      + tsFileName.crossCompactionCnt
-                      + IoTDBConstant.ALTER_TMP_FILE_SUFFIX));
+                  + FILE_NAME_SEPARATOR
+                  + tsFileName.version
+                  + FILE_NAME_SEPARATOR
+                  + tsFileName.innerCompactionCnt
+                  + FILE_NAME_SEPARATOR
+                  + tsFileName.crossCompactionCnt
+                  + IoTDBConstant.ALTER_TMP_FILE_SUFFIX));
     }
     return null;
   }
