@@ -60,6 +60,7 @@ public class LongLiteral extends Literal {
     if (dataType == TSDataType.INT32) {
       try {
         Math.toIntExact(value);
+        return true;
       } catch (ArithmeticException e) {
         return false;
       }
