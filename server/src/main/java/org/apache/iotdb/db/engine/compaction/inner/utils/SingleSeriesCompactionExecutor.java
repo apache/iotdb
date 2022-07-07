@@ -58,6 +58,7 @@ public class SingleSeriesCompactionExecutor {
   private ChunkWriterImpl chunkWriter;
   private Chunk cachedChunk;
   private ChunkMetadata cachedChunkMetadata;
+  private Chunk lastChunk = null;
   private RateLimiter compactionRateLimiter =
       CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
   // record the min time and max time to update the target resource
@@ -124,6 +125,11 @@ public class SingleSeriesCompactionExecutor {
         if (this.chunkWriter == null) {
           constructChunkWriterFromReadChunk(currentChunk);
         }
+        // Fix: When the same measurement has different encoding/compression methods in the tsfile file, there will be an error in data writing
+        if(isTypeChanged(lastChunk, currentChunk)) {
+          forceFlush();
+          constructChunkWriterFromReadChunk(currentChunk);
+        }
         CompactionMetricsRecorder.recordReadInfo(
             currentChunk.getHeader().getSerializedSize() + currentChunk.getHeader().getDataSize());
 
@@ -143,10 +149,31 @@ public class SingleSeriesCompactionExecutor {
         } else {
           processMiddleChunk(currentChunk, chunkMetadata);
         }
+        lastChunk = currentChunk;
       }
     }
 
     // after all the chunk of this sensor is read, flush the remaining data
+    forceFlush();
+  }
+
+  private boolean isTypeChanged(Chunk lastChunk, Chunk currentChunk) {
+
+    if(lastChunk == null || currentChunk == null) {
+      return false;
+    }
+    if(currentChunk.getHeader() == null && lastChunk.getHeader() == null) {
+      return false;
+    }
+    boolean encodingEqule = currentChunk.getHeader().getEncodingType() == lastChunk.getHeader().getEncodingType();
+    boolean compressionTypeEqule = currentChunk.getHeader().getCompressionType() == lastChunk.getHeader().getCompressionType();
+    if(!encodingEqule || !compressionTypeEqule) {
+      return true;
+    }
+    return false;
+  }
+
+  private void forceFlush() throws IOException {
     if (cachedChunk != null) {
       flushChunkToFileWriter(cachedChunk, cachedChunkMetadata, true);
       cachedChunk = null;

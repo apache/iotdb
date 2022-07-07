@@ -159,6 +159,13 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
       TSEncoding encoding,
       CompressionType compressionType,
       Map<String, String> props) {
+
+    if(encoding == null) {
+      encoding = this.schema.getEncodingType();
+    }
+    if(compressionType == null) {
+      compressionType = this.schema.getCompressor();
+    }
     this.schema =
         new MeasurementSchema(
             this.schema.getMeasurementId(),

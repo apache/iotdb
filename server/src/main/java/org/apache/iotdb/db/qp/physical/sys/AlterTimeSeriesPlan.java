@@ -135,6 +135,54 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
+  protected void serializeImpl(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.ALTER_TIMESERIES.ordinal());
+    byte[] bytes = path.getFullPath().getBytes();
+    buffer.putInt(bytes.length);
+    buffer.put(bytes);
+
+    buffer.put((byte) alterType.ordinal());
+
+    // alias
+    if (alias != null) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(alias, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // alterMap
+    if (alterMap != null && !alterMap.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(alterMap, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // tagsMap
+    if (tagsMap != null && !tagsMap.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(tagsMap, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+
+    // attributesMap
+    if (attributesMap != null && !attributesMap.isEmpty()) {
+      buffer.put((byte) 1);
+      ReadWriteIOUtils.write(attributesMap, buffer);
+    } else {
+      buffer.put((byte) 0);
+    }
+    if (encoding != null) {
+      buffer.put((byte) encoding.ordinal());
+    }
+    if (encoding != null) {
+      buffer.put((byte) compressor.ordinal());
+    }
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeByte((byte) PhysicalPlanType.ALTER_TIMESERIES.ordinal());
     byte[] bytes = path.getFullPath().getBytes();
