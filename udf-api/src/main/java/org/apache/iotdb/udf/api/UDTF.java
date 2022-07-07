@@ -25,6 +25,7 @@ import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
@@ -106,6 +107,19 @@ public interface UDTF extends UDF {
    */
   @SuppressWarnings("squid:S112")
   default void transform(RowWindow rowWindow, PointCollector collector) throws Exception {}
+
+  /**
+   * When the user specifies {@link MappableRowByRowAccessStrategy} to access the original data in
+   * {@link UDTFConfigurations}, this method will be called to process the transformation. In a
+   * single UDF query, this method may be called multiple times.
+   *
+   * @param row original input data row (aligned by time)
+   * @throws Exception the user can throw errors if necessary
+   * @see MappableRowByRowAccessStrategy
+   */
+  default Object transform(Row row) throws Exception {
+    throw new UnsupportedOperationException();
+  }
 
   /**
    * This method will be called once after all {@link UDTF#transform(Row, PointCollector) calls or
