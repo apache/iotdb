@@ -687,7 +687,8 @@ public class WALNode implements IWALNode {
       if (needUpdatingFilesToSearch || filesToSearch == null) {
         updateFilesToSearch();
         if (needUpdatingFilesToSearch) {
-          logger.debug("update file to search failed, the next search index is {}", nextSearchIndex);
+          logger.debug(
+              "update file to search failed, the next search index is {}", nextSearchIndex);
           return false;
         }
       }
