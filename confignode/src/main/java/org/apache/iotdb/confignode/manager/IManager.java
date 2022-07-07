@@ -41,11 +41,9 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -170,16 +168,20 @@ public interface IManager {
   /**
    * Get SchemaPartition
    *
+   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
+   *     true, otherwise the last level will be TConsensusGroupId
    * @return TSchemaPartitionResp
    */
-  TSchemaPartitionResp getSchemaPartition(PathPatternTree patternTree);
+  Object getSchemaPartition(PathPatternTree patternTree, boolean isContainedReplicaSet);
 
   /**
    * Get or create SchemaPartition
    *
+   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
+   *     true, otherwise the last level will be TConsensusGroupId
    * @return TSchemaPartitionResp
    */
-  TSchemaPartitionResp getOrCreateSchemaPartition(PathPatternTree patternTree);
+  Object getOrCreateSchemaPartition(PathPatternTree patternTree, boolean isContainedReplicaSet);
 
   /**
    * create SchemaNodeManagementPartition for child paths node management
@@ -191,17 +193,21 @@ public interface IManager {
   /**
    * Get DataPartition
    *
+   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
+   *     true, otherwise the last level will be TConsensusGroupId
    * @return TDataPartitionResp
    */
-  TDataPartitionResp getDataPartition(GetDataPartitionPlan getDataPartitionPlan);
+  Object getDataPartition(GetDataPartitionPlan getDataPartitionPlan, boolean isContainedReplicaSet);
 
   /**
    * Get or create DataPartition
    *
+   * @param isContainedReplicaSet The last map level of result will contain TRegionReplicaSet if
+   *     true, otherwise the last level will be TConsensusGroupId
    * @return TDataPartitionResp
    */
-  TDataPartitionResp getOrCreateDataPartition(
-      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan);
+  Object getOrCreateDataPartition(
+      GetOrCreateDataPartitionPlan getOrCreateDataPartitionPlan, boolean isContainedReplicaSet);
 
   /**
    * Operate Permission

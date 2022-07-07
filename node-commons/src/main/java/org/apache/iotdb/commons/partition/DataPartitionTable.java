@@ -137,6 +137,20 @@ public class DataPartitionTable {
     return result;
   }
 
+  public static DataPartitionTable convertFromPlainMap(
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+          dataPartitionMap) {
+    DataPartitionTable result = new DataPartitionTable();
+
+    dataPartitionMap.forEach(
+        (seriesPartitionSlot, seriesPartitionMap) ->
+            result
+                .getDataPartitionMap()
+                .put(seriesPartitionSlot, new SeriesPartitionTable(seriesPartitionMap)));
+
+    return result;
+  }
+
   public void serialize(OutputStream outputStream, TProtocol protocol)
       throws IOException, TException {
     ReadWriteIOUtils.write(dataPartitionMap.size(), outputStream);
