@@ -31,6 +31,9 @@ public interface AccessStrategy {
 
   enum AccessStrategyType {
 
+    /** @see MappableRowByRowAccessStrategy */
+    MAPPABLE_ROW_BY_ROW,
+
     /** @see RowByRowAccessStrategy */
     ROW_BY_ROW,
 

@@ -18,13 +18,15 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
-public class HeartbeatPackage {
+public class NodeHeartbeatSample {
 
   // Unit: ms
   private final long sendTimestamp;
   private final long receiveTimestamp;
 
-  public HeartbeatPackage(long sendTimestamp, long receiveTimestamp) {
+  // TODO: Add load sample
+
+  public NodeHeartbeatSample(long sendTimestamp, long receiveTimestamp) {
     this.sendTimestamp = sendTimestamp;
     this.receiveTimestamp = receiveTimestamp;
   }

@@ -25,11 +25,10 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.identity.IdentityLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.FloatLinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.DescTimeComparator;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -42,6 +41,7 @@ import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class LinearFillOperatorTest {
@@ -62,14 +62,12 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      boolean ascending = true;
-      TimeComparator timeComparator = new AscTimeComparator();
       LinearFill[] fillArray =
           new LinearFill[] {
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator)
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill()
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
@@ -262,14 +260,12 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      boolean ascending = false;
-      TimeComparator timeComparator = new DescTimeComparator();
       LinearFill[] fillArray =
           new LinearFill[] {
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator)
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill()
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
@@ -462,14 +458,12 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      boolean ascending = true;
-      TimeComparator timeComparator = new AscTimeComparator();
       LinearFill[] fillArray =
           new LinearFill[] {
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator)
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill()
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
@@ -662,14 +656,12 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      boolean ascending = false;
-      TimeComparator timeComparator = new DescTimeComparator();
       LinearFill[] fillArray =
           new LinearFill[] {
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator),
-            new FloatLinearFill(ascending, timeComparator)
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill(),
+            new FloatLinearFill()
           };
       LinearFillOperator fillOperator =
           new LinearFillOperator(
@@ -862,8 +854,7 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      LinearFill[] fillArray =
-          new LinearFill[] {new FloatLinearFill(true, new AscTimeComparator())};
+      LinearFill[] fillArray = new LinearFill[] {new FloatLinearFill()};
       LinearFillOperator fillOperator =
           new LinearFillOperator(
               fragmentInstanceContext.getOperatorContexts().get(0),
@@ -968,8 +959,7 @@ public class LinearFillOperatorTest {
       fragmentInstanceContext.addOperatorContext(
           1, planNodeId1, LinearFillOperator.class.getSimpleName());
 
-      LinearFill[] fillArray =
-          new LinearFill[] {new FloatLinearFill(false, new DescTimeComparator())};
+      LinearFill[] fillArray = new LinearFill[] {new FloatLinearFill()};
       LinearFillOperator fillOperator =
           new LinearFillOperator(
               fragmentInstanceContext.getOperatorContexts().get(0),
@@ -1052,6 +1042,106 @@ public class LinearFillOperatorTest {
       assertTrue(fillOperator.isFinished());
       assertEquals(res.length, count);
       assertEquals(nullBlock.length, nullBlockIndex);
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void batchLinearFillBooleanTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId1, LinearFillOperator.class.getSimpleName());
+
+      ILinearFill[] fillArray = new ILinearFill[] {new IdentityLinearFill()};
+      LinearFillOperator fillOperator =
+          new LinearFillOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              fillArray,
+              new Operator() {
+                private int index = 0;
+                private final boolean[][][] value =
+                    new boolean[][][] {
+                      {{true}}, {{true}}, {{false}}, {{false}}, {{true}}, {{false}}, {{true}}
+                    };
+                final boolean[][][] isNull =
+                    new boolean[][][] {
+                      {{true}}, {{false}}, {{false}}, {{false}}, {{true}}, {{true}}, {{true}}
+                    };
+
+                @Override
+                public OperatorContext getOperatorContext() {
+                  return null;
+                }
+
+                @Override
+                public TsBlock next() {
+                  TsBlockBuilder builder = new TsBlockBuilder(ImmutableList.of(TSDataType.BOOLEAN));
+                  for (int i = 0; i < 1; i++) {
+                    builder.getTimeColumnBuilder().writeLong(i + index);
+                    for (int j = 0; j < 1; j++) {
+                      if (isNull[index][i][j]) {
+                        builder.getColumnBuilder(j).appendNull();
+                      } else {
+                        builder.getColumnBuilder(j).writeBoolean(value[index][i][j]);
+                      }
+                    }
+                    builder.declarePosition();
+                  }
+                  index++;
+                  return builder.build();
+                }
+
+                @Override
+                public boolean hasNext() {
+                  return index < 7;
+                }
+
+                @Override
+                public boolean isFinished() {
+                  return index >= 7;
+                }
+              });
+
+      int count = 0;
+      boolean[][][] res =
+          new boolean[][][] {
+            {{true}}, {{true}}, {{false}}, {{false}}, {{true}}, {{false}}, {{true}}
+          };
+      boolean[][][] isNull =
+          new boolean[][][] {
+            {{true}}, {{false}}, {{false}}, {{false}}, {{true}}, {{true}}, {{true}}
+          };
+
+      while (fillOperator.hasNext()) {
+        TsBlock block = fillOperator.next();
+        assertNotNull(block);
+        for (int i = 0; i < block.getPositionCount(); i++) {
+          long expectedTime = i + count;
+          assertEquals(expectedTime, block.getTimeByIndex(i));
+          for (int j = 0; j < 1; j++) {
+            assertEquals(isNull[count][i][j], block.getColumn(j).isNull(i));
+            if (!isNull[count][i][j]) {
+              assertEquals(res[count][i][j], block.getColumn(j).getBoolean(i));
+            }
+          }
+        }
+        count++;
+      }
+
+      assertTrue(fillOperator.isFinished());
+      assertEquals(res.length, count);
 
     } finally {
       instanceNotificationExecutor.shutdown();

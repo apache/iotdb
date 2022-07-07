@@ -318,7 +318,6 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSelectEmptyColumns() {
     final int[] windows =
         new int[] {
@@ -333,7 +332,7 @@ public class IoTDBNestedQueryIT {
                   + "size_window_counter(cos(empty - empty) + empty, '%s'='%s', '%s'='%s'), "
                   + "size_window_counter(cos(empty), cos(empty), '%s'='%s', '%s'='%s'), "
                   + "empty, sin(empty) - bottom_k(top_k(empty, 'k'='111'), 'k'='111'), "
-                  + "empty * empty / empty + empty %% empty - empty from root.vehicle",
+                  + "empty * empty / empty + empty %% empty - empty from root.vehicle.d2",
               UDFTestConstant.ACCESS_STRATEGY_KEY,
               UDFTestConstant.ACCESS_STRATEGY_SLIDING_TIME,
               UDFTestConstant.TIME_INTERVAL_KEY,
@@ -639,7 +638,7 @@ public class IoTDBNestedQueryIT {
   }
 
   @Test
-  @Ignore // not supported in 0.13
+  @Ignore
   public void testTimeExpressions() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

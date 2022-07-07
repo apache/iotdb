@@ -19,14 +19,27 @@
 
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+
 public class FragInstanceDispatchResult {
   private boolean successful;
+
+  private TSStatus failureStatus;
 
   public FragInstanceDispatchResult(boolean successful) {
     this.successful = successful;
   }
 
+  public FragInstanceDispatchResult(TSStatus failureStatus) {
+    this.successful = false;
+    this.failureStatus = failureStatus;
+  }
+
   public boolean isSuccessful() {
     return successful;
+  }
+
+  public TSStatus getFailureStatus() {
+    return failureStatus;
   }
 }

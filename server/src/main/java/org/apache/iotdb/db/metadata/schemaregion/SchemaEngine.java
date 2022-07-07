@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -68,8 +69,8 @@ public class SchemaEngine {
 
   private ScheduledExecutorService timedForceMLogThread;
 
-  public void write(SchemaRegionId schemaRegionId, PlanNode planNode) {
-    planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
+  public TSStatus write(SchemaRegionId schemaRegionId, PlanNode planNode) {
+    return planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
   }
 
   private static class SchemaEngineManagerHolder {

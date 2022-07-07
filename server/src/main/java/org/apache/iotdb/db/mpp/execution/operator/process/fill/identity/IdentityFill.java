@@ -16,26 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
+package org.apache.iotdb.db.mpp.execution.operator.process.fill.identity;
 
-import org.apache.iotdb.commons.cluster.NodeStatus;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
-/** All the statistic interfaces that provided by HeartbeatCache */
-public interface IHeartbeatStatistic {
+public class IdentityFill implements IFill {
 
-  /**
-   * Cache the newest HeartbeatPackage
-   *
-   * @param newHeartbeat The newest HeartbeatData
-   */
-  void cacheHeartBeat(HeartbeatPackage newHeartbeat);
-
-  /** Invoking periodically to update node load statistics */
-  void updateLoadStatistic();
-
-  /** @return The latest load score of a node, the higher the score the higher the load */
-  float getLoadScore();
-
-  /** @return The latest status of a node for showing cluster */
-  NodeStatus getNodeStatus();
+  @Override
+  public Column fill(Column valueColumn) {
+    return valueColumn;
+  }
 }

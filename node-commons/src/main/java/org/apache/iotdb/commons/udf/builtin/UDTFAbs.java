@@ -25,7 +25,7 @@ import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
 
@@ -38,7 +38,7 @@ public class UDTFAbs extends UDTFMath {
       throws MetadataException {
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
     configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
         .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
   }
 
@@ -59,6 +59,29 @@ public class UDTFAbs extends UDTFMath {
       case DOUBLE:
         collector.putDouble(time, Math.abs(row.getDouble(0)));
         break;
+      default:
+        // This will not happen.
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
+    }
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    switch (dataType) {
+      case INT32:
+        return Math.abs(row.getInt(0));
+      case INT64:
+        return Math.abs(row.getLong(0));
+      case FLOAT:
+        return Math.abs(row.getFloat(0));
+      case DOUBLE:
+        return Math.abs(row.getDouble(0));
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

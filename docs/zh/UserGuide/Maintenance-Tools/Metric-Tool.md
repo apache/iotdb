@@ -78,10 +78,12 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 | Metric              | Tag             | level     | 说明             | 示例                                         |
 | ------------------- | --------------- | --------- | ---------------- | -------------------------------------------- |
-| entry_seconds_count | name="接口名"   | important | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="接口名"   | important | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="接口名"   | important | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
+| entry_seconds_count | name="{{interface}}"   | important | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum   | name="{{interface}}"   | important | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max   | name="{{interface}}"   | important | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
 | quantity_total      | name="pointsIn" | important | 系统累计写入点数 | quantity_total{name="pointsIn",} 1.0         |
+| thrift_connections  | name="{{thriftService}}" | core | thrift当前连接数 | thrift_connections{name="RPC",} 1.0 |
+| thrift_active_threads | name="{{thriftThread}}" | core | thrift worker线程数 | thrift_active_threads{name="RPC",} 1.0 |
 
 #### 4.3.2. Task
 

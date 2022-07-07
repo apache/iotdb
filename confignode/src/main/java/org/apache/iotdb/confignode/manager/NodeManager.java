@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
@@ -185,8 +184,10 @@ public class NodeManager {
       registeredDataNodes.forEach(
           (dataNodeInfo) -> {
             TDataNodesInfo tDataNodesLocation = new TDataNodesInfo();
-            tDataNodesLocation.setDataNodeId(dataNodeInfo.getLocation().getDataNodeId());
-            tDataNodesLocation.setStatus(NodeStatus.Running.getStatus());
+            int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
+            tDataNodesLocation.setDataNodeId(dataNodeId);
+            tDataNodesLocation.setStatus(
+                getLoadManager().getNodeCacheMap().get(dataNodeId).getNodeStatus().getStatus());
             tDataNodesLocation.setRpcAddresss(
                 dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
             tDataNodesLocation.setRpcPort(
