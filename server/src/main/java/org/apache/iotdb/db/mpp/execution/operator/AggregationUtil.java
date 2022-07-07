@@ -93,7 +93,7 @@ public class AggregationUtil {
   public static TsBlock skipOutOfTimeRangePoints(
       TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
     TimeColumn timeColumn = tsBlock.getTimeColumn();
-    long targetTime = ascending ? curTimeRange.getMin() : curTimeRange.getMax();
+    long targetTime = ascending ? curTimeRange.getMax() : curTimeRange.getMin();
     int left = 0, right = timeColumn.getPositionCount() - 1, mid;
     // if ascending, find the first greater than or equal to targetTime
     // else, find the first less than or equal to targetTime
