@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
@@ -187,7 +188,10 @@ public class ConfigNode implements ConfigNodeMBean {
     TEndPoint targetConfigNode = conf.getTargetConfigNode();
     while (true) {
       TConfigNodeRegisterResp resp =
-          SyncConfigNodeClientPool.getInstance().registerConfigNode(targetConfigNode, req);
+          (TConfigNodeRegisterResp)
+              SyncConfigNodeClientPool.getInstance()
+                  .sendSyncRequestToConfigNode(
+                      targetConfigNode, req, ConfigNodeRequestType.registerConfigNode);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
         break;
