@@ -24,7 +24,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
@@ -103,7 +102,7 @@ public class NodeManager {
     DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     status.setMessage("registerDataNode success.");
-    if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
+    if (nodeInfo.isRegisteredDataNode(req.getInfo().getLocation())) {
       status.setCode(TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode());
       status.setMessage("DataNode already registered.");
     } else if (req.getInfo().getLocation().getDataNodeId() < 0) {
@@ -127,7 +126,7 @@ public class NodeManager {
    */
   public TSStatus activateDataNode(ActivateDataNodePlan req) {
     TSStatus status = new TSStatus();
-    if (nodeInfo.isOnlineDataNode(req.getInfo().getLocation())) {
+    if (nodeInfo.isRegisteredDataNode(req.getInfo().getLocation())) {
       status.setCode(TSStatusCode.DATANODE_ALREADY_ACTIVATED.getStatusCode());
       status.setMessage("DataNode already activated.");
     } else {
@@ -152,10 +151,10 @@ public class NodeManager {
   /**
    * Only leader use this interface
    *
-   * @return The number of online DataNodes
+   * @return The number of registered DataNodes
    */
-  public int getOnlineDataNodeCount() {
-    return nodeInfo.getOnlineDataNodeCount();
+  public int getRegisteredDataNodeCount() {
+    return nodeInfo.getRegisteredDataNodeCount();
   }
 
   /**
@@ -171,22 +170,24 @@ public class NodeManager {
    * Only leader use this interface
    *
    * @param dataNodeId Specific DataNodeId
-   * @return All online DataNodes if dataNodeId equals -1. And return the specific DataNode
+   * @return All registered DataNodes if dataNodeId equals -1. And return the specific DataNode
    *     otherwise.
    */
-  public List<TDataNodeInfo> getOnlineDataNodes(int dataNodeId) {
-    return nodeInfo.getOnlineDataNodes(dataNodeId);
+  public List<TDataNodeInfo> getRegisteredDataNodes(int dataNodeId) {
+    return nodeInfo.getRegisteredDataNodes(dataNodeId);
   }
 
-  public List<TDataNodesInfo> getOnlineDataNodesInfoList() {
+  public List<TDataNodesInfo> getRegisteredDataNodesInfoList() {
     List<TDataNodesInfo> dataNodesLocations = new ArrayList<>();
-    List<TDataNodeInfo> onlineDataNodes = this.getOnlineDataNodes(-1);
-    if (onlineDataNodes != null) {
-      onlineDataNodes.forEach(
+    List<TDataNodeInfo> registeredDataNodes = this.getRegisteredDataNodes(-1);
+    if (registeredDataNodes != null) {
+      registeredDataNodes.forEach(
           (dataNodeInfo) -> {
             TDataNodesInfo tDataNodesLocation = new TDataNodesInfo();
-            tDataNodesLocation.setDataNodeId(dataNodeInfo.getLocation().getDataNodeId());
-            tDataNodesLocation.setStatus(NodeStatus.Running.getStatus());
+            int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
+            tDataNodesLocation.setDataNodeId(dataNodeId);
+            tDataNodesLocation.setStatus(
+                getLoadManager().getNodeCacheMap().get(dataNodeId).getNodeStatus().getStatus());
             tDataNodesLocation.setRpcAddresss(
                 dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
             tDataNodesLocation.setRpcPort(
@@ -386,12 +387,12 @@ public class NodeManager {
   }
 
   public List<TSStatus> flush(TFlushReq req) {
-    List<TDataNodeInfo> onlineDataNodes =
-        configManager.getNodeManager().getOnlineDataNodes(req.dataNodeId);
+    List<TDataNodeInfo> registeredDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes(req.dataNodeId);
     List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(onlineDataNodes.size()));
-    CountDownLatch countDownLatch = new CountDownLatch(onlineDataNodes.size());
-    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
+    CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
+    for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
       AsyncDataNodeClientPool.getInstance()
           .flush(
               dataNodeInfo.getLocation().getInternalEndPoint(),

@@ -19,6 +19,11 @@
  */
 package org.apache.iotdb.db.sync.transport.server;
 
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
@@ -37,6 +42,14 @@ public class TransportServerThriftHandler implements TServerEventHandler {
 
   @Override
   public ServerContext createContext(TProtocol input, TProtocol output) {
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateGauge(
+            Metric.THRIFT_CONNECTIONS.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            "Transport")
+        .incr(1L);
     return null;
   }
 
@@ -44,6 +57,14 @@ public class TransportServerThriftHandler implements TServerEventHandler {
   public void deleteContext(ServerContext serverContext, TProtocol input, TProtocol output) {
     // release query resources.
     serviceImpl.handleClientExit();
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateGauge(
+            Metric.THRIFT_CONNECTIONS.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            "Transport")
+        .decr(1L);
   }
 
   @Override

@@ -26,7 +26,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 
 import java.io.IOException;
 
-public class UDFQueryRowTransformer extends UDFQueryTransformer {
+public class UDFQueryRowTransformer extends UniversalUDFQueryTransformer {
 
   protected final LayerRowReader layerRowReader;
 

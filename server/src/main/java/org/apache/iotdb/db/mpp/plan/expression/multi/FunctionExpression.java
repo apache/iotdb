@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumn
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
+import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.MappableUDFQueryRowTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryRowTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryTransformer;
@@ -259,7 +260,7 @@ public class FunctionExpression extends Expression {
         expression.inferTypes(typeProvider);
       }
 
-      if (isTimeSeriesGeneratingFunctionExpression()) {
+      if (!isBuiltInAggregationFunctionExpression()) {
         typeProvider.setType(
             expressionString,
             new UDTFTypeInferrer(functionName)
@@ -406,6 +407,9 @@ public class FunctionExpression extends Expression {
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
+      case MAPPABLE_ROW_BY_ROW:
+        return new MappableUDFQueryRowTransformer(
+            udfInputIntermediateLayer.constructRowReader(), executor);
       case ROW_BY_ROW:
         return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
       case SLIDING_SIZE_WINDOW:
@@ -517,6 +521,9 @@ public class FunctionExpression extends Expression {
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
+      case MAPPABLE_ROW_BY_ROW:
+        return new MappableUDFQueryRowTransformer(
+            udfInputIntermediateLayer.constructRowReader(), executor);
       case ROW_BY_ROW:
         return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
       case SLIDING_SIZE_WINDOW:

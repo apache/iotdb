@@ -16,21 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.constant.TestConstant;
+import org.apache.iotdb.itbase.env.BaseConfig;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -42,10 +43,11 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSameMeasurementsDifferentTypesIT {
 
-  private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
+  private static BaseConfig tsFileConfig = ConfigFactory.getConfig();
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
   private static int groupSizeInByte;
@@ -122,9 +124,7 @@ public class IoTDBSameMeasurementsDifferentTypesIT {
         Statement statement1 = connection.createStatement();
         Statement statement2 = connection.createStatement()) {
       statement1.setFetchSize(10);
-      boolean hasResultSet1 = statement1.execute(selectSql);
-      Assert.assertTrue(hasResultSet1);
-      ResultSet resultSet1 = statement1.getResultSet();
+      ResultSet resultSet1 = statement1.executeQuery(selectSql);
       int cnt1 = 0;
       while (resultSet1.next() && cnt1 < 5) {
         StringBuilder builder = new StringBuilder();
@@ -139,9 +139,7 @@ public class IoTDBSameMeasurementsDifferentTypesIT {
       }
 
       statement2.setFetchSize(10);
-      boolean hasResultSet2 = statement2.execute(selectSql);
-      Assert.assertTrue(hasResultSet2);
-      ResultSet resultSet2 = statement2.getResultSet();
+      ResultSet resultSet2 = statement2.executeQuery(selectSql);
       int cnt2 = 0;
       while (resultSet2.next()) {
         StringBuilder builder = new StringBuilder();

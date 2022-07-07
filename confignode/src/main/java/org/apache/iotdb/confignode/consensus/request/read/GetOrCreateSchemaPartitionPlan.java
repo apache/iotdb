@@ -18,11 +18,20 @@
  */
 package org.apache.iotdb.confignode.consensus.request.read;
 
+import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
+import java.util.List;
+import java.util.Map;
 
 public class GetOrCreateSchemaPartitionPlan extends GetSchemaPartitionPlan {
 
   public GetOrCreateSchemaPartitionPlan() {
     super(ConfigPhysicalPlanType.GetOrCreateSchemaPartition);
+  }
+
+  public GetOrCreateSchemaPartitionPlan(Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
+    this();
+    this.partitionSlotsMap = partitionSlotsMap;
   }
 }

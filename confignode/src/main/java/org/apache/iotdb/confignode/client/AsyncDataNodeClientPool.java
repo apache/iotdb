@@ -31,12 +31,14 @@ import org.apache.iotdb.confignode.client.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.handlers.SetTTLHandler;
+import org.apache.iotdb.confignode.client.handlers.UpdateRegionRouteMapHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -306,6 +308,23 @@ public class AsyncDataNodeClientPool {
       LOGGER.error("Can't connect to DataNode {}", endPoint, e);
     } catch (TException e) {
       LOGGER.error("Set TTL on DataNode {} failed", endPoint, e);
+    }
+  }
+
+  /**
+   * Update the RegionRouteMap cache on specific DataNode
+   *
+   * @param endPoint The specificDataNode
+   */
+  public void updateRegionRouteMap(
+      TEndPoint endPoint, TRegionRouteReq regionRouteReq, UpdateRegionRouteMapHandler handler) {
+    // TODO: Add a retry logic
+    try {
+      clientManager.borrowClient(endPoint).updateRegionCache(regionRouteReq, handler);
+    } catch (IOException e) {
+      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
+    } catch (TException e) {
+      LOGGER.error("Update RegionRouteMap on DataNode {} failed", endPoint, e);
     }
   }
 

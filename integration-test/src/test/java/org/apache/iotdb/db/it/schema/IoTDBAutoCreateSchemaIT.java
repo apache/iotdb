@@ -17,23 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it.schema;
 
-import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.itbase.constant.TestConstant;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -45,17 +45,17 @@ import java.util.Set;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@Category({LocalStandaloneTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAutoCreateSchemaIT {
   private Statement statement;
   private Connection connection;
 
   @Before
   public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
+    EnvFactory.getEnv().initBeforeTest();
 
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    connection = EnvFactory.getEnv().getConnection();
     statement = connection.createStatement();
   }
 
@@ -63,7 +63,7 @@ public class IoTDBAutoCreateSchemaIT {
   public void tearDown() throws Exception {
     statement.close();
     connection.close();
-    EnvironmentUtils.cleanEnv();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   /** create timeseries without setting storage group */
@@ -99,10 +99,7 @@ public class IoTDBAutoCreateSchemaIT {
   }
 
   private void executeSQL(String[] sqls) throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String result = "";
       Long now_start = 0L;
@@ -121,9 +118,8 @@ public class IoTDBAutoCreateSchemaIT {
             now_start = System.currentTimeMillis();
           }
 
-          statement.execute(sql);
           if (sql.split(" ")[0].equals("SELECT")) {
-            ResultSet resultSet = statement.getResultSet();
+            ResultSet resultSet = statement.executeQuery(sql);
             ResultSetMetaData metaData = resultSet.getMetaData();
             int count = metaData.getColumnCount();
             String[] column = new String[count];
@@ -169,7 +165,7 @@ public class IoTDBAutoCreateSchemaIT {
     try {
       statement.execute(
           String.format("INSERT INTO %s(timestamp, c) values(123, \"aabb\")", timeSeriesPrefix));
-    } catch (IoTDBSQLException ignored) {
+    } catch (SQLException ignored) {
     }
 
     // ensure that current storage group in cache is right.
@@ -177,18 +173,18 @@ public class IoTDBAutoCreateSchemaIT {
 
     statement.close();
     connection.close();
-    EnvironmentUtils.stopDaemon();
-    setUp();
-
-    // ensure that storage group in cache is right after recovering.
-    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
+    // todo restart test
+    //    EnvironmentUtils.stopDaemon();
+    //    setUp();
+    //
+    //    // ensure that storage group in cache is right after recovering.
+    //    InsertAutoCreate2Tool(storageGroup, timeSeriesPrefix);
   }
 
   private void InsertAutoCreate2Tool(String storageGroup, String timeSeriesPrefix)
       throws SQLException {
-    statement.execute("show timeseries");
     Set<String> resultList = new HashSet<>();
-    try (ResultSet resultSet = statement.getResultSet()) {
+    try (ResultSet resultSet = statement.executeQuery("show timeseries")) {
       while (resultSet.next()) {
         String str = resultSet.getString("timeseries");
         resultList.add(str);
@@ -196,9 +192,8 @@ public class IoTDBAutoCreateSchemaIT {
     }
     Assert.assertFalse(resultList.contains(timeSeriesPrefix + "c"));
 
-    statement.execute("show storage group");
     resultList.clear();
-    try (ResultSet resultSet = statement.getResultSet()) {
+    try (ResultSet resultSet = statement.executeQuery("show storage group")) {
       while (resultSet.next()) {
         resultList.add(resultSet.getString("storage group"));
       }

@@ -16,22 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -41,16 +39,14 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBSimpleQueryIT {
 
   @Before
@@ -64,65 +60,25 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  public void testCreateTimeseries1() throws MetadataException {
+  public void testCreateTimeseries1() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
       statement.execute("SET STORAGE GROUP TO root.sg1");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+
+      try (ResultSet resultSet = statement.executeQuery("show timeseries root.sg1.d0.s1")) {
+        if (resultSet.next()) {
+          assertEquals("PLAIN", resultSet.getString("encoding").toUpperCase());
+        }
+      }
+
     } catch (SQLException e) {
       e.printStackTrace();
     }
-
-    IMeasurementMNode mNode =
-        LocalSchemaProcessor.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
-    assertEquals("PLAIN", mNode.getSchema().getEncodingType().toString().toUpperCase());
   }
 
   @Test
-  public void testCreateTimeseriesSDTProperties() throws MetadataException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.sg1");
-      // test set sdt property
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,"
-              + "'LOSS'='SDT','COMPDEV'='2'");
-    } catch (SQLException e) {
-      e.printStackTrace();
-    }
-
-    IMeasurementMNode mNode =
-        LocalSchemaProcessor.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
-
-    // check if SDT property is set
-    assertEquals(2, mNode.getSchema().getProps().size());
-  }
-
-  @Test
-  public void testCreateTimeseriesWithSDTProperties2() throws MetadataException {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.sg1");
-      // test set sdt property
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,"
-              + "'LOSS'='SDT','COMPDEV'='2','COMPMINTIME'='2','COMPMAXTIME'='10'");
-    } catch (SQLException e) {
-      e.printStackTrace();
-    }
-
-    IMeasurementMNode mNode =
-        LocalSchemaProcessor.getInstance().getMeasurementMNode(new PartialPath("root.sg1.d0.s1"));
-
-    // check if SDT property is set
-    assertEquals(4, mNode.getSchema().getProps().size());
-  }
-
-  @Test
-  @Category({ClusterTest.class})
   public void testFailedToCreateTimeseriesSDTProperties() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -131,6 +87,7 @@ public class IoTDBSimpleQueryIT {
       try {
         statement.execute(
             "CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'='-2'");
+        fail();
       } catch (Exception e) {
         assertEquals(
             "318: SDT compression deviation cannot be negative. Failed to create timeseries for path root.sg1.d0.s1",
@@ -151,7 +108,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testLastQueryNonCached() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -188,7 +144,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testSDTEncodingSeq() {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -230,7 +185,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testSDTEncodingCompDev() {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -274,60 +228,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
-  public void testSDTEncodingSelectFill() {
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.setFetchSize(5);
-      statement.execute("SET STORAGE GROUP TO root.sg1");
-      double compDev = 2;
-      // test set sdt property
-      statement.execute(
-          "CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN,'LOSS'='SDT','COMPDEV'="
-              + "'"
-              + compDev
-              + "'");
-
-      int[] originalValues = new int[1000];
-
-      Map<String, Integer> map = new HashMap<>();
-
-      Random rand = new Random();
-      for (int i = 1; i < originalValues.length; i++) {
-        originalValues[i] = rand.nextInt(500);
-        String sql =
-            "insert into root.sg1.d0(timestamp,s0) values(" + i + "," + originalValues[i] + ")";
-        statement.execute(sql);
-        map.put(i + "", originalValues[i]);
-      }
-      statement.execute("flush");
-
-      for (int i = 1; i < originalValues.length; i++) {
-        String sql =
-            "select * from root.** where time = " + i + " fill(int32 [linear, 20ms, 20ms])";
-        ResultSet resultSet = statement.executeQuery(sql);
-
-        while (resultSet.next()) {
-          String time = resultSet.getString("Time");
-          String value = resultSet.getString("root.sg1.d0.s0");
-          // last value is not stored, cannot linear fill
-          if (value == null) {
-            continue;
-          }
-          // sdt parallelogram's height is 2 * compDev, so after linear fill, the values will fall
-          // inside
-          // the parallelogram of two stored points
-          assertTrue(Math.abs(Integer.parseInt(value) - map.get(time)) <= 2 * compDev);
-        }
-      }
-    } catch (SQLException e) {
-      fail();
-    }
-  }
-
-  @Test
-  @Category({ClusterTest.class})
   public void testSDTEncodingCompMin() {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -372,7 +272,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testSDTEncodingCompMax() {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -406,7 +305,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testSDTEncodingUnseq() {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -452,7 +350,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testSDTEncodingMergeSeq() {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -489,7 +386,7 @@ public class IoTDBSimpleQueryIT {
       assertEquals(15, count);
 
       // no sdt encoding when merging
-      statement.execute("merge");
+      //      statement.execute("merge");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
       while (resultSet.next()) {
@@ -503,7 +400,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testSDTEncodingMergeUnseq() {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -544,7 +440,7 @@ public class IoTDBSimpleQueryIT {
       assertEquals(18, count);
 
       // no sdt encoding when merging
-      statement.execute("merge");
+      //      statement.execute("merge");
       resultSet = statement.executeQuery("select s0 from root.sg1.d0");
       count = 0;
       while (resultSet.next()) {
@@ -557,8 +453,8 @@ public class IoTDBSimpleQueryIT {
     }
   }
 
+  @Ignore
   @Test
-  @Category({ClusterTest.class})
   public void testEmptyDataSet() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -582,21 +478,21 @@ public class IoTDBSimpleQueryIT {
 
         resultSet = statement.executeQuery("select count(*) from root");
         // has no column
-        Assert.assertEquals(0, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
 
         resultSet = statement.executeQuery("select * from root.** align by device");
         // has time and device columns
-        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
 
         resultSet = statement.executeQuery("select count(*) from root align by device");
         // has device column
-        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
@@ -606,7 +502,7 @@ public class IoTDBSimpleQueryIT {
                 "select count(*) from root where time >= 1 and time <= 100 "
                     + "group by ([0, 100), 20ms, 20ms) align by device");
         // has time and device columns
-        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
@@ -619,7 +515,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testOrderByTimeDesc() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -658,7 +553,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testShowTimeseriesDataSet1() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -692,7 +586,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testShowTimeseriesDataSet2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -726,7 +619,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testShowTimeseriesDataSet3() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -760,7 +652,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testShowTimeseriesDataSet4() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -794,7 +685,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testShowTimeseriesWithLimitOffset() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -819,7 +709,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testShowDevicesWithLimitOffset() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -844,7 +733,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testShowDevicesWithLimit() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -869,7 +757,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testFirstOverlappedPageFiltered() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -907,7 +794,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testPartialInsertion() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -918,7 +804,7 @@ public class IoTDBSimpleQueryIT {
       try {
         statement.execute("INSERT INTO root.sg1.d0(timestamp, s0, s1) VALUES (1, 1, 2.2)");
         fail();
-      } catch (IoTDBSQLException e) {
+      } catch (SQLException e) {
         assertTrue(e.getMessage().contains("s1"));
       }
 
@@ -932,7 +818,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testOverlappedPagesMerge() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -975,7 +860,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testUnseqUnsealedDeleteQuery() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1014,7 +898,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testTimeseriesMetadataCache() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1034,7 +917,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testInvalidSchema() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1042,6 +924,7 @@ public class IoTDBSimpleQueryIT {
       try {
         statement.execute(
             "CREATE TIMESERIES root.sg1.d1.s1 with datatype=BOOLEAN, encoding=TS_2DIFF");
+        fail();
       } catch (Exception e) {
         Assert.assertEquals("303: encoding TS_2DIFF does not support BOOLEAN", e.getMessage());
       }
@@ -1049,12 +932,14 @@ public class IoTDBSimpleQueryIT {
       try {
         statement.execute(
             "CREATE TIMESERIES root.sg1.d1.s3 with datatype=DOUBLE, encoding=REGULAR");
+        fail();
       } catch (Exception e) {
         Assert.assertEquals("303: encoding REGULAR does not support DOUBLE", e.getMessage());
       }
 
       try {
         statement.execute("CREATE TIMESERIES root.sg1.d1.s4 with datatype=TEXT, encoding=TS_2DIFF");
+        fail();
       } catch (Exception e) {
         Assert.assertEquals("303: encoding TS_2DIFF does not support TEXT", e.getMessage());
       }
@@ -1065,7 +950,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testUseSameStatement() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1112,7 +996,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testInvalidMaxPointNumber() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1158,7 +1041,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testStorageGroupWithHyphenInName() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1170,17 +1052,12 @@ public class IoTDBSimpleQueryIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("SHOW STORAGE GROUP");
-      if (hasResultSet) {
-        try (ResultSet resultSet = statement.getResultSet()) {
-          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-          while (resultSet.next()) {
-            StringBuilder builder = new StringBuilder();
-            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-              builder.append(resultSet.getString(i));
-            }
-            Assert.assertEquals(builder.toString(), "root.group_with_hyphen");
-          }
+      try (ResultSet resultSet = statement.executeQuery("SHOW STORAGE GROUP")) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          builder.append(resultSet.getString(1));
+          Assert.assertEquals(builder.toString(), "root.group_with_hyphen");
         }
       }
     } catch (SQLException e) {
@@ -1189,7 +1066,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testDisableAlign() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -1206,7 +1082,6 @@ public class IoTDBSimpleQueryIT {
   }
 
   @Test
-  @Category({ClusterTest.class})
   public void testEnableAlign() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

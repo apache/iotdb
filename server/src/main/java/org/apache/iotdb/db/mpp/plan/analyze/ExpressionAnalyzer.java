@@ -118,14 +118,15 @@ public class ExpressionAnalyzer {
    * @param expression expression to be checked
    * @return true if this expression is valid
    */
-  public static ResultColumn.ColumnType identifyOutputColumnType(Expression expression) {
+  public static ResultColumn.ColumnType identifyOutputColumnType(
+      Expression expression, boolean isRoot) {
     if (expression instanceof TernaryExpression) {
       ResultColumn.ColumnType firstType =
-          identifyOutputColumnType(((TernaryExpression) expression).getFirstExpression());
+          identifyOutputColumnType(((TernaryExpression) expression).getFirstExpression(), false);
       ResultColumn.ColumnType secondType =
-          identifyOutputColumnType(((TernaryExpression) expression).getSecondExpression());
+          identifyOutputColumnType(((TernaryExpression) expression).getSecondExpression(), false);
       ResultColumn.ColumnType thirdType =
-          identifyOutputColumnType(((TernaryExpression) expression).getThirdExpression());
+          identifyOutputColumnType(((TernaryExpression) expression).getThirdExpression(), false);
       boolean rawFlag = false, aggregationFlag = false;
       if (firstType == ResultColumn.ColumnType.RAW
           || secondType == ResultColumn.ColumnType.RAW
@@ -146,9 +147,9 @@ public class ExpressionAnalyzer {
       return thirdType;
     } else if (expression instanceof BinaryExpression) {
       ResultColumn.ColumnType leftType =
-          identifyOutputColumnType(((BinaryExpression) expression).getLeftExpression());
+          identifyOutputColumnType(((BinaryExpression) expression).getLeftExpression(), false);
       ResultColumn.ColumnType rightType =
-          identifyOutputColumnType(((BinaryExpression) expression).getRightExpression());
+          identifyOutputColumnType(((BinaryExpression) expression).getRightExpression(), false);
       if ((leftType == ResultColumn.ColumnType.RAW
               && rightType == ResultColumn.ColumnType.AGGREGATION)
           || (leftType == ResultColumn.ColumnType.AGGREGATION
@@ -156,7 +157,8 @@ public class ExpressionAnalyzer {
         throw new SemanticException(
             "Raw data and aggregation result hybrid calculation is not supported.");
       }
-      if (leftType == ResultColumn.ColumnType.CONSTANT
+      if (isRoot
+          && leftType == ResultColumn.ColumnType.CONSTANT
           && rightType == ResultColumn.ColumnType.CONSTANT) {
         throw new SemanticException("Constant column is not supported.");
       }
@@ -165,18 +167,48 @@ public class ExpressionAnalyzer {
       }
       return rightType;
     } else if (expression instanceof UnaryExpression) {
-      return identifyOutputColumnType(((UnaryExpression) expression).getExpression());
+      return identifyOutputColumnType(((UnaryExpression) expression).getExpression(), false);
     } else if (expression instanceof FunctionExpression) {
-      if (!expression.isBuiltInAggregationFunctionExpression()) {
-        return ResultColumn.ColumnType.RAW;
-      }
-      for (Expression childExpression : expression.getExpressions()) {
-        if (identifyOutputColumnType(childExpression) == ResultColumn.ColumnType.AGGREGATION) {
-          throw new SemanticException(
-              "Aggregation results cannot be as input of the aggregation function.");
+      List<Expression> inputExpressions = expression.getExpressions();
+      if (expression.isBuiltInAggregationFunctionExpression()) {
+        for (Expression inputExpression : inputExpressions) {
+          if (identifyOutputColumnType(inputExpression, false)
+              == ResultColumn.ColumnType.AGGREGATION) {
+            throw new SemanticException(
+                "Aggregation results cannot be as input of the aggregation function.");
+          }
         }
+        return ResultColumn.ColumnType.AGGREGATION;
+      } else {
+        ResultColumn.ColumnType checkedType = null;
+        int lastCheckedIndex = 0;
+        for (int i = 0; i < inputExpressions.size(); i++) {
+          ResultColumn.ColumnType columnType =
+              identifyOutputColumnType(inputExpressions.get(i), false);
+          if (columnType != ResultColumn.ColumnType.CONSTANT) {
+            checkedType = columnType;
+            lastCheckedIndex = i;
+            break;
+          }
+        }
+        if (checkedType == null) {
+          throw new SemanticException(
+              String.format(
+                  "Input of '%s' is illegal.",
+                  ((FunctionExpression) expression).getFunctionName()));
+        }
+        for (int i = lastCheckedIndex; i < inputExpressions.size(); i++) {
+          ResultColumn.ColumnType columnType =
+              identifyOutputColumnType(inputExpressions.get(i), false);
+          if (columnType != ResultColumn.ColumnType.CONSTANT && columnType != checkedType) {
+            throw new SemanticException(
+                String.format(
+                    "Raw data and aggregation result hybrid input of '%s' is not supported.",
+                    ((FunctionExpression) expression).getFunctionName()));
+          }
+        }
+        return checkedType;
       }
-      return ResultColumn.ColumnType.AGGREGATION;
     } else if (expression instanceof TimeSeriesOperand || expression instanceof TimestampOperand) {
       return ResultColumn.ColumnType.RAW;
     } else if (expression instanceof ConstantOperand) {
@@ -278,13 +310,6 @@ public class ExpressionAnalyzer {
           ((BinaryExpression) predicate).getLeftExpression(), prefixPaths, patternTree);
       constructPatternTreeFromExpression(
           ((BinaryExpression) predicate).getRightExpression(), prefixPaths, patternTree);
-    } else if (predicate instanceof TernaryExpression) {
-      constructPatternTreeFromExpression(
-          ((TernaryExpression) predicate).getFirstExpression(), prefixPaths, patternTree);
-      constructPatternTreeFromExpression(
-          ((TernaryExpression) predicate).getSecondExpression(), prefixPaths, patternTree);
-      constructPatternTreeFromExpression(
-          ((TernaryExpression) predicate).getThirdExpression(), prefixPaths, patternTree);
     } else if (predicate instanceof UnaryExpression) {
       constructPatternTreeFromExpression(
           ((UnaryExpression) predicate).getExpression(), prefixPaths, patternTree);

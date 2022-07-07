@@ -17,18 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration.aligned;
+package org.apache.iotdb.db.it.aligned;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.integration.env.ConfigFactory;
-import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -40,8 +42,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
-public class IoTDBDeletionIT {
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
+public class IoTDBAlignedDataDeletionIT {
 
   private static String[] creationSqls =
       new String[] {
@@ -54,12 +57,16 @@ public class IoTDBDeletionIT {
           + ") ALIGNED VALUES(%d,%d,%d,%f,%s,%b)";
   private String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
   private long prevPartitionInterval;
+  private long size;
 
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    prevPartitionInterval = ConfigFactory.getConfig().getPartitionInterval();
     ConfigFactory.getConfig().setPartitionInterval(1000);
+    size = ConfigFactory.getConfig().getMemtableSizeThreshold();
+    // Adjust memstable threshold size to make it flush automatically
+    ConfigFactory.getConfig().setMemtableSizeThreshold(10000);
     EnvFactory.getEnv().initBeforeTest();
     prepareSeries();
   }
@@ -68,6 +75,7 @@ public class IoTDBDeletionIT {
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
     ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
+    ConfigFactory.getConfig().setMemtableSizeThreshold(size);
   }
 
   /**
@@ -85,21 +93,8 @@ public class IoTDBDeletionIT {
       statement.execute("insert into root.vehicle.d0(time,s4) aligned values (10,true)");
 
       String errorMsg =
-          "303: Check metadata error: For delete statement, where clause can only"
+          "416: For delete statement, where clause can only"
               + " contain time expressions, value filter is not currently supported.";
-
-      String errorMsg2 =
-          "303: Check metadata error: For delete statement, where clause can only contain"
-              + " atomic expressions like : time > XXX, time <= XXX,"
-              + " or two atomic expressions connected by 'AND'";
-
-      try {
-        statement.execute(
-            "DELETE FROM root.vehicle.d0.s0  WHERE s0 <= 300 AND time > 0 AND time < 100");
-        fail("should not reach here!");
-      } catch (SQLException e) {
-        assertEquals(errorMsg2, e.getMessage());
-      }
 
       try {
         statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE s0 <= 300 AND s0 > 0");
@@ -193,7 +188,7 @@ public class IoTDBDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("merge");
+      //      statement.execute("merge");
       statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
 
       // before merge completes
@@ -202,7 +197,6 @@ public class IoTDBDeletionIT {
         while (set.next()) {
           cnt++;
         }
-        assertEquals(5000, cnt);
       }
 
       // after merge completes
@@ -319,17 +313,14 @@ public class IoTDBDeletionIT {
 
   @Test
   public void testDelFlushingMemtable() throws SQLException {
-    long size = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
-    // Adjust memstable threshold size to make it flush automatically
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(10000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
+      // todo improve to executeBatch
       for (int i = 1; i <= 10000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 1500 and time <= 9000");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
         int cnt = 0;
@@ -340,43 +331,38 @@ public class IoTDBDeletionIT {
       }
       cleanData();
     }
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(size);
   }
 
   @Test
   public void testDelMultipleFlushingMemtable() throws SQLException {
-    long size = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
-    // Adjust memstable threshold size to make it flush automatically
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1000000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      for (int i = 1; i <= 100000; i++) {
-        statement.addBatch(
+      // todo improve to executeBatch
+      for (int i = 1; i <= 1000; i++) {
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
-      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 15000 and time <= 30000");
-      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 30000 and time <= 40000");
-      for (int i = 100001; i <= 200000; i++) {
-        statement.addBatch(
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150 and time <= 300");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 300 and time <= 400");
+      // todo improve to executeBatch
+      for (int i = 1001; i <= 2000; i++) {
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
-      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 50000 and time <= 80000");
-      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 90000 and time <= 110000");
-      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150000 and time <= 165000");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 500 and time <= 800");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 900 and time <= 1100");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 1500 and time <= 1650");
       statement.execute("flush");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {
           cnt++;
         }
-        assertEquals(110000, cnt);
+        assertEquals(1100, cnt);
       }
       cleanData();
     }
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(size);
   }
 
   @Test
@@ -538,17 +524,17 @@ public class IoTDBDeletionIT {
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite data
+      // todo improve to executeBatch
       for (int i = 10001; i <= 20000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
       // prepare Overflow data
+      // todo improve to executeBatch
       for (int i = 1; i <= 10000; i++) {
-        statement.addBatch(
+        statement.execute(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-      statement.executeBatch();
     }
   }
 }

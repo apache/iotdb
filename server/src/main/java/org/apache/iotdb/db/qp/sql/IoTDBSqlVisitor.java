@@ -1880,7 +1880,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private Pair<Long, Long> parseDeleteTimeInterval(FilterOperator filterOperator) {
     if (!filterOperator.isLeaf() && filterOperator.getFilterType() != FilterType.KW_AND) {
-      throw new SQLParserException(DELETE_RANGE_ERROR_MSG);
+      throw new SemanticException(DELETE_RANGE_ERROR_MSG);
     }
 
     if (filterOperator.isLeaf()) {
@@ -1891,7 +1891,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     FilterOperator lOperator = children.get(0);
     FilterOperator rOperator = children.get(1);
     if (!lOperator.isLeaf() || !rOperator.isLeaf()) {
-      throw new SQLParserException(DELETE_RANGE_ERROR_MSG);
+      throw new SemanticException(DELETE_RANGE_ERROR_MSG);
     }
 
     Pair<Long, Long> leftOpInterval = calcOperatorInterval(lOperator);
@@ -3427,7 +3427,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     if (filterOperator.getSinglePath() != null
         && !IoTDBConstant.TIME.equals(filterOperator.getSinglePath().getMeasurement())) {
-      throw new SQLParserException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
+      throw new SemanticException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
     }
 
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());

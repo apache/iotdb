@@ -16,24 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
 
-public class HeartbeatPackage {
+package org.apache.iotdb.db.mpp.plan.statement.sys;
 
-  // Unit: ms
-  private final long sendTimestamp;
-  private final long receiveTimestamp;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-  public HeartbeatPackage(long sendTimestamp, long receiveTimestamp) {
-    this.sendTimestamp = sendTimestamp;
-    this.receiveTimestamp = receiveTimestamp;
-  }
+public class ShowVersionStatement extends ShowStatement {
 
-  public long getSendTimestamp() {
-    return sendTimestamp;
-  }
+  public ShowVersionStatement() {}
 
-  public long getReceiveTimestamp() {
-    return receiveTimestamp;
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowVersion(this, context);
   }
 }
