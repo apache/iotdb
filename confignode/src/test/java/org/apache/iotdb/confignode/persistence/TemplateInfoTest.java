@@ -77,7 +77,7 @@ public class TemplateInfoTest {
     String templateName = "template_test";
 
     List<Template> templates = new ArrayList<>();
-    // 创建模板
+    // create schema template
     for (int i = 0; i < n; i++) {
       String templateNameTmp = templateName + "_" + i;
       CreateSchemaTemplateStatement statement = null;
@@ -96,10 +96,8 @@ public class TemplateInfoTest {
     templateInfo.processTakeSnapshot(snapshotDir);
     templateInfo.clear();
     templateInfo.processLoadSnapshot(snapshotDir);
-    // 查询全部模板
-    TGetAllTemplatesResp allTemplatesResp = templateInfo.getAllTemplate();
 
-    // 显示模板详细信息
+    // show nodes in schema template
     for (int i = 0; i < n; i++) {
       String templateNameTmp = templateName + "_" + i;
       TGetTemplateResp templateResp = templateInfo.getMatchedTemplateByName(templateNameTmp);

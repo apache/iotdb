@@ -64,8 +64,8 @@ public enum ConfigPhysicalPlanType {
   RemoveConfigNode,
   CreateFunction,
   DropFunction,
-  GetNodePathsPartition,
   CreateSchemaTemplate,
   GetRegionInfoList,
-  GetDataNodesInfoList;
+  GetDataNodesInfoList,
+  GetNodePathsPartition;
 }

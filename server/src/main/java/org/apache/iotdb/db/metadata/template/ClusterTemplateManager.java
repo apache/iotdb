@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.template;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -92,7 +93,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       Template template = new Template(statement);
       req.setName(template.getName());
       req.setSerializedTemplate(Template.template2ByteBuffer(template));
-    } catch (Exception e) {
+    } catch (IOException | IllegalPathException e) {
       throw new RuntimeException(e);
     }
     return req;

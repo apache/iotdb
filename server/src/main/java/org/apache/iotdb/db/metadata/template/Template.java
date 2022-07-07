@@ -734,14 +734,10 @@ public class Template implements Serializable {
     rehashCode = code;
   }
 
-  public static ByteBuffer template2ByteBuffer(Template template) {
+  public static ByteBuffer template2ByteBuffer(Template template) throws IOException {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    try {
-      ObjectOutputStream dataOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-      dataOutputStream.writeObject(template);
-    } catch (Exception e) {
-
-    }
+    ObjectOutputStream dataOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+    dataOutputStream.writeObject(template);
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 

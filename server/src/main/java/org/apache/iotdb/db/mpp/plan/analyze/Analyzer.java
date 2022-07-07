@@ -1452,17 +1452,6 @@ public class Analyzer {
       }
       Analysis analysis = new Analysis();
       analysis.setStatement(createTemplateStatement);
-
-      /*PathPatternTree pathPatternTree = new PathPatternTree();
-      PartialPath partialPath = new PartialPath(createTemplateStatement.getName());
-      for (String measurement : createAlignedTimeSeriesStatement.getMeasurements()) {
-        pathPatternTree.appendFullPath(
-            createTemplateStatement.getPaths(), measurement);
-      }
-
-      SchemaPartition schemaPartitionInfo;
-      schemaPartitionInfo = partitionFetcher.getOrCreateSchemaPartition(pathPatternTree);
-      analysis.setSchemaPartitionInfo(schemaPartitionInfo);*/
       return analysis;
     }
 

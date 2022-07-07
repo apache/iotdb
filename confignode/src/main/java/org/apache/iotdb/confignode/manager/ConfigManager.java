@@ -897,7 +897,7 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return templateManager.getAllTemplates();
     } else {
-      return new TGetAllTemplatesResp();
+      return new TGetAllTemplatesResp().setStatus(status);
     }
   }
 
@@ -907,7 +907,7 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return templateManager.getTemplate(req);
     } else {
-      return new TGetTemplateResp();
+      return new TGetTemplateResp().setStatus(status);
     }
   }
 }

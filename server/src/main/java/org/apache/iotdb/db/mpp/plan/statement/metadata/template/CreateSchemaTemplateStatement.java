@@ -43,7 +43,6 @@ public class CreateSchemaTemplateStatement extends Statement implements IConfigS
 
   String name;
   Set<String> alignedDeviceId;
-  String[] schemaNames;
   String[][] measurements;
   TSDataType[][] dataTypes;
   TSEncoding[][] encodings;
@@ -65,7 +64,6 @@ public class CreateSchemaTemplateStatement extends Statement implements IConfigS
       List<List<CompressionType>> compressors) {
     this();
     this.name = name;
-    schemaNames = null;
     this.measurements = new String[measurements.size()][];
     for (int i = 0; i < measurements.size(); i++) {
       this.measurements[i] = new String[measurements.get(i).size()];
@@ -120,7 +118,6 @@ public class CreateSchemaTemplateStatement extends Statement implements IConfigS
       CompressionType[][] compressors) {
     this();
     this.name = name;
-    this.schemaNames = null;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
     this.encodings = encodings;
@@ -130,14 +127,6 @@ public class CreateSchemaTemplateStatement extends Statement implements IConfigS
   @Override
   public List<? extends PartialPath> getPaths() {
     return null;
-  }
-
-  public List<String> getSchemaNames() {
-    if (schemaNames != null) {
-      return Arrays.asList(schemaNames);
-    } else {
-      return null;
-    }
   }
 
   public String getName() {

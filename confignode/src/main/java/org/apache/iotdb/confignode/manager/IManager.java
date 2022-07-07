@@ -268,9 +268,26 @@ public interface IManager {
   /** Show datanodes */
   DataSet showDataNodes();
 
+  /**
+   * create schema template
+   *
+   * @param req TCreateSchemaTemplateReq
+   * @return TSStatus
+   */
   TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req);
 
+  /**
+   * show schema templates
+   *
+   * @return
+   */
   TGetAllTemplatesResp getAllTemplates();
 
+  /**
+   * show nodes in schema template
+   *
+   * @param req String
+   * @return
+   */
   TGetTemplateResp getTemplate(String req);
 }

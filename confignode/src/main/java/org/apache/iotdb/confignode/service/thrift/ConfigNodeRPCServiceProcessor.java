@@ -510,7 +510,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TGetTemplateResp getTemplate(String req) throws TException {
-
     return configManager.getTemplate(req);
   }
 }

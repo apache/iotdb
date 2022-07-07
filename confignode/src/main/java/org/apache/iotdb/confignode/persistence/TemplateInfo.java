@@ -20,6 +20,7 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
@@ -76,9 +77,9 @@ public class TemplateInfo implements SnapshotProcessor {
       Template template = templateMap.get(name);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       resp.setTemplate(Template.template2ByteBuffer(template));
-    } catch (Exception e) {
+    } catch (IOException e) {
       LOGGER.warn("Error TemplateInfo name", e);
-      resp.setStatus(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+      resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_NOT_EXIST.getStatusCode()));
     } finally {
       templateReadWriteLock.readLock().unlock();
     }
@@ -93,13 +94,18 @@ public class TemplateInfo implements SnapshotProcessor {
       this.templateMap.values().stream()
           .forEach(
               item -> {
-                templates.add(Template.template2ByteBuffer(item));
-              });
+                try {
+                  templates.add(Template.template2ByteBuffer(item));
+                }catch (IOException e) {
+                  resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
+                  throw new RuntimeException(e);
+                }
+              } );
       resp.setTemplateList(templates);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (Exception e) {
+    } catch (RuntimeException  e) {
       LOGGER.warn("Error TemplateInfo name", e);
-      resp.setStatus(new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()));
+      resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
     } finally {
       templateReadWriteLock.readLock().unlock();
     }
@@ -119,9 +125,9 @@ public class TemplateInfo implements SnapshotProcessor {
       }
       this.templateMap.put(template.getName(), template);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (Exception e) {
+    } catch (IOException | ClassNotFoundException e) {
       LOGGER.warn("Error to create template", e);
-      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+      return new TSStatus(TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode());
     } finally {
       templateReadWriteLock.readLock().unlock();
     }
@@ -135,12 +141,8 @@ public class TemplateInfo implements SnapshotProcessor {
   }
 
   private void serializeTemplate(Template template, OutputStream outputStream) {
-    // SerializeUtils.serialize(template.getName(), outputStream);
     try {
       ByteBuffer dataBuffer = template.serialize();
-      //      byte[] data = dataBuffer.array();
-      //      int length = data.length;
-      //      ReadWriteIOUtils.write(length,outputStream);
       ReadWriteIOUtils.write(dataBuffer, outputStream);
     } catch (IOException e) {
       e.printStackTrace();
