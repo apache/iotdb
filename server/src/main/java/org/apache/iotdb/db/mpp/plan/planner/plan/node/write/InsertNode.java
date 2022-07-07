@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
@@ -31,9 +32,6 @@ import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -48,11 +46,8 @@ import java.util.stream.Collectors;
 
 public abstract class InsertNode extends WritePlanNode {
 
-  private final Logger logger = LoggerFactory.getLogger(InsertNode.class);
   /** this insert node doesn't need to participate in multi-leader consensus */
-  public static final long NO_CONSENSUS_INDEX = -1;
-  /** no multi-leader consensus, all insert nodes can be safely deleted */
-  public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
+  public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -81,11 +76,6 @@ public abstract class InsertNode extends WritePlanNode {
    * value should start from 1
    */
   protected long searchIndex = NO_CONSENSUS_INDEX;
-  /**
-   * this index pass info to wal, indicating that insert nodes whose search index are before this
-   * value can be deleted safely
-   */
-  protected long safelyDeletedSearchIndex = DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
 
   /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
@@ -166,14 +156,6 @@ public abstract class InsertNode extends WritePlanNode {
   /** Search index should start from 1 */
   public void setSearchIndex(long searchIndex) {
     this.searchIndex = searchIndex;
-  }
-
-  public long getSafelyDeletedSearchIndex() {
-    return safelyDeletedSearchIndex;
-  }
-
-  public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
-    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
   }
 
   @Override

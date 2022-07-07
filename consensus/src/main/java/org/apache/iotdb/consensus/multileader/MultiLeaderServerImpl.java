@@ -177,14 +177,12 @@ public class MultiLeaderServerImpl {
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
-    return new IndexedConsensusRequest(
-        index.incrementAndGet(), getCurrentSafelyDeletedSearchIndex(), request);
+    return new IndexedConsensusRequest(index.incrementAndGet(), request);
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
       ByteBufferConsensusRequest request) {
-    return new IndexedConsensusRequest(
-        ConsensusReqReader.DEFAULT_SEARCH_INDEX, getCurrentSafelyDeletedSearchIndex(), request);
+    return new IndexedConsensusRequest(ConsensusReqReader.DEFAULT_SEARCH_INDEX, request);
   }
 
   /**
