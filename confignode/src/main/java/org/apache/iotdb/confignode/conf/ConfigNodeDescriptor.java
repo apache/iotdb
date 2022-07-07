@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
@@ -158,6 +159,16 @@ public class ConfigNodeDescriptor {
           Double.parseDouble(
               properties.getProperty(
                   "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))));
+
+      try {
+        conf.setRegionAllocateStrategy(
+            RegionBalancer.RegionAllocateStrategy.valueOf(
+                properties.getProperty(
+                    "region_allocate_strategy", conf.getRegionAllocateStrategy().name())));
+      } catch (IllegalArgumentException e) {
+        LOGGER.warn(
+            "The configured region allocate strategy does not exist, use the default: GREEDY!");
+      }
 
       conf.setRpcAdvancedCompressionEnable(
           Boolean.parseBoolean(

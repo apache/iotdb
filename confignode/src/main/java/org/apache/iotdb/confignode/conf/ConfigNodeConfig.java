@@ -20,12 +20,15 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
+
+import static org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer.RegionAllocateStrategy.GREEDY;
 
 public class ConfigNodeConfig {
 
@@ -61,6 +64,9 @@ public class ConfigNodeConfig {
 
   /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 0.5;
+
+  /** region allocate strategy. */
+  private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy = GREEDY;
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -335,6 +341,15 @@ public class ConfigNodeConfig {
 
   public void setDataRegionPerProcessor(double dataRegionPerProcessor) {
     this.dataRegionPerProcessor = dataRegionPerProcessor;
+  }
+
+  public RegionBalancer.RegionAllocateStrategy getRegionAllocateStrategy() {
+    return regionAllocateStrategy;
+  }
+
+  public void setRegionAllocateStrategy(
+      RegionBalancer.RegionAllocateStrategy regionAllocateStrategy) {
+    this.regionAllocateStrategy = regionAllocateStrategy;
   }
 
   public int getThriftServerAwaitTimeForStopService() {
