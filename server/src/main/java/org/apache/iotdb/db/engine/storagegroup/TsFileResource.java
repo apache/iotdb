@@ -534,18 +534,18 @@ public class TsFileResource {
     // .mods file
     File originModFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
     if (originModFile.exists()) {
-      if (modFile != null) {
-        synchronized (this) {
+      synchronized (this) {
+        if (modFile != null) {
           try {
             modFile.close();
           } catch (IOException e) {
             LOGGER.error("Fail to close modification file {}", modFile);
           }
           modFile = null;
-          File targetModFile =
-              fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX);
-          fsFactory.moveFile(originModFile, targetModFile);
         }
+        File targetModFile =
+            fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX);
+        fsFactory.moveFile(originModFile, targetModFile);
       }
     }
     file = targetFile;
@@ -565,18 +565,35 @@ public class TsFileResource {
     // .mods file
     File originModFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
     if (originModFile.exists()) {
-      if (modFile != null) {
-        synchronized (this) {
+      synchronized (this) {
+        if (modFile != null) {
           try {
             modFile.close();
           } catch (IOException e) {
             LOGGER.error("Fail to close modification file {}", modFile);
           }
           modFile = null;
-          File targetModFile =
-              fsFactory.getFile(dir, targetFileName + ModificationFile.FILE_SUFFIX);
-          fsFactory.renameTo(originModFile, targetModFile);
         }
+        File targetModFile = fsFactory.getFile(dir, targetFileName + ModificationFile.FILE_SUFFIX);
+        fsFactory.renameTo(originModFile, targetModFile);
+      }
+    }
+    // .compaction.mods file
+    File originCompactionModFile =
+        fsFactory.getFile(file.getPath() + ModificationFile.COMPACTION_FILE_SUFFIX);
+    if (originCompactionModFile.exists()) {
+      synchronized (this) {
+        if (compactionModFile != null) {
+          try {
+            compactionModFile.close();
+          } catch (IOException e) {
+            LOGGER.error("Fail to close compaction modification file {}", compactionModFile);
+          }
+          compactionModFile = null;
+        }
+        File newCompactionModFile =
+            fsFactory.getFile(dir, targetFileName + ModificationFile.COMPACTION_FILE_SUFFIX);
+        fsFactory.renameTo(originCompactionModFile, newCompactionModFile);
       }
     }
     file = targetFile;
