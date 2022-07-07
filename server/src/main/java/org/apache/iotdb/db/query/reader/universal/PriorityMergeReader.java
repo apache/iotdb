@@ -202,12 +202,14 @@ public class PriorityMergeReader implements IPointReader {
         return false;
       }
       MergeReaderPriority that = (MergeReaderPriority) object;
-      return (this.version == that.version && this.offset == that.offset);
+      return (this.timestamp == that.timestamp
+          && this.version == that.version
+          && this.offset == that.offset);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(version, offset);
+      return Objects.hash(timestamp, version, offset);
     }
   }
 }

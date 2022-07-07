@@ -306,7 +306,8 @@ public class TimeSeriesMetadataCache {
 
     @Override
     public int hashCode() {
-      return Objects.hash(tsFilePrefixPath, tsFileVersion, compactionVersion, device, measurement);
+      return Objects.hash(
+          timestamp, tsFilePrefixPath, tsFileVersion, compactionVersion, device, measurement);
     }
   }
 

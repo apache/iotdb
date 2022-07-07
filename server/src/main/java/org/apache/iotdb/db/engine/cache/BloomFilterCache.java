@@ -180,7 +180,7 @@ public class BloomFilterCache {
 
     @Override
     public int hashCode() {
-      return Objects.hash(tsFilePrefixPath, tsFileVersion, compactionVersion);
+      return Objects.hash(timestamp, tsFilePrefixPath, tsFileVersion, compactionVersion);
     }
   }
 

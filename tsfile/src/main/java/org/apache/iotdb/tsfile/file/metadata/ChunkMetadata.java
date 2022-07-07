@@ -263,7 +263,8 @@ public class ChunkMetadata implements IChunkMetadata {
 
   @Override
   public int hashCode() {
-    return Objects.hash(tsFilePrefixPath, version, compactionVersion, offsetOfChunkHeader);
+    return Objects.hash(
+        timestamp, tsFilePrefixPath, version, compactionVersion, offsetOfChunkHeader);
   }
 
   @Override
