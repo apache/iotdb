@@ -95,6 +95,7 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     resultTsBlockBuilder.reset();
+    canCallNext = true;
     while ((curTimeRange != null || timeRangeIterator.hasNextTimeRange())
         && !resultTsBlockBuilder.isFull()) {
       if (!calculateNextResult()) {
@@ -153,8 +154,8 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
       curSubTimeRange = subTimeRangeIterator.nextTimeRange();
     }
     return ascending
-        ? curSubTimeRange.getMin() >= curTimeRange.getMax()
-        : curSubTimeRange.getMax() <= curTimeRange.getMin();
+        ? curSubTimeRange.getMin() > curTimeRange.getMax()
+        : curSubTimeRange.getMax() < curTimeRange.getMin();
   }
 
   private void calcFromTsBlock() {
