@@ -139,8 +139,6 @@ public class ConfigManager implements IManager {
   /** UDF */
   private final UDFManager udfManager;
 
-  /** Template * */
-  private final TemplateManager templateManager;
 
   public ConfigManager() throws IOException {
     // Build the persistence module
@@ -171,7 +169,6 @@ public class ConfigManager implements IManager {
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
     this.consensusManager = new ConsensusManager(this, stateMachine);
-    this.templateManager = new TemplateManager(this, templateInfo);
   }
 
   public void close() throws IOException {
@@ -883,7 +880,7 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       CreateSchemaTemplatePlan createSchemaTemplatePlan =
           new CreateSchemaTemplatePlan(req.getSerializedTemplate());
-      return templateManager.createTemplate(createSchemaTemplatePlan);
+      return clusterSchemaManager.createTemplate(createSchemaTemplatePlan);
     } else {
       return status;
     }
@@ -893,7 +890,7 @@ public class ConfigManager implements IManager {
   public TGetAllTemplatesResp getAllTemplates() {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return templateManager.getAllTemplates();
+      return clusterSchemaManager.getAllTemplates();
     } else {
       return new TGetAllTemplatesResp().setStatus(status);
     }
@@ -903,7 +900,7 @@ public class ConfigManager implements IManager {
   public TGetTemplateResp getTemplate(String req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return templateManager.getTemplate(req);
+      return clusterSchemaManager.getTemplate(req);
     } else {
       return new TGetTemplateResp().setStatus(status);
     }
