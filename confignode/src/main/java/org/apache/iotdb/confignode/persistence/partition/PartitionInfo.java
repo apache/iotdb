@@ -532,37 +532,6 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   /**
-   * Only leader use this interface. Contending the Region allocation particle.
-   *
-   * @param storageGroup StorageGroupName
-   * @param type SchemaRegion or DataRegion
-   * @return True when successfully get the allocation particle, false otherwise
-   */
-  public boolean contendRegionAllocationParticle(String storageGroup, TConsensusGroupType type) {
-    return storageGroupPartitionTables.get(storageGroup).contendRegionAllocationParticle(type);
-  }
-
-  /**
-   * Only leader use this interface. Put back the Region allocation particle.
-   *
-   * @param storageGroup StorageGroupName
-   * @param type SchemaRegion or DataRegion
-   */
-  public void putBackRegionAllocationParticle(String storageGroup, TConsensusGroupType type) {
-    storageGroupPartitionTables.get(storageGroup).putBackRegionAllocationParticle(type);
-  }
-
-  /**
-   * Only leader use this interface. Get the Region allocation particle.
-   *
-   * @param storageGroup StorageGroupName
-   * @param type SchemaRegion or DataRegion
-   */
-  public boolean getRegionAllocationParticle(String storageGroup, TConsensusGroupType type) {
-    return storageGroupPartitionTables.get(storageGroup).getRegionAllocationParticle(type);
-  }
-
-  /**
    * Get the DataNodes who contain the specific StorageGroup's Schema or Data
    *
    * @param storageGroup The specific StorageGroup's name
