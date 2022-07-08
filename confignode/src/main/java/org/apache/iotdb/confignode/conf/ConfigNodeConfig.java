@@ -28,8 +28,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import java.io.File;
 import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer.RegionAllocateStrategy.GREEDY;
-
 public class ConfigNodeConfig {
 
   /** could set ip or hostname */
@@ -66,7 +64,8 @@ public class ConfigNodeConfig {
   private double dataRegionPerProcessor = 0.5;
 
   /** region allocate strategy. */
-  private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy = GREEDY;
+  private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
+      RegionBalancer.RegionAllocateStrategy.GREEDY;
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its

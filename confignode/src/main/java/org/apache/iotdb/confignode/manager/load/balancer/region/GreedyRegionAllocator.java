@@ -34,11 +34,9 @@ import static java.util.Map.Entry.comparingByValue;
 
 /** Allocate Region Greedily */
 public class GreedyRegionAllocator implements IRegionAllocator {
-  private final List<TDataNodeLocation> weightList;
+  private List<TDataNodeLocation> weightList;
 
-  public GreedyRegionAllocator() {
-    this.weightList = new ArrayList<>();
-  }
+  public GreedyRegionAllocator() {}
 
   @Override
   public TRegionReplicaSet allocateRegion(
@@ -55,7 +53,7 @@ public class GreedyRegionAllocator implements IRegionAllocator {
 
   private void buildWeightList(
       List<TDataNodeInfo> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions) {
-
+    this.weightList = new ArrayList<>();
     Map<TDataNodeLocation, Integer> countMap = new HashMap<>();
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
       countMap.put(dataNodeInfo.getLocation(), 0);
