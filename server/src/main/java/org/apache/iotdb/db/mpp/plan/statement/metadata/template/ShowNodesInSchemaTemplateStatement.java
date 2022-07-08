@@ -25,10 +25,6 @@ import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-/**
- * @author chenhuangyun
- * @date 2022/6/30
- */
 public class ShowNodesInSchemaTemplateStatement extends ShowStatement implements IConfigStatement {
 
   private String templateName;

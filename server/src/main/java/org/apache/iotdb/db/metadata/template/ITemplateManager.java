@@ -24,15 +24,25 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 
 import java.util.List;
 
-/**
- * @author chenhuangyun
- * @date 2022/6/28
- */
 public interface ITemplateManager {
 
+  /**
+   *
+   * @param statement CreateSchemaTemplateStatement
+   * @return TSStatus
+   */
   TSStatus createSchemaTemplate(CreateSchemaTemplateStatement statement);
 
+  /**
+   * show schema templates
+   * @return List<Template>
+   */
   List<Template> getAllTemplates();
 
+  /**
+   * show nodes in schema template xx
+   * @param name
+   * @return  Template
+   */
   Template getTemplate(String name);
 }

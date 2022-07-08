@@ -45,10 +45,6 @@ import java.util.List;
 
 import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
 
-/**
- * @author chenhuangyun
- * @date 2022/7/6
- */
 public class TemplateTableTest {
 
   private static TemplateTable templateTable;

@@ -27,10 +27,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-/**
- * @author chenhuangyun
- * @date 2022/7/7
- */
 public class GetSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   public GetSchemaTemplatePlan() {

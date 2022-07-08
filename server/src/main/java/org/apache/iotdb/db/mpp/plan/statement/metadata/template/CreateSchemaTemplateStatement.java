@@ -35,10 +35,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * @author chenhuangyun
- * @date 2022/6/28
- */
 public class CreateSchemaTemplateStatement extends Statement implements IConfigStatement {
 
   String name;

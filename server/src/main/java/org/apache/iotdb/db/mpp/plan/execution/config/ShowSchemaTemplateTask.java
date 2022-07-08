@@ -35,10 +35,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * @author chenhuangyun
- * @date 2022/6/30
- */
 public class ShowSchemaTemplateTask implements IConfigTask {
 
   private final ShowSchemaTemplateStatement showSchemaTemplateStatement;

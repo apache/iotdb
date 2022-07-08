@@ -44,10 +44,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * @author chenhuangyun
- * @date 2022/6/28
- */
 public class ClusterTemplateManager implements ITemplateManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTemplateManager.class);

@@ -29,10 +29,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-/**
- * @author chenhuangyun
- * @date 2022/7/7
- */
 public class GetNodesInSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   private String templateName;

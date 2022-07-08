@@ -29,10 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
-/**
- * @author chenhuangyun
- * @date 2022/7/5
- */
+
 public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   private byte[] template;

@@ -34,10 +34,6 @@ import com.google.common.util.concurrent.SettableFuture;
 
 import java.util.Map;
 
-/**
- * @author chenhuangyun
- * @date 2022/6/30
- */
 public class ShowNodesInSchemaTemplateTask implements IConfigTask {
 
   private final ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement;

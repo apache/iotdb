@@ -25,10 +25,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 
 import java.util.List;
 
-/**
- * @author chenhuangyun
- * @date 2022/7/7
- */
 public class TemplateInfoResp implements DataSet {
 
   TSStatus status;

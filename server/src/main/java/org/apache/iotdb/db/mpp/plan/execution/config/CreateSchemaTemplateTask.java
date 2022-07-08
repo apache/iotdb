@@ -24,10 +24,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-/**
- * @author chenhuangyun
- * @date 2022/6/30
- */
 public class CreateSchemaTemplateTask implements IConfigTask {
 
   private final CreateSchemaTemplateStatement createSchemaTemplateStatement;

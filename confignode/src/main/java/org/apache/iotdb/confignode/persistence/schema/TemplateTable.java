@@ -48,10 +48,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-/**
- * @author chenhuangyun
- * @date 2022/6/28
- */
 public class TemplateTable {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TemplateTable.class);
