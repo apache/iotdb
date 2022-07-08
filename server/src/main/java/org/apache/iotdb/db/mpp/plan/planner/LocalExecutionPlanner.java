@@ -106,6 +106,8 @@ import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
+import org.apache.iotdb.db.mpp.execution.timer.ITimeSliceAllocator;
+import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -182,7 +184,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFilter;
 import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
 
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -218,6 +219,13 @@ public class LocalExecutionPlanner {
 
     Operator root = plan.accept(new Visitor(), context);
 
+    ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
+    context
+        .getAggregationOperatorList()
+        .forEach(
+            operatorContext ->
+                operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
+
     DataDriverContext dataDriverContext =
         new DataDriverContext(
             instanceContext,
@@ -239,6 +247,13 @@ public class LocalExecutionPlanner {
     LocalExecutionPlanContext context = new LocalExecutionPlanContext(instanceContext);
 
     Operator root = plan.accept(new Visitor(), context);
+
+    ITimeSliceAllocator timeSliceAllocator = context.getTimeSliceAllocator();
+    context
+        .getAggregationOperatorList()
+        .forEach(
+            operatorContext ->
+                operatorContext.setMaxRunTime(timeSliceAllocator.getMaxRunTime(operatorContext)));
 
     return new SchemaDriver(root, context.getSinkHandle(), schemaDriverContext);
   }
@@ -350,7 +365,8 @@ public class LocalExecutionPlanner {
 
       context.addSourceOperator(seriesAggregationScanOperator);
       context.addPath(seriesPath);
-
+      context.addAggregationOperator(operatorContext);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
       return seriesAggregationScanOperator;
     }
 
@@ -368,6 +384,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               SchemaQueryOrderByHeatOperator.class.getSimpleName());
 
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
       return new SchemaQueryOrderByHeatOperator(operatorContext, children);
     }
 
@@ -398,6 +415,7 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               TimeSeriesSchemaScanOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
       return new TimeSeriesSchemaScanOperator(
           node.getPlanNodeId(),
           operatorContext,
@@ -441,6 +459,7 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               SchemaQueryMergeOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
       return new SchemaQueryMergeOperator(node.getPlanNodeId(), operatorContext, children);
     }
 
@@ -581,7 +600,8 @@ public class LocalExecutionPlanner {
 
       context.addSourceOperator(aggregateScanOperator);
       context.addPath(seriesPath);
-
+      context.addAggregationOperator(operatorContext);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
       return aggregateScanOperator;
     }
 
@@ -601,6 +621,8 @@ public class LocalExecutionPlanner {
               .map(deviceName -> node.getDeviceToMeasurementIndexesMap().get(deviceName))
               .collect(Collectors.toList());
       List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
       return new DeviceViewOperator(
           operatorContext, node.getDevices(), children, deviceColumnIndex, outputColumnTypes);
     }
@@ -631,6 +653,8 @@ public class LocalExecutionPlanner {
             break;
         }
       }
+
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
       return new DeviceMergeOperator(
           operatorContext, node.getDevices(), children, dataTypes, selector, timeComparator);
     }
@@ -779,6 +803,8 @@ public class LocalExecutionPlanner {
       final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
       final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
 
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
       try {
         return new TransformOperator(
             operatorContext,
@@ -805,6 +831,8 @@ public class LocalExecutionPlanner {
       final Operator inputOperator = generateOnlyChildOperator(node, context);
       final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
       final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
+
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
       try {
         return new FilterOperator(
@@ -859,6 +887,9 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               AggregationOperator.class.getSimpleName());
+
+      context.addAggregationOperator(operatorContext);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
       return new AggregationOperator(
           operatorContext, aggregators, children, ascending, node.getGroupByTimeParameter(), false);
     }
@@ -891,6 +922,9 @@ public class LocalExecutionPlanner {
                 inputLocationList,
                 descriptor.getStep()));
       }
+
+      context.addAggregationOperator(operatorContext);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
       return new SlidingWindowAggregationOperator(
           operatorContext, aggregators, child, ascending, node.getGroupByTimeParameter());
     }
@@ -898,25 +932,27 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitLimit(LimitNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
-      return new LimitOperator(
+      OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              LimitOperator.class.getSimpleName()),
-          node.getLimit(),
-          child);
+              LimitOperator.class.getSimpleName());
+
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new LimitOperator(operatorContext, node.getLimit(), child);
     }
 
     @Override
     public Operator visitOffset(OffsetNode node, LocalExecutionPlanContext context) {
       Operator child = node.getChild().accept(this, context);
-      return new OffsetOperator(
+      OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              OffsetOperator.class.getSimpleName()),
-          node.getOffset(),
-          child);
+              OffsetOperator.class.getSimpleName());
+
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new OffsetOperator(operatorContext, node.getOffset(), child);
     }
 
     @Override
@@ -953,6 +989,8 @@ public class LocalExecutionPlanner {
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 RawDataAggregationOperator.class.getSimpleName());
+        context.addAggregationOperator(operatorContext);
+        context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
         return new RawDataAggregationOperator(
             operatorContext,
             aggregators,
@@ -965,6 +1003,8 @@ public class LocalExecutionPlanner {
                 context.getNextOperatorId(),
                 node.getPlanNodeId(),
                 AggregationOperator.class.getSimpleName());
+        context.addAggregationOperator(operatorContext);
+        context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
         return new AggregationOperator(
             operatorContext,
             aggregators,
@@ -1021,6 +1061,8 @@ public class LocalExecutionPlanner {
       List<OutputColumn> outputColumns = generateOutputColumns(node);
       List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
       List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
+
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
       return new TimeJoinOperator(
           operatorContext,
           children,
@@ -1207,6 +1249,8 @@ public class LocalExecutionPlanner {
               null);
       context.addSourceOperator(seriesAggregationScanOperator);
       context.addPath(seriesPath);
+      context.addAggregationOperator(operatorContext);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
       return seriesAggregationScanOperator;
     }
 
@@ -1275,6 +1319,8 @@ public class LocalExecutionPlanner {
               null);
       context.addSourceOperator(seriesAggregationScanOperator);
       context.addPath(seriesPath);
+      context.addAggregationOperator(operatorContext);
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
       return seriesAggregationScanOperator;
     }
 
@@ -1317,12 +1363,13 @@ public class LocalExecutionPlanner {
         operatorList.add(operator);
       }
 
-      return new LastQueryMergeOperator(
+      OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              LastQueryMergeOperator.class.getSimpleName()),
-          operatorList);
+              LastQueryMergeOperator.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new LastQueryMergeOperator(operatorContext, operatorList);
     }
 
     private Map<String, List<InputLocation>> makeLayout(PlanNode node) {
@@ -1397,6 +1444,9 @@ public class LocalExecutionPlanner {
     // whether we need to update last cache
     private boolean needUpdateLastCache;
 
+    private List<OperatorContext> aggregationOperatorList;
+    private RuleBasedTimeSliceAllocator timeSliceAllocator;
+
     public LocalExecutionPlanContext(
         TypeProvider typeProvider, FragmentInstanceContext instanceContext) {
       this.typeProvider = typeProvider;
@@ -1404,6 +1454,8 @@ public class LocalExecutionPlanner {
       this.paths = new ArrayList<>();
       this.allSensorsMap = new HashMap<>();
       this.sourceOperators = new ArrayList<>();
+      this.aggregationOperatorList = new ArrayList<>();
+      this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
     }
 
     public LocalExecutionPlanContext(FragmentInstanceContext instanceContext) {
@@ -1411,6 +1463,10 @@ public class LocalExecutionPlanner {
       this.paths = new ArrayList<>();
       this.allSensorsMap = new HashMap<>();
       this.sourceOperators = new ArrayList<>();
+
+      // only used in `order by heat`
+      this.aggregationOperatorList = new ArrayList<>();
+      this.timeSliceAllocator = new RuleBasedTimeSliceAllocator();
     }
 
     private int getNextOperatorId() {
@@ -1458,6 +1514,10 @@ public class LocalExecutionPlanner {
       cachedLastValuePathList.add(fullPath);
     }
 
+    public void addAggregationOperator(OperatorContext operatorContext) {
+      aggregationOperatorList.add(operatorContext);
+    }
+
     public List<TimeValuePair> getCachedLastValueList() {
       return cachedLastValueList;
     }
@@ -1475,6 +1535,14 @@ public class LocalExecutionPlanner {
 
     public TypeProvider getTypeProvider() {
       return typeProvider;
+    }
+
+    public RuleBasedTimeSliceAllocator getTimeSliceAllocator() {
+      return timeSliceAllocator;
+    }
+
+    public List<OperatorContext> getAggregationOperatorList() {
+      return aggregationOperatorList;
     }
   }
 }

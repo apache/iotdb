@@ -35,6 +35,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
@@ -105,11 +106,16 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
+    // start stopwatch
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+    long start = System.nanoTime();
+
     // reset operator state
     resultTsBlockBuilder.reset();
     canCallNext = true;
 
-    while ((curTimeRange != null || timeRangeIterator.hasNextTimeRange())
+    while (System.nanoTime() - start < maxRuntime
+        && (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
         && !resultTsBlockBuilder.isFull()) {
       if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
         // move to next timeRange

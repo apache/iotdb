@@ -41,6 +41,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
@@ -149,10 +150,16 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
 
   @Override
   public TsBlock next() {
+    // start stopwatch
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+    long start = System.nanoTime();
+
     // reset operator state
     resultTsBlockBuilder.reset();
 
-    while (timeRangeIterator.hasNextTimeRange() && !resultTsBlockBuilder.isFull()) {
+    while (System.nanoTime() - start < maxRuntime
+        && timeRangeIterator.hasNextTimeRange()
+        && !resultTsBlockBuilder.isFull()) {
       // move to next time window
       curTimeRange = timeRangeIterator.nextTimeRange();
 
