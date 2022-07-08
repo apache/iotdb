@@ -21,9 +21,17 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
+import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.AfterClass;
@@ -34,6 +42,7 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -95,5 +104,45 @@ public class ClusterSchemaInfoTest {
     Map<String, TStorageGroupSchema> reloadResult =
         clusterSchemaInfo.getMatchedStorageGroupSchemas(getStorageGroupReq).getSchemaMap();
     Assert.assertEquals(testMap, reloadResult);
+  }
+
+  @Test
+  public void testSetTemplate() throws IllegalPathException, IOException {
+    String templateName = "template_name";
+    Template template = new Template(newCreateSchemaTemplateStatement(templateName));
+    CreateSchemaTemplatePlan createSchemaTemplatePlan =
+        new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
+    clusterSchemaInfo.createSchemaTemplate(createSchemaTemplatePlan);
+
+    clusterSchemaInfo.setSchemaTemplate(
+        new SetSchemaTemplatePlan(templateName, "root.test1.template"));
+    clusterSchemaInfo.setSchemaTemplate(
+        new SetSchemaTemplatePlan(templateName, "root.test2.template"));
+    clusterSchemaInfo.setSchemaTemplate(
+        new SetSchemaTemplatePlan(templateName, "root.test3.template"));
+
+    List<String> pathList =
+        clusterSchemaInfo
+            .getPathsSetTemplate(new GetPathsSetTemplatePlan(templateName))
+            .getPathList();
+    Assert.assertEquals(3, pathList.size());
+    Assert.assertTrue(pathList.contains("root.test1.template"));
+    Assert.assertTrue(pathList.contains("root.test2.template"));
+    Assert.assertTrue(pathList.contains("root.test3.template"));
+  }
+
+  private CreateSchemaTemplateStatement newCreateSchemaTemplateStatement(String name) {
+    List<List<String>> measurements =
+        Arrays.asList(
+            Arrays.asList(name + "_" + "temperature"), Arrays.asList(name + "_" + "status"));
+    List<List<TSDataType>> dataTypes =
+        Arrays.asList(Arrays.asList(TSDataType.FLOAT), Arrays.asList(TSDataType.BOOLEAN));
+    List<List<TSEncoding>> encodings =
+        Arrays.asList(Arrays.asList(TSEncoding.RLE), Arrays.asList(TSEncoding.PLAIN));
+    List<List<CompressionType>> compressors =
+        Arrays.asList(Arrays.asList(CompressionType.SNAPPY), Arrays.asList(CompressionType.SNAPPY));
+    CreateSchemaTemplateStatement createSchemaTemplateStatement =
+        new CreateSchemaTemplateStatement(name, measurements, dataTypes, encodings, compressors);
+    return createSchemaTemplateStatement;
   }
 }
