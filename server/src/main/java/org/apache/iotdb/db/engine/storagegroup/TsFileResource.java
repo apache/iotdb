@@ -42,7 +42,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -823,17 +822,19 @@ public class TsFileResource {
     if (planIndex == Long.MIN_VALUE || planIndex == Long.MAX_VALUE) {
       return;
     }
-    maxPlanIndex = Math.max(maxPlanIndex, planIndex);
-    minPlanIndex = Math.min(minPlanIndex, planIndex);
-    if (closed) {
-      try {
-        serialize();
-      } catch (IOException e) {
-        LOGGER.error(
-            "Cannot serialize TsFileResource {} when updating plan index {}-{}",
-            this,
-            maxPlanIndex,
-            planIndex);
+    if (planIndex < minPlanIndex || planIndex > maxPlanIndex) {
+      maxPlanIndex = Math.max(maxPlanIndex, planIndex);
+      minPlanIndex = Math.min(minPlanIndex, planIndex);
+      if (isClosed()) {
+        try {
+          serialize();
+        } catch (IOException e) {
+          LOGGER.error(
+              "Cannot serialize TsFileResource {} when updating plan index {}-{}",
+              this,
+              maxPlanIndex,
+              planIndex);
+        }
       }
     }
   }

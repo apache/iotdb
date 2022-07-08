@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -79,8 +80,6 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1815,15 +1814,19 @@ public class StorageGroupProcessor {
       Set<PartialPath> devicePaths,
       long deleteStart,
       long deleteEnd) {
+    if (!tsFileResource.isClosed()) {
+      // tsfile is not closed
+      return false;
+    }
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
       long endTime = tsFileResource.getEndTime(deviceId);
-      if (endTime == Long.MIN_VALUE) {
-        return false;
+      if (!tsFileResource.getDevices().contains(deviceId)) {
+        // resource does not contain this device
+        continue;
       }
 
-      if (tsFileResource.getDevices().contains(deviceId)
-          && (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime)) {
+      if (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime) {
         return false;
       }
     }
