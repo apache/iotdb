@@ -52,7 +52,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupPartitionTable {
@@ -65,10 +64,6 @@ public class StorageGroupPartitionTable {
   // determines whether a new Region needs to be created
   private final AtomicInteger seriesPartitionSlotsCount;
 
-  // Region allocation particle
-  private final AtomicBoolean schemaRegionParticle;
-  private final AtomicBoolean dataRegionParticle;
-
   // Region
   private final Map<TConsensusGroupId, RegionGroup> regionGroupMap;
   // SchemaPartition
@@ -80,8 +75,6 @@ public class StorageGroupPartitionTable {
     this.storageGroupName = storageGroupName;
     this.seriesPartitionSlotsCount = new AtomicInteger(0);
 
-    this.schemaRegionParticle = new AtomicBoolean(true);
-    this.dataRegionParticle = new AtomicBoolean(true);
     this.regionGroupMap = new ConcurrentHashMap<>();
 
     this.schemaPartitionTable = new SchemaPartitionTable();
@@ -204,53 +197,6 @@ public class StorageGroupPartitionTable {
               }
             });
     return result.getAndIncrement();
-  }
-
-  /**
-   * Only leader use this interface. Contending the Region allocation particle.
-   *
-   * @param type SchemaRegion or DataRegion
-   * @return True when successfully get the allocation particle, false otherwise
-   */
-  public boolean contendRegionAllocationParticle(TConsensusGroupType type) {
-    switch (type) {
-      case SchemaRegion:
-        return schemaRegionParticle.getAndSet(false);
-      case DataRegion:
-        return dataRegionParticle.getAndSet(false);
-      default:
-        return false;
-    }
-  }
-
-  /**
-   * Only leader use this interface. Put back the Region allocation particle.
-   *
-   * @param type SchemaRegion or DataRegion
-   */
-  public void putBackRegionAllocationParticle(TConsensusGroupType type) {
-    switch (type) {
-      case SchemaRegion:
-        schemaRegionParticle.set(true);
-      case DataRegion:
-        dataRegionParticle.set(true);
-    }
-  }
-
-  /**
-   * Only leader use this interface. Get the Region allocation particle.
-   *
-   * @param type SchemaRegion or DataRegion
-   */
-  public boolean getRegionAllocationParticle(TConsensusGroupType type) {
-    switch (type) {
-      case SchemaRegion:
-        return schemaRegionParticle.get();
-      case DataRegion:
-        return dataRegionParticle.get();
-      default:
-        return false;
-    }
   }
 
   public int getSlotsCount() {

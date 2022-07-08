@@ -16,24 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.manager.load.heartbeat;
+package org.apache.iotdb.it.framework;
 
-public class HeartbeatPackage {
+import org.jetbrains.annotations.NotNull;
 
-  // Unit: ms
-  private final long sendTimestamp;
-  private final long receiveTimestamp;
+public class IoTDBTestStat implements Comparable<IoTDBTestStat> {
+  private final String name;
+  private final double seconds;
 
-  public HeartbeatPackage(long sendTimestamp, long receiveTimestamp) {
-    this.sendTimestamp = sendTimestamp;
-    this.receiveTimestamp = receiveTimestamp;
+  public IoTDBTestStat(String name, double seconds) {
+    this.name = name;
+    this.seconds = seconds;
   }
 
-  public long getSendTimestamp() {
-    return sendTimestamp;
+  @Override
+  public int compareTo(@NotNull IoTDBTestStat o) {
+    // Compare in a reverse order
+    return Double.compare(o.seconds, seconds);
   }
 
-  public long getReceiveTimestamp() {
-    return receiveTimestamp;
+  @Override
+  public String toString() {
+    return String.format("%.3f\t%s", seconds, name);
   }
 }

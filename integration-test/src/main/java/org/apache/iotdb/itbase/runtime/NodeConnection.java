@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
+
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -27,7 +28,7 @@ import java.sql.SQLException;
 /** this is the connection instance of one single node. */
 public class NodeConnection {
 
-  private static final Logger logger = LoggerFactory.getLogger(NodeConnection.class);
+  private static final Logger logger = IoTDBTestLogger.logger;
   private final String endpoint;
   private final NodeRole nodeRole;
   private final ConnectionRole connectionRole;

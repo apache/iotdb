@@ -295,8 +295,7 @@ public class ConfigPhysicalPlanSerDeTest {
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
 
-    GetSchemaPartitionPlan req0 = new GetSchemaPartitionPlan();
-    req0.setPartitionSlotsMap(partitionSlotsMap);
+    GetSchemaPartitionPlan req0 = new GetSchemaPartitionPlan(partitionSlotsMap);
     GetSchemaPartitionPlan req1 =
         (GetSchemaPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -310,8 +309,7 @@ public class ConfigPhysicalPlanSerDeTest {
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
 
-    GetOrCreateSchemaPartitionPlan req0 = new GetOrCreateSchemaPartitionPlan();
-    req0.setPartitionSlotsMap(partitionSlotsMap);
+    GetOrCreateSchemaPartitionPlan req0 = new GetOrCreateSchemaPartitionPlan(partitionSlotsMap);
     GetOrCreateSchemaPartitionPlan req1 =
         (GetOrCreateSchemaPartitionPlan)
             ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
@@ -364,8 +362,7 @@ public class ConfigPhysicalPlanSerDeTest {
     partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
     partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
 
-    GetDataPartitionPlan req0 = new GetDataPartitionPlan();
-    req0.setPartitionSlotsMap(partitionSlotsMap);
+    GetDataPartitionPlan req0 = new GetDataPartitionPlan(partitionSlotsMap);
     GetDataPartitionPlan req1 =
         (GetDataPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -383,8 +380,7 @@ public class ConfigPhysicalPlanSerDeTest {
     partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
     partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
 
-    GetOrCreateDataPartitionPlan req0 = new GetOrCreateDataPartitionPlan();
-    req0.setPartitionSlotsMap(partitionSlotsMap);
+    GetOrCreateDataPartitionPlan req0 = new GetOrCreateDataPartitionPlan(partitionSlotsMap);
     GetOrCreateDataPartitionPlan req1 =
         (GetOrCreateDataPartitionPlan)
             ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
