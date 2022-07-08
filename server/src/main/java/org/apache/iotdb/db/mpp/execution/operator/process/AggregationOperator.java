@@ -37,7 +37,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipOutOfTimeRangePoints;
 
 /**
  * AggregationOperator can process the situation: aggregation of intermediate aggregate result, it
@@ -188,7 +187,7 @@ public class AggregationOperator implements ProcessOperator {
     }
 
     for (int i = 0; i < inputOperatorsCount; i++) {
-      inputTsBlocks[i] = skipOutOfTimeRangePoints(inputTsBlocks[i], curTimeRange, ascending);
+      inputTsBlocks[i] = inputTsBlocks[i].skipFirst();
       if (inputTsBlocks[i].isEmpty()) {
         inputTsBlocks[i] = null;
       }

@@ -40,7 +40,6 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipOutOfTimeRangePoints;
 
 public class SlidingWindowAggregationOperator implements ProcessOperator {
 
@@ -198,20 +197,13 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
       return;
     }
 
-    // skip points that cannot be calculated
-    if ((ascending && inputTsBlock.getStartTime() < curSubTimeRange.getMin())
-        || (!ascending && inputTsBlock.getStartTime() > curSubTimeRange.getMax())) {
-      inputTsBlock = skipOutOfTimeRangePoints(inputTsBlock, curSubTimeRange, ascending);
+    for (SlidingWindowAggregator aggregator : aggregators) {
+      aggregator.processTsBlock(inputTsBlock);
     }
 
-    int lastReadRowIndex = 0;
-    for (SlidingWindowAggregator aggregator : aggregators) {
-      lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
-    }
-    if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+    inputTsBlock = inputTsBlock.skipFirst();
+    if (inputTsBlock.isEmpty()) {
       inputTsBlock = null;
-    } else {
-      inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
     }
     curSubTimeRange = null;
   }
