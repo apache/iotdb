@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
@@ -117,13 +118,13 @@ public class ConfigNodeProcedureEnv {
               .sendSyncRequestToDataNode(
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   invalidateCacheReq,
-                  ConfigNodeRequestType.invalidateSchemaCache);
+                  DataNodeRequestType.invalidateSchemaCache);
       final TSStatus invalidatePartitionStatus =
           SyncDataNodeClientPool.getInstance()
               .sendSyncRequestToDataNode(
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   invalidateCacheReq,
-                  ConfigNodeRequestType.invalidatePartitionCache);
+                  DataNodeRequestType.invalidatePartitionCache);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
         LOG.error(
             "Invalidate cache failed, invalidate partition cache status is {}， invalidate schema cache status is {}",

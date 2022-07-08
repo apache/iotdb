@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.confignode.client;
 
-public enum ConfigNodeRequestType {
-  addConsensusGroup,
-  notifyRegisterSuccess,
-  registerConfigNode,
-  removeConfigNode,
-  stopConfigNode;
+public enum DataNodeRequestType {
+  deleteRegions,
+  invalidatePartitionCache,
+  invalidatePermissionCache,
+  invalidateSchemaCache;
 }
