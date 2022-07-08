@@ -61,6 +61,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
 
 public class SlidingWindowAggregationOperatorTest {
 
@@ -210,6 +211,12 @@ public class SlidingWindowAggregationOperatorTest {
         0, sourceId, SeriesAggregationScanOperator.class.getSimpleName());
     fragmentInstanceContext.addOperatorContext(
         1, queryId.genPlanNodeId(), SlidingWindowAggregationOperator.class.getSimpleName());
+    fragmentInstanceContext
+        .getOperatorContexts()
+        .forEach(
+            operatorContext -> {
+              operatorContext.setMaxRunTime(TEST_TIME_SLICE);
+            });
 
     MeasurementPath d0s0 =
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);

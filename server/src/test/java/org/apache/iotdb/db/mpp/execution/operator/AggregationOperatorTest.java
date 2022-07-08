@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,11 +56,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 
 public class AggregationOperatorTest {
+
+  public static Duration TEST_TIME_SLICE = new Duration(500, TimeUnit.MILLISECONDS);
 
   private static final String AGGREGATION_OPERATOR_TEST_SG = "root.AggregationOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
@@ -258,6 +262,12 @@ public class AggregationOperatorTest {
     PlanNodeId planNodeId3 = new PlanNodeId("3");
     fragmentInstanceContext.addOperatorContext(
         3, planNodeId3, AggregationOperator.class.getSimpleName());
+    fragmentInstanceContext
+        .getOperatorContexts()
+        .forEach(
+            operatorContext -> {
+              operatorContext.setMaxRunTime(TEST_TIME_SLICE);
+            });
 
     MeasurementPath measurementPath1 =
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
