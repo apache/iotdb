@@ -148,8 +148,11 @@ public class SlidingWindowAggregationOperatorTest {
         continue;
       }
       Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
-      Assert.assertEquals(retArray[count], getResultString(resultTsBlock));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        Assert.assertEquals(retArray[count], getResultString(resultTsBlock, pos));
+        count++;
+      }
     }
     Assert.assertEquals(retArray.length, count);
 
@@ -161,32 +164,35 @@ public class SlidingWindowAggregationOperatorTest {
         continue;
       }
       Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
-      Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock));
-      count--;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock, pos));
+        count--;
+      }
     }
     Assert.assertEquals(0, count);
   }
 
-  private String getResultString(TsBlock resultTsBlock) {
-    return resultTsBlock.getTimeColumn().getLong(0)
+  private String getResultString(TsBlock resultTsBlock, int pos) {
+    return resultTsBlock.getTimeColumn().getLong(pos)
         + ","
-        + resultTsBlock.getColumn(0).getLong(0)
+        + resultTsBlock.getColumn(0).getLong(pos)
         + ","
-        + resultTsBlock.getColumn(1).getDouble(0)
+        + resultTsBlock.getColumn(1).getDouble(pos)
         + ","
-        + resultTsBlock.getColumn(2).getDouble(0)
+        + resultTsBlock.getColumn(2).getDouble(pos)
         + ","
-        + resultTsBlock.getColumn(3).getInt(0)
+        + resultTsBlock.getColumn(3).getInt(pos)
         + ","
-        + resultTsBlock.getColumn(4).getLong(0)
+        + resultTsBlock.getColumn(4).getLong(pos)
         + ","
-        + resultTsBlock.getColumn(5).getLong(0)
+        + resultTsBlock.getColumn(5).getLong(pos)
         + ","
-        + resultTsBlock.getColumn(6).getInt(0)
+        + resultTsBlock.getColumn(6).getInt(pos)
         + ","
-        + resultTsBlock.getColumn(7).getInt(0)
+        + resultTsBlock.getColumn(7).getInt(pos)
         + ","
-        + resultTsBlock.getColumn(8).getInt(0);
+        + resultTsBlock.getColumn(8).getInt(pos);
   }
 
   private SlidingWindowAggregationOperator initSlidingWindowAggregationOperator(boolean ascending)

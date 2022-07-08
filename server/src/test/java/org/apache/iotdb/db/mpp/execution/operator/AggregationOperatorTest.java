@@ -177,14 +177,17 @@ public class AggregationOperatorTest {
     int count = 0;
     while (aggregationOperator.hasNext()) {
       TsBlock resultTsBlock = aggregationOperator.next();
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[0][count], resultTsBlock.getColumn(0).getLong(0));
-      assertEquals(result[1][count], resultTsBlock.getColumn(1).getDouble(0), 0.0001);
-      assertEquals(result[2][count], resultTsBlock.getColumn(2).getLong(0));
-      assertEquals(result[3][count], resultTsBlock.getColumn(3).getLong(0));
-      assertEquals(result[4][count], resultTsBlock.getColumn(4).getInt(0));
-      assertEquals(result[5][count], resultTsBlock.getColumn(5).getInt(0));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][count], resultTsBlock.getColumn(0).getLong(pos));
+        assertEquals(result[1][count], resultTsBlock.getColumn(1).getDouble(pos), 0.0001);
+        assertEquals(result[2][count], resultTsBlock.getColumn(2).getLong(pos));
+        assertEquals(result[3][count], resultTsBlock.getColumn(3).getLong(pos));
+        assertEquals(result[4][count], resultTsBlock.getColumn(4).getInt(pos));
+        assertEquals(result[5][count], resultTsBlock.getColumn(5).getInt(pos));
+        count++;
+      }
     }
     assertEquals(4, count);
   }
@@ -216,11 +219,14 @@ public class AggregationOperatorTest {
     int count = 0;
     while (aggregationOperator.hasNext()) {
       TsBlock resultTsBlock = aggregationOperator.next();
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[0][count], resultTsBlock.getColumn(0).getDouble(0), 0.001);
-      assertEquals((int) result[1][count], resultTsBlock.getColumn(1).getInt(0));
-      assertEquals((int) result[2][count], resultTsBlock.getColumn(2).getInt(0));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][count], resultTsBlock.getColumn(0).getDouble(pos), 0.001);
+        assertEquals((int) result[1][count], resultTsBlock.getColumn(1).getInt(pos));
+        assertEquals((int) result[2][count], resultTsBlock.getColumn(2).getInt(pos));
+        count++;
+      }
     }
     assertEquals(4, count);
   }

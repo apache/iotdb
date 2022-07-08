@@ -380,11 +380,14 @@ public class AlignedSeriesAggregationScanOperatorTest {
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      for (int i = 0; i < measurementSchemas.size(); i++) {
-        assertEquals(result[count], resultTsBlock.getColumn(i).getLong(0));
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        for (int i = 0; i < measurementSchemas.size(); i++) {
+          assertEquals(result[count], resultTsBlock.getColumn(i).getLong(pos));
+        }
+        count++;
       }
-      count++;
     }
     assertEquals(4, count);
   }
@@ -411,11 +414,14 @@ public class AlignedSeriesAggregationScanOperatorTest {
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      for (int i = 0; i < measurementSchemas.size(); i++) {
-        assertEquals(result[count], resultTsBlock.getColumn(i).getLong(0));
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        for (int i = 0; i < measurementSchemas.size(); i++) {
+          assertEquals(result[count], resultTsBlock.getColumn(i).getLong(pos));
+        }
+        count++;
       }
-      count++;
     }
     assertEquals(4, count);
   }
@@ -445,12 +451,15 @@ public class AlignedSeriesAggregationScanOperatorTest {
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[0][count], resultTsBlock.getColumn(0).getInt(0));
-      assertEquals(result[1][count], resultTsBlock.getColumn(1).getInt(0));
-      assertEquals(result[2][count], resultTsBlock.getColumn(2).getInt(0));
-      assertEquals(result[3][count], resultTsBlock.getColumn(3).getInt(0));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][count], resultTsBlock.getColumn(0).getInt(pos));
+        assertEquals(result[1][count], resultTsBlock.getColumn(1).getInt(pos));
+        assertEquals(result[2][count], resultTsBlock.getColumn(2).getInt(pos));
+        assertEquals(result[3][count], resultTsBlock.getColumn(3).getInt(pos));
+        count++;
+      }
     }
     assertEquals(4, count);
   }
@@ -480,12 +489,15 @@ public class AlignedSeriesAggregationScanOperatorTest {
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-      assertEquals(100 * (3 - count), resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[0][3 - count], resultTsBlock.getColumn(0).getInt(0));
-      assertEquals(result[1][3 - count], resultTsBlock.getColumn(1).getInt(0));
-      assertEquals(result[2][3 - count], resultTsBlock.getColumn(2).getInt(0));
-      assertEquals(result[3][3 - count], resultTsBlock.getColumn(3).getInt(0));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * (3 - count), resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][3 - count], resultTsBlock.getColumn(0).getInt(pos));
+        assertEquals(result[1][3 - count], resultTsBlock.getColumn(1).getInt(pos));
+        assertEquals(result[2][3 - count], resultTsBlock.getColumn(2).getInt(pos));
+        assertEquals(result[3][3 - count], resultTsBlock.getColumn(3).getInt(pos));
+        count++;
+      }
     }
     assertEquals(4, count);
   }
@@ -505,9 +517,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-      assertEquals(50 * count, resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[count], resultTsBlock.getColumn(0).getLong(0));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(50 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[count], resultTsBlock.getColumn(0).getLong(pos));
+        count++;
+      }
     }
     assertEquals(result.length, count);
   }
@@ -528,9 +543,12 @@ public class AlignedSeriesAggregationScanOperatorTest {
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-      assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[count], resultTsBlock.getColumn(0).getLong(0));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[count], resultTsBlock.getColumn(0).getLong(pos));
+        count++;
+      }
     }
     assertEquals(timeColumn.length, count);
   }
@@ -561,12 +579,15 @@ public class AlignedSeriesAggregationScanOperatorTest {
     int count = 0;
     while (seriesAggregationScanOperator.hasNext()) {
       TsBlock resultTsBlock = seriesAggregationScanOperator.next();
-      assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[0][count], resultTsBlock.getColumn(0).getInt(0));
-      assertEquals(result[1][count], resultTsBlock.getColumn(1).getInt(0));
-      assertEquals(result[2][count], resultTsBlock.getColumn(2).getInt(0));
-      assertEquals(result[3][count], resultTsBlock.getColumn(3).getInt(0));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(timeColumn[count], resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][count], resultTsBlock.getColumn(0).getInt(pos));
+        assertEquals(result[1][count], resultTsBlock.getColumn(1).getInt(pos));
+        assertEquals(result[2][count], resultTsBlock.getColumn(2).getInt(pos));
+        assertEquals(result[3][count], resultTsBlock.getColumn(3).getInt(pos));
+        count++;
+      }
     }
     assertEquals(timeColumn.length, count);
   }
