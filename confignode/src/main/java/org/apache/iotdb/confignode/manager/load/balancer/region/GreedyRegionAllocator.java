@@ -23,9 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,7 +32,6 @@ import static java.util.Map.Entry.comparingByValue;
 
 /** Allocate Region Greedily */
 public class GreedyRegionAllocator implements IRegionAllocator {
-  private List<TDataNodeLocation> weightList;
 
   public GreedyRegionAllocator() {}
 
@@ -45,15 +42,14 @@ public class GreedyRegionAllocator implements IRegionAllocator {
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
     // Build weightList order by number of regions allocated asc
-    buildWeightList(onlineDataNodes, allocatedRegions);
+    List<TDataNodeLocation> weightList = buildWeightList(onlineDataNodes, allocatedRegions);
     return new TRegionReplicaSet(
         consensusGroupId,
         weightList.stream().limit(replicationFactor).collect(Collectors.toList()));
   }
 
-  private void buildWeightList(
+  private List<TDataNodeLocation> buildWeightList(
       List<TDataNodeInfo> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions) {
-    this.weightList = new ArrayList<>();
     Map<TDataNodeLocation, Integer> countMap = new HashMap<>();
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
       countMap.put(dataNodeInfo.getLocation(), 0);
@@ -64,19 +60,9 @@ public class GreedyRegionAllocator implements IRegionAllocator {
         countMap.computeIfPresent(dataNodeLocation, (dataNode, count) -> (count + 1));
       }
     }
-
-    Map<TDataNodeLocation, Integer> sortedCountMap =
-        countMap.entrySet().stream()
-            .sorted(comparingByValue())
-            .collect(
-                Collectors.toMap(
-                    Map.Entry::getKey,
-                    Map.Entry::getValue,
-                    (oldV, newV) -> oldV,
-                    LinkedHashMap::new));
-
-    for (Map.Entry<TDataNodeLocation, Integer> countEntry : sortedCountMap.entrySet()) {
-      weightList.add(countEntry.getKey().deepCopy());
-    }
+    return countMap.entrySet().stream()
+        .sorted(comparingByValue())
+        .map(e -> e.getKey().deepCopy())
+        .collect(Collectors.toList());
   }
 }
