@@ -49,6 +49,7 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -867,13 +868,6 @@ public class StorageGroupProcessorTest {
       } else {
         Assert.assertFalse(resource.getModFile().exists());
       }
-    }
-
-    StorageEngine.getInstance().deleteStorageGroup(new PartialPath(storageGroup));
-    Thread.sleep(500);
-
-    for (TsFileResource resource : processor.getSequenceFileTreeSet()) {
-      Assert.assertFalse(resource.getTsFile().exists());
     }
   }
 

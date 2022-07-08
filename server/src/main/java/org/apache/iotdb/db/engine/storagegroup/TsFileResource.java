@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -825,7 +826,7 @@ public class TsFileResource {
     if (planIndex < minPlanIndex || planIndex > maxPlanIndex) {
       maxPlanIndex = Math.max(maxPlanIndex, planIndex);
       minPlanIndex = Math.min(minPlanIndex, planIndex);
-      if (isClosed()) {
+      if (closed) {
         try {
           serialize();
         } catch (IOException e) {
