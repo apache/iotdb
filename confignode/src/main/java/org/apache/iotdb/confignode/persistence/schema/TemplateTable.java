@@ -29,7 +29,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,14 +93,14 @@ public class TemplateTable {
               item -> {
                 try {
                   templates.add(Template.template2ByteBuffer(item));
-                }catch (IOException e) {
+                } catch (IOException e) {
                   resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
                   throw new RuntimeException(e);
                 }
-              } );
+              });
       resp.setTemplateList(templates);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (RuntimeException  e) {
+    } catch (RuntimeException e) {
       LOGGER.warn("Error TemplateInfo name", e);
       resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
     } finally {

@@ -19,11 +19,6 @@
 
 package org.apache.iotdb.db.metadata.template;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
@@ -37,9 +32,16 @@ import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * @author chenhuangyun
@@ -120,7 +122,8 @@ public class ClusterTemplateManager implements ITemplateManager {
                   }
                 });
       } else {
-        throw new RuntimeException(new TemplateIsInUseException(tGetAllTemplatesResp.getStatus().getMessage()));
+        throw new RuntimeException(
+            new TemplateIsInUseException(tGetAllTemplatesResp.getStatus().getMessage()));
       }
     } catch (TException | IOException e) {
       throw new RuntimeException(new TemplateIsInUseException("get all template error."));

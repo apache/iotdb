@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -57,6 +54,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -309,6 +309,7 @@ public class ClusterSchemaManager {
 
   /**
    * create schema template
+   *
    * @param createSchemaTemplatePlan CreateSchemaTemplatePlan
    * @return TSStatus
    */
@@ -318,50 +319,58 @@ public class ClusterSchemaManager {
 
   /**
    * show schema template
+   *
    * @return TGetAllTemplatesResp
    */
   public TGetAllTemplatesResp getAllTemplates() {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan();
-    TemplateInfoResp templateResp = (TemplateInfoResp)getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    TemplateInfoResp templateResp =
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
     TGetAllTemplatesResp resp = new TGetAllTemplatesResp();
     resp.setStatus(templateResp.getStatus());
-    if(resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if(templateResp.getTemplateList() != null){
+    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (templateResp.getTemplateList() != null) {
         List<ByteBuffer> list = new ArrayList<ByteBuffer>();
-        templateResp.getTemplateList().stream().forEach(item ->{
-          try {
-            list.add(Template.template2ByteBuffer(item));
-          }catch (IOException e) {
-            e.printStackTrace();
-          }
-        });
+        templateResp.getTemplateList().stream()
+            .forEach(
+                item -> {
+                  try {
+                    list.add(Template.template2ByteBuffer(item));
+                  } catch (IOException e) {
+                    e.printStackTrace();
+                  }
+                });
         resp.setTemplateList(list);
       }
     }
-    return  resp;
+    return resp;
   }
 
   /**
    * show nodes in schema template
+   *
    * @param req
    * @return
    */
   public TGetTemplateResp getTemplate(String req) {
-    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan = new GetNodesInSchemaTemplatePlan(req);
-    TemplateInfoResp templateResp = (TemplateInfoResp)getConsensusManager().read(getNodesInSchemaTemplatePlan).getDataset();
+    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan =
+        new GetNodesInSchemaTemplatePlan(req);
+    TemplateInfoResp templateResp =
+        (TemplateInfoResp) getConsensusManager().read(getNodesInSchemaTemplatePlan).getDataset();
     TGetTemplateResp resp = new TGetTemplateResp();
     try {
-      if(resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if(templateResp.getTemplateList() != null && !templateResp.getTemplateList().isEmpty()){
-          ByteBuffer byteBuffer = Template.template2ByteBuffer(templateResp.getTemplateList().get(0));
+      if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (templateResp.getTemplateList() != null && !templateResp.getTemplateList().isEmpty()) {
+          ByteBuffer byteBuffer =
+              Template.template2ByteBuffer(templateResp.getTemplateList().get(0));
           resp.setTemplate(byteBuffer);
         }
       }
       resp.setStatus(templateResp.getStatus());
-    }catch (IOException e) {
+    } catch (IOException e) {
       resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
     }
-    return  resp;
+    return resp;
   }
 
   private NodeManager getNodeManager() {

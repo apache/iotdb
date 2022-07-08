@@ -19,33 +19,34 @@
 
 package org.apache.iotdb.confignode.consensus.response;
 
-import java.util.List;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
 
+import java.util.List;
+
 /**
  * @author chenhuangyun
  * @date 2022/7/7
- **/
+ */
 public class TemplateInfoResp implements DataSet {
 
-    TSStatus status;
-    List<Template> templateList;
+  TSStatus status;
+  List<Template> templateList;
 
-    public TSStatus getStatus() {
-        return status;
-    }
+  public TSStatus getStatus() {
+    return status;
+  }
 
-    public void setStatus(TSStatus status) {
-        this.status = status;
-    }
+  public void setStatus(TSStatus status) {
+    this.status = status;
+  }
 
-    public List<Template> getTemplateList() {
-        return templateList;
-    }
+  public List<Template> getTemplateList() {
+    return templateList;
+  }
 
-    public void setTemplateList(List<Template> templateList) {
-        this.templateList = templateList;
-    }
+  public void setTemplateList(List<Template> templateList) {
+    this.templateList = templateList;
+  }
 }

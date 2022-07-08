@@ -37,10 +37,12 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
@@ -608,8 +610,11 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void CreateSchemaTemplatePlanTest() throws IOException, IllegalPathException {
     Template template = new Template(newCreateSchemaTemplateStatement("template_name"));
-    CreateSchemaTemplatePlan createSchemaTemplatePlan0 = new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
-    CreateSchemaTemplatePlan createSchemaTemplatePlan1 = (CreateSchemaTemplatePlan)ConfigPhysicalPlan.Factory.create(createSchemaTemplatePlan0.serializeToByteBuffer());
+    CreateSchemaTemplatePlan createSchemaTemplatePlan0 =
+        new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
+    CreateSchemaTemplatePlan createSchemaTemplatePlan1 =
+        (CreateSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(createSchemaTemplatePlan0.serializeToByteBuffer());
     Assert.assertEquals(createSchemaTemplatePlan0, createSchemaTemplatePlan1);
   }
 
@@ -626,5 +631,25 @@ public class ConfigPhysicalPlanSerDeTest {
     CreateSchemaTemplateStatement createSchemaTemplateStatement =
         new CreateSchemaTemplateStatement(name, measurements, dataTypes, encodings, compressors);
     return createSchemaTemplateStatement;
+  }
+
+  @Test
+  public void GetSchemaTemplatePlanTest() throws IOException {
+    GetSchemaTemplatePlan getSchemaTemplatePlan0 = new GetSchemaTemplatePlan();
+    GetSchemaTemplatePlan getSchemaTemplatePlan1 =
+        (GetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan0.serializeToByteBuffer());
+    Assert.assertEquals(getSchemaTemplatePlan0, getSchemaTemplatePlan1);
+  }
+
+  @Test
+  public void GetNodesInSchemaTemplatePlanTest() throws IOException {
+    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan0 =
+        new GetNodesInSchemaTemplatePlan("template_name_test");
+    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan1 =
+        (GetNodesInSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(
+                getNodesInSchemaTemplatePlan0.serializeToByteBuffer());
+    Assert.assertEquals(getNodesInSchemaTemplatePlan0, getNodesInSchemaTemplatePlan1);
   }
 }

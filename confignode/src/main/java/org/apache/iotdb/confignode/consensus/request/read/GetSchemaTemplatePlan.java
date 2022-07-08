@@ -19,29 +19,40 @@
 
 package org.apache.iotdb.confignode.consensus.request.read;
 
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import java.util.Objects;
 
 /**
  * @author chenhuangyun
  * @date 2022/7/7
- **/
+ */
 public class GetSchemaTemplatePlan extends ConfigPhysicalPlan {
 
-    public GetSchemaTemplatePlan(){
-        super(ConfigPhysicalPlanType.ShowSchemaTemplate);
-    }
+  public GetSchemaTemplatePlan() {
+    super(ConfigPhysicalPlanType.ShowSchemaTemplate);
+  }
 
-    @Override
-    protected void serializeImpl(DataOutputStream stream) throws IOException {
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigPhysicalPlanType.ShowSchemaTemplate.ordinal());
+  }
 
-    }
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 
-    @Override
-    protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+  @Override
+  public boolean equals(Object o) {
+    if (o != null) return true;
+    return false;
+  }
 
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(this);
+  }
 }

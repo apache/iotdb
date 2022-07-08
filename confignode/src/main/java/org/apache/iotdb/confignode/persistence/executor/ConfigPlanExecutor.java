@@ -58,7 +58,6 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
-import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -142,7 +141,7 @@ public class ConfigPlanExecutor {
       case ShowSchemaTemplate:
         return clusterSchemaInfo.getAllTemplates();
       case ShowNodesInSchemaTemplate:
-        GetNodesInSchemaTemplatePlan plan = (GetNodesInSchemaTemplatePlan)req;
+        GetNodesInSchemaTemplatePlan plan = (GetNodesInSchemaTemplatePlan) req;
         return clusterSchemaInfo.getTemplate(plan.getTemplateName());
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());

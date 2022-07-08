@@ -71,7 +71,6 @@ import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
-import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
@@ -139,7 +138,6 @@ public class ConfigManager implements IManager {
   /** UDF */
   private final UDFManager udfManager;
 
-
   public ConfigManager() throws IOException {
     // Build the persistence module
     NodeInfo nodeInfo = new NodeInfo();
@@ -152,12 +150,7 @@ public class ConfigManager implements IManager {
     // Build state machine and executor
     ConfigPlanExecutor executor =
         new ConfigPlanExecutor(
-            nodeInfo,
-            clusterSchemaInfo,
-            partitionInfo,
-            authorInfo,
-            procedureInfo,
-            udfInfo);
+            nodeInfo, clusterSchemaInfo, partitionInfo, authorInfo, procedureInfo, udfInfo);
     PartitionRegionStateMachine stateMachine = new PartitionRegionStateMachine(this, executor);
 
     // Build the manager module
