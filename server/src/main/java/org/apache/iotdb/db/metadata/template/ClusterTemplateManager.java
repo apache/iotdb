@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -157,5 +158,15 @@ public class ClusterTemplateManager implements ITemplateManager {
               "get template info error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
     }
     return template;
+  }
+
+  @Override
+  public void setSchemaTemplate(String name, PartialPath path) {
+    LOGGER.info("set schema template {} to {}", name, path);
+  }
+
+  @Override
+  public List<PartialPath> getPathsSetTemplate(String name) {
+    return new ArrayList<PartialPath>();
   }
 }

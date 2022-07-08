@@ -282,6 +282,15 @@ struct TGetTemplateResp {
   2: optional binary template
 }
 
+struct TSetSchemaTemplateReq {
+  1: required string name
+  2: required string path
+}
+struct TGetPathsSetTemplatesResp {
+  1: required common.TSStatus status
+  2: optional list<string> pathList
+}
+
 service IConfigNodeRPCService {
 
   /* DataNode */
@@ -398,6 +407,10 @@ service IConfigNodeRPCService {
     TGetAllTemplatesResp getAllTemplates()
 
     TGetTemplateResp getTemplate(string req)
+
+    common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
+
+    TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
 }
 

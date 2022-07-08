@@ -373,6 +373,21 @@ public class ClusterSchemaManager {
     return resp;
   }
 
+  /**
+   * mount template
+   *
+   * @param templateName
+   * @param path
+   * @return
+   */
+  public TSStatus setSchemaTemplate(String templateName, String path) {
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  public List<String> getPathsSetTemplate(String templateName) {
+    return new ArrayList<>(2);
+  }
+
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
   }
