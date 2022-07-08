@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
@@ -82,7 +83,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       }
       return tsStatus;
     } catch (TException | IOException e) {
-      throw new RuntimeException(new TemplateIsInUseException("create template error."));
+      throw new RuntimeException(new IoTDBException("create template error.",e,TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
     }
   }
 
@@ -118,15 +119,15 @@ public class ClusterTemplateManager implements ITemplateManager {
                     templatesList.add(template);
                   } catch (IOException | ClassNotFoundException e) {
                     throw new RuntimeException(
-                        new TemplateIsInUseException("deserialize template error."));
+                        new IoTDBException("deserialize template error.",e,TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
                   }
                 });
       } else {
         throw new RuntimeException(
-            new TemplateIsInUseException(tGetAllTemplatesResp.getStatus().getMessage()));
+            new IoTDBException(tGetAllTemplatesResp.getStatus().getMessage(),tGetAllTemplatesResp.getStatus().getCode()));
       }
     } catch (TException | IOException e) {
-      throw new RuntimeException(new TemplateIsInUseException("get all template error."));
+      throw new RuntimeException(new IoTDBException("get all template error.",TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
     }
     return templatesList;
   }
@@ -143,10 +144,10 @@ public class ClusterTemplateManager implements ITemplateManager {
           template = Template.byteBuffer2Template(ByteBuffer.wrap(templateBytes));
         }
       } else {
-        throw new RuntimeException(new TemplateIsInUseException(resp.status.getMessage()));
+        throw new RuntimeException(new IoTDBException(resp.status.getMessage(),resp.status.getCode()));
       }
     } catch (Exception e) {
-      throw new RuntimeException(new TemplateIsInUseException("get template info error."));
+      throw new RuntimeException(new IoTDBException("get template info error.",TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
     }
     return template;
   }
