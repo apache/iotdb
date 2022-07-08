@@ -788,16 +788,19 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // cache
     mNodeCache.invalidate(fullPath);
     // mlog
-    writeToMLog(
-        new AlterTimeSeriesPlan(
-            fullPath,
-            AlterTimeSeriesOperator.AlterType.SET_TYPE,
-            null,
-            null,
-            null,
-            null,
-            curEncoding == null ? schema.getEncodingType() : curEncoding,
-            curCompressionType == null ? schema.getCompressor() : curCompressionType));
+    if (!isRecovering) {
+      writeToMLog(
+              new AlterTimeSeriesPlan(
+                      fullPath,
+                      AlterTimeSeriesOperator.AlterType.SET_TYPE,
+                      null,
+                      null,
+                      null,
+                      null,
+                      curEncoding == null ? schema.getEncodingType() : curEncoding,
+                      curCompressionType == null ? schema.getCompressor() : curCompressionType));
+      forceMlog();
+    }
     return new Pair<>(schema.getEncodingType(), schema.getCompressor());
   }
 

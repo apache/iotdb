@@ -176,9 +176,13 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     }
     if (encoding != null) {
       buffer.put((byte) encoding.ordinal());
+    } else {
+      buffer.put((byte) -1);
     }
-    if (encoding != null) {
+    if (compressor != null) {
       buffer.put((byte) compressor.ordinal());
+    } else {
+      buffer.put((byte) -1);
     }
   }
 
@@ -224,9 +228,13 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     }
     if (encoding != null) {
       stream.writeByte((byte) encoding.ordinal());
+    } else {
+      stream.write(-1);
     }
-    if (encoding != null) {
+    if (compressor != null) {
       stream.writeByte((byte) compressor.ordinal());
+    } else {
+      stream.write(-1);
     }
   }
 
@@ -264,11 +272,13 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
     }
 
     // encoding
-    if (buffer.get() == 1) {
-      encoding = TSEncoding.values()[buffer.get()];
+    byte eb = buffer.get();
+    if (eb != -1) {
+      encoding = TSEncoding.values()[eb];
     }
-    if (buffer.get() == 1) {
-      compressor = CompressionType.values()[buffer.get()];
+    byte cb = buffer.get();
+    if (cb != -1) {
+      compressor = CompressionType.values()[cb];
     }
   }
 
