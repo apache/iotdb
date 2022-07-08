@@ -30,7 +30,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
-import org.apache.iotdb.db.exception.metadata.template.TemplateIsInUseException;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -79,7 +78,9 @@ public class ClusterTemplateManager implements ITemplateManager {
       }
       return tsStatus;
     } catch (TException | IOException e) {
-      throw new RuntimeException(new IoTDBException("create template error.",e,TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
+      throw new RuntimeException(
+          new IoTDBException(
+              "create template error.", e, TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode()));
     }
   }
 
@@ -115,15 +116,22 @@ public class ClusterTemplateManager implements ITemplateManager {
                     templatesList.add(template);
                   } catch (IOException | ClassNotFoundException e) {
                     throw new RuntimeException(
-                        new IoTDBException("deserialize template error.",e,TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
+                        new IoTDBException(
+                            "deserialize template error.",
+                            e,
+                            TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
                   }
                 });
       } else {
         throw new RuntimeException(
-            new IoTDBException(tGetAllTemplatesResp.getStatus().getMessage(),tGetAllTemplatesResp.getStatus().getCode()));
+            new IoTDBException(
+                tGetAllTemplatesResp.getStatus().getMessage(),
+                tGetAllTemplatesResp.getStatus().getCode()));
       }
     } catch (TException | IOException e) {
-      throw new RuntimeException(new IoTDBException("get all template error.",TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+      throw new RuntimeException(
+          new IoTDBException(
+              "get all template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
     }
     return templatesList;
   }
@@ -140,10 +148,13 @@ public class ClusterTemplateManager implements ITemplateManager {
           template = Template.byteBuffer2Template(ByteBuffer.wrap(templateBytes));
         }
       } else {
-        throw new RuntimeException(new IoTDBException(resp.status.getMessage(),resp.status.getCode()));
+        throw new RuntimeException(
+            new IoTDBException(resp.status.getMessage(), resp.status.getCode()));
       }
     } catch (Exception e) {
-      throw new RuntimeException(new IoTDBException("get template info error.",TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+      throw new RuntimeException(
+          new IoTDBException(
+              "get template info error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
     }
     return template;
   }

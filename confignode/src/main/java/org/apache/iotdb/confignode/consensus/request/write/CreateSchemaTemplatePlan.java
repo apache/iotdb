@@ -29,7 +29,6 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
-
 public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   private byte[] template;

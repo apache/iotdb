@@ -27,7 +27,6 @@ import java.util.List;
 public interface ITemplateManager {
 
   /**
-   *
    * @param statement CreateSchemaTemplateStatement
    * @return TSStatus
    */
@@ -35,14 +34,16 @@ public interface ITemplateManager {
 
   /**
    * show schema templates
+   *
    * @return List<Template>
    */
   List<Template> getAllTemplates();
 
   /**
    * show nodes in schema template xx
+   *
    * @param name
-   * @return  Template
+   * @return Template
    */
   Template getTemplate(String name);
 }
