@@ -125,11 +125,16 @@ public class NodeInfo implements SnapshotProcessor {
     }
   }
 
-  /** @return true if the specific DataNode is registered */
+  /**
+   * Only leader use this interface
+   *
+   * @return True if the specific DataNode already registered, false otherwise
+   */
   public boolean isRegisteredDataNode(TDataNodeLocation dataNodeLocation) {
     boolean result = false;
-    dataNodeInfoReadWriteLock.readLock().lock();
+
     int originalDataNodeId = dataNodeLocation.getDataNodeId();
+    dataNodeInfoReadWriteLock.readLock().lock();
     try {
       for (Map.Entry<Integer, TDataNodeInfo> entry : registeredDataNodes.entrySet()) {
         dataNodeLocation.setDataNodeId(entry.getKey());
@@ -137,11 +142,11 @@ public class NodeInfo implements SnapshotProcessor {
           result = true;
           break;
         }
-        dataNodeLocation.setDataNodeId(originalDataNodeId);
       }
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
+    dataNodeLocation.setDataNodeId(originalDataNodeId);
 
     return result;
   }

@@ -16,24 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
-
-import org.apache.iotdb.it.framework.IoTDBTestLogger;
+package org.apache.iotdb.it.framework;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class Cluster1Env extends AbstractEnv {
-  private static final Logger logger = IoTDBTestLogger.logger;
-
-  @Override
-  public void initBeforeClass() throws InterruptedException {
-    logger.debug("=======start init class=======");
-    super.initEnvironment(1, 3);
-  }
-
-  @Override
-  public void initBeforeTest() throws InterruptedException {
-    logger.debug("=======start init test=======");
-    super.initEnvironment(1, 3);
-  }
+public class IoTDBTestLogger {
+  public static final Logger logger = LoggerFactory.getLogger(IoTDBTestLogger.class);
 }
