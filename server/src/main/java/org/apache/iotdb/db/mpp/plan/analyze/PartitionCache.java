@@ -104,6 +104,7 @@ public class PartitionCache {
 
   private final ReentrantReadWriteLock schemaPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock dataPartitionCacheLock = new ReentrantReadWriteLock();
+  private final ReentrantReadWriteLock replicaSetCacheLock = new ReentrantReadWriteLock();
 
   private final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
       new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
@@ -364,35 +365,56 @@ public class PartitionCache {
 
   // endregion
 
-  // region replicaSetCache
+  // region replicaSet cache
   /** get regionReplicaSet from consensusGroupId */
   public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId consensusGroupId) {
-    if (groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
-      return groupIdToReplicaSetMap.get(consensusGroupId);
-    } else {
-      try (ConfigNodeClient client =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-        TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
-          updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
+    replicaSetCacheLock.readLock().lock();
+    try {
+      if (groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
+        return groupIdToReplicaSetMap.get(consensusGroupId);
+      } else {
+        try (ConfigNodeClient client =
+            configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+          TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
+          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
+            updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
+          }
+        } catch (IOException | TException e) {
+          throw new StatementAnalyzeException(
+              "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
         }
-      } catch (IOException | TException e) {
-        throw new StatementAnalyzeException(
-            "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
+        return null;
       }
-      return null;
+    } finally {
+      replicaSetCacheLock.readLock().unlock();
     }
   }
 
+  /** update regionReplicaSetMap according to timestamp */
   public boolean updateGroupIdToReplicaSetMap(
       long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> map) {
-    boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
-    // if timestamp is greater than latestUpdateTime, then update
-    if (result) {
-      groupIdToReplicaSetMap.clear();
-      groupIdToReplicaSetMap.putAll(map);
+    replicaSetCacheLock.writeLock().lock();
+    try {
+      boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
+      // if timestamp is greater than latestUpdateTime, then update
+      if (result) {
+        groupIdToReplicaSetMap.clear();
+        groupIdToReplicaSetMap.putAll(map);
+      }
+      return result;
+    } finally {
+      replicaSetCacheLock.writeLock().unlock();
     }
-    return result;
+  }
+
+  /** invalid all replica Cache */
+  public void invalidReplicaCache() {
+    replicaSetCacheLock.writeLock().lock();
+    try {
+      groupIdToReplicaSetMap.clear();
+    } finally {
+      replicaSetCacheLock.writeLock().unlock();
+    }
   }
 
   // endregion
@@ -451,10 +473,21 @@ public class PartitionCache {
   }
 
   /** update schemaPartitionCache by schemaPartition. */
-  public void updateSchemaPartitionCache(List<String> devices, SchemaPartition schemaPartition) {
+  public void updateSchemaPartitionCache(
+      Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable) {
     schemaPartitionCacheLock.writeLock().lock();
     try {
-      // TODO
+      for (Map.Entry<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> entry1 :
+          schemaPartitionTable.entrySet()) {
+        String storageGroup = entry1.getKey();
+        SchemaPartitionTable result = schemaPartitionCache.getIfPresent(storageGroup);
+        if (null == result) {
+          result = new SchemaPartitionTable();
+          schemaPartitionCache.put(storageGroup, result);
+        }
+        Map<TSeriesPartitionSlot, TConsensusGroupId> result2 = result.getSchemaPartitionMap();
+        result2.putAll(entry1.getValue());
+      }
     } finally {
       schemaPartitionCacheLock.writeLock().unlock();
     }
@@ -586,10 +619,38 @@ public class PartitionCache {
   }
 
   /** update dataPartitionCache by dataPartition */
-  public void updateDataPartitionCache(DataPartition dataPartition) {
+  public void updateDataPartitionCache(
+      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+          dataPartitionTable) {
     dataPartitionCacheLock.writeLock().lock();
     try {
-      // TODO
+      for (Map.Entry<
+              String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+          entry1 : dataPartitionTable.entrySet()) {
+        String storageGroup = entry1.getKey();
+        DataPartitionTable result = dataPartitionCache.getIfPresent(storageGroup);
+        if (null == result) {
+          result = new DataPartitionTable();
+          dataPartitionCache.put(storageGroup, result);
+        }
+        Map<TSeriesPartitionSlot, SeriesPartitionTable> result2 = result.getDataPartitionMap();
+        for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+            entry2 : entry1.getValue().entrySet()) {
+          TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
+          SeriesPartitionTable seriesPartitionTable;
+          if (!result2.containsKey(seriesPartitionSlot)) {
+            // if device not exists, then add new seriesPartitionTable
+            seriesPartitionTable = new SeriesPartitionTable(entry2.getValue());
+            result2.put(seriesPartitionSlot, seriesPartitionTable);
+          } else {
+            // if device exists, then merge
+            seriesPartitionTable = result2.get(seriesPartitionSlot);
+            Map<TTimePartitionSlot, List<TConsensusGroupId>> result3 =
+                seriesPartitionTable.getSeriesPartitionMap();
+            result3.putAll(entry2.getValue());
+          }
+        }
+      }
     } finally {
       dataPartitionCacheLock.writeLock().unlock();
     }
@@ -616,6 +677,15 @@ public class PartitionCache {
   }
 
   // endregion
+
+  public void invalidAllCache() {
+    logger.debug("Invalidate partition cache");
+    invalidAllStorageGroupCache();
+    invalidAllDataPartitionCache();
+    invalidAllSchemaPartitionCache();
+    invalidReplicaCache();
+    logger.debug("PartitionCache is invalid:{}", this);
+  }
 
   @Override
   public String toString() {
