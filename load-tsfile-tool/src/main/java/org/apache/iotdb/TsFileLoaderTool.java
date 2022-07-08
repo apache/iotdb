@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -52,6 +51,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.EmptyFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -201,6 +201,7 @@ public class TsFileLoaderTool {
    * @param session IoTDB session
    */
   public static void writeToIoTDB(List<File> files, Session session) {
+    sortTsFiles(files);
     int size = files.size();
     List<File> unloadTsFiles = new ArrayList<>();
     System.out.printf("Collect TsFiles successfully, %d files to be loaded.%n", size);
@@ -231,6 +232,26 @@ public class TsFileLoaderTool {
         System.out.println(file.getPath());
       }
     }
+  }
+
+  private static void sortTsFiles(List<File> files) {
+    Map<File, Long> file2Timestamp = new HashMap<>();
+    Map<File, Long> file2Version = new HashMap<>();
+    for (File file : files) {
+      String[] splitStrings = file.getName().split(FilePathUtils.FILE_NAME_SEPARATOR);
+      file2Timestamp.put(file, Long.parseLong(splitStrings[0]));
+      file2Version.put(file, Long.parseLong(splitStrings[1]));
+    }
+
+    Collections.sort(
+        files,
+        (o1, o2) -> {
+          long timestampDiff = file2Timestamp.get(o1) - file2Timestamp.get(o2);
+          if (timestampDiff != 0) {
+            return (int) (timestampDiff);
+          }
+          return (int) (file2Version.get(o1) - file2Version.get(o2));
+        });
   }
 
   /**
@@ -356,15 +377,7 @@ public class TsFileLoaderTool {
             device2Measurements
                 .computeIfAbsent(curDevice, o -> new HashSet<>())
                 .add(measurementSchema);
-            int dataSize = header.getDataSize();
-            while (dataSize > 0) {
-              PageHeader pageHeader =
-                  reader.readPageHeader(
-                      header.getDataType(),
-                      (header.getChunkType() & 0x3F) == MetaMarker.CHUNK_HEADER);
-              reader.readPage(pageHeader, header.getCompressionType());
-              dataSize -= pageHeader.getSerializedPageSize();
-            }
+            reader.position(reader.position() + header.getDataSize());
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
