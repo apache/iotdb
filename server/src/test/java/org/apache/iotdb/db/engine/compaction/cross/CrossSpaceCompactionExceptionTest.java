@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionConfigRestorer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileName;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -45,6 +46,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -228,6 +230,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
     createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
     TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
 
@@ -247,15 +250,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
     performer.setSummary(new CompactionTaskSummary());
     performer.perform();
     CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    for (TsFileResource resource : seqResources) {
-      tsFileManager.getSequenceListByTimePartition(0).remove(resource);
-    }
-    for (TsFileResource resource : unseqResources) {
-      tsFileManager.getUnsequenceListByTimePartition(0).remove(resource);
-    }
-    for (TsFileResource resource : targetResources) {
-      tsFileManager.getSequenceListByTimePartition(0).keepOrderInsert(resource);
-    }
+    tsFileManager.replace(seqResources, unseqResources, targetResources, 0, true);
     seqResources.get(0).getTsFile().delete();
     compactionLogger.close();
     CompactionExceptionHandler.handleException(
@@ -296,6 +291,102 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       Assert.assertTrue(
           new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
     }
+    List<TsFileResource> resources = new ArrayList<>();
+    for (TsFileResource resource : tsFileManager.getSequenceListByTimePartition(0)) {
+      resources.add(resource);
+    }
+
+    Assert.assertEquals(4, tsFileManager.getSequenceListByTimePartition(0).size());
+    Assert.assertEquals(0, tsFileManager.getUnsequenceListByTimePartition(0).size());
+    Assert.assertTrue(tsFileManager.isAllowCompaction());
+  }
+
+  @Test
+  public void testHandleWithSomeSameTimeStampSourceFilesExisted() throws Exception {
+    registerTimeseriesInMManger(4, 5, false);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
+    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", SEQ_DIRS.getPath());
+    TsFileName tsFileName1 = TsFileName.parse(seqResources.get(1).getTsFile().getName());
+    TsFileName tsFileName2 = TsFileName.parse(seqResources.get(2).getTsFile().getName());
+    tsFileName2.setTime(tsFileName1.getTime());
+    File newTsFile =
+        new File(seqResources.get(2).getTsFile().getParent(), tsFileName2.toFileName());
+    seqResources.get(2).getTsFile().renameTo(newTsFile);
+    File resourceFile =
+        new File(seqResources.get(2).getTsFilePath() + TsFileResource.RESOURCE_SUFFIX);
+    resourceFile.renameTo(
+        new File(
+            resourceFile.getParent(), tsFileName2.toFileName() + TsFileResource.RESOURCE_SUFFIX));
+    seqResources.get(2).setFile(newTsFile);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    File compactionLogFile =
+        new File(
+            SEQ_DIRS,
+            targetResources.get(0).getTsFile().getName()
+                + CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX);
+    CompactionLogger compactionLogger = new CompactionLogger(compactionLogFile);
+    compactionLogger.logFiles(targetResources, STR_TARGET_FILES);
+    compactionLogger.logFiles(seqResources, STR_SOURCE_FILES);
+    compactionLogger.logFiles(unseqResources, STR_SOURCE_FILES);
+    ICompactionPerformer performer =
+        new ReadPointCompactionPerformer(seqResources, unseqResources, targetResources);
+    performer.setSummary(new CompactionTaskSummary());
+    performer.perform();
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    tsFileManager.replace(seqResources, unseqResources, targetResources, 0, true);
+    seqResources.get(0).getTsFile().delete();
+    compactionLogger.close();
+    CompactionExceptionHandler.handleException(
+        COMPACTION_TEST_SG,
+        compactionLogFile,
+        targetResources,
+        seqResources,
+        unseqResources,
+        tsFileManager,
+        0,
+        false,
+        true);
+    // all source file should not exist
+    for (TsFileResource resource : seqResources) {
+      Assert.assertFalse(resource.getTsFile().exists());
+    }
+    // tmp target file and tmp target resource file should not exist, target file and target
+    // resource file should exist
+    for (TsFileResource resource : targetResources) {
+      Assert.assertFalse(
+          new File(
+                  resource
+                      .getTsFilePath()
+                      .replace(
+                          TsFileConstant.TSFILE_SUFFIX,
+                          IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX))
+              .exists());
+      Assert.assertFalse(
+          new File(
+                  resource
+                          .getTsFilePath()
+                          .replace(
+                              TsFileConstant.TSFILE_SUFFIX,
+                              IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)
+                      + TsFileResource.RESOURCE_SUFFIX)
+              .exists());
+      Assert.assertTrue(resource.getTsFile().exists());
+      Assert.assertTrue(
+          new File(resource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
+    }
+    List<TsFileResource> resources = new ArrayList<>();
+    for (TsFileResource resource : tsFileManager.getSequenceListByTimePartition(0)) {
+      resources.add(resource);
+    }
+
     Assert.assertEquals(4, tsFileManager.getSequenceListByTimePartition(0).size());
     Assert.assertEquals(0, tsFileManager.getUnsequenceListByTimePartition(0).size());
     Assert.assertTrue(tsFileManager.isAllowCompaction());
@@ -350,15 +441,7 @@ public class CrossSpaceCompactionExceptionTest extends AbstractCompactionTest {
       CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
     }
     CompactionUtils.combineModsInCrossCompaction(seqResources, unseqResources, targetResources);
-    for (TsFileResource resource : seqResources) {
-      tsFileManager.getSequenceListByTimePartition(0).remove(resource);
-    }
-    for (TsFileResource resource : unseqResources) {
-      tsFileManager.getUnsequenceListByTimePartition(0).remove(resource);
-    }
-    for (TsFileResource resource : targetResources) {
-      tsFileManager.getSequenceListByTimePartition(0).keepOrderInsert(resource);
-    }
+    tsFileManager.replace(seqResources, unseqResources, targetResources, 0, true);
     seqResources.get(0).remove();
 
     CompactionExceptionHandler.handleException(
