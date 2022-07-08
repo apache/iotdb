@@ -37,7 +37,6 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -1050,8 +1049,7 @@ public class InnerSeqCompactionTest {
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
 
-    TsFileResource resource =
-        TsFileNameGenerator.increaseInnerCompactionCnt(sourceResources.get(0));
+    TsFileResource resource = task.targetTsFileResource;
     resource.resetModFile();
     Assert.assertTrue(resource.getModFile().exists());
     Assert.assertEquals(2, resource.getModFile().getModifications().size());
