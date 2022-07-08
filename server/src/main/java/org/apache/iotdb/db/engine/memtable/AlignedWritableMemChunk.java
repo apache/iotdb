@@ -180,27 +180,20 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
    */
   private int[] checkColumnsInInsertPlan(
       List<Integer> failedIndices, List<IMeasurementSchema> schemaListInInsertPlan) {
-    // fill with null
-    List<IMeasurementSchema> schemaListWithNull = new ArrayList<>();
+    Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
     for (int i = 0, failedIndicesIdx = 0, schemaListIdx = 0;
         i < failedIndices.size() + schemaListInInsertPlan.size();
         i++) {
       if (failedIndices.size() > failedIndicesIdx && failedIndices.get(failedIndicesIdx) == i) {
-        schemaListWithNull.add(null);
         failedIndicesIdx++;
       } else {
-        schemaListWithNull.add(schemaListInInsertPlan.get(schemaListIdx++));
-      }
-    }
-    Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
-    for (int i = 0; i < schemaListWithNull.size(); i++) {
-      if (schemaListWithNull.get(i) != null) {
-        measurementIdsInInsertPlan.put(schemaListWithNull.get(i).getMeasurementId(), i);
-        if (!containsMeasurement(schemaListWithNull.get(i).getMeasurementId())) {
+        IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(schemaListIdx++);
+        measurementIdsInInsertPlan.put(measurementSchema.getMeasurementId(), i);
+        if (!containsMeasurement(measurementSchema.getMeasurementId())) {
           this.measurementIndexMap.put(
-              schemaListWithNull.get(i).getMeasurementId(), measurementIndexMap.size());
-          this.schemaList.add(schemaListWithNull.get(i));
-          this.list.extendColumn(schemaListWithNull.get(i).getType());
+              measurementSchema.getMeasurementId(), measurementIndexMap.size());
+          this.schemaList.add(measurementSchema);
+          this.list.extendColumn(measurementSchema.getType());
         }
       }
     }
