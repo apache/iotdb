@@ -948,7 +948,7 @@ public class DataRegionTest {
           }
         }
       }
-      dataRegion.asyncCloseAllWorkingTsFileProcessors();
+      dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
 
     // delete root.vehicle.d2.s0 data in the second file
