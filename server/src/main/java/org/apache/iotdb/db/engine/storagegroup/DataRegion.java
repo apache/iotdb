@@ -34,10 +34,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.alter.TsFileRewriteExcutor;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -2141,15 +2141,15 @@ public class DataRegion {
     if (tsFileList == null) {
       return;
     }
-    tsFileList.forEach(
+    tsFileList.stream()
+            .forEach(
         tsFileResource -> {
           if (tsFileResource == null) {
             return;
           }
-          tsFileResource.tryReadLock();
           try {
             logger.info(
-                "[alter timeseries] rewriteDataInTsFile {} start", tsFileResource.getTsFilePath());
+                "[alter timeseries] rewriteDataInTsFile:{}, fileSize:{} start", tsFileResource.getTsFilePath(), tsFileResource.getTsFileSize());
             // TODO if compacting,What should I do？
             // TODO ad alter log
             // TODO if file exsit, delete
@@ -2157,36 +2157,40 @@ public class DataRegion {
             TsFileResource targetTsFileResource =
                 TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
             // read .tsfile to .alter
-            tsFileResource
-                .getProcessor()
-                .rewriteTsFile(
-                    targetTsFileResource,
-                    fullPath,
-                    curEncoding,
-                    curCompressionType,
-                    timePartition,
-                    sequence);
+            TsFileRewriteExcutor tsFileRewriteExcutor =
+                    new TsFileRewriteExcutor(
+                            tsFileResource,
+                            targetTsFileResource,
+                            fullPath,
+                            curEncoding,
+                            curCompressionType,
+                            timePartition,
+                            sequence);
+            tsFileRewriteExcutor.execute();
             // move tsfile
+            logger.info("[alter timeseries] move tsfile");
             tsFileResource.moveTsFile(TSFILE_SUFFIX, IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX);
             targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
             // replace
+            logger.info("[alter timeseries] replace tsfile");
             if (sequence) {
               tsFileManager.replace(
                   new ArrayList<>(Collections.singletonList(tsFileResource)),
                   Collections.emptyList(),
-                  new ArrayList<>(Collections.singletonList(tsFileResource)),
+                  new ArrayList<>(Collections.singletonList(targetTsFileResource)),
                   timePartition,
                   sequence);
             } else {
               tsFileManager.replace(
                   Collections.emptyList(),
                   new ArrayList<>(Collections.singletonList(tsFileResource)),
-                  new ArrayList<>(Collections.singletonList(tsFileResource)),
+                  new ArrayList<>(Collections.singletonList(targetTsFileResource)),
                   timePartition,
                   sequence);
             }
 
             // check
+            logger.info("[alter timeseries] check tsfile");
             if (targetTsFileResource.getTsFile().exists()
                 && targetTsFileResource.getTsFile().length()
                     < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
@@ -2198,25 +2202,26 @@ public class DataRegion {
             }
 
             // TODO open them, when tests ok
-            logger.info(
-                "[alter timeseries] {}-{} alter {} finish, start to delete old files",
-                logicalStorageGroupName,
-                dataRegionId,
-                tsFileResource.getTsFilePath());
-            // delete the old files
-            CompactionUtils.deleteTsFilesInDisk(
-                new ArrayList<>(Collections.singletonList(tsFileResource)),
-                logicalStorageGroupName + "-" + dataRegionId);
-            CompactionUtils.deleteModificationForSourceFile(
-                new ArrayList<>(Collections.singletonList(tsFileResource)),
-                logicalStorageGroupName + "-" + dataRegionId);
+            logger.info("[alter timeseries] delete tsfile");
+//            logger.info(
+//                "[alter timeseries] {}-{} alter {} finish, start to delete old files",
+//                logicalStorageGroupName,
+//                dataRegionId,
+//                tsFileResource.getTsFilePath());
+//            // delete the old files
+//            CompactionUtils.deleteTsFilesInDisk(
+//                new ArrayList<>(Collections.singletonList(tsFileResource)),
+//                logicalStorageGroupName + "-" + dataRegionId);
+//            CompactionUtils.deleteModificationForSourceFile(
+//                new ArrayList<>(Collections.singletonList(tsFileResource)),
+//                logicalStorageGroupName + "-" + dataRegionId);
             logger.info(
                 "[alter timeseries] rewriteDataInTsFile {} end", tsFileResource.getTsFilePath());
           } catch (Exception e) {
             // TODO
             logger.error("[alter timeseries]", e);
           } finally {
-            tsFileResource.readUnlock();
+
           }
         });
   }

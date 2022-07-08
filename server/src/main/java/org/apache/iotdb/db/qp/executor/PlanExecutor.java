@@ -2102,10 +2102,16 @@ public class PlanExecutor implements IPlanExecutor {
     // TODO check (clustr,encoding,compression)
 
     // schema alter
-    IoTDB.schemaProcessor.alterTimeseries(fullPath, curEncoding, curCompressionType);
-    // flush and close
+    Pair<TSEncoding, CompressionType> oldPair = IoTDB.schemaProcessor.alterTimeseries(fullPath, curEncoding, curCompressionType);
+    if(oldPair == null || oldPair.left == null || oldPair.right == null) {
+      throw new QueryProcessException("system error, old type is null");
+    }
     // storage alter
-    StorageEngine.getInstance();
+    try {
+      StorageEngine.getInstance().alterTimeseries(fullPath, curEncoding == null ? oldPair.left : curEncoding, curCompressionType == null ? oldPair.right : curCompressionType);
+    } catch (StorageEngineException e) {
+      throw new QueryProcessException(e);
+    }
   }
 
   protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan)

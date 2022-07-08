@@ -1634,34 +1634,4 @@ public class TsFileProcessor {
     return workMemTable;
   }
 
-  /**
-   * rewrite tsfile with current encoding & compressionType
-   *
-   * @param targetTsFileResource
-   * @param fullPath
-   * @param curEncoding
-   * @param curCompressionType
-   * @param timePartition
-   * @param sequence
-   * @throws IOException
-   */
-  public void rewriteTsFile(
-      TsFileResource targetTsFileResource,
-      PartialPath fullPath,
-      TSEncoding curEncoding,
-      CompressionType curCompressionType,
-      long timePartition,
-      boolean sequence)
-      throws IOException {
-    TsFileRewriteExcutor tsFileRewriteExcutor =
-        new TsFileRewriteExcutor(
-            tsFileResource,
-            targetTsFileResource,
-            fullPath,
-            curEncoding,
-            curCompressionType,
-            timePartition,
-            sequence);
-    tsFileRewriteExcutor.execute();
-  }
 }

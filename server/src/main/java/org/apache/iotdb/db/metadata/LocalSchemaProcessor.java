@@ -353,10 +353,10 @@ public class LocalSchemaProcessor {
    * @throws IOException
    * @throws MetadataException
    */
-  public void alterTimeseries(
+  public Pair<TSEncoding, CompressionType> alterTimeseries(
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws MetadataException, IOException {
-    getBelongedSchemaRegion(fullPath)
+    return getBelongedSchemaRegion(fullPath)
         .alterTimeseriesEncodingCompressionTYpe(fullPath, curEncoding, curCompressionType);
   }
 

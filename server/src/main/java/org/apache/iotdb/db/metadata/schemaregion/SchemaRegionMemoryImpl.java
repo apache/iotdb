@@ -763,7 +763,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public void alterTimeseriesEncodingCompressionTYpe(
+  public Pair<TSEncoding, CompressionType> alterTimeseriesEncodingCompressionTYpe(
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws MetadataException, IOException {
     // find mnode
@@ -798,6 +798,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
             null,
             curEncoding == null ? schema.getEncodingType() : curEncoding,
             curCompressionType == null ? schema.getCompressor() : curCompressionType));
+    return new Pair<>(schema.getEncodingType(), schema.getCompressor());
   }
 
   /**

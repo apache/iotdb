@@ -374,8 +374,10 @@ public interface ISchemaRegion {
    * @param curCompressionType
    * @throws MetadataException
    * @throws IOException
+   *
+   * @return Pair<TSEncoding, CompressionType> old type
    */
-  void alterTimeseriesEncodingCompressionTYpe(
+  Pair<TSEncoding, CompressionType> alterTimeseriesEncodingCompressionTYpe(
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws MetadataException, IOException;
 }

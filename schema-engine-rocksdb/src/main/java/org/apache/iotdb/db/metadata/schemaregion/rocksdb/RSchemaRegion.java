@@ -1900,7 +1900,7 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public void alterTimeseriesEncodingCompressionTYpe(
+  public Pair<TSEncoding, CompressionType> alterTimeseriesEncodingCompressionTYpe(
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws MetadataException, IOException {
     throw new UnsupportedOperationException();

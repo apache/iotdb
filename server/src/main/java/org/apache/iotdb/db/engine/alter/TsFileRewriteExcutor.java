@@ -60,9 +60,10 @@ public class TsFileRewriteExcutor {
 
   /** This function execute the rewrite task */
   public void execute() throws IOException {
-    targetTsFileResource.writeLock();
+
+    tsFileResource.tryReadLock();
     try (TsFileSequenceReader reader =
-            new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
+            new TsFileSequenceReader(tsFileResource.getTsFilePath());
         TsFileIOWriter writer = new TsFileIOWriter(targetTsFileResource.getTsFile())) {
       // read devices
       TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
@@ -92,8 +93,9 @@ public class TsFileRewriteExcutor {
       // write index,booloom,footer, end file
       writer.endFile();
       targetTsFileResource.close();
+    } finally {
+      tsFileResource.readUnlock();
     }
-    targetTsFileResource.writeUnlock();
   }
 
   private void rewriteNotAligned(String device, TsFileSequenceReader reader, TsFileIOWriter writer)
