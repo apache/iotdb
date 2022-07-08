@@ -16,61 +16,50 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.it;
+package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.TsFileLoaderTool;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.it.env.ConfigFactory;
-import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
-import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.itbase.category.LocalStandaloneIT;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.experimental.categories.Category;
-import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-@RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBTsFileLoaderToolIT {
-  protected static boolean enableSeqSpaceCompaction;
-  protected static boolean enableUnseqSpaceCompaction;
-  protected static boolean enableCrossSpaceCompaction;
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private String tmpDir;
 
   @Before
   public void setup() throws Exception {
-    enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
-    enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
-    enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-
-    EnvFactory.getEnv().initBeforeTest();
+    CONFIG.setEnableCrossSpaceCompaction(false);
+    CONFIG.setEnableSeqSpaceCompaction(false);
+    CONFIG.setEnableUnseqSpaceCompaction(false);
+    EnvironmentUtils.envSetUp();
+    Class.forName(Config.JDBC_DRIVER_NAME);
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterClass();
-    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    EnvironmentUtils.cleanEnv();
   }
 
   public void prepareTsFiles() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("set storage group to root.sg");
       statement.execute("create timeseries root.sg.d1.s INT32");
@@ -149,7 +138,8 @@ public class IoTDBTsFileLoaderToolIT {
 
       String[] args = {"-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f", tmpDir};
       TsFileLoaderTool.main(args);
-      try (Connection connection = EnvFactory.getEnv().getConnection();
+      try (Connection connection =
+              DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667", "root", "root");
           Statement statement = connection.createStatement()) {
         checkRes(statement.executeQuery("select * from root.sg.d1"), 3, 6);
         checkRes(statement.executeQuery("select * from root.sg.d2"), 1, 6);
