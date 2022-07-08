@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -47,6 +48,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -61,7 +63,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -601,14 +602,36 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TSStatus setSchemaTemplate(SetSchemaTemplatePlan setSchemaTemplatePlan) {
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  public synchronized TSStatus setSchemaTemplate(SetSchemaTemplatePlan setSchemaTemplatePlan) {
+    PartialPath path;
+    try {
+      path = new PartialPath(setSchemaTemplatePlan.getPath());
+    } catch (IllegalPathException e) {
+      LOGGER.error(e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+
+    try {
+      int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
+      mTree.checkTemplateOnPath(path);
+      mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
   }
 
   public PathInfoResp getPathsSetTemplate(GetPathsSetTemplatePlan getPathsSetTemplatePlan) {
     PathInfoResp pathInfoResp = new PathInfoResp();
-    pathInfoResp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    pathInfoResp.setPathList(Collections.emptyList());
+    TSStatus status;
+    try {
+      int templateId = templateTable.getTemplate(getPathsSetTemplatePlan.getName()).getId();
+      pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId));
+      status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      status = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+    pathInfoResp.setStatus(status);
     return pathInfoResp;
   }
 
