@@ -72,7 +72,9 @@ public class TSFileConfigUtilCompletenessTest {
       "setUseKerberos",
       "setValueEncoder",
       "setFreqEncodingSNR",
-      "setFreqEncodingBlockSize"
+      "setFreqEncodingBlockSize",
+      "setMaxTsBlockLineNumber",
+      "setMaxTsBlockSizeInBytes"
     };
     Set<String> newSetters =
         Arrays.stream(TSFileConfig.class.getMethods())
