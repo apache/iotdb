@@ -42,7 +42,6 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.io.File;
@@ -169,7 +168,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
     }
   }
 
-  @Test
+  //  @Test
   public void loadTsFileWithTimePartitionTest() {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -280,7 +279,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
     }
   }
 
-  @Test
+  //  @Test
   public void loadTsFileWithDifferentDevice() {
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");

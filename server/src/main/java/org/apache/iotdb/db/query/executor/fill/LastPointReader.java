@@ -209,9 +209,19 @@ public class LastPointReader {
   }
 
   private boolean shouldUpdate(IChunkMetadata cachedChunk, IChunkMetadata newChunk) {
-    return (newChunk.getVersion() > cachedChunk.getVersion())
-        || (newChunk.getVersion() == cachedChunk.getVersion()
-            && newChunk.getOffsetOfChunkHeader() > cachedChunk.getOffsetOfChunkHeader());
+    if (newChunk.getTimestamp() < cachedChunk.getTimestamp()) {
+      return false;
+    } else if (newChunk.getTimestamp() > cachedChunk.getTimestamp()) {
+      return true;
+    } else {
+      if (newChunk.getVersion() < cachedChunk.getVersion()) {
+        return false;
+      } else if (newChunk.getVersion() > cachedChunk.getVersion()) {
+        return true;
+      } else {
+        return newChunk.getOffsetOfChunkHeader() > cachedChunk.getOffsetOfChunkHeader();
+      }
+    }
   }
 
   private PriorityQueue<TsFileResource> sortUnSeqFileResourcesInDecendingOrder(
@@ -238,6 +248,13 @@ public class LastPointReader {
               } else if (endTime1 > endTime2) {
                 return -1;
               }
+
+              if (o2.getTimestamp() > o1.getTimestamp()) {
+                return 1;
+              } else if (o2.getTimestamp() < o1.getTimestamp()) {
+                return -1;
+              }
+
               if (o2.getVersion() > o1.getVersion()) {
                 return 1;
               }

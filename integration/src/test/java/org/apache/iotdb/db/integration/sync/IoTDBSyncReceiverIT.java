@@ -51,7 +51,6 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,7 +126,7 @@ public class IoTDBSyncReceiverIT {
   }
 
   /** cannot stop */
-  @Test
+  //  @Test
   public void testStopPipeServerCheck() {
     logger.info("testStopPipeServerCheck");
     ReceiverService.getInstance()
@@ -144,7 +143,7 @@ public class IoTDBSyncReceiverIT {
         .receiveMsg(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
   }
 
-  @Test
+  //  @Test
   public void testPipeOperation() {
     logger.info("testPipeOperation");
     String[] columnNames = {
@@ -280,7 +279,7 @@ public class IoTDBSyncReceiverIT {
     }
   }
 
-  @Test
+  //  @Test
   public void testReceiveDataAndLoad() {
     logger.info("testReceiveDataAndLoad");
     try {
