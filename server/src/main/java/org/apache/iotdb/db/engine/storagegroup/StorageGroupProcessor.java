@@ -1821,13 +1821,13 @@ public class StorageGroupProcessor {
     }
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
-      long endTime = tsFileResource.getEndTime(deviceId);
       if (!tsFileResource.getDevices().contains(deviceId)) {
         // resource does not contain this device
         continue;
       }
 
-      if (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime) {
+      if (deleteEnd >= tsFileResource.getStartTime(deviceId)
+          && deleteStart <= tsFileResource.getEndTime(deviceId)) {
         // time range of device has overlap with the deletion
         return false;
       }
