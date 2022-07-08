@@ -2277,14 +2277,14 @@ public class DataRegion {
     }
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
-      long endTime = tsFileResource.getEndTime(deviceId);
-      if (endTime == Long.MIN_VALUE) {
+      if (tsFileResource.mayContainsDevice(deviceId)) {
         // resource does not contain this device
         continue;
       }
 
-      if (tsFileResource.isDeviceIdExist(deviceId)
-          && (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime)) {
+      long endTime = tsFileResource.getEndTime(deviceId);
+      if (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime) {
+        // time range of device has overlap with the deletion
         return false;
       }
     }
