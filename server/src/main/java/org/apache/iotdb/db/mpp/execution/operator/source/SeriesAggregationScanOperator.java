@@ -45,7 +45,7 @@ import java.util.Set;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipToTimeRangePoints;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipToTimeRangePoints;
 
 /**
  * This operator is responsible to do the aggregation calculation for one series based on global

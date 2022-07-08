@@ -39,7 +39,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipOutOfTimeRangePoints;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipOutOfTimeRangePoints;
 
 public class SlidingWindowAggregationOperator implements ProcessOperator {
 

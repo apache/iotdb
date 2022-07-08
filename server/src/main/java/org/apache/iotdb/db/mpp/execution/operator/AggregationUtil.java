@@ -24,11 +24,8 @@ import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
@@ -55,15 +52,6 @@ public class AggregationUtil {
     tsBlockBuilder.declarePosition();
   }
 
-  public static TsBlock updateResultTsBlockFromAggregators(
-      TsBlockBuilder tsBlockBuilder,
-      List<? extends Aggregator> aggregators,
-      ITimeRangeIterator timeRangeIterator) {
-    tsBlockBuilder.reset();
-    appendAggregationResult(tsBlockBuilder, aggregators, timeRangeIterator);
-    return tsBlockBuilder.build();
-  }
-
   /**
    * If groupByTimeParameter is null, which means it's an aggregation query without down sampling.
    * Aggregation query has only one time window and the result set of it does not contain a
@@ -87,84 +75,6 @@ public class AggregationUtil {
           groupByTimeParameter.isLeftCRightO(),
           outputPartialTimeWindow);
     }
-  }
-
-  // skip points that cannot be calculated
-  public static TsBlock skipToTimeRangePoints(
-      TsBlock tsBlock, TimeRange targetTimeRange, boolean ascending) {
-    TimeColumn timeColumn = tsBlock.getTimeColumn();
-    long targetTime = ascending ? targetTimeRange.getMin() : targetTimeRange.getMax();
-    int left = 0, right = timeColumn.getPositionCount() - 1, mid;
-    // if ascending, find the first greater than or equal to targetTime
-    // else, find the first less than or equal to targetTime
-    while (left < right) {
-      mid = (left + right) >> 1;
-      if (timeColumn.getLongWithoutCheck(mid) < targetTime) {
-        if (ascending) {
-          left = mid + 1;
-        } else {
-          right = mid;
-        }
-      } else if (timeColumn.getLongWithoutCheck(mid) > targetTime) {
-        if (ascending) {
-          right = mid;
-        } else {
-          left = mid + 1;
-        }
-      } else if (timeColumn.getLongWithoutCheck(mid) == targetTime) {
-        return tsBlock.subTsBlock(mid);
-      }
-    }
-    return tsBlock.subTsBlock(left);
-  }
-
-  public static TsBlock skipOutOfTimeRangePoints(
-      TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
-    TimeColumn timeColumn = tsBlock.getTimeColumn();
-    long targetTime = ascending ? curTimeRange.getMax() : curTimeRange.getMin();
-    if (timeColumn.getPositionCount() == 1) {
-      long checkedTime = timeColumn.getLongWithoutCheck(0);
-      return tsBlock.subTsBlock(
-          ((ascending && checkedTime <= targetTime) || (!ascending && checkedTime >= targetTime))
-              ? 1
-              : 0);
-    }
-
-    int left = 0, right = timeColumn.getPositionCount() - 1, mid;
-    // if ascending, find the first greater than targetTime
-    // else, find the first less than targetTime
-    while (left < right) {
-      mid = (left + right) >> 1;
-      long checkedTime = timeColumn.getLongWithoutCheck(mid);
-      if (ascending) {
-        if (checkedTime <= targetTime) {
-          left = mid + 1;
-        } else {
-          right = mid;
-        }
-      } else {
-        if (checkedTime >= targetTime) {
-          left = mid + 1;
-        } else {
-          right = mid;
-        }
-      }
-    }
-    return tsBlock.subTsBlock(left);
-  }
-
-  // check if the batchData does not contain points in current interval
-  public static boolean satisfied(TsBlock tsBlock, TimeRange timeRange, boolean ascending) {
-    TsBlock.TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
-    if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
-      return false;
-    }
-
-    return ascending
-        ? (tsBlockIterator.getEndTime() >= timeRange.getMin()
-            && tsBlockIterator.currentTime() <= timeRange.getMax())
-        : (tsBlockIterator.getEndTime() <= timeRange.getMax()
-            && tsBlockIterator.currentTime() >= timeRange.getMin());
   }
 
   public static boolean isEndCalc(List<Aggregator> aggregators) {

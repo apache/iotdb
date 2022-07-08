@@ -38,8 +38,8 @@ import java.util.List;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.satisfied;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.skipToTimeRangePoints;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.satisfied;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipToTimeRangePoints;
 
 /**
  * RawDataAggregationOperator is used to process raw data tsBlock input calculating using value
