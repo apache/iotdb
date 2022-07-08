@@ -229,7 +229,6 @@ com.fasterxml.jackson.core:jackson-core:2.10.0
 com.fasterxml.jackson.core:jackson-databind:2.10.0
 javax.inject:javax.inject:1
 net.jpountz.lz4:1.3.0
-com.github.luben.zstd-jni:1.3.2-6
 com.github.stephenc.jcip:jcip-annotations:1.0-1
 com.github.ben-manes.caffeine:caffeine:2.9.1
 org.eclipse.jetty:jetty-http:9.4.24.v20191120
@@ -278,6 +277,7 @@ BSD 3-Clause
 org.antlr:antlr-runtime:4.8-1
 org.ow2.asm:asm:5.0.4
 org.jline:jline:3.21.0
+com.github.luben.zstd-jni:1.3.2-6
 
 
 MIT License
