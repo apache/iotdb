@@ -87,18 +87,4 @@ public class TsBlockUtil {
     }
     return tsBlock.subTsBlock(left);
   }
-
-  // check if the batchData does not contain points in current interval
-  public static boolean satisfied(TsBlock tsBlock, TimeRange timeRange, boolean ascending) {
-    TsBlock.TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
-    if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
-      return false;
-    }
-
-    return ascending
-        ? (tsBlockIterator.getEndTime() >= timeRange.getMin()
-            && tsBlockIterator.currentTime() <= timeRange.getMax())
-        : (tsBlockIterator.getEndTime() <= timeRange.getMax()
-            && tsBlockIterator.currentTime() >= timeRange.getMin());
-  }
 }

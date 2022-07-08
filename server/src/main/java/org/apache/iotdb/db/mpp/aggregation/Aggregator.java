@@ -142,6 +142,7 @@ public class Aggregator {
 
   public void updateTimeRange(TimeRange curTimeRange) {
     this.curTimeRange = curTimeRange;
+    reset();
   }
 
   public TimeRange getCurTimeRange() {

@@ -25,7 +25,6 @@ import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock.TsBlockSingleColumnIterator;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -34,7 +33,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 
 /** This operator is responsible to do the aggregation calculation especially for aligned series. */
 public class AlignedSeriesAggregationScanOperator extends SeriesAggregationScanOperator
@@ -63,21 +62,21 @@ public class AlignedSeriesAggregationScanOperator extends SeriesAggregationScanO
   }
 
   @Override
-  protected void calculateNextResult() {
+  protected void calculateNextAggregationResult() {
     try {
-      if (calcFromCacheData(curTimeRange)) {
+      if (calcFromCacheData()) {
         updateResultTsBlock();
         return;
       }
 
       // read page data firstly
-      if (readAndCalcFromPage(curTimeRange)) {
+      if (readAndCalcFromPage()) {
         updateResultTsBlock();
         return;
       }
 
       // read chunk data secondly
-      if (readAndCalcFromChunk(curTimeRange)) {
+      if (readAndCalcFromChunk()) {
         updateResultTsBlock();
         return;
       }
@@ -104,7 +103,7 @@ public class AlignedSeriesAggregationScanOperator extends SeriesAggregationScanO
             }
             calcFromStatisticsArray(statisticsList);
             seriesScanUtil.skipCurrentFile();
-            if (isEndCalc(aggregators) && !isGroupByQuery) {
+            if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
               break;
             } else {
               continue;
@@ -113,7 +112,7 @@ public class AlignedSeriesAggregationScanOperator extends SeriesAggregationScanO
         }
 
         // read chunk
-        if (readAndCalcFromChunk(curTimeRange)) {
+        if (readAndCalcFromChunk()) {
           updateResultTsBlock();
           return;
         }
@@ -134,7 +133,7 @@ public class AlignedSeriesAggregationScanOperator extends SeriesAggregationScanO
     }
   }
 
-  private boolean readAndCalcFromPage(TimeRange curTimeRange) throws IOException {
+  private boolean readAndCalcFromPage() throws IOException {
     while (seriesScanUtil.hasNextPage()) {
       if (canUseCurrentPageStatistics()) {
         Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
@@ -156,7 +155,7 @@ public class AlignedSeriesAggregationScanOperator extends SeriesAggregationScanO
           }
           calcFromStatisticsArray(statisticsList);
           seriesScanUtil.skipCurrentPage();
-          if (isEndCalc(aggregators) && !isGroupByQuery) {
+          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
             return true;
           } else {
             continue;
@@ -173,26 +172,26 @@ public class AlignedSeriesAggregationScanOperator extends SeriesAggregationScanO
 
       // stop calc and cached current batchData
       if (ascending && tsBlockIterator.currentTime() > curTimeRange.getMax()) {
-        preCachedData = tsBlock;
+        cachedData = tsBlock;
         return true;
       }
 
       // calc from batch data
-      calcFromBatch(tsBlock, curTimeRange);
+      calcFromBatch(tsBlock);
 
       // judge whether the calculation finished
       boolean isTsBlockOutOfBound =
           ascending
               ? tsBlock.getEndTime() > curTimeRange.getMax()
               : tsBlock.getEndTime() < curTimeRange.getMin();
-      if (isEndCalc(aggregators) || isTsBlockOutOfBound) {
+      if (isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound) {
         return true;
       }
     }
     return false;
   }
 
-  private boolean readAndCalcFromChunk(TimeRange curTimeRange) throws IOException {
+  private boolean readAndCalcFromChunk() throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
       if (canUseCurrentChunkStatistics()) {
         Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
@@ -214,7 +213,7 @@ public class AlignedSeriesAggregationScanOperator extends SeriesAggregationScanO
           }
           calcFromStatisticsArray(statisticsList);
           seriesScanUtil.skipCurrentChunk();
-          if (isEndCalc(aggregators) && !isGroupByQuery) {
+          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
             return true;
           } else {
             continue;
@@ -223,7 +222,7 @@ public class AlignedSeriesAggregationScanOperator extends SeriesAggregationScanO
       }
 
       // read page
-      if (readAndCalcFromPage(curTimeRange)) {
+      if (readAndCalcFromPage()) {
         return true;
       }
     }

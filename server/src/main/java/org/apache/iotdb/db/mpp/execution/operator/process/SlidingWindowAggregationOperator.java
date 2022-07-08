@@ -44,25 +44,24 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipOutOfTim
 public class SlidingWindowAggregationOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
+  private final boolean ascending;
+
   private final Operator child;
-
-  private TsBlock cachedTsBlock;
-
-  private final List<SlidingWindowAggregator> aggregators;
+  private TsBlock inputTsBlock;
+  private boolean canCallNext;
 
   private final ITimeRangeIterator timeRangeIterator;
-  private final ITimeRangeIterator subTimeRangeIterator;
-
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
+
+  private final ITimeRangeIterator subTimeRangeIterator;
   // current interval of pre-aggregation window [curStartTime, curEndTime)
   private TimeRange curSubTimeRange;
 
-  private final boolean ascending;
+  private final List<SlidingWindowAggregator> aggregators;
 
+  // using for building result tsBlock
   private final TsBlockBuilder resultTsBlockBuilder;
-
-  private boolean canCallNext = true;
 
   public SlidingWindowAggregationOperator(
       OperatorContext operatorContext,
@@ -75,110 +74,18 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
         "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
 
     this.operatorContext = operatorContext;
-    this.aggregators = aggregators;
+    this.ascending = ascending;
     this.child = child;
+    this.aggregators = aggregators;
+
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, false);
+    this.subTimeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+
     List<TSDataType> outputDataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
       outputDataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(outputDataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, false);
-    this.subTimeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
-    this.ascending = ascending;
-  }
-
-  @Override
-  public boolean hasNext() {
-    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
-  }
-
-  @Override
-  public TsBlock next() {
-    resultTsBlockBuilder.reset();
-    canCallNext = true;
-    while ((curTimeRange != null || timeRangeIterator.hasNextTimeRange())
-        && !resultTsBlockBuilder.isFull()) {
-      if (!calculateNextResult()) {
-        break;
-      }
-    }
-
-    if (resultTsBlockBuilder.getPositionCount() > 0) {
-      return resultTsBlockBuilder.build();
-    } else {
-      return null;
-    }
-  }
-
-  private boolean calculateNextResult() {
-    // Move to next timeRange
-    if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
-      curTimeRange = timeRangeIterator.nextTimeRange();
-      for (Aggregator aggregator : aggregators) {
-        aggregator.updateTimeRange(curTimeRange);
-      }
-    }
-
-    // Calculate aggregation result based on current time window
-    while (!isEndCalc()) {
-      if (cachedTsBlock == null) {
-        // child.next can only be invoked once
-        if (child.hasNext()) {
-          if (canCallNext) {
-            cachedTsBlock = child.next();
-            canCallNext = false;
-          } else {
-            // if child still has next but can't be invoked now
-            return false;
-          }
-        } else {
-          break;
-        }
-      }
-      calcFromTsBlock();
-    }
-
-    // Update result using aggregators
-    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
-    curTimeRange = null;
-
-    return true;
-  }
-
-  protected boolean isEndCalc() {
-    if (curSubTimeRange == null && !subTimeRangeIterator.hasNextTimeRange()) {
-      return true;
-    }
-
-    if (curSubTimeRange == null && subTimeRangeIterator.hasNextTimeRange()) {
-      curSubTimeRange = subTimeRangeIterator.nextTimeRange();
-    }
-    return ascending
-        ? curSubTimeRange.getMin() > curTimeRange.getMax()
-        : curSubTimeRange.getMax() < curTimeRange.getMin();
-  }
-
-  private void calcFromTsBlock() {
-    if (cachedTsBlock == null || cachedTsBlock.isEmpty()) {
-      return;
-    }
-
-    // skip points that cannot be calculated
-    if ((ascending && cachedTsBlock.getStartTime() < curSubTimeRange.getMin())
-        || (!ascending && cachedTsBlock.getStartTime() > curSubTimeRange.getMax())) {
-      cachedTsBlock = skipOutOfTimeRangePoints(cachedTsBlock, curSubTimeRange, ascending);
-    }
-
-    int lastReadRowIndex = 0;
-    for (SlidingWindowAggregator aggregator : aggregators) {
-      lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(cachedTsBlock));
-    }
-    if (lastReadRowIndex >= cachedTsBlock.getPositionCount()) {
-      cachedTsBlock = null;
-    } else {
-      cachedTsBlock = cachedTsBlock.subTsBlock(lastReadRowIndex);
-    }
-    curSubTimeRange = null;
   }
 
   @Override
@@ -192,6 +99,42 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
   }
 
   @Override
+  public boolean hasNext() {
+    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
+  }
+
+  @Override
+  public TsBlock next() {
+    // reset operator state
+    resultTsBlockBuilder.reset();
+    canCallNext = true;
+
+    while ((curTimeRange != null || timeRangeIterator.hasNextTimeRange())
+        && !resultTsBlockBuilder.isFull()) {
+      if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
+        // move to next timeRange
+        curTimeRange = timeRangeIterator.nextTimeRange();
+
+        // clear previous aggregation result
+        for (Aggregator aggregator : aggregators) {
+          aggregator.updateTimeRange(curTimeRange);
+        }
+      }
+
+      // calculate aggregation result on current time window
+      if (!calculateNextAggregationResult()) {
+        break;
+      }
+    }
+
+    if (resultTsBlockBuilder.getPositionCount() > 0) {
+      return resultTsBlockBuilder.build();
+    } else {
+      return null;
+    }
+  }
+
+  @Override
   public boolean isFinished() {
     return !this.hasNext();
   }
@@ -199,5 +142,71 @@ public class SlidingWindowAggregationOperator implements ProcessOperator {
   @Override
   public void close() throws Exception {
     child.close();
+  }
+
+  private boolean calculateNextAggregationResult() {
+    while (!isCalculationDone()) {
+      if (inputTsBlock == null) {
+        // NOTE: child.next() can only be invoked once
+        if (child.hasNext() && canCallNext) {
+          inputTsBlock = child.next();
+          canCallNext = false;
+        } else if (child.hasNext()) {
+          // if child still has next but can't be invoked now
+          return false;
+        } else {
+          break;
+        }
+      }
+
+      calculateFromCachedData();
+    }
+
+    // update result using aggregators
+    updateResultTsBlock();
+
+    return true;
+  }
+
+  private void updateResultTsBlock() {
+    curTimeRange = null;
+    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
+  }
+
+  /** @return if already get the result */
+  private boolean isCalculationDone() {
+    if (curSubTimeRange == null && !subTimeRangeIterator.hasNextTimeRange()) {
+      return true;
+    }
+
+    if (curSubTimeRange == null && subTimeRangeIterator.hasNextTimeRange()) {
+      curSubTimeRange = subTimeRangeIterator.nextTimeRange();
+    }
+    return ascending
+        ? curSubTimeRange.getMin() > curTimeRange.getMax()
+        : curSubTimeRange.getMax() < curTimeRange.getMin();
+  }
+
+  private void calculateFromCachedData() {
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return;
+    }
+
+    // skip points that cannot be calculated
+    if ((ascending && inputTsBlock.getStartTime() < curSubTimeRange.getMin())
+        || (!ascending && inputTsBlock.getStartTime() > curSubTimeRange.getMax())) {
+      inputTsBlock = skipOutOfTimeRangePoints(inputTsBlock, curSubTimeRange, ascending);
+    }
+
+    int lastReadRowIndex = 0;
+    for (SlidingWindowAggregator aggregator : aggregators) {
+      lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+    }
+    if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+      inputTsBlock = null;
+    } else {
+      inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
+    }
+    curSubTimeRange = null;
   }
 }

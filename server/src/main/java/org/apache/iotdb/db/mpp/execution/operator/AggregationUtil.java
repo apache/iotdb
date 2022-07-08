@@ -77,7 +77,7 @@ public class AggregationUtil {
     }
   }
 
-  public static boolean isEndCalc(List<Aggregator> aggregators) {
+  public static boolean isAllAggregatorsHasFinalResult(List<Aggregator> aggregators) {
     for (Aggregator aggregator : aggregators) {
       if (!aggregator.hasFinalResult()) {
         return false;

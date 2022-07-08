@@ -44,7 +44,7 @@ import java.util.Set;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipToTimeRangePoints;
 
 /**
@@ -57,22 +57,26 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipToTimeRa
  */
 public class SeriesAggregationScanOperator implements DataSourceOperator {
 
-  protected final OperatorContext operatorContext;
   protected final PlanNodeId sourceId;
-  protected final SeriesScanUtil seriesScanUtil;
+  protected final OperatorContext operatorContext;
   protected final boolean ascending;
-  // We still think aggregator in SeriesAggregateScanOperator is a inputRaw step.
-  // But in facing of statistics, it will invoke another method processStatistics()
-  protected final List<Aggregator> aggregators;
+  protected final boolean isGroupByQuery;
+
+  protected final SeriesScanUtil seriesScanUtil;
+
+  protected TsBlock cachedData;
 
   protected final ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   protected TimeRange curTimeRange;
-  protected final boolean isGroupByQuery;
 
-  protected TsBlock preCachedData;
+  // We still think aggregator in SeriesAggregateScanOperator is a inputRaw step.
+  // But in facing of statistics, it will invoke another method processStatistics()
+  protected final List<Aggregator> aggregators;
 
+  // using for building result tsBlock
   protected final TsBlockBuilder resultTsBlockBuilder;
+
   protected boolean finished = false;
 
   public SeriesAggregationScanOperator(
@@ -87,6 +91,8 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.ascending = ascending;
+    this.isGroupByQuery = groupByTimeParameter != null;
+    this.aggregators = aggregators;
 
     if (seriesPath instanceof MeasurementPath) {
       this.seriesScanUtil =
@@ -109,22 +115,31 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
               ascending);
     } else {
       throw new IllegalArgumentException(
-          "The seriesPath should be MeasurementPath or AlignedPath.");
+          "SeriesAggregationScanOperator: The seriesPath should be MeasurementPath or AlignedPath.");
     }
 
-    this.aggregators = aggregators;
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
-    this.isGroupByQuery = groupByTimeParameter != null;
+  }
+
+  @Override
+  public PlanNodeId getSourceId() {
+    return sourceId;
   }
 
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
+  }
+
+  @Override
+  public void initQueryDataSource(QueryDataSource dataSource) {
+    seriesScanUtil.initQueryDataSource(dataSource);
   }
 
   @Override
@@ -134,18 +149,20 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
 
   @Override
   public TsBlock next() {
+    // reset operator state
     resultTsBlockBuilder.reset();
+
     while (timeRangeIterator.hasNextTimeRange() && !resultTsBlockBuilder.isFull()) {
+      // move to next time window
       curTimeRange = timeRangeIterator.nextTimeRange();
 
-      // 1. Clear previous aggregation result
+      // clear previous aggregation result
       for (Aggregator aggregator : aggregators) {
-        aggregator.reset();
         aggregator.updateTimeRange(curTimeRange);
       }
 
-      // 2. Calculate aggregation result based on current time window
-      calculateNextResult();
+      // calculate aggregation result on current time window
+      calculateNextAggregationResult();
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
@@ -160,31 +177,21 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
     return finished || (finished = !hasNext());
   }
 
-  @Override
-  public PlanNodeId getSourceId() {
-    return sourceId;
-  }
-
-  @Override
-  public void initQueryDataSource(QueryDataSource dataSource) {
-    seriesScanUtil.initQueryDataSource(dataSource);
-  }
-
-  protected void calculateNextResult() {
+  protected void calculateNextAggregationResult() {
     try {
-      if (calcFromCacheData(curTimeRange)) {
+      if (calcFromCacheData()) {
         updateResultTsBlock();
         return;
       }
 
       // read page data firstly
-      if (readAndCalcFromPage(curTimeRange)) {
+      if (readAndCalcFromPage()) {
         updateResultTsBlock();
         return;
       }
 
       // read chunk data secondly
-      if (readAndCalcFromChunk(curTimeRange)) {
+      if (readAndCalcFromChunk()) {
         updateResultTsBlock();
         return;
       }
@@ -206,7 +213,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
           if (curTimeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
             calcFromStatistics(fileStatistics);
             seriesScanUtil.skipCurrentFile();
-            if (isEndCalc(aggregators) && !isGroupByQuery) {
+            if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
               break;
             } else {
               continue;
@@ -215,7 +222,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
         }
 
         // read chunk
-        if (readAndCalcFromChunk(curTimeRange)) {
+        if (readAndCalcFromChunk()) {
           updateResultTsBlock();
           return;
         }
@@ -232,19 +239,19 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
   }
 
   /** @return if already get the result */
-  protected boolean calcFromCacheData(TimeRange curTimeRange) throws IOException {
-    calcFromBatch(preCachedData, curTimeRange);
+  protected boolean calcFromCacheData() throws IOException {
+    calcFromBatch(cachedData);
     // The result is calculated from the cache
-    return (preCachedData != null
+    return (cachedData != null
             && (ascending
-                ? preCachedData.getEndTime() > curTimeRange.getMax()
-                : preCachedData.getEndTime() < curTimeRange.getMin()))
-        || isEndCalc(aggregators);
+                ? cachedData.getEndTime() > curTimeRange.getMax()
+                : cachedData.getEndTime() < curTimeRange.getMin()))
+        || isAllAggregatorsHasFinalResult(aggregators);
   }
 
-  protected void calcFromBatch(TsBlock tsBlock, TimeRange curTimeRange) {
+  protected void calcFromBatch(TsBlock tsBlock) {
     // check if the batchData does not contain points in current interval
-    if (tsBlock != null && satisfied(tsBlock, curTimeRange, ascending)) {
+    if (tsBlock != null && satisfied(tsBlock)) {
       // skip points that cannot be calculated
       if ((ascending && tsBlock.getStartTime() < curTimeRange.getMin())
           || (!ascending && tsBlock.getStartTime() > curTimeRange.getMax())) {
@@ -268,26 +275,26 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
 
       // can calc for next interval
       if (tsBlock != null && tsBlock.getTsBlockSingleColumnIterator().hasNext()) {
-        preCachedData = tsBlock;
+        cachedData = tsBlock;
       }
     }
   }
 
-  protected boolean satisfied(TsBlock tsBlock, TimeRange timeRange, boolean ascending) {
+  protected boolean satisfied(TsBlock tsBlock) {
     TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
     if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
       return false;
     }
 
     if (ascending
-        && (tsBlockIterator.getEndTime() < timeRange.getMin()
-            || tsBlockIterator.currentTime() > timeRange.getMax())) {
+        && (tsBlockIterator.getEndTime() < curTimeRange.getMin()
+            || tsBlockIterator.currentTime() > curTimeRange.getMax())) {
       return false;
     }
     if (!ascending
-        && (tsBlockIterator.getEndTime() > timeRange.getMax()
-            || tsBlockIterator.currentTime() < timeRange.getMin())) {
-      preCachedData = tsBlock;
+        && (tsBlockIterator.getEndTime() > curTimeRange.getMax()
+            || tsBlockIterator.currentTime() < curTimeRange.getMin())) {
+      cachedData = tsBlock;
       return false;
     }
     return true;
@@ -302,7 +309,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
     }
   }
 
-  private boolean readAndCalcFromPage(TimeRange curTimeRange) throws IOException {
+  private boolean readAndCalcFromPage() throws IOException {
     while (seriesScanUtil.hasNextPage()) {
       if (canUseCurrentPageStatistics()) {
         Statistics pageStatistics = seriesScanUtil.currentPageStatistics();
@@ -319,7 +326,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
         if (curTimeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
           calcFromStatistics(pageStatistics);
           seriesScanUtil.skipCurrentPage();
-          if (isEndCalc(aggregators) && !isGroupByQuery) {
+          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
             return true;
           } else {
             continue;
@@ -336,26 +343,26 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
 
       // stop calc and cached current batchData
       if (ascending && tsBlockIterator.currentTime() > curTimeRange.getMax()) {
-        preCachedData = tsBlock;
+        cachedData = tsBlock;
         return true;
       }
 
       // calc from batch data
-      calcFromBatch(tsBlock, curTimeRange);
+      calcFromBatch(tsBlock);
 
       // judge whether the calculation finished
       boolean isTsBlockOutOfBound =
           ascending
               ? tsBlock.getEndTime() > curTimeRange.getMax()
               : tsBlock.getEndTime() < curTimeRange.getMin();
-      if (isEndCalc(aggregators) || isTsBlockOutOfBound) {
+      if (isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound) {
         return true;
       }
     }
     return false;
   }
 
-  private boolean readAndCalcFromChunk(TimeRange curTimeRange) throws IOException {
+  private boolean readAndCalcFromChunk() throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
       if (canUseCurrentChunkStatistics()) {
         Statistics chunkStatistics = seriesScanUtil.currentChunkStatistics();
@@ -371,7 +378,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
         if (curTimeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
           calcFromStatistics(chunkStatistics);
           seriesScanUtil.skipCurrentChunk();
-          if (isEndCalc(aggregators) && !isGroupByQuery) {
+          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
             return true;
           } else {
             continue;
@@ -380,7 +387,7 @@ public class SeriesAggregationScanOperator implements DataSourceOperator {
       }
 
       // read page
-      if (readAndCalcFromPage(curTimeRange)) {
+      if (readAndCalcFromPage()) {
         return true;
       }
     }

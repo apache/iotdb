@@ -37,8 +37,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isEndCalc;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.satisfied;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipToTimeRangePoints;
 
 /**
@@ -54,18 +53,19 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipToTimeRa
 public class RawDataAggregationOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  private final List<Aggregator> aggregators;
-  private final Operator child;
   private final boolean ascending;
+
+  private final Operator child;
+  private TsBlock inputTsBlock;
+  private boolean canCallNext;
+
   private final ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
 
-  private TsBlock preCachedData;
+  private final List<Aggregator> aggregators;
 
-  private boolean canCallNext;
-
-  // Using for building result tsBlock
+  // using for building result tsBlock
   private final TsBlockBuilder resultTsBlockBuilder;
 
   public RawDataAggregationOperator(
@@ -75,16 +75,17 @@ public class RawDataAggregationOperator implements ProcessOperator {
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {
     this.operatorContext = operatorContext;
-    this.aggregators = aggregators;
-    this.child = child;
     this.ascending = ascending;
+    this.child = child;
+    this.aggregators = aggregators;
+
+    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
 
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
-    resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
+    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
   }
 
   @Override
@@ -98,12 +99,30 @@ public class RawDataAggregationOperator implements ProcessOperator {
   }
 
   @Override
+  public boolean hasNext() {
+    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
+  }
+
+  @Override
   public TsBlock next() {
+    // reset operator state
     resultTsBlockBuilder.reset();
     canCallNext = true;
+
     while ((curTimeRange != null || timeRangeIterator.hasNextTimeRange())
         && !resultTsBlockBuilder.isFull()) {
-      if (!calculateNextResult()) {
+      if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
+        // move to next time window
+        curTimeRange = timeRangeIterator.nextTimeRange();
+
+        // clear previous aggregation result
+        for (Aggregator aggregator : aggregators) {
+          aggregator.updateTimeRange(curTimeRange);
+        }
+      }
+
+      // calculate aggregation result on current time window
+      if (!calculateNextAggregationResult()) {
         break;
       }
     }
@@ -115,42 +134,9 @@ public class RawDataAggregationOperator implements ProcessOperator {
     }
   }
 
-  private boolean calculateNextResult() {
-    // Move to next timeRange
-    if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
-      curTimeRange = timeRangeIterator.nextTimeRange();
-      // 0. Clear previous aggregation result
-      for (Aggregator aggregator : aggregators) {
-        aggregator.reset();
-        aggregator.updateTimeRange(curTimeRange);
-      }
-    }
-
-    // 1. Calculate aggregation result based on current time window
-    while (!calcFromCacheData(curTimeRange)) {
-      preCachedData = null;
-      // child.next can only be invoked once
-      if (child.hasNext() && canCallNext) {
-        preCachedData = child.next();
-        canCallNext = false;
-        // if child still has next but can't be invoked now
-      } else if (child.hasNext()) {
-        return false;
-      } else {
-        break;
-      }
-    }
-
-    // 2. Update result using aggregators
-    curTimeRange = null;
-    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
-
-    return true;
-  }
-
   @Override
-  public boolean hasNext() {
-    return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
+  public boolean isFinished() {
+    return !this.hasNext();
   }
 
   @Override
@@ -158,22 +144,53 @@ public class RawDataAggregationOperator implements ProcessOperator {
     child.close();
   }
 
-  @Override
-  public boolean isFinished() {
-    return !this.hasNext();
+  private boolean calculateNextAggregationResult() {
+    while (!calculateFromCachedData()) {
+      inputTsBlock = null;
+
+      // NOTE: child.next() can only be invoked once
+      if (child.hasNext() && canCallNext) {
+        inputTsBlock = child.next();
+        canCallNext = false;
+      } else if (child.hasNext()) {
+        // if child still has next but can't be invoked now
+        return false;
+      } else {
+        break;
+      }
+    }
+
+    // update result using aggregators
+    updateResultTsBlock();
+
+    return true;
+  }
+
+  private void updateResultTsBlock() {
+    curTimeRange = null;
+    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
+  }
+
+  private boolean isCalculationDone() {
+    return (inputTsBlock != null
+            && (ascending
+                ? inputTsBlock.getEndTime() > curTimeRange.getMax()
+                : inputTsBlock.getEndTime() < curTimeRange.getMin()))
+        || isAllAggregatorsHasFinalResult(aggregators);
   }
 
   /** @return if already get the result */
-  private boolean calcFromCacheData(TimeRange curTimeRange) {
-    if (preCachedData == null || preCachedData.isEmpty()) {
+  private boolean calculateFromCachedData() {
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
       return false;
     }
+
     // check if the batchData does not contain points in current interval
-    if (satisfied(preCachedData, curTimeRange, ascending)) {
+    if (satisfied(inputTsBlock)) {
       // skip points that cannot be calculated
-      if ((ascending && preCachedData.getStartTime() < curTimeRange.getMin())
-          || (!ascending && preCachedData.getStartTime() > curTimeRange.getMax())) {
-        preCachedData = skipToTimeRangePoints(preCachedData, curTimeRange, ascending);
+      if ((ascending && inputTsBlock.getStartTime() < curTimeRange.getMin())
+          || (!ascending && inputTsBlock.getStartTime() > curTimeRange.getMax())) {
+        inputTsBlock = skipToTimeRangePoints(inputTsBlock, curTimeRange, ascending);
       }
 
       int lastReadRowIndex = 0;
@@ -183,19 +200,34 @@ public class RawDataAggregationOperator implements ProcessOperator {
           continue;
         }
 
-        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(preCachedData));
+        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
       }
-      if (lastReadRowIndex >= preCachedData.getPositionCount()) {
-        preCachedData = null;
+      if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+        inputTsBlock = null;
       } else {
-        preCachedData = preCachedData.subTsBlock(lastReadRowIndex);
+        inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
       }
     }
+
     // The result is calculated from the cache
-    return (preCachedData != null
+    return (inputTsBlock != null
             && (ascending
-                ? preCachedData.getEndTime() > curTimeRange.getMax()
-                : preCachedData.getEndTime() < curTimeRange.getMin()))
-        || isEndCalc(aggregators);
+                ? inputTsBlock.getEndTime() > curTimeRange.getMax()
+                : inputTsBlock.getEndTime() < curTimeRange.getMin()))
+        || isAllAggregatorsHasFinalResult(aggregators);
+  }
+
+  /** check if the tsBlock does not contain points in current interval */
+  public boolean satisfied(TsBlock tsBlock) {
+    TsBlock.TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
+    if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
+      return false;
+    }
+
+    return ascending
+        ? (tsBlockIterator.getEndTime() >= curTimeRange.getMin()
+            && tsBlockIterator.currentTime() <= curTimeRange.getMax())
+        : (tsBlockIterator.getEndTime() <= curTimeRange.getMax()
+            && tsBlockIterator.currentTime() >= curTimeRange.getMin());
   }
 }
