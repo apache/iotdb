@@ -32,6 +32,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
@@ -108,6 +109,13 @@ public interface IManager {
   UDFManager getUDFManager();
 
   /**
+   * Get DataNodeRemoveManager
+   *
+   * @return DataNodeRemoveManager instance
+   */
+  DataNodeRemoveManager getDataNodeRemoveManager();
+
+  /**
    * Register DataNode
    *
    * @return DataNodeConfigurationDataSet
@@ -121,6 +129,14 @@ public interface IManager {
    * @return TSStatus
    */
   TSStatus activateDataNode(ActivateDataNodePlan activateDataNodePlan);
+
+  /**
+   * Remove DataNode
+   *
+   * @param removeDataNodePlan
+   * @return DataNodeToStatusResp
+   */
+  DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan);
 
   /**
    * Get DataNode info

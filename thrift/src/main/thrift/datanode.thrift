@@ -35,12 +35,23 @@ struct TInvalidateCacheReq {
     2: required string fullPath
 }
 
-struct TMigrateRegionReq{
-    1: required common.TRegionReplicaSet migrateRegion
+struct TMigrateRegionReq {
+    1: required common.TConsensusGroupId regionId
+    2: required common.TDataNodeLocation fromNode
+    3: required common.TDataNodeLocation toNode
+    4: optional common.TDataNodeLocation newLoader
 }
 
-struct TMigrateRegionResp{
-    1: required common.TSStatus migrateResult
+struct TRegionLeaderChangeReq {
+    1: required common.TConsensusGroupId regionId
+    2: required common.TDataNodeLocation newLeaderNode
+}
+
+struct TAddConsensusGroup  {
+    1: required common.TConsensusGroupId regionId
+    2: required list<common.TDataNodeLocation> regionLocations
+    3: required string storageGroup
+    4: optional i64 ttl
 }
 
 struct TFragmentInstanceId {
@@ -145,6 +156,10 @@ struct TSchemaFetchResponse {
   1: required binary serializedSchemaTree
 }
 
+struct TDisableDataNodeReq{
+  1: required common.TDataNodeLocation dataNodeLocation
+}
+
 struct TCreateFunctionRequest {
   1: required string udfName
   2: required string className
@@ -241,12 +256,34 @@ service IDataNodeRPCService {
   common.TSStatus deleteRegion(common.TConsensusGroupId consensusGroupId)
 
   /**
-     * Config node will migrate a region(maybe data region or schema region)
-     * from one data node to another
-     *
-     * @param new replica set of the region
-     */
-  TMigrateRegionResp migrateRegion(TMigrateRegionReq req)
+   * Config node will change a region leader to other data node int same consensus group
+   * if the region is not leader on the node, will do nothing
+   * @param change a region leader to which node
+   */
+  common.TSStatus changeRegionLeader(TRegionLeaderChangeReq req);
+
+  /**
+   * Config node will add Data nodes to the region consensus group
+   * @param region id and it's expect locations
+   */
+  common.TSStatus addToRegionConsensusGroup(TAddConsensusGroup req);
+
+  /**
+   * Config node will migrate a region from this node to newNode
+   * @param migrate which region from one node to other node
+   */
+  common.TSStatus migrateRegion(TMigrateRegionReq req);
+
+  /**
+  * Config node will disable the Data node, the Data node will not accept read/write request when disabled
+  * @param data node location
+  */
+  common.TSStatus disableDataNode(TDisableDataNodeReq req)
+
+  /**
+  * Config node will stop the Data node.
+  */
+  common.TSStatus stopDataNode()
 
   /**
   * ConfigNode will ask DataNode for heartbeat in every few seconds.
