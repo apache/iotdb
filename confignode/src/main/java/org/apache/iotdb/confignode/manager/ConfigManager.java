@@ -48,6 +48,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
@@ -76,8 +77,11 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -932,5 +936,37 @@ public class ConfigManager implements IManager {
   public void addMetrics() {
     partitionManager.addMetrics();
     nodeManager.addMetrics();
+  }
+
+  @Override
+  public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      CreateSchemaTemplatePlan createSchemaTemplatePlan =
+          new CreateSchemaTemplatePlan(req.getSerializedTemplate());
+      return clusterSchemaManager.createTemplate(createSchemaTemplatePlan);
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TGetAllTemplatesResp getAllTemplates() {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.getAllTemplates();
+    } else {
+      return new TGetAllTemplatesResp().setStatus(status);
+    }
+  }
+
+  @Override
+  public TGetTemplateResp getTemplate(String req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.getTemplate(req);
+    } else {
+      return new TGetTemplateResp().setStatus(status);
+    }
   }
 }

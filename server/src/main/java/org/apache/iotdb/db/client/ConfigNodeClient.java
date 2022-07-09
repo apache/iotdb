@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -50,6 +51,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -795,6 +798,54 @@ public class ConfigNodeClient
         TSStatus status = client.dropFunction(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus tsStatus = client.createSchemaTemplate(req);
+        if (!updateConfigNodeLeader(tsStatus)) {
+          return tsStatus;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetAllTemplatesResp getAllTemplates() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetAllTemplatesResp resp = client.getAllTemplates();
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TGetTemplateResp getTemplate(String req) throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TGetTemplateResp resp = client.getTemplate(req);
+        if (!updateConfigNodeLeader(resp.getStatus())) {
+          return resp;
         }
       } catch (TException e) {
         configLeader = null;

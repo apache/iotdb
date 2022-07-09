@@ -41,6 +41,9 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -270,4 +273,27 @@ public interface IManager {
 
   /** Show datanodes */
   DataSet showDataNodes();
+
+  /**
+   * create schema template
+   *
+   * @param req TCreateSchemaTemplateReq
+   * @return TSStatus
+   */
+  TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req);
+
+  /**
+   * show schema templates
+   *
+   * @return
+   */
+  TGetAllTemplatesResp getAllTemplates();
+
+  /**
+   * show nodes in schema template
+   *
+   * @param req String
+   * @return
+   */
+  TGetTemplateResp getTemplate(String req);
 }

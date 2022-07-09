@@ -28,6 +28,7 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
@@ -38,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPl
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
@@ -136,6 +138,11 @@ public class ConfigPlanExecutor {
         return getSchemaNodeManagementPartition(req);
       case GetRegionInfoList:
         return partitionInfo.getRegionInfoList((GetRegionInfoListPlan) req);
+      case ShowSchemaTemplate:
+        return clusterSchemaInfo.getAllTemplates();
+      case ShowNodesInSchemaTemplate:
+        GetNodesInSchemaTemplatePlan plan = (GetNodesInSchemaTemplatePlan) req;
+        return clusterSchemaInfo.getTemplate(plan.getTemplateName());
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
@@ -199,6 +206,8 @@ public class ConfigPlanExecutor {
         return udfInfo.createFunction((CreateFunctionPlan) req);
       case DropFunction:
         return udfInfo.dropFunction((DropFunctionPlan) req);
+      case CreateSchemaTemplate:
+        return clusterSchemaInfo.createSchemaTemplate((CreateSchemaTemplatePlan) req);
       default:
         throw new UnknownPhysicalPlanTypeException(req.getType());
     }
