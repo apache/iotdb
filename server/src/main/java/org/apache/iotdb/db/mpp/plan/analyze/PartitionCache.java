@@ -104,7 +104,6 @@ public class PartitionCache {
 
   private final ReentrantReadWriteLock schemaPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock dataPartitionCacheLock = new ReentrantReadWriteLock();
-  private final ReentrantReadWriteLock replicaSetCacheLock = new ReentrantReadWriteLock();
 
   private final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
       new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
@@ -372,53 +371,46 @@ public class PartitionCache {
   // region replicaSet cache
   /** get regionReplicaSet from consensusGroupId */
   public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId consensusGroupId) {
-    replicaSetCacheLock.readLock().lock();
-    try {
-      if (groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
-        return groupIdToReplicaSetMap.get(consensusGroupId);
-      } else {
-        try (ConfigNodeClient client =
-            configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-          TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
-            updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
-          }
-        } catch (IOException | TException e) {
-          throw new StatementAnalyzeException(
-              "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
+    TRegionReplicaSet regionReplicaSet;
+    if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
+      try (ConfigNodeClient client =
+          configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
+          updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
         }
-        return null;
+        if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
+          throw new RuntimeException(
+              "Failed to get replicaSet of consensus group[id= " + consensusGroupId + "]");
+        }
+      } catch (IOException | TException e) {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
       }
-    } finally {
-      replicaSetCacheLock.readLock().unlock();
     }
+    regionReplicaSet = groupIdToReplicaSetMap.get(consensusGroupId);
+    if (null == regionReplicaSet) {
+      throw new RuntimeException(
+          "ReplicaSet of consensus group[id= " + consensusGroupId + "] is null.");
+    }
+    return regionReplicaSet;
   }
 
   /** update regionReplicaSetMap according to timestamp */
   public boolean updateGroupIdToReplicaSetMap(
       long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> map) {
-    replicaSetCacheLock.writeLock().lock();
-    try {
-      boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
-      // if timestamp is greater than latestUpdateTime, then update
-      if (result) {
-        groupIdToReplicaSetMap.clear();
-        groupIdToReplicaSetMap.putAll(map);
-      }
-      return result;
-    } finally {
-      replicaSetCacheLock.writeLock().unlock();
+    boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
+    // if timestamp is greater than latestUpdateTime, then update
+    if (result) {
+      groupIdToReplicaSetMap.clear();
+      groupIdToReplicaSetMap.putAll(map);
     }
+    return result;
   }
 
   /** invalid all replica Cache */
   public void invalidReplicaCache() {
-    replicaSetCacheLock.writeLock().lock();
-    try {
-      groupIdToReplicaSetMap.clear();
-    } finally {
-      replicaSetCacheLock.writeLock().unlock();
-    }
+    groupIdToReplicaSetMap.clear();
   }
 
   // endregion
@@ -539,6 +531,7 @@ public class PartitionCache {
           sgNameToQueryParamsMap.entrySet()) {
         if (!getStorageGroupDataPartition(dataPartitionMap, entry.getKey(), entry.getValue())) {
           CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
+          return null;
         }
       }
       logger.debug("[{} Cache] hit", DATA_PARTITION_CACHE_NAME);
@@ -615,7 +608,7 @@ public class PartitionCache {
       TTimePartitionSlot timePartitionSlot,
       Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot) {
     List<TConsensusGroupId> cacheConsensusGroupId = cachedTimePartitionSlot.get(timePartitionSlot);
-    if (null == cacheConsensusGroupId) {
+    if (null == cacheConsensusGroupId || 0 == cacheConsensusGroupId.size()) {
       logger.debug(
           "[{} Cache] miss when search time partition {}",
           DATA_PARTITION_CACHE_NAME,
