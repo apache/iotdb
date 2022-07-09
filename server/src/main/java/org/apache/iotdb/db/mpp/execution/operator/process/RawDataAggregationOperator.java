@@ -37,9 +37,8 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipToTimeRangePoints;
 
 /**
  * RawDataAggregationOperator is used to process raw data tsBlock input calculating using value
@@ -151,7 +150,7 @@ public class RawDataAggregationOperator implements ProcessOperator {
   }
 
   private boolean calculateNextAggregationResult() {
-    while (!calculateFromCachedData()) {
+    while (!calculateAggregationFromRawData(inputTsBlock, aggregators, curTimeRange, ascending)) {
       inputTsBlock = null;
 
       // NOTE: child.next() can only be invoked once
@@ -175,65 +174,5 @@ public class RawDataAggregationOperator implements ProcessOperator {
   private void updateResultTsBlock() {
     curTimeRange = null;
     appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
-  }
-
-  private boolean isCalculationDone() {
-    return (inputTsBlock != null
-            && (ascending
-                ? inputTsBlock.getEndTime() > curTimeRange.getMax()
-                : inputTsBlock.getEndTime() < curTimeRange.getMin()))
-        || isAllAggregatorsHasFinalResult(aggregators);
-  }
-
-  /** @return if already get the result */
-  private boolean calculateFromCachedData() {
-    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
-      return false;
-    }
-
-    // check if the batchData does not contain points in current interval
-    if (satisfied(inputTsBlock)) {
-      // skip points that cannot be calculated
-      if ((ascending && inputTsBlock.getStartTime() < curTimeRange.getMin())
-          || (!ascending && inputTsBlock.getStartTime() > curTimeRange.getMax())) {
-        inputTsBlock = skipToTimeRangePoints(inputTsBlock, curTimeRange, ascending);
-      }
-
-      int lastReadRowIndex = 0;
-      for (Aggregator aggregator : aggregators) {
-        // current agg method has been calculated
-        if (aggregator.hasFinalResult()) {
-          continue;
-        }
-
-        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
-      }
-      if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
-        inputTsBlock = null;
-      } else {
-        inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
-      }
-    }
-
-    // The result is calculated from the cache
-    return (inputTsBlock != null
-            && (ascending
-                ? inputTsBlock.getEndTime() > curTimeRange.getMax()
-                : inputTsBlock.getEndTime() < curTimeRange.getMin()))
-        || isAllAggregatorsHasFinalResult(aggregators);
-  }
-
-  /** check if the tsBlock does not contain points in current interval */
-  public boolean satisfied(TsBlock tsBlock) {
-    TsBlock.TsBlockSingleColumnIterator tsBlockIterator = tsBlock.getTsBlockSingleColumnIterator();
-    if (tsBlockIterator == null || !tsBlockIterator.hasNext()) {
-      return false;
-    }
-
-    return ascending
-        ? (tsBlockIterator.getEndTime() >= curTimeRange.getMin()
-            && tsBlockIterator.currentTime() <= curTimeRange.getMax())
-        : (tsBlockIterator.getEndTime() <= curTimeRange.getMax()
-            && tsBlockIterator.currentTime() >= curTimeRange.getMin());
   }
 }

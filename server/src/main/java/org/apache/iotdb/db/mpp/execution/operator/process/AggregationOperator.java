@@ -46,7 +46,6 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTim
 public class AggregationOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  private final boolean ascending;
 
   private final List<Operator> children;
   private final int inputOperatorsCount;
@@ -70,7 +69,6 @@ public class AggregationOperator implements ProcessOperator {
       GroupByTimeParameter groupByTimeParameter,
       boolean outputPartialTimeWindow) {
     this.operatorContext = operatorContext;
-    this.ascending = ascending;
     this.children = children;
     this.aggregators = aggregators;
 

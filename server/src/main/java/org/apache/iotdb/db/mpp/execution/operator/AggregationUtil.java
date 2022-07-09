@@ -24,11 +24,15 @@ import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
+
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipPointsToTimeRange;
 
 public class AggregationUtil {
 
@@ -84,5 +88,61 @@ public class AggregationUtil {
       }
     }
     return true;
+  }
+
+  /** @return if already get the result */
+  public static boolean calculateAggregationFromRawData(
+      TsBlock inputTsBlock,
+      List<Aggregator> aggregators,
+      TimeRange curTimeRange,
+      boolean ascending) {
+    if (inputTsBlock == null || inputTsBlock.isEmpty()) {
+      return false;
+    }
+
+    // check if the tsBlock does not contain points in current interval
+    if (satisfiedTimeRange(inputTsBlock, curTimeRange, ascending)) {
+      // skip points that cannot be calculated
+      if ((ascending && inputTsBlock.getStartTime() < curTimeRange.getMin())
+          || (!ascending && inputTsBlock.getStartTime() > curTimeRange.getMax())) {
+        inputTsBlock = skipPointsToTimeRange(inputTsBlock, curTimeRange, ascending);
+      }
+
+      int lastReadRowIndex = 0;
+      for (Aggregator aggregator : aggregators) {
+        // current agg method has been calculated
+        if (aggregator.hasFinalResult()) {
+          continue;
+        }
+
+        lastReadRowIndex = Math.max(lastReadRowIndex, aggregator.processTsBlock(inputTsBlock));
+      }
+      if (lastReadRowIndex >= inputTsBlock.getPositionCount()) {
+        inputTsBlock = null;
+      } else {
+        inputTsBlock = inputTsBlock.subTsBlock(lastReadRowIndex);
+      }
+    }
+
+    // judge whether the calculation finished
+    boolean isTsBlockOutOfBound =
+        inputTsBlock != null
+            && (ascending
+                ? inputTsBlock.getEndTime() > curTimeRange.getMax()
+                : inputTsBlock.getEndTime() < curTimeRange.getMin());
+    return isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound;
+  }
+
+  public static boolean satisfiedTimeRange(
+      TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
+    if (tsBlock == null || tsBlock.isEmpty()) {
+      return false;
+    }
+
+    return ascending
+        ? (tsBlock.getEndTime() >= curTimeRange.getMin()
+            && tsBlock.getStartTime() <= curTimeRange.getMax())
+        : (tsBlock.getEndTime() <= curTimeRange.getMax()
+            && tsBlock.getStartTime() >= curTimeRange.getMin());
   }
 }

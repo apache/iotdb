@@ -24,8 +24,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 public class TsBlockUtil {
 
-  // skip points that cannot be calculated
-  public static TsBlock skipToTimeRangePoints(
+  /** skip points that cannot be calculated */
+  public static TsBlock skipPointsToTimeRange(
       TsBlock tsBlock, TimeRange targetTimeRange, boolean ascending) {
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     long targetTime = ascending ? targetTimeRange.getMin() : targetTimeRange.getMax();
@@ -48,41 +48,6 @@ public class TsBlockUtil {
         }
       } else if (timeColumn.getLongWithoutCheck(mid) == targetTime) {
         return tsBlock.subTsBlock(mid);
-      }
-    }
-    return tsBlock.subTsBlock(left);
-  }
-
-  public static TsBlock skipOutOfTimeRangePoints(
-      TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
-    TimeColumn timeColumn = tsBlock.getTimeColumn();
-    long targetTime = ascending ? curTimeRange.getMax() : curTimeRange.getMin();
-    if (timeColumn.getPositionCount() == 1) {
-      long checkedTime = timeColumn.getLongWithoutCheck(0);
-      return tsBlock.subTsBlock(
-          ((ascending && checkedTime <= targetTime) || (!ascending && checkedTime >= targetTime))
-              ? 1
-              : 0);
-    }
-
-    int left = 0, right = timeColumn.getPositionCount() - 1, mid;
-    // if ascending, find the first greater than targetTime
-    // else, find the first less than targetTime
-    while (left < right) {
-      mid = (left + right) >> 1;
-      long checkedTime = timeColumn.getLongWithoutCheck(mid);
-      if (ascending) {
-        if (checkedTime <= targetTime) {
-          left = mid + 1;
-        } else {
-          right = mid;
-        }
-      } else {
-        if (checkedTime >= targetTime) {
-          left = mid + 1;
-        } else {
-          right = mid;
-        }
       }
     }
     return tsBlock.subTsBlock(left);
