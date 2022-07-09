@@ -79,6 +79,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1431,6 +1434,43 @@ public class Analyzer {
         analysis.setFinishQueryAfterAnalyze(true);
       }
 
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateSchemaTemplate(
+        CreateSchemaTemplateStatement createTemplateStatement, MPPQueryContext context) {
+
+      context.setQueryType(QueryType.WRITE);
+      List<List<String>> measurementsList = createTemplateStatement.getMeasurements();
+      for (List measurements : measurementsList) {
+        Set<String> measurementsSet = new HashSet<>(measurements);
+        if (measurementsSet.size() < measurements.size()) {
+          throw new SemanticException(
+              "Measurement under an aligned device is not allowed to have the same measurement name");
+        }
+      }
+      Analysis analysis = new Analysis();
+      analysis.setStatement(createTemplateStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowNodesInSchemaTemplate(
+        ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement,
+        MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showNodesInSchemaTemplateStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showNodesInSchemaTemplate);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowSchemaTemplate(
+        ShowSchemaTemplateStatement showSchemaTemplateStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showSchemaTemplateStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showSchemaTemplate);
       return analysis;
     }
   }
