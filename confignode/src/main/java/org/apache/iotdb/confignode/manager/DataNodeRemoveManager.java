@@ -547,7 +547,8 @@ public class DataNodeRemoveManager {
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
             .addToRegionConsensusGroup(
-                regionReplicaNodes, regionId, newNode, storageGroup, Integer.MAX_VALUE);
+                // TODO replace with real ttl
+                regionReplicaNodes, regionId, newNode, storageGroup, Long.MAX_VALUE);
     LOGGER.debug("send add region {} consensus group to {}", regionId, newNode);
     if (isFailed(status)) {
       LOGGER.error(
