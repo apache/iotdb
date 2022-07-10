@@ -27,10 +27,14 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GetRegionInfoListPlan extends ConfigPhysicalPlan {
 
+  private boolean filterByStorageGroup = false;
   private TConsensusGroupType regionType;
+  private List<String> storageGroups = new ArrayList<>();
 
   public GetRegionInfoListPlan() {
     super(ConfigPhysicalPlanType.GetRegionInfoList);
@@ -49,14 +53,34 @@ public class GetRegionInfoListPlan extends ConfigPhysicalPlan {
     this.regionType = regionType;
   }
 
+  public List<String> getStorageGroups() {
+    return storageGroups;
+  }
+
+  public void setStorageGroups(List<String> storageGroups) {
+    this.storageGroups = storageGroups;
+  }
+
+  public boolean isFilterByStorageGroup() {
+    return filterByStorageGroup;
+  }
+
+  public void setFilterByStorageGroup(boolean filterByStorageGroup) {
+    this.filterByStorageGroup = filterByStorageGroup;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
     ReadWriteIOUtils.write(regionType.ordinal(), stream);
+    ReadWriteIOUtils.write(filterByStorageGroup, stream);
+    ReadWriteIOUtils.writeStringList(storageGroups, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     regionType = TConsensusGroupType.values()[ReadWriteIOUtils.readInt(buffer)];
+    filterByStorageGroup = ReadWriteIOUtils.readBool(buffer);
+    storageGroups = ReadWriteIOUtils.readStringList(buffer);
   }
 }

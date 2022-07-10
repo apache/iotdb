@@ -601,6 +601,16 @@ public class ConfigPhysicalPlanSerDeTest {
         (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0.getType(), req1.getType());
     Assert.assertEquals(req0.getRegionType(), req1.getRegionType());
+    req0.setFilterByStorageGroup(true);
+    final List<String> sgList = Collections.singletonList("root.sg1, root.sg2, root.*");
+    req0.setStorageGroups(new ArrayList<>(sgList));
+    GetRegionInfoListPlan req2 =
+        (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0.getType(), req1.getType());
+    Assert.assertEquals(req0.getRegionType(), req1.getRegionType());
+    for (int i = 0; i < sgList.size(); i++) {
+      Assert.assertEquals(sgList.get(i), req2.getStorageGroups().get(i));
+    }
   }
 
   @Test

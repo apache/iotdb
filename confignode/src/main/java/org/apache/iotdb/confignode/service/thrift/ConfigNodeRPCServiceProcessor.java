@@ -500,6 +500,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TShowRegionResp showRegion(TShowRegionReq showRegionReq) throws TException {
     GetRegionInfoListPlan getRegionInfoListPlan =
         new GetRegionInfoListPlan(showRegionReq.getConsensusGroupType());
+    final List<String> storageGroups = showRegionReq.getStorageGroups();
+    if (storageGroups != null && !storageGroups.isEmpty()) {
+      getRegionInfoListPlan.setStorageGroups(storageGroups);
+      getRegionInfoListPlan.setFilterByStorageGroup(true);
+    }
     RegionInfoListResp dataSet =
         (RegionInfoListResp) configManager.showRegion(getRegionInfoListPlan);
     TShowRegionResp showRegionResp = new TShowRegionResp();

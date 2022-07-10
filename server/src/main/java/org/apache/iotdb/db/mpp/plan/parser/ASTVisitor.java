@@ -2305,6 +2305,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       showRegionStatement.setRegionType(null);
     }
+
+    if (ctx.OF() != null) {
+      List<PartialPath> storageGroups = null;
+      if (ctx.prefixPath(0) != null) {
+        storageGroups = new ArrayList<>();
+        for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+          storageGroups.add(parsePrefixPath(prefixPathContext));
+        }
+      }
+      showRegionStatement.setStorageGroups(storageGroups);
+    } else {
+      showRegionStatement.setStorageGroups(null);
+    }
     return showRegionStatement;
   }
 
