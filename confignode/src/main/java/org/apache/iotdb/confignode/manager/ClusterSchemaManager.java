@@ -384,6 +384,11 @@ public class ClusterSchemaManager {
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
+  /**
+   * show path set template xx
+   * @param templateName
+   * @return
+   */
   public List<String> getPathsSetTemplate(String templateName) {
     return new ArrayList<>(2);
   }
