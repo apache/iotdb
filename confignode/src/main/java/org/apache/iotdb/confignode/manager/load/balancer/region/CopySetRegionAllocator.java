@@ -42,9 +42,11 @@ public class CopySetRegionAllocator implements IRegionAllocator {
 
   private int maxId = 0;
   private int intersectionSize = 0;
-  private List<TDataNodeLocation> weightList;
+  private final List<TDataNodeLocation> weightList;
 
-  public CopySetRegionAllocator() {}
+  public CopySetRegionAllocator() {
+    this.weightList = new ArrayList<>();
+  }
 
   @Override
   public TRegionReplicaSet allocateRegion(
@@ -80,7 +82,7 @@ public class CopySetRegionAllocator implements IRegionAllocator {
       List<TDataNodeInfo> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions) {
 
     // TODO: The remaining disk capacity of DataNode can also be calculated into the weightList
-    this.weightList = new ArrayList<>();
+    this.weightList.clear();
     int maximumRegionNum = 0;
     Map<TDataNodeLocation, Integer> countMap = new HashMap<>();
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
