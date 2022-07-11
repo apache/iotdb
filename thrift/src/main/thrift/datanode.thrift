@@ -39,7 +39,7 @@ struct TMigrateRegionReq {
     1: required common.TConsensusGroupId regionId
     2: required common.TDataNodeLocation fromNode
     3: required common.TDataNodeLocation toNode
-    4: optional common.TDataNodeLocation newLoader
+    4: optional common.TDataNodeLocation newLeaderNode
 }
 
 struct TRegionLeaderChangeReq {

@@ -109,7 +109,7 @@ public class DataNodeRemoveManager {
     // 4. When Data Node's state or Region's state change, then modify the request and write it to
     // Consensus.
     // 5. TODO if leader change?
-    execRequestFormQueue();
+    execRequestFromQueue();
   }
 
   private void createWaitLeaderThread() {
@@ -173,7 +173,7 @@ public class DataNodeRemoveManager {
     }
   }
 
-  private void execRequestFormQueue() {
+  private void execRequestFromQueue() {
     if (workThread != null) {
       workThread.start();
     }
@@ -242,8 +242,8 @@ public class DataNodeRemoveManager {
   }
 
   /**
-   * exec the request loop all removed node 1: brocast it to cluster 2: loop region on it 2.1 change
-   * region leader 2.2 migrate region 3 stop the node or roll back
+   * exec the request loop all removed node 1: brocast it to cluster 2: loop region on it and
+   * migrate region 3 stop the node or roll back
    *
    * @param req RemoveDataNodeReq
    */
@@ -485,6 +485,7 @@ public class DataNodeRemoveManager {
       return status;
     }
 
+    // TODO if region replica is 1, the new leader is null, it also need to migrate
     Optional<TDataNodeLocation> newLeaderNode =
         regionReplicaNodes.stream().filter(e -> !e.equals(node)).findAny();
     if (!newLeaderNode.isPresent()) {

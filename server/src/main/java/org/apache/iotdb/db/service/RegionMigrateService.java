@@ -100,7 +100,7 @@ public class RegionMigrateService implements IService {
    */
   public synchronized boolean submitRegionMigrateTask(TMigrateRegionReq req) {
     return submitRegionMigrateTask(
-        req.getFromNode(), req.getRegionId(), req.getToNode(), req.getNewLoader());
+        req.getFromNode(), req.getRegionId(), req.getToNode(), req.getNewLeaderNode());
   }
 
   @Override
