@@ -141,7 +141,7 @@ public class PartitionCache {
     if (!firstTryResult) {
       try {
         // when local cache not have, then try to fetch all storage group from config node
-        getAllStorageGroupFromConfigNode();
+        fetchStorageGroupAndUpdateCache();
         // second try to hit storage group with failed devices;
         List<String> failedDevices = new ArrayList<>();
         boolean secondTryResult =
@@ -194,7 +194,7 @@ public class PartitionCache {
     if (!firstTryResult) {
       try {
         // when local cache not have, then try to fetch all storage group from config node
-        getAllStorageGroupFromConfigNode();
+        fetchStorageGroupAndUpdateCache();
         // second try to hit storage group with failed devices;
         List<String> failedDevices = new ArrayList<>();
         boolean secondTryResult =
@@ -243,7 +243,7 @@ public class PartitionCache {
   }
 
   /** get all storage group from confignode and update storage group cache */
-  private void getAllStorageGroupFromConfigNode() throws IOException, TException {
+  private void fetchStorageGroupAndUpdateCache() throws IOException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       TStorageGroupSchemaResp storageGroupSchemaResp =
