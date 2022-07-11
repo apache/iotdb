@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
+import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -45,6 +46,8 @@ public class Aggregator {
   public Aggregator(Accumulator accumulator, AggregationStep step) {
     this.accumulator = accumulator;
     this.step = step;
+    this.inputLocationList =
+        Collections.singletonList(new InputLocation[] {new InputLocation(0, 0)});
   }
 
   // Used for aggregateOperator
