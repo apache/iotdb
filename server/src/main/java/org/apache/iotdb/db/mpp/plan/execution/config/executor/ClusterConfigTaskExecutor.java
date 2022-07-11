@@ -77,6 +77,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
@@ -338,6 +339,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TShowRegionResp showRegionResp = new TShowRegionResp();
     TShowRegionReq showRegionReq = new TShowRegionReq();
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
+    if (showRegionStatement.getStorageGroups() == null) {
+      showRegionReq.setStorageGroups(null);
+    } else {
+      showRegionReq.setStorageGroups(
+          showRegionStatement.getStorageGroups().stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toList()));
+    }
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       showRegionResp = client.showRegion(showRegionReq);
