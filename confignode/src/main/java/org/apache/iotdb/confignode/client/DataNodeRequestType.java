@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.storagegroup;
 
-public enum TsFileResourceStatus {
-  UNCLOSED,
-  CLOSED,
-  COMPACTION_CANDIDATE,
-  COMPACTING
+package org.apache.iotdb.confignode.client;
+
+public enum DataNodeRequestType {
+  deleteRegions,
+  invalidatePartitionCache,
+  invalidatePermissionCache,
+  invalidateSchemaCache;
 }
