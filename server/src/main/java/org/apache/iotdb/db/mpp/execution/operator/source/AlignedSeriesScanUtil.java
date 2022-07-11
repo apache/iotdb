@@ -42,8 +42,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
   private final List<TSDataType> dataTypes;
@@ -63,7 +61,6 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
   @Override
   protected Statistics currentFileStatistics(int index) throws IOException {
-    checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
     if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
       throw new IOException("Can only get statistics by index from alignedTimeSeriesMetaData");
     }
