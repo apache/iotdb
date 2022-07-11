@@ -24,8 +24,11 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class StorageGroupCacheResult<V> {
+  /** the result */
   private boolean success = true;
-  private List<String> failedDevices = new ArrayList<>();
+  /** the list of devices that miss */
+  private List<String> missedDevices = new ArrayList<>();
+  /** result map, Notice: this map will be empty when failed */
   protected Map<String, V> map = new HashMap<>();;
 
   public boolean isSuccess() {
@@ -36,22 +39,22 @@ public abstract class StorageGroupCacheResult<V> {
     this.success = success;
   }
 
-  public List<String> getFailedDevices() {
-    return failedDevices;
+  public List<String> getMissedDevices() {
+    return missedDevices;
   }
 
-  public void addFailedDevice(String failedDevice) {
-    this.failedDevices.add(failedDevice);
+  public void addMissedDevice(String missedDevice) {
+    this.missedDevices.add(missedDevice);
   }
 
   public Map<String, V> getMap() {
     return map;
   }
 
-  public abstract void put(String device, String storageGroup);
+  public abstract void put(String device, String storageGroupName);
 
-  /** clear when failed */
-  public void clear() {
+  /** set failed and clear the map */
+  public void setFailed() {
     this.success = false;
     this.map = new HashMap<>();
   }
@@ -59,7 +62,7 @@ public abstract class StorageGroupCacheResult<V> {
   /** reset storageGroupCacheResult */
   public void reset() {
     this.success = true;
-    this.failedDevices = new ArrayList<>();
+    this.missedDevices = new ArrayList<>();
     this.map = new HashMap<>();
   }
 }
