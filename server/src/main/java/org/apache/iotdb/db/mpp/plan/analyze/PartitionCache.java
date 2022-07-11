@@ -155,7 +155,7 @@ public class PartitionCache {
                     new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
             storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
           }
-          createNotExistedStorageGroup(storageGroupNamesNeedCreated);
+          createStorageGroupAndUpdateCache(storageGroupNamesNeedCreated);
           // third try to hit cache
           boolean thirdTryResult =
               getStorageGroupToDeviceMap(
@@ -208,7 +208,7 @@ public class PartitionCache {
                     new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
             storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
           }
-          createNotExistedStorageGroup(storageGroupNamesNeedCreated);
+          createStorageGroupAndUpdateCache(storageGroupNamesNeedCreated);
           // third try to hit cache
           boolean thirdTryResult =
               getDeviceToStorageGroupMap(
@@ -258,10 +258,11 @@ public class PartitionCache {
   }
 
   /** create not existed storage group and update storage group cache */
-  private void createNotExistedStorageGroup(Set<String> storageGroupNamesNeedCreated)
+  private void createStorageGroupAndUpdateCache(Set<String> storageGroupNamesNeedCreated)
       throws IOException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      storageGroupCacheLock.writeLock().lock();
       Set<String> successFullyCreatedStorageGroup = new HashSet<>();
       for (String storageGroupName : storageGroupNamesNeedCreated) {
         TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
@@ -280,6 +281,8 @@ public class PartitionCache {
         }
       }
       updateStorageCache(storageGroupNamesNeedCreated);
+    } finally {
+      storageGroupCacheLock.writeLock().unlock();
     }
   }
 
@@ -392,7 +395,7 @@ public class PartitionCache {
    *
    * @param storageGroupNames the storage groups that need to invalid
    */
-  public void invalidStorageGroupCache(List<String> storageGroupNames) {
+  public void removeFromStorageGroupCache(List<String> storageGroupNames) {
     storageGroupCacheLock.writeLock().lock();
     try {
       for (String storageGroupName : storageGroupNames) {
@@ -404,7 +407,7 @@ public class PartitionCache {
   }
 
   /** invalid all storage group cache */
-  public void invalidAllStorageGroupCache() {
+  public void removeFromStorageGroupCache() {
     storageGroupCacheLock.writeLock().lock();
     try {
       storageGroupCache.clear();
@@ -426,19 +429,21 @@ public class PartitionCache {
   public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId consensusGroupId) {
     TRegionReplicaSet regionReplicaSet;
     if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
-      try (ConfigNodeClient client =
-          configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-        TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
-          updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
+      synchronized (groupIdToReplicaSetMap) {
+        try (ConfigNodeClient client =
+            configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+          TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
+          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
+            updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
+          }
+          if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
+            throw new RuntimeException(
+                "Failed to get replicaSet of consensus group[id= " + consensusGroupId + "]");
+          }
+        } catch (IOException | TException e) {
+          throw new StatementAnalyzeException(
+              "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
         }
-        if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
-          throw new RuntimeException(
-              "Failed to get replicaSet of consensus group[id= " + consensusGroupId + "]");
-        }
-      } catch (IOException | TException e) {
-        throw new StatementAnalyzeException(
-            "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
       }
     }
     regionReplicaSet = groupIdToReplicaSetMap.get(consensusGroupId);
@@ -468,7 +473,7 @@ public class PartitionCache {
   }
 
   /** invalid all replica Cache */
-  public void invalidReplicaCache() {
+  public void invalidReplicaSetCache() {
     groupIdToReplicaSetMap.clear();
   }
 
@@ -792,10 +797,10 @@ public class PartitionCache {
 
   public void invalidAllCache() {
     logger.debug("[Partition Cache] invalid");
-    invalidAllStorageGroupCache();
+    removeFromStorageGroupCache();
     invalidAllDataPartitionCache();
     invalidAllSchemaPartitionCache();
-    invalidReplicaCache();
+    invalidReplicaSetCache();
     logger.debug("[Partition Cache] is invalid:{}", this);
   }
 
