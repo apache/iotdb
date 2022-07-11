@@ -948,6 +948,8 @@ public class IoTDBConfig {
   /** Memory allocated for LastCache */
   private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
 
+  private String readConsistencyLevel = "strong";
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -3008,5 +3010,13 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForLastCache(long allocateMemoryForLastCache) {
     this.allocateMemoryForLastCache = allocateMemoryForLastCache;
+  }
+
+  public String getReadConsistencyLevel() {
+    return readConsistencyLevel;
+  }
+
+  public void setReadConsistencyLevel(String readConsistencyLevel) {
+    this.readConsistencyLevel = readConsistencyLevel;
   }
 }

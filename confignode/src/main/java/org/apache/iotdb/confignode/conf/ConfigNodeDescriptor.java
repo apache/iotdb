@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
@@ -227,7 +228,27 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
 
-      conf.setRoutingPolicy(properties.getProperty("routing_policy", conf.getRoutingPolicy()));
+      String routingPolicy = properties.getProperty("routing_policy", conf.getRoutingPolicy());
+      if (routingPolicy.equals(RouteBalancer.greedyPolicy)
+          || routingPolicy.equals(RouteBalancer.leaderPolicy)) {
+        conf.setRoutingPolicy(routingPolicy);
+      } else {
+        throw new IOException(
+            String.format(
+                "Unknown routing_policy: %s, please set to \"leader\" or \"greedy\"",
+                routingPolicy));
+      }
+
+      String readConsistencyLevel =
+          properties.getProperty("read_consistency_level", conf.getReadConsistencyLevel());
+      if (readConsistencyLevel.equals("strong") || readConsistencyLevel.equals("weak")) {
+        conf.setReadConsistencyLevel(readConsistencyLevel);
+      } else {
+        throw new IOException(
+            String.format(
+                "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+                readConsistencyLevel));
+      }
 
       // commons
       commonDescriptor.loadCommonProps(properties);

@@ -217,6 +217,14 @@ public class DataNode implements DataNodeMBean {
                     dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass(),
                     TConsensusGroupType.SchemaRegion);
           }
+
+          config.setSeriesPartitionExecutorClass(
+              dataNodeRegisterResp.globalConfig.getSeriesPartitionExecutorClass());
+          config.setSeriesPartitionSlotNum(
+              dataNodeRegisterResp.globalConfig.getSeriesPartitionSlotNum());
+          config.setReadConsistencyLevel(
+              dataNodeRegisterResp.globalConfig.getReadConsistencyLevel());
+
           logger.info("Register to the cluster successfully");
           return;
         }
