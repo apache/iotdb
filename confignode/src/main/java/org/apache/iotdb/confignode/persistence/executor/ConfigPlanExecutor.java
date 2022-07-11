@@ -321,7 +321,7 @@ public class ConfigPlanExecutor {
   private DataSet getRegionInfoList(ConfigPhysicalPlan req) {
     final GetRegionInfoListPlan getRegionInfoListPlan = (GetRegionInfoListPlan) req;
     TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
-    if (showRegionReq.isSetStorageGroups()) {
+    if (showRegionReq != null && showRegionReq.isSetStorageGroups()) {
       final List<String> storageGroups = showRegionReq.getStorageGroups();
       final List<String> matchedStorageGroups =
           clusterSchemaInfo.getMatchedStorageGroupSchemasByName(storageGroups).values().stream()
