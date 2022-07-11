@@ -1009,12 +1009,10 @@ public class ConfigManager implements IManager {
   @Override
   public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) {
     TSStatus status = confirmLeader();
-    TGetPathsSetTemplatesResp resp = new TGetPathsSetTemplatesResp();
-    resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<String> paths = clusterSchemaManager.getPathsSetTemplate(req);
-      resp.setPathList(paths);
+      return clusterSchemaManager.getPathsSetTemplate(req);
+    } else {
+      return new TGetPathsSetTemplatesResp(status);
     }
-    return resp;
   }
 }

@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -394,14 +395,18 @@ public class ClusterSchemaManager {
    * @param templateName
    * @return
    */
-  public List<String> getPathsSetTemplate(String templateName) {
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName) {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
-    PathInfoResp resp =
+    PathInfoResp pathInfoResp =
         (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
-    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return resp.getPathList();
+    if (pathInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      TGetPathsSetTemplatesResp resp = new TGetPathsSetTemplatesResp();
+      resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      resp.setPathList(pathInfoResp.getPathList());
+      return resp;
+    } else {
+      return new TGetPathsSetTemplatesResp(pathInfoResp.getStatus());
     }
-    return null;
   }
 
   private NodeManager getNodeManager() {
