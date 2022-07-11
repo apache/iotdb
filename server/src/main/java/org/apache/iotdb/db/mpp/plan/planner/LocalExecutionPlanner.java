@@ -585,7 +585,9 @@ public class LocalExecutionPlanner {
                               o.getAggregationType(),
                               node.getSeriesPath().getSeriesType(),
                               ascending),
-                          o.getStep())));
+                          o.getStep(),
+                          Collections.singletonList(
+                              new InputLocation[] {new InputLocation(0, 0)}))));
       SeriesAggregationScanOperator aggregateScanOperator =
           new SeriesAggregationScanOperator(
               node.getPlanNodeId(),
