@@ -40,8 +40,8 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTim
 
 /**
  * AggregationOperator can process the situation: aggregation of intermediate aggregate result, it
- * will output one result based on time interval. One intermediate tsBlock input will only contain
- * the result of one time interval exactly.
+ * will output one tsBlock contain many results on aggregation time intervals. One intermediate
+ * tsBlock input will contain the result of many time intervals.
  */
 public class AggregationOperator implements ProcessOperator {
 

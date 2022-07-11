@@ -32,28 +32,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
 
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipPointsToTimeRange;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
 
 public class AggregationUtil {
 
-  public static void appendAggregationResult(
-      TsBlockBuilder tsBlockBuilder,
-      List<? extends Aggregator> aggregators,
-      ITimeRangeIterator timeRangeIterator) {
-    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(timeRangeIterator.currentOutputTime());
-    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
-    for (Aggregator aggregator : aggregators) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
-      columnBuilder[0] = columnBuilders[columnIndex++];
-      if (columnBuilder.length > 1) {
-        columnBuilder[1] = columnBuilders[columnIndex++];
-      }
-      aggregator.outputResult(columnBuilder);
-    }
-    tsBlockBuilder.declarePosition();
+  private AggregationUtil() {
+    // forbidding instantiation
   }
 
   /**
@@ -81,16 +65,11 @@ public class AggregationUtil {
     }
   }
 
-  public static boolean isAllAggregatorsHasFinalResult(List<Aggregator> aggregators) {
-    for (Aggregator aggregator : aggregators) {
-      if (!aggregator.hasFinalResult()) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  /** @return if already get the result */
+  /**
+   * Calculate aggregation value on the time range from the tsBlock containing raw data.
+   *
+   * @return whether the aggregation value of the current time range has been calculated
+   */
   public static boolean calculateAggregationFromRawData(
       TsBlock inputTsBlock,
       List<Aggregator> aggregators,
@@ -105,7 +84,7 @@ public class AggregationUtil {
       // skip points that cannot be calculated
       if ((ascending && inputTsBlock.getStartTime() < curTimeRange.getMin())
           || (!ascending && inputTsBlock.getStartTime() > curTimeRange.getMax())) {
-        inputTsBlock = skipPointsToTimeRange(inputTsBlock, curTimeRange, ascending);
+        inputTsBlock = skipPointsOutOfTimeRange(inputTsBlock, curTimeRange, ascending);
       }
 
       int lastReadRowIndex = 0;
@@ -133,6 +112,28 @@ public class AggregationUtil {
     return isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound;
   }
 
+  /** Append a row of aggregation results to the result tsBlock. */
+  public static void appendAggregationResult(
+      TsBlockBuilder tsBlockBuilder,
+      List<? extends Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator) {
+    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
+    // Use start time of current time range as time column
+    timeColumnBuilder.writeLong(timeRangeIterator.currentOutputTime());
+    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+    int columnIndex = 0;
+    for (Aggregator aggregator : aggregators) {
+      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
+      columnBuilder[0] = columnBuilders[columnIndex++];
+      if (columnBuilder.length > 1) {
+        columnBuilder[1] = columnBuilders[columnIndex++];
+      }
+      aggregator.outputResult(columnBuilder);
+    }
+    tsBlockBuilder.declarePosition();
+  }
+
+  /** @return whether the tsBlock contains the data of the current time window */
   public static boolean satisfiedTimeRange(
       TsBlock tsBlock, TimeRange curTimeRange, boolean ascending) {
     if (tsBlock == null || tsBlock.isEmpty()) {
@@ -144,5 +145,14 @@ public class AggregationUtil {
             && tsBlock.getStartTime() <= curTimeRange.getMax())
         : (tsBlock.getEndTime() <= curTimeRange.getMax()
             && tsBlock.getStartTime() >= curTimeRange.getMin());
+  }
+
+  public static boolean isAllAggregatorsHasFinalResult(List<Aggregator> aggregators) {
+    for (Aggregator aggregator : aggregators) {
+      if (!aggregator.hasFinalResult()) {
+        return false;
+      }
+    }
+    return true;
   }
 }

@@ -24,8 +24,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 
 public class TsBlockUtil {
 
-  /** skip points that cannot be calculated */
-  public static TsBlock skipPointsToTimeRange(
+  private TsBlockUtil() {
+    // forbidding instantiation
+  }
+
+  /** Skip lines at the beginning of the tsBlock that are not in the time range. */
+  public static TsBlock skipPointsOutOfTimeRange(
       TsBlock tsBlock, TimeRange targetTimeRange, boolean ascending) {
     TimeColumn timeColumn = tsBlock.getTimeColumn();
     long targetTime = ascending ? targetTimeRange.getMin() : targetTimeRange.getMax();

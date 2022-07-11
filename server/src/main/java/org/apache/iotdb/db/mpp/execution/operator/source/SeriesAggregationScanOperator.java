@@ -32,7 +32,7 @@ import java.util.Set;
  * This operator is responsible to do the aggregation calculation for one series based on global
  * time range and time split parameter.
  *
- * <p>Every time next() is invoked, one tsBlock which contains current time window will be returned.
+ * <p>Every time next() is invoked, one tsBlock which contains many time windows will be returned.
  * In sliding window situation, current time window is a pre-aggregation window. If there is no time
  * split parameter, i.e. aggregation without groupBy, just one tsBlock will be returned.
  */

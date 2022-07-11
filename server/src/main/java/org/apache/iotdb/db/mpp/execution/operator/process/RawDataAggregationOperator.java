@@ -36,7 +36,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calcula
  * <p>Since raw data query with value filter is processed by FilterOperator above TimeJoinOperator,
  * there we can see RawDataAggregateOperator as a one-to-one(one input, ont output) operator.
  *
- * <p>Return aggregation result in one time interval once.
+ * <p>Return aggregation result in many time intervals once.
  */
 public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
