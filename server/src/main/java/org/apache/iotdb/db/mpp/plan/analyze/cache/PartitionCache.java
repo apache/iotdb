@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.plan.analyze;
+package org.apache.iotdb.db.mpp.plan.analyze.cache;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -120,109 +120,42 @@ public class PartitionCache {
   // region storage group cache
 
   /**
-   * get storage group to device map in three try
+   * get storage group to device map
    *
    * @param devicePaths the devices that need to match
    * @param isAutoCreate whether auto create storage group when device miss
-   * @return storage group to devices map
    */
   public Map<String, List<String>> getStorageGroupToDevice(
       List<String> devicePaths, boolean isAutoCreate) {
-    Map<String, List<String>> storageGroupToDeviceMap = new HashMap<>();
-    // miss when devicePath contains *
-    for (String devicePath : devicePaths) {
-      if (devicePath.contains("*")) {
-        return storageGroupToDeviceMap;
-      }
-    }
-    // first try to hit storage group in fast-fail way
-    boolean firstTryResult =
-        getStorageGroupToDeviceMap(devicePaths, storageGroupToDeviceMap, new ArrayList<>(), true);
-    if (!firstTryResult) {
-      try {
-        // when local cache not have, then try to fetch all storage group from config node
-        fetchStorageGroupAndUpdateCache();
-        // second try to hit storage group with failed devices;
-        List<String> failedDevices = new ArrayList<>();
-        boolean secondTryResult =
-            getStorageGroupToDeviceMap(devicePaths, storageGroupToDeviceMap, failedDevices, false);
-        if (!secondTryResult && isAutoCreate) {
-          // try to auto create storage group of failed device
-          Set<String> storageGroupNamesNeedCreated = new HashSet<>();
-          for (String devicePath : failedDevices) {
-            PartialPath storageGroupNameNeedCreated =
-                MetaUtils.getStorageGroupPathByLevel(
-                    new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
-            storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
+    StorageGroupCacheResult<List<String>> result =
+        new StorageGroupCacheResult<List<String>>() {
+          @Override
+          public void put(String device, String storageGroup) {
+            map.computeIfAbsent(storageGroup, k -> new ArrayList<>());
+            map.get(storageGroup).add(device);
           }
-          createStorageGroupAndUpdateCache(storageGroupNamesNeedCreated);
-          // third try to hit cache
-          boolean thirdTryResult =
-              getStorageGroupToDeviceMap(
-                  devicePaths, storageGroupToDeviceMap, new ArrayList<>(), false);
-          if (!thirdTryResult) {
-            throw new StatementAnalyzeException("Failed to get Storage Group Map in three try.");
-          }
-        }
-      } catch (TException | MetadataException | IOException e) {
-        throw new StatementAnalyzeException(
-            "An error occurred when executing getStorageGroupToDevice():" + e.getMessage());
-      }
-    }
-    return storageGroupToDeviceMap;
+        };
+    getStorageGroupCacheResult(result, devicePaths, isAutoCreate);
+    return result.getMap();
   }
 
   /**
-   * get storage group to device map in three try
+   * get device to storage group map
    *
    * @param devicePaths the devices that need to match
    * @param isAutoCreate whether auto create storage group when device miss
-   * @return device to storage group map
    */
   public Map<String, String> getDeviceToStorageGroup(
       List<String> devicePaths, boolean isAutoCreate) {
-    Map<String, String> deviceToStorageGroupMap = new HashMap<>();
-    // miss when devicePath contains *
-    for (String devicePath : devicePaths) {
-      if (devicePath.contains("*")) {
-        return deviceToStorageGroupMap;
-      }
-    }
-    // first try to hit storage group in fast-fail way
-    boolean firstTryResult =
-        getDeviceToStorageGroupMap(devicePaths, deviceToStorageGroupMap, new ArrayList<>(), true);
-    if (!firstTryResult) {
-      try {
-        // when local cache not have, then try to fetch all storage group from config node
-        fetchStorageGroupAndUpdateCache();
-        // second try to hit storage group with failed devices;
-        List<String> failedDevices = new ArrayList<>();
-        boolean secondTryResult =
-            getDeviceToStorageGroupMap(devicePaths, deviceToStorageGroupMap, failedDevices, false);
-        if (!secondTryResult && isAutoCreate) {
-          // try to auto create storage group of failed device
-          Set<String> storageGroupNamesNeedCreated = new HashSet<>();
-          for (String devicePath : failedDevices) {
-            PartialPath storageGroupNameNeedCreated =
-                MetaUtils.getStorageGroupPathByLevel(
-                    new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
-            storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
+    StorageGroupCacheResult<String> result =
+        new StorageGroupCacheResult<String>() {
+          @Override
+          public void put(String device, String storageGroup) {
+            map.put(device, storageGroup);
           }
-          createStorageGroupAndUpdateCache(storageGroupNamesNeedCreated);
-          // third try to hit cache
-          boolean thirdTryResult =
-              getDeviceToStorageGroupMap(
-                  devicePaths, deviceToStorageGroupMap, new ArrayList<>(), true);
-          if (!thirdTryResult) {
-            throw new StatementAnalyzeException("Failed to get Storage Group Map in three try.");
-          }
-        }
-      } catch (TException | MetadataException | IOException e) {
-        throw new StatementAnalyzeException(
-            "An error occurred when executing getDeviceToStorageGroup():" + e.getMessage());
-      }
-    }
-    return deviceToStorageGroupMap;
+        };
+    getStorageGroupCacheResult(result, devicePaths, isAutoCreate);
+    return result.getMap();
   }
 
   /**
@@ -287,92 +220,87 @@ public class PartitionCache {
   }
 
   /**
-   * get device to storage group map
+   * get storage group map
    *
+   * @param result contains result(boolean), failed devices and the map
    * @param devicePaths the devices that need to match
-   * @param deviceToStorageGroupMap the result map that match device to storage group, return empty
-   *     when miss
-   * @param failedDevices the devices that failed to match
    * @param failFast if true, return when failed. if false, return when all devices finish match
-   * @return whether hit
    */
-  private boolean getDeviceToStorageGroupMap(
-      List<String> devicePaths,
-      Map<String, String> deviceToStorageGroupMap,
-      List<String> failedDevices,
-      boolean failFast) {
-    storageGroupCacheLock.readLock().lock();
+  private void getStorageGroupMap(
+      StorageGroupCacheResult<?> result, List<String> devicePaths, boolean failFast) {
     try {
-      boolean result = true;
+      result.reset();
+      storageGroupCacheLock.readLock().lock();
+      boolean res = true;
       for (String devicePath : devicePaths) {
         String storageGroup = getStorageGroup(devicePath);
         if (null == storageGroup) {
           logger.debug(
               "[{} Cache] miss when search device {}", STORAGE_GROUP_CACHE_NAME, devicePath);
-          result = false;
+          res = false;
           if (failFast) {
             break;
           } else {
-            failedDevices.add(devicePath);
+            result.addFailedDevice(devicePath);
           }
         } else {
-          deviceToStorageGroupMap.put(devicePath, storageGroup);
+          result.put(devicePath, storageGroup);
         }
       }
-      if (!result) {
-        deviceToStorageGroupMap.clear();
+      if (!res) {
+        result.clear();
       }
       logger.debug("[{} Cache] hit when search device {}", STORAGE_GROUP_CACHE_NAME, devicePaths);
-      CacheMetricsRecorder.record(result, STORAGE_GROUP_CACHE_NAME);
-      return result;
+      CacheMetricsRecorder.record(res, STORAGE_GROUP_CACHE_NAME);
     } finally {
       storageGroupCacheLock.readLock().unlock();
     }
   }
 
   /**
-   * get storage group to device map
+   * get storage group map in three try
    *
+   * @param result contains result(boolean), failed devices and the map
    * @param devicePaths the devices that need to match
-   * @param storageGroupToDeviceMap the result map that match storage group to device, return empty
-   *     when miss
-   * @param failedDevices the devices that failed to match
-   * @param failFast if true, return when failed. if false, return when all devices finish match
-   * @return whether hit
+   * @param isAutoCreate whether auto create storage group when device miss
    */
-  private boolean getStorageGroupToDeviceMap(
-      List<String> devicePaths,
-      Map<String, List<String>> storageGroupToDeviceMap,
-      List<String> failedDevices,
-      boolean failFast) {
-    storageGroupCacheLock.readLock().lock();
-    try {
-      boolean result = true;
-      for (String devicePath : devicePaths) {
-        String storageGroup = getStorageGroup(devicePath);
-        if (null == storageGroup) {
-          logger.debug(
-              "[{} Cache] miss when search device {}", STORAGE_GROUP_CACHE_NAME, devicePath);
-          result = false;
-          if (failFast) {
-            break;
-          } else {
-            failedDevices.add(devicePath);
+  private void getStorageGroupCacheResult(
+      StorageGroupCacheResult<?> result, List<String> devicePaths, boolean isAutoCreate) {
+    Map<String, String> deviceToStorageGroupMap = new HashMap<>();
+    // miss when devicePath contains *
+    for (String devicePath : devicePaths) {
+      if (devicePath.contains("*")) {
+        return;
+      }
+    }
+    // first try to hit storage group in fast-fail way
+    getStorageGroupMap(result, devicePaths, true);
+    if (!result.isSuccess()) {
+      try {
+        // when local cache not have, then try to fetch all storage group from config node
+        fetchStorageGroupAndUpdateCache();
+        // second try to hit storage group with failed devices;
+        getStorageGroupMap(result, devicePaths, false);
+        if (!result.isSuccess() && isAutoCreate) {
+          // try to auto create storage group of failed device
+          Set<String> storageGroupNamesNeedCreated = new HashSet<>();
+          for (String devicePath : result.getFailedDevices()) {
+            PartialPath storageGroupNameNeedCreated =
+                MetaUtils.getStorageGroupPathByLevel(
+                    new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
+            storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
           }
-        } else {
-          List<String> devices =
-              storageGroupToDeviceMap.computeIfAbsent(storageGroup, k -> new ArrayList<>());
-          devices.add(devicePath);
+          createStorageGroupAndUpdateCache(storageGroupNamesNeedCreated);
+          // third try to hit cache
+          getStorageGroupMap(result, devicePaths, false);
+          if (!result.isSuccess()) {
+            throw new StatementAnalyzeException("Failed to get Storage Group Map in three try.");
+          }
         }
+      } catch (TException | MetadataException | IOException e) {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getDeviceToStorageGroup():" + e.getMessage());
       }
-      if (!result) {
-        storageGroupToDeviceMap.clear();
-      }
-      logger.debug("[{} Cache] hit when search device {}", STORAGE_GROUP_CACHE_NAME, devicePaths);
-      CacheMetricsRecorder.record(result, STORAGE_GROUP_CACHE_NAME);
-      return result;
-    } finally {
-      storageGroupCacheLock.readLock().unlock();
     }
   }
 
