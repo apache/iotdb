@@ -137,7 +137,7 @@ public class PartitionCache {
   }
 
   /**
-   * get storage group to device map in three trys
+   * get storage group to device map in three try
    *
    * @param devicePaths the devices that need to match
    * @param isAutoCreate whether auto create storage group when device miss
@@ -190,7 +190,7 @@ public class PartitionCache {
   }
 
   /**
-   * get storage group to device map in three trys
+   * get storage group to device map in three try
    *
    * @param devicePaths the devices that need to match
    * @param isAutoCreate whether auto create storage group when device miss
@@ -416,7 +416,13 @@ public class PartitionCache {
   // endregion
 
   // region replicaSet cache
-  /** get regionReplicaSet from consensusGroupId */
+  /**
+   * get regionReplicaSet. if groupIdToReplicaSetMap contains consensusGroupId then return, else it
+   * will call getLatestRegionRouteMap from confignode and retry
+   *
+   * @param consensusGroupId the id of consensus group
+   * @return regionReplicaSet
+   */
   public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId consensusGroupId) {
     TRegionReplicaSet regionReplicaSet;
     if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
@@ -443,7 +449,13 @@ public class PartitionCache {
     return regionReplicaSet;
   }
 
-  /** update regionReplicaSetMap according to timestamp */
+  /**
+   * update regionReplicaSetMap according to timestamp
+   *
+   * @param timestamp the timestamp of map that need to update
+   * @param map consensusGroupId to regionReplicaSet map
+   * @return true if update successfully or false when is not latest map
+   */
   public boolean updateGroupIdToReplicaSetMap(
       long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> map) {
     boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
@@ -464,7 +476,12 @@ public class PartitionCache {
 
   // region schema partition cache
 
-  /** get schemaPartition */
+  /**
+   * get schemaPartition
+   *
+   * @param storageGroupToDeviceMap storage group to devices map
+   * @return SchemaPartition of storageGroupToDeviceMap
+   */
   public SchemaPartition getSchemaPartition(Map<String, List<String>> storageGroupToDeviceMap) {
     schemaPartitionCacheLock.readLock().lock();
     try {
@@ -518,7 +535,11 @@ public class PartitionCache {
     }
   }
 
-  /** update schemaPartitionCache by schemaPartition. */
+  /**
+   * update schemaPartitionCache by schemaPartition.
+   *
+   * @param schemaPartitionTable storage group to SeriesPartitionSlot to ConsensusGroupId map
+   */
   public void updateSchemaPartitionCache(
       Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTable) {
     schemaPartitionCacheLock.writeLock().lock();
@@ -539,7 +560,11 @@ public class PartitionCache {
     }
   }
 
-  /** invalid schemaPartitionCache by storage group */
+  /**
+   * invalid schemaPartitionCache by storage group
+   *
+   * @param storageGroup the storage groups that need to invalid
+   */
   public void invalidSchemaPartitionCache(String storageGroup) {
     schemaPartitionCacheLock.writeLock().lock();
     try {
@@ -562,12 +587,17 @@ public class PartitionCache {
 
   // region data partition cache
 
-  /** get dataPartition by query param map */
+  /**
+   * get dataPartition by query param map
+   *
+   * @param storageGroupToQueryParamsMap storage group to dataPartitionQueryParam map
+   * @return DataPartition of storageGroupToQueryParamsMap
+   */
   public DataPartition getDataPartition(
-      Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
+      Map<String, List<DataPartitionQueryParam>> storageGroupToQueryParamsMap) {
     dataPartitionCacheLock.readLock().lock();
     try {
-      if (sgNameToQueryParamsMap.size() == 0) {
+      if (storageGroupToQueryParamsMap.size() == 0) {
         CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
         return null;
       }
@@ -575,7 +605,7 @@ public class PartitionCache {
           dataPartitionMap = new HashMap<>();
       // check cache for each storage group
       for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
-          sgNameToQueryParamsMap.entrySet()) {
+          storageGroupToQueryParamsMap.entrySet()) {
         if (!getStorageGroupDataPartition(dataPartitionMap, entry.getKey(), entry.getValue())) {
           CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
           return null;
@@ -590,7 +620,14 @@ public class PartitionCache {
     }
   }
 
-  /** get dataPartition from storage group */
+  /**
+   * get dataPartition from storage group
+   *
+   * @param dataPartitionMap result
+   * @param storageGroup storage group that need to get
+   * @param dataPartitionQueryParams specific query params of data partition
+   * @return whether hit
+   */
   private boolean getStorageGroupDataPartition(
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
           dataPartitionMap,
@@ -617,7 +654,14 @@ public class PartitionCache {
     return true;
   }
 
-  /** get dataPartition from device */
+  /**
+   * get dataPartition from device
+   *
+   * @param seriesSlotToTimePartitionMap result
+   * @param dataPartitionQueryParam specific query param of data partition
+   * @param cachedStorageGroupPartitionMap all cached data partition map of related storage group
+   * @return whether hit
+   */
   private boolean getDeviceDataPartition(
       Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
           seriesSlotToTimePartitionMap,
@@ -649,7 +693,14 @@ public class PartitionCache {
     return true;
   }
 
-  /** get dataPartition from timeSlot */
+  /**
+   * get dataPartition from timeSlot
+   *
+   * @param timePartitionSlotListMap result
+   * @param timePartitionSlot the specific time partition slot of data partition
+   * @param cachedTimePartitionSlot all cached time slot map of related device
+   * @return whether hit
+   */
   private boolean getTimeSlotDataPartition(
       Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap,
       TTimePartitionSlot timePartitionSlot,
@@ -670,7 +721,12 @@ public class PartitionCache {
     return true;
   }
 
-  /** update dataPartitionCache by dataPartition */
+  /**
+   * update dataPartitionCache by dataPartition
+   *
+   * @param dataPartitionTable storage group to seriesPartitionSlot to timePartitionSlot to
+   *     ConsensusGroupId map
+   */
   public void updateDataPartitionCache(
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
           dataPartitionTable) {
@@ -708,7 +764,11 @@ public class PartitionCache {
     }
   }
 
-  /** invalid dataPartitionCache by storageGroup */
+  /**
+   * invalid dataPartitionCache by storageGroup
+   *
+   * @param storageGroup the storage groups that need to invalid
+   */
   public void invalidDataPartitionCache(String storageGroup) {
     dataPartitionCacheLock.writeLock().lock();
     try {
