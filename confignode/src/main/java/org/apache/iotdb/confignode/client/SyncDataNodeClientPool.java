@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -39,11 +40,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class SyncDataNodeClientPool {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SyncDataNodeClientPool.class);
+
+  private static final int retryNum = 6;
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> clientManager;
 
@@ -54,35 +58,38 @@ public class SyncDataNodeClientPool {
                 new ConfigNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
-  public TSStatus invalidatePartitionCache(
-      TEndPoint endPoint, TInvalidateCacheReq invalidateCacheReq) {
-    TSStatus status;
-    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
-      status = client.invalidatePartitionCache(invalidateCacheReq);
-      LOGGER.info("Invalid Schema Cache {} successfully", invalidateCacheReq);
-    } catch (IOException e) {
-      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
-      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
-    } catch (TException e) {
-      LOGGER.error("Invalid Schema Cache on DataNode {} failed", endPoint, e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+  public TSStatus sendSyncRequestToDataNode(
+      TEndPoint endPoint, Object req, DataNodeRequestType requestType) {
+    Throwable lastException = null;
+    for (int retry = 0; retry < retryNum; retry++) {
+      try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
+        switch (requestType) {
+          case invalidatePartitionCache:
+            return client.invalidatePartitionCache((TInvalidateCacheReq) req);
+          case invalidateSchemaCache:
+            return client.invalidateSchemaCache((TInvalidateCacheReq) req);
+          case deleteRegions:
+            return client.deleteRegion((TConsensusGroupId) req);
+          case invalidatePermissionCache:
+            return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
+          default:
+            return RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
+        }
+      } catch (TException | IOException e) {
+        lastException = e;
+        LOGGER.warn(
+            "{} failed on DataNode {}, because {}, retrying {}...",
+            requestType,
+            endPoint,
+            e.getMessage(),
+            retry);
+        doRetryWait(retry);
+      }
     }
-    return status;
-  }
-
-  public TSStatus invalidateSchemaCache(
-      TEndPoint endPoint, TInvalidateCacheReq invalidateCacheReq) {
-    TSStatus status;
-    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
-      status = client.invalidateSchemaCache(invalidateCacheReq);
-    } catch (IOException e) {
-      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
-      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
-    } catch (TException e) {
-      LOGGER.error("Invalid Schema Cache on DataNode {} failed", endPoint, e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
-    }
-    return status;
+    LOGGER.error("{} failed on DataNode {}", requestType, endPoint, lastException);
+    return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+        .setMessage("All retry failed due to" + lastException.getMessage());
   }
 
   public void deleteRegions(Set<TRegionReplicaSet> deletedRegionSet) {
@@ -105,35 +112,23 @@ public class SyncDataNodeClientPool {
       TEndPoint endPoint,
       List<TConsensusGroupId> regionIds,
       Set<TRegionReplicaSet> deletedRegionSet) {
-    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
-      for (TConsensusGroupId regionId : regionIds) {
-        LOGGER.debug("Delete region {} ", regionId);
-        final TSStatus status = client.deleteRegion(regionId);
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          LOGGER.info("DELETE Region {} successfully", regionId);
-          deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));
-        }
+    for (TConsensusGroupId regionId : regionIds) {
+      LOGGER.debug("Delete region {} ", regionId);
+      final TSStatus status =
+          sendSyncRequestToDataNode(endPoint, regionId, DataNodeRequestType.deleteRegions);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        LOGGER.info("DELETE Region {} successfully", regionId);
+        deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));
       }
-    } catch (IOException e) {
-      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
-    } catch (TException e) {
-      LOGGER.error("Delete Region on DataNode {} failed", endPoint, e);
     }
   }
 
-  public TSStatus invalidatePermissionCache(
-      TEndPoint endPoint, TInvalidatePermissionCacheReq invalidatePermissionCacheReq) {
-    TSStatus status;
-    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
-      status = client.invalidatePermissionCache(invalidatePermissionCacheReq);
-    } catch (IOException e) {
-      LOGGER.error("Can't connect to DataNode {}", endPoint, e);
-      status = new TSStatus(TSStatusCode.TIME_OUT.getStatusCode());
-    } catch (TException e) {
-      LOGGER.error("Invalid Permission Cache on DataNode {} failed", endPoint, e);
-      status = new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode());
+  private void doRetryWait(int retryNum) {
+    try {
+      TimeUnit.MILLISECONDS.sleep(100L * (long) Math.pow(2, retryNum));
+    } catch (InterruptedException e) {
+      LOGGER.error("Retry wait failed.", e);
     }
-    return status;
   }
 
   // TODO: Is the ClientPool must be a singleton?
