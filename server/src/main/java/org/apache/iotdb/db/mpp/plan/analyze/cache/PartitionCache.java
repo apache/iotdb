@@ -353,9 +353,10 @@ public class PartitionCache {
    *
    * @param consensusGroupId the id of consensus group
    * @return regionReplicaSet
+   * @throws RuntimeException if regionReplicaSet is null
+   * @throws StatementAnalyzeException if there are exception when try to get latestRegionRouteMap
    */
   public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId consensusGroupId) {
-    TRegionReplicaSet regionReplicaSet;
     if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
       synchronized (groupIdToReplicaSetMap) {
         try (ConfigNodeClient client =
@@ -374,12 +375,7 @@ public class PartitionCache {
         }
       }
     }
-    regionReplicaSet = groupIdToReplicaSetMap.get(consensusGroupId);
-    if (null == regionReplicaSet) {
-      throw new RuntimeException(
-          "ReplicaSet of consensus group[id= " + consensusGroupId + "] is null.");
-    }
-    return regionReplicaSet;
+    return groupIdToReplicaSetMap.get(consensusGroupId);
   }
 
   /**
