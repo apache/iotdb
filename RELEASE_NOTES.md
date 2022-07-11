@@ -78,6 +78,7 @@
 * [IOTDB-3651] Stop compaction schedule when all compaction is disable
 * [IOTDB-3709] Fix a loop occurred in TsFileResourceList, causing the query to fail and oom occurs
 * [IOTDB-3730] Fix ArrayIndexOutOfBounds when flushing a memtable
+* [IOTDB-3795] Remove setting read-only when handling compaction exception
 * [ISSUE-5482] Fix Release zip files include incorrect version of Guava
 * [ISSUE-5773] Aggregation result is not complete
 * [ISSUE-5964] Fix bug of aligned timeseries time duplicated aggregation
