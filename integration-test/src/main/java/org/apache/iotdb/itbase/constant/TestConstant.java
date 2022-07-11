@@ -51,6 +51,8 @@ public class TestConstant {
   public static final String VALUE_STR = "value";
   public static final String DATA_TYPE_STR = "dataType";
   public static final String FUNCTION_TYPE_NATIVE = "native";
+  public static final double DELTA = 1e-6;
+  public static final double NULL = Double.MIN_VALUE;
 
   public static String[] createSql =
       new String[] {

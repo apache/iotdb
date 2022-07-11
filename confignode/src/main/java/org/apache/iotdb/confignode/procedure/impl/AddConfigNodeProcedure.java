@@ -73,8 +73,13 @@ public class AddConfigNodeProcedure
           LOG.info("Add consensus group {}", tConfigNodeLocation);
           break;
         case ADD_PEER:
-          env.addPeer(tConfigNodeLocation);
+          env.addConfigNodePeer(tConfigNodeLocation);
+          setNextState(AddConfigNodeState.REGISTER_SUCCESS);
           LOG.info("Add Peer of {}", tConfigNodeLocation);
+          break;
+        case REGISTER_SUCCESS:
+          env.notifyRegisterSuccess(tConfigNodeLocation);
+          env.applyConfigNode(tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -82,7 +87,7 @@ public class AddConfigNodeProcedure
         setFailure(new ProcedureException("Add Config Node failed " + state));
       } else {
         LOG.error(
-            "Retriable error trying to add config node {}, state {}",
+            "Retrievable error trying to add config node {}, state {}",
             tConfigNodeLocation,
             state,
             e);

@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
+
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Cluster1Env extends AbstractEnv {
-  private static final Logger logger = LoggerFactory.getLogger(Cluster1Env.class);
+  private static final Logger logger = IoTDBTestLogger.logger;
 
   @Override
   public void initBeforeClass() throws InterruptedException {

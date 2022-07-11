@@ -46,6 +46,7 @@ public class UDTFExecutor {
 
   protected UDTF udtf;
   protected ElasticSerializableTVList collector;
+  protected Object currentValue;
 
   public UDTFExecutor(String functionName, ZoneId zoneId) {
     this.functionName = functionName;
@@ -98,6 +99,18 @@ public class UDTFExecutor {
     } catch (Exception e) {
       onError("transform(Row, PointCollector)", e);
     }
+  }
+
+  public void execute(Row row) {
+    try {
+      currentValue = udtf.transform(row);
+    } catch (Exception e) {
+      onError("transform(Row)", e);
+    }
+  }
+
+  public Object getCurrentValue() {
+    return currentValue;
   }
 
   public void execute(RowWindow rowWindow) {

@@ -49,8 +49,8 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -79,7 +79,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
@@ -379,8 +383,13 @@ public class Analyzer {
         }
 
         if (queryStatement.isGroupByTime()) {
-          analysis.setGroupByTimeParameter(
-              new GroupByTimeParameter(queryStatement.getGroupByTimeComponent()));
+          GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
+          if ((groupByTimeComponent.isIntervalByMonth()
+                  || groupByTimeComponent.isSlidingStepByMonth())
+              && queryStatement.getResultOrder() == OrderBy.TIMESTAMP_DESC) {
+            throw new SemanticException("Group by month doesn't support order by time desc now.");
+          }
+          analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
         }
 
         if (queryStatement.getFilterNullComponent() != null) {
@@ -405,24 +414,6 @@ public class Analyzer {
           FillComponent fillComponent = queryStatement.getFillComponent();
           List<Expression> fillColumnList =
               outputExpressions.stream().map(Pair::getLeft).distinct().collect(Collectors.toList());
-          if (fillComponent.getFillPolicy() == FillPolicy.VALUE) {
-            for (Expression fillColumn : fillColumnList) {
-              TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
-              if (!fillComponent.getFillValue().isDataTypeConsistency(checkedDataType)) {
-                throw new SemanticException(
-                    "FILL: the data type of the fill value should be the same as the output column");
-              }
-            }
-          } else if (fillComponent.getFillPolicy() == FillPolicy.LINEAR) {
-            for (Expression fillColumn : fillColumnList) {
-              TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
-              if (!checkedDataType.isNumeric()) {
-                throw new SemanticException(
-                    String.format(
-                        "FILL: dataType %s doesn't support linear fill.", checkedDataType));
-              }
-            }
-          }
           analysis.setFillDescriptor(
               new FillDescriptor(fillComponent.getFillPolicy(), fillComponent.getFillValue()));
         }
@@ -1352,6 +1343,16 @@ public class Analyzer {
           HeaderConstant.showChildNodesHeader);
     }
 
+    @Override
+    public Analysis visitShowVersion(
+        ShowVersionStatement showVersionStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showVersionStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showVersionHeader);
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
+    }
+
     private Analysis visitSchemaNodeManagementPartition(
         Statement statement, PartialPath path, DatasetHeader header) {
       Analysis analysis = new Analysis();
@@ -1429,6 +1430,47 @@ public class Analyzer {
       DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
       analysis.setDataPartitionInfo(dataPartition);
 
+      if (dataPartition.isEmpty()) {
+        analysis.setFinishQueryAfterAnalyze(true);
+      }
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateSchemaTemplate(
+        CreateSchemaTemplateStatement createTemplateStatement, MPPQueryContext context) {
+
+      context.setQueryType(QueryType.WRITE);
+      List<List<String>> measurementsList = createTemplateStatement.getMeasurements();
+      for (List measurements : measurementsList) {
+        Set<String> measurementsSet = new HashSet<>(measurements);
+        if (measurementsSet.size() < measurements.size()) {
+          throw new SemanticException(
+              "Measurement under an aligned device is not allowed to have the same measurement name");
+        }
+      }
+      Analysis analysis = new Analysis();
+      analysis.setStatement(createTemplateStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowNodesInSchemaTemplate(
+        ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement,
+        MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showNodesInSchemaTemplateStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showNodesInSchemaTemplate);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowSchemaTemplate(
+        ShowSchemaTemplateStatement showSchemaTemplateStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showSchemaTemplateStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showSchemaTemplate);
       return analysis;
     }
   }

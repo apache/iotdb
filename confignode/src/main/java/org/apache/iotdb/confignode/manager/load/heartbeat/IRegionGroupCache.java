@@ -21,17 +21,23 @@ package org.apache.iotdb.confignode.manager.load.heartbeat;
 public interface IRegionGroupCache {
 
   /**
-   * Update RegionGroup's latest leader
+   * Cache the newest HeartbeatSample
    *
-   * @param timestamp Judging timestamp
-   * @param dataNodeId Leader location
+   * @param newHeartbeatSample The newest HeartbeatSample
    */
-  void updateLeader(long timestamp, int dataNodeId);
+  void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample);
+
+  /**
+   * Invoking periodically to update RegionGroups' load statistics
+   *
+   * @return true if some load statistic changed
+   */
+  boolean updateLoadStatistic();
 
   /**
    * Get RegionGroup's latest leader
    *
-   * @return The DataNodeId of latest leader
+   * @return The DataNodeId of the latest leader
    */
   int getLeaderDataNodeId();
 }

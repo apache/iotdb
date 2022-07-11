@@ -47,7 +47,7 @@ public enum ExpressionType {
 
   IS_NULL((short) 15, (short) 475),
 
-  // BETWEEN((short) 16, (short) 450),
+  BETWEEN((short) 16, (short) 450),
 
   IN((short) 17, (short) 400),
 

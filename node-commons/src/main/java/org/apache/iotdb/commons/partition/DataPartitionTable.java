@@ -79,9 +79,13 @@ public class DataPartitionTable {
                   .getDataPartition(timePartitionSlots, seriesPartitionTable)) {
                 result.set(false);
               }
-              dataPartitionTable
-                  .getDataPartitionMap()
-                  .put(seriesPartitionSlot, seriesPartitionTable);
+
+              if (!seriesPartitionTable.getSeriesPartitionMap().isEmpty()) {
+                // Only return those non-empty DataPartitions
+                dataPartitionTable
+                    .getDataPartitionMap()
+                    .put(seriesPartitionSlot, seriesPartitionTable);
+              }
             } else {
               result.set(false);
             }
@@ -129,6 +133,20 @@ public class DataPartitionTable {
                 dataPartitionMap
                     .computeIfAbsent(seriesPartitionSlot, empty -> new SeriesPartitionTable())
                     .filterUnassignedDataPartitionSlots(timePartitionSlots)));
+
+    return result;
+  }
+
+  public static DataPartitionTable convertFromPlainMap(
+      Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+          dataPartitionMap) {
+    DataPartitionTable result = new DataPartitionTable();
+
+    dataPartitionMap.forEach(
+        (seriesPartitionSlot, seriesPartitionMap) ->
+            result
+                .getDataPartitionMap()
+                .put(seriesPartitionSlot, new SeriesPartitionTable(seriesPartitionMap)));
 
     return result;
   }
