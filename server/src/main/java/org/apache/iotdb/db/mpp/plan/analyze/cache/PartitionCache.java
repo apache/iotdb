@@ -179,6 +179,7 @@ public class PartitionCache {
   private void fetchStorageGroupAndUpdateCache() throws IOException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      storageGroupCacheLock.writeLock().lock();
       TStorageGroupSchemaResp storageGroupSchemaResp =
           client.getMatchedStorageGroupSchemas(ROOT_PATH);
       if (storageGroupSchemaResp.getStatus().getCode()
@@ -187,6 +188,8 @@ public class PartitionCache {
         // update all storage group into cache
         updateStorageCache(storageGroupNames);
       }
+    } finally {
+      storageGroupCacheLock.writeLock().unlock();
     }
   }
 
@@ -277,7 +280,7 @@ public class PartitionCache {
     getStorageGroupMap(result, devicePaths, true);
     if (!result.isSuccess()) {
       try {
-        // when local cache not have, then try to fetch all storage group from config node
+        // try to fetch storage group from config node when miss
         fetchStorageGroupAndUpdateCache();
         // second try to hit storage group with failed devices;
         getStorageGroupMap(result, devicePaths, false);
