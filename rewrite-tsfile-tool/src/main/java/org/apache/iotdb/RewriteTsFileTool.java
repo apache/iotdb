@@ -126,7 +126,8 @@ public class RewriteTsFileTool {
   }
 
   private static void priHelp(Options options) {
-    new HelpFormatter().printHelp("./rewrite-tsfile.sh(rewrite-tsfile.bat if Windows)", options, true);
+    new HelpFormatter()
+        .printHelp("./rewrite-tsfile.sh(rewrite-tsfile.bat if Windows)", options, true);
   }
 
   private static String getArgOrDefault(
