@@ -120,23 +120,6 @@ public class PartitionCache {
   // region storage group cache
 
   /**
-   * get storage group of device
-   *
-   * @param devicePath the path of device
-   * @return storage group. return null if cache miss
-   */
-  public String getStorageGroup(String devicePath) {
-    synchronized (storageGroupCache) {
-      for (String storageGroup : storageGroupCache) {
-        if (PathUtils.isStartWith(devicePath, storageGroup)) {
-          return storageGroup;
-        }
-      }
-    }
-    return null;
-  }
-
-  /**
    * get storage group to device map in three try
    *
    * @param devicePaths the devices that need to match
@@ -240,6 +223,23 @@ public class PartitionCache {
       }
     }
     return deviceToStorageGroupMap;
+  }
+
+  /**
+   * get storage group of device
+   *
+   * @param devicePath the path of device
+   * @return storage group. return null if cache miss
+   */
+  private String getStorageGroup(String devicePath) {
+    synchronized (storageGroupCache) {
+      for (String storageGroup : storageGroupCache) {
+        if (PathUtils.isStartWith(devicePath, storageGroup)) {
+          return storageGroup;
+        }
+      }
+    }
+    return null;
   }
 
   /** get all storage group from confignode and update storage group cache */
