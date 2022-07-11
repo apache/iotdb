@@ -426,11 +426,10 @@ public class PartitionInfo implements SnapshotProcessor {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       return regionResp;
     }
-    final List<String> storageGroups = regionsInfoPlan.getStorageGroups();
-    final boolean filterByStorageGroup = regionsInfoPlan.isFilterByStorageGroup();
+    final List<String> storageGroups = regionsInfoPlan.getShowRegionReq().getStorageGroups();
     storageGroupPartitionTables.forEach(
         (storageGroup, storageGroupPartitionTable) -> {
-          if (filterByStorageGroup && !storageGroups.contains(storageGroup)) {
+          if (storageGroups != null && !storageGroups.contains(storageGroup)) {
             return;
           }
           storageGroupPartitionTable.getRegionInfoList(regionsInfoPlan, regionInfoList);

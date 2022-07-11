@@ -36,6 +36,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 
 import org.apache.commons.io.FileUtils;
@@ -175,7 +176,9 @@ public class PartitionInfoTest {
       partitionInfo.createRegionGroups(createRegionGroupsPlan);
     }
     GetRegionInfoListPlan regionReq = new GetRegionInfoListPlan();
-    regionReq.setRegionType(null);
+    TShowRegionReq showRegionReq = new TShowRegionReq();
+    showRegionReq.setConsensusGroupType(null);
+    regionReq.setShowRegionReq(showRegionReq);
     RegionInfoListResp regionInfoList1 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
     Assert.assertEquals(regionInfoList1.getRegionInfoList().size(), 20);
@@ -186,7 +189,7 @@ public class PartitionInfoTest {
               Assert.assertEquals(regionInfo.getClientRpcIp(), "127.0.0.1");
             });
 
-    regionReq.setRegionType(TConsensusGroupType.SchemaRegion);
+    showRegionReq.setConsensusGroupType(TConsensusGroupType.SchemaRegion);
     RegionInfoListResp regionInfoList2 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
     Assert.assertEquals(regionInfoList2.getRegionInfoList().size(), 10);
@@ -198,7 +201,7 @@ public class PartitionInfoTest {
                   regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.SchemaRegion);
             });
 
-    regionReq.setRegionType(TConsensusGroupType.DataRegion);
+    showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
     RegionInfoListResp regionInfoList3 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
     Assert.assertEquals(regionInfoList3.getRegionInfoList().size(), 10);
@@ -209,9 +212,8 @@ public class PartitionInfoTest {
               Assert.assertEquals(
                   regionInfo.getConsensusGroupId().getType(), TConsensusGroupType.DataRegion);
             });
-    regionReq.setRegionType(null);
-    regionReq.setFilterByStorageGroup(true);
-    regionReq.setStorageGroups(Collections.singletonList("root.test1"));
+    showRegionReq.setConsensusGroupType(null);
+    showRegionReq.setStorageGroups(Collections.singletonList("root.test1"));
     RegionInfoListResp regionInfoList4 =
         (RegionInfoListResp) partitionInfo.getRegionInfoList(regionReq);
     Assert.assertEquals(regionInfoList4.getRegionInfoList().size(), 10);

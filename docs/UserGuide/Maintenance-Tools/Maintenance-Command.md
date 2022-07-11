@@ -180,35 +180,7 @@ IoTDB> show schema regions
 +--------+------------+------+-------------+------------+----------+----------+---------+----+
 Total line number = 2
 It costs 0.012s
-
-set storage group to root.sg; 
-create timeseries root.sg.d.s1 with datatype=INT32,encoding=RLE,compression=snappy;
-create timeseries root.sg.d.s2 with datatype=INT32,encoding=RLE,compression=snappy;
-create timeseries root.sg.d.s3 with datatype=INT32,encoding=RLE,compression=snappy;
-insert into root.sg.d(time,s1) values(1,2);
-insert into root.sg.d(time,s2) values(2,1);
-insert into root.sg.d(time,s3) values(2,3);
-set storage group to root.sg1; 
-create timeseries root.sg1.d.s1 with datatype=INT32,encoding=RLE,compression=snappy;
-create timeseries root.sg1.d.s2 with datatype=INT32,encoding=RLE,compression=snappy;
-create timeseries root.sg1.d.s3 with datatype=INT32,encoding=RLE,compression=snappy;
-insert into root.sg1.d(time,s1,s2,s3) values(1,1,2,3);
-insert into root.sg1.d(time,s1,s2,s3) values(2,1,2,3);
-
-set storage group to root.sg2; 
-create timeseries root.sg2.d.s1 with datatype=INT32,encoding=RLE,compression=snappy;
-create timeseries root.sg2.d.s2 with datatype=INT32,encoding=RLE,compression=snappy;
-create timeseries root.sg2.d.s3 with datatype=INT32,encoding=RLE,compression=snappy;
-insert into root.sg2.d(time,s1,s2,s3) values(1,1,2,3);
-insert into root.sg2.d(time,s1,s2,s3) values(2,1,2,3);
-
-set storage group to root.sg_1.sg_2; 
-create timeseries root.sg_1.sg_2.d.s1 with datatype=INT32,encoding=RLE,compression=snappy;
-create timeseries root.sg_1.sg_2.d.s2 with datatype=INT32,encoding=RLE,compression=snappy;
-create timeseries root.sg_1.sg_2.d.s3 with datatype=INT32,encoding=RLE,compression=snappy;
-insert into root.sg_1.sg_2.d(time,s1,s2,s3) values(1,1,2,3);
-insert into root.sg_1.sg_2.d(time,s1,s2,s3) values(2,1,2,3);
-
+    
 IoTDB> show regions of storage group root.sg1
 show regions of storage group root.sg1
 +--------+------------+------+-------------+------------+----------+----------+---------+----+
@@ -263,8 +235,6 @@ show schema regions of storage group root.*.sg_2
 +--------+------------+------+--------------+------------+----------+----------+---------+----+
 Total line number = 1
 It costs 0.102s
-
-
 ```
 ## Monitoring tool for cluster Node distribution
 
