@@ -97,6 +97,10 @@ public class BatchData {
     init(type);
   }
 
+  public int getCapacity() {
+    return capacity;
+  }
+
   public boolean isEmpty() {
     return count == 0;
   }

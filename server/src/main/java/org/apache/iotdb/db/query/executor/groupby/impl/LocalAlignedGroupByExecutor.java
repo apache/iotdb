@@ -291,6 +291,9 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
 
     boolean hasCached = false;
     int curReadCurArrayIndex = lastReadCurArrayIndex;
+    int curReadCurListIndex = lastReadCurListIndex;
+    int capacity = batchData.getCapacity();
+
     while (reader.hasNextSubSeries()) {
       int subIndex = reader.getCurIndex();
       batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
@@ -318,10 +321,15 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
         if (batchDataIterator.hasNext(curStartTime, curEndTime)) {
           result.updateResultFromPageData(batchDataIterator, curStartTime, curEndTime);
         }
-        curReadCurArrayIndex =
-            ascending
-                ? Math.max(curReadCurArrayIndex, batchData.getReadCurArrayIndex())
-                : Math.min(curReadCurArrayIndex, batchData.getReadCurArrayIndex());
+        if (ascending) {
+          if (curReadCurListIndex * capacity + curReadCurArrayIndex < batchData.getReadCurListIndex() * capacity + batchData.getReadCurArrayIndex()) {
+            curReadCurArrayIndex = batchData.getReadCurArrayIndex();
+          }
+        } else {
+          if (curReadCurListIndex * capacity + curReadCurArrayIndex > batchData.getReadCurListIndex() * capacity + batchData.getReadCurArrayIndex()) {
+            curReadCurArrayIndex = batchData.getReadCurArrayIndex();
+          }
+        }
       }
       // can calc for next interval
       if (!hasCached && batchData.hasCurrent()) {
