@@ -119,7 +119,12 @@ public class PartitionCache {
 
   // region storage group cache
 
-  /** get storage group of device, return null if not cache */
+  /**
+   * get storage group of device
+   *
+   * @param devicePath the path of device
+   * @return storage group. return null if cache miss
+   */
   public String getStorageGroup(String devicePath) {
     synchronized (storageGroupCache) {
       for (String storageGroup : storageGroupCache) {
@@ -131,79 +136,13 @@ public class PartitionCache {
     return null;
   }
 
-  /** get device to storage group map */
-  public boolean getDeviceToStorageGroupMap(
-      List<String> devicePaths,
-      Map<String, String> deviceToStorageGroupMap,
-      List<String> failedDevices,
-      boolean failFast) {
-    storageGroupCacheLock.readLock().lock();
-    try {
-      boolean result = true;
-      for (String devicePath : devicePaths) {
-        String storageGroup = getStorageGroup(devicePath);
-        if (null == storageGroup) {
-          logger.debug(
-              "[{} Cache] miss when search device {}", STORAGE_GROUP_CACHE_NAME, devicePath);
-          result = false;
-          if (failFast) {
-            break;
-          } else {
-            failedDevices.add(devicePath);
-          }
-        } else {
-          deviceToStorageGroupMap.put(devicePath, storageGroup);
-        }
-      }
-      if (!result) {
-        deviceToStorageGroupMap.clear();
-      }
-      logger.debug("[{} Cache] hit when search device {}", STORAGE_GROUP_CACHE_NAME, devicePaths);
-      CacheMetricsRecorder.record(result, STORAGE_GROUP_CACHE_NAME);
-      return result;
-    } finally {
-      storageGroupCacheLock.readLock().unlock();
-    }
-  }
-
-  /** get storage group to device map with failed devices */
-  public boolean getStorageGroupToDeviceMap(
-      List<String> devicePaths,
-      Map<String, List<String>> storageGroupToDeviceMap,
-      List<String> failedDevices,
-      boolean failFast) {
-    storageGroupCacheLock.readLock().lock();
-    try {
-      boolean result = true;
-      for (String devicePath : devicePaths) {
-        String storageGroup = getStorageGroup(devicePath);
-        if (null == storageGroup) {
-          logger.debug(
-              "[{} Cache] miss when search device {}", STORAGE_GROUP_CACHE_NAME, devicePath);
-          result = false;
-          if (failFast) {
-            break;
-          } else {
-            failedDevices.add(devicePath);
-          }
-        } else {
-          List<String> devices =
-              storageGroupToDeviceMap.computeIfAbsent(storageGroup, k -> new ArrayList<>());
-          devices.add(devicePath);
-        }
-      }
-      if (!result) {
-        storageGroupToDeviceMap.clear();
-      }
-      logger.debug("[{} Cache] hit when search device {}", STORAGE_GROUP_CACHE_NAME, devicePaths);
-      CacheMetricsRecorder.record(result, STORAGE_GROUP_CACHE_NAME);
-      return result;
-    } finally {
-      storageGroupCacheLock.readLock().unlock();
-    }
-  }
-
-  /** get storage group to device map in three trys */
+  /**
+   * get storage group to device map in three trys
+   *
+   * @param devicePaths the devices that need to match
+   * @param isAutoCreate whether auto create storage group when device miss
+   * @return storage group to devices map
+   */
   public Map<String, List<String>> getStorageGroupToDevice(
       List<String> devicePaths, boolean isAutoCreate) {
     Map<String, List<String>> storageGroupToDeviceMap = new HashMap<>();
@@ -250,7 +189,13 @@ public class PartitionCache {
     return storageGroupToDeviceMap;
   }
 
-  /** get storage group to device map in three trys */
+  /**
+   * get storage group to device map in three trys
+   *
+   * @param devicePaths the devices that need to match
+   * @param isAutoCreate whether auto create storage group when device miss
+   * @return device to storage group map
+   */
   public Map<String, String> getDeviceToStorageGroup(
       List<String> devicePaths, boolean isAutoCreate) {
     Map<String, String> deviceToStorageGroupMap = new HashMap<>();
@@ -327,6 +272,10 @@ public class PartitionCache {
           successFullyCreatedStorageGroup.add(storageGroupName);
         } else {
           updateStorageCache(successFullyCreatedStorageGroup);
+          logger.warn(
+              "[{} Cache] failed to create storage group {}",
+              STORAGE_GROUP_CACHE_NAME,
+              storageGroupName);
           throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
         }
       }
@@ -334,7 +283,101 @@ public class PartitionCache {
     }
   }
 
-  /** update storage group cache */
+  /**
+   * get device to storage group map
+   *
+   * @param devicePaths the devices that need to match
+   * @param deviceToStorageGroupMap the result map that match device to storage group, return empty
+   *     when miss
+   * @param failedDevices the devices that failed to match
+   * @param failFast if true, return when failed. if false, return when all devices finish match
+   * @return whether hit
+   */
+  private boolean getDeviceToStorageGroupMap(
+      List<String> devicePaths,
+      Map<String, String> deviceToStorageGroupMap,
+      List<String> failedDevices,
+      boolean failFast) {
+    storageGroupCacheLock.readLock().lock();
+    try {
+      boolean result = true;
+      for (String devicePath : devicePaths) {
+        String storageGroup = getStorageGroup(devicePath);
+        if (null == storageGroup) {
+          logger.debug(
+              "[{} Cache] miss when search device {}", STORAGE_GROUP_CACHE_NAME, devicePath);
+          result = false;
+          if (failFast) {
+            break;
+          } else {
+            failedDevices.add(devicePath);
+          }
+        } else {
+          deviceToStorageGroupMap.put(devicePath, storageGroup);
+        }
+      }
+      if (!result) {
+        deviceToStorageGroupMap.clear();
+      }
+      logger.debug("[{} Cache] hit when search device {}", STORAGE_GROUP_CACHE_NAME, devicePaths);
+      CacheMetricsRecorder.record(result, STORAGE_GROUP_CACHE_NAME);
+      return result;
+    } finally {
+      storageGroupCacheLock.readLock().unlock();
+    }
+  }
+
+  /**
+   * get storage group to device map
+   *
+   * @param devicePaths the devices that need to match
+   * @param storageGroupToDeviceMap the result map that match storage group to device, return empty
+   *     when miss
+   * @param failedDevices the devices that failed to match
+   * @param failFast if true, return when failed. if false, return when all devices finish match
+   * @return whether hit
+   */
+  private boolean getStorageGroupToDeviceMap(
+      List<String> devicePaths,
+      Map<String, List<String>> storageGroupToDeviceMap,
+      List<String> failedDevices,
+      boolean failFast) {
+    storageGroupCacheLock.readLock().lock();
+    try {
+      boolean result = true;
+      for (String devicePath : devicePaths) {
+        String storageGroup = getStorageGroup(devicePath);
+        if (null == storageGroup) {
+          logger.debug(
+              "[{} Cache] miss when search device {}", STORAGE_GROUP_CACHE_NAME, devicePath);
+          result = false;
+          if (failFast) {
+            break;
+          } else {
+            failedDevices.add(devicePath);
+          }
+        } else {
+          List<String> devices =
+              storageGroupToDeviceMap.computeIfAbsent(storageGroup, k -> new ArrayList<>());
+          devices.add(devicePath);
+        }
+      }
+      if (!result) {
+        storageGroupToDeviceMap.clear();
+      }
+      logger.debug("[{} Cache] hit when search device {}", STORAGE_GROUP_CACHE_NAME, devicePaths);
+      CacheMetricsRecorder.record(result, STORAGE_GROUP_CACHE_NAME);
+      return result;
+    } finally {
+      storageGroupCacheLock.readLock().unlock();
+    }
+  }
+
+  /**
+   * update storage group cache
+   *
+   * @param storageGroupNames the storage groups that need to update
+   */
   public void updateStorageCache(Set<String> storageGroupNames) {
     storageGroupCacheLock.writeLock().lock();
     try {
@@ -344,7 +387,11 @@ public class PartitionCache {
     }
   }
 
-  /** invalid storage group cache after delete */
+  /**
+   * invalid storage group cache
+   *
+   * @param storageGroupNames the storage groups that need to invalid
+   */
   public void invalidStorageGroupCache(List<String> storageGroupNames) {
     storageGroupCacheLock.writeLock().lock();
     try {
@@ -356,7 +403,7 @@ public class PartitionCache {
     }
   }
 
-  /** invalid all storage group */
+  /** invalid all storage group cache */
   public void invalidAllStorageGroupCache() {
     storageGroupCacheLock.writeLock().lock();
     try {
