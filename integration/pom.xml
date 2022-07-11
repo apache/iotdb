@@ -63,7 +63,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>load-tsfile-tool</artifactId>
+            <artifactId>rewrite-tsfile-tool</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
