@@ -108,16 +108,12 @@ public class Aggregator {
     }
   }
 
-  public void processStatistics(Statistics statistics) {
-    accumulator.addStatistics(statistics);
-  }
-
-  /** Used for AlignedSeriesAggregateScanOperator. */
+  /** Used for SeriesAggregateScanOperator. */
   public void processStatistics(Statistics[] statistics) {
     for (InputLocation[] inputLocations : inputLocationList) {
       checkArgument(
           inputLocations[0].getTsBlockIndex() == 0,
-          "AlignedSeriesAggregateScanOperator can only process one tsBlock input.");
+          "SeriesAggregateScanOperator can only process one tsBlock input.");
       int valueIndex = inputLocations[0].getValueColumnIndex();
       accumulator.addStatistics(statistics[valueIndex]);
     }

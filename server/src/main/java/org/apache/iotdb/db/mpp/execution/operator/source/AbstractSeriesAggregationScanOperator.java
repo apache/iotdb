@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -33,19 +30,17 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
 
 public abstract class AbstractSeriesAggregationScanOperator implements DataSourceOperator {
 
@@ -54,7 +49,8 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
   protected final boolean ascending;
   protected final boolean isGroupByQuery;
 
-  protected final SeriesScanUtil seriesScanUtil;
+  protected SeriesScanUtil seriesScanUtil;
+  protected int subSensorSize;
 
   protected TsBlock inputTsBlock;
 
@@ -73,11 +69,8 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
   public AbstractSeriesAggregationScanOperator(
       PlanNodeId sourceId,
-      PartialPath seriesPath,
-      Set<String> allSensors,
       OperatorContext context,
       List<Aggregator> aggregators,
-      Filter timeFilter,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {
     this.sourceId = sourceId;
@@ -85,30 +78,6 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     this.ascending = ascending;
     this.isGroupByQuery = groupByTimeParameter != null;
     this.aggregators = aggregators;
-
-    if (seriesPath instanceof MeasurementPath) {
-      this.seriesScanUtil =
-          new SeriesScanUtil(
-              seriesPath,
-              allSensors,
-              seriesPath.getSeriesType(),
-              context.getInstanceContext(),
-              timeFilter,
-              null,
-              ascending);
-    } else if (seriesPath instanceof AlignedPath) {
-      this.seriesScanUtil =
-          new AlignedSeriesScanUtil(
-              seriesPath,
-              new HashSet<>(((AlignedPath) seriesPath).getMeasurementList()),
-              context.getInstanceContext(),
-              timeFilter,
-              null,
-              ascending);
-    } else {
-      throw new IllegalArgumentException(
-          "SeriesAggregationScanOperator: The seriesPath should be MeasurementPath or AlignedPath.");
-    }
 
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
 
@@ -224,17 +193,156 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     return isFinishCalc;
   }
 
-  protected abstract void calcFromStatistics(Statistics[] statistics);
+  protected void calcFromStatistics(Statistics[] statistics) {
+    for (Aggregator aggregator : aggregators) {
+      if (aggregator.hasFinalResult()) {
+        continue;
+      }
+      aggregator.processStatistics(statistics);
+    }
+  }
 
-  protected abstract boolean readAndCalcFromFile() throws IOException;
+  protected boolean readAndCalcFromFile() throws IOException {
+    while (seriesScanUtil.hasNextFile()) {
+      if (canUseCurrentFileStatistics()) {
+        Statistics fileTimeStatistics = seriesScanUtil.currentFileTimeStatistics();
+        if (fileTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+          if (ascending) {
+            return true;
+          } else {
+            seriesScanUtil.skipCurrentFile();
+            continue;
+          }
+        }
+        // calc from fileMetaData
+        if (curTimeRange.contains(
+            fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
+          Statistics[] statisticsList = new Statistics[subSensorSize];
+          for (int i = 0; i < subSensorSize; i++) {
+            statisticsList[i] = seriesScanUtil.currentFileStatistics(i);
+          }
+          calcFromStatistics(statisticsList);
+          seriesScanUtil.skipCurrentFile();
+          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
+            return true;
+          } else {
+            continue;
+          }
+        }
+      }
 
-  protected abstract boolean readAndCalcFromChunk() throws IOException;
+      // read chunk
+      if (readAndCalcFromChunk()) {
+        return true;
+      }
+    }
 
-  protected abstract boolean readAndCalcFromPage() throws IOException;
+    return false;
+  }
 
-  protected abstract boolean canUseCurrentFileStatistics() throws IOException;
+  protected boolean readAndCalcFromChunk() throws IOException {
+    while (seriesScanUtil.hasNextChunk()) {
+      if (canUseCurrentChunkStatistics()) {
+        Statistics chunkTimeStatistics = seriesScanUtil.currentChunkTimeStatistics();
+        if (chunkTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+          if (ascending) {
+            return true;
+          } else {
+            seriesScanUtil.skipCurrentChunk();
+            continue;
+          }
+        }
+        // calc from chunkMetaData
+        if (curTimeRange.contains(
+            chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
+          // calc from chunkMetaData
+          Statistics[] statisticsList = new Statistics[subSensorSize];
+          for (int i = 0; i < subSensorSize; i++) {
+            statisticsList[i] = seriesScanUtil.currentChunkStatistics(i);
+          }
+          calcFromStatistics(statisticsList);
+          seriesScanUtil.skipCurrentChunk();
+          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
+            return true;
+          } else {
+            continue;
+          }
+        }
+      }
 
-  protected abstract boolean canUseCurrentChunkStatistics() throws IOException;
+      // read page
+      if (readAndCalcFromPage()) {
+        return true;
+      }
+    }
+    return false;
+  }
 
-  protected abstract boolean canUseCurrentPageStatistics() throws IOException;
+  protected boolean readAndCalcFromPage() throws IOException {
+    while (seriesScanUtil.hasNextPage()) {
+      if (canUseCurrentPageStatistics()) {
+        Statistics pageTimeStatistics = seriesScanUtil.currentPageTimeStatistics();
+        // There is no more eligible points in current time range
+        if (pageTimeStatistics.getStartTime() > curTimeRange.getMax()) {
+          if (ascending) {
+            return true;
+          } else {
+            seriesScanUtil.skipCurrentPage();
+            continue;
+          }
+        }
+        // can use pageHeader
+        if (curTimeRange.contains(
+            pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
+          Statistics[] statisticsList = new Statistics[subSensorSize];
+          for (int i = 0; i < subSensorSize; i++) {
+            statisticsList[i] = seriesScanUtil.currentPageStatistics(i);
+          }
+          calcFromStatistics(statisticsList);
+          seriesScanUtil.skipCurrentPage();
+          if (isAllAggregatorsHasFinalResult(aggregators) && !isGroupByQuery) {
+            return true;
+          } else {
+            continue;
+          }
+        }
+      }
+
+      // calc from page data
+      TsBlock tsBlock = seriesScanUtil.nextPage();
+      if (tsBlock == null || tsBlock.isEmpty()) {
+        continue;
+      }
+
+      // calc from raw data
+      if (calcFromRawData(tsBlock)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  protected boolean canUseCurrentFileStatistics() throws IOException {
+    Statistics fileStatistics = seriesScanUtil.currentFileTimeStatistics();
+    return !seriesScanUtil.isFileOverlapped()
+        && fileStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
+        && !seriesScanUtil.currentFileModified();
+  }
+
+  protected boolean canUseCurrentChunkStatistics() throws IOException {
+    Statistics chunkStatistics = seriesScanUtil.currentChunkTimeStatistics();
+    return !seriesScanUtil.isChunkOverlapped()
+        && chunkStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
+        && !seriesScanUtil.currentChunkModified();
+  }
+
+  protected boolean canUseCurrentPageStatistics() throws IOException {
+    Statistics currentPageStatistics = seriesScanUtil.currentPageTimeStatistics();
+    if (currentPageStatistics == null) {
+      return false;
+    }
+    return !seriesScanUtil.isPageOverlapped()
+        && currentPageStatistics.containedByTimeFilter(seriesScanUtil.getTimeFilter())
+        && !seriesScanUtil.currentPageModified();
+  }
 }

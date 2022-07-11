@@ -28,8 +28,10 @@ import org.apache.iotdb.db.query.reader.universal.AlignedPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -39,6 +41,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
@@ -55,6 +59,61 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     dataTypes =
         ((AlignedPath) seriesPath)
             .getSchemaList().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+  }
+
+  @Override
+  protected Statistics currentFileStatistics(int index) throws IOException {
+    checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
+    if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
+      throw new IOException("Can only get statistics by index from alignedTimeSeriesMetaData");
+    }
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
+  }
+
+  @Override
+  protected Statistics currentFileTimeStatistics() throws IOException {
+    if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
+      throw new IOException("Can only get statistics of time column from alignedChunkMetaData");
+    }
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics();
+  }
+
+  @Override
+  protected Statistics currentChunkStatistics(int index) throws IOException {
+    if (!(firstChunkMetadata instanceof AlignedChunkMetadata)) {
+      throw new IOException("Can only get statistics by index from alignedChunkMetaData");
+    }
+    return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
+  }
+
+  @Override
+  protected Statistics currentChunkTimeStatistics() throws IOException {
+    if (!(firstChunkMetadata instanceof AlignedChunkMetadata)) {
+      throw new IOException("Can only get statistics of time column from alignedChunkMetaData");
+    }
+    return ((AlignedChunkMetadata) firstChunkMetadata).getTimeStatistics();
+  }
+
+  @Override
+  protected Statistics currentPageStatistics(int index) throws IOException {
+    if (firstPageReader == null) {
+      return null;
+    }
+    if (!(firstPageReader.isAlignedPageReader())) {
+      throw new IOException("Can only get statistics by index from AlignedPageReader");
+    }
+    return firstPageReader.getStatistics(index);
+  }
+
+  @Override
+  protected Statistics currentPageTimeStatistics() throws IOException {
+    if (firstPageReader == null) {
+      return null;
+    }
+    if (!(firstPageReader.isAlignedPageReader())) {
+      throw new IOException("Can only get statistics of time column from AlignedPageReader");
+    }
+    return firstPageReader.getTimeStatistics();
   }
 
   @Override

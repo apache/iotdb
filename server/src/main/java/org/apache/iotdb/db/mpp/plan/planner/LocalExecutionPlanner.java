@@ -28,7 +28,6 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
-import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.driver.DataDriver;
@@ -907,7 +906,7 @@ public class LocalExecutionPlanner {
               SlidingWindowAggregationOperator.class.getSimpleName());
       Operator child = node.getChild().accept(this, context);
       boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
-      List<SlidingWindowAggregator> aggregators = new ArrayList<>();
+      List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
         List<InputLocation[]> inputLocationList = calcInputLocationList(descriptor, layout);
