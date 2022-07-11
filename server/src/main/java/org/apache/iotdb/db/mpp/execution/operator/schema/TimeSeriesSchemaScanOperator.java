@@ -93,7 +93,7 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
 
   // ToDo @xinzhongtianxia remove this temporary converter after mpp online
   private ShowTimeSeriesPlan convertToPhysicalPlan() {
-    return new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, orderByHeat);
+    return new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, false);
   }
 
   private void setColumns(ShowTimeSeriesResult series, TsBlockBuilder builder) {
@@ -118,8 +118,14 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   private String mapToString(Map<String, String> map) {
-    return map.entrySet().stream()
-        .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
-        .collect(Collectors.joining(","));
+    String content =
+        map.entrySet().stream()
+            .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
+            .collect(Collectors.joining(","));
+    if (content.isEmpty()) {
+      return "null";
+    } else {
+      return "{" + content + "}";
+    }
   }
 }

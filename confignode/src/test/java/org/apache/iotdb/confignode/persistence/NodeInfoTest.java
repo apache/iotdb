@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.persistence;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodeReq;
+import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TException;
@@ -62,13 +62,13 @@ public class NodeInfoTest {
   @Test
   public void testSnapshot() throws TException, IOException {
 
-    RegisterDataNodeReq registerDataNodeReq =
-        new RegisterDataNodeReq(new TDataNodeInfo(generateTDataNodeLocation(1), 16, 34359738368L));
-    nodeInfo.registerDataNode(registerDataNodeReq);
+    RegisterDataNodePlan registerDataNodePlan =
+        new RegisterDataNodePlan(new TDataNodeInfo(generateTDataNodeLocation(1), 16, 34359738368L));
+    nodeInfo.registerDataNode(registerDataNodePlan);
 
-    registerDataNodeReq =
-        new RegisterDataNodeReq(new TDataNodeInfo(generateTDataNodeLocation(2), 16, 34359738368L));
-    nodeInfo.registerDataNode(registerDataNodeReq);
+    registerDataNodePlan =
+        new RegisterDataNodePlan(new TDataNodeInfo(generateTDataNodeLocation(2), 16, 34359738368L));
+    nodeInfo.registerDataNode(registerDataNodePlan);
 
     Set<TDataNodeLocation> drainingDataNodes_before = new HashSet<>();
     // parameter i is used to be flag in generateTDataNodeLocation
@@ -78,7 +78,7 @@ public class NodeInfoTest {
     nodeInfo.setDrainingDataNodes(drainingDataNodes_before);
 
     int nextId = nodeInfo.getNextNodeId();
-    List<TDataNodeInfo> onlineDataNodes_before = nodeInfo.getOnlineDataNodes(-1);
+    List<TDataNodeInfo> onlineDataNodes_before = nodeInfo.getRegisteredDataNodes(-1);
 
     nodeInfo.processTakeSnapshot(snapshotDir);
     nodeInfo.clear();
@@ -89,7 +89,7 @@ public class NodeInfoTest {
     Set<TDataNodeLocation> drainingDataNodes_after = nodeInfo.getDrainingDataNodes();
     Assert.assertEquals(drainingDataNodes_before, drainingDataNodes_after);
 
-    List<TDataNodeInfo> onlineDataNodes_after = nodeInfo.getOnlineDataNodes(-1);
+    List<TDataNodeInfo> onlineDataNodes_after = nodeInfo.getRegisteredDataNodes(-1);
     Assert.assertEquals(onlineDataNodes_before, onlineDataNodes_after);
   }
 

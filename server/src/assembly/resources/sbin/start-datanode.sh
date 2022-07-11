@@ -38,20 +38,20 @@ if [ -z "${IOTDB_CONF}" ]; then
   export IOTDB_CONF=${IOTDB_HOME}/conf
 fi
 
-if [ -f "$IOTDB_CONF/iotdb-env.sh" ]; then
+if [ -f "$IOTDB_CONF/datanode-env.sh" ]; then
     if [ $enable_printgc == "true" ]; then
-      . "$IOTDB_CONF/iotdb-env.sh" "printgc"
+      . "$IOTDB_CONF/datanode-env.sh" "printgc"
     else
-        . "$IOTDB_CONF/iotdb-env.sh"
+        . "$IOTDB_CONF/datanode-env.sh"
     fi
-elif [ -f "${IOTDB_HOME}/conf/iotdb-env.sh" ]; then
+elif [ -f "${IOTDB_HOME}/conf/datanode-env.sh" ]; then
     if [ $enable_printgc == "true" ]; then
-      . "${IOTDB_HOME}/conf/iotdb-env.sh" "printgc"
+      . "${IOTDB_HOME}/conf/datanode-env.sh" "printgc"
     else
-      . "${IOTDB_HOME}/conf/iotdb-env.sh"
+      . "${IOTDB_HOME}/conf/datanode-env.sh"
     fi
 else
-    echo "can't find $IOTDB_CONF/iotdb-env.sh"
+    echo "can't find $IOTDB_CONF/datanode-env.sh"
 fi
 
 CONF_PARAMS="-s "$*

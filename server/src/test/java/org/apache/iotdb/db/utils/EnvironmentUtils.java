@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.udf.api.exception.UDFRegistrationException;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -50,10 +49,12 @@ import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.udf.api.exception.UDFRegistrationException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
@@ -139,6 +140,7 @@ public class EnvironmentUtils {
 
     // clean wal manager
     WALManager.getInstance().clear();
+    WALRecoverManager.getInstance().clear();
 
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
@@ -339,6 +341,7 @@ public class EnvironmentUtils {
     IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     WALManager.getInstance().clear();
+    WALRecoverManager.getInstance().clear();
     reactiveDaemon();
   }
 

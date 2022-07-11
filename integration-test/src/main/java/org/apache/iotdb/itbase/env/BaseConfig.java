@@ -30,24 +30,40 @@ public interface BaseConfig {
     throw new UnsupportedOperationException("Method getEngineProperties not implement");
   }
 
-  default Properties getClusterProperties() throws UnsupportedOperationException {
-    throw new UnsupportedOperationException("Method getClusterProperties not implement");
+  default Properties getConfignodeProperties() throws UnsupportedOperationException {
+    throw new UnsupportedOperationException("Method getConfignodeProperties not implement");
   }
 
   default BaseConfig setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
     return this;
   }
 
+  default int getPageSizeInByte() {
+    return 64 * 1024;
+  }
+
   default BaseConfig setPageSizeInByte(int pageSizeInByte) {
     return this;
+  }
+
+  default int getGroupSizeInByte() {
+    return 128 * 1024 * 1024;
   }
 
   default BaseConfig setGroupSizeInByte(int groupSizeInByte) {
     return this;
   }
 
+  default long getMemtableSizeThreshold() {
+    return 1024 * 1024 * 1024L;
+  }
+
   default BaseConfig setMemtableSizeThreshold(long memtableSizeThreshold) {
     return this;
+  }
+
+  default int getDataRegionNum() {
+    return 1;
   }
 
   default BaseConfig setDataRegionNum(int dataRegionNum) {
@@ -56,6 +72,10 @@ public interface BaseConfig {
 
   default BaseConfig setPartitionInterval(long partitionInterval) {
     return this;
+  }
+
+  default long getPartitionInterval() {
+    return 604800;
   }
 
   default BaseConfig setCompressor(String compressor) {
@@ -152,5 +172,17 @@ public interface BaseConfig {
 
   default String getFlushCommand() {
     return "flush";
+  }
+
+  default int getMaxQueryDeduplicatedPathNum() {
+    return 1000;
+  }
+
+  default int getAvgSeriesPointNumberThreshold() {
+    return 100000;
+  }
+
+  default BaseConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+    return this;
   }
 }

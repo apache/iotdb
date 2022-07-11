@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -41,12 +41,12 @@ import java.sql.Statement;
 public class IoTDBExampleIT {
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initBeforeClass();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test

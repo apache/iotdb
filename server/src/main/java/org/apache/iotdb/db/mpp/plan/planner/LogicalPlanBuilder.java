@@ -325,7 +325,7 @@ public class LogicalPlanBuilder {
             createAggregationScanNode(
                 pathAggregationsEntry.getKey(),
                 pathAggregationsEntry.getValue(),
-                scanOrder,
+                scanOrder.reverse(),
                 null,
                 timeFilter));
       }
@@ -578,7 +578,8 @@ public class LogicalPlanBuilder {
       Expression queryFilter,
       Set<Expression> selectExpressions,
       boolean isGroupByTime,
-      ZoneId zoneId) {
+      ZoneId zoneId,
+      OrderBy scanOrder) {
     if (queryFilter == null) {
       return this;
     }
@@ -590,12 +591,16 @@ public class LogicalPlanBuilder {
             selectExpressions.toArray(new Expression[0]),
             queryFilter,
             isGroupByTime,
-            zoneId);
+            zoneId,
+            scanOrder);
     return this;
   }
 
   public LogicalPlanBuilder planTransform(
-      Set<Expression> transformExpressions, boolean isGroupByTime, ZoneId zoneId) {
+      Set<Expression> transformExpressions,
+      boolean isGroupByTime,
+      ZoneId zoneId,
+      OrderBy scanOrder) {
     boolean needTransform = false;
     for (Expression expression : transformExpressions) {
       if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
@@ -613,7 +618,8 @@ public class LogicalPlanBuilder {
             this.getRoot(),
             transformExpressions.toArray(new Expression[0]),
             isGroupByTime,
-            zoneId);
+            zoneId,
+            scanOrder);
     return this;
   }
 
@@ -628,12 +634,14 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planFill(FillDescriptor fillDescriptor) {
+  public LogicalPlanBuilder planFill(FillDescriptor fillDescriptor, OrderBy scanOrder) {
     if (fillDescriptor == null) {
       return this;
     }
 
-    this.root = new FillNode(context.getQueryId().genPlanNodeId(), this.getRoot(), fillDescriptor);
+    this.root =
+        new FillNode(
+            context.getQueryId().genPlanNodeId(), this.getRoot(), fillDescriptor, scanOrder);
     return this;
   }
 

@@ -25,7 +25,6 @@ import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,14 +34,14 @@ import java.util.List;
 
 public class FlushStatement extends Statement implements IConfigStatement {
 
-  private static final Logger logger = LoggerFactory.getLogger(FlushPlan.class);
+  private static final Logger logger = LoggerFactory.getLogger(FlushStatement.class);
   /** list of storage group */
   private List<PartialPath> storageGroups;
 
   // being null indicates flushing both seq and unseq data
   private Boolean isSeq;
 
-  private boolean isLocal;
+  private boolean isCluster;
 
   public FlushStatement(StatementType flushType) {
     this.statementType = flushType;
@@ -64,12 +63,12 @@ public class FlushStatement extends Statement implements IConfigStatement {
     isSeq = seq;
   }
 
-  public boolean isLocal() {
-    return isLocal;
+  public boolean isCluster() {
+    return isCluster;
   }
 
-  public void setLocal(boolean local) {
-    isLocal = local;
+  public void setCluster(boolean isCluster) {
+    this.isCluster = isCluster;
   }
 
   @Override

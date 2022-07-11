@@ -36,11 +36,12 @@ public class ConfigFactory {
                         .getDeclaredConstructor()
                         .newInstance();
             break;
-          case "Remote":
-            config = new RemoteEnvConfig();
-            break;
+          case "LocalStandaloneOnMpp":
           case "Cluster1":
-            config = new ClusterEnvConfig();
+            config = new MppConfig();
+            break;
+          case "Remote":
+            config = new RemoteServerConfig();
             break;
           default:
             throw new ClassNotFoundException("The Property class of TestEnv not found");

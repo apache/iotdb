@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -49,6 +52,7 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.service.metrics.recorder.CacheMetricsRecorder;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -69,6 +73,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public class ClusterPartitionFetcher implements IPartitionFetcher {
@@ -78,7 +85,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
 
   private final SeriesPartitionExecutor partitionExecutor;
 
-  private PartitionCache partitionCache;
+  private final PartitionCache partitionCache;
 
   private final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
       new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
@@ -142,6 +149,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           schemaPartition = parseSchemaPartitionResp(schemaPartitionResp);
           partitionCache.updateSchemaPartitionCache(devicePaths, schemaPartition);
+        } else {
+          throw new RuntimeException(
+              new IoTDBException(
+                  schemaPartitionResp.getStatus().getMessage(),
+                  schemaPartitionResp.getStatus().getCode()));
         }
       }
       return schemaPartition;
@@ -218,12 +230,15 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
           client.getOrCreateDataPartition(constructDataPartitionReq(sgNameToQueryParamsMap));
       if (dataPartitionResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return parseDataPartitionResp(dataPartitionResp);
+      } else {
+        throw new StatementAnalyzeException(
+            "An error occurred when executing getOrCreateDataPartition():"
+                + dataPartitionResp.getStatus().getMessage());
       }
     } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
-    return null;
   }
 
   @Override
@@ -252,6 +267,11 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
   }
 
   @Override
+  public boolean updateRegionCache(TRegionRouteReq req) {
+    return partitionCache.updateGroupIdToReplicaSetMap(req);
+  }
+
+  @Override
   public void invalidAllCache() {
     logger.debug("Invalidate partition cache");
     partitionCache.storageGroupCache.clear();
@@ -273,11 +293,10 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     // first try to hit cache
     boolean firstTryResult = partitionCache.getStorageGroup(devicePaths, deviceToStorageGroup);
     if (!firstTryResult) {
-      List<String> storageGroupPathPattern = ROOT_PATH;
       try (ConfigNodeClient client =
           configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
         TStorageGroupSchemaResp storageGroupSchemaResp =
-            client.getMatchedStorageGroupSchemas(storageGroupPathPattern);
+            client.getMatchedStorageGroupSchemas(ROOT_PATH);
         if (storageGroupSchemaResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           Set<String> storageGroupNames =
@@ -299,11 +318,18 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
                 storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
               }
             }
+            Set<String> successFullyCreatedStorageGroup = new HashSet<>();
             for (String storageGroupName : storageGroupNamesNeedCreated) {
               TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
               storageGroupSchema.setName(storageGroupName);
               TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
-              client.setStorageGroup(req);
+              TSStatus tsStatus = client.setStorageGroup(req);
+              if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+                successFullyCreatedStorageGroup.add(storageGroupName);
+              } else {
+                partitionCache.updateStorageCache(successFullyCreatedStorageGroup);
+                throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
+              }
             }
             partitionCache.updateStorageCache(storageGroupNamesNeedCreated);
             // third try to hit cache
@@ -433,15 +459,27 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     /** the size of partitionCache */
     private final int cacheSize = config.getPartitionCacheSize();
     /** the cache of storage group */
-    private Set<String> storageGroupCache = Collections.synchronizedSet(new HashSet<>());
-    /** device -> tRegionReplicaSet */
+    private final Set<String> storageGroupCache = Collections.synchronizedSet(new HashSet<>());
+    /** the lock of storage group cache */
+    private final ReentrantReadWriteLock storageGroupCacheLock = new ReentrantReadWriteLock();
+    /** device -> regionReplicaSet */
     private final Cache<String, TRegionReplicaSet> schemaPartitionCache;
-    /** tSeriesPartitionSlot, tTimesereisPartitionSlot -> TRegionReplicaSets * */
+    /** the lock of schemaPartition cache * */
+    private final ReentrantReadWriteLock schemaPartitionCacheLock = new ReentrantReadWriteLock();
+    /** seriesPartitionSlot, timesereisPartitionSlot -> regionReplicaSets * */
     private final Cache<DataPartitionCacheKey, List<TRegionReplicaSet>> dataPartitionCache;
+    /** the lock of dataPartition cache */
+    private final ReentrantReadWriteLock dataPartitionCacheLock = new ReentrantReadWriteLock();
     /** calculate slotId by device */
     private final String seriesSlotExecutorName;
 
     private final int seriesPartitionSlotNum;
+
+    /** the latest time when groupIdToReplicaSetMap updated. */
+    private final AtomicLong latestUpdateTime = new AtomicLong(0);
+    /** TConsensusGroupId -> TRegionReplicaSet */
+    private final Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSetMap =
+        new ConcurrentHashMap<>();
 
     public PartitionCache(String seriesSlotExecutorName, int seriesPartitionSlotNum) {
       this.seriesSlotExecutorName = seriesSlotExecutorName;
@@ -453,216 +491,279 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     /** get storage group by cache */
     public boolean getStorageGroup(
         List<String> devicePaths, Map<String, String> deviceToStorageGroupMap) {
-      boolean result = true;
-      if (storageGroupCache.size() == 0) {
-        logger.debug("Failed to get storage group");
-        result = false;
-      } else {
-        for (String devicePath : devicePaths) {
-          boolean hit = false;
-          for (String storageGroup : storageGroupCache) {
-            if (PathUtils.isStartWith(devicePath, storageGroup)) {
-              deviceToStorageGroupMap.put(devicePath, storageGroup);
-              hit = true;
+      storageGroupCacheLock.readLock().lock();
+      try {
+        boolean result = true;
+        if (storageGroupCache.size() == 0) {
+          logger.debug("Failed to get storage group");
+          result = false;
+        } else {
+          for (String devicePath : devicePaths) {
+            boolean hit = false;
+            synchronized (storageGroupCache) {
+              for (String storageGroup : storageGroupCache) {
+                if (PathUtils.isStartWith(devicePath, storageGroup)) {
+                  deviceToStorageGroupMap.put(devicePath, storageGroup);
+                  hit = true;
+                  break;
+                }
+              }
+            }
+            if (!hit) {
+              logger.debug("{} cannot hit storage group cache", devicePath);
+              result = false;
               break;
             }
           }
-          if (!hit) {
-            logger.debug("{} cannot hit storage group cache", devicePath);
-            result = false;
-            break;
-          }
         }
+        CacheMetricsRecorder.record(result, "StorageGroup");
+        return result;
+      } finally {
+        storageGroupCacheLock.readLock().unlock();
       }
-      CacheMetricsRecorder.record(result, "StorageGroup");
-      return result;
     }
 
     /** update the cache of storage group */
     public void updateStorageCache(Set<String> storageGroupNames) {
-      for (String storageGroupName : storageGroupNames) {
-        if (!storageGroupCache.contains(storageGroupName)) {
-          storageGroupCache.add(storageGroupName);
-        }
+      storageGroupCacheLock.writeLock().lock();
+      try {
+        storageGroupCache.addAll(storageGroupNames);
+      } finally {
+        storageGroupCacheLock.writeLock().unlock();
       }
     }
 
     /** invalid storage group after delete */
     public void invalidStorageGroupCache(List<String> storageGroupNames) {
-      for (String storageGroupName : storageGroupNames) {
-        if (storageGroupCache.contains(storageGroupName)) {
+      storageGroupCacheLock.writeLock().lock();
+      try {
+        for (String storageGroupName : storageGroupNames) {
           storageGroupCache.remove(storageGroupName);
         }
+      } finally {
+        storageGroupCacheLock.writeLock().unlock();
       }
     }
 
     /** get schemaPartition by patternTree */
     public SchemaPartition getSchemaPartition(Map<String, String> deviceToStorageGroupMap) {
-      String name = "SchemaPartition";
-      if (deviceToStorageGroupMap.size() == 0) {
-        CacheMetricsRecorder.record(false, name);
-        return null;
-      }
-      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
-          new HashMap<>();
-      // check cache for each device
-      for (Map.Entry<String, String> entry : deviceToStorageGroupMap.entrySet()) {
-        String device = entry.getKey();
-        TSeriesPartitionSlot seriesPartitionSlot = partitionExecutor.getSeriesPartitionSlot(device);
-        TRegionReplicaSet regionReplicaSet = schemaPartitionCache.getIfPresent(device);
-        if (null == regionReplicaSet) {
-          // if one device not find, then return cache miss.
-          logger.debug("Failed to find schema partition");
+      schemaPartitionCacheLock.readLock().lock();
+      try {
+        String name = "SchemaPartition";
+        if (deviceToStorageGroupMap.size() == 0) {
           CacheMetricsRecorder.record(false, name);
           return null;
         }
-        String storageGroupName = deviceToStorageGroupMap.get(device);
-        if (!schemaPartitionMap.containsKey(storageGroupName)) {
-          schemaPartitionMap.put(storageGroupName, new HashMap<>());
+        Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
+            new HashMap<>();
+        // check cache for each device
+        for (Map.Entry<String, String> entry : deviceToStorageGroupMap.entrySet()) {
+          String device = entry.getKey();
+          TSeriesPartitionSlot seriesPartitionSlot =
+              partitionExecutor.getSeriesPartitionSlot(device);
+          TRegionReplicaSet regionReplicaSet = schemaPartitionCache.getIfPresent(device);
+          if (null == regionReplicaSet) {
+            // if one device not find, then return cache miss.
+            logger.debug("Failed to find schema partition");
+            CacheMetricsRecorder.record(false, name);
+            return null;
+          }
+          String storageGroupName = deviceToStorageGroupMap.get(device);
+          if (!schemaPartitionMap.containsKey(storageGroupName)) {
+            schemaPartitionMap.put(storageGroupName, new HashMap<>());
+          }
+          Map<TSeriesPartitionSlot, TRegionReplicaSet> regionReplicaSetMap =
+              schemaPartitionMap.get(storageGroupName);
+          regionReplicaSetMap.put(seriesPartitionSlot, regionReplicaSet);
         }
-        Map<TSeriesPartitionSlot, TRegionReplicaSet> regionReplicaSetMap =
-            schemaPartitionMap.get(storageGroupName);
-        regionReplicaSetMap.put(seriesPartitionSlot, regionReplicaSet);
+        logger.debug("Hit schema partition");
+        // cache hit
+        CacheMetricsRecorder.record(true, name);
+        return new SchemaPartition(
+            schemaPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
+      } finally {
+        schemaPartitionCacheLock.readLock().unlock();
       }
-      logger.debug("Hit schema partition");
-      // cache hit
-      CacheMetricsRecorder.record(true, name);
-      return new SchemaPartition(
-          schemaPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     }
 
     /** get dataPartition by query param map */
     public DataPartition getDataPartition(
         Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
-      String name = "DataPartition";
-      if (sgNameToQueryParamsMap.size() == 0) {
-        CacheMetricsRecorder.record(false, name);
-        return null;
-      }
-      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-          dataPartitionMap = new HashMap<>();
-      // check cache for each storage group
-      for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
-          sgNameToQueryParamsMap.entrySet()) {
-        String storageGroupName = entry.getKey();
-        if (!dataPartitionMap.containsKey(storageGroupName)) {
-          dataPartitionMap.put(storageGroupName, new HashMap<>());
+      dataPartitionCacheLock.readLock().lock();
+      try {
+        String name = "DataPartition";
+        if (sgNameToQueryParamsMap.size() == 0) {
+          CacheMetricsRecorder.record(false, name);
+          return null;
         }
-        Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-            seriesSlotToTimePartitionMap = dataPartitionMap.get(storageGroupName);
-        // check cache for each query param
-        for (DataPartitionQueryParam dataPartitionQueryParam : entry.getValue()) {
-          if (null == dataPartitionQueryParam.getTimePartitionSlotList()
-              || 0 == dataPartitionQueryParam.getTimePartitionSlotList().size()) {
-            // if query all data, cache miss
-            logger.debug("Failed to find data partition");
-            CacheMetricsRecorder.record(false, name);
-            return null;
+        Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+            dataPartitionMap = new HashMap<>();
+        // check cache for each storage group
+        for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
+            sgNameToQueryParamsMap.entrySet()) {
+          String storageGroupName = entry.getKey();
+          if (!dataPartitionMap.containsKey(storageGroupName)) {
+            dataPartitionMap.put(storageGroupName, new HashMap<>());
           }
-          TSeriesPartitionSlot seriesPartitionSlot =
-              partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath());
-          if (!seriesSlotToTimePartitionMap.containsKey(seriesPartitionSlot)) {
-            seriesSlotToTimePartitionMap.put(seriesPartitionSlot, new HashMap<>());
-          }
-          Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
-              seriesSlotToTimePartitionMap.get(seriesPartitionSlot);
-          // check cache for each time partition
-          for (TTimePartitionSlot timePartitionSlot :
-              dataPartitionQueryParam.getTimePartitionSlotList()) {
-            DataPartitionCacheKey dataPartitionCacheKey =
-                new DataPartitionCacheKey(seriesPartitionSlot, timePartitionSlot);
-            List<TRegionReplicaSet> regionReplicaSets =
-                dataPartitionCache.getIfPresent(dataPartitionCacheKey);
-            if (null == regionReplicaSets) {
-              // if one time partition not find, cache miss
+          Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+              seriesSlotToTimePartitionMap = dataPartitionMap.get(storageGroupName);
+          // check cache for each query param
+          for (DataPartitionQueryParam dataPartitionQueryParam : entry.getValue()) {
+            if (null == dataPartitionQueryParam.getTimePartitionSlotList()
+                || 0 == dataPartitionQueryParam.getTimePartitionSlotList().size()) {
+              // if query all data, cache miss
               logger.debug("Failed to find data partition");
               CacheMetricsRecorder.record(false, name);
               return null;
             }
-            timePartitionSlotListMap.put(timePartitionSlot, regionReplicaSets);
+            TSeriesPartitionSlot seriesPartitionSlot =
+                partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath());
+            if (!seriesSlotToTimePartitionMap.containsKey(seriesPartitionSlot)) {
+              seriesSlotToTimePartitionMap.put(seriesPartitionSlot, new HashMap<>());
+            }
+            Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
+                seriesSlotToTimePartitionMap.get(seriesPartitionSlot);
+            // check cache for each time partition
+            for (TTimePartitionSlot timePartitionSlot :
+                dataPartitionQueryParam.getTimePartitionSlotList()) {
+              DataPartitionCacheKey dataPartitionCacheKey =
+                  new DataPartitionCacheKey(seriesPartitionSlot, timePartitionSlot);
+              List<TRegionReplicaSet> regionReplicaSets =
+                  dataPartitionCache.getIfPresent(dataPartitionCacheKey);
+              if (null == regionReplicaSets) {
+                // if one time partition not find, cache miss
+                logger.debug("Failed to find data partition");
+                CacheMetricsRecorder.record(false, name);
+                return null;
+              }
+              timePartitionSlotListMap.put(timePartitionSlot, regionReplicaSets);
+            }
           }
         }
+        logger.debug("Hit data partition");
+        // cache hit
+        CacheMetricsRecorder.record(true, name);
+        return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
+      } finally {
+        dataPartitionCacheLock.readLock().unlock();
       }
-      logger.debug("Hit data partition");
-      // cache hit
-      CacheMetricsRecorder.record(true, name);
-      return new DataPartition(dataPartitionMap, seriesSlotExecutorName, seriesPartitionSlotNum);
     }
 
     /** update schemaPartitionCache by schemaPartition. */
     public void updateSchemaPartitionCache(List<String> devices, SchemaPartition schemaPartition) {
-      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> storageGroupPartitionMap =
-          schemaPartition.getSchemaPartitionMap();
-      Set<String> storageGroupNames = storageGroupPartitionMap.keySet();
-      for (String device : devices) {
-        if (!device.contains("*")) {
-          String storageGroup = null;
-          for (String storageGroupName : storageGroupNames) {
-            if (PathUtils.isStartWith(device, storageGroup)) {
-              storageGroup = storageGroupName;
-              break;
+      schemaPartitionCacheLock.writeLock().lock();
+      try {
+        Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> storageGroupPartitionMap =
+            schemaPartition.getSchemaPartitionMap();
+        Set<String> storageGroupNames = storageGroupPartitionMap.keySet();
+        for (String device : devices) {
+          if (!device.contains("*")) {
+            String storageGroup = null;
+            for (String storageGroupName : storageGroupNames) {
+              if (PathUtils.isStartWith(device, storageGroupName)) {
+                storageGroup = storageGroupName;
+                break;
+              }
             }
+            if (null == storageGroup) {
+              // device not exist
+              continue;
+            }
+            TSeriesPartitionSlot seriesPartitionSlot =
+                partitionExecutor.getSeriesPartitionSlot(device);
+            TRegionReplicaSet regionReplicaSet =
+                storageGroupPartitionMap.get(storageGroup).getOrDefault(seriesPartitionSlot, null);
+            if (null == regionReplicaSet) {
+              logger.error(
+                  "Failed to get the regionReplicaSet of {} when update SchemaPartitionCache",
+                  device);
+              continue;
+            }
+            schemaPartitionCache.put(device, regionReplicaSet);
           }
-          if (null == storageGroup) {
-            // device not exist
-            continue;
-          }
-          TSeriesPartitionSlot seriesPartitionSlot =
-              partitionExecutor.getSeriesPartitionSlot(device);
-          TRegionReplicaSet regionReplicaSet =
-              storageGroupPartitionMap.get(storageGroup).getOrDefault(seriesPartitionSlot, null);
-          if (null == regionReplicaSet) {
-            logger.error(
-                "Failed to get the regionReplicaSet of {} when update SchemaPartitionCache",
-                device);
-            continue;
-          }
-          schemaPartitionCache.put(device, regionReplicaSet);
         }
+      } finally {
+        schemaPartitionCacheLock.writeLock().unlock();
       }
     }
 
     /** update dataPartitionCache by dataPartition */
     public void updateDataPartitionCache(DataPartition dataPartition) {
-      for (Map.Entry<
-              String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-          entry1 : dataPartition.getDataPartitionMap().entrySet()) {
-        for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
-            entry2 : entry1.getValue().entrySet()) {
-          TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
-          for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> entry3 :
-              entry2.getValue().entrySet()) {
-            DataPartitionCacheKey dataPartitionCacheKey =
-                new DataPartitionCacheKey(seriesPartitionSlot, entry3.getKey());
-            dataPartitionCache.put(dataPartitionCacheKey, entry3.getValue());
+      dataPartitionCacheLock.writeLock().lock();
+      try {
+        for (Map.Entry<
+                String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
+            entry1 : dataPartition.getDataPartitionMap().entrySet()) {
+          for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
+              entry2 : entry1.getValue().entrySet()) {
+            TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
+            for (Map.Entry<TTimePartitionSlot, List<TRegionReplicaSet>> entry3 :
+                entry2.getValue().entrySet()) {
+              DataPartitionCacheKey dataPartitionCacheKey =
+                  new DataPartitionCacheKey(seriesPartitionSlot, entry3.getKey());
+              dataPartitionCache.put(dataPartitionCacheKey, entry3.getValue());
+            }
           }
         }
+      } finally {
+        dataPartitionCacheLock.writeLock().unlock();
       }
     }
 
     /** invalid schemaPartitionCache by device */
     public void invalidSchemaPartitionCache(String device) {
       // TODO should be called in two situation: 1. redirect status 2. config node trigger
-      schemaPartitionCache.invalidate(device);
+      schemaPartitionCacheLock.writeLock().lock();
+      try {
+        schemaPartitionCache.invalidate(device);
+      } finally {
+        schemaPartitionCacheLock.writeLock().unlock();
+      }
     }
 
     /** invalid dataPartitionCache by seriesPartitionSlot, timePartitionSlot */
     public void invalidDataPartitionCache(
         TSeriesPartitionSlot seriesPartitionSlot, TTimePartitionSlot timePartitionSlot) {
+      dataPartitionCacheLock.writeLock().lock();
       // TODO should be called in two situation: 1. redirect status 2. config node trigger
-      DataPartitionCacheKey dataPartitionCacheKey =
-          new DataPartitionCacheKey(seriesPartitionSlot, timePartitionSlot);
-      dataPartitionCache.invalidate(dataPartitionCacheKey);
+      try {
+        DataPartitionCacheKey dataPartitionCacheKey =
+            new DataPartitionCacheKey(seriesPartitionSlot, timePartitionSlot);
+        dataPartitionCache.invalidate(dataPartitionCacheKey);
+      } finally {
+        dataPartitionCacheLock.writeLock().unlock();
+      }
     }
 
     /** invalid schemaPartitionCache by device */
     public void invalidAllSchemaPartitionCache() {
-      schemaPartitionCache.invalidateAll();
+      schemaPartitionCacheLock.writeLock().lock();
+      try {
+        schemaPartitionCache.invalidateAll();
+      } finally {
+        schemaPartitionCacheLock.writeLock().unlock();
+      }
     }
 
     /** invalid dataPartitionCache by seriesPartitionSlot, timePartitionSlot */
     public void invalidAllDataPartitionCache() {
-      dataPartitionCache.invalidateAll();
+      dataPartitionCacheLock.writeLock().lock();
+      try {
+        dataPartitionCache.invalidateAll();
+      } finally {
+        dataPartitionCacheLock.writeLock().unlock();
+      }
+    }
+
+    public boolean updateGroupIdToReplicaSetMap(TRegionRouteReq req) {
+      long timestamp = req.getTimestamp();
+      boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
+      // if timestamp is greater than latestUpdateTime, then update
+      if (result) {
+        groupIdToReplicaSetMap.clear();
+        groupIdToReplicaSetMap.putAll(req.getRegionRouteMap());
+      }
+      return result;
     }
 
     @Override
@@ -680,7 +781,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
-  private class DataPartitionCacheKey {
+  private static class DataPartitionCacheKey {
     private TSeriesPartitionSlot seriesPartitionSlot;
     private TTimePartitionSlot timePartitionSlot;
 

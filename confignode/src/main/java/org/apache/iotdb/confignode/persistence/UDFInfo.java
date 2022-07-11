@@ -25,10 +25,10 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableResource;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
-import org.apache.iotdb.confignode.consensus.request.write.DropFunctionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -42,7 +42,7 @@ public class UDFInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDFInfo.class);
 
-  private static final ConfigNodeConf CONFIG_NODE_CONF =
+  private static final ConfigNodeConfig CONFIG_NODE_CONF =
       ConfigNodeDescriptor.getInstance().getConf();
 
   private final UDFExecutableManager udfExecutableManager;
@@ -88,7 +88,7 @@ public class UDFInfo implements SnapshotProcessor {
     }
   }
 
-  public synchronized TSStatus createFunction(CreateFunctionReq req) {
+  public synchronized TSStatus createFunction(CreateFunctionPlan req) {
     final String functionName = req.getFunctionName();
     final String className = req.getClassName();
     final List<String> uris = req.getUris();
@@ -107,7 +107,7 @@ public class UDFInfo implements SnapshotProcessor {
     }
   }
 
-  public synchronized TSStatus dropFunction(DropFunctionReq req) {
+  public synchronized TSStatus dropFunction(DropFunctionPlan req) {
     try {
       udfRegistrationService.deregister(req.getFunctionName());
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

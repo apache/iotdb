@@ -18,14 +18,16 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
+
+import java.io.IOException;
 
 /*This function returns if input series ends with the specified suffix.*/
 public class UDTFEndsWith implements UDTF {
@@ -34,7 +36,7 @@ public class UDTFEndsWith implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.TEXT);
+    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, Type.TEXT);
   }
 
   @Override
@@ -42,12 +44,17 @@ public class UDTFEndsWith implements UDTF {
       throws Exception {
     target = parameters.getString("target");
     configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.BOOLEAN);
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.BOOLEAN);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     collector.putBoolean(row.getTime(), row.getString(0).endsWith(target));
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    return row.getString(0).endsWith(target);
   }
 }

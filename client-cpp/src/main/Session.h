@@ -40,7 +40,7 @@
 #include <thrift/transport/TSocket.h>
 #include <thrift/transport/TTransportException.h>
 #include <thrift/transport/TBufferTransports.h>
-#include "TSIService.h"
+#include "IClientRPCService.h"
 
 using ::apache::thrift::protocol::TBinaryProtocol;
 using ::apache::thrift::protocol::TCompactProtocol;
@@ -635,7 +635,7 @@ private:
     int64_t queryId;
     int64_t statementId;
     int64_t sessionId;
-    std::shared_ptr<TSIServiceIf> client;
+    std::shared_ptr<IClientRPCServiceIf> client;
     int batchSize = 1024;
     std::vector<std::string> columnNameList;
     std::vector<std::string> columnTypeDeduplicatedList;
@@ -665,7 +665,7 @@ public:
                    std::map<std::string, int> &columnNameIndexMap,
                    bool isIgnoreTimeStamp,
                    int64_t queryId, int64_t statementId,
-                   std::shared_ptr<TSIServiceIf> client, int64_t sessionId,
+                   std::shared_ptr<IClientRPCServiceIf> client, int64_t sessionId,
                    const std::shared_ptr<TSQueryDataSet> &queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time) {
         this->sessionId = sessionId;
         this->sql = sql;
@@ -894,7 +894,7 @@ private:
     std::string username;
     std::string password;
     const TSProtocolVersion::type protocolVersion = TSProtocolVersion::IOTDB_SERVICE_PROTOCOL_V3;
-    std::shared_ptr<TSIServiceIf> client;
+    std::shared_ptr<IClientRPCServiceIf> client;
     std::shared_ptr<TTransport> transport;
     bool isClosed = true;
     int64_t sessionId;

@@ -78,10 +78,12 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 | Metric              | Tag             | level     | 说明             | 示例                                         |
 | ------------------- | --------------- | --------- | ---------------- | -------------------------------------------- |
-| entry_seconds_count | name="接口名"   | important | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="接口名"   | important | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="接口名"   | important | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
+| entry_seconds_count | name="{{interface}}"   | important | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum   | name="{{interface}}"   | important | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max   | name="{{interface}}"   | important | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
 | quantity_total      | name="pointsIn" | important | 系统累计写入点数 | quantity_total{name="pointsIn",} 1.0         |
+| thrift_connections  | name="{{thriftService}}" | core | thrift当前连接数 | thrift_connections{name="RPC",} 1.0 |
+| thrift_active_threads | name="{{thriftThread}}" | core | thrift worker线程数 | thrift_active_threads{name="RPC",} 1.0 |
 
 #### 4.3.2. Task
 
@@ -361,9 +363,77 @@ static_configs:
 
 ![Apache IoTDB Dashboard](https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/System%20Tools/Metrics/dashboard.png)
 
-Apache IoTDB Dashboard的获取方式：
-
+#### 5.3.1. 获取方式
 1. 您可以在grafana-metrics-example文件夹下获取到对应不同iotdb版本的Dashboard的json文件。
 2. 您可以访问[Grafana Dashboard官网](https://grafana.com/grafana/dashboards/)搜索`Apache IoTDB Dashboard`并使用
 
 在创建Grafana时，您可以选择Import刚刚下载的json文件，并为Apache IoTDB Dashboard选择对应目标数据源。
+
+#### 5.3.2. Apache IoTDB StandAlone Dashboard 说明
+> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
+
+1. `Overview`：系统概述
+   1. `The number of entity`：实体数量，目前包含时间序列的数量。
+   2. `write point per minute`：每分钟系统累计写入点数。
+   3. `storage group used memory`：每个存储组使用的内存大小。
+2. `Interface`：接口
+   1. `The QPS of Interface`：系统接口每秒钟访问次数
+   2. `The time consumed of Interface`：系统接口的平均耗时
+   3. `Cache hit rate`：缓存命中率。
+3. `Engine`：引擎
+   1. `Task number(pending and active)`：系统中不同状态的任务个数。
+   2. `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时。
+4. `System`：系统
+   1. `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小。
+   2. `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数。
+   3. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC。
+   4. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC。
+   5. `Heap Memory`：IoTDB的堆内存。
+   6. `Off-heap Memory`：IoTDB的堆外内存。
+   7. `The number of Java Thread`：IoTDB的不同状态线程数。
+
+#### 5.3.3. Apache IoTDB ConfigNode Dashboard 说明
+> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
+
+1. `Overview`：系统概述
+   1. `Online ConfigNode`：线上ConfigNode个数
+   2. `Online DataNode`：线上DataNode个数
+   3. `Storage Group`：存储组数量
+   4. `TotalRegion`：Region总数量
+   5. `DataRegion`：DataRegion总数量
+   6. `SchemaRegion`：SchemaRegion总数量
+2. `Region`：Region分布情况
+   1. `Total Region in Node`：不同Node的Region总数量
+   2. `Region in Node`：不同Node的Region数量，包括SchemaRegion、DataRegion
+   3. `Region in Storage Group`(Normal级别)：不同存储组的Region数量，包括SchemaRegion、DataRegion
+   4. `Slot in Storage Group`(Normal级别)：不同存储组的Slot数量，包括DataSlot数量和SchemaSlot数量
+3. `System`：系统
+   1. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC。
+   2. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC。
+   3. `Heap Memory`：IoTDB的堆内存。
+   4. `Off-heap Memory`：IoTDB的堆外内存。
+   5. `The number of Java Thread`：IoTDB的不同状态线程数。
+   6. `The time consumed of Interface`：系统接口的平均耗时
+
+#### 5.3.4. Apache IoTDB DataNode Dashboard 说明
+> 除特殊说明的监控项以外，以下监控项均保证在Important级别的监控框架中可用。
+
+1. `Overview`：系统概述
+   1. `The number of entity`：实体数量，目前包含时间序列的数量。
+   2. `write point per minute`：每分钟系统累计写入点数。
+   3. `storage group used memory`：每个存储组使用的内存大小。
+2. `Interface`：接口
+   1. `The QPS of Interface`：系统接口每秒钟访问次数
+   2. `The time consumed of Interface`：系统接口的平均耗时
+3. `Engine`：引擎
+   1. `Task number(pending and active)`：系统中不同状态的任务个数。
+   2. `The time consumed of tasking(pending and active)`：系统中不同状态的任务的耗时。
+   3. `Cache hit rate`：缓存命中率。
+4. `System`：系统
+   1. `The size of file`：IoTDB系统相关的文件大小，包括wal下的文件总大小、seq下的tsfile文件总大小、unseq下的tsfile文件总大小。
+   2. `The number of file`：IoTDB系统相关的文件个数，包括wal下的文件个数、seq下的tsfile文件个数、unseq下的tsfile文件个数。
+   3. `The number of GC(per minute)`：IoTDB每分钟的GC数量，包括Young GC和Full GC。
+   4. `The time consumed of GC(per minute)`：IoTDB的每分钟平均GC耗时，包括Young GC和Full GC。
+   5. `Heap Memory`：IoTDB的堆内存。
+   6. `Off-heap Memory`：IoTDB的堆外内存。
+   7. `The number of Java Thread`：IoTDB的不同状态线程数。

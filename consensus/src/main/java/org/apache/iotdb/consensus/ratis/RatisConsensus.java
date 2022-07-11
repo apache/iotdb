@@ -58,6 +58,7 @@ import org.apache.ratis.protocol.RaftGroup;
 import org.apache.ratis.protocol.RaftGroupId;
 import org.apache.ratis.protocol.RaftPeer;
 import org.apache.ratis.protocol.RaftPeerId;
+import org.apache.ratis.protocol.SnapshotManagementRequest;
 import org.apache.ratis.protocol.exceptions.NotLeaderException;
 import org.apache.ratis.server.DivisionInfo;
 import org.apache.ratis.server.RaftServer;
@@ -409,6 +410,7 @@ class RatisConsensus implements IConsensus {
   }
 
   /**
+   * NOTICE: transferLeader *does not guarantee* the leader be transferred to newLeader.
    * transferLeader is implemented by 1. modify peer priority 2. ask current leader to step down
    *
    * <p>1. call setConfiguration to upgrade newLeader's priority to 1 and degrade all follower peers
@@ -513,6 +515,12 @@ class RatisConsensus implements IConsensus {
     return divisionInfo.isLeader();
   }
 
+  /**
+   * returns the known leader to the given group. NOTICE: if the local peer isn't a member of given
+   * group, getLeader will return null.
+   *
+   * @return null if local peer isn't in group, otherwise group leader.
+   */
   @Override
   public Peer getLeader(ConsensusGroupId groupId) {
     RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
@@ -524,13 +532,47 @@ class RatisConsensus implements IConsensus {
       logger.warn("fetch division info for group " + groupId + " failed due to: ", e);
       return null;
     }
+    if (leaderId == null) {
+      return null;
+    }
     TEndPoint leaderEndpoint = Utils.formRaftPeerIdToTEndPoint(leaderId);
     return new Peer(groupId, leaderEndpoint);
   }
 
   @Override
+  public List<ConsensusGroupId> getAllConsensusGroupIds() {
+    List<ConsensusGroupId> ids = new ArrayList<>();
+    server
+        .getGroupIds()
+        .forEach(
+            groupId -> {
+              ids.add(Utils.fromRaftGroupIdToConsensusGroupId(groupId));
+            });
+    return ids;
+  }
+
+  @Override
   public ConsensusGenericResponse triggerSnapshot(ConsensusGroupId groupId) {
-    return ConsensusGenericResponse.newBuilder().setSuccess(false).build();
+    RaftGroupId raftGroupId = Utils.fromConsensusGroupIdToRaftGroupId(groupId);
+    RaftGroup groupInfo = getGroupInfo(raftGroupId);
+
+    if (groupInfo == null || !groupInfo.getPeers().contains(myself)) {
+      return failed(new ConsensusGroupNotExistException(groupId));
+    }
+
+    // TODO tuning snapshot create timeout
+    SnapshotManagementRequest request =
+        SnapshotManagementRequest.newCreate(
+            localFakeId, myself.getId(), raftGroupId, localFakeCallId.incrementAndGet(), 30000);
+
+    RaftClientReply reply;
+    try {
+      reply = server.snapshotManagement(request);
+    } catch (IOException ioException) {
+      return failed(new RatisRequestFailedException(ioException));
+    }
+
+    return ConsensusGenericResponse.newBuilder().setSuccess(reply.isSuccess()).build();
   }
 
   private ConsensusGenericResponse failed(ConsensusException e) {

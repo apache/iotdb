@@ -26,8 +26,9 @@
 支持的运算符如下：
 
 - 比较运算符：大于（`>`）、大于等于（ `>=`）、等于（ `=` 或 `==`）、不等于（ `!=` 或 `<>`）、小于等于（ `<=`）、小于（ `<`）。
-- 范围包含运算符：包含（ `IN` ）。
 - 逻辑运算符：与（ `AND` 或 `&` 或 `&&`）、或（ `OR` 或 `|` 或 `||`）、非（ `NOT` 或 `!`）。
+- 范围包含运算符：包含（ `IN` ）。
+- 字符串匹配运算符：`LIKE`, `REGEXP`。
 
 ## 时间过滤条件
 
@@ -72,12 +73,15 @@
    ```sql
    select status from root.sg1.d1 where status = true;
 
-3. 选择区间 (36.5,40] 的数据：
+3. 选择区间 [36.5,40] 内或之外的数据：
 
-   ```sql
-   select temperature from root.sg1.d1 where temperature > 36.5 and temperature < 40;
-   ```
-
+    ```sql
+    select temperature from root.sg1.d1 where temperature between 36.5 and 40;
+    ````
+    ```sql
+    select temperature from root.sg1.d1 where temperature not between 36.5 and 40;
+    ````
+   
 4. 选择值在特定范围内的数据：
 
    ```sql
@@ -89,6 +93,20 @@
    ```sql
    select code from root.sg1.d1 where code not in ('200', '300', '400', '500');
    ```
+
+## 空值过滤
+使用空值过滤条件可以筛选出值为空或非空的数据
+1. 选择值为空的数据:
+
+    ```sql
+    select code from root.sg1.d1 where temperature is null;
+    ````
+
+2. 选择值为非空的数据:
+
+    ```sql
+    select code from root.sg1.d1 where temperature is not null;
+    ````
 
 ## 模糊查询
 

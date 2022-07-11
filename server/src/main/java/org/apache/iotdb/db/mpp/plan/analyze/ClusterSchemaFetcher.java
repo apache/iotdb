@@ -49,6 +49,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import io.airlift.concurrent.SetThreadName;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -102,35 +104,43 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
     long queryId = SessionManager.getInstance().requestQueryId(false);
-    ExecutionResult executionResult =
-        coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
-    // TODO: (xingtanzjr) throw exception
-    if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new RuntimeException(
-          String.format(
-              "cannot fetch schema, status is: %s, msg is: %s",
-              executionResult.status.getCode(), executionResult.status.getMessage()));
-    }
-    try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
-      SchemaTree result = new SchemaTree();
-      while (coordinator.getQueryExecution(queryId).hasNextResult()) {
-        // The query will be transited to FINISHED when invoking getBatchResult() at the last time
-        // So we don't need to clean up it manually
-        Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
-        if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
-          break;
-        }
-        Binary binary;
-        SchemaTree fetchedSchemaTree;
-        Column column = tsBlock.get().getColumn(0);
-        for (int i = 0; i < column.getPositionCount(); i++) {
-          binary = column.getBinary(i);
-          fetchedSchemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
-          result.mergeSchemaTree(fetchedSchemaTree);
-        }
+    try {
+      ExecutionResult executionResult =
+          coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
+      // TODO: (xingtanzjr) throw exception
+      if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(
+            String.format(
+                "cannot fetch schema, status is: %s, msg is: %s",
+                executionResult.status.getCode(), executionResult.status.getMessage()));
       }
+      try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
+        SchemaTree result = new SchemaTree();
+        while (coordinator.getQueryExecution(queryId).hasNextResult()) {
+          // The query will be transited to FINISHED when invoking getBatchResult() at the last time
+          // So we don't need to clean up it manually
+          Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+          if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+            break;
+          }
+          Binary binary;
+          SchemaTree fetchedSchemaTree;
+          Column column = tsBlock.get().getColumn(0);
+          for (int i = 0; i < column.getPositionCount(); i++) {
+            binary = column.getBinary(i);
+            try {
+              fetchedSchemaTree =
+                  SchemaTree.deserialize(new ByteArrayInputStream(binary.getValues()));
+              result.mergeSchemaTree(fetchedSchemaTree);
+            } catch (IOException e) {
+              // Totally memory operation. This case won't happen.
+            }
+          }
+        }
+        return result;
+      }
+    } finally {
       coordinator.removeQueryExecution(queryId);
-      return result;
     }
   }
 

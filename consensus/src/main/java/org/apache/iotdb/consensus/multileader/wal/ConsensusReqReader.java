@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.multileader.wal;
 
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 
 import java.util.Iterator;
 import java.util.List;
@@ -29,7 +30,13 @@ import java.util.concurrent.TimeoutException;
 /** This interface provides search interface for consensus requests via index. */
 public interface ConsensusReqReader {
 
+  /** this insert node doesn't need to participate in multi-leader consensus */
   long DEFAULT_SEARCH_INDEX = -1;
+
+  /** multi-leader consensus cannot delete any insert nodes */
+  long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MIN_VALUE;
+
+  void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex);
 
   /**
    * Gets the consensus request at the specified position.
@@ -68,7 +75,7 @@ public interface ConsensusReqReader {
      * @throws java.util.NoSuchElementException if the iteration has no more elements, wait a moment
      *     or call {@link this#waitForNextReady} for more elements
      */
-    IConsensusRequest next();
+    IndexedConsensusRequest next();
 
     /**
      * Wait for the next element in the iteration ready, blocked until next element is available.
@@ -89,4 +96,7 @@ public interface ConsensusReqReader {
      */
     void skipTo(long targetIndex);
   }
+
+  /** Get current search index */
+  long getCurrentSearchIndex();
 }

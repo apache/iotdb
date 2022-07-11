@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.SchemaValidator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -91,14 +93,17 @@ public class StandaloneScheduler implements IScheduler {
             stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
     this.queryTerminator =
         new SimpleQueryTerminator(
-            executor, queryContext.getQueryId(), instances, internalServiceClientManager);
+            executor,
+            scheduledExecutor,
+            queryContext.getQueryId(),
+            instances,
+            internalServiceClientManager);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public void start() {
     stateMachine.transitionToDispatching();
-    LOGGER.info("{} transit to DISPATCHING", getLogHeader());
     // For the FragmentInstance of WRITE, it will be executed directly when dispatching.
     // TODO: Other QueryTypes
     switch (queryType) {
@@ -152,11 +157,16 @@ public class StandaloneScheduler implements IScheduler {
                     insertNode.getFailedMessages());
               }
             }
+
+            TSStatus executionResult;
+
             if (groupId instanceof DataRegionId) {
-              STORAGE_ENGINE.write((DataRegionId) groupId, planNode);
+              executionResult = STORAGE_ENGINE.write((DataRegionId) groupId, planNode);
             } else {
-              SCHEMA_ENGINE.write((SchemaRegionId) groupId, planNode);
+              executionResult = SCHEMA_ENGINE.write((SchemaRegionId) groupId, planNode);
             }
+
+            // partial insert
             if (hasFailedMeasurement) {
               InsertNode node = (InsertNode) planNode;
               List<Exception> exceptions = node.getFailedExceptions();
@@ -166,6 +176,12 @@ public class StandaloneScheduler implements IScheduler {
                       + (!exceptions.isEmpty()
                           ? (" caused by " + exceptions.get(0).getMessage())
                           : ""));
+            }
+
+            if (executionResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+              LOGGER.error("Execute write operation error: {}", executionResult.getMessage());
+              stateMachine.transitionToFailed(executionResult);
+              return;
             }
           }
           stateMachine.transitionToFinished();

@@ -144,7 +144,7 @@ public class IoTDBDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
+      conf.setRpcAddress(properties.getProperty(IoTDBConstant.RPC_ADDRESS, conf.getRpcAddress()));
 
       loadClusterProps(properties);
 
@@ -180,7 +180,7 @@ public class IoTDBDescriptor {
 
       conf.setRpcPort(
           Integer.parseInt(
-              properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
+              properties.getProperty(IoTDBConstant.RPC_PORT, Integer.toString(conf.getRpcPort()))));
 
       conf.setEnableInfluxDBRpcService(
           Boolean.parseBoolean(
@@ -476,6 +476,16 @@ public class IoTDBDescriptor {
         conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
       }
 
+      conf.setMaxAllowedConcurrentQueries(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_allowed_concurrent_queries",
+                  Integer.toString(conf.getMaxAllowedConcurrentQueries()))));
+
+      if (conf.getMaxAllowedConcurrentQueries() <= 0) {
+        conf.setMaxAllowedConcurrentQueries(1000);
+      }
+
       conf.setConcurrentSubRawQueryThread(
           Integer.parseInt(
               properties.getProperty(
@@ -591,6 +601,28 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "enable_partial_insert", String.valueOf(conf.isEnablePartialInsert()))));
+
+      int rpcSelectorThreadNum =
+          Integer.parseInt(
+              properties.getProperty(
+                  "rpc_selector_thread_num",
+                  Integer.toString(conf.getRpcSelectorThreadNum()).trim()));
+      if (rpcSelectorThreadNum <= 0) {
+        rpcSelectorThreadNum = 1;
+      }
+
+      conf.setRpcSelectorThreadNum(rpcSelectorThreadNum);
+
+      int minConcurrentClientNum =
+          Integer.parseInt(
+              properties.getProperty(
+                  "rpc_min_concurrent_client_num",
+                  Integer.toString(conf.getRpcMinConcurrentClientNum()).trim()));
+      if (minConcurrentClientNum <= 0) {
+        minConcurrentClientNum = Runtime.getRuntime().availableProcessors();
+      }
+
+      conf.setRpcMinConcurrentClientNum(minConcurrentClientNum);
 
       int maxConcurrentClientNum =
           Integer.parseInt(
@@ -801,12 +833,6 @@ public class IoTDBDescriptor {
                   "insert_multi_tablet_enable_multithreading_column_threshold",
                   String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
 
-      conf.setDataNodeSchemaCacheSize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "datanode_schema_cache_size",
-                  String.valueOf(conf.getDataNodeSchemaCacheSize()))));
-
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -926,12 +952,12 @@ public class IoTDBDescriptor {
       conf.setRpcAddress(InetAddress.getByName(conf.getRpcAddress()).getHostAddress());
     }
 
-    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalIp());
+    boolean isInvalidInternalIp = InetAddresses.isInetAddress(conf.getInternalAddress());
     if (!isInvalidInternalIp) {
-      conf.setInternalIp(InetAddress.getByName(conf.getInternalIp()).getHostAddress());
+      conf.setInternalAddress(InetAddress.getByName(conf.getInternalAddress()).getHostAddress());
     }
 
-    for (TEndPoint configNode : conf.getConfigNodeList()) {
+    for (TEndPoint configNode : conf.getTargetConfigNodeList()) {
       boolean isInvalidNodeIp = InetAddresses.isInetAddress(configNode.ip);
       if (!isInvalidNodeIp) {
         String newNodeIP = InetAddress.getByName(configNode.ip).getHostAddress();
@@ -942,8 +968,8 @@ public class IoTDBDescriptor {
     logger.debug(
         "after replace, the rpcIP={}, internalIP={}, configNodeUrls={}",
         conf.getRpcAddress(),
-        conf.getInternalIp(),
-        conf.getConfigNodeList());
+        conf.getInternalAddress(),
+        conf.getTargetConfigNodeList());
   }
 
   private void loadWALProps(Properties properties) {
@@ -1421,6 +1447,8 @@ public class IoTDBDescriptor {
     logger.info("allocateMemoryForWrite = {}", conf.getAllocateMemoryForWrite());
     logger.info("allocateMemoryForSchema = {}", conf.getAllocateMemoryForSchema());
 
+    initSchemaMemoryAllocate(properties);
+
     conf.setMaxQueryDeduplicatedPathNum(
         Integer.parseInt(
             properties.getProperty(
@@ -1458,6 +1486,54 @@ public class IoTDBDescriptor {
         }
       }
     }
+  }
+
+  private void initSchemaMemoryAllocate(Properties properties) {
+    long schemaMemoryTotal = conf.getAllocateMemoryForSchema();
+
+    int proportionSum = 10;
+    int schemaRegionProportion = 8;
+    int schemaCacheProportion = 1;
+    int partitionCacheProportion = 0;
+    int lastCacheProportion = 1;
+
+    if (conf.isClusterMode()) {
+      schemaRegionProportion = 5;
+      schemaCacheProportion = 3;
+      partitionCacheProportion = 1;
+    }
+
+    String schemaMemoryAllocatePortion =
+        properties.getProperty("schema_memory_allocate_proportion");
+    if (schemaMemoryAllocatePortion != null) {
+      String[] proportions = schemaMemoryAllocatePortion.split(":");
+      int loadedProportionSum = 0;
+      for (String proportion : proportions) {
+        loadedProportionSum += Integer.parseInt(proportion.trim());
+      }
+
+      if (loadedProportionSum != 0) {
+        proportionSum = loadedProportionSum;
+        schemaRegionProportion = Integer.parseInt(proportions[0].trim());
+        schemaCacheProportion = Integer.parseInt(proportions[1].trim());
+        partitionCacheProportion = Integer.parseInt(proportions[2].trim());
+        lastCacheProportion = Integer.parseInt(proportions[3].trim());
+      }
+    }
+
+    conf.setAllocateMemoryForSchemaRegion(
+        schemaMemoryTotal * schemaRegionProportion / proportionSum);
+    logger.info("allocateMemoryForSchemaRegion = {}", conf.getAllocateMemoryForSchemaRegion());
+
+    conf.setAllocateMemoryForSchemaCache(schemaMemoryTotal * schemaCacheProportion / proportionSum);
+    logger.info("allocateMemoryForSchemaCache = {}", conf.getAllocateMemoryForSchemaCache());
+
+    conf.setAllocateMemoryForPartitionCache(
+        schemaMemoryTotal * partitionCacheProportion / proportionSum);
+    logger.info("allocateMemoryForPartitionCache = {}", conf.getAllocateMemoryForPartitionCache());
+
+    conf.setAllocateMemoryForLastCache(schemaMemoryTotal * lastCacheProportion / proportionSum);
+    logger.info("allocateMemoryForLastCache = {}", conf.getAllocateMemoryForLastCache());
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero
@@ -1548,6 +1624,16 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "trigger_forward_mqtt_pool_size",
                 Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
+    conf.setCoordinatorReadExecutorSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "coordinator_read_executor_size",
+                Integer.toString(conf.getCoordinatorReadExecutorSize()))));
+    conf.setCoordinatorWriteExecutorSize(
+        Integer.parseInt(
+            properties.getProperty(
+                "coordinator_write_executor_size",
+                Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
   }
 
   private void loadCQProps(Properties properties) {
@@ -1581,21 +1667,23 @@ public class IoTDBDescriptor {
   }
 
   public void loadClusterProps(Properties properties) {
-    String configNodeUrls = properties.getProperty("config_nodes");
+    String configNodeUrls = properties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES);
     if (configNodeUrls != null) {
       try {
-        conf.setConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
+        conf.setTargetConfigNodeList(NodeUrlUtils.parseTEndPointUrls(configNodeUrls));
       } catch (BadNodeUrlException e) {
         logger.error(
-            "Config nodes are set in wrong format, please set them like 0.0.0.0:22277,0.0.0.0:22281");
+            "Config nodes are set in wrong format, please set them like 127.0.0.1:22277,127.0.0.1:22281");
       }
     }
 
-    conf.setInternalIp(properties.getProperty("internal_ip", conf.getInternalIp()));
+    conf.setInternalAddress(
+        properties.getProperty(IoTDBConstant.INTERNAL_ADDRESS, conf.getInternalAddress()));
 
     conf.setInternalPort(
         Integer.parseInt(
-            properties.getProperty("internal_port", Integer.toString(conf.getInternalPort()))));
+            properties.getProperty(
+                IoTDBConstant.INTERNAL_PORT, Integer.toString(conf.getInternalPort()))));
 
     conf.setDataRegionConsensusPort(
         Integer.parseInt(
@@ -1611,25 +1699,25 @@ public class IoTDBDescriptor {
   }
 
   public void loadShuffleProps(Properties properties) {
-    conf.setDataBlockManagerPort(
+    conf.setMppDataExchangePort(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_port", Integer.toString(conf.getDataBlockManagerPort()))));
-    conf.setDataBlockManagerCorePoolSize(
+                "mpp_data_exchange_port", Integer.toString(conf.getMppDataExchangePort()))));
+    conf.setMppDataExchangeCorePoolSize(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_core_pool_size",
-                Integer.toString(conf.getDataBlockManagerCorePoolSize()))));
-    conf.setDataBlockManagerMaxPoolSize(
+                "mpp_data_exchange_core_pool_size",
+                Integer.toString(conf.getMppDataExchangeCorePoolSize()))));
+    conf.setMppDataExchangeMaxPoolSize(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_max_pool_size",
-                Integer.toString(conf.getDataBlockManagerMaxPoolSize()))));
-    conf.setDataBlockManagerKeepAliveTimeInMs(
+                "mpp_data_exchange_max_pool_size",
+                Integer.toString(conf.getMppDataExchangeMaxPoolSize()))));
+    conf.setMppDataExchangeKeepAliveTimeInMs(
         Integer.parseInt(
             properties.getProperty(
-                "data_block_manager_keep_alive_time_in_ms",
-                Integer.toString(conf.getDataBlockManagerKeepAliveTimeInMs()))));
+                "mpp_data_exchange_keep_alive_time_in_ms",
+                Integer.toString(conf.getMppDataExchangeKeepAliveTimeInMs()))));
 
     conf.setPartitionCacheSize(
         Integer.parseInt(
@@ -1658,9 +1746,6 @@ public class IoTDBDescriptor {
   // These configurations are received from config node when registering
   public void loadGlobalConfig(TGlobalConfig globalConfig) {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
-    conf.setDataRegionConsensusProtocolClass(globalConfig.getDataRegionConsensusProtocolClass());
-    conf.setSchemaRegionConsensusProtocolClass(
-        globalConfig.getSchemaRegionConsensusProtocolClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
   }

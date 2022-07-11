@@ -18,33 +18,41 @@
  */
 package org.apache.iotdb.commons.udf.builtin.String;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.type.Type;
+
+import java.io.IOException;
 
 /*Returns a string with all characters of target changed to lowercase, or NULL if target is NULL*/
 public class UDTFLower implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, TSDataType.TEXT);
+    validator.validateInputSeriesNumber(1).validateInputSeriesDataType(0, Type.TEXT);
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws Exception {
     configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.TEXT);
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.TEXT);
   }
 
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     collector.putString(row.getTime(), row.getString(0).toLowerCase());
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    return Binary.valueOf(row.getString(0).toLowerCase());
   }
 }

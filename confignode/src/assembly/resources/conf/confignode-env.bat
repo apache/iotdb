@@ -53,9 +53,9 @@ for /f  %%b in ('wmic ComputerSystem get TotalPhysicalMemory ^| findstr "[0-9]"'
 	set system_memory=%%b
 )
 
-echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024), 0) > %temp%\tmp.vbs
-for /f "tokens=*" %%a in ('cscript //nologo %temp%\tmp.vbs') do set system_memory_in_mb=%%a
-del %temp%\tmp.vbs
+echo wsh.echo FormatNumber(cdbl(%system_memory%)/(1024*1024), 0) > %CONFIGNODE_HOME%\sbin\tmp.vbs
+for /f "tokens=*" %%a in ('cscript //nologo %CONFIGNODE_HOME%\sbin\tmp.vbs') do set system_memory_in_mb=%%a
+del %CONFIGNODE_HOME%\sbin\tmp.vbs
 set system_memory_in_mb=%system_memory_in_mb:,=%
 
 set /a half_=%system_memory_in_mb%/2
@@ -111,7 +111,7 @@ set temp_buffer_pool_size=1024
 @REM which equals DIRECT_MEMORY_SIZE / threads_number / temp_buffer_pool_size
 set MAX_CACHED_BUFFER_SIZE=%max_heap_size_in_mb%*1024*1024/%threads_number%/%temp_buffer_pool_size%
 
-set CONFIGNODE_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"..\gc.log"
+set CONFIGNODE_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"%CONFIGNODE_HOME%\gc.log"
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
 set CONFIGNODE_HEAP_OPTS=%CONFIGNODE_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_BUFFER_SIZE%
 

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.itbase.runtime;
 
+import org.apache.iotdb.jdbc.Config;
+
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -29,18 +31,21 @@ import java.util.List;
 /** The implementation of {@link ClusterTestStatement} in cluster test. */
 public class ClusterTestStatement implements Statement {
 
-  private static final int DEFAULT_QUERY_TIMEOUT = 10;
+  private static final int DEFAULT_QUERY_TIMEOUT = 60;
   private final Statement writeStatement;
+  private final String writEndpoint;
   private final List<Statement> readStatements = new ArrayList<>();
   private final List<String> readEndpoints = new ArrayList<>();
   private boolean closed = false;
   private int maxRows = Integer.MAX_VALUE;
   private int queryTimeout = DEFAULT_QUERY_TIMEOUT;
+  private int fetchSize = Config.DEFAULT_FETCH_SIZE;
 
   public ClusterTestStatement(NodeConnection writeConnection, List<NodeConnection> readConnections)
       throws SQLException {
     this.writeStatement = writeConnection.getUnderlyingConnecton().createStatement();
     updateConfig(writeStatement);
+    writEndpoint = writeConnection.toString();
     for (NodeConnection readConnection : readConnections) {
       Statement readStatement = readConnection.getUnderlyingConnecton().createStatement();
       this.readStatements.add(readStatement);
@@ -51,6 +56,7 @@ public class ClusterTestStatement implements Statement {
 
   private void updateConfig(Statement statement) throws SQLException {
     maxRows = Math.min(statement.getMaxRows(), maxRows);
+    statement.setQueryTimeout(queryTimeout);
   }
 
   @Override
@@ -65,17 +71,32 @@ public class ClusterTestStatement implements Statement {
 
   @Override
   public void close() throws SQLException {
-    if (writeStatement != null) {
-      writeStatement.close();
-    }
-    readStatements.forEach(
-        r -> {
-          try {
-            r.close();
-          } catch (SQLException e) {
-            throw new RuntimeException(e);
+    List<String> endpoints = new ArrayList<>();
+    endpoints.add(writEndpoint);
+    endpoints.addAll(readEndpoints);
+    RequestDelegate<Void> delegate = new ParallelRequestDelegate<>(endpoints, queryTimeout);
+    delegate.addRequest(
+        () -> {
+          if (writeStatement != null) {
+            writeStatement.close();
           }
+          return null;
         });
+
+    readStatements.forEach(
+        r ->
+            delegate.addRequest(
+                () -> {
+                  if (r != null) {
+                    try {
+                      r.close();
+                    } catch (SQLException e) {
+                      // Ignore close exceptions
+                    }
+                  }
+                  return null;
+                }));
+    delegate.requestAll();
     closed = true;
   }
 
@@ -116,11 +137,15 @@ public class ClusterTestStatement implements Statement {
   }
 
   @Override
-  public void setQueryTimeout(int seconds) {
+  public void setQueryTimeout(int seconds) throws SQLException {
     if (seconds > 0) {
       queryTimeout = seconds;
     } else {
       queryTimeout = DEFAULT_QUERY_TIMEOUT;
+    }
+    writeStatement.setQueryTimeout(queryTimeout);
+    for (Statement readStatement : readStatements) {
+      readStatement.setQueryTimeout(queryTimeout);
     }
   }
 
@@ -176,13 +201,17 @@ public class ClusterTestStatement implements Statement {
   }
 
   @Override
-  public void setFetchSize(int rows) {
-    throw new UnsupportedOperationException();
+  public void setFetchSize(int rows) throws SQLException {
+    this.fetchSize = rows;
+    writeStatement.setFetchSize(fetchSize);
+    for (Statement readStatement : readStatements) {
+      readStatement.setFetchSize(fetchSize);
+    }
   }
 
   @Override
   public int getFetchSize() {
-    throw new UnsupportedOperationException();
+    return fetchSize;
   }
 
   @Override

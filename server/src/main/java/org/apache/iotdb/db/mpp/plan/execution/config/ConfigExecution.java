@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -30,9 +31,10 @@ import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.ClusterConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.execution.config.executor.StandsloneConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.StandaloneConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -73,7 +75,7 @@ public class ConfigExecution implements IQueryExecution {
     if (config.isClusterMode()) {
       configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
     } else {
-      configTaskExecutor = StandsloneConfigTaskExecutor.getInstance();
+      configTaskExecutor = StandaloneConfigTaskExecutor.getInstance();
     }
   }
 
@@ -117,7 +119,18 @@ public class ConfigExecution implements IQueryExecution {
 
   public void fail(Throwable cause) {
     stateMachine.transitionToFailed(cause);
-    taskFuture.set(new ConfigTaskResult(TSStatusCode.INTERNAL_SERVER_ERROR));
+    ConfigTaskResult result;
+    if (cause instanceof IoTDBException) {
+      result =
+          new ConfigTaskResult(TSStatusCode.representOf(((IoTDBException) cause).getErrorCode()));
+    } else if (cause instanceof StatementExecutionException) {
+      result =
+          new ConfigTaskResult(
+              TSStatusCode.representOf(((StatementExecutionException) cause).getStatusCode()));
+    } else {
+      result = new ConfigTaskResult(TSStatusCode.INTERNAL_SERVER_ERROR);
+    }
+    taskFuture.set(result);
   }
 
   @Override

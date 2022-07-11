@@ -24,7 +24,6 @@ exit 1
 fi
 work_path=`pwd|sed 's/\"//g'`
 echo $work_path
-go env -w GOPROXY=https://goproxy.cn
 go get -u github.com/grafana/grafana-plugin-sdk-go
 go mod tidy
 check_results=`go env |grep GOPATH= | sed 's/\"//g'`

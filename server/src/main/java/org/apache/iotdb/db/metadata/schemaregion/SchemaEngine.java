@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -26,6 +27,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.FileUtils;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
@@ -67,8 +69,8 @@ public class SchemaEngine {
 
   private ScheduledExecutorService timedForceMLogThread;
 
-  public void write(SchemaRegionId schemaRegionId, PlanNode planNode) {
-    planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
+  public TSStatus write(SchemaRegionId schemaRegionId, PlanNode planNode) {
+    return planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
   }
 
   private static class SchemaEngineManagerHolder {
@@ -105,7 +107,11 @@ public class SchemaEngine {
 
     Map<PartialPath, List<SchemaRegionId>> schemaRegionInfo = initSchemaRegion();
 
-    if (config.getSyncMlogPeriodInMs() != 0) {
+    if (!(config.isClusterMode()
+            && config
+                .getSchemaRegionConsensusProtocolClass()
+                .equals(ConsensusFactory.RatisConsensus))
+        && config.getSyncMlogPeriodInMs() != 0) {
       timedForceMLogThread =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
               "SchemaEngine-TimedForceMLog-Thread");
@@ -330,6 +336,10 @@ public class SchemaEngine {
   public synchronized void deleteSchemaRegion(SchemaRegionId schemaRegionId)
       throws MetadataException {
     ISchemaRegion schemaRegion = schemaRegionMap.get(schemaRegionId);
+    if (schemaRegion == null) {
+      logger.warn("SchemaRegion(id = {}) has been deleted, skiped", schemaRegionId);
+      return;
+    }
     schemaRegion.deleteSchemaRegion();
     schemaRegionMap.remove(schemaRegionId);
 

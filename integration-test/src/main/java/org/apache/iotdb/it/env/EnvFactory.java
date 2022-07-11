@@ -18,15 +18,15 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class EnvFactory {
   private static BaseEnv env;
-  private static final Logger logger = LoggerFactory.getLogger(EnvFactory.class);
+  private static final Logger logger = IoTDBTestLogger.logger;
 
   public static BaseEnv getEnv() {
     if (env == null) {
@@ -37,11 +37,14 @@ public class EnvFactory {
           case "Standalone":
             env = (BaseEnv) Class.forName("org.apache.iotdb.db.it.env.StandaloneEnv").newInstance();
             break;
-          case "Remote":
-            env = new RemoteServerEnv();
+          case "LocalStandaloneOnMpp":
+            env = new StandaloneOnMppEnv();
             break;
           case "Cluster1":
             env = new Cluster1Env();
+            break;
+          case "Remote":
+            env = new RemoteServerEnv();
             break;
           default:
             throw new ClassNotFoundException("The Property class of TestEnv not found");

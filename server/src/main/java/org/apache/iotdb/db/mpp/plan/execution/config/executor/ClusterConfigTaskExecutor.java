@@ -21,33 +21,49 @@ package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSetTTLReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.CountStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowClusterTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowDataNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowNodesInSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowRegionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -99,12 +115,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             "Failed to execute set storage group {} in config node, status is {}.",
             setStorageGroupStatement.getStorageGroupPath(),
             tsStatus);
-        future.setException(new StatementExecutionException(tsStatus));
+        future.setException(new IoTDBException(tsStatus.message, tsStatus.code));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -126,7 +141,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // build TSBlock
       ShowStorageGroupTask.buildTSBlock(storageGroupSchemaMap, future);
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -146,7 +160,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       // build TSBlock
       CountStorageGroupTask.buildTSBlock(storageGroupNum, future);
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -173,7 +186,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -193,12 +205,11 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             "Failed to execute delete storage group {} in config node, status is {}.",
             deleteStorageGroupStatement.getPrefixPath(),
             tsStatus);
-        future.setException(new StatementExecutionException(tsStatus));
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -218,7 +229,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -246,7 +256,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -267,7 +276,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         future.setException(new StatementExecutionException(tsStatus));
       }
     } catch (IOException | TException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     return future;
@@ -281,7 +289,6 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       clusterNodeInfos = client.getAllClusterNodeInfos();
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     // build TSBlock
@@ -318,11 +325,110 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         }
       }
     } catch (TException | IOException e) {
-      LOGGER.error("Failed to connect to config node.");
       future.setException(e);
     }
     // build TSBlock
     ShowTTLTask.buildTSBlock(storageGroupToTTL, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showRegion(ShowRegionStatement showRegionStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowRegionResp showRegionResp = new TShowRegionResp();
+    TShowRegionReq showRegionReq = new TShowRegionReq();
+    showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      showRegionResp = client.showRegion(showRegionReq);
+      if (showRegionResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new StatementExecutionException(showRegionResp.getStatus()));
+        return future;
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    // build TSBlock
+    ShowRegionTask.buildTSBlock(showRegionResp, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showDataNodes(
+      ShowDataNodesStatement showDataNodesStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      showDataNodesResp = client.showDataNodes();
+      if (showDataNodesResp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new StatementExecutionException(showDataNodesResp.getStatus()));
+        return future;
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    // build TSBlock
+    ShowDataNodesTask.buildTSBlock(showDataNodesResp, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createSchemaTemplate(
+      CreateSchemaTemplateStatement createSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Construct request using statement
+    try {
+      // Send request to some API server
+      TSStatus tsStatus =
+          ClusterTemplateManager.getInstance().createSchemaTemplate(createSchemaTemplateStatement);
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.error(
+            "Failed to execute create schema template {} in config node, status is {}.",
+            createSchemaTemplateStatement.getName(),
+            tsStatus);
+        future.setException(new StatementExecutionException(tsStatus));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showSchemaTemplate(
+      ShowSchemaTemplateStatement showSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      List<Template> templateList = ClusterTemplateManager.getInstance().getAllTemplates();
+      // build TSBlock
+      ShowSchemaTemplateTask.buildTSBlock(templateList, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showNodesInSchemaTemplate(
+      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    String req = showNodesInSchemaTemplateStatement.getTemplateName();
+    TGetTemplateResp tGetTemplateResp = new TGetTemplateResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      Template template = ClusterTemplateManager.getInstance().getTemplate(req);
+      // build TSBlock
+      ShowNodesInSchemaTemplateTask.buildTSBlock(template, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
     return future;
   }
 }

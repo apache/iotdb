@@ -85,7 +85,6 @@
         <module>thrift-commons</module>
         <module>thrift-confignode</module>
         <module>thrift-multi-leader-consensus</module>
-        <module>thrift-cluster</module>
         <module>thrift-sync</module>
         <module>thrift-influxdb</module>
         <module>service-rpc</module>
@@ -107,7 +106,6 @@
         <module>hive-connector</module>
         <module>node-commons</module>
         <module>confignode</module>
-        <module>cluster</module>
         <module>cross-tests</module>
         <module>zeppelin-interpreter</module>
         <module>client-py</module>
@@ -120,6 +118,8 @@
         <module>external-pipe-api</module>
         <module>library-udf</module>
         <module>schema-engine-rocksdb</module>
+        <module>udf-api</module>
+        <module>load-tsfile-tool</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -173,7 +173,7 @@
         <client-cpp>false</client-cpp>
         <!-- disable enforcer by default-->
         <enforcer.skip>true</enforcer.skip>
-        <spotless.version>2.22.3</spotless.version>
+        <spotless.version>2.22.8</spotless.version>
         <httpclient.version>4.5.13</httpclient.version>
         <httpcore.version>4.4.15</httpcore.version>
         <!-- for REST service -->
@@ -755,6 +755,7 @@
                             <exclude>apache_iotdb.egg-info/**</exclude>
                             <exclude>**/iotdb/thrift/__init__.py</exclude>
                             <exclude>**/iotdb/thrift/rpc/__init__.py</exclude>
+                            <exclude>**/iotdb/thrift/common/__init__.py</exclude>
                             <!-- Java SPI uses files in resources/META-INF/services-->
                             <exclude>**/resources/META-INF/services/**</exclude>
                             <!-- grafana plugin -->
@@ -1439,8 +1440,6 @@
                             <excludes>
                                 <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/service/rpc/thrift/*</exclude>
-                                <exclude>org/apache/iotdb/cluster/*</exclude>
-                                <exclude>org/apache/iotdb/cluster/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/protocol/influxdb/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/db/qp/sql/*</exclude>
                             </excludes>

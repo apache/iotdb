@@ -182,22 +182,30 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     putAlignedValues(times, valueList, bitMaps, columnIndexArray, start, end);
   }
 
+  /**
+   * Check schema of columns and return array that mapping existed schema to index of data column
+   *
+   * @param schemaListInInsertPlan Contains all existed schema in InsertPlan. If some timeseries
+   *     have been deleted, there will be null in its slot.
+   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
+   */
   private int[] checkColumnsInInsertPlan(List<IMeasurementSchema> schemaListInInsertPlan) {
     Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
     for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), i);
-      if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
-        this.measurementIndexMap.put(
-            schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
-        this.schemaList.add(schemaListInInsertPlan.get(i));
-        this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
+      if (schemaListInInsertPlan.get(i) != null) {
+        measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), i);
+        if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
+          this.measurementIndexMap.put(
+              schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
+          this.schemaList.add(schemaListInInsertPlan.get(i));
+          this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
+        }
       }
     }
     int[] columnIndexArray = new int[measurementIndexMap.size()];
     measurementIndexMap.forEach(
-        (measurementId, i) -> {
-          columnIndexArray[i] = measurementIdsInInsertPlan.getOrDefault(measurementId, -1);
-        });
+        (measurementId, i) ->
+            columnIndexArray[i] = measurementIdsInInsertPlan.getOrDefault(measurementId, -1));
     return columnIndexArray;
   }
 

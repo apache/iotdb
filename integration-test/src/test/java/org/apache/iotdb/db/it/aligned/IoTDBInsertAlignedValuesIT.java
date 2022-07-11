@@ -21,7 +21,7 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -190,7 +190,7 @@ public class IoTDBInsertAlignedValuesIT {
         assertFalse(resultSet.next());
       }
 
-      statement.execute(ConfigFactory.getConfig().getFlushCommand());
+      statement.execute("flush");
       try (ResultSet resultSet = statement.executeQuery("select status from root.t1.wf01.wt01")) {
         assertTrue(resultSet.next());
         assertTrue(resultSet.getBoolean(2));
@@ -246,6 +246,7 @@ public class IoTDBInsertAlignedValuesIT {
       fail();
     } catch (SQLException e) {
       assertTrue(
+          e.getMessage(),
           e.getMessage()
               .contains(
                   "the measurementList's size 2 is not consistent with the valueList's size 3"));
@@ -260,6 +261,7 @@ public class IoTDBInsertAlignedValuesIT {
           "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(latitude INT32 encoding=PLAIN compressor=SNAPPY, longitude INT32 encoding=PLAIN compressor=SNAPPY) ");
       statement.execute(
           "insert into root.lz.dev.GPS(time,latitude,longitude) aligned values(1,1.3,6.7)");
+      fail();
     }
   }
 
@@ -285,7 +287,9 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into root.t1.wf01.wt01(time, s3, status, status) aligned values(100, true, 20.1, 20.2)");
       fail();
     } catch (SQLException e) {
-      assertTrue(e.getMessage().contains("Insertion contains duplicated measurement: status"));
+      assertTrue(
+          e.getMessage(),
+          e.getMessage().contains("Insertion contains duplicated measurement: status"));
     }
   }
 }

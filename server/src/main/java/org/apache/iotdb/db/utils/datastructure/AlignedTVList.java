@@ -558,11 +558,13 @@ public class AlignedTVList extends TVList {
 
   @Override
   public void sort() {
-    if (sortedTimestamps == null || sortedTimestamps.length < rowCount) {
+    if (sortedTimestamps == null
+        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
       sortedTimestamps =
           (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
-    if (sortedIndices == null || sortedIndices.length < rowCount) {
+    if (sortedIndices == null
+        || sortedIndices.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
       sortedIndices =
           (int[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT32, rowCount);
     }

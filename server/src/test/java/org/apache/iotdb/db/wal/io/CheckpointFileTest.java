@@ -69,13 +69,13 @@ public class CheckpointFileTest {
         new Checkpoint(
             CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(fakeMemTableInfo)));
     // test Checkpoint.serializedSize
-    int size = Integer.BYTES;
+    int size = Long.BYTES;
     for (Checkpoint checkpoint : expectedCheckpoints) {
       size += checkpoint.serializedSize();
     }
     ByteBuffer buffer = ByteBuffer.allocate(size);
     // test Checkpoint.serialize
-    buffer.putInt(0);
+    buffer.putLong(0);
     for (Checkpoint checkpoint : expectedCheckpoints) {
       checkpoint.serialize(buffer);
     }
@@ -112,13 +112,13 @@ public class CheckpointFileTest {
         new Checkpoint(
             CheckpointType.FLUSH_MEMORY_TABLE, Collections.singletonList(fakeMemTableInfo)));
     // test Checkpoint.serializedSize
-    int size = Integer.BYTES + Byte.BYTES;
+    int size = Long.BYTES + Byte.BYTES;
     for (Checkpoint checkpoint : expectedCheckpoints) {
       size += checkpoint.serializedSize();
     }
     ByteBuffer buffer = ByteBuffer.allocate(size);
     // test Checkpoint.serialize
-    buffer.putInt(0);
+    buffer.putLong(0);
     for (Checkpoint checkpoint : expectedCheckpoints) {
       checkpoint.serialize(buffer);
     }

@@ -74,57 +74,57 @@ public class ConsensusReqReaderTest {
 
   /**
    * Generate wal files as below: <br>
-   * _0-0.wal: 1,-1 <br>
-   * _1-1.wal: 2,2,2 <br>
-   * _2-2.wal: 3,3 <br>
-   * _3-3.wal: 3,4 <br>
-   * _4-4.wal: 4 <br>
-   * _5-4.wal: 4,4,5 <br>
-   * _6-5.wal: 6 <br>
+   * _0-0-1.wal: 1,-1 <br>
+   * _1-1-1.wal: 2,2,2 <br>
+   * _2-2-1.wal: 3,3 <br>
+   * _3-3-1.wal: 3,4 <br>
+   * _4-4-1.wal: 4 <br>
+   * _5-4-1.wal: 4,4,5 <br>
+   * _6-5-1.wal: 6 <br>
    * 1 - InsertRowNode, 2 - InsertRowsOfOneDeviceNode, 3 - InsertRowsNode, 4 -
    * InsertMultiTabletsNode, 5 - InsertTabletNode, 6 - InsertRowNode
    */
   private void simulateFileScenario01() throws IllegalPathException {
     InsertTabletNode insertTabletNode;
     InsertRowNode insertRowNode;
-    // _0-0.wal
+    // _0-0-1.wal
     insertRowNode = getInsertRowNode(devicePath);
     insertRowNode.setSearchIndex(1);
     walNode.log(0, insertRowNode); // 1
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {2});
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // -1
     walNode.rollWALFile();
-    // _1-1.wal
+    // _1-1-1.wal
     insertRowNode = getInsertRowNode(devicePath);
     insertRowNode.setSearchIndex(2);
     walNode.log(0, insertRowNode); // 2
     walNode.log(0, insertRowNode); // 2
     walNode.log(0, insertRowNode); // 2
     walNode.rollWALFile();
-    // _2-2.wal
+    // _2-2-1.wal
     insertRowNode = getInsertRowNode(devicePath);
     insertRowNode.setSearchIndex(3);
     walNode.log(0, insertRowNode); // 3
     walNode.log(0, insertRowNode); // 3
     walNode.rollWALFile();
-    // _3-3.wal
+    // _3-3-1.wal
     insertRowNode.setDevicePath(new PartialPath(devicePath + "test"));
     walNode.log(0, insertRowNode); // 3
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {4});
     insertTabletNode.setSearchIndex(4);
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
     walNode.rollWALFile();
-    // _4-4.wal
+    // _4-4-1.wal
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
     walNode.rollWALFile();
-    // _5-4.wal
+    // _5-4-1.wal
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 4
     insertTabletNode = getInsertTabletNode(devicePath, new long[] {5});
     insertTabletNode.setSearchIndex(5);
     walNode.log(0, insertTabletNode, 0, insertTabletNode.getRowCount()); // 5
     walNode.rollWALFile();
-    // _6-5.wal
+    // _6-5-1.wal
     insertRowNode = getInsertRowNode(devicePath);
     insertRowNode.setSearchIndex(6);
     WALFlushListener walFlushListener = walNode.log(0, insertRowNode); // 6
@@ -248,27 +248,27 @@ public class ConsensusReqReaderTest {
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
 
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertRowNode);
     Assert.assertEquals(1, ((InsertRowNode) request).getSearchIndex());
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertRowsOfOneDeviceNode);
     Assert.assertEquals(2, ((InsertRowsOfOneDeviceNode) request).getSearchIndex());
     Assert.assertEquals(
         3, ((InsertRowsOfOneDeviceNode) request).getInsertRowNodeIndexList().size());
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertRowsNode);
     Assert.assertEquals(3, ((InsertRowsNode) request).getSearchIndex());
     Assert.assertEquals(3, ((InsertRowsNode) request).getInsertRowNodeIndexList().size());
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertMultiTabletsNode);
     Assert.assertEquals(4, ((InsertMultiTabletsNode) request).getSearchIndex());
     Assert.assertEquals(4, ((InsertMultiTabletsNode) request).getInsertTabletNodeList().size());
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertTabletNode);
     Assert.assertEquals(5, ((InsertTabletNode) request).getSearchIndex());
     Assert.assertFalse(iterator.hasNext());
@@ -281,12 +281,12 @@ public class ConsensusReqReaderTest {
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(4);
 
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertMultiTabletsNode);
     Assert.assertEquals(4, ((InsertMultiTabletsNode) request).getSearchIndex());
     Assert.assertEquals(4, ((InsertMultiTabletsNode) request).getInsertTabletNodeList().size());
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertTabletNode);
     Assert.assertEquals(5, ((InsertTabletNode) request).getSearchIndex());
 
@@ -298,7 +298,8 @@ public class ConsensusReqReaderTest {
             () -> {
               iterator.waitForNextReady();
               Assert.assertTrue(iterator.hasNext());
-              IConsensusRequest req = iterator.next();
+              IConsensusRequest req = iterator.next().getRequest();
+              ;
               Assert.assertTrue(req instanceof InsertRowNode);
               Assert.assertEquals(6, ((InsertRowNode) req).getSearchIndex());
               return true;
@@ -317,7 +318,7 @@ public class ConsensusReqReaderTest {
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(5);
 
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertTabletNode);
     Assert.assertEquals(5, ((InsertTabletNode) request).getSearchIndex());
 
@@ -329,7 +330,8 @@ public class ConsensusReqReaderTest {
             () -> {
               iterator.waitForNextReady();
               Assert.assertTrue(iterator.hasNext());
-              IConsensusRequest req = iterator.next();
+              IConsensusRequest req = iterator.next().getRequest();
+              ;
               Assert.assertTrue(req instanceof InsertRowNode);
               Assert.assertEquals(6, ((InsertRowNode) req).getSearchIndex());
               return true;
@@ -349,11 +351,11 @@ public class ConsensusReqReaderTest {
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(1);
 
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertRowNode);
     Assert.assertEquals(1, ((InsertRowNode) request).getSearchIndex());
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertRowsOfOneDeviceNode);
     Assert.assertEquals(2, ((InsertRowsOfOneDeviceNode) request).getSearchIndex());
     Assert.assertEquals(
@@ -362,12 +364,12 @@ public class ConsensusReqReaderTest {
     iterator.skipTo(4);
 
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertMultiTabletsNode);
     Assert.assertEquals(4, ((InsertMultiTabletsNode) request).getSearchIndex());
     Assert.assertEquals(4, ((InsertMultiTabletsNode) request).getInsertTabletNodeList().size());
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertTabletNode);
     Assert.assertEquals(5, ((InsertTabletNode) request).getSearchIndex());
     Assert.assertFalse(iterator.hasNext());
@@ -380,30 +382,30 @@ public class ConsensusReqReaderTest {
     ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(5);
 
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertTabletNode);
     Assert.assertEquals(5, ((InsertTabletNode) request).getSearchIndex());
 
     iterator.skipTo(2);
 
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertRowsOfOneDeviceNode);
     Assert.assertEquals(2, ((InsertRowsOfOneDeviceNode) request).getSearchIndex());
     Assert.assertEquals(
         3, ((InsertRowsOfOneDeviceNode) request).getInsertRowNodeIndexList().size());
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertRowsNode);
     Assert.assertEquals(3, ((InsertRowsNode) request).getSearchIndex());
     Assert.assertEquals(3, ((InsertRowsNode) request).getInsertRowNodeIndexList().size());
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertMultiTabletsNode);
     Assert.assertEquals(4, ((InsertMultiTabletsNode) request).getSearchIndex());
     Assert.assertEquals(4, ((InsertMultiTabletsNode) request).getInsertTabletNodeList().size());
     Assert.assertTrue(iterator.hasNext());
-    request = iterator.next();
+    request = iterator.next().getRequest();
     Assert.assertTrue(request instanceof InsertTabletNode);
     Assert.assertEquals(5, ((InsertTabletNode) request).getSearchIndex());
     Assert.assertFalse(iterator.hasNext());

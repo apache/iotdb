@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
+import org.apache.iotdb.tsfile.read.filter.operator.Between;
 import org.apache.iotdb.tsfile.read.filter.operator.Eq;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
@@ -65,6 +66,17 @@ public class TimeFilter {
 
   public static TimeIn in(Set<Long> values, boolean not) {
     return new TimeIn(values, not);
+  }
+
+  public static TimeBetween between(long value1, long value2, boolean not) {
+    return new TimeBetween(value1, value2, not);
+  }
+
+  public static class TimeBetween extends Between {
+
+    private TimeBetween(long value1, long value2, boolean not) {
+      super(value1, value2, FilterType.TIME_FILTER, not);
+    }
   }
 
   public static class TimeIn extends In {

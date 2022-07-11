@@ -53,13 +53,16 @@ public class NodePathsConvertOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
+  public ListenableFuture<?> isBlocked() {
     return child.isBlocked();
   }
 
   @Override
   public TsBlock next() {
     TsBlock block = child.next();
+    if (block == null || block.isEmpty()) {
+      return null;
+    }
     TsBlockBuilder tsBlockBuilder =
         new TsBlockBuilder(HeaderConstant.showChildNodesHeader.getRespDataTypes());
 

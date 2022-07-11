@@ -20,7 +20,7 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -89,7 +89,7 @@ public class IoTDBInsertAlignedValues3IT {
                   + ")");
         }
       }
-      statement.execute(ConfigFactory.getConfig().getFlushCommand());
+      statement.execute("flush");
       int rowCount = 0;
       try (ResultSet resultSet = statement.executeQuery("select S3 from root.lz.dev.GPS")) {
         while (resultSet.next()) {

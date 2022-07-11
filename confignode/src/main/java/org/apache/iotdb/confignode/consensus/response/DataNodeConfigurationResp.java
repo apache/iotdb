@@ -59,13 +59,17 @@ public class DataNodeConfigurationResp implements DataSet {
     this.globalConfig = globalConfig;
   }
 
-  public void convertToRpcDataNodeRegisterResp(TDataNodeRegisterResp resp) {
+  public TDataNodeRegisterResp convertToRpcDataNodeRegisterResp() {
+    TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     resp.setStatus(status);
     resp.setConfigNodeList(configNodeList);
+
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
       resp.setDataNodeId(dataNodeId);
       resp.setGlobalConfig(globalConfig);
     }
+
+    return resp;
   }
 }

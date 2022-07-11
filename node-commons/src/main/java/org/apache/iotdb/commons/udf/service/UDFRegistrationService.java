@@ -24,12 +24,12 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.udf.api.UDF;
-import org.apache.iotdb.commons.udf.api.exception.UDFRegistrationException;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.udf.api.UDF;
+import org.apache.iotdb.udf.api.exception.UDFRegistrationException;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;

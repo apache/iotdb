@@ -24,7 +24,7 @@ from thrift.transport import TSocket, TTransport
 from iotdb.utils.SessionDataSet import SessionDataSet
 from .template.Template import Template
 from .template.TemplateQueryType import TemplateQueryType
-from .thrift.rpc.TSIService import (
+from .thrift.rpc.IClientRPCService import (
     Client,
     TSCreateTimeseriesReq,
     TSCreateAlignedTimeseriesReq,
@@ -61,7 +61,7 @@ from .thrift.rpc.ttypes import (
 # from thrift.protocol import TBinaryProtocol, TCompactProtocol
 # from thrift.transport import TSocket, TTransport
 #
-# from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, TSInsertTabletReq, \
+# from iotdb.rpc.IClientRPCService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, TSInsertTabletReq, \
 #      TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, TSFetchResultsReq, TSCloseOperationReq, \
 #      TSCreateMultiTimeseriesReq, TSCloseSessionReq, TSInsertTabletsReq, TSInsertRecordsReq
 # from iotdb.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq

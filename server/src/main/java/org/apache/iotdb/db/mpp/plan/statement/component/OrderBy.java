@@ -24,5 +24,16 @@ public enum OrderBy {
   TIMESTAMP_ASC,
   TIMESTAMP_DESC,
   DEVICE_ASC,
-  DEVICE_DESC
+  DEVICE_DESC;
+
+  public OrderBy reverse() {
+    switch (this) {
+      case TIMESTAMP_ASC:
+        return TIMESTAMP_DESC;
+      case TIMESTAMP_DESC:
+        return TIMESTAMP_ASC;
+      default:
+        throw new UnsupportedOperationException();
+    }
+  }
 }

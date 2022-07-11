@@ -20,13 +20,14 @@
 package org.apache.iotdb.commons.udf.builtin;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.commons.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
+import org.apache.iotdb.udf.api.type.Type;
 
 import java.io.IOException;
 
@@ -35,8 +36,10 @@ public class UDTFAbs extends UDTFMath {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
-    dataType = parameters.getDataType(0);
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(dataType);
+    dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(UDFDataTypeTransformer.transformToUDFDataType(dataType));
   }
 
   @Override
@@ -59,7 +62,35 @@ public class UDTFAbs extends UDTFMath {
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(
-            0, dataType, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
+    }
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    switch (dataType) {
+      case INT32:
+        return Math.abs(row.getInt(0));
+      case INT64:
+        return Math.abs(row.getLong(0));
+      case FLOAT:
+        return Math.abs(row.getFloat(0));
+      case DOUBLE:
+        return Math.abs(row.getDouble(0));
+      default:
+        // This will not happen.
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
     }
   }
 

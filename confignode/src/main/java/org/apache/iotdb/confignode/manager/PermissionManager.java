@@ -22,8 +22,8 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.consensus.request.ConfigRequestType;
-import org.apache.iotdb.confignode.consensus.request.auth.AuthorReq;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
@@ -52,19 +52,19 @@ public class PermissionManager {
   /**
    * write permission
    *
-   * @param authorReq AuthorReq
+   * @param authorPlan AuthorReq
    * @return TSStatus
    */
-  public TSStatus operatePermission(AuthorReq authorReq) {
+  public TSStatus operatePermission(AuthorPlan authorPlan) {
     TSStatus tsStatus;
     // If the permissions change, clear the cache content affected by the operation
-    if (authorReq.getAuthorType() == ConfigRequestType.CreateUser
-        || authorReq.getAuthorType() == ConfigRequestType.CreateRole) {
-      tsStatus = getConsensusManager().write(authorReq).getStatus();
+    if (authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateUser
+        || authorPlan.getAuthorType() == ConfigPhysicalPlanType.CreateRole) {
+      tsStatus = getConsensusManager().write(authorPlan).getStatus();
     } else {
-      tsStatus = invalidateCache(authorReq.getUserName(), authorReq.getRoleName());
+      tsStatus = invalidateCache(authorPlan.getUserName(), authorPlan.getRoleName());
       if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        tsStatus = getConsensusManager().write(authorReq).getStatus();
+        tsStatus = getConsensusManager().write(authorPlan).getStatus();
       }
     }
     return tsStatus;
@@ -73,11 +73,11 @@ public class PermissionManager {
   /**
    * Query for permissions
    *
-   * @param authorReq AuthorReq
+   * @param authorPlan AuthorReq
    * @return PermissionInfoResp
    */
-  public PermissionInfoResp queryPermission(AuthorReq authorReq) {
-    return (PermissionInfoResp) getConsensusManager().read(authorReq).getDataset();
+  public PermissionInfoResp queryPermission(AuthorPlan authorPlan) {
+    return (PermissionInfoResp) getConsensusManager().read(authorPlan).getDataset();
   }
 
   private ConsensusManager getConsensusManager() {
@@ -98,7 +98,7 @@ public class PermissionManager {
    * permissions related to the user or role
    */
   public TSStatus invalidateCache(String username, String roleName) {
-    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
+    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getRegisteredDataNodes(-1);
     TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
     TSStatus status;
     req.setUsername(username);

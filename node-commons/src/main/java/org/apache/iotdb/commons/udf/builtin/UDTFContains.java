@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
-import org.apache.iotdb.commons.udf.api.UDTF;
-import org.apache.iotdb.commons.udf.api.access.Row;
-import org.apache.iotdb.commons.udf.api.collector.PointCollector;
-import org.apache.iotdb.commons.udf.api.customizer.config.UDTFConfigurations;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameterValidator;
-import org.apache.iotdb.commons.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.commons.udf.api.exception.UDFException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.udf.api.UDTF;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.collector.PointCollector;
+import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
+import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.exception.UDFException;
+import org.apache.iotdb.udf.api.type.Type;
 
 public class UDTFContains implements UDTF {
 
@@ -38,15 +38,13 @@ public class UDTFContains implements UDTF {
     validator
         .validateInputSeriesNumber(1)
         .validateRequiredAttribute("s")
-        .validateInputSeriesDataType(0, TSDataType.TEXT);
+        .validateInputSeriesDataType(0, Type.TEXT);
   }
 
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     s = parameters.getString("s");
-    configurations
-        .setAccessStrategy(new RowByRowAccessStrategy())
-        .setOutputDataType(TSDataType.BOOLEAN);
+    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.BOOLEAN);
   }
 
   @Override

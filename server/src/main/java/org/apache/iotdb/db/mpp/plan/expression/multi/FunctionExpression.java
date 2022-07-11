@@ -21,7 +21,6 @@ package org.apache.iotdb.db.mpp.plan.expression.multi;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -38,6 +37,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumn
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
+import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.MappableUDFQueryRowTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryRowTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryTransformer;
@@ -50,6 +50,7 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -259,13 +260,12 @@ public class FunctionExpression extends Expression {
         expression.inferTypes(typeProvider);
       }
 
-      if (isTimeSeriesGeneratingFunctionExpression()) {
+      if (!isBuiltInAggregationFunctionExpression()) {
         typeProvider.setType(
             expressionString,
             new UDTFTypeInferrer(functionName)
                 .inferOutputType(
                     expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-                    getPaths(),
                     expressions.stream()
                         .map(f -> typeProvider.getType(f.toString()))
                         .collect(Collectors.toList()),
@@ -400,7 +400,6 @@ public class FunctionExpression extends Expression {
         queryId,
         memoryAssigner.assign(),
         expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-        getPaths(),
         expressions.stream()
             .map(f -> typeProvider.getType(f.toString()))
             .collect(Collectors.toList()),
@@ -408,6 +407,9 @@ public class FunctionExpression extends Expression {
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
+      case MAPPABLE_ROW_BY_ROW:
+        return new MappableUDFQueryRowTransformer(
+            udfInputIntermediateLayer.constructRowReader(), executor);
       case ROW_BY_ROW:
         return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
       case SLIDING_SIZE_WINDOW:
@@ -514,12 +516,14 @@ public class FunctionExpression extends Expression {
         queryId,
         memoryAssigner.assign(),
         expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-        getPaths(),
         expressions.stream().map(expressionDataTypeMap::get).collect(Collectors.toList()),
         functionAttributes);
 
     AccessStrategy accessStrategy = executor.getConfigurations().getAccessStrategy();
     switch (accessStrategy.getAccessStrategyType()) {
+      case MAPPABLE_ROW_BY_ROW:
+        return new MappableUDFQueryRowTransformer(
+            udfInputIntermediateLayer.constructRowReader(), executor);
       case ROW_BY_ROW:
         return new UDFQueryRowTransformer(udfInputIntermediateLayer.constructRowReader(), executor);
       case SLIDING_SIZE_WINDOW:

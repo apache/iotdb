@@ -27,6 +27,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -47,8 +49,8 @@ import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -61,7 +63,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
-import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountLevelTimeSeriesStatement;
@@ -78,7 +79,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
@@ -102,6 +107,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** Analyze the statement and generate Analysis. */
 public class Analyzer {
@@ -307,6 +314,7 @@ public class Analyzer {
                 throw e;
               }
               deviceToQueryFilter.put(devicePath.getFullPath(), queryFilter);
+              queryFilter.inferTypes(typeProvider);
               updateSource(
                   queryFilter,
                   deviceToSourceExpressions.computeIfAbsent(
@@ -365,6 +373,7 @@ public class Analyzer {
             Expression queryFilter = analyzeWhere(queryStatement, schemaTree);
 
             // update sourceExpression according to queryFilter
+            queryFilter.inferTypes(typeProvider);
             updateSource(queryFilter, sourceExpressions, isRawDataSource);
             analysis.setQueryFilter(queryFilter);
           }
@@ -374,8 +383,13 @@ public class Analyzer {
         }
 
         if (queryStatement.isGroupByTime()) {
-          analysis.setGroupByTimeParameter(
-              new GroupByTimeParameter(queryStatement.getGroupByTimeComponent()));
+          GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
+          if ((groupByTimeComponent.isIntervalByMonth()
+                  || groupByTimeComponent.isSlidingStepByMonth())
+              && queryStatement.getResultOrder() == OrderBy.TIMESTAMP_DESC) {
+            throw new SemanticException("Group by month doesn't support order by time desc now.");
+          }
+          analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
         }
 
         if (queryStatement.getFilterNullComponent() != null) {
@@ -398,16 +412,8 @@ public class Analyzer {
 
         if (queryStatement.getFillComponent() != null) {
           FillComponent fillComponent = queryStatement.getFillComponent();
-          if (fillComponent.getFillPolicy() == FillPolicy.VALUE) {
-            List<Expression> fillColumnList =
-                outputExpressions.stream()
-                    .map(Pair::getLeft)
-                    .distinct()
-                    .collect(Collectors.toList());
-            for (Expression fillColumn : fillColumnList) {
-              checkDataTypeConsistencyInFill(fillColumn, fillComponent.getFillValue());
-            }
-          }
+          List<Expression> fillColumnList =
+              outputExpressions.stream().map(Pair::getLeft).distinct().collect(Collectors.toList());
           analysis.setFillDescriptor(
               new FillDescriptor(fillComponent.getFillPolicy(), fillComponent.getFillValue()));
         }
@@ -430,7 +436,8 @@ public class Analyzer {
         analysis.setDataPartitionInfo(dataPartition);
       } catch (StatementAnalyzeException e) {
         logger.error("Meet error when analyzing the query statement: ", e);
-        throw new StatementAnalyzeException("Meet error when analyzing the query statement");
+        throw new StatementAnalyzeException(
+            "Meet error when analyzing the query statement: " + e.getMessage());
       }
       return analysis;
     }
@@ -448,7 +455,7 @@ public class Analyzer {
         boolean hasAlias = resultColumn.hasAlias();
         List<Expression> resultExpressions =
             ExpressionAnalyzer.removeWildcardInExpression(resultColumn.getExpression(), schemaTree);
-        if (hasAlias && resultExpressions.size() > 1) {
+        if (hasAlias && !queryStatement.isGroupByLevel() && resultExpressions.size() > 1) {
           throw new SemanticException(
               String.format(
                   "alias '%s' can only be matched with one time series", resultColumn.getAlias()));
@@ -467,6 +474,12 @@ public class Analyzer {
                     : null;
             alias = hasAlias ? resultColumn.getAlias() : alias;
             outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
+            if (queryStatement.isGroupByLevel()
+                && resultColumn.getExpression() instanceof FunctionExpression) {
+              queryStatement
+                  .getGroupByLevelComponent()
+                  .updateIsCountStar((FunctionExpression) resultColumn.getExpression());
+            }
             ExpressionAnalyzer.updateTypeProvider(expressionWithoutAlias, typeProvider);
             expressionWithoutAlias.inferTypes(typeProvider);
             paginationController.consumeLimit();
@@ -668,8 +681,11 @@ public class Analyzer {
       GroupByLevelController groupByLevelController =
           new GroupByLevelController(
               queryStatement.getGroupByLevelComponent().getLevels(), typeProvider);
-      for (Pair<Expression, String> measurementWithAlias : outputExpressions) {
-        groupByLevelController.control(measurementWithAlias.left, measurementWithAlias.right);
+      for (int i = 0; i < outputExpressions.size(); i++) {
+        Pair<Expression, String> measurementWithAlias = outputExpressions.get(i);
+        boolean isCountStar = queryStatement.getGroupByLevelComponent().isCountStar(i);
+        groupByLevelController.control(
+            isCountStar, measurementWithAlias.left, measurementWithAlias.right);
       }
       Map<Expression, Set<Expression>> rawGroupByLevelExpressions =
           groupByLevelController.getGroupedPathMap();
@@ -851,15 +867,6 @@ public class Analyzer {
           throw new SemanticException(
               "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
         }
-      }
-    }
-
-    private void checkDataTypeConsistencyInFill(Expression fillColumn, Literal fillValue) {
-      TSDataType checkedDataType = typeProvider.getType(fillColumn.getExpressionString());
-      if (!fillValue.isDataTypeConsistency(checkedDataType)) {
-        // TODO: consider type casting
-        throw new SemanticException(
-            "FILL: the data type of the fill value should be the same as the output column");
       }
     }
 
@@ -1336,6 +1343,16 @@ public class Analyzer {
           HeaderConstant.showChildNodesHeader);
     }
 
+    @Override
+    public Analysis visitShowVersion(
+        ShowVersionStatement showVersionStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showVersionStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showVersionHeader);
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
+    }
+
     private Analysis visitSchemaNodeManagementPartition(
         Statement statement, PartialPath path, DatasetHeader header) {
       Analysis analysis = new Analysis();
@@ -1381,17 +1398,79 @@ public class Analyzer {
 
       Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
           schemaPartition.getSchemaPartitionMap();
-      for (String storageGroup : schemaPartitionMap.keySet()) {
-        sgNameToQueryParamsMap.put(
-            storageGroup,
-            schemaPartitionMap.get(storageGroup).keySet().stream()
-                .map(DataPartitionQueryParam::new)
-                .collect(Collectors.toList()));
+
+      // todo keep the behaviour consistency of cluster and standalone,
+      // the behaviour of standalone fetcher and LocalConfigNode is not consistent with that of
+      // cluster mode's
+      if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+        for (String storageGroup : schemaPartitionMap.keySet()) {
+          sgNameToQueryParamsMap.put(
+              storageGroup,
+              schemaPartitionMap.get(storageGroup).keySet().stream()
+                  .map(DataPartitionQueryParam::new)
+                  .collect(Collectors.toList()));
+        }
+      } else {
+        // the StandalonePartitionFetcher and LocalConfigNode now doesn't support partition fetch
+        // via slotId
+        schemaTree
+            .getMatchedDevices(new PartialPath(ALL_RESULT_NODES))
+            .forEach(
+                deviceSchemaInfo -> {
+                  PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+                  DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+                  queryParam.setDevicePath(devicePath.getFullPath());
+                  sgNameToQueryParamsMap
+                      .computeIfAbsent(
+                          schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+                      .add(queryParam);
+                });
       }
 
       DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
       analysis.setDataPartitionInfo(dataPartition);
 
+      if (dataPartition.isEmpty()) {
+        analysis.setFinishQueryAfterAnalyze(true);
+      }
+
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitCreateSchemaTemplate(
+        CreateSchemaTemplateStatement createTemplateStatement, MPPQueryContext context) {
+
+      context.setQueryType(QueryType.WRITE);
+      List<List<String>> measurementsList = createTemplateStatement.getMeasurements();
+      for (List measurements : measurementsList) {
+        Set<String> measurementsSet = new HashSet<>(measurements);
+        if (measurementsSet.size() < measurements.size()) {
+          throw new SemanticException(
+              "Measurement under an aligned device is not allowed to have the same measurement name");
+        }
+      }
+      Analysis analysis = new Analysis();
+      analysis.setStatement(createTemplateStatement);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowNodesInSchemaTemplate(
+        ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement,
+        MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showNodesInSchemaTemplateStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showNodesInSchemaTemplate);
+      return analysis;
+    }
+
+    @Override
+    public Analysis visitShowSchemaTemplate(
+        ShowSchemaTemplateStatement showSchemaTemplateStatement, MPPQueryContext context) {
+      Analysis analysis = new Analysis();
+      analysis.setStatement(showSchemaTemplateStatement);
+      analysis.setRespDatasetHeader(HeaderConstant.showSchemaTemplate);
       return analysis;
     }
   }
