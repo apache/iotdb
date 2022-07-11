@@ -484,8 +484,9 @@ public class PartitionCache {
           result = new SchemaPartitionTable();
           schemaPartitionCache.put(storageGroup, result);
         }
-        Map<TSeriesPartitionSlot, TConsensusGroupId> result2 = result.getSchemaPartitionMap();
-        result2.putAll(entry1.getValue());
+        Map<TSeriesPartitionSlot, TConsensusGroupId> seriesPartitionSlotTConsensusGroupIdMap =
+            result.getSchemaPartitionMap();
+        seriesPartitionSlotTConsensusGroupIdMap.putAll(entry1.getValue());
       }
     } finally {
       schemaPartitionCacheLock.writeLock().unlock();
