@@ -27,13 +27,11 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
-import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
-import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
-import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
@@ -146,9 +144,9 @@ public class SyncDataNodeClientPool {
    */
   public TSStatus disableDataNode(TEndPoint targetServer, TDataNodeLocation disabledDataNode) {
     LOGGER.info(
-            "send RPC to data node: {} for disabling the data node: {}",
-            targetServer,
-            disabledDataNode);
+        "send RPC to data node: {} for disabling the data node: {}",
+        targetServer,
+        disabledDataNode);
     TDisableDataNodeReq req = new TDisableDataNodeReq(disabledDataNode);
     TSStatus status;
     try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(targetServer)) {
@@ -159,7 +157,7 @@ public class SyncDataNodeClientPool {
       status.setMessage(e.getMessage());
     } catch (TException e) {
       LOGGER.error(
-              "Disable DataNode {} on target server {} error", disabledDataNode, targetServer, e);
+          "Disable DataNode {} on target server {} error", disabledDataNode, targetServer, e);
       status = new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode());
       status.setMessage(e.getMessage());
     }
@@ -176,7 +174,7 @@ public class SyncDataNodeClientPool {
     LOGGER.info("send RPC to Data Node: {} to stop it", dataNode);
     TSStatus status;
     try (SyncDataNodeInternalServiceClient client =
-                 clientManager.borrowClient(dataNode.getInternalEndPoint())) {
+        clientManager.borrowClient(dataNode.getInternalEndPoint())) {
       status = client.stopDataNode();
     } catch (IOException e) {
       LOGGER.error("Can't connect to Data Node: {}", dataNode, e);
@@ -200,7 +198,7 @@ public class SyncDataNodeClientPool {
    * @return TSStatus
    */
   public TSStatus changeRegionLeader(
-          TConsensusGroupId regionId, TEndPoint dataNode, TDataNodeLocation newLeaderNode) {
+      TConsensusGroupId regionId, TEndPoint dataNode, TDataNodeLocation newLeaderNode) {
     LOGGER.info("send RPC to data node: {} for changing regions leader on it", dataNode);
     TSStatus status;
     try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(dataNode)) {
@@ -219,15 +217,15 @@ public class SyncDataNodeClientPool {
   }
 
   public TSStatus addToRegionConsensusGroup(
-          List<TDataNodeLocation> regionOriginalPeerNodes,
-          TConsensusGroupId regionId,
-          TDataNodeLocation newPeerNode,
-          String storageGroup,
-          long ttl) {
+      List<TDataNodeLocation> regionOriginalPeerNodes,
+      TConsensusGroupId regionId,
+      TDataNodeLocation newPeerNode,
+      String storageGroup,
+      long ttl) {
     TSStatus status;
     // do addConsensusGroup in new node locally
     try (SyncDataNodeInternalServiceClient client =
-                 clientManager.borrowClient(newPeerNode.getInternalEndPoint())) {
+        clientManager.borrowClient(newPeerNode.getInternalEndPoint())) {
       List<TDataNodeLocation> currentPeerNodes = new ArrayList<>(regionOriginalPeerNodes);
       currentPeerNodes.add(newPeerNode);
       TAddConsensusGroup req = new TAddConsensusGroup(regionId, currentPeerNodes, storageGroup);
@@ -239,7 +237,7 @@ public class SyncDataNodeClientPool {
       status.setMessage(e.getMessage());
     } catch (TException e) {
       LOGGER.error(
-              "Add region consensus {} group failed to Date node: {}", regionId, newPeerNode, e);
+          "Add region consensus {} group failed to Date node: {}", regionId, newPeerNode, e);
       status = new TSStatus(TSStatusCode.REGION_MIGRATE_FAILED.getStatusCode());
       status.setMessage(e.getMessage());
     }
@@ -264,13 +262,13 @@ public class SyncDataNodeClientPool {
    * @return TSStatus
    */
   public TSStatus migrateRegion(
-          TDataNodeLocation dataNode,
-          TConsensusGroupId regionId,
-          TDataNodeLocation newNode,
-          TDataNodeLocation newLeaderNode) {
+      TDataNodeLocation dataNode,
+      TConsensusGroupId regionId,
+      TDataNodeLocation newNode,
+      TDataNodeLocation newLeaderNode) {
     TSStatus status;
     try (SyncDataNodeInternalServiceClient client =
-                 clientManager.borrowClient(dataNode.getInternalEndPoint())) {
+        clientManager.borrowClient(dataNode.getInternalEndPoint())) {
       TMigrateRegionReq req = new TMigrateRegionReq(regionId, dataNode, newNode);
       if (newLeaderNode != null) {
         req.setNewLeaderNode(newLeaderNode);
@@ -287,7 +285,6 @@ public class SyncDataNodeClientPool {
     }
     return status;
   }
-
 
   // TODO: Is the ClientPool must be a singleton?
   private static class ClientPoolHolder {
