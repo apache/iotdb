@@ -61,7 +61,7 @@
                         </goals>
                         <configuration>
                             <descriptors>
-                                <descriptor>src/assembly/loadTsFileTool.xml</descriptor>
+                                <descriptor>src/assembly/rewriteTsFile.xml</descriptor>
                             </descriptors>
                             <appendAssemblyId>false</appendAssemblyId>
                             <archive>
