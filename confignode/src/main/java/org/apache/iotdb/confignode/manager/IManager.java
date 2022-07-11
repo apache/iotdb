@@ -43,10 +43,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -296,4 +298,20 @@ public interface IManager {
    * @return
    */
   TGetTemplateResp getTemplate(String req);
+
+  /**
+   * set schema template xx to xx-path
+   *
+   * @param req  TSetSchemaTemplateReq
+   * @return  TSStatus
+   */
+  TSStatus setSchemaTemplate(TSetSchemaTemplateReq req);
+
+  /**
+   * show paths set schema template xx
+   *
+   * @param req String
+   * @return TGetPathsSetTemplatesResp
+   */
+  TGetPathsSetTemplatesResp getPathsSetTemplate(String req);
 }

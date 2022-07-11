@@ -27,7 +27,9 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -162,11 +164,48 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   @Override
   public void setSchemaTemplate(String name, PartialPath path) {
-    LOGGER.info("set schema template {} to {}", name, path);
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TSetSchemaTemplateReq req = new TSetSchemaTemplateReq();
+      req.setName(name);
+      req.setPath(path.getFullPath());
+      TSStatus tsStatus = configNodeClient.setSchemaTemplate(req);
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new RuntimeException(
+            new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(
+          new IoTDBException(
+              "get schema template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+    }
   }
 
   @Override
   public List<PartialPath> getPathsSetTemplate(String name) {
-    return new ArrayList<PartialPath>();
+    List<PartialPath> listPath = new ArrayList<PartialPath>();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      TGetPathsSetTemplatesResp resp = configNodeClient.getPathsSetTemplate(name);
+      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if(resp.getPathList()!=null) {
+          resp.getPathList().stream().forEach(item -> {
+            try {
+              listPath.add(new PartialPath(item));
+            }catch (IllegalPathException e){
+              e.printStackTrace();
+            }
+          });
+        }
+      } else {
+        throw new RuntimeException(
+            new IoTDBException(resp.status.getMessage(), resp.status.getCode()));
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(
+          new IoTDBException(
+              "get path set template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+    }
+    return listPath;
   }
 }

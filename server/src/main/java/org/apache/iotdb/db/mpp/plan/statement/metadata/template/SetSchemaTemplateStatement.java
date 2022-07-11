@@ -46,6 +46,22 @@ public class SetSchemaTemplateStatement extends ShowStatement implements IConfig
     this.path = new PartialPath(path);
   }
 
+  public String getTemplateName() {
+    return templateName;
+  }
+
+  public void setTemplateName(String templateName) {
+    this.templateName = templateName;
+  }
+
+  public PartialPath getPath() {
+    return path;
+  }
+
+  public void setPath(PartialPath path) {
+    this.path = path;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitSetSchemaTemplate(this, context);

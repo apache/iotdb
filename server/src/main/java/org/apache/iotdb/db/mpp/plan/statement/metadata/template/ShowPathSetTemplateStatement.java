@@ -35,6 +35,14 @@ public class ShowPathSetTemplateStatement extends ShowStatement implements IConf
     this.templateName = templateName;
   }
 
+  public String getTemplateName() {
+    return templateName;
+  }
+
+  public void setTemplateName(String templateName) {
+    this.templateName = templateName;
+  }
+
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
     return visitor.visitShowPathSetTemplate(this, context);
