@@ -107,9 +107,9 @@ public class SessionUtils {
           break;
         case TEXT:
           res += Integer.BYTES;
-          if(values.get(i) instanceof Binary){
+          if (values.get(i) instanceof Binary) {
             res += ((Binary) values.get(i)).getValues().length;
-          }else{
+          } else {
             res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
           }
           break;
@@ -154,9 +154,9 @@ public class SessionUtils {
           break;
         case TEXT:
           byte[] bytes;
-          if(values.get(i) instanceof Binary){
+          if (values.get(i) instanceof Binary) {
             bytes = ((Binary) values.get(i)).getValues();
-          }else{
+          } else {
             bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
           }
           ReadWriteIOUtils.write(bytes.length, buffer);
