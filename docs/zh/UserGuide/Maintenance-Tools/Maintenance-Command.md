@@ -249,6 +249,17 @@ show data regions of storage group root.*.sg_2
 +--------+----------+------+--------------+------------+----------+----------+---------+----+
 Total line number = 1
 It costs 0.004s
+
+
+IoTDB> show schema regions of storage group root.*.sg_2
+show schema regions of storage group root.*.sg_2
++--------+------------+------+--------------+------------+----------+----------+---------+----+
+|RegionId|        Type|Status| storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+------------+------+--------------+------------+----------+----------+---------+----+
+|       14|SchemaRegion|    Up|root.sg_1.sg_2|           1|         0|         5|127.0.0.1|6671|
++--------+------------+------+--------------+------------+----------+----------+---------+----+
+Total line number = 1
+It costs 0.102s
 ```
 ## 集群节点分布式监控工具
 
