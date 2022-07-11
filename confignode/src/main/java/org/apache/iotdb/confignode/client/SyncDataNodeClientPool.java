@@ -189,7 +189,7 @@ public class SyncDataNodeClientPool {
   }
 
   /**
-   * change a region leader from the datanode to other datanode other datanode should be in same
+   * change a region leader from the datanode to other datanode, other datanode should be in same
    * raft group
    *
    * @param regionId the region which will changer leader
