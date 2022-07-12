@@ -80,6 +80,7 @@ public enum PlanNodeType {
   DEVICE_VIEW((short) 1),
   FILL((short) 2),
   FILTER((short) 3),
+  FILTER_NULL((short) 4),
   GROUP_BY_LEVEL((short) 5),
   LIMIT((short) 6),
   OFFSET((short) 7),
