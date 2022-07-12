@@ -545,7 +545,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       if (s == null) {
         return RpcUtils.getTSExecuteStatementResp(
             RpcUtils.getStatus(
-                TSStatusCode.EXECUTE_STATEMENT_ERROR, "This operation type is not supported"));
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
       }
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);

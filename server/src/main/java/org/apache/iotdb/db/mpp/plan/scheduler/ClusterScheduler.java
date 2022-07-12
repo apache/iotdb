@@ -103,6 +103,7 @@ public class ClusterScheduler implements IScheduler {
         if (result.getFailureStatus() != null) {
           stateMachine.transitionToFailed(result.getFailureStatus());
         } else {
+          // won't get into here
           stateMachine.transitionToFailed(
               new IllegalStateException("Fragment cannot be dispatched"));
         }

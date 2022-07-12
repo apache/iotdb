@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -64,7 +65,6 @@ import io.airlift.concurrent.SetThreadName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -74,6 +74,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
 
@@ -280,11 +281,22 @@ public class QueryExecution implements IQueryExecution {
    * implemented with DataStreamManager)
    */
   @Override
-  public Optional<TsBlock> getBatchResult() {
+  public Optional<TsBlock> getBatchResult() throws IoTDBException {
+    checkArgument(resultHandle != null, "ResultHandle in Coordinator should be init firstly.");
     // iterate until we get a non-nullable TsBlock or result is finished
     while (true) {
       try {
-        if (resultHandle == null || resultHandle.isAborted() || resultHandle.isFinished()) {
+        if (resultHandle.isAborted()) {
+          logger.info("resultHandle for client is aborted");
+          stateMachine.transitionToAborted();
+          if (stateMachine.getFailureStatus() != null) {
+            throw new IoTDBException(
+                stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+          } else {
+            throw new IoTDBException(
+                stateMachine.getFailureMessage(), TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+          }
+        } else if (resultHandle.isFinished()) {
           // Once the resultHandle is finished, we should transit the state of this query to
           // FINISHED.
           // So that the corresponding cleanup work could be triggered.
@@ -292,6 +304,7 @@ public class QueryExecution implements IQueryExecution {
           stateMachine.transitionToFinished();
           return Optional.empty();
         }
+
         ListenableFuture<?> blocked = resultHandle.isBlocked();
         blocked.get();
         if (!resultHandle.isFinished()) {
@@ -305,13 +318,17 @@ public class QueryExecution implements IQueryExecution {
         }
       } catch (ExecutionException | CancellationException e) {
         stateMachine.transitionToFailed(e);
+        if (stateMachine.getFailureStatus() != null) {
+          throw new IoTDBException(
+              stateMachine.getFailureStatus().getMessage(), stateMachine.getFailureStatus().code);
+        }
         Throwable t = e.getCause() == null ? e : e.getCause();
         throwIfUnchecked(t);
-        throw new RuntimeException(t);
+        throw new IoTDBException(t, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
       } catch (InterruptedException e) {
         stateMachine.transitionToFailed(e);
         Thread.currentThread().interrupt();
-        throw new RuntimeException(new SQLException("ResultSet thread was interrupted", e));
+        throw new IoTDBException(e, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
       }
     }
   }
@@ -363,7 +380,10 @@ public class QueryExecution implements IQueryExecution {
       }
       return new ExecutionResult(
           context.getQueryId(),
-          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage()));
+          stateMachine.getFailureStatus() == null
+              ? RpcUtils.getStatus(
+                  TSStatusCode.INTERNAL_SERVER_ERROR, stateMachine.getFailureMessage())
+              : stateMachine.getFailureStatus());
     }
   }
 

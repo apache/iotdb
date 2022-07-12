@@ -152,7 +152,7 @@ public class SharedTsBlockQueue {
     return blockedOnMemory;
   }
 
-  /** Destroy the queue and cancel the future. */
+  /** Destroy the queue and complete the future. Should only be called in normal case */
   public void destroy() {
     if (destroyed) {
       return;
@@ -160,6 +160,29 @@ public class SharedTsBlockQueue {
     destroyed = true;
     if (!blocked.isDone()) {
       blocked.set(null);
+    }
+    if (blockedOnMemory != null) {
+      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
+    }
+    queue.clear();
+    if (bufferRetainedSizeInBytes > 0L) {
+      localMemoryManager
+          .getQueryPool()
+          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+      bufferRetainedSizeInBytes = 0;
+    }
+  }
+
+  // TODO add Throwable t as a parameter of this method, and then call blocked.setException(t);
+  // instead of blocked.cancel(true);
+  /** Destroy the queue and cancel the future. Should only be called in normal case */
+  public void abort() {
+    if (destroyed) {
+      return;
+    }
+    destroyed = true;
+    if (!blocked.isDone()) {
+      blocked.cancel(true);
     }
     if (blockedOnMemory != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);

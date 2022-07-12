@@ -194,8 +194,9 @@ public class FragmentInstanceManager {
   }
 
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
+    FragmentInstanceContext context = instanceContext.get(instanceId);
     return new FragmentInstanceInfo(
-        FragmentInstanceState.FAILED, instanceContext.get(instanceId).getEndTime());
+        FragmentInstanceState.FAILED, context.getEndTime(), context.getFailedCause());
   }
 
   private void removeOldInstances() {
