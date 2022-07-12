@@ -105,16 +105,6 @@ public class WALFakeNode implements IWALNode {
   }
 
   @Override
-  public IConsensusRequest getReq(long index) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public List<IConsensusRequest> getReqs(long startIndex, int num) {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public ReqIterator getReqIterator(long startIndex) {
     throw new UnsupportedOperationException();
   }

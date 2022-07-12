@@ -128,6 +128,8 @@ public enum PlanNodeType {
   NODE_PATHS_COUNT((short) 49),
   INTERNAL_CREATE_TIMESERIES((short) 50);
 
+  public static final int BYTES = Short.BYTES;
+
   private final short nodeType;
 
   PlanNodeType(short nodeType) {

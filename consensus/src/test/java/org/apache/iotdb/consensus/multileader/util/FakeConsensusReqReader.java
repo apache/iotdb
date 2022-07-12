@@ -40,23 +40,6 @@ public class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {}
 
   @Override
-  public IConsensusRequest getReq(long index) {
-    synchronized (requestSets) {
-      for (IndexedConsensusRequest indexedConsensusRequest : requestSets.getRequestSet()) {
-        if (indexedConsensusRequest.getSearchIndex() == index) {
-          return indexedConsensusRequest;
-        }
-      }
-      return null;
-    }
-  }
-
-  @Override
-  public List<IConsensusRequest> getReqs(long startIndex, int num) {
-    return null;
-  }
-
-  @Override
   public ReqIterator getReqIterator(long startIndex) {
     return new FakeConsensusReqIterator(startIndex);
   }
