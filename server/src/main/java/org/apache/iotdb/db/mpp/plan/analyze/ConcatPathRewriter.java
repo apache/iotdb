@@ -24,14 +24,12 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
-import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -67,30 +65,6 @@ public class ConcatPathRewriter {
           concatSelectWithFrom(
               queryStatement.getSelectComponent(), prefixPaths, queryStatement.isGroupByLevel());
       queryStatement.getSelectComponent().setResultColumns(resultColumns);
-    }
-
-    // concat WITHOUT NULL with FROM
-    if (queryStatement.getFilterNullComponent() != null
-        && !queryStatement.getFilterNullComponent().getWithoutNullColumns().isEmpty()) {
-      FilterNullComponent filterNullComponent = queryStatement.getFilterNullComponent();
-      Map<String, Expression> aliasToColumnMap =
-          queryStatement.getSelectComponent().getAliasToColumnMap();
-
-      // replace alias
-      List<Expression> replacedWithoutNullColumns =
-          filterNullComponent.getWithoutNullColumns().stream()
-              .map(
-                  expression ->
-                      aliasToColumnMap.getOrDefault(expression.getExpressionString(), expression))
-              .collect(Collectors.toList());
-
-      if (queryStatement.isAlignByDevice()) {
-        queryStatement.getFilterNullComponent().setWithoutNullColumns(replacedWithoutNullColumns);
-      } else {
-        List<Expression> withoutNullColumns =
-            concatWithoutNullColumnsWithFrom(replacedWithoutNullColumns, prefixPaths);
-        queryStatement.getFilterNullComponent().setWithoutNullColumns(withoutNullColumns);
-      }
     }
 
     // concat WHERE with FROM
@@ -129,22 +103,5 @@ public class ConcatPathRewriter {
               .collect(Collectors.toList()));
     }
     return resultColumns;
-  }
-
-  /**
-   * Concat the prefix path in the WITHOUT NULL clause and the suffix path in the FROM clause into a
-   * full path pattern. And construct pattern tree.
-   */
-  private List<Expression> concatWithoutNullColumnsWithFrom(
-      List<Expression> withoutNullColumns, List<PartialPath> prefixPaths)
-      throws StatementAnalyzeException {
-    // result after concat
-    return withoutNullColumns.stream()
-        .map(
-            expression ->
-                ExpressionAnalyzer.concatExpressionWithSuffixPaths(
-                    expression, prefixPaths, patternTree))
-        .flatMap(List::stream)
-        .collect(Collectors.toList());
   }
 }
