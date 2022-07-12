@@ -219,6 +219,7 @@ public class PartitionCache {
       storageGroupCacheLock.writeLock().lock();
       // try to check whether storage group need to be created
       result.reset();
+      // try to hit storage group with all missed devices
       getStorageGroupMap(result, devicePaths, false);
       if (!result.isSuccess()) {
         // try to get storage group needed to be created from missed device
@@ -319,12 +320,12 @@ public class PartitionCache {
       try {
         // try to fetch storage group from config node when miss
         fetchStorageGroupAndUpdateCache(result, devicePaths);
-        // second try to hit storage group with failed devices;
-        getStorageGroupMap(result, devicePaths, false);
+        // second try to hit storage group in fast-fail way
+        getStorageGroupMap(result, devicePaths, true);
         if (!result.isSuccess() && isAutoCreate) {
           // try to auto create storage group of failed device
           createStorageGroupAndUpdateCache(result, devicePaths);
-          // third try to hit cache
+          // third try to hit storage group in fast-fail way
           getStorageGroupMap(result, devicePaths, true);
           if (!result.isSuccess()) {
             throw new StatementAnalyzeException("Failed to get Storage Group Map in three try.");
