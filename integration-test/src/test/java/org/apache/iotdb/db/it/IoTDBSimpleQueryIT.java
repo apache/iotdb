@@ -1130,4 +1130,32 @@ public class IoTDBSimpleQueryIT {
       fail();
     }
   }
+
+  @Test
+  public void testInsertWithoutTimestamp() {
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.setFetchSize(5);
+      statement.execute("set storage group to root.sg");
+
+      statement.execute("create timeseries root.sg.d1.s1 with datatype=FLOAT,encoding=RLE");
+      statement.execute("create timeseries root.sg.d1.s2 with datatype=TEXT,encoding=PLAIN");
+      statement.execute("insert into root.sg.d1(s1,s2) values(25,'test')");
+
+      ResultSet resultSet = statement.executeQuery("select * from root.**");
+      int count = 0;
+
+      Float[] values1 = {25.0F};
+      String[] values2 = {"test"};
+
+      while (resultSet.next()) {
+        assertEquals(values1[count], (Float) resultSet.getFloat("root.sg.d1.s1"));
+        assertEquals(values2[count], resultSet.getString("root.sg.d1.s2"));
+        count++;
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
 }
