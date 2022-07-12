@@ -37,7 +37,6 @@ public class IoTDBGroupByQueryWithoutValueFilter2IT extends IoTDBGroupByQueryWit
   @BeforeClass
   public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeClass();
-    // TODO When the aligned time series support compaction, we need to set compaction to true
     enableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
@@ -49,7 +48,7 @@ public class IoTDBGroupByQueryWithoutValueFilter2IT extends IoTDBGroupByQueryWit
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(3);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(2);
     AlignedWriteUtil.insertData();
   }
 

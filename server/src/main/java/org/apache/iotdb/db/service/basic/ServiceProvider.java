@@ -59,7 +59,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedExce
 
 public abstract class ServiceProvider {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ServiceProvider.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger(ServiceProvider.class);
   public static final Logger AUDIT_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   public static final Logger SLOW_SQL_LOGGER =
@@ -105,7 +105,8 @@ public abstract class ServiceProvider {
    * @return true: If logged in; false: If not logged in
    */
   public boolean checkLogin(long sessionId) {
-    boolean isLoggedIn = SESSION_MANAGER.getUsername(sessionId) != null;
+    Long currSessionId = SESSION_MANAGER.getCurrSessionId();
+    boolean isLoggedIn = currSessionId != null && currSessionId == sessionId;
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
     } else {

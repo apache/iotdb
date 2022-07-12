@@ -48,7 +48,9 @@ public enum PrivilegeType {
   STOP_TRIGGER,
   CREATE_CONTINUOUS_QUERY,
   DROP_CONTINUOUS_QUERY,
-  ALL;
+  ALL,
+  UPDATE_TEMPLATE,
+  APPLY_TEMPLATE;
 
   /**
    * Some privileges need a seriesPath as parameter, while others do not. This method returns which
@@ -59,6 +61,7 @@ public enum PrivilegeType {
    */
   public static boolean isPathRelevant(int type) {
     return type <= DELETE_TIMESERIES.ordinal()
-        || (CREATE_TRIGGER.ordinal() <= type && type <= STOP_TRIGGER.ordinal());
+        || (CREATE_TRIGGER.ordinal() <= type && type <= STOP_TRIGGER.ordinal())
+        || type == APPLY_TEMPLATE.ordinal();
   }
 }

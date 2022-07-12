@@ -185,6 +185,42 @@ public class StorageGroupManager {
 
     return processor;
   }
+  /**
+   * get processor from virtualStorageGroupId
+   *
+   * @param virtualStorageGroupId virtual storage group id
+   * @return virtual storage group processor
+   */
+  @SuppressWarnings("java:S2445")
+  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
+  public VirtualStorageGroupProcessor getProcessor(
+      int virtualStorageGroupId, IStorageGroupMNode storageGroupMNode)
+      throws StorageGroupProcessorException, StorageEngineException {
+    VirtualStorageGroupProcessor processor = virtualStorageGroupProcessor[virtualStorageGroupId];
+    if (processor == null) {
+      // if finish recover
+      if (isVsgReady[virtualStorageGroupId].get()) {
+        synchronized (storageGroupMNode) {
+          processor = virtualStorageGroupProcessor[virtualStorageGroupId];
+          if (processor == null) {
+            processor =
+                StorageEngine.getInstance()
+                    .buildNewStorageGroupProcessor(
+                        storageGroupMNode.getPartialPath(),
+                        storageGroupMNode,
+                        String.valueOf(virtualStorageGroupId));
+            virtualStorageGroupProcessor[virtualStorageGroupId] = processor;
+          }
+        }
+      } else {
+        // not finished recover, refuse the request
+        throw new StorageGroupNotReadyException(
+            storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
+      }
+    }
+
+    return processor;
+  }
 
   /**
    * async recover all virtual storage groups in this logical storage group

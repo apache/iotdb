@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
@@ -363,6 +364,16 @@ public class MLogTxtWriter implements AutoCloseable {
     StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_USING_TEMPLATE));
     buf.append(",");
     buf.append(plan.getPrefixPath());
+    buf.append(LINE_SEPARATOR);
+    ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
+  }
+
+  public void deactivateTemplate(DeactivateTemplatePlan plan) throws IOException {
+    StringBuilder buf = new StringBuilder((MetadataOperationType.UNSET_USING_TEMPLATE));
+    buf.append(",");
+    buf.append(plan.getPrefixPath().getFullPath());
     buf.append(LINE_SEPARATOR);
     ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
     channel.write(buff);

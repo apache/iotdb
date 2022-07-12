@@ -1166,6 +1166,49 @@ public class IoTDBGroupByQueryWithoutValueFilterIT {
   }
 
   @Test
+  public void groupBySmallWindowTest() throws SQLException {
+    String[] retArray = new String[] {"10,0", "11,1", "12,1", "13,1", "14,1", "15,1"};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute("select count(s1) from root.sg1.d1 GROUP BY ([10, 16), 1ms)");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.sg1.d1.s1"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select count(s1) from root.sg1.d1 GROUP BY ([10, 16), 1ms) order by time desc");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = retArray.length;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.sg1.d1.s1"));
+          Assert.assertEquals(retArray[cnt - 1], ans);
+          cnt--;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+    }
+  }
+
+  @Test
   public void groupByWithoutAggregationFuncTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

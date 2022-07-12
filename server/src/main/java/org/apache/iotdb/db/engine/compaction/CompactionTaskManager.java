@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.threadpool.WrappedScheduledExecutorService;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionTaskStatus;
@@ -87,10 +88,15 @@ public class CompactionTaskManager implements IService {
     return INSTANCE;
   }
 
+  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   @Override
   public void start() {
     if (taskExecutionPool == null
-        && IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0) {
+        && IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread() > 0
+        && (config.isEnableSeqSpaceCompaction()
+            || config.isEnableCrossSpaceCompaction()
+            || config.isEnableUnseqSpaceCompaction())) {
       this.taskExecutionPool =
           (WrappedScheduledExecutorService)
               IoTDBThreadPoolFactory.newScheduledThreadPool(

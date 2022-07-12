@@ -168,7 +168,12 @@ public abstract class AbstractMemTable implements IMemTable {
       dataTypes.add(schema.getType());
     }
     memSize += MemUtils.getRecordsSize(dataTypes, values, disableMemControl);
-    write(insertRowPlan.getDeviceID(), schemaList, insertRowPlan.getTime(), values);
+    write(
+        insertRowPlan.getDeviceID(),
+        insertRowPlan.getFailedIndices(),
+        schemaList,
+        insertRowPlan.getTime(),
+        values);
 
     int pointsInserted =
         insertRowPlan.getMeasurements().length
@@ -216,7 +221,12 @@ public abstract class AbstractMemTable implements IMemTable {
       return;
     }
     memSize += MemUtils.getAlignedRecordsSize(dataTypes, values, disableMemControl);
-    writeAlignedRow(insertRowPlan.getDeviceID(), schemaList, insertRowPlan.getTime(), values);
+    writeAlignedRow(
+        insertRowPlan.getDeviceID(),
+        insertRowPlan.getFailedIndices(),
+        schemaList,
+        insertRowPlan.getTime(),
+        values);
     int pointsInserted =
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
     totalPointsNum += pointsInserted;
@@ -288,23 +298,25 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void write(
       IDeviceID deviceId,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       long insertTime,
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    memChunkGroup.write(insertTime, objectValue, schemaList);
+    memChunkGroup.write(insertTime, objectValue, failedIndices, schemaList);
   }
 
   @Override
   public void writeAlignedRow(
       IDeviceID deviceId,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       long insertTime,
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    memChunkGroup.write(insertTime, objectValue, schemaList);
+    memChunkGroup.write(insertTime, objectValue, failedIndices, schemaList);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -330,6 +342,7 @@ public abstract class AbstractMemTable implements IMemTable {
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
+        insertTabletPlan.getFailedIndices(),
         schemaList,
         start,
         end);
@@ -360,6 +373,7 @@ public abstract class AbstractMemTable implements IMemTable {
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
+        insertTabletPlan.getFailedIndices(),
         schemaList,
         start,
         end);

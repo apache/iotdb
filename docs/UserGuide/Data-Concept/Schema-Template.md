@@ -39,6 +39,8 @@ In the actual scenario, many entities collect the same measurements, that is, th
 
 Currently you can only set one schema template on a specific path. If there's one schema template on one node, it will be forbidden to set any schema template on the ancestors or descendants of this node. An entity will use it's own schema template or ancestor's schema template.
 
+When one node is using the template had been set on to it or its ancestor, it is compulsory to deactivate template on this node before to unset or drop it. Deactivate the template on one node will delete data of the timeseries which is presented by the combination of path of the node and measurements inside the template.
+
 **Please notice that, we strongly recommend not setting templates on the nodes above the storage group to accommodate future updates and collaboration between modules.**
 
 In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to schema template will be introduced one by one.

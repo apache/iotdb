@@ -468,6 +468,24 @@ public class StorageEngine implements IService {
   }
 
   /**
+   * This method is for sync, delete tsfile or sth like them, just get storage group directly by
+   * virtualStorageGroupId
+   *
+   * @param path storage group path
+   * @param virtualStorageGroupId virtual storage group partition id
+   * @return storage group processor
+   */
+  public VirtualStorageGroupProcessor getProcessorDirectly(
+      PartialPath path, int virtualStorageGroupId) throws StorageEngineException {
+    try {
+      IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
+      return getStorageGroupProcessorById(virtualStorageGroupId, storageGroupMNode);
+    } catch (StorageGroupProcessorException | MetadataException e) {
+      throw new StorageEngineException(e);
+    }
+  }
+
+  /**
    * This method is for insert and query or sth like them, this may get a virtual storage group
    *
    * @param path device path
@@ -526,6 +544,32 @@ public class StorageEngine implements IService {
       }
     }
     return storageGroupManager.getProcessor(devicePath, storageGroupMNode);
+  }
+
+  /**
+   * get storage group processor by virtualStorageGroupId
+   *
+   * @param virtualStorageGroupId virtual storage group partition id
+   * @param storageGroupMNode mnode of the storage group, we need synchronize this to avoid
+   *     modification in mtree
+   * @return found or new storage group processor
+   */
+  @SuppressWarnings("java:S2445")
+  // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
+  private VirtualStorageGroupProcessor getStorageGroupProcessorById(
+      int virtualStorageGroupId, IStorageGroupMNode storageGroupMNode)
+      throws StorageGroupProcessorException, StorageEngineException {
+    StorageGroupManager storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
+    if (storageGroupManager == null) {
+      synchronized (this) {
+        storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
+        if (storageGroupManager == null) {
+          storageGroupManager = new StorageGroupManager();
+          processorMap.put(storageGroupMNode.getPartialPath(), storageGroupManager);
+        }
+      }
+    }
+    return storageGroupManager.getProcessor(virtualStorageGroupId, storageGroupMNode);
   }
 
   /**
@@ -833,12 +877,14 @@ public class StorageEngine implements IService {
   }
 
   /** delete all data of storage groups' timeseries. */
+  @TestOnly
   public synchronized boolean deleteAll() {
     logger.info("Start deleting all storage groups' timeseries");
     syncCloseAllProcessor();
     for (PartialPath storageGroup : IoTDB.metaManager.getAllStorageGroupPaths()) {
       this.deleteAllDataFilesInOneStorageGroup(storageGroup);
     }
+    processorMap.clear();
     return true;
   }
 
@@ -874,7 +920,7 @@ public class StorageEngine implements IService {
       throws LoadFileException, StorageEngineException, MetadataException {
     Set<String> deviceSet = newTsFileResource.getDevices();
     if (deviceSet == null || deviceSet.isEmpty()) {
-      throw new StorageEngineException("Can not get the corresponding storage group.");
+      throw new StorageEngineException("The TsFile is empty, cannot be loaded.");
     }
     String device = deviceSet.iterator().next();
     PartialPath devicePath = new PartialPath(device);
@@ -890,13 +936,17 @@ public class StorageEngine implements IService {
 
   public boolean deleteTsfile(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, true)))
+    return getProcessorDirectly(
+            new PartialPath(getSgByEngineFile(deletedTsfile, true)),
+            getVirtualSgIdByEngineFile(deletedTsfile, true))
         .deleteTsfile(deletedTsfile);
   }
 
   public boolean unloadTsfile(File tsfileToBeUnloaded, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)))
+    return getProcessorDirectly(
+            new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)),
+            getVirtualSgIdByEngineFile(tsfileToBeUnloaded, true))
         .unloadTsfile(tsfileToBeUnloaded, targetDir);
   }
 
@@ -929,6 +979,38 @@ public class StorageEngine implements IService {
       throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
     } else {
       return file.getParentFile().getParentFile().getParentFile().getName();
+    }
+  }
+
+  /**
+   * The internal file means that the file is in the engine, which is different from those external
+   * files which are not loaded.
+   *
+   * @param file internal file
+   * @param needCheck check if the tsfile is an internal TsFile. If you make sure it is inside, no
+   *     need to check
+   * @return virtual storage group partition id
+   * @throws IllegalPathException throw if tsfile is not an internal TsFile
+   */
+  public int getVirtualSgIdByEngineFile(File file, boolean needCheck) throws IllegalPathException {
+    if (needCheck) {
+      File dataDir =
+          file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
+      if (dataDir.exists()) {
+        String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+        for (String dir : dataDirs) {
+          try {
+            if (Files.isSameFile(Paths.get(dir), dataDir.toPath())) {
+              return Integer.parseInt(file.getParentFile().getParentFile().getName());
+            }
+          } catch (IOException e) {
+            throw new IllegalPathException(file.getAbsolutePath(), e.getMessage());
+          }
+        }
+      }
+      throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
+    } else {
+      return Integer.parseInt(file.getParentFile().getParentFile().getName());
     }
   }
 
