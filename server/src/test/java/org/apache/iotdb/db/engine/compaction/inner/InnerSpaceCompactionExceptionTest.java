@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
@@ -254,8 +253,6 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     }
 
     Assert.assertFalse(tsFileManager.isAllowCompaction());
-    Assert.assertTrue(IoTDBDescriptor.getInstance().getConfig().isReadOnly());
-    IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
   }
 
   /**
