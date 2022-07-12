@@ -965,7 +965,7 @@ public class SessionConnection {
       return MSG_RECONNECTION_FAIL;
     }
     StringJoiner urls = new StringJoiner(",");
-    for (TEndPoint endPoint : endPointList) {
+    for (EndPoint endPoint : endPointList) {
       StringJoiner url = new StringJoiner(":");
       url.add(endPoint.getIp());
       url.add(String.valueOf(endPoint.getPort()));
