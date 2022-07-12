@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
@@ -98,7 +99,7 @@ public class PermissionManager {
    * permissions related to the user or role
    */
   public TSStatus invalidateCache(String username, String roleName) {
-    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
+    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getRegisteredDataNodes(-1);
     TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
     TSStatus status;
     req.setUsername(username);
@@ -106,7 +107,10 @@ public class PermissionManager {
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       status =
           SyncDataNodeClientPool.getInstance()
-              .invalidatePermissionCache(dataNodeInfo.getLocation().getInternalEndPoint(), req);
+              .sendSyncRequestToDataNode(
+                  dataNodeInfo.getLocation().getInternalEndPoint(),
+                  req,
+                  DataNodeRequestType.invalidatePermissionCache);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }

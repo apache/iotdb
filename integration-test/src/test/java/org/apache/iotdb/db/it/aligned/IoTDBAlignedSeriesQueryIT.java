@@ -20,7 +20,7 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -3265,7 +3265,7 @@ public class IoTDBAlignedSeriesQueryIT {
       try (ResultSet resultSet =
           statement.executeQuery(
               "select count(s1), sum(s2), avg(s1) from root.sg1.d1 "
-                  + "where time > 5 GROUP BY ([1, 41), 10ms) FILL (previous, 15ms) align by device")) {
+                  + "where time > 5 GROUP BY ([1, 41), 10ms) FILL (previous) align by device")) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =

@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
@@ -36,16 +37,20 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
@@ -59,7 +64,13 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.Assert;
@@ -95,6 +106,27 @@ public class ConfigPhysicalPlanSerDeTest {
     RegisterDataNodePlan plan0 = new RegisterDataNodePlan(dataNodeInfo);
     RegisterDataNodePlan plan1 =
         (RegisterDataNodePlan) ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
+    Assert.assertEquals(plan0, plan1);
+  }
+
+  @Test
+  public void ActivateDataNodePlanTest() throws IOException {
+    TDataNodeLocation dataNodeLocation = new TDataNodeLocation();
+    dataNodeLocation.setDataNodeId(1);
+    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6667));
+    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9003));
+    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8777));
+    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
+    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
+
+    TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
+    dataNodeInfo.setLocation(dataNodeLocation);
+    dataNodeInfo.setCpuCoreNum(16);
+    dataNodeInfo.setMaxMemory(34359738368L);
+
+    ActivateDataNodePlan plan0 = new ActivateDataNodePlan(dataNodeInfo);
+    ActivateDataNodePlan plan1 =
+        (ActivateDataNodePlan) ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
     Assert.assertEquals(plan0, plan1);
   }
 
@@ -264,8 +296,7 @@ public class ConfigPhysicalPlanSerDeTest {
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
 
-    GetSchemaPartitionPlan req0 = new GetSchemaPartitionPlan();
-    req0.setPartitionSlotsMap(partitionSlotsMap);
+    GetSchemaPartitionPlan req0 = new GetSchemaPartitionPlan(partitionSlotsMap);
     GetSchemaPartitionPlan req1 =
         (GetSchemaPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -279,8 +310,7 @@ public class ConfigPhysicalPlanSerDeTest {
     Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap = new HashMap<>();
     partitionSlotsMap.put(storageGroup, Collections.singletonList(seriesPartitionSlot));
 
-    GetOrCreateSchemaPartitionPlan req0 = new GetOrCreateSchemaPartitionPlan();
-    req0.setPartitionSlotsMap(partitionSlotsMap);
+    GetOrCreateSchemaPartitionPlan req0 = new GetOrCreateSchemaPartitionPlan(partitionSlotsMap);
     GetOrCreateSchemaPartitionPlan req1 =
         (GetOrCreateSchemaPartitionPlan)
             ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
@@ -333,8 +363,7 @@ public class ConfigPhysicalPlanSerDeTest {
     partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
     partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
 
-    GetDataPartitionPlan req0 = new GetDataPartitionPlan();
-    req0.setPartitionSlotsMap(partitionSlotsMap);
+    GetDataPartitionPlan req0 = new GetDataPartitionPlan(partitionSlotsMap);
     GetDataPartitionPlan req1 =
         (GetDataPartitionPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
@@ -352,8 +381,7 @@ public class ConfigPhysicalPlanSerDeTest {
     partitionSlotsMap.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
     partitionSlotsMap.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
 
-    GetOrCreateDataPartitionPlan req0 = new GetOrCreateDataPartitionPlan();
-    req0.setPartitionSlotsMap(partitionSlotsMap);
+    GetOrCreateDataPartitionPlan req0 = new GetOrCreateDataPartitionPlan(partitionSlotsMap);
     GetOrCreateDataPartitionPlan req1 =
         (GetOrCreateDataPartitionPlan)
             ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
@@ -569,10 +597,64 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void GetRegionLocaltionsPlanTest() throws IOException {
     GetRegionInfoListPlan req0 = new GetRegionInfoListPlan();
-    req0.setRegionType(TConsensusGroupType.DataRegion);
+    TShowRegionReq showRegionReq = new TShowRegionReq();
+    req0.setShowRegionReq(showRegionReq);
+    showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
     GetRegionInfoListPlan req1 =
         (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0.getType(), req1.getType());
-    Assert.assertEquals(req0.getRegionType(), req1.getRegionType());
+    Assert.assertEquals(req0.getShowRegionReq(), req1.getShowRegionReq());
+    final List<String> sgList = Collections.singletonList("root.sg1, root.sg2, root.*");
+    showRegionReq.setStorageGroups(new ArrayList<>(sgList));
+    GetRegionInfoListPlan req2 =
+        (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0.getType(), req1.getType());
+    Assert.assertEquals(req0.getShowRegionReq(), req2.getShowRegionReq());
+  }
+
+  @Test
+  public void CreateSchemaTemplatePlanTest() throws IOException, IllegalPathException {
+    Template template = new Template(newCreateSchemaTemplateStatement("template_name"));
+    CreateSchemaTemplatePlan createSchemaTemplatePlan0 =
+        new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
+    CreateSchemaTemplatePlan createSchemaTemplatePlan1 =
+        (CreateSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(createSchemaTemplatePlan0.serializeToByteBuffer());
+    Assert.assertEquals(createSchemaTemplatePlan0, createSchemaTemplatePlan1);
+  }
+
+  private CreateSchemaTemplateStatement newCreateSchemaTemplateStatement(String name) {
+    List<List<String>> measurements =
+        Arrays.asList(
+            Arrays.asList(name + "_" + "temperature"), Arrays.asList(name + "_" + "status"));
+    List<List<TSDataType>> dataTypes =
+        Arrays.asList(Arrays.asList(TSDataType.FLOAT), Arrays.asList(TSDataType.BOOLEAN));
+    List<List<TSEncoding>> encodings =
+        Arrays.asList(Arrays.asList(TSEncoding.RLE), Arrays.asList(TSEncoding.PLAIN));
+    List<List<CompressionType>> compressors =
+        Arrays.asList(Arrays.asList(CompressionType.SNAPPY), Arrays.asList(CompressionType.SNAPPY));
+    CreateSchemaTemplateStatement createSchemaTemplateStatement =
+        new CreateSchemaTemplateStatement(name, measurements, dataTypes, encodings, compressors);
+    return createSchemaTemplateStatement;
+  }
+
+  @Test
+  public void GetSchemaTemplatePlanTest() throws IOException {
+    GetSchemaTemplatePlan getSchemaTemplatePlan0 = new GetSchemaTemplatePlan();
+    GetSchemaTemplatePlan getSchemaTemplatePlan1 =
+        (GetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan0.serializeToByteBuffer());
+    Assert.assertEquals(getSchemaTemplatePlan0, getSchemaTemplatePlan1);
+  }
+
+  @Test
+  public void GetNodesInSchemaTemplatePlanTest() throws IOException {
+    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan0 =
+        new GetNodesInSchemaTemplatePlan("template_name_test");
+    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan1 =
+        (GetNodesInSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(
+                getNodesInSchemaTemplatePlan0.serializeToByteBuffer());
+    Assert.assertEquals(getNodesInSchemaTemplatePlan0, getNodesInSchemaTemplatePlan1);
   }
 }

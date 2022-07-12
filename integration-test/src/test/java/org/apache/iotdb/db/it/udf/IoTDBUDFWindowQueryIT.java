@@ -20,7 +20,7 @@ package org.apache.iotdb.db.it.udf;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.apache.iotdb.itbase.constant.UDFTestConstant;
@@ -45,7 +45,7 @@ import static org.junit.Assert.fail;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBUDFWindowQueryIT {
 
-  protected static final int ITERATION_TIMES = 100;
+  protected static final int ITERATION_TIMES = 10000;
 
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
@@ -176,6 +176,7 @@ public class IoTDBUDFWindowQueryIT {
     testSlidingSizeWindow(3 * ITERATION_TIMES);
   }
 
+  // todo: remove ignore when exception handler in IT finishes
   @Test
   @Ignore
   public void testSlidingSizeWindow7() {
@@ -259,7 +260,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow1() {
     testSlidingTimeWindow(
         (int) (0.33 * ITERATION_TIMES),
@@ -269,7 +269,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow2() {
     testSlidingTimeWindow(
         (int) (0.033 * ITERATION_TIMES),
@@ -279,7 +278,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow3() {
     testSlidingTimeWindow(
         (int) (2 * 0.033 * ITERATION_TIMES),
@@ -289,7 +287,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow4() {
     testSlidingTimeWindow(
         (int) (0.033 * ITERATION_TIMES),
@@ -299,27 +296,23 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow5() {
     testSlidingTimeWindow(ITERATION_TIMES, ITERATION_TIMES, 0, ITERATION_TIMES);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow6() {
     testSlidingTimeWindow(
         (int) (1.01 * ITERATION_TIMES), (int) (0.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow7() {
     testSlidingTimeWindow(
         (int) (0.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
   }
 
   @Test
-  @Ignore
   public void testSlidingTimeWindow8() {
     testSlidingTimeWindow(
         (int) (1.01 * ITERATION_TIMES), (int) (1.01 * ITERATION_TIMES), 0, ITERATION_TIMES / 2);
@@ -722,7 +715,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testSizeWindowUDFWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -763,7 +755,6 @@ public class IoTDBUDFWindowQueryIT {
   }
 
   @Test
-  @Ignore
   public void testTimeWindowUDFWithConstants() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

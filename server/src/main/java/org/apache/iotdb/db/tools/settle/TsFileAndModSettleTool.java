@@ -215,9 +215,6 @@ public class TsFileAndModSettleTool {
     try (TsFileRewriteTool tsFileRewriteTool = new TsFileRewriteTool(resourceToBeSettled)) {
       tsFileRewriteTool.parseAndRewriteFile(settledResources);
     }
-    if (settledResources.size() == 0) {
-      resourceToBeSettled.setStatus(TsFileResourceStatus.DELETED);
-    }
   }
 
   public static void findFilesToBeRecovered() {

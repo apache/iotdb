@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.read.reader.page.TimePageReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,7 +97,9 @@ public class TsFileValidationTool {
     if (printToFile) {
       pw = new PrintWriter(new FileWriter(outFilePath));
     }
-    printBoth("Start checking seq files ...");
+    if (printDetails) {
+      printBoth("Start checking seq files ...");
+    }
 
     // check tsfile, which will only check for correctness inside a single tsfile
     for (File f : fileList) {
@@ -115,7 +118,9 @@ public class TsFileValidationTool {
         if (!checkIsDirectory(sgDir)) {
           continue;
         }
-        printBoth("- Check files in storage group: " + sgDir.getAbsolutePath());
+        if (printDetails) {
+          printBoth("- Check files in storage group: " + sgDir.getAbsolutePath());
+        }
         // get data region dirs
         File[] dataRegionDirs = sgDir.listFiles();
         for (File dataRegionDir : Objects.requireNonNull(dataRegionDirs)) {
@@ -149,19 +154,24 @@ public class TsFileValidationTool {
         }
       }
     }
-    printBoth("Finish checking successfully, totally find " + badFileNum + " bad files.");
+    if (printDetails) {
+      printBoth("Finish checking successfully, totally find " + badFileNum + " bad files.");
+    }
     if (printToFile) {
       pw.close();
     }
   }
 
   private static void findUncorrectFiles(List<File> tsFiles) {
-    // measurementID -> [lastTime, endTimeInLastFile]
-    Map<String, long[]> measurementLastTime = new HashMap<>();
-    // deviceID -> endTime, the endTime of device in the last seq file
-    Map<String, Long> deviceEndTime = new HashMap<>();
+    // measurementID -> <fileName, [lastTime, endTimeInLastFile]>
+    Map<String, Pair<String, long[]>> measurementLastTime = new HashMap<>();
+    // deviceID -> <fileName, endTime>, the endTime of device in the last seq file
+    Map<String, Pair<String, Long>> deviceEndTime = new HashMap<>();
+    // fileName -> isBadFile
+    Map<String, Boolean> isBadFileMap = new HashMap<>();
 
     for (File tsFile : tsFiles) {
+      List<String> previousBadFileMsgs = new ArrayList<>();
       try {
         TsFileResource resource = new TsFileResource(tsFile);
         if (!new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX).exists()) {
@@ -173,7 +183,8 @@ public class TsFileValidationTool {
         } else {
           resource.deserialize();
         }
-        boolean isBadFile = false;
+        isBadFileMap.put(tsFile.getName(), false);
+
         try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFile.getAbsolutePath())) {
           // deviceID -> has checked overlap or not
           Map<String, Boolean> hasCheckedDeviceOverlap = new HashMap<>();
@@ -206,7 +217,7 @@ public class TsFileValidationTool {
                     k -> {
                       long[] arr = new long[2];
                       Arrays.fill(arr, Long.MIN_VALUE);
-                      return arr;
+                      return new Pair<>("", arr);
                     });
                 Decoder defaultTimeDecoder =
                     Decoder.getDecoderByType(
@@ -233,20 +244,47 @@ public class TsFileValidationTool {
                     long[] timeBatch = timePageReader.getNextTimeBatch();
                     for (int i = 0; i < timeBatch.length; i++) {
                       long timestamp = timeBatch[i];
-                      if (timestamp <= measurementLastTime.get(measurementID)[0]) {
+                      if (timestamp <= measurementLastTime.get(measurementID).right[0]) {
                         // find bad file
-                        if (!isBadFile) {
-                          printBoth("-- Find the bad file " + tsFile.getAbsolutePath());
-                          isBadFile = true;
+                        if (timestamp <= measurementLastTime.get(measurementID).right[1]) {
+                          // overlap between file, then add previous bad file path to list
+                          String lastBadFile = measurementLastTime.get(measurementID).left;
+                          if (!isBadFileMap.get(lastBadFile)) {
+                            if (printDetails) {
+                              previousBadFileMsgs.add(
+                                  "-- Find the bad file "
+                                      + tsFile.getParentFile().getAbsolutePath()
+                                      + File.separator
+                                      + lastBadFile
+                                      + ", overlap with later files.");
+                            } else {
+                              previousBadFileMsgs.add(
+                                  tsFile.getParentFile().getAbsolutePath()
+                                      + File.separator
+                                      + lastBadFile);
+                            }
+                            isBadFileMap.put(lastBadFile, true);
+                            badFileNum++;
+                          }
+                        }
+
+                        if (!isBadFileMap.get(tsFile.getName())) {
+                          if (printDetails) {
+                            printBoth("-- Find the bad file " + tsFile.getAbsolutePath());
+                          } else {
+                            printBoth(tsFile.getAbsolutePath());
+                          }
+                          isBadFileMap.put(tsFile.getName(), true);
                           badFileNum++;
                         }
                         if (printDetails) {
-                          if (timestamp <= measurementLastTime.get(measurementID)[1]) {
+                          if (timestamp <= measurementLastTime.get(measurementID).right[1]) {
                             if (!hasMeasurementPrintedDetails.get(measurementID)[0]) {
                               printBoth(
                                   "-------- Timeseries "
                                       + measurementID
-                                      + " overlap between files");
+                                      + " overlap between files, with previous file "
+                                      + measurementLastTime.get(measurementID).left);
                               hasMeasurementPrintedDetails.get(measurementID)[0] = true;
                             }
                           } else if (timestamp
@@ -277,7 +315,7 @@ public class TsFileValidationTool {
                           }
                         }
                       } else {
-                        measurementLastTime.get(measurementID)[0] = timestamp;
+                        measurementLastTime.get(measurementID).right[0] = timestamp;
                         currentPageEndTime = timestamp;
                         currentChunkEndTime = timestamp;
                       }
@@ -293,20 +331,45 @@ public class TsFileValidationTool {
                     BatchData batchData = pageReader.getAllSatisfiedPageData();
                     while (batchData.hasCurrent()) {
                       long timestamp = batchData.currentTime();
-                      if (timestamp <= measurementLastTime.get(measurementID)[0]) {
+                      if (timestamp <= measurementLastTime.get(measurementID).right[0]) {
                         // find bad file
-                        if (!isBadFile) {
-                          printBoth("-- Find the bad file " + tsFile.getAbsolutePath());
-                          isBadFile = true;
+                        if (timestamp <= measurementLastTime.get(measurementID).right[1]) {
+                          // overlap between file, then add previous bad file path to list
+                          if (!isBadFileMap.get(measurementLastTime.get(measurementID).left)) {
+                            if (printDetails) {
+                              previousBadFileMsgs.add(
+                                  "-- Find the bad file "
+                                      + tsFile.getParentFile().getAbsolutePath()
+                                      + File.separator
+                                      + measurementLastTime.get(measurementID).left
+                                      + ", overlap with later files.");
+                            } else {
+                              previousBadFileMsgs.add(
+                                  tsFile.getParentFile().getAbsolutePath()
+                                      + File.separator
+                                      + measurementLastTime.get(measurementID).left);
+                            }
+                            badFileNum++;
+                            isBadFileMap.put(measurementLastTime.get(measurementID).left, true);
+                          }
+                        }
+                        if (!isBadFileMap.get(tsFile.getName())) {
+                          if (printDetails) {
+                            printBoth("-- Find the bad file " + tsFile.getAbsolutePath());
+                          } else {
+                            printBoth(tsFile.getAbsolutePath());
+                          }
+                          isBadFileMap.put(tsFile.getName(), true);
                           badFileNum++;
                         }
                         if (printDetails) {
-                          if (timestamp <= measurementLastTime.get(measurementID)[1]) {
+                          if (timestamp <= measurementLastTime.get(measurementID).right[1]) {
                             if (!hasMeasurementPrintedDetails.get(measurementID)[0]) {
                               printBoth(
                                   "-------- Timeseries "
                                       + measurementID
-                                      + " overlap between files");
+                                      + " overlap between files, with previous file "
+                                      + measurementLastTime.get(measurementID).left);
                               hasMeasurementPrintedDetails.get(measurementID)[0] = true;
                             }
                           } else if (timestamp
@@ -337,7 +400,7 @@ public class TsFileValidationTool {
                           }
                         }
                       } else {
-                        measurementLastTime.get(measurementID)[0] = timestamp;
+                        measurementLastTime.get(measurementID).right[0] = timestamp;
                         currentPageEndTime = timestamp;
                         currentChunkEndTime = timestamp;
                       }
@@ -357,23 +420,61 @@ public class TsFileValidationTool {
                 if (!deviceID.equals("")) {
                   // record the end time of last device in current file
                   if (resource.getEndTime(deviceID)
-                      > deviceEndTime.getOrDefault(deviceID, Long.MIN_VALUE)) {
-                    deviceEndTime.put(deviceID, resource.getEndTime(deviceID));
+                      > deviceEndTime.computeIfAbsent(
+                              deviceID,
+                              k -> {
+                                return new Pair<>("", Long.MIN_VALUE);
+                              })
+                          .right) {
+                    deviceEndTime.get(deviceID).left = tsFile.getName();
+                    deviceEndTime.get(deviceID).right = resource.getEndTime(deviceID);
                   }
                 }
                 ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
                 deviceID = chunkGroupHeader.getDeviceID();
                 if (!hasCheckedDeviceOverlap.getOrDefault(deviceID, false)
                     && resource.getStartTime(deviceID)
-                        <= deviceEndTime.getOrDefault(deviceID, Long.MIN_VALUE)) {
+                        <= deviceEndTime.computeIfAbsent(
+                                deviceID,
+                                k -> {
+                                  return new Pair<>("", Long.MIN_VALUE);
+                                })
+                            .right) {
                   // find bad file
-                  if (!isBadFile) {
-                    printBoth("-- Find the bad file " + tsFile.getAbsolutePath());
-                    isBadFile = true;
+                  // add prevous bad file msg to list
+                  if (!isBadFileMap.get(deviceEndTime.get(deviceID).left)) {
+                    if (printDetails) {
+                      previousBadFileMsgs.add(
+                          "-- Find the bad file "
+                              + tsFile.getParentFile().getAbsolutePath()
+                              + File.separator
+                              + deviceEndTime.get(deviceID).left
+                              + ", overlap with later files.");
+                    } else {
+                      previousBadFileMsgs.add(
+                          tsFile.getParentFile().getAbsolutePath()
+                              + File.separator
+                              + deviceEndTime.get(deviceID).left);
+                    }
+                    isBadFileMap.put(deviceEndTime.get(deviceID).left, true);
+                    badFileNum++;
+                  }
+                  // print current file
+                  if (!isBadFileMap.get(tsFile.getName())) {
+                    if (printDetails) {
+                      printBoth("-- Find the bad file " + tsFile.getAbsolutePath());
+                    } else {
+                      printBoth(tsFile.getAbsolutePath());
+                    }
+                    isBadFileMap.put(tsFile.getName(), true);
                     badFileNum++;
                   }
                   if (printDetails) {
-                    printBoth("---- Device " + deviceID + " overlap between files");
+                    printBoth(
+                        "---- Device "
+                            + deviceID
+                            + " overlap between files, with previous file "
+                            + deviceEndTime.get(deviceID).left);
                   }
                 }
                 hasCheckedDeviceOverlap.put(deviceID, true);
@@ -388,16 +489,24 @@ public class TsFileValidationTool {
 
           // record the end time of each timeseries in current file
           for (Map.Entry<String, Long> entry : lashChunkEndTime.entrySet()) {
-            Long endTime = Math.max(measurementLastTime.get(entry.getKey())[1], entry.getValue());
-            measurementLastTime.get(entry.getKey())[1] = endTime;
+            if (measurementLastTime.get(entry.getKey()).right[1] <= entry.getValue()) {
+              measurementLastTime.get(entry.getKey()).right[1] = entry.getValue();
+              measurementLastTime.get(entry.getKey()).left = tsFile.getName();
+            }
           }
         }
       } catch (Throwable e) {
         logger.error("Meet errors in reading file {} , skip it.", tsFile.getAbsolutePath(), e);
-        printBoth(
-            "-- Meet errors in reading file "
-                + tsFile.getAbsolutePath()
-                + ", tsfile may be corrupted.");
+        if (printDetails) {
+          printBoth(
+              "-- Meet errors in reading file "
+                  + tsFile.getAbsolutePath()
+                  + ", tsfile may be corrupted.");
+        }
+      } finally {
+        for (String msg : previousBadFileMsgs) {
+          printBoth(msg);
+        }
       }
     }
   }

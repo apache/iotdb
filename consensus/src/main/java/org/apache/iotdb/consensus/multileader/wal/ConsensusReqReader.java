@@ -30,7 +30,13 @@ import java.util.concurrent.TimeoutException;
 /** This interface provides search interface for consensus requests via index. */
 public interface ConsensusReqReader {
 
+  /** this insert node doesn't need to participate in multi-leader consensus */
   long DEFAULT_SEARCH_INDEX = -1;
+
+  /** multi-leader consensus cannot delete any insert nodes */
+  long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MIN_VALUE;
+
+  void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex);
 
   /**
    * Gets the consensus request at the specified position.

@@ -28,7 +28,7 @@ import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
-import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.MappableRowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFException;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
@@ -57,7 +57,9 @@ public abstract class UDTFMath implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations)
       throws MetadataException {
     dataType = UDFDataTypeTransformer.transformToTsDataType(parameters.getDataType(0));
-    configurations.setAccessStrategy(new RowByRowAccessStrategy()).setOutputDataType(Type.DOUBLE);
+    configurations
+        .setAccessStrategy(new MappableRowByRowAccessStrategy())
+        .setOutputDataType(Type.DOUBLE);
     setTransformer();
   }
 
@@ -80,6 +82,29 @@ public abstract class UDTFMath implements UDTF {
       case DOUBLE:
         collector.putDouble(time, transformer.transform(row.getDouble(0)));
         break;
+      default:
+        // This will not happen.
+        throw new UDFInputSeriesDataTypeNotValidException(
+            0,
+            UDFDataTypeTransformer.transformToUDFDataType(dataType),
+            Type.INT32,
+            Type.INT64,
+            Type.FLOAT,
+            Type.DOUBLE);
+    }
+  }
+
+  @Override
+  public Object transform(Row row) throws IOException {
+    switch (dataType) {
+      case INT32:
+        return transformer.transform(row.getInt(0));
+      case INT64:
+        return transformer.transform(row.getLong(0));
+      case FLOAT:
+        return transformer.transform(row.getFloat(0));
+      case DOUBLE:
+        return transformer.transform(row.getDouble(0));
       default:
         // This will not happen.
         throw new UDFInputSeriesDataTypeNotValidException(

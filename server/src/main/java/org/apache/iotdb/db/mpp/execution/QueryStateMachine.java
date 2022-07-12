@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
@@ -41,6 +42,7 @@ public class QueryStateMachine {
   // The executor will be used in all the state machines belonged to this query.
   private Executor stateMachineExecutor;
   private Throwable failureException;
+  private TSStatus failureStatus;
 
   public QueryStateMachine(QueryId queryId, ExecutorService executor) {
     this.name = String.format("QueryStateMachine[%s]", queryId);
@@ -131,10 +133,22 @@ public class QueryStateMachine {
     queryState.set(QueryState.FAILED);
   }
 
+  public void transitionToFailed(TSStatus failureStatus) {
+    if (queryState.get().isDone()) {
+      return;
+    }
+    this.failureStatus = failureStatus;
+    queryState.set(QueryState.FAILED);
+  }
+
   public String getFailureMessage() {
     if (failureException != null) {
       return failureException.getMessage();
     }
     return "no detailed failure reason in QueryStateMachine";
+  }
+
+  public TSStatus getFailureStatus() {
+    return failureStatus;
   }
 }

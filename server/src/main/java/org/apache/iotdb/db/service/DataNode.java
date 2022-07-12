@@ -163,7 +163,7 @@ public class DataNode implements DataNodeMBean {
 
     // start InternalService first so that it can respond to configNode's heartbeat before joining
     // cluster
-    registerManager.register(ClientRPCService.getInstance());
+    registerManager.register(DataNodeInternalRPCService.getInstance());
   }
 
   /** register DataNode with ConfigNode */
@@ -175,27 +175,8 @@ public class DataNode implements DataNodeMBean {
     while (retry > 0) {
       logger.info("start registering to the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-        // Set DataNodeLocation
-        TDataNodeLocation location = new TDataNodeLocation();
-        location.setDataNodeId(config.getDataNodeId());
-        location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
-        location.setInternalEndPoint(
-            new TEndPoint(config.getInternalAddress(), config.getInternalPort()));
-        location.setMPPDataExchangeEndPoint(
-            new TEndPoint(config.getInternalAddress(), config.getMppDataExchangePort()));
-        location.setDataRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
-        location.setSchemaRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
-
-        // Set DataNodeInfo
-        TDataNodeInfo info = new TDataNodeInfo();
-        info.setLocation(location);
-        info.setCpuCoreNum(Runtime.getRuntime().availableProcessors());
-        info.setMaxMemory(Runtime.getRuntime().totalMemory());
-
         TDataNodeRegisterReq req = new TDataNodeRegisterReq();
-        req.setDataNodeInfo(info);
+        req.setDataNodeInfo(generateDataNodeInfo());
         TDataNodeRegisterResp dataNodeRegisterResp = configNodeClient.registerDataNode(req);
 
         // store config node lists from resp
@@ -349,23 +330,11 @@ public class DataNode implements DataNodeMBean {
     while (retry > 0) {
       logger.info("start joining the cluster.");
       try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-        // Set DataNodeLocation
-        TDataNodeLocation location = new TDataNodeLocation();
-        location.setDataNodeId(config.getDataNodeId());
-        location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
-        location.setInternalEndPoint(
-            new TEndPoint(config.getInternalAddress(), config.getInternalPort()));
-        location.setMPPDataExchangeEndPoint(
-            new TEndPoint(config.getInternalAddress(), config.getMppDataExchangePort()));
-        location.setDataRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
-        location.setSchemaRegionConsensusEndPoint(
-            new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
         TDataNodeActiveReq req = new TDataNodeActiveReq();
-        req.setLocation(location);
-        req.setDataNodeId(config.getDataNodeId());
+        req.setDataNodeInfo(generateDataNodeInfo());
         TSStatus status = configNodeClient.activeDataNode(req);
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            || status.getCode() == TSStatusCode.DATANODE_ALREADY_ACTIVATED.getStatusCode()) {
           logger.info("Joined the cluster successfully");
           return;
         }
@@ -400,6 +369,32 @@ public class DataNode implements DataNodeMBean {
     }
     // init service protocols
     initProtocols();
+  }
+
+  /**
+   * generate dataNodeInfo
+   *
+   * @return TDataNodeInfo
+   */
+  private TDataNodeInfo generateDataNodeInfo() {
+    // Set DataNodeLocation
+    TDataNodeLocation location = new TDataNodeLocation();
+    location.setDataNodeId(config.getDataNodeId());
+    location.setClientRpcEndPoint(new TEndPoint(config.getRpcAddress(), config.getRpcPort()));
+    location.setInternalEndPoint(
+        new TEndPoint(config.getInternalAddress(), config.getInternalPort()));
+    location.setMPPDataExchangeEndPoint(
+        new TEndPoint(config.getInternalAddress(), config.getMppDataExchangePort()));
+    location.setDataRegionConsensusEndPoint(
+        new TEndPoint(config.getInternalAddress(), config.getDataRegionConsensusPort()));
+    location.setSchemaRegionConsensusEndPoint(
+        new TEndPoint(config.getInternalAddress(), config.getSchemaRegionConsensusPort()));
+    // Set DataNodeInfo
+    TDataNodeInfo info = new TDataNodeInfo();
+    info.setLocation(location);
+    info.setCpuCoreNum(Runtime.getRuntime().availableProcessors());
+    info.setMaxMemory(Runtime.getRuntime().totalMemory());
+    return info;
   }
 
   private void registerUdfServices() throws StartupException {

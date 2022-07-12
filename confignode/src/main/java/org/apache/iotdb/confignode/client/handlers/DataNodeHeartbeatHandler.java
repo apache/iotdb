@@ -21,9 +21,10 @@ package org.apache.iotdb.confignode.client.handlers;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
-import org.apache.iotdb.confignode.manager.load.heartbeat.HeartbeatPackage;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.NodeHeartbeatSample;
 import org.apache.iotdb.confignode.manager.load.heartbeat.RegionGroupCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.RegionHeartbeatSample;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -52,21 +53,26 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
   @Override
   public void onComplete(THeartbeatResp heartbeatResp) {
-    dataNodeHeartbeatCache.cacheHeartBeat(
-        new HeartbeatPackage(heartbeatResp.getHeartbeatTimestamp(), System.currentTimeMillis()));
+    long receiveTime = System.currentTimeMillis();
 
+    // Update NodeCache
+    dataNodeHeartbeatCache.cacheHeartbeatSample(
+        new NodeHeartbeatSample(heartbeatResp.getHeartbeatTimestamp(), receiveTime));
+
+    // Update RegionCache
     if (heartbeatResp.isSetJudgedLeaders()) {
       heartbeatResp
           .getJudgedLeaders()
           .forEach(
-              (consensusGroupId, isLeader) -> {
-                if (isLeader) {
+              (consensusGroupId, isLeader) ->
                   regionGroupCacheMap
                       .computeIfAbsent(consensusGroupId, empty -> new RegionGroupCache())
-                      .updateLeader(
-                          heartbeatResp.getHeartbeatTimestamp(), dataNodeLocation.getDataNodeId());
-                }
-              });
+                      .cacheHeartbeatSample(
+                          new RegionHeartbeatSample(
+                              heartbeatResp.getHeartbeatTimestamp(),
+                              receiveTime,
+                              dataNodeLocation.getDataNodeId(),
+                              isLeader)));
     }
   }
 

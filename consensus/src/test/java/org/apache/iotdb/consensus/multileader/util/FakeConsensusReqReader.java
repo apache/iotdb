@@ -37,6 +37,9 @@ public class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
   }
 
   @Override
+  public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {}
+
+  @Override
   public IConsensusRequest getReq(long index) {
     synchronized (requestSets) {
       for (IndexedConsensusRequest indexedConsensusRequest : requestSets.getRequestSet()) {
