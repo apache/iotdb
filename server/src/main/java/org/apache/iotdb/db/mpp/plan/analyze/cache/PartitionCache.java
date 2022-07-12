@@ -175,18 +175,29 @@ public class PartitionCache {
     return null;
   }
 
-  /** get all storage group from confignode and update storage group cache */
-  private void fetchStorageGroupAndUpdateCache() throws IOException, TException {
+  /**
+   * get all storage group from confignode and update storage group cache
+   *
+   * @param result the result of get storage group cache
+   * @param devicePaths the devices that need to hit
+   */
+  private void fetchStorageGroupAndUpdateCache(
+      StorageGroupCacheResult<?> result, List<String> devicePaths) throws IOException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       storageGroupCacheLock.writeLock().lock();
-      TStorageGroupSchemaResp storageGroupSchemaResp =
-          client.getMatchedStorageGroupSchemas(ROOT_PATH);
-      if (storageGroupSchemaResp.getStatus().getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        Set<String> storageGroupNames = storageGroupSchemaResp.getStorageGroupSchemaMap().keySet();
-        // update all storage group into cache
-        updateStorageCache(storageGroupNames);
+      result.reset();
+      getStorageGroupMap(result, devicePaths, true);
+      if (!result.isSuccess()) {
+        TStorageGroupSchemaResp storageGroupSchemaResp =
+            client.getMatchedStorageGroupSchemas(ROOT_PATH);
+        if (storageGroupSchemaResp.getStatus().getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          Set<String> storageGroupNames =
+              storageGroupSchemaResp.getStorageGroupSchemaMap().keySet();
+          // update all storage group into cache
+          updateStorageCache(storageGroupNames);
+        }
       }
     } finally {
       storageGroupCacheLock.writeLock().unlock();
@@ -196,35 +207,51 @@ public class PartitionCache {
   /**
    * create not existed storage group and update storage group cache
    *
-   * @param storageGroupNamesNeedCreated the name of storage group that need to be created
+   * @param result the result of get storage group cache
+   * @param devicePaths the devices that need to hit
    * @throws RuntimeException if failed to create storage group
    */
-  private void createStorageGroupAndUpdateCache(Set<String> storageGroupNamesNeedCreated)
-      throws IOException, TException {
+  private void createStorageGroupAndUpdateCache(
+      StorageGroupCacheResult<?> result, List<String> devicePaths)
+      throws IOException, MetadataException, TException {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       storageGroupCacheLock.writeLock().lock();
-      // try to create storage groups one by one until done or one storage group fail
-      Set<String> successFullyCreatedStorageGroup = new HashSet<>();
-      for (String storageGroupName : storageGroupNamesNeedCreated) {
-        TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
-        storageGroupSchema.setName(storageGroupName);
-        TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
-        TSStatus tsStatus = client.setStorageGroup(req);
-        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
-          successFullyCreatedStorageGroup.add(storageGroupName);
-        } else {
-          // try to update cache by storage groups successfully created
-          updateStorageCache(successFullyCreatedStorageGroup);
-          logger.warn(
-              "[{} Cache] failed to create storage group {}",
-              STORAGE_GROUP_CACHE_NAME,
-              storageGroupName);
-          throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
+      // try to check whether storage group need to be created
+      result.reset();
+      getStorageGroupMap(result, devicePaths, false);
+      if (!result.isSuccess()) {
+        // try to get storage group needed to be created from missed device
+        Set<String> storageGroupNamesNeedCreated = new HashSet<>();
+        for (String devicePath : result.getMissedDevices()) {
+          PartialPath storageGroupNameNeedCreated =
+              MetaUtils.getStorageGroupPathByLevel(
+                  new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
+          storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
         }
+
+        // try to create storage groups one by one until done or one storage group fail
+        Set<String> successFullyCreatedStorageGroup = new HashSet<>();
+        for (String storageGroupName : storageGroupNamesNeedCreated) {
+          TStorageGroupSchema storageGroupSchema = new TStorageGroupSchema();
+          storageGroupSchema.setName(storageGroupName);
+          TSetStorageGroupReq req = new TSetStorageGroupReq(storageGroupSchema);
+          TSStatus tsStatus = client.setStorageGroup(req);
+          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == tsStatus.getCode()) {
+            successFullyCreatedStorageGroup.add(storageGroupName);
+          } else {
+            // try to update cache by storage groups successfully created
+            updateStorageCache(successFullyCreatedStorageGroup);
+            logger.warn(
+                "[{} Cache] failed to create storage group {}",
+                STORAGE_GROUP_CACHE_NAME,
+                storageGroupName);
+            throw new RuntimeException(new IoTDBException(tsStatus.message, tsStatus.code));
+          }
+        }
+        // try to update storage group cache when all storage groups has already been created
+        updateStorageCache(storageGroupNamesNeedCreated);
       }
-      // try to update storage group cache when all storage groups has already been created
-      updateStorageCache(storageGroupNamesNeedCreated);
     } finally {
       storageGroupCacheLock.writeLock().unlock();
     }
@@ -291,21 +318,14 @@ public class PartitionCache {
     if (!result.isSuccess()) {
       try {
         // try to fetch storage group from config node when miss
-        fetchStorageGroupAndUpdateCache();
+        fetchStorageGroupAndUpdateCache(result, devicePaths);
         // second try to hit storage group with failed devices;
         getStorageGroupMap(result, devicePaths, false);
         if (!result.isSuccess() && isAutoCreate) {
           // try to auto create storage group of failed device
-          Set<String> storageGroupNamesNeedCreated = new HashSet<>();
-          for (String devicePath : result.getMissedDevices()) {
-            PartialPath storageGroupNameNeedCreated =
-                MetaUtils.getStorageGroupPathByLevel(
-                    new PartialPath(devicePath), config.getDefaultStorageGroupLevel());
-            storageGroupNamesNeedCreated.add(storageGroupNameNeedCreated.getFullPath());
-          }
-          createStorageGroupAndUpdateCache(storageGroupNamesNeedCreated);
+          createStorageGroupAndUpdateCache(result, devicePaths);
           // third try to hit cache
-          getStorageGroupMap(result, devicePaths, false);
+          getStorageGroupMap(result, devicePaths, true);
           if (!result.isSuccess()) {
             throw new StatementAnalyzeException("Failed to get Storage Group Map in three try.");
           }
