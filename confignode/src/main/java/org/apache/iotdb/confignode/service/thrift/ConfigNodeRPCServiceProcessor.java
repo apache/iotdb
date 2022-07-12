@@ -41,7 +41,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
@@ -67,7 +66,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -144,11 +142,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     LOGGER.info("Execute RegisterDatanodeRequest {} with result {}", req, resp);
 
     return resp;
-  }
-
-  @Override
-  public TSStatus activeDataNode(TDataNodeActiveReq req) throws TException {
-    return configManager.activateDataNode(new ActivateDataNodePlan(req.getDataNodeInfo()));
   }
 
   @Override

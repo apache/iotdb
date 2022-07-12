@@ -20,7 +20,6 @@ package org.apache.iotdb.confignode.consensus.request;
 
 public enum ConfigPhysicalPlanType {
   RegisterDataNode,
-  ActivateDataNode,
   GetDataNodeInfo,
   SetStorageGroup,
   SetTTL,

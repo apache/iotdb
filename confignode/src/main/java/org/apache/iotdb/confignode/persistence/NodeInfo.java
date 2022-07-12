@@ -27,7 +27,6 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
@@ -132,8 +131,8 @@ public class NodeInfo implements SnapshotProcessor {
    */
   public boolean isRegisteredDataNode(TDataNodeLocation dataNodeLocation) {
     boolean result = false;
-
     int originalDataNodeId = dataNodeLocation.getDataNodeId();
+
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       for (Map.Entry<Integer, TDataNodeInfo> entry : registeredDataNodes.entrySet()) {
@@ -146,8 +145,8 @@ public class NodeInfo implements SnapshotProcessor {
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
-    dataNodeLocation.setDataNodeId(originalDataNodeId);
 
+    dataNodeLocation.setDataNodeId(originalDataNodeId);
     return result;
   }
 
@@ -171,6 +170,7 @@ public class NodeInfo implements SnapshotProcessor {
           nextNodeId.set(info.getLocation().getDataNodeId());
         }
       }
+      registeredDataNodes.put(info.getLocation().getDataNodeId(), info);
 
       result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       if (nextNodeId.get() < minimumDataNode) {
@@ -181,25 +181,6 @@ public class NodeInfo implements SnapshotProcessor {
       } else if (nextNodeId.get() == minimumDataNode) {
         result.setMessage("IoTDB-Cluster could provide data service, now enjoy yourself!");
       }
-    } finally {
-      dataNodeInfoReadWriteLock.writeLock().unlock();
-    }
-    return result;
-  }
-
-  /**
-   * add dataNode to onlineDataNodes
-   *
-   * @param activateDataNodePlan ActivateDataNodePlan
-   * @return SUCCESS_STATUS
-   */
-  public TSStatus activateDataNode(ActivateDataNodePlan activateDataNodePlan) {
-    TSStatus result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    result.setMessage("activateDataNode success.");
-    TDataNodeInfo info = activateDataNodePlan.getInfo();
-    dataNodeInfoReadWriteLock.writeLock().lock();
-    try {
-      registeredDataNodes.put(info.getLocation().getDataNodeId(), info);
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }

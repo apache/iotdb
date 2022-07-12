@@ -30,7 +30,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
@@ -104,9 +103,6 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       switch (type) {
         case RegisterDataNode:
           req = new RegisterDataNodePlan();
-          break;
-        case ActivateDataNode:
-          req = new ActivateDataNodePlan();
           break;
         case GetDataNodeInfo:
           req = new GetDataNodeInfoPlan();

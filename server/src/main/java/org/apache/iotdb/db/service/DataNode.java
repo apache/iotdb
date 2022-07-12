@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
@@ -34,7 +33,6 @@ import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -128,8 +126,6 @@ public class DataNode implements DataNodeMBean {
       registerInConfigNode();
       // setup DataNode
       active();
-      // send message to config node stating that data node is ready
-      activateCurrentDataNode();
       // setup rpc service
       setUpRPCService();
       logger.info("Congratulation, IoTDB DataNode is set up successfully. Now, enjoy yourself!");
@@ -160,10 +156,6 @@ public class DataNode implements DataNodeMBean {
     // set the mpp mode to true
     IoTDBDescriptor.getInstance().getConfig().setMppMode(true);
     IoTDBDescriptor.getInstance().getConfig().setClusterMode(true);
-
-    // start InternalService first so that it can respond to configNode's heartbeat before joining
-    // cluster
-    registerManager.register(DataNodeInternalRPCService.getInstance());
   }
 
   /** register DataNode with ConfigNode */
@@ -323,44 +315,12 @@ public class DataNode implements DataNodeMBean {
     MetricsService.getInstance().startAllReporter();
   }
 
-  /** send a message to ConfigNode after DataNode is available */
-  private void activateCurrentDataNode() throws StartupException {
-    int retry = DEFAULT_JOIN_RETRY;
-
-    while (retry > 0) {
-      logger.info("start joining the cluster.");
-      try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-        TDataNodeActiveReq req = new TDataNodeActiveReq();
-        req.setDataNodeInfo(generateDataNodeInfo());
-        TSStatus status = configNodeClient.activeDataNode(req);
-        if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || status.getCode() == TSStatusCode.DATANODE_ALREADY_ACTIVATED.getStatusCode()) {
-          logger.info("Joined the cluster successfully");
-          return;
-        }
-      } catch (TException e) {
-        logger.warn("Cannot join the cluster, because: {}", e.getMessage());
-      }
-
-      try {
-        // wait 5s to start the next try
-        Thread.sleep(IoTDBDescriptor.getInstance().getConfig().getJoinClusterTimeOutMs());
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when waiting to join the cluster", e);
-        break;
-      }
-      // start the next try
-      retry--;
-    }
-    // all tries failed
-    logger.error("Cannot join the cluster after {} retries", DEFAULT_JOIN_RETRY);
-    throw new StartupException("Cannot join the cluster.");
-  }
-
   /** set up RPC and protocols after DataNode is available */
   private void setUpRPCService() throws StartupException {
-    // init rpc service
+    // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
+    registerManager.register(DataNodeInternalRPCService.getInstance());
+
+    // Start client RPCService to indicate that the current DataNode provide external services
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
