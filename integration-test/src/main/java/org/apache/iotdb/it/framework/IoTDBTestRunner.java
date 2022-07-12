@@ -16,7 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.it.env;
+package org.apache.iotdb.it.framework;
+
+import org.apache.iotdb.it.env.EnvFactory;
 
 import org.junit.runner.Description;
 import org.junit.runner.notification.RunNotifier;
@@ -24,14 +26,21 @@ import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.model.FrameworkMethod;
 import org.junit.runners.model.InitializationError;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
 
-  private static final Logger logger = LoggerFactory.getLogger(IoTDBTestRunner.class);
+  private static final Logger logger = IoTDBTestLogger.logger;
+  private IoTDBTestListener listener;
 
   public IoTDBTestRunner(Class<?> testClass) throws InitializationError {
     super(testClass);
+  }
+
+  @Override
+  public void run(RunNotifier notifier) {
+    listener = new IoTDBTestListener(this.getName());
+    notifier.addListener(listener);
+    super.run(notifier);
   }
 
   @Override
@@ -41,9 +50,9 @@ public class IoTDBTestRunner extends BlockJUnit4ClassRunner {
     long currentTime = System.currentTimeMillis();
     EnvFactory.getEnv().setTestMethodName(description.getMethodName());
     super.runChild(method, notifier);
-    logger.info(
-        "Done {}. Cost: {}s",
-        description.getMethodName(),
-        (System.currentTimeMillis() - currentTime) / 1000.0);
+    double timeCost = (System.currentTimeMillis() - currentTime) / 1000.0;
+    String testName = description.getClassName() + "." + description.getMethodName();
+    logger.info("Done {}. Cost: {}s", description.getMethodName(), timeCost);
+    listener.addTestStat(new IoTDBTestStat(testName, timeCost));
   }
 }

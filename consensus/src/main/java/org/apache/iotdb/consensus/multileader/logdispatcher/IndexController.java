@@ -54,17 +54,6 @@ public class IndexController {
     restore();
   }
 
-  public long incrementAndGet() {
-    try {
-      lock.writeLock().lock();
-      currentIndex++;
-      checkPersist();
-      return currentIndex;
-    } finally {
-      lock.writeLock().unlock();
-    }
-  }
-
   public long updateAndGet(long index) {
     try {
       lock.writeLock().lock();

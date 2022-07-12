@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.itbase.runtime.ClusterTestConnection;
 import org.apache.iotdb.itbase.runtime.NodeConnection;
@@ -30,7 +31,6 @@ import org.apache.iotdb.jdbc.IoTDBConnection;
 
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,7 +50,7 @@ import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
 
 public abstract class AbstractEnv implements BaseEnv {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractEnv.class);
+  private static final Logger logger = IoTDBTestLogger.logger;
   private final int NODE_START_TIMEOUT = 100;
   private final int PROBE_TIMEOUT_MS = 2000;
   private final int NODE_NETWORK_TIMEOUT_MS = 65_000;

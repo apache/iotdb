@@ -100,6 +100,11 @@ public class WALFakeNode implements IWALNode {
   }
 
   @Override
+  public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public IConsensusRequest getReq(long index) {
     throw new UnsupportedOperationException();
   }

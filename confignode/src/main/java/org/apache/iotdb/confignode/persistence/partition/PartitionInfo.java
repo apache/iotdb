@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
@@ -426,8 +427,14 @@ public class PartitionInfo implements SnapshotProcessor {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       return regionResp;
     }
+    TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
+    final List<String> storageGroups =
+        showRegionReq != null ? showRegionReq.getStorageGroups() : null;
     storageGroupPartitionTables.forEach(
         (storageGroup, storageGroupPartitionTable) -> {
+          if (storageGroups != null && !storageGroups.contains(storageGroup)) {
+            return;
+          }
           storageGroupPartitionTable.getRegionInfoList(regionsInfoPlan, regionInfoList);
         });
     regionInfoList.sort(
@@ -529,37 +536,6 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public int getSlotCount(String storageGroup) {
     return storageGroupPartitionTables.get(storageGroup).getSlotsCount();
-  }
-
-  /**
-   * Only leader use this interface. Contending the Region allocation particle.
-   *
-   * @param storageGroup StorageGroupName
-   * @param type SchemaRegion or DataRegion
-   * @return True when successfully get the allocation particle, false otherwise
-   */
-  public boolean contendRegionAllocationParticle(String storageGroup, TConsensusGroupType type) {
-    return storageGroupPartitionTables.get(storageGroup).contendRegionAllocationParticle(type);
-  }
-
-  /**
-   * Only leader use this interface. Put back the Region allocation particle.
-   *
-   * @param storageGroup StorageGroupName
-   * @param type SchemaRegion or DataRegion
-   */
-  public void putBackRegionAllocationParticle(String storageGroup, TConsensusGroupType type) {
-    storageGroupPartitionTables.get(storageGroup).putBackRegionAllocationParticle(type);
-  }
-
-  /**
-   * Only leader use this interface. Get the Region allocation particle.
-   *
-   * @param storageGroup StorageGroupName
-   * @param type SchemaRegion or DataRegion
-   */
-  public boolean getRegionAllocationParticle(String storageGroup, TConsensusGroupType type) {
-    return storageGroupPartitionTables.get(storageGroup).getRegionAllocationParticle(type);
   }
 
   /**

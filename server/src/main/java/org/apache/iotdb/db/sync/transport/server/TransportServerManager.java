@@ -21,12 +21,17 @@ package org.apache.iotdb.db.sync.transport.server;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.exception.StartupException;
+import org.apache.iotdb.commons.service.AbstractThriftServiceThread;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.service.transport.thrift.TransportService;
 
 import org.apache.thrift.transport.TTransportException;
@@ -84,6 +89,15 @@ public class TransportServerManager extends ThriftService
             new TransportServerThriftHandler(serviceImpl),
             config.isRpcThriftCompressionEnable());
     thriftServiceThread.setName(ThreadName.SYNC_SERVER.getName());
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.THRIFT_ACTIVE_THREADS.toString(),
+            MetricLevel.CORE,
+            thriftServiceThread,
+            AbstractThriftServiceThread::getActiveThreadCount,
+            Tag.NAME.toString(),
+            ThreadName.SYNC_SERVER.getName());
   }
 
   @Override
