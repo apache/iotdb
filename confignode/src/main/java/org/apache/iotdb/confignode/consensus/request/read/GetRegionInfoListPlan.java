@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.consensus.request.read;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -30,33 +31,54 @@ import java.nio.ByteBuffer;
 
 public class GetRegionInfoListPlan extends ConfigPhysicalPlan {
 
-  private TConsensusGroupType regionType;
+  private TShowRegionReq showRegionReq;
 
   public GetRegionInfoListPlan() {
     super(ConfigPhysicalPlanType.GetRegionInfoList);
   }
 
-  public GetRegionInfoListPlan(TConsensusGroupType regionType) {
+  public GetRegionInfoListPlan(TShowRegionReq showRegionReq) {
     super(ConfigPhysicalPlanType.GetRegionInfoList);
-    this.regionType = regionType;
+    this.showRegionReq = showRegionReq;
   }
 
-  public TConsensusGroupType getRegionType() {
-    return regionType;
+  public TShowRegionReq getShowRegionReq() {
+    return showRegionReq;
   }
 
-  public void setRegionType(TConsensusGroupType regionType) {
-    this.regionType = regionType;
+  public void setShowRegionReq(TShowRegionReq showRegionReq) {
+    this.showRegionReq = showRegionReq;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
-    ReadWriteIOUtils.write(regionType.ordinal(), stream);
+    stream.writeBoolean(showRegionReq != null);
+    if (showRegionReq != null) {
+      boolean setConsensusGroupType = showRegionReq.isSetConsensusGroupType();
+      stream.writeBoolean(setConsensusGroupType);
+      if (setConsensusGroupType) {
+        ReadWriteIOUtils.write(showRegionReq.getConsensusGroupType().ordinal(), stream);
+      }
+      boolean setStorageGroups = showRegionReq.isSetStorageGroups();
+      stream.writeBoolean(setStorageGroups);
+      if (setStorageGroups) {
+        ReadWriteIOUtils.writeStringList(showRegionReq.getStorageGroups(), stream);
+      }
+    }
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    regionType = TConsensusGroupType.values()[ReadWriteIOUtils.readInt(buffer)];
+    if (ReadWriteIOUtils.readBool(buffer)) {
+      this.showRegionReq = new TShowRegionReq();
+      if (ReadWriteIOUtils.readBool(buffer)) {
+        this.showRegionReq.setConsensusGroupType(
+            TConsensusGroupType.values()[ReadWriteIOUtils.readInt(buffer)]);
+      }
+      if (ReadWriteIOUtils.readBool(buffer)) {
+        this.showRegionReq.setStorageGroups(ReadWriteIOUtils.readStringList(buffer));
+      }
+    }
   }
 }

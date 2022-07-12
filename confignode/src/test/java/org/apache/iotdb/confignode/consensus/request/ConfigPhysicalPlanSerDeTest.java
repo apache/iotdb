@@ -64,6 +64,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -596,11 +597,19 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void GetRegionLocaltionsPlanTest() throws IOException {
     GetRegionInfoListPlan req0 = new GetRegionInfoListPlan();
-    req0.setRegionType(TConsensusGroupType.DataRegion);
+    TShowRegionReq showRegionReq = new TShowRegionReq();
+    req0.setShowRegionReq(showRegionReq);
+    showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
     GetRegionInfoListPlan req1 =
         (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0.getType(), req1.getType());
-    Assert.assertEquals(req0.getRegionType(), req1.getRegionType());
+    Assert.assertEquals(req0.getShowRegionReq(), req1.getShowRegionReq());
+    final List<String> sgList = Collections.singletonList("root.sg1, root.sg2, root.*");
+    showRegionReq.setStorageGroups(new ArrayList<>(sgList));
+    GetRegionInfoListPlan req2 =
+        (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0.getType(), req1.getType());
+    Assert.assertEquals(req0.getShowRegionReq(), req2.getShowRegionReq());
   }
 
   @Test

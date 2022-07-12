@@ -128,6 +128,7 @@ Currently, IoTDB supports Region query using the following SQL：
 - `SHOW REGIONS`: Show all Region
 - `SHOW SCHEMA REGIONS`: Show all SchemaRegion distribution
 - `SHOW DATA REGIONS`: Show all DataRegion distribution
+- `SHOW (DATA|SCHEMA)? REGIONS OF STORAGE GROUP <sg1,sg2,...>`: Show region distribution of specified storage groups
 
 ```sql
 IoTDB> create timeseries root.sg.d1.s1 with datatype=BOOLEAN,encoding=PLAIN
@@ -179,6 +180,61 @@ IoTDB> show schema regions
 +--------+------------+------+-------------+------------+----------+----------+---------+----+
 Total line number = 2
 It costs 0.012s
+    
+IoTDB> show regions of storage group root.sg1
+show regions of storage group root.sg1
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|      10|SchemaRegion|    Up|     root.sg1|           1|         0|         4|127.0.0.1|6669|
+|      11|  DataRegion|    Up|     root.sg1|           1|         1|         5|127.0.0.1|6671|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+Total line number = 2
+It costs 0.005s
+
+IoTDB> show regions of storage group root.sg1, root.sg2
+show regions of storage group root.sg1, root.sg2
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|RegionId|        Type|Status|storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+|      10|SchemaRegion|    Up|     root.sg1|           1|         0|         4|127.0.0.1|6669|
+|      11|  DataRegion|    Up|     root.sg1|           1|         1|         5|127.0.0.1|6671|
+|      12|SchemaRegion|    Up|     root.sg2|           1|         0|         4|127.0.0.1|6669|
+|      13|  DataRegion|    Up|     root.sg2|           1|         1|         4|127.0.0.1|6669|
++--------+------------+------+-------------+------------+----------+----------+---------+----+
+Total line number = 4
+It costs 0.005s
+
+IoTDB> show regions of storage group root.*.sg_2
+show regions of storage group root.*.sg_2
++--------+------------+------+--------------+------------+----------+----------+---------+----+
+|RegionId|        Type|Status| storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+------------+------+--------------+------------+----------+----------+---------+----+
+|      14|SchemaRegion|    Up|root.sg_1.sg_2|           1|         0|         3|127.0.0.1|6667|
+|      15|  DataRegion|    Up|root.sg_1.sg_2|           1|         1|         5|127.0.0.1|6671|
++--------+------------+------+--------------+------------+----------+----------+---------+----+
+Total line number = 2
+It costs 0.004s
+
+IoTDB> show data regions of storage group root.*.sg_2
+show data regions of storage group root.*.sg_2
++--------+----------+------+--------------+------------+----------+----------+---------+----+
+|RegionId|      Type|Status| storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+----------+------+--------------+------------+----------+----------+---------+----+
+|      15|DataRegion|    Up|root.sg_1.sg_2|           1|         1|         5|127.0.0.1|6671|
++--------+----------+------+--------------+------------+----------+----------+---------+----+
+Total line number = 1
+It costs 0.004s
+
+IoTDB> show schema regions of storage group root.*.sg_2
+show schema regions of storage group root.*.sg_2
++--------+------------+------+--------------+------------+----------+----------+---------+----+
+|RegionId|        Type|Status| storage group|Series Slots|Time Slots|DataNodeId|     Host|Port|
++--------+------------+------+--------------+------------+----------+----------+---------+----+
+|       14|SchemaRegion|    Up|root.sg_1.sg_2|           1|         0|         5|127.0.0.1|6671|
++--------+------------+------+--------------+------------+----------+----------+---------+----+
+Total line number = 1
+It costs 0.102s
 ```
 ## Monitoring tool for cluster Node distribution
 
