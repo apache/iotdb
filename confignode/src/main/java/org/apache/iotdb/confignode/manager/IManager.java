@@ -302,8 +302,8 @@ public interface IManager {
   /**
    * set schema template xx to xx-path
    *
-   * @param req  TSetSchemaTemplateReq
-   * @return  TSStatus
+   * @param req TSetSchemaTemplateReq
+   * @return TSStatus
    */
   TSStatus setSchemaTemplate(TSetSchemaTemplateReq req);
 

@@ -171,8 +171,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       req.setPath(path.getFullPath());
       TSStatus tsStatus = configNodeClient.setSchemaTemplate(req);
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(
-            new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        throw new RuntimeException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       }
     } catch (Exception e) {
       throw new RuntimeException(
@@ -188,14 +187,16 @@ public class ClusterTemplateManager implements ITemplateManager {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       TGetPathsSetTemplatesResp resp = configNodeClient.getPathsSetTemplate(name);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if(resp.getPathList()!=null) {
-          resp.getPathList().stream().forEach(item -> {
-            try {
-              listPath.add(new PartialPath(item));
-            }catch (IllegalPathException e){
-              e.printStackTrace();
-            }
-          });
+        if (resp.getPathList() != null) {
+          resp.getPathList().stream()
+              .forEach(
+                  item -> {
+                    try {
+                      listPath.add(new PartialPath(item));
+                    } catch (IllegalPathException e) {
+                      e.printStackTrace();
+                    }
+                  });
         }
       } else {
         throw new RuntimeException(

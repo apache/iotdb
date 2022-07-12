@@ -19,26 +19,16 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
-import java.util.Map;
-import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import com.google.common.util.concurrent.ListenableFuture;
 
 public class SetSchemaTemplateTask implements IConfigTask {
 
   private final SetSchemaTemplateStatement setSchemaTemplateStatement;
 
-  public SetSchemaTemplateTask(
-      SetSchemaTemplateStatement setSchemaTemplateStatement) {
+  public SetSchemaTemplateTask(SetSchemaTemplateStatement setSchemaTemplateStatement) {
     this.setSchemaTemplateStatement = setSchemaTemplateStatement;
   }
 

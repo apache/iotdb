@@ -976,7 +976,7 @@ public class ConfigManager implements IManager {
   public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return clusterSchemaManager.setSchemaTemplate(req.getName(),req.getPath());
+      return clusterSchemaManager.setSchemaTemplate(req.getName(), req.getPath());
     } else {
       return status;
     }

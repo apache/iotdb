@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.client.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
@@ -36,9 +37,11 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplateP
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
@@ -381,16 +384,24 @@ public class ClusterSchemaManager {
    * @return
    */
   public TSStatus setSchemaTemplate(String templateName, String path) {
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    SetSchemaTemplatePlan setSchemaTemplatePlan = new SetSchemaTemplatePlan(templateName, path);
+    return getConsensusManager().write(setSchemaTemplatePlan).getStatus();
   }
 
   /**
    * show path set template xx
+   *
    * @param templateName
    * @return
    */
   public List<String> getPathsSetTemplate(String templateName) {
-    return new ArrayList<>(2);
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
+    PathInfoResp resp =
+        (PathInfoResp) getConsensusManager().read(getPathsSetTemplatePlan).getDataset();
+    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.getPathList();
+    }
+    return null;
   }
 
   private NodeManager getNodeManager() {
