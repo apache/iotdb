@@ -242,6 +242,7 @@ struct TDropFunctionReq {
 // show regions
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
+  2: optional list<string> storageGroups
 }
 
 struct TShowRegionResp {
@@ -262,6 +263,23 @@ struct TRegionRouteMapResp {
   // The routing policy of read/write requests for each RegionGroup is based on the order in the TRegionReplicaSet.
   // The replica with higher sorting result in TRegionReplicaSet will have higher priority.
   3: optional map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
+}
+
+
+// Template
+struct TCreateSchemaTemplateReq {
+  1: required string name
+  2: required binary serializedTemplate
+}
+
+struct TGetAllTemplatesResp {
+  1: required common.TSStatus status
+  2: optional list<binary> templateList
+}
+
+struct TGetTemplateResp {
+  1: required common.TSStatus status
+  2: optional binary template
 }
 
 service IConfigNodeRPCService {
@@ -372,6 +390,14 @@ service IConfigNodeRPCService {
   /* Show DataNodes */
 
   TShowDataNodesResp showDataNodes()
+
+   /* Template */
+
+    common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
+
+    TGetAllTemplatesResp getAllTemplates()
+
+    TGetTemplateResp getTemplate(string req)
 
 }
 

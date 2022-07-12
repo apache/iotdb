@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -65,6 +66,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -75,6 +77,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -428,7 +432,13 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
     TSStatus status = configManager.removeConfigNode(removeConfigNodePlan);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      status = SyncConfigNodeClientPool.getInstance().stopConfigNode(configNodeLocation);
+      status =
+          (TSStatus)
+              SyncConfigNodeClientPool.getInstance()
+                  .sendSyncRequestToConfigNode(
+                      configNodeLocation.getInternalEndPoint(),
+                      configNodeLocation,
+                      ConfigNodeRequestType.stopConfigNode);
     }
 
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
@@ -495,8 +505,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TShowRegionResp showRegion(TShowRegionReq showRegionReq) throws TException {
-    GetRegionInfoListPlan getRegionInfoListPlan =
-        new GetRegionInfoListPlan(showRegionReq.getConsensusGroupType());
+    GetRegionInfoListPlan getRegionInfoListPlan = new GetRegionInfoListPlan(showRegionReq);
     RegionInfoListResp dataSet =
         (RegionInfoListResp) configManager.showRegion(getRegionInfoListPlan);
     TShowRegionResp showRegionResp = new TShowRegionResp();
@@ -527,4 +536,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public void handleClientExit() {}
 
   // TODO: Interfaces for data operations
+
+  @Override
+  public TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req) throws TException {
+    return configManager.createSchemaTemplate(req);
+  }
+
+  @Override
+  public TGetAllTemplatesResp getAllTemplates() throws TException {
+    return configManager.getAllTemplates();
+  }
+
+  @Override
+  public TGetTemplateResp getTemplate(String req) throws TException {
+    return configManager.getTemplate(req);
+  }
 }
