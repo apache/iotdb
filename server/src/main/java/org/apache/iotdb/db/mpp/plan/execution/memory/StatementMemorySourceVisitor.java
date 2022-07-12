@@ -50,12 +50,16 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import static org.apache.iotdb.db.mpp.common.header.DatasetHeader.EMPTY_HEADER;
+
 public class StatementMemorySourceVisitor
     extends StatementVisitor<StatementMemorySource, StatementMemorySourceContext> {
 
   @Override
   public StatementMemorySource visitNode(StatementNode node, StatementMemorySourceContext context) {
-    return new StatementMemorySource(new TsBlock(0), new DatasetHeader(new ArrayList<>(), false));
+    DatasetHeader datasetHeader = context.getAnalysis().getRespDatasetHeader();
+    return new StatementMemorySource(
+        new TsBlock(0), datasetHeader == null ? EMPTY_HEADER : datasetHeader);
   }
 
   @Override
