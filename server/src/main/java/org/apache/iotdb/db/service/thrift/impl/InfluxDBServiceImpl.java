@@ -133,7 +133,8 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
         | QueryProcessException
         | StorageGroupNotSetException
         | StorageEngineException e) {
-      if (e instanceof QueryProcessException && e.getErrorCode() == 300) {
+      if (e instanceof QueryProcessException
+          && e.getErrorCode() == TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
         return RpcUtils.getInfluxDBStatus(
             TSStatusCode.SUCCESS_STATUS.getStatusCode(), "Execute successfully");
       }

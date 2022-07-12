@@ -1756,9 +1756,6 @@ public class DataRegion {
       return;
     }
 
-    // prevent new merges and queries from choosing this file
-    resource.setStatus(TsFileResourceStatus.DELETED);
-
     // ensure that the file is not used by any queries
     if (resource.tryWriteLock()) {
       try {

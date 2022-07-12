@@ -20,7 +20,7 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
@@ -37,11 +37,15 @@ import static java.util.Objects.requireNonNull;
 public class LinearFillOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  private final LinearFill[] fillArray;
+  private final ILinearFill[] fillArray;
   private final Operator child;
   private final int outputColumnCount;
   // TODO need to spill it to disk if it consumes too much memory
   private final List<TsBlock> cachedTsBlock;
+
+  private final List<Long> cachedRowIndex;
+
+  private long currentRowIndex = 0;
   // next TsBlock Index for each Column
   private final int[] nextTsBlockIndex;
 
@@ -52,7 +56,7 @@ public class LinearFillOperator implements ProcessOperator {
   private boolean noMoreTsBlock;
 
   public LinearFillOperator(
-      OperatorContext operatorContext, LinearFill[] fillArray, Operator child) {
+      OperatorContext operatorContext, ILinearFill[] fillArray, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     checkArgument(
         fillArray != null && fillArray.length > 0, "fillArray should not be null or empty");
@@ -60,6 +64,7 @@ public class LinearFillOperator implements ProcessOperator {
     this.child = requireNonNull(child, "child operator is null");
     this.outputColumnCount = fillArray.length;
     this.cachedTsBlock = new ArrayList<>();
+    this.cachedRowIndex = new ArrayList<>();
     this.nextTsBlockIndex = new int[outputColumnCount];
     Arrays.fill(this.nextTsBlockIndex, 1);
     this.canCallNext = false;
@@ -88,19 +93,21 @@ public class LinearFillOperator implements ProcessOperator {
         return nextTsBlock;
       } else { // otherwise, we cache it
         cachedTsBlock.add(nextTsBlock);
+        cachedRowIndex.add(currentRowIndex);
+        currentRowIndex += nextTsBlock.getPositionCount();
       }
     }
 
     TsBlock originTsBlock = cachedTsBlock.get(0);
-    long currentEndTime = originTsBlock.getEndTime();
+    long currentEndRowIndex = cachedRowIndex.get(0) + originTsBlock.getPositionCount() - 1;
     // Step 1: judge whether we can fill current TsBlock, if TsBlock that we can get is not enough,
     // we just return null
     for (int columnIndex = 0; columnIndex < outputColumnCount; columnIndex++) {
       // current valueColumn can't be filled using current information
       if (fillArray[columnIndex].needPrepareForNext(
-          currentEndTime, originTsBlock.getColumn(columnIndex))) {
+          currentEndRowIndex, originTsBlock.getColumn(columnIndex))) {
         // current cached TsBlock is not enough to fill this column
-        while (!isCachedTsBlockEnough(columnIndex, currentEndTime)) {
+        while (!isCachedTsBlockEnough(columnIndex, currentEndRowIndex)) {
           // if we failed to get next TsBlock
           if (!tryToGetNextTsBlock()) {
             // there is no more TsBlock, so we have to fill this Column
@@ -118,9 +125,12 @@ public class LinearFillOperator implements ProcessOperator {
     }
     // Step 2: fill current TsBlock
     originTsBlock = cachedTsBlock.remove(0);
+    long startRowIndex = cachedRowIndex.remove(0);
     Column[] columns = new Column[outputColumnCount];
     for (int i = 0; i < outputColumnCount; i++) {
-      columns[i] = fillArray[i].fill(originTsBlock.getTimeColumn(), originTsBlock.getColumn(i));
+      columns[i] =
+          fillArray[i].fill(
+              originTsBlock.getTimeColumn(), originTsBlock.getColumn(i), startRowIndex);
     }
     TsBlock result =
         new TsBlock(originTsBlock.getPositionCount(), originTsBlock.getTimeColumn(), columns);
@@ -154,17 +164,21 @@ public class LinearFillOperator implements ProcessOperator {
    * Judge whether we can use current cached TsBlock to fill Column
    *
    * @param columnIndex index for column which need to be filled
-   * @param currentEndTime endTime of column which need to be filled
+   * @param currentEndRowIndex row index for endTime of column which need to be filled
    * @return true if current cached TsBlock is enough to fill Column at columnIndex, otherwise
    *     false.
    */
-  private boolean isCachedTsBlockEnough(int columnIndex, long currentEndTime) {
+  private boolean isCachedTsBlockEnough(int columnIndex, long currentEndRowIndex) {
     // next TsBlock has already been in the cachedTsBlock
     while (nextTsBlockIndex[columnIndex] < cachedTsBlock.size()) {
       TsBlock nextTsBlock = cachedTsBlock.get(nextTsBlockIndex[columnIndex]);
+      long startRowIndex = cachedRowIndex.get(nextTsBlockIndex[columnIndex]);
       nextTsBlockIndex[columnIndex]++;
       if (fillArray[columnIndex].prepareForNext(
-          currentEndTime, nextTsBlock.getTimeColumn(), nextTsBlock.getColumn(columnIndex))) {
+          startRowIndex,
+          currentEndRowIndex,
+          nextTsBlock.getTimeColumn(),
+          nextTsBlock.getColumn(columnIndex))) {
         return true;
       }
     }
@@ -184,6 +198,8 @@ public class LinearFillOperator implements ProcessOperator {
         return false;
       } else { // otherwise, we cache it
         cachedTsBlock.add(nextTsBlock);
+        cachedRowIndex.add(currentRowIndex);
+        currentRowIndex += nextTsBlock.getPositionCount();
         return true;
       }
     }

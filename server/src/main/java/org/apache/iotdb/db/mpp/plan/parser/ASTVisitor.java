@@ -104,9 +104,13 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
@@ -620,6 +624,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new CountStorageGroupStatement(path);
   }
 
+  // Show version
+  @Override
+  public Statement visitShowVersion(IoTDBSqlParser.ShowVersionContext ctx) {
+    return new ShowVersionStatement();
+  }
+
   // Create Function
   @Override
   public Statement visitCreateFunction(CreateFunctionContext ctx) {
@@ -747,7 +757,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     if (resultColumnContext.AS() != null) {
       alias = parseAlias(resultColumnContext.alias());
     }
-    ResultColumn.ColumnType columnType = ExpressionAnalyzer.identifyOutputColumnType(expression);
+    ResultColumn.ColumnType columnType =
+        ExpressionAnalyzer.identifyOutputColumnType(expression, true);
     return new ResultColumn(expression, alias, columnType);
   }
 
@@ -975,8 +986,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   public void parseFillClause(IoTDBSqlParser.FillClauseContext ctx) {
     FillComponent fillComponent = new FillComponent();
     if (ctx.linearClause() != null) {
+      if (ctx.linearClause().DURATION_LITERAL().size() > 0) {
+        throw new SemanticException("The specified fill time range is not supported.");
+      }
       fillComponent.setFillPolicy(FillPolicy.LINEAR);
     } else if (ctx.previousClause() != null) {
+      if (ctx.previousClause().DURATION_LITERAL() != null) {
+        throw new SemanticException("The specified fill time range is not supported.");
+      }
       fillComponent.setFillPolicy(FillPolicy.PREVIOUS);
     } else if (ctx.specificValueClause() != null) {
       fillComponent.setFillPolicy(FillPolicy.VALUE);
@@ -986,6 +1003,10 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       } else {
         throw new SemanticException("fill value cannot be null");
       }
+    } else if (ctx.previousUntilLastClause() != null) {
+      throw new SemanticException("PREVIOUSUNTILLAST fill is not supported yet.");
+    } else if (ctx.oldTypeClause() != null) {
+      throw new SemanticException("The specified fill datatype is not supported.");
     }
     queryStatement.setFillComponent(fillComponent);
   }
@@ -2284,6 +2305,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       showRegionStatement.setRegionType(null);
     }
+
+    if (ctx.OF() != null) {
+      List<PartialPath> storageGroups = null;
+      if (ctx.prefixPath(0) != null) {
+        storageGroups = new ArrayList<>();
+        for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+          storageGroups.add(parsePrefixPath(prefixPathContext));
+        }
+      }
+      showRegionStatement.setStorageGroups(storageGroups);
+    } else {
+      showRegionStatement.setStorageGroups(null);
+    }
     return showRegionStatement;
   }
 
@@ -2292,5 +2326,160 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowDataNodes(IoTDBSqlParser.ShowDataNodesContext ctx) {
     return new ShowDataNodesStatement();
+  }
+
+  @Override
+  public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
+    CreateSchemaTemplateStatement createTemplateStatement = new CreateSchemaTemplateStatement();
+    String name = parseIdentifier(ctx.templateName.getText());
+    List<List<String>> measurementsList = new ArrayList<List<String>>();
+    List<List<TSDataType>> dataTypesList = new ArrayList<List<TSDataType>>();
+    List<List<TSEncoding>> encodingsList = new ArrayList<List<TSEncoding>>();
+    List<List<CompressionType>> compressorsList = new ArrayList<List<CompressionType>>();
+
+    if (ctx.ALIGNED() != null) {
+      // aligned
+      List<String> measurements = new ArrayList<>();
+      List<TSDataType> dataTypes = new ArrayList<>();
+      List<TSEncoding> encodings = new ArrayList<>();
+      List<CompressionType> compressors = new ArrayList<>();
+      for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
+          ctx.templateMeasurementClause()) {
+        measurements.add(
+            parseNodeNameWithoutWildCard(templateClauseContext.nodeNameWithoutWildcard()));
+        parseAttributeClause(
+            templateClauseContext.attributeClauses(), dataTypes, encodings, compressors);
+      }
+      measurementsList.add(measurements);
+      dataTypesList.add(dataTypes);
+      encodingsList.add(encodings);
+      compressorsList.add(compressors);
+    } else {
+      // non-aligned
+      for (IoTDBSqlParser.TemplateMeasurementClauseContext templateClauseContext :
+          ctx.templateMeasurementClause()) {
+        List<String> measurements = new ArrayList<>();
+        List<TSDataType> dataTypes = new ArrayList<>();
+        List<TSEncoding> encodings = new ArrayList<>();
+        List<CompressionType> compressors = new ArrayList<>();
+        measurements.add(
+            parseNodeNameWithoutWildCard(templateClauseContext.nodeNameWithoutWildcard()));
+        parseAttributeClause(
+            templateClauseContext.attributeClauses(), dataTypes, encodings, compressors);
+        measurementsList.add(measurements);
+        dataTypesList.add(dataTypes);
+        encodingsList.add(encodings);
+        compressorsList.add(compressors);
+      }
+    }
+
+    createTemplateStatement =
+        new CreateSchemaTemplateStatement(
+            name, measurementsList, dataTypesList, encodingsList, compressorsList);
+    return createTemplateStatement;
+  }
+
+  void parseAttributeClause(
+      IoTDBSqlParser.AttributeClausesContext ctx,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors) {
+    if (ctx.aliasNodeName() != null) {
+      throw new SQLParserException("schema template: alias is not supported yet.");
+    }
+
+    TSDataType dataType = null;
+    if (ctx.dataType != null) {
+      if (ctx.attributeKey() != null) {
+        if (!parseAttributeKey(ctx.attributeKey())
+            .equalsIgnoreCase(IoTDBConstant.COLUMN_TIMESERIES_DATATYPE)) {
+          throw new SQLParserException("expecting datatype");
+        }
+      }
+      String dataTypeString = ctx.dataType.getText().toUpperCase();
+      try {
+        dataType = TSDataType.valueOf(dataTypeString);
+        dataTypes.add(dataType);
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported datatype: %s", dataTypeString));
+      }
+    }
+
+    Map<String, String> props = new HashMap<>();
+    if (ctx.attributePair() != null) {
+      for (int i = 0; i < ctx.attributePair().size(); i++) {
+        props.put(
+            parseAttributeKey(ctx.attributePair(i).attributeKey()).toLowerCase(),
+            parseAttributeValue(ctx.attributePair(i).attributeValue()));
+      }
+    }
+
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getDefaultEncodingByType(dataType);
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase())) {
+      String encodingString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase()).toUpperCase();
+      try {
+        encoding = TSEncoding.valueOf(encodingString);
+        encodings.add(encoding);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_ENCODING.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported encoding: %s", encodingString));
+      }
+    } else {
+      encodings.add(encoding);
+    }
+
+    CompressionType compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase())) {
+      String compressorString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase()).toUpperCase();
+      try {
+        compressor = CompressionType.valueOf(compressorString);
+        compressors.add(compressor);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSOR.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(String.format("unsupported compressor: %s", compressorString));
+      }
+    } else if (props.containsKey(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase())) {
+      String compressionString =
+          props.get(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase()).toUpperCase();
+      try {
+        compressor = CompressionType.valueOf(compressionString);
+        compressors.add(compressor);
+        props.remove(IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION.toLowerCase());
+      } catch (Exception e) {
+        throw new SemanticException(
+            String.format("unsupported compression: %s", compressionString));
+      }
+    } else {
+      compressors.add(compressor);
+    }
+
+    if (props.size() > 0) {
+      throw new SQLParserException("schema template: property is not supported yet.");
+    }
+
+    if (ctx.tagClause() != null) {
+      throw new SQLParserException("schema template: tag is not supported yet.");
+    }
+
+    if (ctx.attributeClause() != null) {
+      throw new SQLParserException("schema template: attribute is not supported yet.");
+    }
+  }
+
+  @Override
+  public Statement visitShowSchemaTemplates(IoTDBSqlParser.ShowSchemaTemplatesContext ctx) {
+    ShowSchemaTemplateStatement showSchemaTemplateStatement = new ShowSchemaTemplateStatement();
+    return showSchemaTemplateStatement;
+  }
+
+  @Override
+  public Statement visitShowNodesInSchemaTemplate(
+      IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
+    String templateName = ctx.templateName.children.get(0).getText();
+    ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement =
+        new ShowNodesInSchemaTemplateStatement(templateName);
+    return showNodesInSchemaTemplateStatement;
   }
 }

@@ -28,18 +28,25 @@ import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -47,6 +54,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -197,7 +207,7 @@ public class ClusterSchemaManager {
     // Get all StorageGroupSchemas
     Map<String, TStorageGroupSchema> storageGroupSchemaMap =
         getMatchedStorageGroupSchemasByName(getStorageGroupNames());
-    int dataNodeNum = getNodeManager().getOnlineDataNodeCount();
+    int dataNodeNum = getNodeManager().getRegisteredDataNodeCount();
     int totalCpuCoreNum = getNodeManager().getTotalCpuCoreCount();
     int storageGroupNum = storageGroupSchemaMap.size();
 
@@ -295,6 +305,72 @@ public class ClusterSchemaManager {
    */
   public int getMaxRegionGroupCount(String storageGroup, TConsensusGroupType consensusGroupType) {
     return clusterSchemaInfo.getMaxRegionGroupCount(storageGroup, consensusGroupType);
+  }
+
+  /**
+   * create schema template
+   *
+   * @param createSchemaTemplatePlan CreateSchemaTemplatePlan
+   * @return TSStatus
+   */
+  public TSStatus createTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
+    return getConsensusManager().write(createSchemaTemplatePlan).getStatus();
+  }
+
+  /**
+   * show schema template
+   *
+   * @return TGetAllTemplatesResp
+   */
+  public TGetAllTemplatesResp getAllTemplates() {
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan();
+    TemplateInfoResp templateResp =
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    TGetAllTemplatesResp resp = new TGetAllTemplatesResp();
+    resp.setStatus(templateResp.getStatus());
+    if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (templateResp.getTemplateList() != null) {
+        List<ByteBuffer> list = new ArrayList<ByteBuffer>();
+        templateResp.getTemplateList().stream()
+            .forEach(
+                item -> {
+                  try {
+                    list.add(Template.template2ByteBuffer(item));
+                  } catch (IOException e) {
+                    e.printStackTrace();
+                  }
+                });
+        resp.setTemplateList(list);
+      }
+    }
+    return resp;
+  }
+
+  /**
+   * show nodes in schema template
+   *
+   * @param req
+   * @return
+   */
+  public TGetTemplateResp getTemplate(String req) {
+    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan =
+        new GetNodesInSchemaTemplatePlan(req);
+    TemplateInfoResp templateResp =
+        (TemplateInfoResp) getConsensusManager().read(getNodesInSchemaTemplatePlan).getDataset();
+    TGetTemplateResp resp = new TGetTemplateResp();
+    try {
+      if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (templateResp.getTemplateList() != null && !templateResp.getTemplateList().isEmpty()) {
+          ByteBuffer byteBuffer =
+              Template.template2ByteBuffer(templateResp.getTemplateList().get(0));
+          resp.setTemplate(byteBuffer);
+        }
+      }
+      resp.setStatus(templateResp.getStatus());
+    } catch (IOException e) {
+      resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
+    }
+    return resp;
   }
 
   private NodeManager getNodeManager() {

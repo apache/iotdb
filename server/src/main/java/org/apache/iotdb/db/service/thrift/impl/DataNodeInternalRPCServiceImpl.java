@@ -81,6 +81,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionResp;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TSchemaFetchResponse;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
@@ -149,6 +150,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
     PlanNode planNode = PlanNodeType.deserialize(req.planNode.body);
     boolean hasFailedMeasurement = false;
+    String partialInsertMessage = null;
     if (planNode instanceof InsertNode) {
       InsertNode insertNode = (InsertNode) planNode;
       try {
@@ -160,10 +162,11 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
       hasFailedMeasurement = insertNode.hasFailedMeasurements();
       if (hasFailedMeasurement) {
-        LOGGER.warn(
-            "Fail to insert measurements {} caused by {}",
-            insertNode.getFailedMeasurements(),
-            insertNode.getFailedMessages());
+        partialInsertMessage =
+            String.format(
+                "Fail to insert measurements %s caused by %s",
+                insertNode.getFailedMeasurements(), insertNode.getFailedMessages());
+        LOGGER.warn(partialInsertMessage);
       }
     }
     if (groupId instanceof DataRegionId) {
@@ -177,7 +180,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
           !hasFailedMeasurement
               && TSStatusCode.SUCCESS_STATUS.getStatusCode()
                   == writeResponse.getStatus().getCode());
-      response.setMessage(writeResponse.getStatus().message);
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != writeResponse.getStatus().getCode()) {
+        response.setMessage(writeResponse.getStatus().message);
+        response.setStatus(writeResponse.getStatus());
+      } else if (hasFailedMeasurement) {
+        response.setMessage(partialInsertMessage);
+        response.setStatus(
+            RpcUtils.getStatus(TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
+      } else {
+        response.setMessage(writeResponse.getStatus().message);
+      }
     } else {
       LOGGER.error(
           "Something wrong happened while calling consensus layer's write API.",
@@ -343,6 +355,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       }
     }
     return resp;
+  }
+
+  @Override
+  public TSStatus updateRegionCache(TRegionRouteReq req) throws TException {
+    boolean result = ClusterPartitionFetcher.getInstance().updateRegionCache(req);
+    if (result) {
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } else {
+      return RpcUtils.getStatus(TSStatusCode.CACHE_UPDATE_FAIL);
+    }
   }
 
   private Map<TConsensusGroupId, Boolean> getJudgedLeaders() {

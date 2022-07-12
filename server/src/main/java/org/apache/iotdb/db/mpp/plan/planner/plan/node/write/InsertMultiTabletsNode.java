@@ -136,12 +136,6 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
   }
 
   @Override
-  public void setSafelyDeletedSearchIndex(long index) {
-    safelyDeletedSearchIndex = index;
-    insertTabletNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
-  }
-
-  @Override
   public boolean validateAndSetSchema(SchemaTree schemaTree) {
     for (InsertTabletNode insertTabletNode : insertTabletNodeList) {
       if (!insertTabletNode.validateAndSetSchema(schemaTree)) {
