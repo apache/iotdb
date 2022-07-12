@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -331,12 +332,13 @@ public class StorageGroupPartitionTable {
 
   public void getRegionInfoList(
       GetRegionInfoListPlan regionsInfoPlan, List<TRegionInfo> regionInfoList) {
+    final TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
     regionGroupMap.forEach(
         (consensusGroupId, regionGroup) -> {
           TRegionReplicaSet replicaSet = regionGroup.getReplicaSet();
-          if (regionsInfoPlan.getRegionType() == null) {
+          if (showRegionReq == null || showRegionReq.getConsensusGroupType() == null) {
             buildTRegionsInfo(regionInfoList, replicaSet, regionGroup);
-          } else if (regionsInfoPlan.getRegionType().ordinal()
+          } else if (regionsInfoPlan.getShowRegionReq().getConsensusGroupType().ordinal()
               == replicaSet.getRegionId().getType().ordinal()) {
             buildTRegionsInfo(regionInfoList, replicaSet, regionGroup);
           }

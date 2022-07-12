@@ -242,6 +242,7 @@ struct TDropFunctionReq {
 // show regions
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
+  2: optional list<string> storageGroups
 }
 
 struct TShowRegionResp {

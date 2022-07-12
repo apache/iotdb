@@ -186,6 +186,15 @@ IoTDB 集群的全局配置通过 ConfigNode 配置。
 |默认值| org.apache.iotdb.consensus.standalone.StandAloneConsensus |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
+* region\_allocate\_strategy
+
+|名字| region\_allocate\_strategy |
+|:---:|:---|
+|描述| 元数据和数据的节点分配策略，COPY_SET适用于大集群；当数据节点数量较少时，GREEDY表现更佳|
+|类型| String |
+|默认值| GREEDY |
+|改后生效方式|重启服务生效|
+
 ### 心跳配置
 
 * heartbeat\_interval

@@ -402,7 +402,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     try {
       for (String rawPath : rawPathList) {
         PartialPath patternPath = new PartialPath(rawPath);
-        List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
+        List<PartialPath> matchedPaths = mTree.getMatchedStorageGroups(patternPath, false);
         for (PartialPath path : matchedPaths) {
           schemaMap.put(
               path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());

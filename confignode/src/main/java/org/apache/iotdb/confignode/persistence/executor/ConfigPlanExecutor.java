@@ -60,6 +60,8 @@ import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -137,7 +139,7 @@ public class ConfigPlanExecutor {
       case GetNodePathsPartition:
         return getSchemaNodeManagementPartition(req);
       case GetRegionInfoList:
-        return partitionInfo.getRegionInfoList((GetRegionInfoListPlan) req);
+        return getRegionInfoList(req);
       case ShowSchemaTemplate:
         return clusterSchemaInfo.getAllTemplates();
       case ShowNodesInSchemaTemplate:
@@ -314,6 +316,22 @@ public class ConfigPlanExecutor {
       schemaNodeManagementResp.setMatchedNode(alreadyMatchedNode);
     }
     return schemaNodeManagementResp;
+  }
+
+  private DataSet getRegionInfoList(ConfigPhysicalPlan req) {
+    final GetRegionInfoListPlan getRegionInfoListPlan = (GetRegionInfoListPlan) req;
+    TShowRegionReq showRegionReq = getRegionInfoListPlan.getShowRegionReq();
+    if (showRegionReq != null && showRegionReq.isSetStorageGroups()) {
+      final List<String> storageGroups = showRegionReq.getStorageGroups();
+      final List<String> matchedStorageGroups =
+          clusterSchemaInfo.getMatchedStorageGroupSchemasByName(storageGroups).values().stream()
+              .map(TStorageGroupSchema::getName)
+              .collect(Collectors.toList());
+      if (!matchedStorageGroups.isEmpty()) {
+        showRegionReq.setStorageGroups(matchedStorageGroups);
+      }
+    }
+    return partitionInfo.getRegionInfoList(getRegionInfoListPlan);
   }
 
   private List<SnapshotProcessor> getAllAttributes() {
