@@ -156,13 +156,13 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitSetSchemaTemplate(
       SetSchemaTemplateStatement setSchemaTemplateStatement, TaskContext context) {
-      return new SetSchemaTemplateTask(setSchemaTemplateStatement);
+    return new SetSchemaTemplateTask(setSchemaTemplateStatement);
   }
 
   @Override
   public IConfigTask visitShowPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement, TaskContext context) {
-      return new ShowPathSetTemplateTask(showPathSetTemplateStatement);
+    return new ShowPathSetTemplateTask(showPathSetTemplateStatement);
   }
 
   @Override

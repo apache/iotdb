@@ -662,20 +662,23 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetSchemaTemplatePlanTest() throws IOException {
-    SetSchemaTemplatePlan setSchemaTemplatePlanPlan0 = new SetSchemaTemplatePlan("template_name_test","root.in.sg.dw");
-    SetSchemaTemplatePlan setSchemaTemplatePlanPlan1 = (SetSchemaTemplatePlan)
-        ConfigPhysicalPlan.Factory.create(
-            setSchemaTemplatePlanPlan0.serializeToByteBuffer());
-    Assert.assertEquals(setSchemaTemplatePlanPlan0.getName().equalsIgnoreCase(setSchemaTemplatePlanPlan1.getName()),
-            setSchemaTemplatePlanPlan0.getPath().equals(setSchemaTemplatePlanPlan1.getPath()));
+    SetSchemaTemplatePlan setSchemaTemplatePlanPlan0 =
+        new SetSchemaTemplatePlan("template_name_test", "root.in.sg.dw");
+    SetSchemaTemplatePlan setSchemaTemplatePlanPlan1 =
+        (SetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(setSchemaTemplatePlanPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        setSchemaTemplatePlanPlan0.getName().equalsIgnoreCase(setSchemaTemplatePlanPlan1.getName()),
+        setSchemaTemplatePlanPlan0.getPath().equals(setSchemaTemplatePlanPlan1.getPath()));
   }
 
   @Test
   public void ShowPathSetTemplatePlanTest() throws IOException {
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan0 = new GetPathsSetTemplatePlan("template_name_test");
-    GetPathsSetTemplatePlan getPathsSetTemplatePlan1 = (GetPathsSetTemplatePlan)
-        ConfigPhysicalPlan.Factory.create(
-            getPathsSetTemplatePlan0.serializeToByteBuffer());
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan0 =
+        new GetPathsSetTemplatePlan("template_name_test");
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan1 =
+        (GetPathsSetTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());
     Assert.assertEquals(getPathsSetTemplatePlan0.getName(), getPathsSetTemplatePlan1.getName());
   }
 }
