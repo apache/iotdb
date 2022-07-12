@@ -82,7 +82,7 @@ public class CopySetRegionAllocator implements IRegionAllocator {
       List<TDataNodeInfo> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions) {
 
     // TODO: The remaining disk capacity of DataNode can also be calculated into the weightList
-
+    this.weightList.clear();
     int maximumRegionNum = 0;
     Map<TDataNodeLocation, Integer> countMap = new HashMap<>();
     for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
