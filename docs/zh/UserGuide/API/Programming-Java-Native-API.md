@@ -360,7 +360,7 @@ void insertTablets(Map<String, Tablet> tablets)
   | INT64      | Long           |
   | FLOAT      | Float          |
   | DOUBLE     | Double         |
-  | TEXT       | String、Binary |
+  | TEXT       | String, Binary |
 
 ```java
 void insertRecord(String prefixPath, long time, List<String> measurements,

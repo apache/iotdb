@@ -373,7 +373,7 @@ void insertTablets(Map<String, Tablet> tablet)
   | INT64      | Long           |
   | FLOAT      | Float          |
   | DOUBLE     | Double         |
-  | TEXT       | String、Binary |
+  | TEXT       | String, Binary |
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,
