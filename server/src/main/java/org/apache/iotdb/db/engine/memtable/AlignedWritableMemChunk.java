@@ -144,8 +144,11 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void writeAlignedValue(
-      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
-    int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
+      long insertTime,
+      Object[] objectValue,
+      List<Integer> failedIndices,
+      List<IMeasurementSchema> schemaList) {
+    int[] columnIndexArray = checkColumnsInInsertPlan(failedIndices, schemaList);
     putAlignedValue(insertTime, objectValue, columnIndexArray);
   }
 
@@ -160,29 +163,44 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
-    int[] columnIndexArray = checkColumnsInInsertPlan(schemaList);
+    int[] columnIndexArray = checkColumnsInInsertPlan(failedIndices, schemaList);
     putAlignedValues(times, valueList, bitMaps, columnIndexArray, start, end);
   }
 
-  private int[] checkColumnsInInsertPlan(List<IMeasurementSchema> schemaListInInsertPlan) {
+  /**
+   * Check schema of columns and return array that mapping existed schema to index of data column
+   *
+   * @param failedIndices It records the index of timeseries that have been deleted.
+   * @param schemaListInInsertPlan Contains all schema in InsertPlan.
+   * @return columnIndexArray: schemaList[i] is schema of columns[columnIndexArray[i]]
+   */
+  private int[] checkColumnsInInsertPlan(
+      List<Integer> failedIndices, List<IMeasurementSchema> schemaListInInsertPlan) {
     Map<String, Integer> measurementIdsInInsertPlan = new HashMap<>();
-    for (int i = 0; i < schemaListInInsertPlan.size(); i++) {
-      measurementIdsInInsertPlan.put(schemaListInInsertPlan.get(i).getMeasurementId(), i);
-      if (!containsMeasurement(schemaListInInsertPlan.get(i).getMeasurementId())) {
-        this.measurementIndexMap.put(
-            schemaListInInsertPlan.get(i).getMeasurementId(), measurementIndexMap.size());
-        this.schemaList.add(schemaListInInsertPlan.get(i));
-        this.list.extendColumn(schemaListInInsertPlan.get(i).getType());
+    for (int i = 0, failedIndicesIdx = 0, schemaListIdx = 0;
+        i < failedIndices.size() + schemaListInInsertPlan.size();
+        i++) {
+      if (failedIndices.size() > failedIndicesIdx && failedIndices.get(failedIndicesIdx) == i) {
+        failedIndicesIdx++;
+      } else {
+        IMeasurementSchema measurementSchema = schemaListInInsertPlan.get(schemaListIdx++);
+        measurementIdsInInsertPlan.put(measurementSchema.getMeasurementId(), i);
+        if (!containsMeasurement(measurementSchema.getMeasurementId())) {
+          this.measurementIndexMap.put(
+              measurementSchema.getMeasurementId(), measurementIndexMap.size());
+          this.schemaList.add(measurementSchema);
+          this.list.extendColumn(measurementSchema.getType());
+        }
       }
     }
     int[] columnIndexArray = new int[measurementIndexMap.size()];
     measurementIndexMap.forEach(
-        (measurementId, i) -> {
-          columnIndexArray[i] = measurementIdsInInsertPlan.getOrDefault(measurementId, -1);
-        });
+        (measurementId, i) ->
+            columnIndexArray[i] = measurementIdsInInsertPlan.getOrDefault(measurementId, -1));
     return columnIndexArray;
   }
 
