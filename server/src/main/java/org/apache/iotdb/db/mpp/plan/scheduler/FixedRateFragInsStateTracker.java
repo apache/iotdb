@@ -48,8 +48,8 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   // TODO: (xingtanzjr) consider how much Interval is OK for state tracker
   private static final long STATE_FETCH_INTERVAL_IN_MS = 500;
   private ScheduledFuture<?> trackTask;
-  private FragmentInstanceState lastState;
-  private long durationToLastPrintInMS;
+  private volatile FragmentInstanceState lastState;
+  private volatile long durationToLastPrintInMS;
 
   public FixedRateFragInsStateTracker(
       QueryStateMachine stateMachine,
