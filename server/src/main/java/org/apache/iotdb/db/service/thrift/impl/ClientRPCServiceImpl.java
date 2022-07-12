@@ -629,6 +629,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, s);
 
         long queryId = SESSION_MANAGER.requestQueryId(false);
+        long t2 = System.currentTimeMillis();
         // create and cache dataset
         ExecutionResult result =
             COORDINATOR.execute(
@@ -638,6 +639,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 statement,
                 PARTITION_FETCHER,
                 SCHEMA_FETCHER);
+        addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
         results.add(result.status);
       } catch (Exception e) {
         LOGGER.error("Error occurred when executing executeBatchStatement: ", e);
@@ -647,12 +649,6 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           isAllSuccessful = false;
         }
         results.add(status);
-      } finally {
-        addOperationLatency(Operation.EXECUTE_QUERY, t1);
-        long costTime = System.currentTimeMillis() - t1;
-        if (costTime >= CONFIG.getSlowQueryThreshold()) {
-          SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, t1);
-        }
       }
     }
     addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
