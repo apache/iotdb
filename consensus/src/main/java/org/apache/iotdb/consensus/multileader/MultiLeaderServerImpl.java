@@ -84,6 +84,9 @@ public class MultiLeaderServerImpl {
     ConsensusReqReader reader =
         (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     long currentSearchIndex = reader.getCurrentSearchIndex();
+    if (1 == configuration.size()) {
+      reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+    }
     this.index = new AtomicLong(currentSearchIndex);
   }
 
