@@ -159,6 +159,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           TSendFragmentInstanceResp sendFragmentInstanceResp =
               client.sendFragmentInstance(sendFragmentInstanceReq);
           if (!sendFragmentInstanceResp.accepted) {
+            logger.error(sendFragmentInstanceResp.message);
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(
                     TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
@@ -207,6 +208,11 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             readResponse = DataRegionConsensusImpl.getInstance().read(groupId, instance);
           } else {
             readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, instance);
+          }
+          if (readResponse == null) {
+            logger.error("ReadResponse is null");
+            throw new FragmentInstanceDispatchException(
+                RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "ReadResponse is null"));
           }
         } catch (Throwable t) {
           logger.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, t);

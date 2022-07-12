@@ -114,7 +114,11 @@ public class FragmentInstanceExecution {
             driver.close();
             // help for gc
             driver = null;
-            sinkHandle.abort();
+            if (newState.isFailed()) {
+              sinkHandle.abort();
+            } else {
+              sinkHandle.close();
+            }
             // help for gc
             sinkHandle = null;
             if (newState.isFailed()) {

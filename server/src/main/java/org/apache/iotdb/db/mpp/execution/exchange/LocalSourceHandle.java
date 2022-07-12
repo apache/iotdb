@@ -166,7 +166,7 @@ public class LocalSourceHandle implements ISourceHandle {
           if (aborted) {
             return;
           }
-          queue.destroy();
+          queue.close();
           closed = true;
           sourceHandleListener.onFinished(this);
         }
