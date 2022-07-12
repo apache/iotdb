@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.wal.buffer;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -34,6 +33,7 @@ import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**

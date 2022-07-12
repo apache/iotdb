@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.wal.node;
 
-import java.nio.ByteBuffer;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -50,7 +49,6 @@ import org.apache.iotdb.db.wal.buffer.WALSignalEntry;
 import org.apache.iotdb.db.wal.checkpoint.CheckpointManager;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
 import org.apache.iotdb.db.wal.io.WALByteBufReader;
-import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
@@ -62,6 +60,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -533,7 +532,8 @@ public class WALNode implements IWALNode {
       // find all insert node of current wal file
       List<IndexedConsensusRequest> tmpNodes = new ArrayList<>();
       long targetIndex = nextSearchIndex;
-      try (WALByteBufReader walByteBufReader = new WALByteBufReader(filesToSearch[currentFileIndex])) {
+      try (WALByteBufReader walByteBufReader =
+          new WALByteBufReader(filesToSearch[currentFileIndex])) {
         while (walByteBufReader.hasNext()) {
           ByteBuffer buffer = walByteBufReader.next();
           WALEntryType type = WALEntryType.valueOf(buffer.get());
@@ -593,7 +593,8 @@ public class WALNode implements IWALNode {
               while (walByteBufReader.hasNext()) {
                 ByteBuffer buffer = walByteBufReader.next();
                 WALEntryType type = WALEntryType.valueOf(buffer.get());
-                if (type == WALEntryType.INSERT_TABLET_NODE || type == WALEntryType.INSERT_ROW_NODE) {
+                if (type == WALEntryType.INSERT_TABLET_NODE
+                    || type == WALEntryType.INSERT_ROW_NODE) {
                   // see WALInfoEntry#serialize, entry type + memtable id + insert node type
                   buffer.position(WALInfoEntry.FIXED_SERIALIZED_SIZE + PlanNodeType.BYTES);
                   long searchIndex = buffer.getLong();
