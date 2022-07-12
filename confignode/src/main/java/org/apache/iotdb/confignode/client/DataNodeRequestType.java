@@ -23,5 +23,8 @@ public enum DataNodeRequestType {
   deleteRegions,
   invalidatePartitionCache,
   invalidatePermissionCache,
-  invalidateSchemaCache;
+  invalidateSchemaCache,
+  migrateRegion,
+  disableDataNode,
+  stopDataNode;
 }

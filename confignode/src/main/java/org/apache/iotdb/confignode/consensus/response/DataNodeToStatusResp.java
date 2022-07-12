@@ -21,18 +21,16 @@ package org.apache.iotdb.confignode.consensus.response;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.util.Map;
 
 public class DataNodeToStatusResp implements DataSet {
+  // TODO the class is  useful?
   private TSStatus status;
 
   private Map<TDataNodeLocation, TSStatus> dataNodeLocationToStatus;
-
-  private TGlobalConfig globalConfig;
 
   public DataNodeToStatusResp() {}
 
@@ -41,7 +39,6 @@ public class DataNodeToStatusResp implements DataSet {
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setNodeToStatus(dataNodeLocationToStatus);
-      resp.setGlobalConfig(globalConfig);
     }
 
     return resp;

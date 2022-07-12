@@ -29,6 +29,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.enums.DataNodeRemoveState;
 import org.apache.iotdb.commons.enums.RegionMigrateState;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
@@ -36,6 +37,8 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
+import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -342,31 +345,33 @@ public class DataNodeRemoveManager {
    * request
    *
    * @param req RemoveDataNodeReq
-   * @param disabledDataNod TDataNodeLocation
+   * @param disabledDataNode TDataNodeLocation
    */
   private TSStatus broadcastDisableDataNode(
-      RemoveDataNodePlan req, TDataNodeLocation disabledDataNod) {
+      RemoveDataNodePlan req, TDataNodeLocation disabledDataNode) {
     LOGGER.info(
-        "DataNodeRemoveService start send disable the Data Node to cluster, {}", disabledDataNod);
+        "DataNodeRemoveService start send disable the Data Node to cluster, {}", disabledDataNode);
     storeDataNodeState(req, DataNodeRemoveState.REMOVE_START);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<TEndPoint> otherOnlineDataNodes =
         configManager.getLoadManager().getOnlineDataNodes(-1).stream()
             .map(TDataNodeInfo::getLocation)
-            .filter(loc -> !loc.equals(disabledDataNod))
+            .filter(loc -> !loc.equals(disabledDataNode))
             .map(TDataNodeLocation::getInternalEndPoint)
             .collect(Collectors.toList());
 
     for (TEndPoint server : otherOnlineDataNodes) {
-      status = SyncDataNodeClientPool.getInstance().disableDataNode(server, disabledDataNod);
-      // TODO add retry later
+      TDisableDataNodeReq disableReq = new TDisableDataNodeReq(disabledDataNode);
+      status =
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNode(server, disableReq, DataNodeRequestType.disableDataNode);
       if (!isSucceed(status)) {
         return status;
       }
     }
     LOGGER.info(
         "DataNodeRemoveService finished send disable the Data Node to cluster, {}",
-        disabledDataNod);
+        disabledDataNode);
     status.setMessage("Succeed disable the Data Node from cluster");
     return status;
   }
@@ -496,9 +501,12 @@ public class DataNodeRemoveManager {
       return status;
     }
 
+    TMigrateRegionReq migrateRegionReq = new TMigrateRegionReq(regionId, node, newNode.get());
+    migrateRegionReq.setNewLeaderNode(newLeaderNode.get());
     status =
         SyncDataNodeClientPool.getInstance()
-            .migrateRegion(node, regionId, newNode.get(), newLeaderNode.get());
+            .sendSyncRequestToDataNode(
+                node.getInternalEndPoint(), migrateRegionReq, DataNodeRequestType.migrateRegion);
     // maybe send rpc failed
     if (isFailed(status)) {
       return status;
@@ -638,7 +646,10 @@ public class DataNodeRemoveManager {
     LOGGER.info("begin to stop Data Node {} in request {}", dataNode, req);
     storeDataNodeState(req, DataNodeRemoveState.STOP);
     AsyncDataNodeClientPool.getInstance().resetClient(dataNode.getInternalEndPoint());
-    TSStatus status = SyncDataNodeClientPool.getInstance().stopDataNode(dataNode);
+    TSStatus status =
+        SyncDataNodeClientPool.getInstance()
+            .sendSyncRequestToDataNode(
+                dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.stopDataNode);
     LOGGER.info("stop Data Node {} result: {}", dataNode, status);
     return status;
   }

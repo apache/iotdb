@@ -167,8 +167,8 @@ public class ConfigManager implements IManager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
-    this.consensusManager = new ConsensusManager(this, stateMachine);
     this.dataNodeRemoveManager = new DataNodeRemoveManager(this);
+    this.consensusManager = new ConsensusManager(this, stateMachine);
   }
 
   public void close() throws IOException {

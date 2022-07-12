@@ -47,7 +47,7 @@ struct TRegionLeaderChangeReq {
     2: required common.TDataNodeLocation newLeaderNode
 }
 
-struct TAddConsensusGroup  {
+struct TAddConsensusGroup {
     1: required common.TConsensusGroupId regionId
     2: required list<common.TDataNodeLocation> regionLocations
     3: required string storageGroup
@@ -156,7 +156,7 @@ struct TSchemaFetchResponse {
   1: required binary serializedSchemaTree
 }
 
-struct TDisableDataNodeReq{
+struct TDisableDataNodeReq {
   1: required common.TDataNodeLocation dataNodeLocation
 }
 

@@ -61,7 +61,6 @@ struct TDataNodeRegisterResp {
 struct TDataNodeRemoveResp {
   1: required common.TSStatus status
   2: optional map<common.TDataNodeLocation, common.TSStatus> nodeToStatus
-  3: optional TGlobalConfig globalConfig
 }
 struct TDataNodeInfoResp {
   1: required common.TSStatus status

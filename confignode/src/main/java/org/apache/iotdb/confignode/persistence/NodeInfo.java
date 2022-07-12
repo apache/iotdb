@@ -561,7 +561,6 @@ public class NodeInfo implements SnapshotProcessor {
     public RemoveNodeInfo() {}
 
     private void removeDataNode(RemoveDataNodePlan req) {
-      // TODO add UT for RemoveDataNodeReq to test equal() and hashcode() method
       if (!dataNodeRemoveRequestQueue.contains(req)) {
         dataNodeRemoveRequestQueue.add(req);
       } else {
