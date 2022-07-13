@@ -277,8 +277,6 @@ public class ConfigNodeClient
   }
 
   @Override
-<<<<<<< HEAD
-=======
   public TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -295,23 +293,6 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TSStatus activeDataNode(TDataNodeActiveReq req) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TSStatus status = client.activeDataNode(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  @Override
->>>>>>> master
   public TDataNodeInfoResp getDataNodeInfo(int dataNodeId) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
