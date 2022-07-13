@@ -65,7 +65,7 @@ public class SyncConfigNodeClientPool {
     }
   }
 
-  public Object sendSyncRequestToConfigNode(
+  public Object sendSyncRequestToConfigNodeWithRetry(
       TEndPoint endPoint, Object req, ConfigNodeRequestType requestType) {
     Throwable lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {

@@ -364,7 +364,8 @@ public class DataNodeRemoveManager {
       TDisableDataNodeReq disableReq = new TDisableDataNodeReq(disabledDataNode);
       status =
           SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNode(server, disableReq, DataNodeRequestType.disableDataNode);
+              .sendSyncRequestToDataNodeWithRetry(
+                  server, disableReq, DataNodeRequestType.disableDataNode);
       if (!isSucceed(status)) {
         return status;
       }
@@ -505,7 +506,7 @@ public class DataNodeRemoveManager {
     migrateRegionReq.setNewLeaderNode(newLeaderNode.get());
     status =
         SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNode(
+            .sendSyncRequestToDataNodeWithRetry(
                 node.getInternalEndPoint(), migrateRegionReq, DataNodeRequestType.migrateRegion);
     // maybe send rpc failed
     if (isFailed(status)) {
@@ -648,7 +649,7 @@ public class DataNodeRemoveManager {
     AsyncDataNodeClientPool.getInstance().resetClient(dataNode.getInternalEndPoint());
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNode(
+            .sendSyncRequestToDataNodeWithRetry(
                 dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.stopDataNode);
     LOGGER.info("stop Data Node {} result: {}", dataNode, status);
     return status;

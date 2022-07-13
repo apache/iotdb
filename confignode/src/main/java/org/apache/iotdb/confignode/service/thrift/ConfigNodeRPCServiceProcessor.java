@@ -459,7 +459,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       status =
           (TSStatus)
               SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNode(
+                  .sendSyncRequestToConfigNodeWithRetry(
                       configNodeLocation.getInternalEndPoint(),
                       configNodeLocation,
                       ConfigNodeRequestType.stopConfigNode);

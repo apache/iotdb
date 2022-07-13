@@ -115,13 +115,13 @@ public class ConfigNodeProcedureEnv {
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       final TSStatus invalidateSchemaStatus =
           SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNode(
+              .sendSyncRequestToDataNodeWithRetry(
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   invalidateCacheReq,
                   DataNodeRequestType.invalidateSchemaCache);
       final TSStatus invalidatePartitionStatus =
           SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNode(
+              .sendSyncRequestToDataNodeWithRetry(
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   invalidateCacheReq,
                   DataNodeRequestType.invalidatePartitionCache);
@@ -151,7 +151,7 @@ public class ConfigNodeProcedureEnv {
         new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
     configNodeLocations.add(tConfigNodeLocation);
     SyncConfigNodeClientPool.getInstance()
-        .sendSyncRequestToConfigNode(
+        .sendSyncRequestToConfigNodeWithRetry(
             tConfigNodeLocation.getInternalEndPoint(),
             configNodeLocations,
             ConfigNodeRequestType.addConsensusGroup);
@@ -183,7 +183,7 @@ public class ConfigNodeProcedureEnv {
    */
   public void notifyRegisterSuccess(TConfigNodeLocation configNodeLocation) {
     SyncConfigNodeClientPool.getInstance()
-        .sendSyncRequestToConfigNode(
+        .sendSyncRequestToConfigNodeWithRetry(
             configNodeLocation.getInternalEndPoint(),
             null,
             ConfigNodeRequestType.notifyRegisterSuccess);

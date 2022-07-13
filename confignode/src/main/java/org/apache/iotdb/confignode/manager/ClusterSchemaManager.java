@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
@@ -57,10 +58,13 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
@@ -159,23 +163,27 @@ public class ClusterSchemaManager {
             .getStorageGroupRelatedDataNodes(
                 setTTLPlan.getStorageGroup(), TConsensusGroupType.DataRegion);
     if (dataNodeLocations.size() > 0) {
+      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
+      Map<Integer, SetTTLHandler> handler = new HashMap<>();
+      ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+      AtomicInteger index = new AtomicInteger();
       // TODO: Use procedure to protect SetTTL on DataNodes
-      CountDownLatch latch = new CountDownLatch(dataNodeLocations.size());
       for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
-        SetTTLHandler handler = new SetTTLHandler(dataNodeLocation, latch);
-        AsyncDataNodeClientPool.getInstance()
-            .setTTL(
-                dataNodeLocation.getInternalEndPoint(),
-                new TSetTTLReq(setTTLPlan.getStorageGroup(), setTTLPlan.getTTL()),
-                handler);
+        handler.put(
+            index.get(),
+            new SetTTLHandler(
+                countDownLatch,
+                DataNodeRequestType.setTTL,
+                dataNodeLocation,
+                dataNodeLocationMap,
+                index.get()));
+        dataNodeLocationMap.put(index.getAndIncrement(), dataNodeLocation);
       }
-
-      try {
-        // Waiting until this batch of SetTTL requests done
-        latch.await();
-      } catch (InterruptedException e) {
-        LOGGER.error("ClusterSchemaManager was interrupted during SetTTL on DataNodes", e);
-      }
+      AsyncDataNodeClientPool.getInstance()
+          .sendAsyncRequestToDataNodeWithRetry(
+              new TSetTTLReq(setTTLPlan.getStorageGroup(), setTTLPlan.getTTL()),
+              handler,
+              dataNodeLocationMap);
     }
 
     return getConsensusManager().write(setTTLPlan).getStatus();

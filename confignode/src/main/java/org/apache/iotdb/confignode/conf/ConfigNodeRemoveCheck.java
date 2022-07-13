@@ -78,7 +78,7 @@ public class ConfigNodeRemoveCheck {
       status =
           (TSStatus)
               SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNode(
+                  .sendSyncRequestToConfigNodeWithRetry(
                       configNodeLocation.getInternalEndPoint(),
                       nodeLocation,
                       ConfigNodeRequestType.removeConfigNode);

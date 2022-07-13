@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -33,6 +34,7 @@ import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.AsyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.handlers.UpdateRegionRouteMapHandler;
@@ -137,7 +139,7 @@ public class LoadManager {
         regionBalancer.genRegionsAllocationPlan(allotmentMap, consensusGroupType);
 
     // TODO: Use procedure to protect the following process
-    // Create Regions on DataNodes
+    //  Create Regions on DataNodes
     Map<String, Long> ttlMap = new HashMap<>();
     for (String storageGroup : createRegionGroupsPlan.getRegionGroupMap().keySet()) {
       ttlMap.put(
@@ -300,20 +302,26 @@ public class LoadManager {
     CountDownLatch latch = new CountDownLatch(onlineDataNodes.size());
 
     LOGGER.info("Begin to broadcast RegionRouteMap: {}", latestRegionRouteMap);
-
+    Map<Integer, UpdateRegionRouteMapHandler> handlerMap = new HashMap<>();
+    ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    AtomicInteger index = new AtomicInteger();
     onlineDataNodes.forEach(
-        dataNodeInfo ->
-            AsyncDataNodeClientPool.getInstance()
-                .updateRegionRouteMap(
-                    dataNodeInfo.getLocation().getInternalEndPoint(),
-                    new TRegionRouteReq(System.currentTimeMillis(), latestRegionRouteMap),
-                    new UpdateRegionRouteMapHandler(dataNodeInfo.getLocation(), latch)));
-
-    try {
-      latch.await();
-    } catch (InterruptedException e) {
-      LOGGER.warn("Broadcast the latest RegionRouteMap was interrupted!");
-    }
+        dataNodeInfo -> {
+          handlerMap.put(
+              index.get(),
+              new UpdateRegionRouteMapHandler(
+                  dataNodeInfo.getLocation(),
+                  latch,
+                  DataNodeRequestType.updateRegionRouteMap,
+                  dataNodeLocations,
+                  index.get()));
+          dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
+        });
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            new TRegionRouteReq(System.currentTimeMillis(), latestRegionRouteMap),
+            handlerMap,
+            dataNodeLocations);
     LOGGER.info("Broadcast the latest RegionRouteMap finished.");
   }
 

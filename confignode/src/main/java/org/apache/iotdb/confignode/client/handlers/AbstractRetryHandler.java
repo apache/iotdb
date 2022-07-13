@@ -16,47 +16,57 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.confignode.client.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.rpc.TSStatusCode;
-
-import org.apache.thrift.async.AsyncMethodCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-public class SetTTLHandler extends AbstractRetryHandler implements AsyncMethodCallback<TSStatus> {
+public abstract class AbstractRetryHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLHandler.class);
+  protected final int index;
 
-  public SetTTLHandler(
+  protected CountDownLatch countDownLatch;
+  /** Map<Index, TDataNodeLocation> */
+  protected ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations;
+
+  protected DataNodeRequestType dataNodeRequestType;
+  /** Current DataNode */
+  protected TDataNodeLocation dataNodeLocation;
+
+  public AbstractRetryHandler(
       CountDownLatch countDownLatch,
-      DataNodeRequestType requestType,
+      DataNodeRequestType dataNodeRequestType,
       TDataNodeLocation dataNodeLocation,
       ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations,
       int index) {
-    super(countDownLatch, requestType, dataNodeLocation, dataNodeLocations, index);
+    this.countDownLatch = countDownLatch;
+    this.dataNodeLocations = dataNodeLocations;
+    this.dataNodeRequestType = dataNodeRequestType;
+    this.dataNodeLocation = dataNodeLocation;
+    this.index = index;
   }
 
-  @Override
-  public void onComplete(TSStatus response) {
-    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      getDataNodeLocations().remove(index);
-      LOGGER.info("Successfully SetTTL on DataNode: {}", dataNodeLocation);
-    } else {
-      LOGGER.error("Failed to SetTTL on DataNode: {}, {}", dataNodeLocation, response);
-    }
-    countDownLatch.countDown();
+  public CountDownLatch getCountDownLatch() {
+    return countDownLatch;
   }
 
-  @Override
-  public void onError(Exception e) {
-    countDownLatch.countDown();
-    LOGGER.error("Failed to SetTTL on DataNode: {}", dataNodeLocation);
+  public void setCountDownLatch(CountDownLatch countDownLatch) {
+    this.countDownLatch = countDownLatch;
+  }
+
+  public ConcurrentHashMap<Integer, TDataNodeLocation> getDataNodeLocations() {
+    return dataNodeLocations;
+  }
+
+  public DataNodeRequestType getDataNodeRequestType() {
+    return dataNodeRequestType;
+  }
+
+  public int getIndex() {
+    return index;
   }
 }

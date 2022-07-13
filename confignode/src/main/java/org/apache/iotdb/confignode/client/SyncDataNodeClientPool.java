@@ -62,7 +62,7 @@ public class SyncDataNodeClientPool {
                 new ConfigNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
-  public TSStatus sendSyncRequestToDataNode(
+  public TSStatus sendSyncRequestToDataNodeWithRetry(
       TEndPoint endPoint, Object req, DataNodeRequestType requestType) {
     Throwable lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {
@@ -125,7 +125,7 @@ public class SyncDataNodeClientPool {
     for (TConsensusGroupId regionId : regionIds) {
       LOGGER.debug("Delete region {} ", regionId);
       final TSStatus status =
-          sendSyncRequestToDataNode(endPoint, regionId, DataNodeRequestType.deleteRegions);
+          sendSyncRequestToDataNodeWithRetry(endPoint, regionId, DataNodeRequestType.deleteRegions);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info("DELETE Region {} successfully", regionId);
         deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));

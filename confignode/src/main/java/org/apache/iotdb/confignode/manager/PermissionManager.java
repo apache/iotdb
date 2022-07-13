@@ -107,7 +107,7 @@ public class PermissionManager {
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       status =
           SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNode(
+              .sendSyncRequestToDataNodeWithRetry(
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   req,
                   DataNodeRequestType.invalidatePermissionCache);

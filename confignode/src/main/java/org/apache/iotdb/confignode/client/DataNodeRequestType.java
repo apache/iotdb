@@ -26,5 +26,12 @@ public enum DataNodeRequestType {
   invalidateSchemaCache,
   migrateRegion,
   disableDataNode,
-  stopDataNode;
+  stopDataNode,
+
+  setTTL,
+  createRegions,
+  createFunction,
+  dropFunction,
+  flush,
+  updateRegionRouteMap;
 }

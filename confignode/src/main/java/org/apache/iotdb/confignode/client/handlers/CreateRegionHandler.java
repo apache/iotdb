@@ -22,50 +22,39 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.BitSet;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 /** Only use CreateRegionHandler when the LoadManager wants to create Regions */
-public class CreateRegionHandler implements AsyncMethodCallback<TSStatus> {
+public class CreateRegionHandler extends AbstractRetryHandler
+    implements AsyncMethodCallback<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateRegionHandler.class);
 
-  // Mark BitSet when successfully create
-  private final int index;
-  private final BitSet bitSet;
-
-  // Used to protect asynchronous creation
-  private final CountDownLatch latch;
-
   // Used for Logger
   private final TConsensusGroupId consensusGroupId;
-  private final TDataNodeLocation dataNodeLocation;
 
   public CreateRegionHandler(
       int index,
-      BitSet bitSet,
       CountDownLatch latch,
       TConsensusGroupId consensusGroupId,
-      TDataNodeLocation dataNodeLocation) {
-    this.index = index;
-    this.bitSet = bitSet;
-    this.latch = latch;
+      TDataNodeLocation dataNodeLocation,
+      ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations) {
+    super(latch, DataNodeRequestType.createRegions, dataNodeLocation, dataNodeLocations, index);
     this.consensusGroupId = consensusGroupId;
-    this.dataNodeLocation = dataNodeLocation;
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      synchronized (bitSet) {
-        bitSet.set(index);
-      }
+      getDataNodeLocations().remove(index);
       LOGGER.info(
           String.format(
               "Successfully create %s on DataNode: %s",
@@ -78,7 +67,7 @@ public class CreateRegionHandler implements AsyncMethodCallback<TSStatus> {
               dataNodeLocation,
               tsStatus));
     }
-    latch.countDown();
+    countDownLatch.countDown();
   }
 
   @Override
@@ -87,6 +76,10 @@ public class CreateRegionHandler implements AsyncMethodCallback<TSStatus> {
         String.format(
             "Create %s on DataNode: %s failed, %s",
             ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeLocation, e));
-    latch.countDown();
+    countDownLatch.countDown();
+  }
+
+  public TConsensusGroupId getConsensusGroupId() {
+    return consensusGroupId;
   }
 }
