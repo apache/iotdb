@@ -175,7 +175,7 @@ public class SeriesScanUtil {
     return !(hasNextPage() || hasNextChunk() || hasNextFile());
   }
 
-  boolean hasNextFile() throws IOException {
+  public boolean hasNextFile() throws IOException {
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -255,7 +255,7 @@ public class SeriesScanUtil {
    * This method should be called after hasNextFile() until no next chunk, make sure that all
    * overlapped chunks are consumed
    */
-  boolean hasNextChunk() throws IOException {
+  public boolean hasNextChunk() throws IOException {
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -392,6 +392,7 @@ public class SeriesScanUtil {
    * overlapped pages are consumed
    */
   @SuppressWarnings("squid:S3776")
+  public
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
 
@@ -622,7 +623,7 @@ public class SeriesScanUtil {
   }
 
   /** This method should only be used when the method isPageOverlapped() return true. */
-  TsBlock nextPage() throws IOException {
+  public TsBlock nextPage() throws IOException {
 
     if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;
