@@ -87,14 +87,15 @@ public class QueryExecution implements IQueryExecution {
   private static final Logger logger = LoggerFactory.getLogger(QueryExecution.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
+  private static final int MAX_RETRY_COUNT = 3;
+  private int retryCount = 0;
   private final MPPQueryContext context;
   private IScheduler scheduler;
   private final QueryStateMachine stateMachine;
 
   private final List<PlanOptimizer> planOptimizers;
 
-  private final Analysis analysis;
+  private Analysis analysis;
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
 
@@ -138,6 +139,10 @@ public class QueryExecution implements IQueryExecution {
     stateMachine.addStateChangeListener(
         state -> {
           try (SetThreadName queryName = new SetThreadName(context.getQueryId().getId())) {
+            if (state == QueryState.RETRYING) {
+              retry();
+              return;
+            }
             if (!state.isDone()) {
               return;
             }
@@ -167,6 +172,25 @@ public class QueryExecution implements IQueryExecution {
       initResultHandle();
     }
     schedule();
+  }
+
+  private void retry() {
+    if (retryCount >= MAX_RETRY_COUNT) {
+      logger.error("reach max retry count. transit query to failed");
+      stateMachine.transitionToFailed();
+      return;
+    }
+    retryCount++;
+    logger.error("error when executing query. {}", stateMachine.getFailureMessage());
+    logger.warn("start to retry. Retry count is: {}", retryCount);
+    // stop and clean up resources the QueryExecution used
+    this.stopAndCleanup();
+    // force invalid PartitionCache
+    partitionFetcher.invalidAllCache();
+    // re-analyze the query
+    this.analysis = analyze(this.analysis.getStatement(), context, partitionFetcher, schemaFetcher);
+    // re-start the QueryExecution
+    this.start();
   }
 
   private boolean skipExecute() {
