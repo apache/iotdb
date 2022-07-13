@@ -162,6 +162,25 @@ public abstract class TernaryExpression extends Expression {
   }
 
   @Override
+  public void collectSubexpressions(Set<Expression> expressions) {
+    expressions.add(this);
+    firstExpression.collectSubexpressions(expressions);
+    secondExpression.collectSubexpressions(expressions);
+    thirdExpression.collectSubexpressions(expressions);
+  }
+
+  @Override
+  public void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res) {
+    if (expressions.contains(this)) {
+      res.add(this);
+    } else {
+      firstExpression.findCommonSubexpressions(expressions, res);
+      secondExpression.findCommonSubexpressions(expressions, res);
+      thirdExpression.findCommonSubexpressions(expressions, res);
+    }
+  }
+
+  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     firstExpression.constructUdfExecutors(expressionName2Executor, zoneId);

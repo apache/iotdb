@@ -190,6 +190,21 @@ public abstract class UnaryExpression extends Expression {
     return expressionIntermediateLayerMap.get(this);
   }
 
+  @Override
+  public void collectSubexpressions(Set<Expression> expressions) {
+    expressions.add(this);
+    expression.collectSubexpressions(expressions);
+  }
+
+  @Override
+  public void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res) {
+    if (expressions.contains(this)) {
+      res.add(this);
+    } else {
+      expression.findCommonSubexpressions(expressions, res);
+    }
+  }
+
   protected abstract Transformer constructTransformer(LayerPointReader pointReader);
 
   @Override

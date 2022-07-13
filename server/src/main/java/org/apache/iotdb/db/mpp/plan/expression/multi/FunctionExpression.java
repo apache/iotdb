@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.MultiInputColumnIntermediateLayer;
@@ -317,6 +318,16 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
+  public ColumnTransformer constructColumnTransformer(
+      long queryId,
+      UDTFContext udtfContext,
+      QueryDataSetInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
+      TypeProvider typeProvider) {
+    return null;
+  }
+
+  @Override
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
       UDTFContext udtfContext,
@@ -420,6 +431,36 @@ public class FunctionExpression extends Expression {
             executor);
       default:
         throw new UnsupportedOperationException("Unsupported transformer access strategy");
+    }
+  }
+
+  @Override
+  public AccessStrategy getUDFAccessStrategy(UDTFContext udtfContext, TypeProvider typeProvider) {
+    UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
+    return executor.getAccessStrategy(
+        expressions.stream().map(Expression::toString).collect(Collectors.toList()),
+        expressions.stream()
+            .map(f -> typeProvider.getType(f.toString()))
+            .collect(Collectors.toList()),
+        functionAttributes);
+  }
+
+  @Override
+  public void collectSubexpressions(Set<Expression> expressions) {
+    expressions.add(this);
+    for (Expression expression : this.expressions) {
+      expression.collectSubexpressions(expressions);
+    }
+  }
+
+  @Override
+  public void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res) {
+    if (expressions.contains(this)) {
+      res.add(this);
+    } else {
+      for (Expression expression : this.expressions) {
+        expression.findCommonSubexpressions(expressions, res);
+      }
     }
   }
 

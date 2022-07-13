@@ -187,6 +187,23 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
+  public void collectSubexpressions(Set<Expression> expressions) {
+    expressions.add(this);
+    leftExpression.collectSubexpressions(expressions);
+    rightExpression.collectSubexpressions(expressions);
+  }
+
+  @Override
+  public void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res) {
+    if (expressions.contains(this)) {
+      res.add(this);
+    } else {
+      leftExpression.findCommonSubexpressions(expressions, res);
+      rightExpression.findCommonSubexpressions(expressions, res);
+    }
+  }
+
+  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     leftExpression.constructUdfExecutors(expressionName2Executor, zoneId);

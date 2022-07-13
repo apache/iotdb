@@ -43,21 +43,7 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.FilterOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.LastQueryMergeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.UpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.*;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.BinaryConstantFill;
@@ -107,6 +93,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -156,6 +143,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -163,10 +151,12 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
+import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -801,7 +791,38 @@ public class LocalExecutionPlanner {
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              FilterOperator.class.getSimpleName());
+              FilterAndProjectOperator.class.getSimpleName());
+      final Expression[] outputExpressions = node.getOutputExpressions();
+      final Expression predicate = node.getPredicate();
+
+      // check whether predicate contains Non-Mappable UDF
+      if (hasNonMappableUDF(
+          new Expression[] {predicate},
+          collectSubexpressions(new Expression[] {predicate}),
+          node.getZoneId(),
+          context.getTypeProvider())) {
+        throw new UnsupportedOperationException("Filter can not contain Non-Mappable UDF");
+      }
+
+      // collect all subExpressions of outputExpressions
+      Set<Expression> subExpressionsOfTransform = collectSubexpressions(outputExpressions);
+
+      // collect all common subExpressions between outputExpressions and predicate
+      // excluding TimeseriesOperand and ConstantOperand
+      Set<Expression> commonSubexpressions = new HashSet<>();
+      predicate.findCommonSubexpressions(subExpressionsOfTransform, commonSubexpressions);
+
+      // Output expressions don't contain Non-Mappable UDF, TransformOperator is not needed
+      if (!hasNonMappableUDF(
+          outputExpressions,
+          subExpressionsOfTransform,
+          node.getZoneId(),
+          context.getTypeProvider())) {
+
+      } else {
+
+      }
+
       final Operator inputOperator = generateOnlyChildOperator(node, context);
       final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
       final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
@@ -821,6 +842,33 @@ public class LocalExecutionPlanner {
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
+    }
+
+    private boolean hasNonMappableUDF(
+        Expression[] expressions,
+        Set<Expression> allSubexpressions,
+        ZoneId zoneId,
+        TypeProvider typeProvider) {
+      UDTFContext udtfContext = new UDTFContext(zoneId);
+      udtfContext.constructUdfExecutors(expressions);
+      for (Expression expression : allSubexpressions) {
+        AccessStrategy accessStrategy = expression.getUDFAccessStrategy(udtfContext, typeProvider);
+        if (accessStrategy != null
+            && !accessStrategy
+                .getAccessStrategyType()
+                .equals(AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    private Set<Expression> collectSubexpressions(Expression[] expressions) {
+      Set<Expression> allSubexpressions = new HashSet<>();
+      for (Expression expression : expressions) {
+        expression.collectSubexpressions(allSubexpressions);
+      }
+      return allSubexpressions;
     }
 
     @Override

@@ -27,7 +27,6 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -43,35 +42,28 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class FilterOperator extends TransformOperator {
+public class FilterOperator implements ProcessOperator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FilterOperator.class);
 
-  private LayerPointReader filterPointReader;
+  private Operator child;
+
+  private final OperatorContext operatorContext;
+
+  // 明确 FilterOperator 怎么构造
+  // 明确 TransformOperator 怎么构造
 
   public FilterOperator(
       OperatorContext operatorContext,
-      Operator inputOperator,
+      Operator child,
       List<TSDataType> inputDataTypes,
       Map<String, List<InputLocation>> inputLocations,
       Expression filterExpression,
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      TypeProvider typeProvider,
-      boolean isAscending)
-      throws QueryProcessException, IOException {
-    super(
-        operatorContext,
-        inputOperator,
-        inputDataTypes,
-        inputLocations,
-        bindExpressions(filterExpression, outputExpressions),
-        keepNull,
-        zoneId,
-        typeProvider,
-        isAscending);
-  }
+      TypeProvider typeProvider)
+      throws QueryProcessException, IOException {}
 
   private static Expression[] bindExpressions(
       Expression filterExpression, Expression[] outputExpressions) {
@@ -86,17 +78,7 @@ public class FilterOperator extends TransformOperator {
       Map<String, List<InputLocation>> inputLocations,
       Expression[] outputExpressions,
       TypeProvider typeProvider)
-      throws QueryProcessException, IOException {
-    super.initTransformers(inputLocations, outputExpressions, typeProvider);
-
-    filterPointReader = transformers[transformers.length - 1];
-    if (filterPointReader.getDataType() != TSDataType.BOOLEAN) {
-      throw new UnSupportedDataTypeException(
-          String.format(
-              "Data type of the filter expression should be BOOLEAN, but %s is received.",
-              filterPointReader.getDataType()));
-    }
-  }
+      throws QueryProcessException, IOException {}
 
   @Override
   public TsBlock next() {

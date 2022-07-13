@@ -29,6 +29,7 @@ import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,6 +60,22 @@ public class UDTFExecutor {
       List<String> childExpressions,
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
+    reflectAndValidateUDF(childExpressions, childExpressionDataTypes, attributes);
+    configurations.check();
+
+    collector =
+        ElasticSerializableTVList.newElasticSerializableTVList(
+            UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType()),
+            queryId,
+            collectorMemoryBudgetInMB,
+            1);
+  }
+
+  private void reflectAndValidateUDF(
+      List<String> childExpressions,
+      List<TSDataType> childExpressionDataTypes,
+      Map<String, String> attributes) {
+
     udtf = (UDTF) UDFRegistrationService.getInstance().reflect(functionName);
 
     final UDFParameters parameters =
@@ -78,14 +95,19 @@ public class UDTFExecutor {
     } catch (Exception e) {
       onError("beforeStart(UDFParameters, UDTFConfigurations)", e);
     }
-    configurations.check();
+  }
 
-    collector =
-        ElasticSerializableTVList.newElasticSerializableTVList(
-            UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType()),
-            queryId,
-            collectorMemoryBudgetInMB,
-            1);
+  public AccessStrategy getAccessStrategy(
+      List<String> childExpressions,
+      List<TSDataType> childExpressionDataTypes,
+      Map<String, String> attributes) {
+    reflectAndValidateUDF(childExpressions, childExpressionDataTypes, attributes);
+    if (udtf != null) {
+      udtf.beforeDestroy();
+    }
+    // finalize
+    udtf = null;
+    return configurations.getAccessStrategy();
   }
 
   public void execute(Row row, boolean isCurrentRowNull) {

@@ -49,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
@@ -57,6 +58,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -167,6 +169,28 @@ public abstract class Expression {
       TypeProvider typeProvider,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException;
+
+  public abstract void collectSubexpressions(Set<Expression> expressions);
+
+  public abstract void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res);
+
+  /**
+   * Return the AccessStrategy of the FunctionExpression
+   *
+   * @param udtfContext
+   * @param typeProvider
+   * @return
+   */
+  public AccessStrategy getUDFAccessStrategy(UDTFContext udtfContext, TypeProvider typeProvider) {
+    return null;
+  }
+
+  public abstract ColumnTransformer constructColumnTransformer(
+      long queryId,
+      UDTFContext udtfContext,
+      QueryDataSetInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
+      TypeProvider typeProvider);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // isConstantOperand

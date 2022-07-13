@@ -17,37 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.expression.leaf;
+package org.apache.iotdb.db.mpp.transformation.dag.column.unary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnCache;
+import org.apache.iotdb.tsfile.read.common.type.Type;
 
-import java.time.ZoneId;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-public abstract class LeafOperand extends Expression {
-
-  @Override
-  public final List<Expression> getExpressions() {
-    return Collections.emptyList();
-  }
-
-  @Override
-  public final void constructUdfExecutors(
-      Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
-    // nothing to do
-  }
-
-  @Override
-  public void collectSubexpressions(Set<Expression> expressions) {
-    expressions.add(this);
-  }
-
-  @Override
-  public void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res) {
-    // do nothing, LeafOperand is not needed
+public class TimeseriesColumnTransformer extends UnaryColumnTransformer {
+  public TimeseriesColumnTransformer(
+      Expression expression, Type returnType, ColumnCache columnCache) {
+    super(expression, returnType, columnCache);
   }
 }
