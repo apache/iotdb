@@ -84,6 +84,15 @@ public interface IMemTable extends WALEntryValue {
   /** only used when mem control enabled */
   long getTVListsRamCost();
 
+  /** only used when mem control enabled */
+  void addMemTableMapRamCost(long cost);
+
+  /** only used when mem control enabled */
+  void releaseMemTableMapRamCost(long cost);
+
+  /** only used when mem control enabled */
+  long getMemTableMapRamCost();
+
   /**
    * only used when mem control enabled
    *
@@ -167,6 +176,9 @@ public interface IMemTable extends WALEntryValue {
 
   /** must guarantee the device exists in the work memtable only used when mem control enabled */
   boolean checkIfChunkDoesNotExist(IDeviceID deviceId, String measurement);
+
+  /** assist to estimate increment of map of memTable */
+  boolean ifChunkGroupExist(IDeviceID deviceID);
 
   /** only used when mem control enabled */
   long getCurrentTVListSize(IDeviceID deviceId, String measurement);

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
+import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -526,15 +527,20 @@ public class TsFileProcessor {
       String deviceId, String[] measurements, TSDataType[] dataTypes, Object[] values)
       throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
-    long memTableIncrement = 0L;
+    long memTableIncrement = 0L; // TVList ram cost actually
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
+    long memTableMapIncrement = 0L;
     // get device id
     IDeviceID deviceID;
     try {
       deviceID = getDeviceID(deviceId);
     } catch (IllegalPathException e) {
       throw new WriteProcessException(e);
+    }
+
+    if (!workMemTable.ifChunkGroupExist(deviceID)) {
+      memTableMapIncrement += AbstractMemTable.calculateMemTableMapIncrement(deviceID);
     }
 
     for (int i = 0; i < dataTypes.length; i++) {
@@ -546,6 +552,7 @@ public class TsFileProcessor {
         // ChunkMetadataIncrement
         chunkMetadataIncrement += ChunkMetadata.calculateRamSize(measurements[i], dataTypes[i]);
         memTableIncrement += TVList.tvListArrayMemCost(dataTypes[i]);
+        memTableMapIncrement += AbstractMemTable.calculateMemTableMapIncrement(measurements[i]);
       } else {
         // here currentChunkPointNum >= 1
         long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceID, measurements[i]);
@@ -559,8 +566,11 @@ public class TsFileProcessor {
         textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
       }
     }
-    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
-    return new long[] {memTableIncrement, textDataIncrement, chunkMetadataIncrement};
+    updateMemoryInfo(
+        memTableIncrement, chunkMetadataIncrement, textDataIncrement, memTableMapIncrement);
+    return new long[] {
+      memTableIncrement, textDataIncrement, chunkMetadataIncrement, memTableMapIncrement
+    };
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -568,9 +578,10 @@ public class TsFileProcessor {
       String deviceId, String[] measurements, TSDataType[] dataTypes, Object[] values)
       throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
-    long memTableIncrement = 0L;
+    long memTableIncrement = 0L; // TVList ram cost actually
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
+    long memTableMapIncrement = 0L;
     AlignedWritableMemChunk alignedMemChunk = null;
     // get device id
     IDeviceID deviceID;
@@ -586,6 +597,8 @@ public class TsFileProcessor {
           ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
               * dataTypes.length;
       memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(dataTypes);
+      memTableMapIncrement +=
+          AbstractMemTable.calculateAlignedMemTableMapIncrement(deviceID, measurements);
     } else {
       // here currentChunkPointNum >= 1
       long currentChunkPointNum =
@@ -608,14 +621,19 @@ public class TsFileProcessor {
         memTableIncrement +=
             (alignedMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
                 * dataTypes[i].getDataTypeSize();
+        memTableMapIncrement +=
+            AbstractMemTable.calculateAlignedMemTableMapIncrement(measurements[i]);
       }
       // TEXT data mem size
       if (dataTypes[i] == TSDataType.TEXT) {
         textDataIncrement += MemUtils.getBinarySize((Binary) values[i]);
       }
     }
-    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
-    return new long[] {memTableIncrement, textDataIncrement, chunkMetadataIncrement};
+    updateMemoryInfo(
+        memTableIncrement, chunkMetadataIncrement, textDataIncrement, memTableMapIncrement);
+    return new long[] {
+      memTableIncrement, textDataIncrement, chunkMetadataIncrement, memTableMapIncrement
+    };
   }
 
   private long[] checkMemCostAndAddToTspInfo(
@@ -627,9 +645,9 @@ public class TsFileProcessor {
       int end)
       throws WriteProcessException {
     if (start >= end) {
-      return new long[] {0, 0, 0};
+      return new long[] {0, 0, 0, 0};
     }
-    long[] memIncrements = new long[3]; // memTable, text, chunk metadata
+    long[] memIncrements = new long[4]; // memTable, text, chunk metadata, memTableMap
 
     // get device id
     IDeviceID deviceID;
@@ -637,6 +655,10 @@ public class TsFileProcessor {
       deviceID = getDeviceID(deviceId);
     } catch (IllegalPathException e) {
       throw new WriteProcessException(e);
+    }
+
+    if (!workMemTable.ifChunkGroupExist(deviceID)) {
+      memIncrements[3] += AbstractMemTable.calculateMemTableMapIncrement(deviceID);
     }
 
     for (int i = 0; i < dataTypes.length; i++) {
@@ -649,7 +671,9 @@ public class TsFileProcessor {
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
     long chunkMetadataIncrement = memIncrements[2];
-    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+    long memTableMapIncrement = memIncrements[3];
+    updateMemoryInfo(
+        memTableIncrement, chunkMetadataIncrement, textDataIncrement, memTableMapIncrement);
     return memIncrements;
   }
 
@@ -662,9 +686,9 @@ public class TsFileProcessor {
       int end)
       throws WriteProcessException {
     if (start >= end) {
-      return new long[] {0, 0, 0};
+      return new long[] {0, 0, 0, 0};
     }
-    long[] memIncrements = new long[3]; // memTable, text, chunk metadata
+    long[] memIncrements = new long[4]; // memTable, text, chunk metadata, memTableMap
 
     // get device id
     IDeviceID deviceID;
@@ -674,11 +698,18 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
 
+    if (!workMemTable.ifChunkGroupExist(deviceID)) {
+      memIncrements[3] +=
+          AbstractMemTable.calculateAlignedMemTableMapIncrement(deviceID, measurements);
+    }
+
     updateAlignedMemCost(dataTypes, deviceID, measurements, start, end, memIncrements, columns);
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
     long chunkMetadataIncrement = memIncrements[2];
-    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+    long memTableMapIncrement = memIncrements[3];
+    updateMemoryInfo(
+        memTableIncrement, chunkMetadataIncrement, textDataIncrement, memTableMapIncrement);
     return memIncrements;
   }
 
@@ -690,7 +721,7 @@ public class TsFileProcessor {
       int end,
       long[] memIncrements,
       Object column) {
-    // memIncrements = [memTable, text, chunk metadata] respectively
+    // memIncrements = [memTable, text, chunk metadata, memTableMap] respectively
 
     if (workMemTable.checkIfChunkDoesNotExist(deviceId, measurement)) {
       // ChunkMetadataIncrement
@@ -698,6 +729,7 @@ public class TsFileProcessor {
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemCost(dataType);
+      memIncrements[3] += AbstractMemTable.calculateMemTableMapIncrement(measurement);
     } else {
       long currentChunkPointNum = workMemTable.getCurrentTVListSize(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
@@ -769,6 +801,8 @@ public class TsFileProcessor {
         memIncrements[0] +=
             (vectorMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
                 * dataType.getDataTypeSize();
+        memIncrements[3] +=
+            AbstractMemTable.calculateAlignedMemTableMapIncrement(measurementIds[i]);
       }
       // TEXT data size
       if (dataType == TSDataType.TEXT) {
@@ -779,10 +813,13 @@ public class TsFileProcessor {
   }
 
   private void updateMemoryInfo(
-      long memTableIncrement, long chunkMetadataIncrement, long textDataIncrement)
+      long memTableIncrement,
+      long chunkMetadataIncrement,
+      long textDataIncrement,
+      long memTableMapIncrement)
       throws WriteProcessException {
     memTableIncrement += textDataIncrement;
-    storageGroupInfo.addStorageGroupMemCost(memTableIncrement);
+    storageGroupInfo.addStorageGroupMemCost(memTableIncrement + memTableMapIncrement);
     tsFileProcessorInfo.addTSPMemCost(chunkMetadataIncrement);
     if (storageGroupInfo.needToReportToSystem()) {
       try {
@@ -790,7 +827,7 @@ public class TsFileProcessor {
           StorageEngine.blockInsertionIfReject(this);
         }
       } catch (WriteProcessRejectException e) {
-        storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
+        storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement + memTableMapIncrement);
         tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
         throw e;
@@ -798,12 +835,14 @@ public class TsFileProcessor {
     }
     workMemTable.addTVListRamCost(memTableIncrement);
     workMemTable.addTextDataSize(textDataIncrement);
+    workMemTable.addMemTableMapRamCost(memTableMapIncrement);
   }
 
   private void rollbackMemoryInfo(long[] memIncrements) {
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
     long chunkMetadataIncrement = memIncrements[2];
+    long memTableMapIncrement = memIncrements[3];
 
     memTableIncrement += textDataIncrement;
     storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
@@ -811,6 +850,7 @@ public class TsFileProcessor {
     SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
     workMemTable.releaseTVListRamCost(memTableIncrement);
     workMemTable.releaseTextDataSize(textDataIncrement);
+    workMemTable.releaseMemTableMapRamCost(memTableMapIncrement);
   }
 
   /**
@@ -1112,7 +1152,9 @@ public class TsFileProcessor {
     }
 
     if (enableMemControl) {
-      SystemInfo.getInstance().addFlushingMemTableCost(tobeFlushed.getTVListsRamCost());
+      SystemInfo.getInstance()
+          .addFlushingMemTableCost(
+              tobeFlushed.getTVListsRamCost() + tobeFlushed.getMemTableMapRamCost());
     }
     flushingMemTables.addLast(tobeFlushed);
     if (logger.isDebugEnabled()) {
@@ -1159,7 +1201,8 @@ public class TsFileProcessor {
       MemTableManager.getInstance().decreaseMemtableNumber();
       if (enableMemControl) {
         // reset the mem cost in StorageGroupProcessorInfo
-        storageGroupInfo.releaseStorageGroupMemCost(memTable.getTVListsRamCost());
+        storageGroupInfo.releaseStorageGroupMemCost(
+            memTable.getTVListsRamCost() + memTable.getMemTableMapRamCost());
         if (logger.isDebugEnabled()) {
           logger.debug(
               "[mem control] {}: {} flush finished, try to reset system memcost, "
@@ -1170,7 +1213,9 @@ public class TsFileProcessor {
         }
         // report to System
         SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
-        SystemInfo.getInstance().resetFlushingMemTableCost(memTable.getTVListsRamCost());
+        SystemInfo.getInstance()
+            .resetFlushingMemTableCost(
+                memTable.getTVListsRamCost() + memTable.getMemTableMapRamCost());
       }
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -1573,7 +1618,9 @@ public class TsFileProcessor {
   }
 
   public long getWorkMemTableRamCost() {
-    return workMemTable != null ? workMemTable.getTVListsRamCost() : 0;
+    return workMemTable != null
+        ? workMemTable.getTVListsRamCost() + workMemTable.getMemTableMapRamCost()
+        : 0;
   }
 
   /** Return Long.MAX_VALUE if workMemTable is null */

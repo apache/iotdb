@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
+import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -43,6 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -320,6 +322,37 @@ public class TsFileProcessorTest {
     Assert.assertEquals(830120, memTable.getTVListsRamCost());
     Assert.assertEquals(90100, memTable.getTotalPointsNum());
     Assert.assertEquals(721560, memTable.memSize());
+  }
+
+  @Test
+  public void testMemTableMapRamCost()
+      throws MetadataException, WriteProcessException, IOException {
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor) -> true,
+            true);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    processor.insertTablet(genInsertTablePlan(0, false), 0, 10, new TSStatus[10]);
+    IMemTable memTable = processor.getWorkMemTable();
+    long memTableMapRamCost = memTable.getMemTableMapRamCost();
+    processor.insertTablet(genInsertTablePlan(1001, false), 0, 10, new TSStatus[10]);
+    Assert.assertEquals(memTableMapRamCost, memTable.getMemTableMapRamCost());
+
+    TSRecord record = new TSRecord(123L, "root.sg.device5");
+    record.addTuple(DataPoint.getDataPoint(dataType, "ns0", String.valueOf(1)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(
+        memTableMapRamCost
+            + RamUsageEstimator.shallowSizeOfInstance(AlignedWritableMemChunk.class)
+            + RamUsageEstimator.sizeOf("ns0"),
+        memTable.getMemTableMapRamCost());
   }
 
   @Test

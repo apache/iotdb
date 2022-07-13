@@ -43,6 +43,7 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -52,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,6 +90,9 @@ public abstract class AbstractMemTable implements IMemTable {
    * including TEXT values
    */
   private long tvListRamCost = 0;
+
+  /** size of {@link #memTableMap} may not be negligible with a massive amount of measurements */
+  private long memTableMapRamCost = 0;
 
   private int seriesNumber = 0;
 
@@ -596,6 +601,11 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public boolean ifChunkGroupExist(IDeviceID deviceID) {
+    return null != memTableMap.get(deviceID);
+  }
+
+  @Override
   public long getCurrentTVListSize(IDeviceID deviceId, String measurement) {
     IWritableMemChunkGroup memChunkGroup = memTableMap.get(deviceId);
     return memChunkGroup.getCurrentTVListSize(measurement);
@@ -641,6 +651,7 @@ public abstract class AbstractMemTable implements IMemTable {
     totalPointsNum = 0;
     totalPointsNumThreshold = 0;
     tvListRamCost = 0;
+    memTableMapRamCost = 0;
     maxPlanIndex = 0;
     minPlanIndex = 0;
   }
@@ -682,6 +693,21 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long getTVListsRamCost() {
     return tvListRamCost;
+  }
+
+  @Override
+  public void addMemTableMapRamCost(long cost) {
+    this.memTableMapRamCost += cost;
+  }
+
+  @Override
+  public void releaseMemTableMapRamCost(long cost) {
+    this.memTableMapRamCost -= cost;
+  }
+
+  @Override
+  public long getMemTableMapRamCost() {
+    return memTableMapRamCost;
   }
 
   @Override
@@ -812,6 +838,33 @@ public abstract class AbstractMemTable implements IMemTable {
       }
       memTableMap.put(deviceID, memChunkGroup);
     }
+  }
+
+  /** A rough estimate of increment of {@link #memTableMap} */
+  public static long calculateMemTableMapIncrement(String measurementId) {
+    return RamUsageEstimator.sizeOf(measurementId)
+        + RamUsageEstimator.shallowSizeOfInstance(WritableMemChunk.class);
+  }
+
+  /** Estimate when chunk group not exists */
+  public static long calculateMemTableMapIncrement(IDeviceID deviceID) {
+    return RamUsageEstimator.sizeOf(deviceID)
+        + RamUsageEstimator.shallowSizeOfInstance(WritableMemChunkGroup.class);
+  }
+
+  /** Calculate when extends, for new entry of measurementIndexMap in AlignedWritableMemChunk */
+  public static long calculateAlignedMemTableMapIncrement(String measurementId) {
+    return RamUsageEstimator.sizeOf(measurementId)
+        + RamUsageEstimator.shallowSizeOfInstance(Integer.class);
+  }
+
+  /** Calculate when created, including entries of measurementIndexMap in AlignedWritableMemChunk */
+  public static long calculateAlignedMemTableMapIncrement(
+      IDeviceID deviceID, String[] measurements) {
+    return RamUsageEstimator.sizeOf(deviceID)
+        + RamUsageEstimator.shallowSizeOfInstance(AlignedWritableMemChunkGroup.class)
+        + measurements.length * RamUsageEstimator.shallowSizeOfInstance(Integer.class)
+        + Arrays.stream(measurements).map(RamUsageEstimator::sizeOf).reduce(0L, Long::sum);
   }
 
   public static class Factory {
