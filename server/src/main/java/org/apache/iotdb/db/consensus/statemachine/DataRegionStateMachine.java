@@ -102,7 +102,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     PlanNode planNode;
     try {
       if (request instanceof IndexedConsensusRequest) {
-        status = new TSStatus();
+        status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         IndexedConsensusRequest indexedConsensusRequest = (IndexedConsensusRequest) request;
         for (IConsensusRequest innerRequest : indexedConsensusRequest.getRequests()) {
           planNode = getPlanNode(innerRequest);
@@ -111,6 +111,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
                 .setSearchIndex(((IndexedConsensusRequest) request).getSearchIndex());
           }
           TSStatus subStatus = write(planNode);
+          if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            status.setCode(subStatus.getCode());
+            status.setMessage(subStatus.getMessage());
+          }
           status.addToSubStatus(subStatus);
         }
       } else {
