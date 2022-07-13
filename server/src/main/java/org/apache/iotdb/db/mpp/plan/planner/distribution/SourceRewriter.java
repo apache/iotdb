@@ -37,6 +37,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByTagNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
@@ -64,6 +65,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -608,6 +610,23 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       }
     }
     return false;
+  }
+
+  @Override
+  public PlanNode visitGroupByTag(GroupByTagNode root, DistributionPlanContext context) {
+    List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
+    Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
+        sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+
+    GroupByTagNode newRoot = (GroupByTagNode) root.clone();
+    for (Entry<TRegionReplicaSet, List<SeriesAggregationSourceNode>> entry :
+        sourceGroup.entrySet()) {
+      for (SeriesAggregationSourceNode node : entry.getValue()) {
+        newRoot.addChild(node);
+      }
+    }
+
+    return newRoot;
   }
 
   private GroupByLevelNode groupSourcesForGroupByLevelWithSlidingWindow(

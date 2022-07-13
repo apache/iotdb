@@ -51,6 +51,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
+import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -114,11 +115,14 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
 
   private CachedMTreeStore store;
   private volatile IStorageGroupMNode storageGroupMNode;
+  private final TagManager tagManager;
   private int levelOfSG;
 
   // region MTree initialization, clear and serialization
-  public MTreeBelowSGCachedImpl(IStorageGroupMNode storageGroupMNode, int schemaRegionId)
+  public MTreeBelowSGCachedImpl(
+      IStorageGroupMNode storageGroupMNode, TagManager tagManager, int schemaRegionId)
       throws MetadataException, IOException {
+    this.tagManager = tagManager;
     PartialPath storageGroup = storageGroupMNode.getPartialPath();
     store = new CachedMTreeStore(storageGroup, schemaRegionId);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
@@ -631,7 +635,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
+    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch, false).left;
   }
 
   /**
@@ -657,7 +661,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    */
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
@@ -669,6 +673,13 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
+            }
+            if (withTags) {
+              try {
+                path.setTagMap(tagManager.readTagFile(node.getOffset()).getLeft());
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
             }
             result.add(path);
           }

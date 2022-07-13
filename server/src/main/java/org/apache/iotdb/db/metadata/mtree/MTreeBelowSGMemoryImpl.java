@@ -53,6 +53,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
+import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
@@ -123,23 +124,30 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   // this implementation is based on memory, thus only MTree write operation must invoke MTreeStore
   private MemMTreeStore store;
   private volatile IStorageGroupMNode storageGroupMNode;
+  private final TagManager tagManager;
   private int levelOfSG;
 
   // region MTree initialization, clear and serialization
-  public MTreeBelowSGMemoryImpl(IStorageGroupMNode storageGroupMNode, int schemaRegionId) {
+  public MTreeBelowSGMemoryImpl(
+      IStorageGroupMNode storageGroupMNode, TagManager tagManager, int schemaRegionId) {
     PartialPath storageGroup = storageGroupMNode.getPartialPath();
     store = new MemMTreeStore(storageGroup, true);
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     levelOfSG = storageGroup.getNodeLength() - 1;
+    this.tagManager = tagManager;
   }
 
   private MTreeBelowSGMemoryImpl(
-      MemMTreeStore store, IStorageGroupMNode storageGroupMNode, int schemaRegionId) {
+      MemMTreeStore store,
+      IStorageGroupMNode storageGroupMNode,
+      TagManager tagManager,
+      int schemaRegionId) {
     this.store = store;
     this.storageGroupMNode = store.getRoot().getAsStorageGroupMNode();
     this.storageGroupMNode.setParent(storageGroupMNode.getParent());
     levelOfSG = storageGroupMNode.getPartialPath().getNodeLength() - 1;
+    this.tagManager = tagManager;
   }
 
   @Override
@@ -156,11 +164,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       File snapshotDir,
       IStorageGroupMNode storageGroupMNode,
       int schemaRegionId,
-      Consumer<IMeasurementMNode> measurementProcess)
+      Consumer<IMeasurementMNode> measurementProcess,
+      TagManager tagManager)
       throws IOException {
     return new MTreeBelowSGMemoryImpl(
         MemMTreeStore.loadFromSnapshot(snapshotDir, measurementProcess),
         storageGroupMNode,
+        tagManager,
         schemaRegionId);
   }
 
@@ -714,7 +724,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
+    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch, false).left;
   }
 
   /**
@@ -740,7 +750,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    */
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch, boolean withTags)
       throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
@@ -753,6 +763,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
               // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
             }
+            if (withTags) {
+              try {
+                path.setTagMap(tagManager.readTagFile(node.getOffset()).getLeft());
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
+            }
             result.add(path);
           }
         };
@@ -763,7 +780,8 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
   }
 
   public List<MeasurementPath> fetchSchema(
-      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
+      PartialPath pathPattern, Map<Integer, Template> templateMap, boolean withTags)
+      throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
         new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
@@ -776,6 +794,13 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
             if (nodes[nodes.length - 1].equals(node.getAlias())) {
               // only when user query with alias, the alias in path will be set
               path.setMeasurementAlias(node.getAlias());
+            }
+            if (withTags) {
+              try {
+                path.setTagMap(tagManager.readTagFile(node.getOffset()).getLeft());
+              } catch (IOException e) {
+                throw new RuntimeException(e);
+              }
             }
             result.add(path);
           }
@@ -1386,6 +1411,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    * @return index on full path of the node which matches all measurements' path with its
    *     upperTemplate.
    */
+  @Override
   public int getMountedNodeIndexOnMeasurementPath(PartialPath devicePath, String[] measurements)
       throws MetadataException {
     String[] nodes = devicePath.getNodes();

@@ -50,7 +50,9 @@ import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
@@ -193,7 +195,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // request schema fetch API
       logger.info("[StartFetchSchema]");
-      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+      ISchemaTree schemaTree;
+      if (queryStatement.isGroupByTag()) {
+        schemaTree = schemaFetcher.fetchSchemaWithTags(patternTree);
+      } else {
+        schemaTree = schemaFetcher.fetchSchema(patternTree);
+      }
       logger.info("[EndFetchSchema]");
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
@@ -236,7 +243,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
         analyzeHaving(analysis, queryStatement, schemaTree);
         analyzeGroupByLevel(analysis, queryStatement, outputExpressions);
-
+        analyzeGroupByTag(analysis, queryStatement, outputExpressions, schemaTree);
         Set<Expression> selectExpressions =
             outputExpressions.stream()
                 .map(Pair::getLeft)
@@ -583,7 +590,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       groupedSelectExpressions.add(groupedExpression);
     }
 
-    Map<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
+    LinkedHashMap<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
     if (queryStatement.hasHaving()) {
       // update havingExpression
       Expression havingExpression = groupByLevelController.control(analysis.getHavingExpression());
@@ -623,7 +630,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     }
 
     checkDataTypeConsistencyInGroupByLevel(analysis, groupByLevelExpressions);
-    analysis.setGroupByLevelExpressions(groupByLevelExpressions);
+    analysis.setCrossGroupByExpressions(groupByLevelExpressions);
   }
 
   private void checkDataTypeConsistencyInGroupByLevel(
@@ -665,6 +672,79 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return new Pair<>(expressionWithoutAlias, alias);
   }
 
+  /**
+   * This method is used to analyze GROUP BY TAGS query.
+   *
+   * <p>TODO: support slimit/soffset/value filter
+   */
+  private void analyzeGroupByTag(
+      Analysis analysis,
+      QueryStatement queryStatement,
+      List<Pair<Expression, String>> outputExpressions,
+      ISchemaTree schemaTree) {
+    if (!queryStatement.isGroupByTag()) {
+      return;
+    }
+    if (analysis.hasValueFilter()) {
+      throw new SemanticException("Only time filters are supported in GROUP BY TAGS query");
+    }
+    Map<List<String>, LinkedHashMap<Expression, List<Expression>>>
+        tagValuesToGroupedTimeseriesOperands = new HashMap<>();
+    LinkedHashMap<Expression, Set<Expression>> groupByTagOutputExpressions = new LinkedHashMap<>();
+    List<String> tagKeys = queryStatement.getGroupByTagComponent().getTagKeys();
+    List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
+    Map<MeasurementPath, Map<String, String>> queriedTagMap = new HashMap<>();
+    allSelectedPath.forEach(v -> queriedTagMap.put(v, v.getTagMap()));
+
+    for (Pair<Expression, String> outputExpressionAndAlias : outputExpressions) {
+      if (!(outputExpressionAndAlias.getLeft() instanceof FunctionExpression
+          && outputExpressionAndAlias.getLeft().getExpressions().get(0) instanceof TimeSeriesOperand
+          && outputExpressionAndAlias.getLeft().isBuiltInAggregationFunctionExpression())) {
+        throw new SemanticException(
+            outputExpressionAndAlias.getLeft()
+                + " can't be used in group by tag. It will be supported in the future.");
+      }
+      FunctionExpression outputExpression = (FunctionExpression) outputExpressionAndAlias.getLeft();
+      MeasurementPath measurementPath =
+          (MeasurementPath)
+              ((TimeSeriesOperand) outputExpression.getExpressions().get(0)).getPath();
+      Expression measurementExpression =
+          new ConstantOperand(measurementPath.getSeriesType(), measurementPath.getMeasurement());
+      Expression groupedExpression =
+          new FunctionExpression(
+              outputExpression.getFunctionName(),
+              outputExpression.getFunctionAttributes(),
+              Collections.singletonList(measurementExpression));
+      groupByTagOutputExpressions
+          .computeIfAbsent(groupedExpression, v -> new HashSet<>())
+          .add(outputExpression);
+      Map<String, String> tagMap = queriedTagMap.get(measurementPath);
+      List<String> tagValues = new ArrayList<>();
+      for (String tagKey : tagKeys) {
+        tagValues.add(tagMap.get(tagKey));
+      }
+      tagValuesToGroupedTimeseriesOperands
+          .computeIfAbsent(tagValues, key -> new LinkedHashMap<>())
+          .computeIfAbsent(groupedExpression, key -> new ArrayList<>())
+          .add(outputExpression.getExpressions().get(0));
+    }
+
+    outputExpressions.clear();
+    for (String tagKey : tagKeys) {
+      Expression tagKeyExpression = new ConstantOperand(TSDataType.TEXT, tagKey);
+      analyzeExpression(analysis, tagKeyExpression);
+      outputExpressions.add(new Pair<>(tagKeyExpression, null));
+    }
+    for (Expression groupByTagOutputExpression : groupByTagOutputExpressions.keySet()) {
+      // TODO: support alias
+      analyzeExpression(analysis, groupByTagOutputExpression);
+      outputExpressions.add(new Pair<>(groupByTagOutputExpression, null));
+    }
+    analysis.setTagKeys(queryStatement.getGroupByTagComponent().getTagKeys());
+    analysis.setTagValuesToGroupedTimeseriesOperands(tagValuesToGroupedTimeseriesOperands);
+    analysis.setCrossGroupByExpressions(groupByTagOutputExpressions);
+  }
+
   private void analyzeDeviceToAggregation(
       Analysis analysis,
       QueryStatement queryStatement,
@@ -692,9 +772,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       return;
     }
 
-    if (queryStatement.isGroupByLevel()) {
+    if (queryStatement.isGroupByLevel() || queryStatement.isGroupByTag()) {
       Set<Expression> aggregationExpressions =
-          analysis.getGroupByLevelExpressions().values().stream()
+          analysis.getCrossGroupByExpressions().values().stream()
               .flatMap(Set::stream)
               .collect(Collectors.toSet());
       analysis.setAggregationExpressions(aggregationExpressions);

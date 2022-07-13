@@ -454,6 +454,180 @@ Total line number = 7
 It costs 0.004s
 ```
 
+## Aggregation By Tags
+
+IotDB allows you to do aggregation query with the tags defined in timeseries through `GROUP BY TAGS` clause as well.
+
+Firstly, we can put these example data into IoTDB, which will be used in the following feature introduction.
+
+These are the temperature data of the workshops, which belongs to the factory `factory1` and locates in different cities. The time range is `[1000, 10000)`.
+
+The device node of the timeseries path is the ID of the device. The information of city and workshop are modelled in the tags `city` and `workshop`.
+The devices `d1` and `d2` belong to the workshop `d1` in `Beijing`.
+`d3` and `d4` belong to the workshop `w2` in `Beijing`.
+`d5` and `d6` belong to the workshop `w1` in `Shanghai`.
+`d7` belongs to the workshop `w2` in `Shanghai`.
+`d8` and `d9` are under maintenance, and don't belong to any workshops, so they have no tags.
+
+
+```SQL
+set storage group to root.factory1;
+create timeseries root.factory1.d1.temperature with datatype=FLOAT tags(city=Beijing, workshop=w1);
+create timeseries root.factory1.d2.temperature with datatype=FLOAT tags(city=Beijing, workshop=w1);
+create timeseries root.factory1.d3.temperature with datatype=FLOAT tags(city=Beijing, workshop=w2);
+create timeseries root.factory1.d4.temperature with datatype=FLOAT tags(city=Beijing, workshop=w2);
+create timeseries root.factory1.d5.temperature with datatype=FLOAT tags(city=Shanghai, workshop=w1);
+create timeseries root.factory1.d6.temperature with datatype=FLOAT tags(city=Shanghai, workshop=w1);
+create timeseries root.factory1.d7.temperature with datatype=FLOAT tags(city=Shanghai, workshop=w2);
+create timeseries root.factory1.d8.temperature with datatype=FLOAT;
+create timeseries root.factory1.d9.temperature with datatype=FLOAT;
+
+insert into root.factory1.d1(time, temperature) values(1000, 104.0);
+insert into root.factory1.d1(time, temperature) values(3000, 104.2);
+insert into root.factory1.d1(time, temperature) values(5000, 103.3);
+insert into root.factory1.d1(time, temperature) values(7000, 104.1);
+
+insert into root.factory1.d2(time, temperature) values(1000, 104.4);
+insert into root.factory1.d2(time, temperature) values(3000, 103.7);
+insert into root.factory1.d2(time, temperature) values(5000, 103.3);
+insert into root.factory1.d2(time, temperature) values(7000, 102.9);
+
+insert into root.factory1.d3(time, temperature) values(1000, 103.9);
+insert into root.factory1.d3(time, temperature) values(3000, 103.8);
+insert into root.factory1.d3(time, temperature) values(5000, 102.7);
+insert into root.factory1.d3(time, temperature) values(7000, 106.9);
+
+insert into root.factory1.d4(time, temperature) values(1000, 103.9);
+insert into root.factory1.d4(time, temperature) values(5000, 102.7);
+insert into root.factory1.d4(time, temperature) values(7000, 106.9);
+
+insert into root.factory1.d5(time, temperature) values(1000, 112.9);
+insert into root.factory1.d5(time, temperature) values(7000, 113.0);
+
+insert into root.factory1.d6(time, temperature) values(1000, 113.9);
+insert into root.factory1.d6(time, temperature) values(3000, 113.3);
+insert into root.factory1.d6(time, temperature) values(5000, 112.7);
+insert into root.factory1.d6(time, temperature) values(7000, 112.3);
+
+insert into root.factory1.d7(time, temperature) values(1000, 101.2);
+insert into root.factory1.d7(time, temperature) values(3000, 99.3);
+insert into root.factory1.d7(time, temperature) values(5000, 100.1);
+insert into root.factory1.d7(time, temperature) values(7000, 99.8);
+
+insert into root.factory1.d8(time, temperature) values(1000, 50.0);
+insert into root.factory1.d8(time, temperature) values(3000, 52.1);
+insert into root.factory1.d8(time, temperature) values(5000, 50.1);
+insert into root.factory1.d8(time, temperature) values(7000, 50.5);
+
+insert into root.factory1.d9(time, temperature) values(1000, 50.3);
+insert into root.factory1.d9(time, temperature) values(3000, 52.1);
+```
+
+### Aggregation query by one single tag
+
+If the user wants to know the average temperature of each workshop, he can query like this
+
+```SQL
+SELECT AVG(temperature) FROM root.factory1.** GROUP BY TAGS city;
+```
+
+The query will calculate the average of the temperatures of those timeseries which have the same tag value of the key `city`.
+The results are
+
+```
++--------+------------------+
+|    city|  avg(temperature)|
++--------+------------------+
+| Beijing|104.04666697184244|
+|Shanghai|107.85000076293946|
+|    NULL| 50.84999910990397|
++--------+------------------+
+Total line number = 3
+It costs 0.231s
+```
+
+From the results we can see that the differences between aggregation by tags query and aggregation by time or level query are:
+1. Aggregation query by tags will no longer remove wildcard to raw timeseries, but do the aggregation through the data of multiple timeseries, which have the same tag value.
+2. Except for the aggregate result column, the result set contains the key-value column of the grouped tag. The column name is the tag key, and the values in the column are tag values which present in the searched timeseries.
+If some searched timeseries doesn't have the grouped tag, a `NULL` value in the key-value column of the grouped tag will be presented, which means the aggregation of all the timeseries lacking the tagged key.
+
+### Aggregation query by multiple tags
+
+Except for the aggregation query by one single tag, aggregation query by multiple tags in a particular order is allowed as well.
+
+For example, a user wants to know the average temperature of the devices in each workshop. 
+As the workshop names may be same in different city, it's not correct to aggregated by the tag `workshop` directly.
+So the aggregation by the tag `city` should be done first, and then by the tag `workshop`.
+
+SQL
+
+```SQL
+SELECT avg(temperature) FROM root.factory1.** GROUP BY TAGS city, workshop;
+```
+
+The results
+
+```
++--------+--------+------------------+
+|    city|workshop|  avg(temperature)|
++--------+--------+------------------+
+|    NULL|    NULL| 50.84999910990397|
+|Shanghai|      w1|113.01666768391927|
+| Beijing|      w2| 104.4000004359654|
+|Shanghai|      w2|100.10000038146973|
+| Beijing|      w1|103.73750019073486|
++--------+--------+------------------+
+Total line number = 5
+It costs 0.027s
+```
+
+We can see that in a multiple tags aggregation query, the result set will output the key-value columns of all the grouped tag keys, which have the same order with the one in `GROUP BY TAGS`.
+
+### Downsampling Aggregation by tags based on Time Window
+
+Downsampling aggregation by time window is one of the most popular features in a time series database. IoTDB supports to do aggregation query by tags based on time window.
+
+For example, a user wants to know the average temperature of the devices in each workshop, in every 5 seconds, in the range of time `[1000, 10000)`.
+
+SQL
+
+```SQL
+SELECT avg(temperature) FROM root.factory1.** GROUP BY ([1000, 10000), 5s), TAGS city, workshop;
+```
+
+The results
+
+```
++-----------------------------+--------+--------+------------------+
+|                         Time|    city|workshop|  avg(temperature)|
++-----------------------------+--------+--------+------------------+
+|1970-01-01T08:00:01.000+08:00|    NULL|    NULL| 50.91999893188476|
+|1970-01-01T08:00:01.000+08:00|Shanghai|      w1|113.20000076293945|
+|1970-01-01T08:00:01.000+08:00| Beijing|      w2|             103.4|
+|1970-01-01T08:00:01.000+08:00|Shanghai|      w2| 100.1999994913737|
+|1970-01-01T08:00:01.000+08:00| Beijing|      w1|103.81666692097981|
+|1970-01-01T08:00:06.000+08:00|    NULL|    NULL|              50.5|
+|1970-01-01T08:00:06.000+08:00|Shanghai|      w1| 112.6500015258789|
+|1970-01-01T08:00:06.000+08:00| Beijing|      w2| 106.9000015258789|
+|1970-01-01T08:00:06.000+08:00|Shanghai|      w2| 99.80000305175781|
+|1970-01-01T08:00:06.000+08:00| Beijing|      w1|             103.5|
++-----------------------------+--------+--------+------------------+
+```
+
+Comparing to the pure tag aggregations, this kind of aggregation will divide the data according to the time window specification firstly, and do the aggregation query by the multiple tags in each time window secondly.
+The result set will also contain a time column, which have the same meaning with the time column of the result in downsampling aggregation query by time window.
+
+### Limitation of Aggregation by Tags
+
+As this feature is still under development, some queries have not been completed yet and will be supported in the future.
+
+> 1. Temporarily not support `HAVING` clause to filter the results.
+> 2. Temporarily not support ordering by tag values.
+> 3. Temporarily not support `LIMIT`，`OFFSET`，`SLIMIT`，`SOFFSET`.
+> 4. Temporarily not support `ALIGN BY DEVICE`.
+> 5. Temporarily not support expressions as aggregation function parameter，e.g. `count(s+1)`.
+> 6. Not support the value filter, which stands the same with the `GROUP BY LEVEL` query.
+
 ## Aggregate result filtering
 
 If you want to filter the results of aggregate queries, 
