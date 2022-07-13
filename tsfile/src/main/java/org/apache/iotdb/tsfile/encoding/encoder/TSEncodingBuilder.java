@@ -196,7 +196,7 @@ public abstract class TSEncodingBuilder {
   /** for INT32, INT64, FLOAT, DOUBLE. */
   public static class Ts2Diff extends TSEncodingBuilder {
 
-    private int maxPointNumber = 0;
+    private int maxPointNumber = 5;
 
     @Override
     public Encoder getEncoder(TSDataType type) {
@@ -207,7 +207,9 @@ public abstract class TSEncodingBuilder {
           return new DeltaBinaryEncoder.LongDeltaEncoder();
         case FLOAT:
         case DOUBLE:
-          return new FloatEncoder(TSEncoding.TS_2DIFF, type, 6);//maxPointNumber);
+//          maxPointNumber
+//          System.out.println(maxPointNumber);
+          return new FloatEncoder(TSEncoding.TS_2DIFF, type, maxPointNumber);
         default:
           throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + type);
       }
@@ -221,8 +223,10 @@ public abstract class TSEncodingBuilder {
     public void initFromProps(Map<String, String> props) {
       // set max error from initialized map or default value if not set
       if (props == null || !props.containsKey(Encoder.MAX_POINT_NUMBER)) {
+        System.out.println(Encoder.MAX_POINT_NUMBER);
         maxPointNumber = TSFileDescriptor.getInstance().getConfig().getFloatPrecision();
       } else {
+        System.out.println(Encoder.MAX_POINT_NUMBER);
         try {
           this.maxPointNumber = Integer.parseInt(props.get(Encoder.MAX_POINT_NUMBER));
         } catch (NumberFormatException e) {

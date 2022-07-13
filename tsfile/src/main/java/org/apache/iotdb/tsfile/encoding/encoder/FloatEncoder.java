@@ -60,6 +60,7 @@ public class FloatEncoder extends Encoder {
 
   public FloatEncoder(TSEncoding encodingType, TSDataType dataType, int maxPointNumber) {
     super(encodingType);
+//    System.out.println(maxPointNumber);
     this.maxPointNumber = maxPointNumber;
     this.encoderType = encodingType;
     calculateMaxPonitNum();
@@ -94,7 +95,9 @@ public class FloatEncoder extends Encoder {
     } else if (this.encoderType == TSEncoding.TS_2DIFF) {
     }
     saveMaxPointNumber(out);
+//    System.out.println(value);
     int valueInt = convertFloatToInt(value);
+//    System.out.println(valueInt);
     encoder.encode(valueInt, out);
     if (this.encoderType == TSEncoding.RLE) {
     } else if (this.encoderType == TSEncoding.TS_2DIFF) {
@@ -114,10 +117,12 @@ public class FloatEncoder extends Encoder {
       maxPointValue = 1;
     } else {
       maxPointValue = Math.pow(10, maxPointNumber);
+      System.out.println(maxPointNumber);
     }
   }
 
   private int convertFloatToInt(float value) {
+//    Math.round(value * maxPointValue);
     return (int) Math.round(value * maxPointValue);
   }
 
