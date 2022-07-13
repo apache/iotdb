@@ -103,4 +103,16 @@ public class CompressTest {
     String result = new String(uncompressed, StandardCharsets.UTF_8);
     assertEquals(inputString, result);
   }
+
+  @Test
+  public void lzma2CompressorTest() throws IOException {
+    PublicBAOS out = new PublicBAOS();
+    out.write(inputString.getBytes(StandardCharsets.UTF_8));
+    ICompressor compressor = new ICompressor.LZMA2Compressor();
+    IUnCompressor unCompressor = new IUnCompressor.LZMA2UnCompressor();
+    byte[] compressed = compressor.compress(out.getBuf());
+    byte[] uncompressed = unCompressor.uncompress(compressed);
+    String result = new String(uncompressed, StandardCharsets.UTF_8);
+    assertEquals(inputString, result);
+  }
 }
