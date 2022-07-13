@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -136,8 +137,8 @@ public interface IMTreeBelowSG {
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
-   *     if we don't set offset.
+   * @return Pair.left contains all the satisfied getChildNodePathInNextLevel Pair.right means the
+   *     current offset or zero if we don't set offset.
    */
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
@@ -163,7 +164,7 @@ public interface IMTreeBelowSG {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
+  Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
 
   /**
    * Get child node in the next level of the given path.

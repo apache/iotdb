@@ -48,6 +48,7 @@ public class HeaderConstant {
   public static final String COLUMN_DATA_REPLICATION_FACTOR = "data_replication_factor";
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
   public static final String COLUMN_CHILDPATHS = "child paths";
+  public static final String COLUMN_NODETYPES = "node types";
   public static final String COLUMN_CHILDNODES = "child nodes";
   public static final String COLUMN_VERSION = "version";
 
@@ -191,7 +192,10 @@ public class HeaderConstant {
             true);
     showChildPathsHeader =
         new DatasetHeader(
-            Collections.singletonList(new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT)), true);
+            Arrays.asList(
+                new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_NODETYPES, TSDataType.TEXT)),
+            true);
     showChildNodesHeader =
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);

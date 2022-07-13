@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.schema;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
@@ -60,36 +61,44 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder =
-        new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
-    Set<String> nodePaths;
-
+    TsBlockBuilder tsBlockBuilder;
     try {
       if (-1 == level) {
+        tsBlockBuilder = new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
         // show child paths
-        nodePaths =
+        Set<TSchemaNode> nodePaths =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion()
                 .getChildNodePathInNextLevel(partialPath);
+        nodePaths.forEach(
+            node -> {
+              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+              tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(node.getNodeName()));
+              tsBlockBuilder
+                  .getColumnBuilder(1)
+                  .writeBinary(new Binary(String.valueOf(node.getNodeType())));
+              tsBlockBuilder.declarePosition();
+            });
       } else {
-        nodePaths =
+        tsBlockBuilder = new TsBlockBuilder(HeaderConstant.showChildNodesHeader.getRespDataTypes());
+        Set<String> childNodes;
+        childNodes =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion().getNodesListInGivenLevel(partialPath, level, false, null)
                     .stream()
                     .map(PartialPath::getFullPath)
                     .collect(Collectors.toSet());
-      }
 
+        childNodes.forEach(
+            (path) -> {
+              tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
+              tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
+              tsBlockBuilder.declarePosition();
+            });
+      }
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
-
-    nodePaths.forEach(
-        (path) -> {
-          tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
-          tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
-          tsBlockBuilder.declarePosition();
-        });
     return tsBlockBuilder.build();
   }
 

@@ -84,6 +84,22 @@ public interface IMNode extends Serializable {
 
   boolean isMeasurement();
 
+  default MNodeType getMNodeType(Boolean isConfig) {
+    if (isEntity()) {
+      return MNodeType.DEVICE;
+    }
+    if (isStorageGroup()) {
+      return MNodeType.STORAGE_GROUP;
+    }
+    if (isMeasurement()) {
+      return MNodeType.MEASUREMENT;
+    }
+    if (isConfig) {
+      return MNodeType.SG_INTERNAL;
+    }
+    return MNodeType.INTERNAL;
+  }
+
   IStorageGroupMNode getAsStorageGroupMNode();
 
   IEntityMNode getAsEntityMNode();
