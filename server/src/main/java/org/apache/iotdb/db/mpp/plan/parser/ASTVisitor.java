@@ -105,7 +105,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -2305,6 +2307,19 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     } else {
       showRegionStatement.setRegionType(null);
     }
+
+    if (ctx.OF() != null) {
+      List<PartialPath> storageGroups = null;
+      if (ctx.prefixPath(0) != null) {
+        storageGroups = new ArrayList<>();
+        for (IoTDBSqlParser.PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+          storageGroups.add(parsePrefixPath(prefixPathContext));
+        }
+      }
+      showRegionStatement.setStorageGroups(storageGroups);
+    } else {
+      showRegionStatement.setStorageGroups(null);
+    }
     return showRegionStatement;
   }
 
@@ -2468,5 +2483,26 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement =
         new ShowNodesInSchemaTemplateStatement(templateName);
     return showNodesInSchemaTemplateStatement;
+  }
+
+  @Override
+  public Statement visitSetSchemaTemplate(IoTDBSqlParser.SetSchemaTemplateContext ctx) {
+    String templateName = ctx.templateName.children.get(0).getText();
+    String path = ctx.getText();
+    SetSchemaTemplateStatement statement = null;
+    try {
+      statement = new SetSchemaTemplateStatement(templateName, path);
+    } catch (IllegalPathException e) {
+      throw new SQLParserException("set template: path error.");
+    }
+    return statement;
+  }
+
+  @Override
+  public Statement visitShowPathsSetSchemaTemplate(
+      IoTDBSqlParser.ShowPathsSetSchemaTemplateContext ctx) {
+    String templateName = ctx.templateName.children.get(0).getText();
+    ShowPathSetTemplateStatement statement = new ShowPathSetTemplateStatement(templateName);
+    return statement;
   }
 }

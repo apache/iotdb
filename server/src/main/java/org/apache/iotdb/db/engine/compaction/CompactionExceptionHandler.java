@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -235,7 +234,6 @@ public class CompactionExceptionHandler {
             fullStorageGroupName,
             targetResource,
             lostSourceResources);
-        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         return false;
       }
     }

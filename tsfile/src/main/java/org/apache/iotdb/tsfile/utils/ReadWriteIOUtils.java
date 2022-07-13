@@ -815,6 +815,19 @@ public class ReadWriteIOUtils {
     }
   }
 
+  /** write string list with self define length. */
+  public static void writeStringList(List<String> list, OutputStream outputStream)
+      throws IOException {
+    if (list == null) {
+      throw new IllegalArgumentException("stringList must not be null!");
+    }
+    int size = list.size();
+    write(size, outputStream);
+    for (String s : list) {
+      write(s, outputStream);
+    }
+  }
+
   public static CompressionType readCompressionType(InputStream inputStream) throws IOException {
     byte n = readByte(inputStream);
     return CompressionType.deserialize(n);

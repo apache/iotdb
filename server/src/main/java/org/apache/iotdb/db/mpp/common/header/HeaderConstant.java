@@ -51,6 +51,7 @@ public class HeaderConstant {
   public static final String COLUMN_NODETYPES = "node types";
   public static final String COLUMN_CHILDNODES = "child nodes";
   public static final String COLUMN_VERSION = "version";
+  public static final String COLUMN_PATHS = "paths";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -122,6 +123,9 @@ public class HeaderConstant {
 
   // dataset header for show schma template
   public static final DatasetHeader showSchemaTemplate;
+
+  // dataset header for show path set template
+  public static final DatasetHeader showPathSetTemplate;
 
   static {
     countStorageGroupHeader =
@@ -277,5 +281,7 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_TIMESERIES_ENCODING, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT)),
             true);
+    showPathSetTemplate =
+        new DatasetHeader(Arrays.asList(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT)), true);
   }
 }

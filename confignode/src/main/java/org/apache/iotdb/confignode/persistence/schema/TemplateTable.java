@@ -20,11 +20,13 @@
 package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -46,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TemplateTable {
@@ -55,28 +58,43 @@ public class TemplateTable {
   // StorageGroup read write lock
   private final ReentrantReadWriteLock templateReadWriteLock;
 
+  private final AtomicInteger templateIdGenerator;
   private final Map<String, Template> templateMap = new ConcurrentHashMap<>();
 
   private final String snapshotFileName = "template_info.bin";
 
   public TemplateTable() throws IOException {
     templateReadWriteLock = new ReentrantReadWriteLock();
+    templateIdGenerator = new AtomicInteger(0);
   }
 
   public TGetTemplateResp getMatchedTemplateByName(String name) {
     TGetTemplateResp resp = new TGetTemplateResp();
     try {
-      templateReadWriteLock.readLock().lock();
-      Template template = templateMap.get(name);
+      Template template = getTemplate(name);
       resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
       resp.setTemplate(Template.template2ByteBuffer(template));
+    } catch (MetadataException e) {
+      LOGGER.warn(e.getMessage());
+      resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     } catch (IOException e) {
       LOGGER.warn("Error TemplateInfo name", e);
       resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_NOT_EXIST.getStatusCode()));
+    }
+    return resp;
+  }
+
+  public Template getTemplate(String name) throws MetadataException {
+    try {
+      templateReadWriteLock.readLock().lock();
+      Template template = templateMap.get(name);
+      if (template == null) {
+        throw new MetadataException(String.format("Template %s not exits", name));
+      }
+      return templateMap.get(name);
     } finally {
       templateReadWriteLock.readLock().unlock();
     }
-    return resp;
   }
 
   public TGetAllTemplatesResp getAllTemplate() {
@@ -107,7 +125,7 @@ public class TemplateTable {
 
   public TSStatus createTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
     try {
-      templateReadWriteLock.readLock().lock();
+      templateReadWriteLock.writeLock().lock();
       Template template =
           Template.byteBuffer2Template(ByteBuffer.wrap(createSchemaTemplatePlan.getTemplate()));
       Template temp = this.templateMap.get(template.getName());
@@ -116,17 +134,19 @@ public class TemplateTable {
             "Failed to create template, because template name {} is exists", template.getName());
         return new TSStatus(TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode());
       }
+      template.setId(templateIdGenerator.getAndIncrement());
       this.templateMap.put(template.getName(), template);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (IOException | ClassNotFoundException e) {
       LOGGER.warn("Error to create template", e);
       return new TSStatus(TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode());
     } finally {
-      templateReadWriteLock.readLock().unlock();
+      templateReadWriteLock.writeLock().unlock();
     }
   }
 
   private void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(templateIdGenerator.get(), outputStream);
     ReadWriteIOUtils.write(templateMap.size(), outputStream);
     for (Map.Entry<String, Template> entry : templateMap.entrySet()) {
       serializeTemplate(entry.getValue(), outputStream);
@@ -144,6 +164,7 @@ public class TemplateTable {
 
   private void deserialize(InputStream inputStream) throws IOException {
     ByteBuffer byteBuffer = ByteBuffer.wrap(IOUtils.toByteArray(inputStream));
+    templateIdGenerator.set(ReadWriteIOUtils.readInt(byteBuffer));
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     while (size > 0) {
       Template template = deserializeTemplate(byteBuffer);

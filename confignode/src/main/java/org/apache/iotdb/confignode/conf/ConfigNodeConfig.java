@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
 import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -61,6 +62,10 @@ public class ConfigNodeConfig {
 
   /** The maximum number of SchemaRegion expected to be managed by each DataNode. */
   private double dataRegionPerProcessor = 0.5;
+
+  /** region allocate strategy. */
+  private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
+      RegionBalancer.RegionAllocateStrategy.GREEDY;
 
   /**
    * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
@@ -138,7 +143,9 @@ public class ConfigNodeConfig {
   private long heartbeatInterval = 1000;
 
   /** The routing policy of read/write requests */
-  private String routingPolicy = RouteBalancer.greedyPolicy;
+  private String routingPolicy = RouteBalancer.leaderPolicy;
+
+  private String readConsistencyLevel = "strong";
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -337,6 +344,15 @@ public class ConfigNodeConfig {
     this.dataRegionPerProcessor = dataRegionPerProcessor;
   }
 
+  public RegionBalancer.RegionAllocateStrategy getRegionAllocateStrategy() {
+    return regionAllocateStrategy;
+  }
+
+  public void setRegionAllocateStrategy(
+      RegionBalancer.RegionAllocateStrategy regionAllocateStrategy) {
+    this.regionAllocateStrategy = regionAllocateStrategy;
+  }
+
   public int getThriftServerAwaitTimeForStopService() {
     return thriftServerAwaitTimeForStopService;
   }
@@ -427,5 +443,13 @@ public class ConfigNodeConfig {
 
   public void setRoutingPolicy(String routingPolicy) {
     this.routingPolicy = routingPolicy;
+  }
+
+  public String getReadConsistencyLevel() {
+    return readConsistencyLevel;
+  }
+
+  public void setReadConsistencyLevel(String readConsistencyLevel) {
+    this.readConsistencyLevel = readConsistencyLevel;
   }
 }
