@@ -898,18 +898,20 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   /** Deserialize from wal */
-  public static InsertTabletNode deserializeFromWAL(DataInputStream stream)
-      throws IllegalPathException, IOException {
+  public static InsertTabletNode deserializeFromWAL(DataInputStream stream) throws IOException {
     // we do not store plan node id in wal entry
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     insertNode.subDeserializeFromWAL(stream);
     return insertNode;
   }
 
-  private void subDeserializeFromWAL(DataInputStream stream)
-      throws IllegalPathException, IOException {
+  private void subDeserializeFromWAL(DataInputStream stream) throws IOException {
     searchIndex = stream.readLong();
-    devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
+    try {
+      devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+    }
 
     int measurementSize = stream.readInt();
     measurements = new String[measurementSize];
@@ -935,16 +937,20 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     isAligned = stream.readByte() == 1;
   }
 
-  public static InsertTabletNode deserializeFromWAL(ByteBuffer buffer) throws IllegalPathException {
+  public static InsertTabletNode deserializeFromWAL(ByteBuffer buffer) {
     // we do not store plan node id in wal entry
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
     insertNode.subDeserializeFromWAL(buffer);
     return insertNode;
   }
 
-  private void subDeserializeFromWAL(ByteBuffer buffer) throws IllegalPathException {
+  private void subDeserializeFromWAL(ByteBuffer buffer) {
     searchIndex = buffer.getLong();
-    devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+    try {
+      devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertTabletNode", e);
+    }
 
     int measurementSize = buffer.getInt();
     measurements = new String[measurementSize];

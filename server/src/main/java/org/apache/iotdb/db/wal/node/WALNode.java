@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -462,7 +462,7 @@ public class WALNode implements IWALNode {
   }
 
   public IndexedConsensusRequest newIndexedConsensusRequest(long searchIndex, ByteBuffer buffer) {
-    return new IndexedConsensusRequest(searchIndex, new ByteBufferConsensusRequest(buffer));
+    return new IndexedConsensusRequest(searchIndex, new MultiLeaderConsensusRequest(buffer));
   }
 
   /** This iterator is not concurrency-safe */

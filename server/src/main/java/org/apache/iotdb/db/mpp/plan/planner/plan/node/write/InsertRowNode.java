@@ -633,13 +633,16 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   /** Deserialize from wal */
-  public static InsertRowNode deserializeFromWAL(DataInputStream stream)
-      throws IOException, IllegalPathException {
+  public static InsertRowNode deserializeFromWAL(DataInputStream stream) throws IOException {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
     insertNode.setSearchIndex(stream.readLong());
     insertNode.setTime(stream.readLong());
-    insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
+    try {
+      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(stream)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+    }
     insertNode.deserializeMeasurementsAndValuesFromWAL(stream);
 
     return insertNode;
@@ -693,12 +696,16 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   /** Deserialize from wal */
-  public static InsertRowNode deserializeFromWAL(ByteBuffer buffer) throws IllegalPathException {
+  public static InsertRowNode deserializeFromWAL(ByteBuffer buffer) {
     // we do not store plan node id in wal entry
     InsertRowNode insertNode = new InsertRowNode(new PlanNodeId(""));
     insertNode.setSearchIndex(buffer.getLong());
     insertNode.setTime(buffer.getLong());
-    insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
+    try {
+      insertNode.setDevicePath(new PartialPath(ReadWriteIOUtils.readString(buffer)));
+    } catch (IllegalPathException e) {
+      throw new IllegalArgumentException("Cannot deserialize InsertRowNode", e);
+    }
     insertNode.deserializeMeasurementsAndValuesFromWAL(buffer);
 
     return insertNode;

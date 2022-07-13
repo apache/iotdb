@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
@@ -144,8 +143,7 @@ public enum PlanNodeType {
     ReadWriteIOUtils.write(nodeType, stream);
   }
 
-  public static PlanNode deserializeFromWAL(DataInputStream stream)
-      throws IOException, IllegalPathException {
+  public static PlanNode deserializeFromWAL(DataInputStream stream) throws IOException {
     short nodeType = stream.readShort();
     switch (nodeType) {
       case 13:
@@ -157,7 +155,7 @@ public enum PlanNodeType {
     }
   }
 
-  public static PlanNode deserializeFromWAL(ByteBuffer buffer) throws IllegalPathException {
+  public static PlanNode deserializeFromWAL(ByteBuffer buffer) {
     short nodeType = buffer.getShort();
     switch (nodeType) {
       case 13:
