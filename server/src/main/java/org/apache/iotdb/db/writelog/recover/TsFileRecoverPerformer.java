@@ -289,7 +289,7 @@ public class TsFileRecoverPerformer {
             sequence);
     logReplayer.replayLogs(supplier, virtualStorageGroupProcessor);
     try {
-      if (!recoverMemTable.isEmpty()) {
+      if (!recoverMemTable.isEmpty() && recoverMemTable.getSeriesNumber() != 0) {
         // flush logs
         MemTableFlushTask tableFlushTask =
             new MemTableFlushTask(
