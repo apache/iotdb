@@ -1815,15 +1815,20 @@ public class StorageGroupProcessor {
       Set<PartialPath> devicePaths,
       long deleteStart,
       long deleteEnd) {
+    if (!tsFileResource.isClosed()) {
+      // tsfile is not closed
+      return false;
+    }
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
-      long endTime = tsFileResource.getEndTime(deviceId);
-      if (endTime == Long.MIN_VALUE) {
-        return false;
+      if (!tsFileResource.getDevices().contains(deviceId)) {
+        // resource does not contain this device
+        continue;
       }
 
-      if (tsFileResource.getDevices().contains(deviceId)
-          && (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime)) {
+      if (deleteEnd >= tsFileResource.getStartTime(deviceId)
+          && deleteStart <= tsFileResource.getEndTime(deviceId)) {
+        // time range of device has overlap with the deletion
         return false;
       }
     }
