@@ -71,7 +71,7 @@ public class AsyncDataNodeClientPool {
    *
    * @param req request
    * @param handlerMap Map<index, Handler>
-   * @param dataNodeLocations The specific DataNodeList
+   * @param dataNodeLocations ConcurrentHashMap<index, TDataNodeLocation> The specific DataNodes
    */
   public void sendAsyncRequestToDataNodeWithRetry(
       Object req,
