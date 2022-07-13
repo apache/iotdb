@@ -44,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
@@ -52,6 +53,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
@@ -71,6 +73,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -81,6 +85,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -147,6 +152,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
+  public TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req) throws TException {
+    // TODO without reqId and respId, how to trace a request exec state?
+    LOGGER.info("ConfigNode RPC Service start to remove DataNode, req: {}", req);
+    RemoveDataNodePlan removeDataNodePlan = new RemoveDataNodePlan(req.getDataNodeLocations());
+    DataNodeToStatusResp removeResp =
+        (DataNodeToStatusResp) configManager.removeDataNode(removeDataNodePlan);
+    TDataNodeRemoveResp resp = removeResp.convertToRpCDataNodeRemoveResp();
+    LOGGER.info(
+        "ConfigNode RPC Service finished to remove DataNode, req: {}, result: {}", req, resp);
+    return resp;
+  }
+
+  @Override
   public TSStatus activeDataNode(TDataNodeActiveReq req) throws TException {
     return configManager.activateDataNode(new ActivateDataNodePlan(req.getDataNodeInfo()));
   }
@@ -159,6 +177,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
     TDataNodeInfoResp resp = new TDataNodeInfoResp();
     queryResp.convertToRpcDataNodeLocationResp(resp);
     return resp;
+  }
+
+  @Override
+  public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) throws TException {
+    configManager.getDataNodeRemoveManager().reportRegionMigrateResult(req);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
@@ -505,8 +529,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TShowRegionResp showRegion(TShowRegionReq showRegionReq) throws TException {
-    GetRegionInfoListPlan getRegionInfoListPlan =
-        new GetRegionInfoListPlan(showRegionReq.getConsensusGroupType());
+    GetRegionInfoListPlan getRegionInfoListPlan = new GetRegionInfoListPlan(showRegionReq);
     RegionInfoListResp dataSet =
         (RegionInfoListResp) configManager.showRegion(getRegionInfoListPlan);
     TShowRegionResp showRegionResp = new TShowRegionResp();

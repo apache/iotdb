@@ -162,6 +162,7 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup MetricsService
     registerManager.register(MetricsService.getInstance());
     MetricsService.getInstance().startAllReporter();
+    configManager.getDataNodeRemoveManager().start();
 
     LOGGER.info("Successfully setup internal services.");
   }

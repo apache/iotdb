@@ -145,9 +145,11 @@ public class Tablet {
       case TEXT:
         {
           Binary[] sensor = (Binary[]) values[indexOfSchema];
-          if (value instanceof Binary)
-            sensor[rowIndex] = value != null ? (Binary) value : Binary.EMPTY_VALUE;
-          else sensor[rowIndex] = value != null ? new Binary((String) value) : Binary.EMPTY_VALUE;
+          if (value instanceof Binary) {
+            sensor[rowIndex] = (Binary) value;
+          } else {
+            sensor[rowIndex] = value != null ? new Binary((String) value) : Binary.EMPTY_VALUE;
+          }
           break;
         }
       case FLOAT:

@@ -190,6 +190,16 @@ The global configuration of cluster is in ConfigNode.
 |Default| org.apache.iotdb.consensus.standalone.StandAloneConsensus |
 |Effective|Only allowed to be modified in first start up|
 
+
+* region\_allocate\_strategy
+
+|Name| region\_allocate\_strategy |
+|:---:|:---|
+|Description| Region allocate strategy, COPY_SET is suitable for large clusters, GREEDY is suitable for small clusters  |
+|Type| String |
+|Default| GREEDY |
+|Effective|After restarting system |
+
 ### HeartBeat 
 
 * heartbeat\_interval

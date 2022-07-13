@@ -29,6 +29,16 @@ struct TDataNodeRegisterReq {
   2: optional map<string, TStorageGroupSchema> statusMap
 }
 
+struct TDataNodeRemoveReq {
+  1: required list<common.TDataNodeLocation> dataNodeLocations
+}
+
+struct TRegionMigrateResultReportReq {
+  1: required common.TConsensusGroupId regionId
+  2: required common.TSStatus migrateResult
+  3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
+}
+
 struct TDataNodeActiveReq {
   1: required common.TDataNodeInfo dataNodeInfo
 }
@@ -49,6 +59,10 @@ struct TDataNodeRegisterResp {
   4: optional TGlobalConfig globalConfig
 }
 
+struct TDataNodeRemoveResp {
+  1: required common.TSStatus status
+  2: optional map<common.TDataNodeLocation, common.TSStatus> nodeToStatus
+}
 struct TDataNodeInfoResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeLocation>
@@ -244,6 +258,7 @@ struct TDropFunctionReq {
 // show regions
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
+  2: optional list<string> storageGroups
 }
 
 struct TShowRegionResp {
@@ -289,9 +304,13 @@ service IConfigNodeRPCService {
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
+  TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
+
   common.TSStatus activeDataNode(TDataNodeActiveReq req)
 
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
+
+  common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
   /* Show Cluster */
   TClusterNodeInfos getAllClusterNodeInfos()

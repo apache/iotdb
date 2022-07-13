@@ -82,7 +82,6 @@ public class AsyncDataNodeClientPool {
     int regionNum = 0;
     // Map<TConsensusGroupId, Map<DataNodeId, index>>
     Map<TConsensusGroupId, Map<Integer, Integer>> indexMap = new TreeMap<>();
-
     // Assign an independent index to each Region
     for (Map.Entry<String, List<TRegionReplicaSet>> entry :
         createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
