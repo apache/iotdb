@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.sync.receiver.manager;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class PipeMessage {
+public class PipeMessage implements Serializable {
   private MsgType type;
   private String msg;
 

@@ -19,15 +19,14 @@
  */
 package org.apache.iotdb.db.sync.transport.client;
 
+import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.SyncConnectionException;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
-import org.apache.iotdb.db.sync.transport.conf.TransportConstant;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.transport.thrift.MetaInfo;
@@ -59,10 +58,11 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
+import static org.apache.iotdb.commons.sync.SyncConstant.REBASE_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.RETRY_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.SUCCESS_CODE;
 import static org.apache.iotdb.db.sync.transport.conf.TransportConfig.isCheckFileDegistAgain;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.REBASE_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.RETRY_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.SUCCESS_CODE;
 
 public class TransportClient implements ITransportClient {
 
@@ -260,8 +260,8 @@ public class TransportClient implements ITransportClient {
     while (true) {
 
       // Normal piece.
-      if (position != 0L && buffer.length != TransportConstant.DATA_CHUNK_SIZE) {
-        buffer = new byte[TransportConstant.DATA_CHUNK_SIZE];
+      if (position != 0L && buffer.length != DATA_CHUNK_SIZE) {
+        buffer = new byte[DATA_CHUNK_SIZE];
       }
 
       int dataLength;
@@ -350,7 +350,7 @@ public class TransportClient implements ITransportClient {
       throws SyncConnectionException, IOException {
     messageDigest.reset();
     try (InputStream inputStream = new FileInputStream(file)) {
-      byte[] block = new byte[TransportConstant.DATA_CHUNK_SIZE];
+      byte[] block = new byte[DATA_CHUNK_SIZE];
       int length;
       while ((length = inputStream.read(block)) > 0) {
         messageDigest.update(block, 0, length);

@@ -20,10 +20,10 @@
 package org.apache.iotdb.db.sync.transport.server;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
@@ -60,12 +60,12 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.apache.iotdb.db.sync.conf.SyncConstant.DATA_CHUNK_SIZE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.CONFLICT_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.ERROR_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.REBASE_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.RETRY_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.SUCCESS_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.CONFLICT_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
+import static org.apache.iotdb.commons.sync.SyncConstant.ERROR_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.REBASE_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.RETRY_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.SUCCESS_CODE;
 
 public class TransportServiceImpl implements TransportService.Iface {
   private static Logger logger = LoggerFactory.getLogger(TransportServiceImpl.class);

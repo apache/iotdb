@@ -63,6 +63,10 @@ public class CommonConfig {
           + File.separator
           + "procedure";
 
+  /** Sync directory, including the log and hardlink tsfiles */
+  private String syncFolder =
+      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+
   /** Default system file storage is in local file system (unsupported) */
   private FSType systemFileStorageFs = FSType.LOCAL;
 
@@ -80,6 +84,7 @@ public class CommonConfig {
     userFolder = addHomeDir(userFolder, homeDir);
     roleFolder = addHomeDir(roleFolder, homeDir);
     procedureWalFolder = addHomeDir(procedureWalFolder, homeDir);
+    syncFolder = addHomeDir(syncFolder, homeDir);
   }
 
   private String addHomeDir(String dir, String homeDir) {
@@ -163,6 +168,14 @@ public class CommonConfig {
 
   public void setProcedureWalFolder(String procedureWalFolder) {
     this.procedureWalFolder = procedureWalFolder;
+  }
+
+  public String getSyncFolder() {
+    return syncFolder;
+  }
+
+  public void setSyncFolder(String syncFolder) {
+    this.syncFolder = syncFolder;
   }
 
   public FSType getSystemFileStorageFs() {

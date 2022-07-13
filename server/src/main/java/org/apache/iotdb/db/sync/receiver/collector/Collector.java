@@ -21,14 +21,14 @@ package org.apache.iotdb.db.sync.receiver.collector;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadBearableException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueue;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
+import org.apache.iotdb.db.sync.receiver.AbstractReceiverInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
-import org.apache.iotdb.db.sync.receiver.manager.ReceiverManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,9 +45,11 @@ public class Collector {
   private static final Logger logger = LoggerFactory.getLogger(Collector.class);
   private static final int WAIT_TIMEOUT = 2000;
   private ExecutorService executorService;
-  private Map<String, Future> taskFutures;
+  private final Map<String, Future> taskFutures;
+  private final AbstractReceiverInfo receiverInfo;
 
-  public Collector() {
+  public Collector(AbstractReceiverInfo receiverInfo) {
+    this.receiverInfo = receiverInfo;
     taskFutures = new ConcurrentHashMap<>();
   }
 
@@ -140,12 +142,11 @@ public class Collector {
         } catch (PipeDataLoadBearableException e) {
           // bearable exception
           logger.warn(e.getMessage());
-          ReceiverManager.getInstance()
-              .writePipeMessage(
-                  pipeName,
-                  remoteIp,
-                  createTime,
-                  new PipeMessage(PipeMessage.MsgType.WARN, e.getMessage()));
+          receiverInfo.writePipeMessage(
+              pipeName,
+              remoteIp,
+              createTime,
+              new PipeMessage(PipeMessage.MsgType.WARN, e.getMessage()));
           pipeDataQueue.commit();
         } catch (PipeDataLoadException e) {
           // unbearable exception
@@ -160,9 +161,8 @@ public class Collector {
             msg = String.format("Cannot load pipeData because %s", e.getMessage());
           }
           logger.error(msg);
-          ReceiverManager.getInstance()
-              .writePipeMessage(
-                  pipeName, remoteIp, createTime, new PipeMessage(PipeMessage.MsgType.ERROR, msg));
+          receiverInfo.writePipeMessage(
+              pipeName, remoteIp, createTime, new PipeMessage(PipeMessage.MsgType.ERROR, msg));
           break;
         }
       }
