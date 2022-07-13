@@ -2085,11 +2085,11 @@ public class DataRegion {
     // If there are still some old version tsfiles, the delete won't succeeded.
     if (upgradeFileCount.get() != 0) {
       throw new IOException(
-          "Delete failed. " + "Please do not delete until the old files upgraded.");
+          "Alter failed. " + "Please do not delete until the old files upgraded.");
     }
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException(
-          "Delete failed. " + "Please do not delete until the old files settled.");
+          "Alter failed. " + "Please do not delete until the old files settled.");
     }
     logger.info("[alter timeseries] syncCloseAllWorkingTsFileProcessors");
     // flush & close
@@ -2169,7 +2169,7 @@ public class DataRegion {
             tsFileRewriteExcutor.execute();
             // move tsfile
             logger.info("[alter timeseries] move tsfile");
-            tsFileResource.moveTsFile(TSFILE_SUFFIX, IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX);
+            tsFileResource.moveTsFile(TSFILE_SUFFIX, IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX + System.currentTimeMillis());
             targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
             // replace
             logger.info("[alter timeseries] replace tsfile");

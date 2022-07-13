@@ -243,17 +243,17 @@ public class TsFileNameGenerator {
       throws IOException {
     if (oldTsFileResource != null) {
       TsFileName tsFileName = getTsFileName(oldTsFileResource.getTsFile().getName());
-      return new TsFileResource(
-          new File(
+      File file = new File(
               oldTsFileResource.getTsFile().getParent(),
               tsFileName.time
-                  + FILE_NAME_SEPARATOR
-                  + tsFileName.version
-                  + FILE_NAME_SEPARATOR
-                  + tsFileName.innerCompactionCnt
-                  + FILE_NAME_SEPARATOR
-                  + tsFileName.crossCompactionCnt
-                  + IoTDBConstant.ALTER_TMP_FILE_SUFFIX));
+                      + FILE_NAME_SEPARATOR
+                      + tsFileName.version
+                      + FILE_NAME_SEPARATOR
+                      + tsFileName.innerCompactionCnt
+                      + FILE_NAME_SEPARATOR
+                      + tsFileName.crossCompactionCnt
+                      + IoTDBConstant.ALTER_TMP_FILE_SUFFIX);
+      return new TsFileResource(file);
     }
     return null;
   }

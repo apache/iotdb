@@ -797,8 +797,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
                       null,
                       null,
                       null,
-                      curEncoding == null ? schema.getEncodingType() : curEncoding,
-                      curCompressionType == null ? schema.getCompressor() : curCompressionType));
+                      measurementMNode.getSchema().getEncodingType(),
+//                      curEncoding == null ? schema.getEncodingType() : curEncoding,
+//                      curCompressionType == null ? schema.getCompressor() : curCompressionType
+                      measurementMNode.getSchema().getCompressor()
+              ));
       forceMlog();
     }
     return new Pair<>(schema.getEncodingType(), schema.getCompressor());

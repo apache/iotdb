@@ -90,7 +90,7 @@ public class TsFileRewriteExcutor {
       }
 
       targetTsFileResource.updatePlanIndexes(tsFileResource);
-      // write index,booloom,footer, end file
+      // write index,bloom,footer, end file
       writer.endFile();
       targetTsFileResource.close();
     } finally {
