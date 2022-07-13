@@ -51,6 +51,7 @@ import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
@@ -59,6 +60,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionInter
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
@@ -142,6 +144,8 @@ public class ConfigManager implements IManager {
   /** UDF */
   private final UDFManager udfManager;
 
+  private final DataNodeRemoveManager dataNodeRemoveManager;
+
   public ConfigManager() throws IOException {
     // Build the persistence module
     NodeInfo nodeInfo = new NodeInfo();
@@ -165,6 +169,7 @@ public class ConfigManager implements IManager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
+    this.dataNodeRemoveManager = new DataNodeRemoveManager(this);
     this.consensusManager = new ConsensusManager(this, stateMachine);
   }
 
@@ -172,6 +177,7 @@ public class ConfigManager implements IManager {
     consensusManager.close();
     partitionManager.getRegionCleaner().shutdown();
     procedureManager.shiftExecutor(false);
+    dataNodeRemoveManager.stop();
   }
 
   @Override
@@ -188,6 +194,19 @@ public class ConfigManager implements IManager {
       DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
       dataSet.setStatus(status);
       dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
+      return dataSet;
+    }
+  }
+
+  @Override
+  public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+    // TODO replace with Porcedure later.
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return nodeManager.removeDataNode(removeDataNodePlan);
+    } else {
+      DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
+      dataSet.setStatus(status);
       return dataSet;
     }
   }
@@ -842,6 +861,11 @@ public class ConfigManager implements IManager {
   @Override
   public UDFManager getUDFManager() {
     return udfManager;
+  }
+
+  @Override
+  public DataNodeRemoveManager getDataNodeRemoveManager() {
+    return dataNodeRemoveManager;
   }
 
   @Override

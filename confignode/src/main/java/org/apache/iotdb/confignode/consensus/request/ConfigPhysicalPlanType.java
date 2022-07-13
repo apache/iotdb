@@ -61,6 +61,7 @@ public enum ConfigPhysicalPlanType {
   ListUserRoles,
   ListRoleUsers,
   ApplyConfigNode,
+  RemoveDataNode,
   RemoveConfigNode,
   CreateFunction,
   DropFunction,
@@ -70,6 +71,7 @@ public enum ConfigPhysicalPlanType {
   CreateSchemaTemplate,
   ShowSchemaTemplate,
   ShowNodesInSchemaTemplate,
+  UpdateRegionLocation,
   SetSchemaTemplate,
   GetPathsSetTemplate;
 }

@@ -288,6 +288,10 @@ public abstract class AbstractThriftServiceThread extends Thread {
       serverTransport.close();
       serverTransport = null;
     }
+    // fix bug when DataNode.stop()
+    if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
+      threadStopLatch.countDown();
+    }
   }
 
   public boolean isServing() {

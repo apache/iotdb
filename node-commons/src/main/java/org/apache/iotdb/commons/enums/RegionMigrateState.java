@@ -16,15 +16,38 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.enums;
 
-package org.apache.iotdb.confignode.client;
+public enum RegionMigrateState {
+  ONLINE(0),
+  LEADER_CHANGING(1),
+  DATA_COPYING(2),
+  DATA_COPY_SUCCEED(3),
+  DATA_COPY_FAILED(4),
+  OFFLINE(5);
 
-public enum DataNodeRequestType {
-  deleteRegions,
-  invalidatePartitionCache,
-  invalidatePermissionCache,
-  invalidateSchemaCache,
-  migrateRegion,
-  disableDataNode,
-  stopDataNode;
+  int code;
+
+  RegionMigrateState(int code) {
+    this.code = code;
+  }
+
+  public int getCode() {
+    return code;
+  }
+
+  /**
+   * get RegionMigrateState by code
+   *
+   * @param code code
+   * @return RegionMigrateState
+   */
+  public static RegionMigrateState getStateByCode(int code) {
+    for (RegionMigrateState state : RegionMigrateState.values()) {
+      if (state.getCode() == code) {
+        return state;
+      }
+    }
+    return null;
+  }
 }

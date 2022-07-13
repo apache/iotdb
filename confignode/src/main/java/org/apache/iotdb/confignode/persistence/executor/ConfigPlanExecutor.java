@@ -47,6 +47,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
@@ -54,6 +55,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.exception.physical.UnknownPhysicalPlanTypeException;
 import org.apache.iotdb.confignode.persistence.AuthorInfo;
@@ -161,6 +163,8 @@ public class ConfigPlanExecutor {
         return nodeInfo.registerDataNode((RegisterDataNodePlan) req);
       case ActivateDataNode:
         return nodeInfo.activateDataNode((ActivateDataNodePlan) req);
+      case RemoveDataNode:
+        return nodeInfo.removeDataNode((RemoveDataNodePlan) req);
       case SetStorageGroup:
         TSStatus status = clusterSchemaInfo.setStorageGroup((SetStorageGroupPlan) req);
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -214,6 +218,8 @@ public class ConfigPlanExecutor {
         return udfInfo.dropFunction((DropFunctionPlan) req);
       case CreateSchemaTemplate:
         return clusterSchemaInfo.createSchemaTemplate((CreateSchemaTemplatePlan) req);
+      case UpdateRegionLocation:
+        return partitionInfo.updateRegionLocation((UpdateRegionLocationPlan) req);
       case SetSchemaTemplate:
         return clusterSchemaInfo.setSchemaTemplate((SetSchemaTemplatePlan) req);
       default:

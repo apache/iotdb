@@ -25,8 +25,12 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
+import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -72,6 +76,12 @@ public class SyncDataNodeClientPool {
             return client.deleteRegion((TConsensusGroupId) req);
           case invalidatePermissionCache:
             return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
+          case migrateRegion:
+            return client.migrateRegion((TMigrateRegionReq) req);
+          case disableDataNode:
+            return client.disableDataNode((TDisableDataNodeReq) req);
+          case stopDataNode:
+            return client.stopDataNode();
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
@@ -129,6 +139,62 @@ public class SyncDataNodeClientPool {
     } catch (InterruptedException e) {
       LOGGER.error("Retry wait failed.", e);
     }
+  }
+
+  /**
+   * change a region leader from the datanode to other datanode, other datanode should be in same
+   * raft group
+   *
+   * @param regionId the region which will changer leader
+   * @param dataNode data node server, change regions leader from it
+   * @param newLeaderNode target data node, change regions leader to it
+   * @return TSStatus
+   */
+  public TSStatus changeRegionLeader(
+      TConsensusGroupId regionId, TEndPoint dataNode, TDataNodeLocation newLeaderNode) {
+    LOGGER.info("send RPC to data node: {} for changing regions leader on it", dataNode);
+    TSStatus status;
+    try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(dataNode)) {
+      TRegionLeaderChangeReq req = new TRegionLeaderChangeReq(regionId, newLeaderNode);
+      status = client.changeRegionLeader(req);
+    } catch (IOException e) {
+      LOGGER.error("Can't connect to Data node: {}", dataNode, e);
+      status = new TSStatus(TSStatusCode.NO_CONNECTION.getStatusCode());
+      status.setMessage(e.getMessage());
+    } catch (TException e) {
+      LOGGER.error("Change regions leader error on Date node: {}", dataNode, e);
+      status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_FAILED.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
+    return status;
+  }
+
+  public TSStatus addToRegionConsensusGroup(
+      List<TDataNodeLocation> regionOriginalPeerNodes,
+      TConsensusGroupId regionId,
+      TDataNodeLocation newPeerNode,
+      String storageGroup,
+      long ttl) {
+    TSStatus status;
+    // do addConsensusGroup in new node locally
+    try (SyncDataNodeInternalServiceClient client =
+        clientManager.borrowClient(newPeerNode.getInternalEndPoint())) {
+      List<TDataNodeLocation> currentPeerNodes = new ArrayList<>(regionOriginalPeerNodes);
+      currentPeerNodes.add(newPeerNode);
+      TAddConsensusGroup req = new TAddConsensusGroup(regionId, currentPeerNodes, storageGroup);
+      req.setTtl(ttl);
+      status = client.addToRegionConsensusGroup(req);
+    } catch (IOException e) {
+      LOGGER.error("Can't connect to Data Node {}.", newPeerNode.getInternalEndPoint(), e);
+      status = new TSStatus(TSStatusCode.NO_CONNECTION.getStatusCode());
+      status.setMessage(e.getMessage());
+    } catch (TException e) {
+      LOGGER.error(
+          "Add region consensus {} group failed to Date node: {}", regionId, newPeerNode, e);
+      status = new TSStatus(TSStatusCode.REGION_MIGRATE_FAILED.getStatusCode());
+      status.setMessage(e.getMessage());
+    }
+    return status;
   }
 
   // TODO: Is the ClientPool must be a singleton?

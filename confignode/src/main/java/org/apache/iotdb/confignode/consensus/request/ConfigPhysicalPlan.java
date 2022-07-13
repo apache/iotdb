@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
@@ -109,6 +110,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case ActivateDataNode:
           req = new ActivateDataNodePlan();
+          break;
+        case RemoveDataNode:
+          req = new RemoveDataNodePlan();
           break;
         case GetDataNodeInfo:
           req = new GetDataNodeInfoPlan();
