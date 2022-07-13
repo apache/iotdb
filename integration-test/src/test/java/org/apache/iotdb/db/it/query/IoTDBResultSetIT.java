@@ -141,7 +141,7 @@ public class IoTDBResultSetIT {
   @Test
   public void emptyQueryTest2() {
     String expectedHeader =
-        "Time,root.t1.wf01.wt01.status,root.t1.wf01.wt01.temperature,root.t1.wf01.wt01.type,root.t1.wf01.wt01.grade,";
+        "Time,root.t1.wf01.wt01.grade,root.t1.wf01.wt01.temperature,root.t1.wf01.wt01.type,root.t1.wf01.wt01.status,";
     resultSetEqualTest("select * from root.t1.wf01.wt01", expectedHeader, emptyResultSet);
   }
 
