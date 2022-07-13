@@ -23,8 +23,10 @@ import org.apache.ratis.grpc.GrpcConfigKeys.Server;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
-import sun.misc.VM;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.RuntimeMXBean;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class RatisConfig {
@@ -740,7 +742,7 @@ public class RatisConfig {
 
     public static class Builder {
       // TODO tuning this memory params
-      private SizeInBytes maxAllowedDirectMemory = SizeInBytes.valueOf(VM.maxDirectMemory());
+      private SizeInBytes maxAllowedDirectMemory = SizeInBytes.valueOf(getMemoryDirect());
 
       /**
        * Ratis is estimated to consume 1X of original data memory in heap{@link
@@ -769,6 +771,20 @@ public class RatisConfig {
 
       public MemControl build() {
         return new MemControl(maxAllowedDirectMemory, maxAllowedHeapMemory, maxQueueingRequests);
+      }
+
+      public long getMemoryDirect() {
+        long memoryDirect = Runtime.getRuntime().maxMemory();
+        RuntimeMXBean RuntimemxBean = ManagementFactory.getRuntimeMXBean();
+        List<String> args = RuntimemxBean.getInputArguments();
+
+        for (int i = 0; i < args.size(); i++) {
+          if (args.get(i).contains("MaxDirectMemorySize")) {
+            memoryDirect = SizeInBytes.valueOf(args.get(i).split("=")[1]).getSize();
+          }
+        }
+
+        return memoryDirect;
       }
     }
   }
