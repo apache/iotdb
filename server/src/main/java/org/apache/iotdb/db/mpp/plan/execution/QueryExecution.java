@@ -161,11 +161,13 @@ public class QueryExecution implements IQueryExecution {
       stateMachine.transitionToRunning();
       return;
     }
+    long startTime =System.currentTimeMillis();
     doLogicalPlan();
     doDistributedPlan();
     if (context.getQueryType() == QueryType.READ) {
       initResultHandle();
     }
+    context.setTimeOut(context.getTimeOut()-(System.currentTimeMillis()-startTime));
     schedule();
   }
 

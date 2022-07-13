@@ -122,10 +122,13 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @Override
-  public void submitDrivers(QueryId queryId, List<IDriver> instances) {
+  public void submitDrivers(QueryId queryId, List<IDriver> instances, Long timeOut) {
     List<DriverTask> tasks =
         instances.stream()
-            .map(v -> new DriverTask(v, QUERY_TIMEOUT_MS, DriverTaskStatus.READY))
+            .map(
+                v ->
+                    new DriverTask(
+                        v, timeOut > 0 ? timeOut : QUERY_TIMEOUT_MS, DriverTaskStatus.READY))
             .collect(Collectors.toList());
     queryMap
         .computeIfAbsent(queryId, v -> Collections.synchronizedSet(new HashSet<>()))

@@ -51,11 +51,12 @@ public class FragmentInstanceExecution {
       FragmentInstanceContext context,
       IDriver driver,
       FragmentInstanceStateMachine stateMachine,
-      CounterStat failedInstances) {
+      CounterStat failedInstances,
+      long timeOut) {
     FragmentInstanceExecution execution =
         new FragmentInstanceExecution(instanceId, context, driver, stateMachine);
     execution.initialize(failedInstances, scheduler);
-    scheduler.submitDrivers(instanceId.getQueryId(), ImmutableList.of(driver));
+    scheduler.submitDrivers(instanceId.getQueryId(), ImmutableList.of(driver), timeOut);
     return execution;
   }
 
