@@ -31,7 +31,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 
 public class StandaloneServiceProvider extends ServiceProvider {
 
-
   public StandaloneServiceProvider() throws QueryProcessException {
     super(new PlanExecutor());
   }
