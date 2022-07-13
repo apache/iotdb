@@ -25,9 +25,9 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.client.AsyncMultiLeaderServiceClient;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher;
@@ -181,7 +181,7 @@ public class MultiLeaderServerImpl {
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
-      ByteBufferConsensusRequest request) {
+      MultiLeaderConsensusRequest request) {
     return new IndexedConsensusRequest(ConsensusReqReader.DEFAULT_SEARCH_INDEX, request);
   }
 

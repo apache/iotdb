@@ -33,7 +33,6 @@ import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
