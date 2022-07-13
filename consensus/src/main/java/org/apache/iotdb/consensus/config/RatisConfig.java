@@ -23,6 +23,7 @@ import org.apache.ratis.grpc.GrpcConfigKeys.Server;
 import org.apache.ratis.server.RaftServerConfigKeys;
 import org.apache.ratis.util.SizeInBytes;
 import org.apache.ratis.util.TimeDuration;
+import sun.misc.VM;
 
 import java.util.concurrent.TimeUnit;
 
@@ -34,6 +35,7 @@ public class RatisConfig {
   private final ThreadPool threadPool;
   private final Log log;
   private final Grpc grpc;
+  private final MemControl memControl;
 
   private RatisConfig(
       Rpc rpc,
@@ -41,13 +43,15 @@ public class RatisConfig {
       Snapshot snapshot,
       ThreadPool threadPool,
       Log log,
-      Grpc grpc) {
+      Grpc grpc,
+      MemControl memControl) {
     this.rpc = rpc;
     this.leaderElection = leaderElection;
     this.snapshot = snapshot;
     this.threadPool = threadPool;
     this.log = log;
     this.grpc = grpc;
+    this.memControl = memControl;
   }
 
   public Rpc getRpc() {
@@ -74,6 +78,10 @@ public class RatisConfig {
     return grpc;
   }
 
+  public MemControl getMemControl() {
+    return memControl;
+  }
+
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -85,6 +93,7 @@ public class RatisConfig {
     private ThreadPool threadPool;
     private Log log;
     private Grpc grpc;
+    private MemControl memControl;
 
     public RatisConfig build() {
       return new RatisConfig(
@@ -93,7 +102,8 @@ public class RatisConfig {
           snapshot != null ? snapshot : Snapshot.newBuilder().build(),
           threadPool != null ? threadPool : ThreadPool.newBuilder().build(),
           log != null ? log : Log.newBuilder().build(),
-          grpc != null ? grpc : Grpc.newBuilder().build());
+          grpc != null ? grpc : Grpc.newBuilder().build(),
+          memControl != null ? memControl : MemControl.newBuilder().build());
     }
 
     public Builder setRpc(Rpc rpc) {
@@ -123,6 +133,11 @@ public class RatisConfig {
 
     public Builder setGrpc(Grpc grpc) {
       this.grpc = grpc;
+      return this;
+    }
+
+    public Builder setMemControl(MemControl memControl) {
+      this.memControl = memControl;
       return this;
     }
   }
@@ -689,6 +704,70 @@ public class RatisConfig {
       public Grpc.Builder setLeaderOutstandingAppendsMax(int leaderOutstandingAppendsMax) {
         this.leaderOutstandingAppendsMax = leaderOutstandingAppendsMax;
         return this;
+      }
+    }
+  }
+
+  public static class MemControl {
+    private final SizeInBytes maxAllowedDirectMemory;
+    private final SizeInBytes maxAllowedHeapMemory;
+    private final long maxQueueingRequests;
+
+    public MemControl(
+        SizeInBytes maxAllowedDirectMemory,
+        SizeInBytes maxAllowedHeapMemory,
+        long maxQueueingRequests) {
+      this.maxAllowedDirectMemory = maxAllowedDirectMemory;
+      this.maxAllowedHeapMemory = maxAllowedHeapMemory;
+      this.maxQueueingRequests = maxQueueingRequests;
+    }
+
+    public static MemControl.Builder newBuilder() {
+      return new Builder();
+    }
+
+    public SizeInBytes getMaxAllowedDirectMemory() {
+      return maxAllowedDirectMemory;
+    }
+
+    public SizeInBytes getMaxAllowedHeapMemory() {
+      return maxAllowedHeapMemory;
+    }
+
+    public long getMaxQueueingRequests() {
+      return maxQueueingRequests;
+    }
+
+    public static class Builder {
+      // TODO tuning this memory params
+      private SizeInBytes maxAllowedDirectMemory = SizeInBytes.valueOf(VM.maxDirectMemory());
+
+      /**
+       * Ratis is estimated to consume 1X of original data memory in heap{@link org.apache.iotdb.consensus.ratis.MemChecker}, while MemTable will use
+       * 1X. So we assign roughly 50% of heap memory as Ratis' maxAllowedHeapMemory.
+       */
+      private SizeInBytes maxAllowedHeapMemory =
+          SizeInBytes.valueOf((long) (Runtime.getRuntime().maxMemory() * 0.5));
+
+      private long maxQueueingRequests = 80000;
+
+      public MemControl.Builder setMaxAllowedDirectoryMemory(SizeInBytes maxAllowedDirectMemory) {
+        this.maxAllowedDirectMemory = maxAllowedDirectMemory;
+        return this;
+      }
+
+      public MemControl.Builder setMaxAllowedHeapMemory(SizeInBytes maxAllowedHeapMemory) {
+        this.maxAllowedHeapMemory = maxAllowedHeapMemory;
+        return this;
+      }
+
+      public MemControl.Builder setMaxQueueingRequests(long maxQueueingRequests) {
+        this.maxQueueingRequests = maxQueueingRequests;
+        return this;
+      }
+
+      public MemControl build() {
+        return new MemControl(maxAllowedDirectMemory, maxAllowedHeapMemory, maxQueueingRequests);
       }
     }
   }
