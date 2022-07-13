@@ -32,7 +32,9 @@ public enum TSEncoding {
   RAKE((byte) 10),
   RLBE((byte) 11),
   TEXTRLE((byte) 12),
-  HUFFMAN((byte) 13);
+  HUFFMAN((byte) 13),
+  HUFFMANV2((byte) 14),
+  BUCKET((byte) 15);
 
   private final byte type;
 
@@ -80,6 +82,10 @@ public enum TSEncoding {
         return TSEncoding.TEXTRLE;
       case 13:
         return TSEncoding.HUFFMAN;
+      case 14:
+        return TSEncoding.HUFFMANV2;
+      case 15:
+        return TSEncoding.BUCKET;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

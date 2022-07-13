@@ -3,7 +3,7 @@ package org.apache.iotdb.tsfile.encoding.HuffmanTree;
 public class HuffmanTree {
   public boolean isLeaf = false;
   public int frequency;
-  public byte originalbyte;
+  public int originalbyte;
   public boolean isRecordEnd = false;
   public HuffmanTree leftNode;
   public HuffmanTree rightNode;

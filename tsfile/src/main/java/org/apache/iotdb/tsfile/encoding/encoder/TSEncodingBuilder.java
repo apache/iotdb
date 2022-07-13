@@ -80,6 +80,8 @@ public abstract class TSEncodingBuilder {
         return new TEXTRLE();
       case HUFFMAN:
         return new HUFFMAN();
+      case BUCKET:
+        return new BucketEncoder();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -150,7 +152,7 @@ public abstract class TSEncodingBuilder {
           return new LongRleEncoder();
         case FLOAT:
         case DOUBLE:
-          return new FloatEncoder(TSEncoding.RLE, type, maxPointNumber);
+          return new FloatEncoder(TSEncoding.RLE, type, 6);//maxPointNumber);
         case TEXT:
           return new TextRleEncoder();
         default:
@@ -205,7 +207,7 @@ public abstract class TSEncodingBuilder {
           return new DeltaBinaryEncoder.LongDeltaEncoder();
         case FLOAT:
         case DOUBLE:
-          return new FloatEncoder(TSEncoding.TS_2DIFF, type, maxPointNumber);
+          return new FloatEncoder(TSEncoding.TS_2DIFF, type, 6);//maxPointNumber);
         default:
           throw new UnSupportedDataTypeException("TS_2DIFF doesn't support data type: " + type);
       }
@@ -427,6 +429,27 @@ public abstract class TSEncodingBuilder {
         case INT32:
         case INT64:
         case FLOAT:
+        case DOUBLE:
+        default:
+          throw new UnSupportedDataTypeException("TEXTRLE doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing
+    }
+  }
+  public static class BucketEncoder extends TSEncodingBuilder {
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+          return new org.apache.iotdb.tsfile.encoding.encoder.BucketEncoder();
+        case FLOAT:
+          return new org.apache.iotdb.tsfile.encoding.encoder.BucketEncoder();
+        case TEXT:
+        case INT64:
         case DOUBLE:
         default:
           throw new UnSupportedDataTypeException("TEXTRLE doesn't support data type: " + type);
