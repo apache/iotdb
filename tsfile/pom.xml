@@ -83,6 +83,9 @@
             <groupId>org.apache.parquet</groupId>
             <artifactId>parquet-hadoop-bundle</artifactId>
             <version>1.8.1</version>
+            <groupId>org.tukaani</groupId>
+            <artifactId>xz</artifactId>
+            <version>1.9</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>

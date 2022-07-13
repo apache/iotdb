@@ -40,8 +40,8 @@ public class FloatDecoderTest {
 
   private static final Logger logger = LoggerFactory.getLogger(FloatDecoderTest.class);
   private final double delta = 0.0000001;
-  private final int floatMaxPointValue = 10000;
-  private final int floatMaxPointNumber = 4;
+  private final int floatMaxPointValue = 100000;
+  private final int floatMaxPointNumber = 5;
   private final long doubleMaxPointValue = 1000000000000000L;
   private final int doubleMaxPointNumber = 15;
   private List<Float> floatList;

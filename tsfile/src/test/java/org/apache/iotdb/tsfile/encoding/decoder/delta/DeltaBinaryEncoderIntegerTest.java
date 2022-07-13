@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
+import static java.lang.Math.pow;
 import static org.junit.Assert.assertEquals;
 
 public class DeltaBinaryEncoderIntegerTest {
@@ -44,6 +45,15 @@ public class DeltaBinaryEncoderIntegerTest {
   public void test() {
     writer = new DeltaBinaryEncoder.IntDeltaEncoder();
     reader = new DeltaBinaryDecoder.IntDeltaDecoder();
+  }
+
+  @Test
+  public void testtest() throws IOException{
+    int[] data = new int[20];
+    for (int i = 0; i < 20; i++) {
+      data[i] = i * (int)pow(-1, i);
+    }
+    shouldReadAndWrite(data, data.length);
   }
 
   @Test
@@ -65,7 +75,7 @@ public class DeltaBinaryEncoderIntegerTest {
 
   private void boundInt(int power, int[] data) throws IOException {
     for (int i = 0; i < ROW_NUM; i++) {
-      data[i] = ran.nextInt((int) Math.pow(2, power));
+      data[i] = ran.nextInt((int) pow(2, power));
     }
     shouldReadAndWrite(data, ROW_NUM);
   }
@@ -106,5 +116,6 @@ public class DeltaBinaryEncoderIntegerTest {
     while (reader.hasNext(buffer)) {
       assertEquals(data[i++], reader.readInt(buffer));
     }
+
   }
 }

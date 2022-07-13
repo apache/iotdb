@@ -29,15 +29,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 
-public class HuffmanDecoder extends Decoder {
+public class HuffmanDecoderV2 extends Decoder {
 
-  private int recordnum;
+  public int recordnum;
   private int numberLeftInBuffer;
   private byte byteBuffer;
-  private Queue<Binary> records;
+  private Queue<Integer> records;
   private HuffmanTree tree;
 
-  HuffmanDecoder() {
+  HuffmanDecoderV2() {
     super(TSEncoding.HUFFMAN);
     records = new LinkedList<>();
     tree = new HuffmanTree();
@@ -45,7 +45,7 @@ public class HuffmanDecoder extends Decoder {
   }
 
   @Override
-  public Binary readBinary(ByteBuffer buffer) {
+  public int readInt(ByteBuffer buffer) {
     if (records.isEmpty()) {
       reset();
       loadTree(buffer);
@@ -61,27 +61,10 @@ public class HuffmanDecoder extends Decoder {
 
   private void loadTree(ByteBuffer buffer) {
     recordnum = getInt(buffer);
-    int endOfRecordLength = getInt(buffer);
-    HuffmanTree header = tree;
-    for (int i = 0; i < endOfRecordLength; i++) {
-      if (readbit(buffer) == 0) {
-        if (header.leftNode == null) header.leftNode = new HuffmanTree();
-        header = header.leftNode;
-      } else {
-        if (header.rightNode == null) header.rightNode = new HuffmanTree();
-        header = header.rightNode;
-      }
-      if (i == endOfRecordLength - 1) {
-        header.isLeaf = true;
-        header.isRecordEnd = true;
-      }
-    }
-
     int usednum = getInt(buffer);
     for (int i = 0; i < usednum; i++) {
-      byte cha = getByte(buffer);
+      int cha = getInt(buffer);
       int codeLength = getInt(buffer);
-      String s = new String();
       HuffmanTree tempTree = tree;
       for (int j = 0; j < codeLength; j++) {
         int b = readbit(buffer);
@@ -92,30 +75,21 @@ public class HuffmanDecoder extends Decoder {
           if (tempTree.rightNode == null) tempTree.rightNode = new HuffmanTree();
           tempTree = tempTree.rightNode;
         }
-        if (j == codeLength - 1) {
-          tempTree.isLeaf = true;
-          tempTree.originalbyte = cha;
-        }
       }
+      tempTree.isLeaf = true;
+      tempTree.originalbyte = cha;
     }
   }
 
   private void loadRecords(ByteBuffer buffer) {
-    for (int i = 0; i < recordnum; i++) {
-      HuffmanTree tempTree = tree;
-      List<Byte> rec = new ArrayList<>();
-      while (true) {
-        tempTree = tree;
-        while (!tempTree.isLeaf) {
-          if (readbit(buffer) == 0) tempTree = tempTree.leftNode;
-          else tempTree = tempTree.rightNode;
-        }
-        if (tempTree.isRecordEnd) break;
-        rec.add((byte) tempTree.originalbyte);
+    HuffmanTree tempTree = tree;
+    for(int i = 0; i < recordnum; i++) {
+      tempTree = tree;
+      while (!tempTree.isLeaf) {
+        if (readbit(buffer) == 0) tempTree = tempTree.leftNode;
+        else tempTree = tempTree.rightNode;
       }
-      byte[] currec = new byte[rec.size()];
-      for (int j = 0; j < rec.size(); j++) currec[j] = rec.get(j);
-      records.add(new Binary(currec));
+      records.add(tempTree.originalbyte);
     }
   }
 
