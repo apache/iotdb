@@ -137,8 +137,8 @@ public interface IMTreeBelowSG {
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return Pair.left contains all the satisfied getChildNodePathInNextLevel Pair.right means the
-   *     current offset or zero if we don't set offset.
+   * @return Pair.left contains all the satisfied path Pair.right means the current offset or zero
+   *     if we don't set offset.
    */
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
