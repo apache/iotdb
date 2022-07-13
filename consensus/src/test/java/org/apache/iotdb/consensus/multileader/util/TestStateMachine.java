@@ -23,15 +23,16 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,7 +47,14 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
 
   public Set<TestEntry> getData() {
     Set<TestEntry> data = new HashSet<>();
-    requestSets.getRequestSet().forEach(x -> data.add((TestEntry) x.getRequest()));
+    requestSets
+        .getRequestSet()
+        .forEach(
+            x -> {
+              for (IConsensusRequest request : x.getRequests()) {
+                data.add((TestEntry) request);
+              }
+            });
     return data;
   }
 
@@ -59,16 +67,18 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
   @Override
   public TSStatus write(IConsensusRequest request) {
     synchronized (requestSets) {
-      IConsensusRequest innerRequest = ((IndexedConsensusRequest) request).getRequest();
-      if (innerRequest instanceof ByteBufferConsensusRequest) {
-        ByteBuffer buffer = innerRequest.serializeToByteBuffer();
-        requestSets.add(
-            new IndexedConsensusRequest(
-                ((IndexedConsensusRequest) request).getSearchIndex(),
-                new TestEntry(buffer.getInt(), Peer.deserialize(buffer))),
-            false);
-      } else {
-        requestSets.add(((IndexedConsensusRequest) request), true);
+      for (IConsensusRequest innerRequest : ((IndexedConsensusRequest) request).getRequests()) {
+        if (innerRequest instanceof MultiLeaderConsensusRequest) {
+          ByteBuffer buffer = innerRequest.serializeToByteBuffer();
+          requestSets.add(
+              new IndexedConsensusRequest(
+                  ((IndexedConsensusRequest) request).getSearchIndex(),
+                  Collections.singletonList(
+                      new TestEntry(buffer.getInt(), Peer.deserialize(buffer)))),
+              false);
+        } else {
+          requestSets.add(((IndexedConsensusRequest) request), true);
+        }
       }
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -461,10 +462,6 @@ public class WALNode implements IWALNode {
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
   }
 
-  public IndexedConsensusRequest newIndexedConsensusRequest(long searchIndex, ByteBuffer buffer) {
-    return new IndexedConsensusRequest(searchIndex, new MultiLeaderConsensusRequest(buffer));
-  }
-
   /** This iterator is not concurrency-safe */
   @Override
   public ReqIterator getReqIterator(long startIndex) {
@@ -530,7 +527,7 @@ public class WALNode implements IWALNode {
       }
 
       // find all insert node of current wal file
-      List<IndexedConsensusRequest> tmpNodes = new ArrayList<>();
+      List<IConsensusRequest> tmpNodes = new ArrayList<>();
       long targetIndex = nextSearchIndex;
       try (WALByteBufReader walByteBufReader =
           new WALByteBufReader(filesToSearch[currentFileIndex])) {
@@ -543,18 +540,18 @@ public class WALNode implements IWALNode {
             long searchIndex = buffer.getLong();
             buffer.clear();
             if (searchIndex == targetIndex) {
-              tmpNodes.add(newIndexedConsensusRequest(searchIndex, buffer));
+              tmpNodes.add(new MultiLeaderConsensusRequest(buffer));
             } else if (!tmpNodes.isEmpty()) { // find all slices of insert plan
-              insertNodes.addAll(tmpNodes);
+              insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
               targetIndex++;
               tmpNodes = new ArrayList<>();
               // remember to add current insert node
               if (searchIndex == targetIndex) {
-                tmpNodes.add(newIndexedConsensusRequest(searchIndex, buffer));
+                tmpNodes.add(new MultiLeaderConsensusRequest(buffer));
               }
             }
           } else if (!tmpNodes.isEmpty()) { // find all slices of insert plan
-            insertNodes.addAll(tmpNodes);
+            insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
             targetIndex++;
             tmpNodes = new ArrayList<>();
           }
@@ -579,14 +576,14 @@ public class WALNode implements IWALNode {
           // cannot find any in this file, find all slices of last insert plan
           if (WALFileUtils.parseStatusCode(filesToSearch[fileIndex].getName())
               == WALFileStatus.CONTAINS_NONE_SEARCH_INDEX) {
-            insertNodes.addAll(tmpNodes);
+            insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
             tmpNodes = Collections.emptyList();
             break;
           }
           // read until find all insert node whose search index equals target index
           try (WALByteBufReader walByteBufReader = new WALByteBufReader(filesToSearch[fileIndex])) {
             if (walByteBufReader.getFirstSearchIndex() != targetIndex) {
-              insertNodes.addAll(tmpNodes);
+              insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
               tmpNodes = Collections.emptyList();
               break;
             } else {
@@ -600,14 +597,14 @@ public class WALNode implements IWALNode {
                   long searchIndex = buffer.getLong();
                   buffer.clear();
                   if (searchIndex == targetIndex) {
-                    tmpNodes.add(newIndexedConsensusRequest(searchIndex, buffer));
+                    tmpNodes.add(new MultiLeaderConsensusRequest(buffer));
                   } else if (!tmpNodes.isEmpty()) { // find all slices of insert plan
-                    insertNodes.addAll(tmpNodes);
+                    insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
                     tmpNodes = Collections.emptyList();
                     break;
                   }
                 } else if (!tmpNodes.isEmpty()) { // find all slices of insert plan
-                  insertNodes.addAll(tmpNodes);
+                  insertNodes.add(new IndexedConsensusRequest(targetIndex, tmpNodes));
                   tmpNodes = Collections.emptyList();
                   break;
                 }

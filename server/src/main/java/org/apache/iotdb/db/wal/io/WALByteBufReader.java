@@ -56,6 +56,7 @@ public class WALByteBufReader implements Closeable {
     int metadataSize = metadataSizeBuf.getInt();
     ByteBuffer metadataBuf = ByteBuffer.allocate(metadataSize);
     channel.read(metadataBuf, position - metadataSize);
+    metadataBuf.flip();
     metaData = WALMetaData.deserialize(metadataBuf);
     // init iterator
     sizeIterator = metaData.getBuffersSize().iterator();
@@ -72,6 +73,7 @@ public class WALByteBufReader implements Closeable {
     int size = sizeIterator.next();
     ByteBuffer buffer = ByteBuffer.allocate(size);
     channel.read(buffer);
+    buffer.clear();
     return buffer;
   }
 

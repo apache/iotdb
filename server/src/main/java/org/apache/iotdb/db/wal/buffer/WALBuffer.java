@@ -220,7 +220,7 @@ public class WALBuffer extends AbstractWALBuffer {
       int size = byteBufferVew.position();
       try {
         walEntry.serialize(byteBufferVew);
-        size -= byteBufferVew.position();
+        size = byteBufferVew.position() - size;
       } catch (Exception e) {
         logger.error(
             "Fail to serialize WALEntry to wal node-{}'s buffer, discard it.", identifier, e);

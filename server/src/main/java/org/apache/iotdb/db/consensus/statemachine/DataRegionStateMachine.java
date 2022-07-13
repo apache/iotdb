@@ -98,19 +98,26 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public TSStatus write(IConsensusRequest request) {
+    TSStatus status;
     PlanNode planNode;
     try {
       if (request instanceof IndexedConsensusRequest) {
+        status = new TSStatus();
         IndexedConsensusRequest indexedConsensusRequest = (IndexedConsensusRequest) request;
-        planNode = getPlanNode(indexedConsensusRequest.getRequest());
-        if (planNode instanceof InsertNode) {
-          ((InsertNode) planNode)
-              .setSearchIndex(((IndexedConsensusRequest) request).getSearchIndex());
+        for (IConsensusRequest innerRequest : indexedConsensusRequest.getRequests()) {
+          planNode = getPlanNode(innerRequest);
+          if (planNode instanceof InsertNode) {
+            ((InsertNode) planNode)
+                .setSearchIndex(((IndexedConsensusRequest) request).getSearchIndex());
+          }
+          TSStatus subStatus = write(planNode);
+          status.addToSubStatus(subStatus);
         }
       } else {
         planNode = getPlanNode(request);
+        status = write(planNode);
       }
-      return write(planNode);
+      return status;
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
