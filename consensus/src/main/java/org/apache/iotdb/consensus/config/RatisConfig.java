@@ -743,11 +743,12 @@ public class RatisConfig {
       private SizeInBytes maxAllowedDirectMemory = SizeInBytes.valueOf(VM.maxDirectMemory());
 
       /**
-       * Ratis is estimated to consume 1X of original data memory in heap{@link org.apache.iotdb.consensus.ratis.MemChecker}, while MemTable will use
-       * 1X. So we assign roughly 50% of heap memory as Ratis' maxAllowedHeapMemory.
+       * Ratis is estimated to consume 1X of original data memory in heap{@link
+       * org.apache.iotdb.consensus.ratis.MemChecker}, while MemTable will use 1X. So we assign
+       * roughly 50% of heap memory as Ratis' maxAllowedHeapMemory.
        */
       private SizeInBytes maxAllowedHeapMemory =
-          SizeInBytes.valueOf((long) (Runtime.getRuntime().maxMemory() * 0.5));
+          SizeInBytes.valueOf((long) (Runtime.getRuntime().maxMemory() * 0.6));
 
       private long maxQueueingRequests = 80000;
 

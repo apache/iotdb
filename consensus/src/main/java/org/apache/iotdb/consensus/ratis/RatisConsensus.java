@@ -175,7 +175,6 @@ class RatisConsensus implements IConsensus {
     // serialize request into Message
     Message message = new RequestMessage(IConsensusRequest, raftGroup.getPeers().size());
 
-
     boolean permit = memChecker.tryAcquire(message);
     if (!permit) {
       return failedWrite(
