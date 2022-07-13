@@ -26,14 +26,16 @@ import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
+import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import java.io.File;
 import java.nio.ByteBuffer;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -67,19 +69,17 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
   @Override
   public TSStatus write(IConsensusRequest request) {
     synchronized (requestSets) {
-      for (IConsensusRequest innerRequest : ((IndexedConsensusRequest) request).getRequests()) {
+      IndexedConsensusRequest indexedConsensusRequest = (IndexedConsensusRequest) request;
+      List<IConsensusRequest> transformedRequest = new ArrayList<>();
+      for (IConsensusRequest innerRequest : indexedConsensusRequest.getRequests()) {
         if (innerRequest instanceof MultiLeaderConsensusRequest) {
           ByteBuffer buffer = innerRequest.serializeToByteBuffer();
-          requestSets.add(
-              new IndexedConsensusRequest(
-                  ((IndexedConsensusRequest) request).getSearchIndex(),
-                  Collections.singletonList(
-                      new TestEntry(buffer.getInt(), Peer.deserialize(buffer)))),
-              false);
-        } else {
-          requestSets.add(((IndexedConsensusRequest) request), true);
+          transformedRequest.add(new TestEntry(buffer.getInt(), Peer.deserialize(buffer)));
         }
       }
+      requestSets.add(
+          new IndexedConsensusRequest(indexedConsensusRequest.getSearchIndex(), transformedRequest),
+          indexedConsensusRequest.getSearchIndex() != ConsensusReqReader.DEFAULT_SEARCH_INDEX);
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     }
   }
