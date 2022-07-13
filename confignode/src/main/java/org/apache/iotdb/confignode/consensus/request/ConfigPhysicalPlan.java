@@ -26,6 +26,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionP
 import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
@@ -44,8 +45,10 @@ import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
@@ -103,6 +106,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
       switch (type) {
         case RegisterDataNode:
           req = new RegisterDataNodePlan();
+          break;
+        case RemoveDataNode:
+          req = new RemoveDataNodePlan();
           break;
         case GetDataNodeInfo:
           req = new GetDataNodeInfoPlan();
@@ -206,6 +212,12 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case ShowNodesInSchemaTemplate:
           req = new GetNodesInSchemaTemplatePlan();
+          break;
+        case GetPathsSetTemplate:
+          req = new GetPathsSetTemplatePlan();
+          break;
+        case SetSchemaTemplate:
+          req = new SetSchemaTemplatePlan();
           break;
         case GetNodePathsPartition:
           req = new GetNodePathsPartitionPlan();

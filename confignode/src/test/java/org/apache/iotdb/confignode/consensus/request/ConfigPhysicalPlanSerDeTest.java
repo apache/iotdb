@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
@@ -57,6 +58,7 @@ import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
@@ -634,5 +636,27 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(
                 getNodesInSchemaTemplatePlan0.serializeToByteBuffer());
     Assert.assertEquals(getNodesInSchemaTemplatePlan0, getNodesInSchemaTemplatePlan1);
+  }
+
+  @Test
+  public void SetSchemaTemplatePlanTest() throws IOException {
+    SetSchemaTemplatePlan setSchemaTemplatePlanPlan0 =
+        new SetSchemaTemplatePlan("template_name_test", "root.in.sg.dw");
+    SetSchemaTemplatePlan setSchemaTemplatePlanPlan1 =
+        (SetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(setSchemaTemplatePlanPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        setSchemaTemplatePlanPlan0.getName().equalsIgnoreCase(setSchemaTemplatePlanPlan1.getName()),
+        setSchemaTemplatePlanPlan0.getPath().equals(setSchemaTemplatePlanPlan1.getPath()));
+  }
+
+  @Test
+  public void ShowPathSetTemplatePlanTest() throws IOException {
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan0 =
+        new GetPathsSetTemplatePlan("template_name_test");
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan1 =
+        (GetPathsSetTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());
+    Assert.assertEquals(getPathsSetTemplatePlan0.getName(), getPathsSetTemplatePlan1.getName());
   }
 }

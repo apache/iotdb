@@ -96,6 +96,14 @@ struct TRegionInfo {
   8: optional string status
 }
 
+enum TRegionMigrateFailedType {
+  AddPeerFailed,
+  RemovePeerFailed,
+  RemoveConsensusGroupFailed,
+  DeleteRegionFailed,
+  CreateRegionFailed
+}
+
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups

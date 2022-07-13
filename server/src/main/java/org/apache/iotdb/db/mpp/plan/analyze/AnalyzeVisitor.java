@@ -79,7 +79,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
@@ -1460,5 +1462,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           groupByTimeComponent.getStartTime(),
           groupByTimeComponent.getEndTime());
     }
+  }
+
+  @Override
+  public Analysis visitSetSchemaTemplate(
+      SetSchemaTemplateStatement setSchemaTemplateStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(setSchemaTemplateStatement);
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitShowPathSetTemplate(
+      ShowPathSetTemplateStatement showPathSetTemplateStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setStatement(showPathSetTemplateStatement);
+    analysis.setRespDatasetHeader(HeaderConstant.showPathSetTemplate);
+    return analysis;
   }
 }
