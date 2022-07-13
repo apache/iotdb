@@ -23,6 +23,13 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
+import org.apache.iotdb.db.doublelive.OperationSyncConsumer;
+import org.apache.iotdb.db.doublelive.OperationSyncDDLProtector;
+import org.apache.iotdb.db.doublelive.OperationSyncDMLProtector;
+import org.apache.iotdb.db.doublelive.OperationSyncLogService;
+import org.apache.iotdb.db.doublelive.OperationSyncPlanTypeUtils;
+import org.apache.iotdb.db.doublelive.OperationSyncProducer;
+import org.apache.iotdb.db.doublelive.OperationSyncWriteTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
@@ -50,6 +57,7 @@ import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -64,6 +72,7 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -71,8 +80,11 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -86,6 +98,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -100,6 +114,14 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
+
+  /* OperationSync module */
+  private static final boolean isEnableOperationSync =
+      IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
+  private static SessionPool operationSyncsessionPool;
+  private static OperationSyncProducer operationSyncProducer;
+  private static OperationSyncDDLProtector operationSyncDDLProtector;
+  private static OperationSyncLogService operationSyncDDLLogService;
 
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
@@ -135,7 +157,53 @@ public class StorageEngine implements IService {
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
 
-  private StorageEngine() {}
+  private StorageEngine() {
+    if (isEnableOperationSync) {
+      /* Open OperationSync */
+      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+      // create SessionPool for OperationSync
+      operationSyncsessionPool =
+          new SessionPool(
+              config.getSecondaryAddress(),
+              config.getSecondaryPort(),
+              config.getSecondaryUser(),
+              config.getSecondaryPassword(),
+              5);
+
+      // create operationSyncDDLProtector and operationSyncDDLLogService
+      operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncsessionPool);
+      new Thread(operationSyncDDLProtector).start();
+      operationSyncDDLLogService =
+          new OperationSyncLogService("OperationSyncDDLLog", operationSyncDDLProtector);
+      new Thread(operationSyncDDLLogService).start();
+
+      // create OperationSyncProducer
+      BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
+          blockingQueue = new ArrayBlockingQueue<>(config.getOperationSyncProducerCacheSize());
+      operationSyncProducer = new OperationSyncProducer(blockingQueue);
+
+      // create OperationSyncDMLProtector and OperationSyncDMLLogService
+      OperationSyncDMLProtector operationSyncDMLProtector =
+          new OperationSyncDMLProtector(operationSyncDDLProtector, operationSyncProducer);
+      new Thread(operationSyncDMLProtector).start();
+      OperationSyncLogService operationSyncDMLLogService =
+          new OperationSyncLogService("OperationSyncDMLLog", operationSyncDMLProtector);
+      new Thread(operationSyncDMLLogService).start();
+
+      // create OperationSyncConsumer
+      for (int i = 0; i < config.getOperationSyncConsumerConcurrencySize(); i++) {
+        OperationSyncConsumer consumer =
+            new OperationSyncConsumer(
+                blockingQueue, operationSyncsessionPool, operationSyncDMLLogService);
+        new Thread(consumer).start();
+      }
+    } else {
+      operationSyncsessionPool = null;
+      operationSyncProducer = null;
+      operationSyncDDLProtector = null;
+      operationSyncDDLLogService = null;
+    }
+  }
 
   public static StorageEngine getInstance() {
     return InstanceHolder.INSTANCE;
@@ -145,6 +213,45 @@ public class StorageEngine implements IService {
     timePartitionInterval =
         convertMilliWithPrecision(
             IoTDBDescriptor.getInstance().getConfig().getPartitionInterval() * 1000L);
+  }
+
+  public static void transmitOperationSync(PhysicalPlan physicalPlan) {
+
+    OperationSyncPlanTypeUtils.OperationSyncPlanType planType =
+        OperationSyncPlanTypeUtils.getOperationSyncPlanType(physicalPlan);
+    if (planType == null) {
+      // Don't need OperationSync
+      return;
+    }
+
+    // serialize physical plan
+    ByteBuffer buffer;
+    try {
+      int size = physicalPlan.getSerializedSize();
+      ByteArrayOutputStream operationSyncByteStream = new ByteArrayOutputStream(size);
+      DataOutputStream operationSyncSerializeStream = new DataOutputStream(operationSyncByteStream);
+      physicalPlan.serialize(operationSyncSerializeStream);
+      buffer = ByteBuffer.wrap(operationSyncByteStream.toByteArray());
+    } catch (IOException e) {
+      logger.error("OperationSync can't serialize PhysicalPlan", e);
+      return;
+    }
+
+    switch (planType) {
+      case DDLPlan:
+        // Create OperationSyncWriteTask and wait
+        OperationSyncWriteTask ddlTask =
+            new OperationSyncWriteTask(
+                buffer,
+                operationSyncsessionPool,
+                operationSyncDDLProtector,
+                operationSyncDDLLogService);
+        ddlTask.run();
+        break;
+      case DMLPlan:
+        // Put into OperationSyncProducer
+        operationSyncProducer.put(new Pair<>(buffer, planType));
+    }
   }
 
   public static long convertMilliWithPrecision(long milliTime) {
