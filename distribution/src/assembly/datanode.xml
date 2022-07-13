@@ -29,29 +29,34 @@
     <dependencySets>
         <dependencySet>
             <includes>
-                <include>*:iotdb-server:zip:*</include>
                 <include>*:iotdb-cli:zip:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
             <unpack>true</unpack>
         </dependencySet>
+        <dependencySet>
+            <includes>
+                <include>*:iotdb-server:jar:*</include>
+            </includes>
+            <outputDirectory>${file.separator}lib</outputDirectory>
+        </dependencySet>
     </dependencySets>
     <fileSets>
-        <!--        <fileSet>-->
-        <!--            <outputDirectory>conf</outputDirectory>-->
-        <!--            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>-->
-        <!--        </fileSet>-->
         <fileSet>
             <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
-        </fileSet>
-        <fileSet>
-            <outputDirectory>grafana-metrics-example</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/grafana-metrics-example</directory>
+            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
+            <includes>
+                <include>start-datanode.bat</include>
+                <include>start-datanode.sh</include>
+                <include>stop-datanode.bat</include>
+                <include>stop-datanode.sh</include>
+                <include>remove-datanode.bat</include>
+                <include>remove-datanode.sh</include>
+            </includes>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/sbin</directory>
             <fileMode>0755</fileMode>
         </fileSet>
@@ -59,6 +64,14 @@
             <outputDirectory>tools</outputDirectory>
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/tools</directory>
             <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>conf</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>grafana-metrics-example</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/grafana-metrics-example</directory>
         </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
