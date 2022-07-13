@@ -47,8 +47,9 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
       Filter timeFilter,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {
-    super(sourceId, context, aggregators, ascending, groupByTimeParameter);
-    this.seriesScanUtil =
+    super(
+        sourceId,
+        context,
         new SeriesScanUtil(
             seriesPath,
             allSensors,
@@ -56,7 +57,10 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
             context.getInstanceContext(),
             timeFilter,
             null,
-            ascending);
-    this.subSensorSize = 1;
+            ascending),
+        1,
+        aggregators,
+        ascending,
+        groupByTimeParameter);
   }
 }

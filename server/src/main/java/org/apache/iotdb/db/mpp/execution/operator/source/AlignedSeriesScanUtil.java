@@ -61,33 +61,21 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
 
   @Override
   protected Statistics currentFileStatistics(int index) throws IOException {
-    if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
-      throw new IOException("Can only get statistics by index from alignedTimeSeriesMetaData");
-    }
     return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
   }
 
   @Override
   protected Statistics currentFileTimeStatistics() throws IOException {
-    if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
-      throw new IOException("Can only get statistics of time column from alignedChunkMetaData");
-    }
     return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics();
   }
 
   @Override
   protected Statistics currentChunkStatistics(int index) throws IOException {
-    if (!(firstChunkMetadata instanceof AlignedChunkMetadata)) {
-      throw new IOException("Can only get statistics by index from alignedChunkMetaData");
-    }
     return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
   }
 
   @Override
-  protected Statistics currentChunkTimeStatistics() throws IOException {
-    if (!(firstChunkMetadata instanceof AlignedChunkMetadata)) {
-      throw new IOException("Can only get statistics of time column from alignedChunkMetaData");
-    }
+  protected Statistics currentChunkTimeStatistics() {
     return ((AlignedChunkMetadata) firstChunkMetadata).getTimeStatistics();
   }
 
@@ -96,9 +84,6 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     if (firstPageReader == null) {
       return null;
     }
-    if (!(firstPageReader.isAlignedPageReader())) {
-      throw new IOException("Can only get statistics by index from AlignedPageReader");
-    }
     return firstPageReader.getStatistics(index);
   }
 
@@ -106,9 +91,6 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
   protected Statistics currentPageTimeStatistics() throws IOException {
     if (firstPageReader == null) {
       return null;
-    }
-    if (!(firstPageReader.isAlignedPageReader())) {
-      throw new IOException("Can only get statistics of time column from AlignedPageReader");
     }
     return firstPageReader.getTimeStatistics();
   }

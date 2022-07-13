@@ -40,15 +40,19 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
       Filter timeFilter,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {
-    super(sourceId, context, aggregators, ascending, groupByTimeParameter);
-    this.seriesScanUtil =
+    super(
+        sourceId,
+        context,
         new AlignedSeriesScanUtil(
             seriesPath,
             new HashSet<>(seriesPath.getMeasurementList()),
             context.getInstanceContext(),
             timeFilter,
             null,
-            ascending);
-    this.subSensorSize = seriesPath.getMeasurementList().size();
+            ascending),
+        seriesPath.getMeasurementList().size(),
+        aggregators,
+        ascending,
+        groupByTimeParameter);
   }
 }

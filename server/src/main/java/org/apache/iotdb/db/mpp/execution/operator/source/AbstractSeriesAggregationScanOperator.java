@@ -70,6 +70,8 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
   public AbstractSeriesAggregationScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
+      SeriesScanUtil seriesScanUtil,
+      int subSensorSize,
       List<Aggregator> aggregators,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter) {

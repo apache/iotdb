@@ -114,9 +114,6 @@ public class Aggregator {
   /** Used for SeriesAggregateScanOperator. */
   public void processStatistics(Statistics[] statistics) {
     for (InputLocation[] inputLocations : inputLocationList) {
-      checkArgument(
-          inputLocations[0].getTsBlockIndex() == 0,
-          "SeriesAggregateScanOperator can only process one tsBlock input.");
       int valueIndex = inputLocations[0].getValueColumnIndex();
       accumulator.addStatistics(statistics[valueIndex]);
     }
