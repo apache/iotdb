@@ -13,14 +13,15 @@ import com.csvreader.CsvWriter;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 public class EncodeTest {
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-    String inputPath = "C:\\Users\\xiaoj\\Desktop\\long"; // the direction of input compressed data
-    String Output = "C:\\Users\\xiaoj\\Desktop\\毕设PPT\\compressedResultincrease0601.csv"; // the direction of output compression ratio and speed
+    String inputPath = "C:\\Users\\xiaoj\\Desktop\\long"; // the directory of input compressed data
+    String Output = "C:\\Users\\xiaoj\\Desktop\\毕设PPT\\compressedResultincrease0601.csv"; // the directory of output compression ratio and speed
     int repeatTime = 10; // set repeat time
     String dataTypeName = "int"; // set dataType
 //    if (args.length >= 2) inputPath = args[1];
