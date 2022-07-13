@@ -21,6 +21,7 @@ package org.apache.iotdb.db.wal.buffer;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
@@ -115,13 +116,25 @@ public abstract class WALEntry implements SerializedSize {
         value = AbstractMemTable.Factory.create(stream);
         break;
       case INSERT_ROW_NODE:
-        value = (InsertRowNode) PlanNodeType.deserialize(stream);
+        value = (InsertRowNode) PlanNodeType.deserializeFromWAL(stream);
         break;
       case INSERT_TABLET_NODE:
-        value = (InsertTabletNode) PlanNodeType.deserialize(stream);
+        value = (InsertTabletNode) PlanNodeType.deserializeFromWAL(stream);
         break;
     }
     return new WALInfoEntry(type, memTableId, value);
+  }
+
+  /**
+   * This deserialization method is only for multi-leader consensus and just deserializes
+   * InsertRowNode and InsertTabletNode
+   */
+  public static PlanNode deserializeInsertNode(ByteBuffer buffer) throws IllegalPathException {
+    // wal entry type
+    buffer.get();
+    // memtable id
+    buffer.getLong();
+    return PlanNodeType.deserializeFromWAL(buffer);
   }
 
   @Override

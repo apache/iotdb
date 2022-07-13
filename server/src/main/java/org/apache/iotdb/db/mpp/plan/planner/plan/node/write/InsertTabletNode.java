@@ -780,6 +780,10 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     return size;
   }
 
+  /**
+   * Compared with {@link this#serialize(ByteBuffer)}, more info: search index and data types, less
+   * info: isNeedInferType
+   */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
     serializeToWAL(buffer, 0, rowCount);
@@ -894,15 +898,16 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   /** Deserialize from wal */
-  public static InsertTabletNode deserialize(DataInputStream stream)
+  public static InsertTabletNode deserializeFromWAL(DataInputStream stream)
       throws IllegalPathException, IOException {
     // we do not store plan node id in wal entry
     InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
-    insertNode.subDeserialize(stream);
+    insertNode.subDeserializeFromWAL(stream);
     return insertNode;
   }
 
-  private void subDeserialize(DataInputStream stream) throws IllegalPathException, IOException {
+  private void subDeserializeFromWAL(DataInputStream stream)
+      throws IllegalPathException, IOException {
     searchIndex = stream.readLong();
     devicePath = new PartialPath(ReadWriteIOUtils.readString(stream));
 
@@ -928,6 +933,41 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
     columns =
         QueryDataSetUtils.readTabletValuesFromStream(stream, dataTypes, measurementSize, rowCount);
     isAligned = stream.readByte() == 1;
+  }
+
+  public static InsertTabletNode deserializeFromWAL(ByteBuffer buffer) throws IllegalPathException {
+    // we do not store plan node id in wal entry
+    InsertTabletNode insertNode = new InsertTabletNode(new PlanNodeId(""));
+    insertNode.subDeserializeFromWAL(buffer);
+    return insertNode;
+  }
+
+  private void subDeserializeFromWAL(ByteBuffer buffer) throws IllegalPathException {
+    searchIndex = buffer.getLong();
+    devicePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+
+    int measurementSize = buffer.getInt();
+    measurements = new String[measurementSize];
+    measurementSchemas = new MeasurementSchema[measurementSize];
+    deserializeMeasurementSchemas(buffer);
+
+    // data types are serialized in measurement schemas
+    dataTypes = new TSDataType[measurementSize];
+    for (int i = 0; i < measurementSize; i++) {
+      dataTypes[i] = measurementSchemas[i].getType();
+    }
+
+    rowCount = buffer.getInt();
+    times = new long[rowCount];
+    times = QueryDataSetUtils.readTimesFromBuffer(buffer, rowCount);
+
+    boolean hasBitMaps = BytesUtils.byteToBool(buffer.get());
+    if (hasBitMaps) {
+      bitMaps = QueryDataSetUtils.readBitMapsFromBuffer(buffer, measurementSize, rowCount);
+    }
+    columns =
+        QueryDataSetUtils.readTabletValuesFromBuffer(buffer, dataTypes, measurementSize, rowCount);
+    isAligned = buffer.get() == 1;
   }
   // endregion
 
