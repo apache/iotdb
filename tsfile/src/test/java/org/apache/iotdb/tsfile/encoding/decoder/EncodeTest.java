@@ -19,10 +19,10 @@ import java.util.ArrayList;
 public class EncodeTest {
 
   public static void main(@org.jetbrains.annotations.NotNull String[] args) throws IOException {
-    String inputPath = "C:\\Users\\xiaoj\\Desktop\\long"; // the direction of input compressed data
-    String Output = "C:\\Users\\xiaoj\\Desktop\\毕设PPT\\compressedResultincrease0601.csv"; // the direction of output compression ratio and speed
-    int repeatTime = 10; // set repeat time
-    String dataTypeName = "int"; // set dataType
+    String inputPath = "C:\\Users\\xiaoj\\Desktop\\bufftest"; // the direction of input compressed data
+    String Output = "C:\\Users\\xiaoj\\Desktop\\enocderle.csv"; // the direction of output compression ratio and speed
+    int repeatTime = 1; // set repeat time
+    String dataTypeName = "double"; // set dataType
 //    if (args.length >= 2) inputPath = args[1];
 //    if (args.length >= 3) Output = args[2];
 
@@ -31,20 +31,20 @@ public class EncodeTest {
 
     // select encoding algorithms
     TSEncoding[] encodingList = {
-            TSEncoding.PLAIN ,
-            TSEncoding.TS_2DIFF,
-            TSEncoding.RLE,
-            TSEncoding.SPRINTZ,
-            TSEncoding.GORILLA,
-            TSEncoding.RLBE,
-            TSEncoding.RAKE
+//            TSEncoding.PLAIN ,
+//            TSEncoding.TS_2DIFF,
+            TSEncoding.RLE//,
+//            TSEncoding.SPRINTZ,
+//            TSEncoding.GORILLA,
+//            TSEncoding.RLBE,
+//            TSEncoding.RAKE
     };
     // select compression algorithms
     CompressionType[] compressList = {
             CompressionType.UNCOMPRESSED,
-            CompressionType.LZ4,
-            CompressionType.GZIP,
-            CompressionType.SNAPPY
+//            CompressionType.LZ4,
+//            CompressionType.GZIP,
+//            CompressionType.SNAPPY
     };
     CsvWriter writer = new CsvWriter(Output, ',', StandardCharsets.UTF_8);
 
@@ -64,8 +64,9 @@ public class EncodeTest {
 
     assert tempList != null;
     int fileRepeat = 0;
-    int[] columnIndexes = {0}; // set the column indexes of compressed
+    int[] columnIndexes = new int[71]; // set the column indexes of compressed
 
+    for(int i=0;i<71;i++) columnIndexes[i] = i;
     for (File f : tempList) {
       fileRepeat += 1;
       InputStream inputStream = new FileInputStream(f);
@@ -73,14 +74,16 @@ public class EncodeTest {
       String fileName = f.getAbsolutePath();
       ArrayList<String> data = new ArrayList<>();
 
-      for(int index :columnIndexes ){
+      for(int index :columnIndexes){
         // add a column to "data"
+        System.out.println(index);
         loader.readHeaders();
         while (loader.readRecord()) {
           data.add(loader.getValues()[index]);
         }
-        loader.close();
+//        loader.close();
         inputStream.close();
+
 
         switch (dataTypeName) {
           case "int": {
