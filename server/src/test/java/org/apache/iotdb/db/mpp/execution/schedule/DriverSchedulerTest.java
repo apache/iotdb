@@ -42,6 +42,7 @@ public class DriverSchedulerTest {
   private final DriverScheduler manager = DriverScheduler.getInstance();
   private static final long QUERY_TIMEOUT_MS =
       IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
+
   @After
   public void tearDown() {
     manager.getQueryMap().clear();
