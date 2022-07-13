@@ -27,6 +27,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
@@ -79,17 +80,15 @@ public class NodeManager {
 
   private void setGlobalConfig(DataNodeConfigurationResp dataSet) {
     // Set TGlobalConfig
+    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TGlobalConfig globalConfig = new TGlobalConfig();
-    globalConfig.setDataRegionConsensusProtocolClass(
-        ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass());
+    globalConfig.setDataRegionConsensusProtocolClass(conf.getDataRegionConsensusProtocolClass());
     globalConfig.setSchemaRegionConsensusProtocolClass(
-        ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionConsensusProtocolClass());
-    globalConfig.setSeriesPartitionSlotNum(
-        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
-    globalConfig.setSeriesPartitionExecutorClass(
-        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass());
-    globalConfig.setTimePartitionInterval(
-        ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
+        conf.getSchemaRegionConsensusProtocolClass());
+    globalConfig.setSeriesPartitionSlotNum(conf.getSeriesPartitionSlotNum());
+    globalConfig.setSeriesPartitionExecutorClass(conf.getSeriesPartitionExecutorClass());
+    globalConfig.setTimePartitionInterval(conf.getTimePartitionInterval());
+    globalConfig.setReadConsistencyLevel(conf.getReadConsistencyLevel());
     dataSet.setGlobalConfig(globalConfig);
   }
 

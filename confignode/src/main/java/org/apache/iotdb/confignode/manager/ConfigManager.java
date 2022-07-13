@@ -802,6 +802,12 @@ public class ConfigManager implements IManager {
               "Reject register, please ensure that the data_region_per_processor are consistent.");
       return errorResp;
     }
+    if (!req.getReadConsistencyLevel().equals(conf.getReadConsistencyLevel())) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the read_consistency_level are consistent.");
+    }
     return null;
   }
 

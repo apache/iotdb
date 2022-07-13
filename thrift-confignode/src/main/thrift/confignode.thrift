@@ -49,6 +49,7 @@ struct TGlobalConfig {
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
+  6: required string readConsistencyLevel
 }
 
 struct TDataNodeRegisterResp {
@@ -226,6 +227,7 @@ struct TConfigNodeRegisterReq {
   9: required double schemaRegionPerDataNode
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
+  12: required string readConsistencyLevel
 }
 
 struct TConfigNodeRegisterResp {
