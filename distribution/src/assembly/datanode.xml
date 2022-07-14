@@ -37,16 +37,19 @@
         </dependencySet>
         <dependencySet>
             <includes>
-                <include>*:iotdb-server:jar:*</include>
+                <include>*:iotdb-server:zip:*</include>
             </includes>
-            <outputDirectory>${file.separator}lib</outputDirectory>
+            <outputDirectory>${file.separator}</outputDirectory>
+            <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
+            <unpack>true</unpack>
+            <unpackOptions>
+                <excludes>
+                    <exclude>sbin/**</exclude>
+                </excludes>
+            </unpackOptions>
         </dependencySet>
     </dependencySets>
     <fileSets>
-        <fileSet>
-            <outputDirectory>conf</outputDirectory>
-            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf</directory>
-        </fileSet>
         <fileSet>
             <outputDirectory>sbin</outputDirectory>
             <includes>
@@ -71,6 +74,9 @@
         </fileSet>
         <fileSet>
             <outputDirectory>grafana-metrics-example</outputDirectory>
+            <includes>
+                <include>cluster/Apache IoTDB DataNode Dashboard v0.14.0.json</include>
+            </includes>
             <directory>${maven.multiModuleProjectDirectory}/grafana-metrics-example</directory>
         </fileSet>
         <fileSet>
