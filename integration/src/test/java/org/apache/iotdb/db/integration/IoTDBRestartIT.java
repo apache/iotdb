@@ -442,7 +442,7 @@ public class IoTDBRestartIT {
           Assert.assertEquals("2.2", resultSet.getString(3));
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        Assert.assertEquals(0, cnt);
       }
     }
   }
