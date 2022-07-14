@@ -95,6 +95,7 @@ public class QueryExecution implements IQueryExecution {
 
   private final List<PlanOptimizer> planOptimizers;
 
+  private Statement rawStatement;
   private Analysis analysis;
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
@@ -123,6 +124,7 @@ public class QueryExecution implements IQueryExecution {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
+    this.rawStatement = statement;
     this.executor = executor;
     this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
@@ -188,7 +190,7 @@ public class QueryExecution implements IQueryExecution {
     // force invalid PartitionCache
     partitionFetcher.invalidAllCache();
     // re-analyze the query
-    this.analysis = analyze(this.analysis.getStatement(), context, partitionFetcher, schemaFetcher);
+    this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
     // re-start the QueryExecution
     this.start();
   }
