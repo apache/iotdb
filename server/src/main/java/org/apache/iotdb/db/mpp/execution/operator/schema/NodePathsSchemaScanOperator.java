@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -61,11 +62,11 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     isFinished = true;
-    TsBlockBuilder tsBlockBuilder;
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
     try {
       if (-1 == level) {
-        tsBlockBuilder = new TsBlockBuilder(HeaderConstant.showChildPathsHeader.getRespDataTypes());
-        // show child paths
+        // show child paths and show child nodes
         Set<TSchemaNode> nodePaths =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
                 .getSchemaRegion()
@@ -80,7 +81,7 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
               tsBlockBuilder.declarePosition();
             });
       } else {
-        tsBlockBuilder = new TsBlockBuilder(HeaderConstant.showChildNodesHeader.getRespDataTypes());
+        // show nodes with level
         Set<String> childNodes;
         childNodes =
             ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
@@ -93,6 +94,9 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
             (path) -> {
               tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
               tsBlockBuilder.getColumnBuilder(0).writeBinary(new Binary(path));
+              tsBlockBuilder
+                  .getColumnBuilder(1)
+                  .writeBinary(new Binary(String.valueOf(MNodeType.UNIMPLEMENT.getNodeType())));
               tsBlockBuilder.declarePosition();
             });
       }

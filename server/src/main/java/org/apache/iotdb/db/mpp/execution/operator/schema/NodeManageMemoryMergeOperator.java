@@ -34,12 +34,14 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
 public class NodeManageMemoryMergeOperator implements ProcessOperator {
   private final OperatorContext operatorContext;
   private final Set<TSchemaNode> data;
+  private final Set<String> nameSet;
   private final Operator child;
   private boolean isReadingMemory;
 
@@ -47,6 +49,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
       OperatorContext operatorContext, Set<TSchemaNode> data, Operator child) {
     this.operatorContext = requireNonNull(operatorContext, "operatorContext is null");
     this.data = data;
+    nameSet = data.stream().map(schemaNode -> schemaNode.getNodeName()).collect(Collectors.toSet());
     this.child = requireNonNull(child, "child operator is null");
     isReadingMemory = true;
   }
@@ -78,9 +81,9 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
             new TSchemaNode(
                 block.getColumn(0).getBinary(i).toString(),
                 Byte.parseByte(block.getColumn(1).getBinary(i).toString()));
-        if (!data.contains(schemaNode)) {
+        if (!nameSet.contains(schemaNode.getNodeName())) {
           nodePaths.add(schemaNode);
-          data.add(schemaNode);
+          nameSet.add(schemaNode.getNodeName());
         }
       }
       return transferToTsBlock(nodePaths);
