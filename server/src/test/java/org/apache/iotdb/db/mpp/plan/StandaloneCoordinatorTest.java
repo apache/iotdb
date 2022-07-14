@@ -138,7 +138,14 @@ public class StandaloneCoordinatorTest {
   private void executeStatement(Statement statement, boolean isDataQuery) {
     long queryId = SessionManager.getInstance().requestQueryId(isDataQuery);
     ExecutionResult executionResult =
-        coordinator.execute(statement, queryId, null, "", partitionFetcher, schemaFetcher);
+        coordinator.execute(
+            statement,
+            queryId,
+            null,
+            "",
+            partitionFetcher,
+            schemaFetcher,
+            conf.getQueryTimeoutThreshold());
     try {
       int statusCode = executionResult.status.getCode();
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), statusCode);

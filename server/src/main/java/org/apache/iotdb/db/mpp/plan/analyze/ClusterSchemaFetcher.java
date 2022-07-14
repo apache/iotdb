@@ -106,7 +106,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     long queryId = SessionManager.getInstance().requestQueryId(false);
     try {
       ExecutionResult executionResult =
-          coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
+          coordinator.execute(
+              schemaFetchStatement,
+              queryId,
+              null,
+              "",
+              partitionFetcher,
+              this,
+              config.getQueryTimeoutThreshold());
       // TODO: (xingtanzjr) throw exception
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
@@ -336,7 +343,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       InternalCreateTimeSeriesStatement statement) {
     long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
-        coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
+        coordinator.execute(
+            statement,
+            queryId,
+            null,
+            "",
+            partitionFetcher,
+            this,
+            config.getQueryTimeoutThreshold());
     // TODO: throw exception
     int statusCode = executionResult.status.getCode();
     if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

@@ -64,14 +64,6 @@ public class FragmentInstance implements IConsensusRequest {
   // So that we can make different FragmentInstance owns different data range.
 
   public FragmentInstance(
-      PlanFragment fragment, FragmentInstanceId id, Filter timeFilter, QueryType type) {
-    this.fragment = fragment;
-    this.timeFilter = timeFilter;
-    this.id = id;
-    this.type = type;
-  }
-
-  public FragmentInstance(
       PlanFragment fragment,
       FragmentInstanceId id,
       Filter timeFilter,
@@ -167,12 +159,13 @@ public class FragmentInstance implements IConsensusRequest {
     boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
     Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
+    long timeOut = ReadWriteIOUtils.readLong(buffer);
     FragmentInstance fragmentInstance =
-        new FragmentInstance(planFragment, id, timeFilter, queryType);
+        new FragmentInstance(planFragment, id, timeFilter, queryType, timeOut);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
-    fragmentInstance.timeOut = ReadWriteIOUtils.readLong(buffer);
+    fragmentInstance.timeOut = timeOut;
     return fragmentInstance;
   }
 

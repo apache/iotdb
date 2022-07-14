@@ -104,26 +104,6 @@ public class Coordinator {
         INTERNAL_SERVICE_CLIENT_MANAGER);
   }
 
-  private IQueryExecution createQueryExecution(
-      Statement statement,
-      MPPQueryContext queryContext,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
-    if (statement instanceof IConfigStatement) {
-      queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
-      return new ConfigExecution(queryContext, statement, executor);
-    }
-    return new QueryExecution(
-        statement,
-        queryContext,
-        executor,
-        writeOperationExecutor,
-        scheduledExecutor,
-        partitionFetcher,
-        schemaFetcher,
-        INTERNAL_SERVICE_CLIENT_MANAGER);
-  }
-
   public ExecutionResult execute(
       Statement statement,
       long queryId,
@@ -149,38 +129,6 @@ public class Coordinator {
               partitionFetcher,
               schemaFetcher,
               timeOut);
-      if (execution.isQuery()) {
-        queryExecutionMap.put(queryId, execution);
-      }
-      execution.start();
-
-      return execution.getStatus();
-    }
-  }
-
-  public ExecutionResult execute(
-      Statement statement,
-      long queryId,
-      SessionInfo session,
-      String sql,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher) {
-    QueryId globalQueryId = queryIdGenerator.createNextQueryId();
-    try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
-      if (sql != null && sql.length() > 0) {
-        LOGGER.info("start executing sql: {}", sql);
-      }
-      IQueryExecution execution =
-          createQueryExecution(
-              statement,
-              new MPPQueryContext(
-                  sql,
-                  globalQueryId,
-                  session,
-                  DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
-                  DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
-              partitionFetcher,
-              schemaFetcher);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
       }
