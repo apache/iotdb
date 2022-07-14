@@ -1223,7 +1223,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setStatement(schemaFetchStatement);
-    analysis.setSchemaPartitionInfo(schemaFetchStatement.getSchemaPartition());
+    analysis.setSchemaPartitionInfo(
+        partitionFetcher.getSchemaPartition(schemaFetchStatement.getPatternTree()));
     return analysis;
   }
 
