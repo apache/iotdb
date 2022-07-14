@@ -128,11 +128,11 @@ public class DataNode implements DataNodeMBean {
 
   protected void doAddNode(String[] args) {
     try {
-      // setup InternalService
-      setUpInternalService();
+      // prepare cluster IoTDB-DataNode
+      prepareDataNode();
       // register current DataNode to ConfigNode
       registerInConfigNode();
-      // setup DataNode
+      // active DataNode
       active();
       // setup rpc service
       setUpRPCService();
@@ -245,8 +245,8 @@ public class DataNode implements DataNodeMBean {
     return true;
   }
 
-  /** prepare iotdb and start InternalService */
-  private void setUpInternalService() throws StartupException {
+  /** Prepare cluster IoTDB-DataNode */
+  private void prepareDataNode() throws StartupException {
     // check iotdb server first
     StartupChecks checks = new StartupChecks().withDefaultTest();
     checks.verify();
@@ -430,6 +430,10 @@ public class DataNode implements DataNodeMBean {
   private void setUpRPCService() throws StartupException {
     // Start InternalRPCService to indicate that the current DataNode can accept cluster scheduling
     registerManager.register(DataNodeInternalRPCService.getInstance());
+
+    // Notice: During the period between starting the internal RPC service
+    // and starting the client RPC service , some requests may fail because
+    // DataNode is not marked as RUNNING by ConfigNode-leader yet.
 
     // Start client RPCService to indicate that the current DataNode provide external services
     IoTDBDescriptor.getInstance()
