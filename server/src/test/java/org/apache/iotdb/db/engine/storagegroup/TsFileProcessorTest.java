@@ -27,7 +27,6 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.engine.memtable.WritableMemChunkGroup;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -354,9 +353,6 @@ public class TsFileProcessorTest {
         memTable.getMemTableMapRamCost());
 
     // try to compare with accurate value, assert within 0.85 accuracy
-    java.lang.reflect.Field memChunkMap =
-        WritableMemChunkGroup.class.getDeclaredField("memChunkMap");
-    memChunkMap.setAccessible(true);
     AtomicLong actualRamCost = new AtomicLong(0);
     actualRamCost.addAndGet(128); // map base size
     memTable.getMemTableMap().entrySet().stream()
