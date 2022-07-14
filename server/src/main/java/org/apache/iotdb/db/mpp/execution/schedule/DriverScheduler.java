@@ -122,7 +122,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
   }
 
   @Override
-  public void submitDrivers(QueryId queryId, List<IDriver> instances, Long timeOut) {
+  public void submitDrivers(QueryId queryId, List<IDriver> instances, long timeOut) {
     List<DriverTask> tasks =
         instances.stream()
             .map(

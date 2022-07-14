@@ -58,7 +58,7 @@ public class FragmentInstance implements IConsensusRequest {
 
   private Filter timeFilter;
 
-  private Long timeOut;
+  private final long timeOut;
 
   // We can add some more params for a specific FragmentInstance
   // So that we can make different FragmentInstance owns different data range.
@@ -68,7 +68,7 @@ public class FragmentInstance implements IConsensusRequest {
       FragmentInstanceId id,
       Filter timeFilter,
       QueryType type,
-      Long timeOut) {
+      long timeOut) {
     this.fragment = fragment;
     this.timeFilter = timeFilter;
     this.id = id;
@@ -165,7 +165,6 @@ public class FragmentInstance implements IConsensusRequest {
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
     fragmentInstance.hostDataNode =
         hasHostDataNode ? ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(buffer) : null;
-    fragmentInstance.timeOut = timeOut;
     return fragmentInstance;
   }
 
@@ -213,11 +212,7 @@ public class FragmentInstance implements IConsensusRequest {
     return hostDataNode;
   }
 
-  public Long getTimeOut() {
+  public long getTimeOut() {
     return timeOut;
-  }
-
-  public void setTimeOut(Long timeOut) {
-    this.timeOut = timeOut;
   }
 }

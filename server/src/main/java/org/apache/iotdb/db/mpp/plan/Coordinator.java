@@ -87,7 +87,7 @@ public class Coordinator {
       MPPQueryContext queryContext,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
-      Long timeOut) {
+      long timeOut) {
     queryContext.setTimeOut(timeOut);
     if (statement instanceof IConfigStatement) {
       queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
@@ -111,7 +111,7 @@ public class Coordinator {
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
-      Long timeOut) {
+      long timeOut) {
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (sql != null && sql.length() > 0) {

@@ -30,7 +30,7 @@ public class MPPQueryContext {
   private QueryId queryId;
   private SessionInfo session;
   private QueryType queryType = QueryType.READ;
-  private Long timeOut;
+  private long timeOut;
 
   private TEndPoint localDataBlockEndpoint;
   private TEndPoint localInternalEndpoint;
@@ -78,11 +78,11 @@ public class MPPQueryContext {
     return queryType;
   }
 
-  public Long getTimeOut() {
+  public long getTimeOut() {
     return timeOut;
   }
 
-  public void setTimeOut(Long timeOut) {
+  public void setTimeOut(long timeOut) {
     this.timeOut = timeOut;
   }
 
