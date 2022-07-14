@@ -53,6 +53,7 @@
                                 <descriptor>src/assembly/client-cpp.xml</descriptor>
                                 <descriptor>src/assembly/grafana-plugin.xml</descriptor>
                                 <descriptor>src/assembly/library-udf.xml</descriptor>
+                                <descriptor>src/assembly/standalone.xml</descriptor>
                             </descriptors>
                             <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
