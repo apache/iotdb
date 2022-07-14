@@ -79,6 +79,8 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     this.operatorContext = context;
     this.ascending = ascending;
     this.isGroupByQuery = groupByTimeParameter != null;
+    this.seriesScanUtil = seriesScanUtil;
+    this.subSensorSize = subSensorSize;
     this.aggregators = aggregators;
 
     this.timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, ascending, true);
