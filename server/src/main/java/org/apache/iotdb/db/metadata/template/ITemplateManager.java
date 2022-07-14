@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metadata.template;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 
 import java.util.List;
@@ -46,4 +47,20 @@ public interface ITemplateManager {
    * @return Template
    */
   Template getTemplate(String name);
+
+  /**
+   * mount template
+   *
+   * @param name templateName
+   * @param path mount path
+   */
+  void setSchemaTemplate(String name, PartialPath path);
+
+  /**
+   * get info of mounted template
+   *
+   * @param name
+   * @return
+   */
+  List<PartialPath> getPathsSetTemplate(String name);
 }
