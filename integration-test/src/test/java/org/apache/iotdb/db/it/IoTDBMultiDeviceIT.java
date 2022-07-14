@@ -28,6 +28,7 @@ import org.apache.iotdb.itbase.env.BaseConfig;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -43,6 +44,7 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
+@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBMultiDeviceIT {
