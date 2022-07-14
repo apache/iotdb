@@ -71,7 +71,7 @@ public class FragmentInstanceSerdeTest {
             planFragmentId.genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.READ,
-            config.getQueryTimeoutThreshold());
+            60000);
     TRegionReplicaSet regionReplicaSet =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
@@ -104,7 +104,7 @@ public class FragmentInstanceSerdeTest {
             planFragmentId.genFragmentInstanceId(),
             null,
             QueryType.READ,
-            config.getQueryTimeoutThreshold());
+            60000);
     TRegionReplicaSet regionReplicaSet =
         new TRegionReplicaSet(
             new TConsensusGroupId(TConsensusGroupType.DataRegion, 1),
