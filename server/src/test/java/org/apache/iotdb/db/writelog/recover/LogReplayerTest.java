@@ -407,19 +407,9 @@ public class LogReplayerTest {
       ((Binary[]) columns[4])[(int) r] = Binary.valueOf(r + "");
     }
 
-    //    BitMap[] bitMaps = new BitMap[dataTypes.size()];
-    //    for (int i = 0; i < dataTypes.size(); i++) {
-    //      if (bitMaps[i] == null) {
-    //        bitMaps[i] = new BitMap(times.length);
-    //      }
-    //      // mark value of time=99 as null
-    //      bitMaps[i].mark(99);
-    //    }
-
     insertTabletPlan.setTimes(times);
     insertTabletPlan.setColumns(columns);
     insertTabletPlan.setRowCount(times.length);
-    //    insertTabletPlan.setBitMaps(bitMaps);
 
     return insertTabletPlan;
   }

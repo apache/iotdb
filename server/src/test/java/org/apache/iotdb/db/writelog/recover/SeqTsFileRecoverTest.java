@@ -388,6 +388,47 @@ public class SeqTsFileRecoverTest {
     resource = new TsFileResource(tsF);
   }
 
+  /**
+   * Prepare WALNode that only contains InsertRowPlan with null values. This type of physical plan
+   * will generate when inserting mismatched data.
+   */
+  private void prepareNullInsertRowPlan() throws Exception {
+    if (!tsF.exists()) {
+      tsF.createNewFile();
+    }
+    node =
+        MultiFileLogNodeManager.getInstance()
+            .getNode(
+                logNodePrefix + tsF.getName(),
+                () -> {
+                  ByteBuffer[] buffers = new ByteBuffer[2];
+                  buffers[0] =
+                      ByteBuffer.allocateDirect(
+                          IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+                  buffers[1] =
+                      ByteBuffer.allocateDirect(
+                          IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+                  return buffers;
+                });
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.sg.device1.sensor1"),
+        TSDataType.INT64,
+        TSEncoding.PLAIN,
+        TSFileDescriptor.getInstance().getConfig().getCompressor(),
+        Collections.emptyMap());
+    InsertRowPlan plan =
+        new InsertRowPlan(
+            new PartialPath("root.sg.device1"),
+            50,
+            new String[] {"sensor1"},
+            new TSDataType[] {TSDataType.INT64},
+            new String[] {"1"});
+    plan.markFailedMeasurementInsertion(0, new Exception());
+    node.write(plan);
+    node.notifyStartFlush();
+    resource = new TsFileResource(tsF);
+  }
+
   @Test
   public void testNonLastRecovery()
       throws StorageGroupProcessorException, IOException, MetadataException, WriteProcessException {
@@ -561,5 +602,31 @@ public class SeqTsFileRecoverTest {
 
     assertEquals(Long.MAX_VALUE, resource.getStartTime("root.sg.device4"));
     assertEquals(Long.MIN_VALUE, resource.getEndTime("root.sg.device4"));
+  }
+
+  @Test
+  public void testRecoverNullInsertRowPlan() throws Exception {
+    prepareNullInsertRowPlan();
+    TsFileRecoverPerformer performer =
+        new TsFileRecoverPerformer(logNodePrefix, resource, false, true, null);
+    RestorableTsFileIOWriter writer =
+        performer.recover(
+            true,
+            () -> {
+              ByteBuffer[] buffers = new ByteBuffer[2];
+              buffers[0] =
+                  ByteBuffer.allocateDirect(
+                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+              buffers[1] =
+                  ByteBuffer.allocateDirect(
+                      IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+              return buffers;
+            },
+            (ByteBuffer[] array) -> {
+              for (ByteBuffer byteBuffer : array) {
+                MmapUtil.clean((MappedByteBuffer) byteBuffer);
+              }
+            });
+    Assert.assertEquals(0, resource.getDevices().size());
   }
 }
