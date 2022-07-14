@@ -159,7 +159,7 @@ public class LogReplayer {
   private void replayInsert(
       InsertPlan plan, VirtualStorageGroupProcessor virtualStorageGroupProcessor)
       throws WriteProcessException, QueryProcessException {
-    if (plan.getMeasurements().length == 0) {
+    if (!plan.hasValidMeasurements()) {
       return;
     }
     if (currentTsFileResource != null) {

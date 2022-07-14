@@ -391,7 +391,7 @@ public class SeqTsFileRecoverTest {
 
   /**
    * Prepare WALNode that only contains InsertRowPlan/InsertTabletPlan with null values. This type
-   * of physical plan will generate when inserting mismatched data.
+   * of physical plan will be generated when inserting mismatched type data.
    */
   private void prepareNullInsertRowPlan() throws Exception {
     if (!tsF.exists()) {
