@@ -27,7 +27,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
-import org.apache.iotdb.db.engine.memtable.WritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.WritableMemChunkGroup;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -65,10 +65,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static junit.framework.TestCase.assertTrue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.*;
 
 public class TsFileProcessorTest {
 
@@ -327,7 +327,7 @@ public class TsFileProcessorTest {
 
   @Test
   public void testMemTableMapRamCost()
-      throws MetadataException, WriteProcessException, IOException {
+      throws MetadataException, WriteProcessException, IOException, NoSuchFieldException {
     processor =
         new TsFileProcessor(
             storageGroup,
@@ -350,15 +350,38 @@ public class TsFileProcessorTest {
     record.addTuple(DataPoint.getDataPoint(dataType, "ns0", String.valueOf(1)));
     processor.insert(new InsertRowPlan(record));
     Assert.assertEquals(
-        memTableMapRamCost
-            + RamUsageEstimator.shallowSizeOfInstance(WritableMemChunk.class)
-            + RamUsageEstimator.sizeOf("ns0"),
+        memTableMapRamCost + 64 + RamUsageEstimator.sizeOf("ns0"),
         memTable.getMemTableMapRamCost());
+
+    // try to compare with accurate value, assert within 0.85 accuracy
+    java.lang.reflect.Field memChunkMap =
+        WritableMemChunkGroup.class.getDeclaredField("memChunkMap");
+    memChunkMap.setAccessible(true);
+    AtomicLong actualRamCost = new AtomicLong(0);
+    actualRamCost.addAndGet(128); // map base size
+    memTable.getMemTableMap().entrySet().stream()
+        .forEach(
+            chunkGroupsEntry -> {
+              actualRamCost.addAndGet(RamUsageEstimator.sizeOf(chunkGroupsEntry.getKey()));
+              actualRamCost.addAndGet(RamUsageEstimator.shallowSizeOf(chunkGroupsEntry.getValue()));
+              actualRamCost.addAndGet(RamUsageEstimator.shallowSizeOf(chunkGroupsEntry));
+              actualRamCost.addAndGet(128); // map base size
+              chunkGroupsEntry.getValue().getMemChunkMap().entrySet().stream()
+                  .forEach(
+                      chunkEntry -> {
+                        actualRamCost.addAndGet(RamUsageEstimator.sizeOf(chunkEntry.getKey()));
+                        actualRamCost.addAndGet(
+                            RamUsageEstimator.shallowSizeOf(chunkEntry.getValue()));
+                        actualRamCost.addAndGet(RamUsageEstimator.shallowSizeOf(chunkEntry) + 8);
+                      });
+            });
+    Assert.assertTrue(memTable.getMemTableMapRamCost() * 1.0 / actualRamCost.get() > 0.85);
+    Assert.assertTrue(memTable.getMemTableMapRamCost() * 1.0 / actualRamCost.get() < 1);
   }
 
   @Test
   public void testAlignedMemTableMapRamCost()
-      throws MetadataException, WriteProcessException, IOException {
+      throws MetadataException, WriteProcessException, IOException, NoSuchFieldException {
     processor =
         new TsFileProcessor(
             storageGroup,
@@ -379,12 +402,45 @@ public class TsFileProcessorTest {
 
     TSRecord record = new TSRecord(123L, "root.sg.device5");
     record.addTuple(DataPoint.getDataPoint(dataType, "ns0", String.valueOf(1)));
-    processor.insert(new InsertRowPlan(record));
+    InsertRowPlan insertRowPlan = new InsertRowPlan(record);
+    insertRowPlan.setAligned(true);
+    processor.insert(insertRowPlan);
     Assert.assertEquals(
         memTableMapRamCost
-            + RamUsageEstimator.shallowSizeOfInstance(AlignedWritableMemChunk.class)
+            + RamUsageEstimator.sizeOf(Integer.valueOf(0))
             + RamUsageEstimator.sizeOf("ns0"),
         memTable.getMemTableMapRamCost());
+
+    // try to compare with accurate value, assert within 0.85 accuracy
+    java.lang.reflect.Field measurementIndexMap =
+        AlignedWritableMemChunk.class.getDeclaredField("measurementIndexMap");
+    measurementIndexMap.setAccessible(true);
+    AtomicLong actualRamCost = new AtomicLong(0);
+    actualRamCost.addAndGet(128); // map base size
+    memTable.getMemTableMap().entrySet().stream()
+        .forEach(
+            chunkGroupsEntry -> {
+              actualRamCost.addAndGet(RamUsageEstimator.sizeOf(chunkGroupsEntry.getKey()));
+              actualRamCost.addAndGet(RamUsageEstimator.shallowSizeOf(chunkGroupsEntry.getValue()));
+              actualRamCost.addAndGet(RamUsageEstimator.shallowSizeOf(chunkGroupsEntry));
+              actualRamCost.addAndGet(128); // map base size
+              chunkGroupsEntry.getValue().getMemChunkMap().entrySet().stream()
+                  .forEach(
+                      chunkEntry -> {
+                        actualRamCost.addAndGet(RamUsageEstimator.sizeOf(chunkEntry.getKey()));
+                        actualRamCost.addAndGet(
+                            RamUsageEstimator.shallowSizeOf(chunkEntry.getValue()));
+                        try {
+                          actualRamCost.addAndGet(
+                              RamUsageEstimator.sizeOf(
+                                  measurementIndexMap.get(chunkEntry.getValue())));
+                        } catch (IllegalAccessException e) {
+                          throw new RuntimeException(e);
+                        }
+                      });
+            });
+    Assert.assertTrue(memTable.getMemTableMapRamCost() * 1.0 / actualRamCost.get() > 0.85);
+    Assert.assertTrue(memTable.getMemTableMapRamCost() * 1.0 / actualRamCost.get() < 1);
   }
 
   @Test

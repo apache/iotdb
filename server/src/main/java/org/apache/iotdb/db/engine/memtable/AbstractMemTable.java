@@ -75,6 +75,25 @@ public abstract class AbstractMemTable implements IMemTable {
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
 
   /**
+   * Parameters for slightly small estimate to control memory of {@link #memTableMap}, if consider
+   * {@link RamUsageEstimator} as accurate one.
+   *
+   * <p>todo: implement reflection to be more accurate
+   */
+  private static final long WRITABLE_CHUNK_GROUP_SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(WritableMemChunkGroup.class);
+
+  private static final long ALIGNED_CHUNK_GROUP_SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(AlignedWritableMemChunkGroup.class);
+  private static final long WRITABLE_CHUNK_SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOfInstance(WritableMemChunk.class);
+  private static final long ALIGNED_CHUNK_SHALLOW_SIZE =
+      RamUsageEstimator.shallowSizeOf(AlignedWritableMemChunk.class);
+  private static final long MAP_ENTRY_SIZE = 40L;
+  private static final long MAP_BASE_SIZE = 128L;
+  private static final long INTEGER_SIZE = 16L;
+
+  /**
    * The initial value is true because we want calculate the text data size when recover memTable!!
    */
   protected boolean disableMemControl = true;
@@ -842,28 +861,27 @@ public abstract class AbstractMemTable implements IMemTable {
 
   /** A rough estimate of increment of {@link #memTableMap} */
   public static long calculateMemTableMapIncrement(String measurementId) {
-    return RamUsageEstimator.sizeOf(measurementId)
-        + RamUsageEstimator.shallowSizeOfInstance(WritableMemChunk.class);
+    return RamUsageEstimator.sizeOf(measurementId) + WRITABLE_CHUNK_SHALLOW_SIZE + MAP_ENTRY_SIZE;
   }
 
   /** Estimate when chunk group not exists */
   public static long calculateMemTableMapIncrement(IDeviceID deviceID) {
-    return RamUsageEstimator.sizeOf(deviceID)
-        + RamUsageEstimator.shallowSizeOfInstance(WritableMemChunkGroup.class);
+    return RamUsageEstimator.sizeOf(deviceID) + WRITABLE_CHUNK_GROUP_SHALLOW_SIZE + MAP_BASE_SIZE;
   }
 
   /** Calculate when extends, for new entry of measurementIndexMap in AlignedWritableMemChunk */
   public static long calculateAlignedMemTableMapIncrement(String measurementId) {
-    return RamUsageEstimator.sizeOf(measurementId)
-        + RamUsageEstimator.shallowSizeOfInstance(Integer.class);
+    return RamUsageEstimator.sizeOf(measurementId) + INTEGER_SIZE;
   }
 
   /** Calculate when created, including entries of measurementIndexMap in AlignedWritableMemChunk */
   public static long calculateAlignedMemTableMapIncrement(
       IDeviceID deviceID, String[] measurements) {
     return RamUsageEstimator.sizeOf(deviceID)
-        + RamUsageEstimator.shallowSizeOfInstance(AlignedWritableMemChunkGroup.class)
-        + measurements.length * RamUsageEstimator.shallowSizeOfInstance(Integer.class)
+        + ALIGNED_CHUNK_GROUP_SHALLOW_SIZE
+        + ALIGNED_CHUNK_SHALLOW_SIZE
+        + MAP_BASE_SIZE
+        + measurements.length * (INTEGER_SIZE + MAP_ENTRY_SIZE)
         + Arrays.stream(measurements).map(RamUsageEstimator::sizeOf).reduce(0L, Long::sum);
   }
 
