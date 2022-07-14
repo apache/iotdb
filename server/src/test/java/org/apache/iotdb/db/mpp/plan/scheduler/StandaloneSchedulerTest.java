@@ -235,7 +235,7 @@ public class StandaloneSchedulerTest {
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
-            60000L);
+            conf.getQueryTimeoutThreshold());
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.wf01.GPS"));
@@ -345,7 +345,7 @@ public class StandaloneSchedulerTest {
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
-            60000L);
+            conf.getQueryTimeoutThreshold());
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.d3"));
@@ -393,7 +393,7 @@ public class StandaloneSchedulerTest {
             planFragment.getId().genFragmentInstanceId(),
             new GroupByFilter(1, 2, 3, 4),
             QueryType.WRITE,
-            60000L);
+            conf.getQueryTimeoutThreshold());
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
 
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath(deviceId));
