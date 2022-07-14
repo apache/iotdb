@@ -70,7 +70,7 @@ public class DriverScheduler implements IDriverScheduler, IService {
       IoTDBDescriptor.getInstance().getConfig().getMaxAllowedConcurrentQueries();
   private static final int WORKER_THREAD_NUM =
       IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread();
-  private static final int QUERY_TIMEOUT_MS =
+  private static final long QUERY_TIMEOUT_MS =
       IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
   private final ThreadGroup workerGroups;
   private final List<AbstractDriverThread> threads;
