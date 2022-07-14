@@ -47,14 +47,16 @@
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/conf</directory>
-            <outputDirectory>conf</outputDirectory>
+            <outputDirectory>grafana-metrics-example</outputDirectory>
+            <includes>
+                <include>cluster/Apache IoTDB ConfigNode Dashboard v0.14.0.json</include>
+            </includes>
+            <directory>${maven.multiModuleProjectDirectory}/grafana-metrics-example</directory>
         </fileSet>
-        <!--    <fileSet>-->
-        <!--      <directory>${maven.multiModuleProjectDirectory}/confignode/src/assembly/resources/tools</directory>-->
-        <!--      <outputDirectory>tools</outputDirectory>-->
-        <!--      <fileMode>0755</fileMode>-->
-        <!--    </fileSet>-->
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/docs</directory>
+            <outputDirectory>docs</outputDirectory>
+        </fileSet>
     </fileSets>
     <componentDescriptors>
         <componentDescriptor>common-files.xml</componentDescriptor>
