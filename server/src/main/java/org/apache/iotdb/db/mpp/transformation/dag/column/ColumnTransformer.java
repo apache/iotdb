@@ -59,6 +59,7 @@ public abstract class ColumnTransformer {
   }
 
   public void initializeColumnCache(Column column) {
+    hasEvaluated = true;
     columnCache.cacheColumn(column, referenceCount);
   }
 

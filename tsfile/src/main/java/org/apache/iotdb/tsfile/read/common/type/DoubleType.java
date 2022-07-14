@@ -19,4 +19,79 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
-public class DoubleType implements Type {}
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
+
+public class DoubleType implements Type {
+  @Override
+  public boolean getBoolean(Column c, int position) {
+    throw new UnsupportedOperationException("DoubleType cannot getBoolean");
+  }
+
+  @Override
+  public int getInt(Column c, int position) {
+    return (int) c.getDouble(position);
+  }
+
+  @Override
+  public long getLong(Column c, int position) {
+    return (long) c.getDouble(position);
+  }
+
+  @Override
+  public float getFloat(Column c, int position) {
+    return (float) c.getDouble(position);
+  }
+
+  @Override
+  public double getDouble(Column c, int position) {
+    return c.getDouble(position);
+  }
+
+  @Override
+  public Binary getBinary(Column c, int position) {
+    return Type.super.getBinary(c, position);
+  }
+
+  @Override
+  public void writeBoolean(ColumnBuilder builder, boolean value) {
+    throw new UnsupportedOperationException("DoubleType cannot writeBoolean");
+  }
+
+  @Override
+  public void writeInt(ColumnBuilder builder, int value) {
+    builder.writeDouble(value);
+  }
+
+  @Override
+  public void writeLong(ColumnBuilder builder, long value) {
+    builder.writeDouble(value);
+  }
+
+  @Override
+  public void writeFloat(ColumnBuilder builder, float value) {
+    builder.writeDouble(value);
+  }
+
+  @Override
+  public void writeDouble(ColumnBuilder builder, double value) {
+    builder.writeDouble(value);
+  }
+
+  @Override
+  public void writeBinary(ColumnBuilder builder, Binary value) {
+    throw new UnsupportedOperationException("DoubleType cannot writeBinary");
+  }
+
+  @Override
+  public void appendNull(ColumnBuilder builder) {
+    builder.appendNull();
+  }
+
+  @Override
+  public ColumnBuilder createBlockBuilder(int expectedEntries) {
+    return new DoubleColumnBuilder(null, expectedEntries);
+  }
+}

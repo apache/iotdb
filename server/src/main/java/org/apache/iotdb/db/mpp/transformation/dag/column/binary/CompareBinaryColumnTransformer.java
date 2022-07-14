@@ -21,36 +21,41 @@ package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-public abstract class BinaryColumnTransformer extends ColumnTransformer {
+public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransformer {
 
-  protected final ColumnTransformer leftTransformer;
-
-  protected final ColumnTransformer rightTransformer;
-
-  public BinaryColumnTransformer(
+  public CompareBinaryColumnTransformer(
       Expression expression,
       Type returnType,
       ColumnTransformer leftTransformer,
       ColumnTransformer rightTransformer) {
-    super(expression, returnType);
-    this.leftTransformer = leftTransformer;
-    this.rightTransformer = rightTransformer;
+    super(expression, returnType, leftTransformer, rightTransformer);
   }
 
   @Override
-  public void reset() {
-    hasEvaluated = false;
-    leftTransformer.reset();
-    rightTransformer.reset();
+  public void evaluate() {
+    leftTransformer.tryEvaluate();
+    rightTransformer.tryEvaluate();
+    Column leftColumn = leftTransformer.getColumn();
+    Column rightColumn = rightTransformer.getColumn();
+    int size = leftColumn.getPositionCount();
+    ColumnBuilder builder = returnType.createBlockBuilder(size);
+    for (int i = 0; i < size; i++) {
+      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
+        returnType.writeBoolean(
+            builder,
+            transform(
+                leftTransformer.getType().getDouble(leftColumn, i),
+                rightTransformer.getType().getDouble(rightColumn, i)));
+      } else {
+        returnType.appendNull(builder);
+      }
+    }
+    initializeColumnCache(builder.build());
   }
 
-  public ColumnTransformer getLeftTransformer() {
-    return leftTransformer;
-  }
-
-  public ColumnTransformer getRightTransformer() {
-    return rightTransformer;
-  }
+  protected abstract boolean transform(double d1, double d2);
 }

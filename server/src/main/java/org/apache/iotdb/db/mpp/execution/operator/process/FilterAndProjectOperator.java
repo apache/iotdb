@@ -123,7 +123,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
             predicateUDTFContext,
             predicateMap,
             typeProvider,
-            null);
+            new HashSet<>());
     addReferenceCountOfCommonExpressions();
 
     // add datatype of common subexpressions in output datatypes
@@ -139,6 +139,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.outputUDTFContext = new UDTFContext(zoneId);
     outputUDTFContext.constructUdfExecutors(outputExpressions);
     outputColumnTransformers = new ColumnTransformer[outputExpressions.length];
+    outputMap = new HashMap<>();
     for (int i = 0; i < outputExpressions.length; i++) {
       outputColumnTransformers[i] =
           outputExpressions[i].constructColumnTransformer(
@@ -187,6 +188,12 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
+    // reset ColumnTransformer for next input
+    predicateColumnTransformer.reset();
+    for (ColumnTransformer columnTransformer : outputColumnTransformers) {
+      columnTransformer.reset();
+    }
+
     TsBlock input = inputOperator.next();
     TsBlock filterResult = getFilterTsBlock(input);
 

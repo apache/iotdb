@@ -34,6 +34,6 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
 
   @Override
   public void reset() {
-    this.hasEvaluated = false;
+    hasEvaluated = false;
   }
 }

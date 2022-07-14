@@ -19,7 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 
 import java.time.ZoneId;
@@ -39,6 +42,16 @@ public abstract class LeafOperand extends Expression {
   public final void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     // nothing to do
+  }
+
+  @Override
+  public ColumnTransformer constructColumnTransformer(
+      long queryId,
+      UDTFContext udtfContext,
+      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
+      TypeProvider typeProvider,
+      Set<Expression> calculatedExpressions) {
+    return null;
   }
 
   @Override

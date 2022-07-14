@@ -19,4 +19,79 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
-public class IntType implements Type {}
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
+
+public class IntType implements Type {
+  @Override
+  public boolean getBoolean(Column c, int position) {
+    throw new UnsupportedOperationException("IntType cannot getBoolean");
+  }
+
+  @Override
+  public int getInt(Column c, int position) {
+    return c.getInt(position);
+  }
+
+  @Override
+  public long getLong(Column c, int position) {
+    return c.getInt(position);
+  }
+
+  @Override
+  public float getFloat(Column c, int position) {
+    return c.getInt(position);
+  }
+
+  @Override
+  public double getDouble(Column c, int position) {
+    return c.getInt(position);
+  }
+
+  @Override
+  public Binary getBinary(Column c, int position) {
+    throw new UnsupportedOperationException("IntType cannot getBinary");
+  }
+
+  @Override
+  public void writeBoolean(ColumnBuilder builder, boolean value) {
+    Type.super.writeBoolean(builder, value);
+  }
+
+  @Override
+  public void writeInt(ColumnBuilder builder, int value) {
+    builder.writeInt(value);
+  }
+
+  @Override
+  public void writeLong(ColumnBuilder builder, long value) {
+    builder.writeInt((int) value);
+  }
+
+  @Override
+  public void writeFloat(ColumnBuilder builder, float value) {
+    builder.writeInt((int) value);
+  }
+
+  @Override
+  public void writeDouble(ColumnBuilder builder, double value) {
+    builder.writeInt((int) value);
+  }
+
+  @Override
+  public void writeBinary(ColumnBuilder builder, Binary value) {
+    throw new UnsupportedOperationException("IntType cannot writeBinary");
+  }
+
+  @Override
+  public void appendNull(ColumnBuilder builder) {
+    builder.appendNull();
+  }
+
+  @Override
+  public ColumnBuilder createBlockBuilder(int expectedEntries) {
+    return new IntColumnBuilder(null, expectedEntries);
+  }
+}

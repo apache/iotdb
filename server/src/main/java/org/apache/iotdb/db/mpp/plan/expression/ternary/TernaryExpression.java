@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
@@ -167,6 +168,16 @@ public abstract class TernaryExpression extends Expression {
     firstExpression.collectSubexpressions(expressions);
     secondExpression.collectSubexpressions(expressions);
     thirdExpression.collectSubexpressions(expressions);
+  }
+
+  @Override
+  public ColumnTransformer constructColumnTransformer(
+      long queryId,
+      UDTFContext udtfContext,
+      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
+      TypeProvider typeProvider,
+      Set<Expression> calculatedExpressions) {
+    return null;
   }
 
   @Override
