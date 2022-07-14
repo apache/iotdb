@@ -402,7 +402,6 @@ public class IoTDBRestartIT {
     }
 
     // mock exception during flush memtable
-
     EnvironmentUtils.restartDaemon();
 
     try (Connection connection =
