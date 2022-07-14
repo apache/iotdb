@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -160,6 +161,14 @@ public class SeriesScanUtil {
   public void initQueryDataSource(QueryDataSource dataSource) {
     QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), orderUtils.getAscending());
     this.dataSource = dataSource;
+    orderUtils.setCurSeqFileIndex(dataSource);
+  }
+
+  @TestOnly
+  public void initQueryDataSource(
+      List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource) {
+    dataSource = new QueryDataSource(seqFileResource, unseqFileResource);
+    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), orderUtils.getAscending());
     orderUtils.setCurSeqFileIndex(dataSource);
   }
 

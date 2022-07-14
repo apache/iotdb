@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.engine.compaction.reader;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanUtil;
@@ -29,6 +31,8 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class SeriesDataBlockReader implements IDataBlockReader {
@@ -58,6 +62,30 @@ public class SeriesDataBlockReader implements IDataBlockReader {
               seriesPath, allSensors, dataType, context, timeFilter, valueFilter, ascending);
     }
     this.seriesScanUtil.initQueryDataSource(dataSource);
+  }
+
+  @TestOnly
+  public SeriesDataBlockReader(
+      PartialPath seriesPath,
+      TSDataType dataType,
+      FragmentInstanceContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      Filter timeFilter,
+      Filter valueFilter,
+      boolean ascending) {
+    Set<String> allSensors = new HashSet<>();
+    if (seriesPath instanceof AlignedPath) {
+      this.seriesScanUtil =
+          new AlignedSeriesScanUtil(
+              seriesPath, allSensors, context, timeFilter, valueFilter, ascending);
+    } else {
+      allSensors.add(seriesPath.getMeasurement());
+      this.seriesScanUtil =
+          new SeriesScanUtil(
+              seriesPath, allSensors, dataType, context, timeFilter, valueFilter, ascending);
+    }
+    seriesScanUtil.initQueryDataSource(seqFileResource, unseqFileResource);
   }
 
   @Override

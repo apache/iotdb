@@ -378,17 +378,15 @@ public class ReadPointCompactionPerformer
       throws IOException {
     while (reader.hasNextBatch()) {
       TsBlock tsBlock = reader.nextBatch();
-      //      TsBlock.TsBlockSingleColumnIterator tsBlockIterator =
-      // tsBlock.getTsBlockSingleColumnIterator();
       IPointReader pointReader;
       if (isAligned) {
         pointReader = tsBlock.getTsBlockAlignedRowIterator();
       } else {
         pointReader = tsBlock.getTsBlockSingleColumnIterator();
       }
-      while (!pointReader.hasNextTimeValuePair()) {
+      while (pointReader.hasNextTimeValuePair()) {
         TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
-        writer.write(timeValuePair.getTimestamp(), timeValuePair.getValue(), subTaskId);
+        writer.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
       }
     }
   }
