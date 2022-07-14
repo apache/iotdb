@@ -467,6 +467,7 @@ public class IoTDBRestServiceTest {
         new ArrayList<Object>() {
           {
             add("child paths");
+            add("node types");
           }
         };
     List<Object> values1 =
