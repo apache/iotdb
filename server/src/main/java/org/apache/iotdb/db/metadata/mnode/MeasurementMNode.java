@@ -227,13 +227,24 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   @Override
   public Template getSchemaTemplate() {
     MeasurementMNode.logger.warn(
-        "current node {} is a MeasurementMNode, can not get Device Template", name);
+        "current node {} is a MeasurementMNode, can not get Schema Template", name);
     throw new RuntimeException(
-        String.format("current node %s is a MeasurementMNode, can not get Device Template", name));
+        String.format("current node %s is a MeasurementMNode, can not get Schema Template", name));
   }
 
   @Override
   public void setSchemaTemplate(Template schemaTemplate) {}
+
+  @Override
+  public int getSchemaTemplateId() {
+    MeasurementMNode.logger.warn(
+        "current node {} is a MeasurementMNode, can not get Schema Template", name);
+    throw new RuntimeException(
+        String.format("current node %s is a MeasurementMNode, can not get Schema Template", name));
+  }
+
+  @Override
+  public void setSchemaTemplateId(int schemaTemplateId) {}
 
   @Override
   public void setUseTemplate(boolean useTemplate) {}

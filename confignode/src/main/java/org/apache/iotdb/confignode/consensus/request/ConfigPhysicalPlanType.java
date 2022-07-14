@@ -71,5 +71,7 @@ public enum ConfigPhysicalPlanType {
   CreateSchemaTemplate,
   ShowSchemaTemplate,
   ShowNodesInSchemaTemplate,
-  UpdateRegionLocation;
+  UpdateRegionLocation,
+  SetSchemaTemplate,
+  GetPathsSetTemplate;
 }

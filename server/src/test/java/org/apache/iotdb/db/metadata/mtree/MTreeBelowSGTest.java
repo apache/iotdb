@@ -57,7 +57,7 @@ import static org.junit.Assert.fail;
 
 public abstract class MTreeBelowSGTest {
 
-  MTreeAboveSG root;
+  ConfigMTree root;
   IMTreeBelowSG storageGroup;
 
   Set<IMTreeBelowSG> usedMTree = new HashSet<>();
@@ -70,7 +70,7 @@ public abstract class MTreeBelowSGTest {
   public void setUp() throws Exception {
     setConfig();
     EnvironmentUtils.envSetUp();
-    root = new MTreeAboveSG();
+    root = new ConfigMTree();
   }
 
   @After
