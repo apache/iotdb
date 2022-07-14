@@ -169,28 +169,33 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
+  /** get data partition when query */
   @Override
   public DataPartition getDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      TDataPartitionTableResp dataPartitionTableResp =
-          client.getDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
-
-      if (dataPartitionTableResp.getStatus().getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return parseDataPartitionResp(dataPartitionTableResp);
-      } else {
-        throw new StatementAnalyzeException(
-            "An error occurred when executing getDataPartition():"
-                + dataPartitionTableResp.getStatus().getMessage());
+      DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
+      if (null == dataPartition) {
+        TDataPartitionTableResp dataPartitionTableResp =
+            client.getDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
+        if (dataPartitionTableResp.getStatus().getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          dataPartition = parseDataPartitionResp(dataPartitionTableResp);
+        } else {
+          throw new StatementAnalyzeException(
+              "An error occurred when executing getDataPartition():"
+                  + dataPartitionTableResp.getStatus().getMessage());
+        }
       }
+      return dataPartition;
     } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getDataPartition():" + e.getMessage());
     }
   }
 
+  /** get data partition when write */
   @Override
   public DataPartition getDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams) {
     try (ConfigNodeClient client =
@@ -220,28 +225,34 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
     }
   }
 
+  /** get data partition when query */
   @Override
   public DataPartition getOrCreateDataPartition(
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap) {
     // Do not use data partition cache
     try (ConfigNodeClient client =
         configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      TDataPartitionTableResp dataPartitionTableResp =
-          client.getOrCreateDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
-      if (dataPartitionTableResp.getStatus().getCode()
-          == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return parseDataPartitionResp(dataPartitionTableResp);
-      } else {
-        throw new StatementAnalyzeException(
-            "An error occurred when executing getOrCreateDataPartition():"
-                + dataPartitionTableResp.getStatus().getMessage());
+      DataPartition dataPartition = partitionCache.getDataPartition(sgNameToQueryParamsMap);
+      if (null == dataPartition) {
+        TDataPartitionTableResp dataPartitionTableResp =
+            client.getOrCreateDataPartitionTable(constructDataPartitionReq(sgNameToQueryParamsMap));
+        if (dataPartitionTableResp.getStatus().getCode()
+            == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          dataPartition = parseDataPartitionResp(dataPartitionTableResp);
+        } else {
+          throw new StatementAnalyzeException(
+              "An error occurred when executing getOrCreateDataPartition():"
+                  + dataPartitionTableResp.getStatus().getMessage());
+        }
       }
+      return dataPartition;
     } catch (TException | IOException e) {
       throw new StatementAnalyzeException(
           "An error occurred when executing getOrCreateDataPartition():" + e.getMessage());
     }
   }
 
+  /** get data partition when write */
   @Override
   public DataPartition getOrCreateDataPartition(
       List<DataPartitionQueryParam> dataPartitionQueryParams) {
