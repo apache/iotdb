@@ -178,17 +178,6 @@ public class ConfigNodeRPCServiceProcessorTest {
     TDataNodeRegisterReq req = new TDataNodeRegisterReq(dataNodeInfo);
     TDataNodeRegisterResp resp;
 
-    // test only register not activate
-    dataNodeLocation.setDataNodeId(-1);
-    dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6670));
-    dataNodeLocation.setInternalEndPoint(new TEndPoint("0.0.0.0", 9007));
-    dataNodeLocation.setMPPDataExchangeEndPoint(new TEndPoint("0.0.0.0", 8781));
-    dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40014));
-    dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50014));
-    resp = processor.registerDataNode(req);
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), resp.getStatus().getCode());
-    Assert.assertEquals(3, resp.getDataNodeId());
-
     // test success re-register
     dataNodeLocation.setDataNodeId(1);
     dataNodeLocation.setClientRpcEndPoint(new TEndPoint("0.0.0.0", 6668));
