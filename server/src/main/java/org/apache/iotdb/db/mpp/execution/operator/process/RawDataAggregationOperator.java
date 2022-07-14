@@ -23,6 +23,8 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 
@@ -51,7 +53,7 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
 
   @Override
   protected boolean calculateNextAggregationResult() {
-    while (!calculateAggregationFromRawData(inputTsBlock, aggregators, curTimeRange, ascending)) {
+    while (!calcFromRawData()) {
       inputTsBlock = null;
 
       // NOTE: child.next() can only be invoked once
@@ -70,5 +72,12 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
     updateResultTsBlock();
 
     return true;
+  }
+
+  private boolean calcFromRawData() {
+    Pair<Boolean, TsBlock> calcResult =
+        calculateAggregationFromRawData(inputTsBlock, aggregators, curTimeRange, ascending);
+    inputTsBlock = calcResult.getRight();
+    return calcResult.getLeft();
   }
 }

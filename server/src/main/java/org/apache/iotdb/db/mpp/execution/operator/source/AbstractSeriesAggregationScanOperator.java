@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -187,14 +188,11 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     return calcFromRawData(inputTsBlock);
   }
 
-  protected boolean calcFromRawData(TsBlock tsBlock) {
-    boolean isFinishCalc =
+  private boolean calcFromRawData(TsBlock tsBlock) {
+    Pair<Boolean, TsBlock> calcResult =
         calculateAggregationFromRawData(tsBlock, aggregators, curTimeRange, ascending);
-    // can calc for next interval
-    if (tsBlock != null && !tsBlock.isEmpty()) {
-      inputTsBlock = tsBlock;
-    }
-    return isFinishCalc;
+    inputTsBlock = calcResult.getRight();
+    return calcResult.getLeft();
   }
 
   protected void calcFromStatistics(Statistics[] statistics) {

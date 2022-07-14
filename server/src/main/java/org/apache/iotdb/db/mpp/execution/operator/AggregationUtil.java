@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 
@@ -68,15 +69,16 @@ public class AggregationUtil {
   /**
    * Calculate aggregation value on the time range from the tsBlock containing raw data.
    *
-   * @return whether the aggregation value of the current time range has been calculated
+   * @return left - whether the aggregation calculation of the current time range has done; right -
+   *     remaining tsBlock
    */
-  public static boolean calculateAggregationFromRawData(
+  public static Pair<Boolean, TsBlock> calculateAggregationFromRawData(
       TsBlock inputTsBlock,
       List<Aggregator> aggregators,
       TimeRange curTimeRange,
       boolean ascending) {
     if (inputTsBlock == null || inputTsBlock.isEmpty()) {
-      return false;
+      return new Pair<>(false, inputTsBlock);
     }
 
     // check if the tsBlock does not contain points in current interval
@@ -109,7 +111,8 @@ public class AggregationUtil {
             && (ascending
                 ? inputTsBlock.getEndTime() > curTimeRange.getMax()
                 : inputTsBlock.getEndTime() < curTimeRange.getMin());
-    return isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound;
+    return new Pair<>(
+        isAllAggregatorsHasFinalResult(aggregators) || isTsBlockOutOfBound, inputTsBlock);
   }
 
   /** Append a row of aggregation results to the result tsBlock. */
