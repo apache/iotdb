@@ -168,7 +168,8 @@ public class StorageEngine implements IService {
               config.getSecondaryPort(),
               config.getSecondaryUser(),
               config.getSecondaryPassword(),
-              5);
+              5,
+              config.isRpcThriftCompressionEnable());
 
       // create operationSyncDDLProtector and operationSyncDDLLogService
       operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncsessionPool);
