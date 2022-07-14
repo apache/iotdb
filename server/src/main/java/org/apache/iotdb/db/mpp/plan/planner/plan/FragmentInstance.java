@@ -159,10 +159,10 @@ public class FragmentInstance implements IConsensusRequest {
   public static FragmentInstance deserializeFrom(ByteBuffer buffer) {
     FragmentInstanceId id = FragmentInstanceId.deserialize(buffer);
     PlanFragment planFragment = PlanFragment.deserialize(buffer);
+    long timeOut = ReadWriteIOUtils.readLong(buffer);
     boolean hasTimeFilter = ReadWriteIOUtils.readBool(buffer);
     Filter timeFilter = hasTimeFilter ? FilterFactory.deserialize(buffer) : null;
     QueryType queryType = QueryType.values()[ReadWriteIOUtils.readInt(buffer)];
-    long timeOut = ReadWriteIOUtils.readLong(buffer);
     FragmentInstance fragmentInstance =
         new FragmentInstance(planFragment, id, timeFilter, queryType, timeOut);
     boolean hasHostDataNode = ReadWriteIOUtils.readBool(buffer);
