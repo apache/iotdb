@@ -462,7 +462,7 @@ public class WALNode implements IWALNode {
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
   }
 
-  /** This iterator is not concurrency-safe */
+  /** This iterator is not concurrency-safe, cannot read the current-writing wal file. */
   @Override
   public ReqIterator getReqIterator(long startIndex) {
     return new PlanNodeIterator(startIndex);
@@ -720,7 +720,8 @@ public class WALNode implements IWALNode {
       int fileIndex = WALFileUtils.binarySearchFileBySearchIndex(filesToSearch, nextSearchIndex);
       logger.debug(
           "searchIndex: {}, result: {}, files: {}, ", nextSearchIndex, fileIndex, filesToSearch);
-      if (filesToSearch != null && fileIndex >= 0) { // possible to find next
+      if (filesToSearch != null
+          && (fileIndex >= 0 && fileIndex < filesToSearch.length - 1)) { // possible to find next
         this.filesToSearch = filesToSearch;
         this.currentFileIndex = fileIndex;
         this.needUpdatingFilesToSearch = false;

@@ -370,6 +370,20 @@ public class ConsensusReqReaderTest {
     Assert.assertFalse(iterator.hasNext());
   }
 
+  @Test
+  public void scenario01TestGetReqIterator06() throws Exception {
+    simulateFileScenario01();
+    ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(5);
+    Assert.assertFalse(iterator.hasNext());
+  }
+
+  @Test
+  public void scenario01TestGetReqIterator07() throws Exception {
+    simulateFileScenario01();
+    ConsensusReqReader.ReqIterator iterator = walNode.getReqIterator(6);
+    Assert.assertFalse(iterator.hasNext());
+  }
+
   public static InsertRowNode getInsertRowNode(String devicePath) throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =

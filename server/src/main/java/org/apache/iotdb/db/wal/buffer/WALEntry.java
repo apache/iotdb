@@ -32,6 +32,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.SerializedSize;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -42,6 +45,8 @@ import java.util.Objects;
  * value(physical plan or memTable snapshot).
  */
 public abstract class WALEntry implements SerializedSize {
+  private static final Logger logger = LoggerFactory.getLogger(WALEntry.class);
+
   /** type of value */
   protected final WALEntryType type;
   /** memTable id */
@@ -131,6 +136,11 @@ public abstract class WALEntry implements SerializedSize {
    * InsertRowNode and InsertTabletNode
    */
   public static PlanNode deserializeInsertNode(ByteBuffer buffer) {
+    logger.debug(
+        "buffer capacity is: {}, limit is: {}, position is: {}",
+        buffer.capacity(),
+        buffer.limit(),
+        buffer.position());
     // wal entry type
     buffer.get();
     // memtable id
