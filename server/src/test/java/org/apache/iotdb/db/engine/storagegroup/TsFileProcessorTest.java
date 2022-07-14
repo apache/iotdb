@@ -27,6 +27,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
+import org.apache.iotdb.db.engine.memtable.WritableMemChunk;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -343,6 +344,37 @@ public class TsFileProcessorTest {
     IMemTable memTable = processor.getWorkMemTable();
     long memTableMapRamCost = memTable.getMemTableMapRamCost();
     processor.insertTablet(genInsertTablePlan(1001, false), 0, 10, new TSStatus[10]);
+    Assert.assertEquals(memTableMapRamCost, memTable.getMemTableMapRamCost());
+
+    TSRecord record = new TSRecord(123L, "root.sg.device5");
+    record.addTuple(DataPoint.getDataPoint(dataType, "ns0", String.valueOf(1)));
+    processor.insert(new InsertRowPlan(record));
+    Assert.assertEquals(
+        memTableMapRamCost
+            + RamUsageEstimator.shallowSizeOfInstance(WritableMemChunk.class)
+            + RamUsageEstimator.sizeOf("ns0"),
+        memTable.getMemTableMapRamCost());
+  }
+
+  @Test
+  public void testAlignedMemTableMapRamCost()
+      throws MetadataException, WriteProcessException, IOException {
+    processor =
+        new TsFileProcessor(
+            storageGroup,
+            SystemFileFactory.INSTANCE.getFile(filePath),
+            sgInfo,
+            this::closeTsFileProcessor,
+            (tsFileProcessor) -> true,
+            true);
+    TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(sgInfo);
+    processor.setTsFileProcessorInfo(tsFileProcessorInfo);
+    this.sgInfo.initTsFileProcessorInfo(processor);
+    SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
+    processor.insertTablet(genInsertTablePlan(0, true), 0, 10, new TSStatus[10]);
+    IMemTable memTable = processor.getWorkMemTable();
+    long memTableMapRamCost = memTable.getMemTableMapRamCost();
+    processor.insertTablet(genInsertTablePlan(1001, true), 0, 10, new TSStatus[10]);
     Assert.assertEquals(memTableMapRamCost, memTable.getMemTableMapRamCost());
 
     TSRecord record = new TSRecord(123L, "root.sg.device5");

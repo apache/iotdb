@@ -539,7 +539,7 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
 
-    if (!workMemTable.ifChunkGroupExist(deviceID)) {
+    if (!workMemTable.isChunkGroupExist(deviceID)) {
       memTableMapIncrement += AbstractMemTable.calculateMemTableMapIncrement(deviceID);
     }
 
@@ -657,7 +657,7 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
 
-    if (!workMemTable.ifChunkGroupExist(deviceID)) {
+    if (!workMemTable.isChunkGroupExist(deviceID)) {
       memIncrements[3] += AbstractMemTable.calculateMemTableMapIncrement(deviceID);
     }
 
@@ -698,7 +698,7 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
 
-    if (!workMemTable.ifChunkGroupExist(deviceID)) {
+    if (!workMemTable.isChunkGroupExist(deviceID)) {
       memIncrements[3] +=
           AbstractMemTable.calculateAlignedMemTableMapIncrement(deviceID, measurements);
     }

@@ -178,7 +178,7 @@ public interface IMemTable extends WALEntryValue {
   boolean checkIfChunkDoesNotExist(IDeviceID deviceId, String measurement);
 
   /** assist to estimate increment of map of memTable */
-  boolean ifChunkGroupExist(IDeviceID deviceID);
+  boolean isChunkGroupExist(IDeviceID deviceID);
 
   /** only used when mem control enabled */
   long getCurrentTVListSize(IDeviceID deviceId, String measurement);

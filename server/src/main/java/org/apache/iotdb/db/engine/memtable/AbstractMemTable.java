@@ -601,7 +601,7 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public boolean ifChunkGroupExist(IDeviceID deviceID) {
+  public boolean isChunkGroupExist(IDeviceID deviceID) {
     return null != memTableMap.get(deviceID);
   }
 
