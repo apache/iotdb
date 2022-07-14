@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -45,6 +46,8 @@ import java.util.Objects;
 public class FragmentInstance implements IConsensusRequest {
 
   private final Logger logger = LoggerFactory.getLogger(FragmentInstance.class);
+
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final FragmentInstanceId id;
   private final QueryType type;
@@ -173,7 +176,7 @@ public class FragmentInstance implements IConsensusRequest {
         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
       id.serialize(outputStream);
       fragment.serialize(outputStream);
-      ReadWriteIOUtils.write(timeOut >= 0, outputStream);
+      ReadWriteIOUtils.write(timeOut > 0?timeOut:config.getQueryTimeoutThreshold(), outputStream);
       ReadWriteIOUtils.write(timeFilter != null, outputStream);
       if (timeFilter != null) {
         timeFilter.serialize(outputStream);
