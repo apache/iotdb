@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public abstract class UnaryColumnTransformer extends ColumnTransformer {
   public UnaryColumnTransformer(Expression expression, Type returnType, ColumnCache columnCache) {
-    super(expression, returnType, columnCache);
+    super(expression, returnType);
   }
 
   @Override

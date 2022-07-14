@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
@@ -37,6 +38,8 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -332,6 +335,53 @@ public abstract class BinaryExpression extends Expression {
 
     return expressionIntermediateLayerMap.get(this);
   }
+
+  @Override
+  public ColumnTransformer constructColumnTransformer(
+      long queryId,
+      UDTFContext udtfContext,
+      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
+      TypeProvider typeProvider,
+      Set<Expression> calculatedExpressions) {
+
+    if (expressionColumnTransformerMap.containsKey(this)) {
+      expressionColumnTransformerMap.get(this).addReferenceCount();
+    } else {
+      if (calculatedExpressions.contains(this)) {
+        // if calculated, further calculation is no longer needed, we construct a fake transformer
+        // and feed it with calculated data
+        expressionColumnTransformerMap.put(
+            this,
+            getConcreteBinaryTransformer(
+                null, null, TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+      } else {
+        ColumnTransformer leftColumnTransformer =
+            leftExpression.constructColumnTransformer(
+                queryId,
+                udtfContext,
+                expressionColumnTransformerMap,
+                typeProvider,
+                calculatedExpressions);
+        ColumnTransformer rightColumnTransformer =
+            rightExpression.constructColumnTransformer(
+                queryId,
+                udtfContext,
+                expressionColumnTransformerMap,
+                typeProvider,
+                calculatedExpressions);
+        expressionColumnTransformerMap.put(
+            this,
+            getConcreteBinaryTransformer(
+                leftColumnTransformer,
+                rightColumnTransformer,
+                TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+      }
+    }
+    return expressionColumnTransformerMap.get(this);
+  }
+
+  protected abstract ColumnTransformer getConcreteBinaryTransformer(
+      ColumnTransformer leftColumnTransformer, ColumnTransformer rightColumnTransformer, Type type);
 
   protected abstract BinaryTransformer constructTransformer(
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);

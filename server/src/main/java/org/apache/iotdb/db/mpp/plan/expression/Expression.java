@@ -177,20 +177,19 @@ public abstract class Expression {
   /**
    * Return the AccessStrategy of the FunctionExpression
    *
-   * @param udtfContext
    * @param typeProvider
    * @return
    */
-  public AccessStrategy getUDFAccessStrategy(UDTFContext udtfContext, TypeProvider typeProvider) {
+  public AccessStrategy getUDFAccessStrategy(TypeProvider typeProvider) {
     return null;
   }
 
   public abstract ColumnTransformer constructColumnTransformer(
       long queryId,
       UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
       Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
-      TypeProvider typeProvider);
+      TypeProvider typeProvider,
+      Set<Expression> calculatedExpressions);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // isConstantOperand

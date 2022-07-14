@@ -31,12 +31,15 @@ public abstract class ColumnTransformer {
 
   protected final ColumnCache columnCache;
 
+  protected int referenceCount;
+
   protected boolean hasEvaluated;
 
-  public ColumnTransformer(Expression expression, Type returnType, ColumnCache columnCache) {
+  public ColumnTransformer(Expression expression, Type returnType) {
     this.expression = expression;
     this.returnType = returnType;
-    this.columnCache = columnCache;
+    this.columnCache = new ColumnCache();
+    referenceCount = 1;
     hasEvaluated = false;
   }
 
@@ -49,6 +52,14 @@ public abstract class ColumnTransformer {
 
   public Column getColumn() {
     return columnCache.getColumn();
+  }
+
+  public void addReferenceCount() {
+    referenceCount++;
+  }
+
+  public void initializeColumnCache(Column column) {
+    columnCache.cacheColumn(column, referenceCount);
   }
 
   public Type getType() {

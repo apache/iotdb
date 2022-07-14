@@ -25,15 +25,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public class ColumnCache {
 
-  private final int initialReferenceCount;
-
   private int referenceCount;
   private Column column;
 
-  public ColumnCache(int referenceCount) {
-    this.initialReferenceCount = referenceCount;
-    this.referenceCount = referenceCount;
-  }
+  public ColumnCache() {}
 
   public Column getColumn() {
     referenceCount--;
@@ -46,8 +41,8 @@ public class ColumnCache {
     return res;
   }
 
-  public void cacheColumn(Column column) {
-    referenceCount = initialReferenceCount;
+  public void cacheColumn(Column column, int referenceCount) {
+    this.referenceCount = referenceCount;
     this.column = column;
   }
 }

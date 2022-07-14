@@ -53,7 +53,7 @@ public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTran
         returnType.appendNull(builder);
       }
     }
-    columnCache.cacheColumn(builder.build());
+    initializeColumnCache(builder.build());
   }
 
   protected abstract double transform(double d1, double d2);

@@ -28,6 +28,8 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeSeriesColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
@@ -36,6 +38,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -168,6 +171,24 @@ public class TimeSeriesOperand extends LeafOperand {
     }
 
     return expressionIntermediateLayerMap.get(this);
+  }
+
+  @Override
+  public ColumnTransformer constructColumnTransformer(
+      long queryId,
+      UDTFContext udtfContext,
+      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
+      TypeProvider typeProvider,
+      Set<Expression> calculatedExpressions) {
+    if (expressionColumnTransformerMap.containsKey(this)) {
+      expressionColumnTransformerMap.get(this).addReferenceCount();
+    } else {
+      expressionColumnTransformerMap.put(
+          this,
+          new TimeSeriesColumnTransformer(
+              this, TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+    }
+    return expressionColumnTransformerMap.get(this);
   }
 
   @Override

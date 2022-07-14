@@ -17,24 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
+package org.apache.iotdb.tsfile.read.common.type;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class ArithmeticMultiplicationColumnTransformer extends ArithmeticBinaryColumnTransformer {
-
-  public ArithmeticMultiplicationColumnTransformer(
-      Expression expression,
-      Type returnType,
-      ColumnTransformer leftTransformer,
-      ColumnTransformer rightTransformer) {
-    super(expression, returnType, leftTransformer, rightTransformer);
-  }
-
-  @Override
-  protected double transform(double d1, double d2) {
-    return d1 * d2;
+public class TypeFactory {
+  public static Type getType(TSDataType tsDataType) {
+    switch (tsDataType) {
+      case INT32:
+        return new IntType();
+      case INT64:
+        return new LongType();
+      case FLOAT:
+        return new FloatType();
+      case DOUBLE:
+        return new DoubleType();
+      case BOOLEAN:
+        return new BooleanType();
+      case TEXT:
+        return new BinaryType();
+      default:
+        throw new UnsupportedOperationException(
+            String.format("Invalid TSDataType for TypeFactory: %s", tsDataType));
+    }
   }
 }

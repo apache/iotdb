@@ -143,7 +143,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -156,7 +155,6 @@ import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -172,7 +170,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFilter;
 import static org.apache.iotdb.db.mpp.plan.constant.DataNodeEndPoints.isSameNode;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
 
 /**
  * Used to plan a fragment instance. Currently, we simply change it from PlanNode to executable
@@ -797,10 +794,7 @@ public class LocalExecutionPlanner {
 
       // check whether predicate contains Non-Mappable UDF
       if (hasNonMappableUDF(
-          new Expression[] {predicate},
-          collectSubexpressions(new Expression[] {predicate}),
-          node.getZoneId(),
-          context.getTypeProvider())) {
+          collectSubexpressions(new Expression[] {predicate}), context.getTypeProvider())) {
         throw new UnsupportedOperationException("Filter can not contain Non-Mappable UDF");
       }
 
@@ -812,47 +806,32 @@ public class LocalExecutionPlanner {
       Set<Expression> commonSubexpressions = new HashSet<>();
       predicate.findCommonSubexpressions(subExpressionsOfTransform, commonSubexpressions);
 
-      // Output expressions don't contain Non-Mappable UDF, TransformOperator is not needed
-      if (!hasNonMappableUDF(
-          outputExpressions,
-          subExpressionsOfTransform,
-          node.getZoneId(),
-          context.getTypeProvider())) {
-
-      } else {
-
-      }
-
       final Operator inputOperator = generateOnlyChildOperator(node, context);
       final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
       final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
 
-      try {
-        return new FilterOperator(
+      // Output expressions don't contain Non-Mappable UDF, TransformOperator is not needed
+      if (!hasNonMappableUDF(subExpressionsOfTransform, context.getTypeProvider())) {
+        return new FilterAndProjectOperator(
             operatorContext,
             inputOperator,
             inputDataTypes,
-            inputLocations,
-            node.getPredicate(),
-            node.getOutputExpressions(),
-            node.isKeepNull(),
-            node.getZoneId(),
+            predicate,
+            outputExpressions,
+            commonSubexpressions,
             context.getTypeProvider(),
-            node.getScanOrder() == OrderBy.TIMESTAMP_ASC);
-      } catch (QueryProcessException | IOException e) {
-        throw new RuntimeException(e);
+            inputLocations,
+            node.getZoneId(),
+            false,
+            node.getScanOrder().equals(OrderBy.TIMESTAMP_ASC));
       }
+      return null;
     }
 
     private boolean hasNonMappableUDF(
-        Expression[] expressions,
-        Set<Expression> allSubexpressions,
-        ZoneId zoneId,
-        TypeProvider typeProvider) {
-      UDTFContext udtfContext = new UDTFContext(zoneId);
-      udtfContext.constructUdfExecutors(expressions);
+        Set<Expression> allSubexpressions, TypeProvider typeProvider) {
       for (Expression expression : allSubexpressions) {
-        AccessStrategy accessStrategy = expression.getUDFAccessStrategy(udtfContext, typeProvider);
+        AccessStrategy accessStrategy = expression.getUDFAccessStrategy(typeProvider);
         if (accessStrategy != null
             && !accessStrategy
                 .getAccessStrategyType()

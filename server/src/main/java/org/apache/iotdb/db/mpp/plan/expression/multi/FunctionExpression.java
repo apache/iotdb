@@ -45,7 +45,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryTran
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.TransparentTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFTypeInferrer;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -264,7 +264,7 @@ public class FunctionExpression extends Expression {
       if (!isBuiltInAggregationFunctionExpression()) {
         typeProvider.setType(
             expressionString,
-            new UDTFTypeInferrer(functionName)
+            new UDTFInformationInferrer(functionName)
                 .inferOutputType(
                     expressions.stream().map(Expression::toString).collect(Collectors.toList()),
                     expressions.stream()
@@ -321,9 +321,9 @@ public class FunctionExpression extends Expression {
   public ColumnTransformer constructColumnTransformer(
       long queryId,
       UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
       Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
-      TypeProvider typeProvider) {
+      TypeProvider typeProvider,
+      Set<Expression> calculatedExpressions) {
     return null;
   }
 
@@ -435,14 +435,14 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public AccessStrategy getUDFAccessStrategy(UDTFContext udtfContext, TypeProvider typeProvider) {
-    UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
-    return executor.getAccessStrategy(
-        expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-        expressions.stream()
-            .map(f -> typeProvider.getType(f.toString()))
-            .collect(Collectors.toList()),
-        functionAttributes);
+  public AccessStrategy getUDFAccessStrategy(TypeProvider typeProvider) {
+    return new UDTFInformationInferrer(functionName)
+        .getAccessStrategy(
+            expressions.stream().map(Expression::toString).collect(Collectors.toList()),
+            expressions.stream()
+                .map(f -> typeProvider.getType(f.toString()))
+                .collect(Collectors.toList()),
+            functionAttributes);
   }
 
   @Override

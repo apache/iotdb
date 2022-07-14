@@ -34,7 +34,7 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
       Type returnType,
       ColumnTransformer leftTransformer,
       ColumnTransformer rightTransformer) {
-    super(expression, returnType, null);
+    super(expression, returnType);
     this.leftTransformer = leftTransformer;
     this.rightTransformer = rightTransformer;
   }

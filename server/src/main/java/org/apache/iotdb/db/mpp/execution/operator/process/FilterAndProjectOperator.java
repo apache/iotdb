@@ -22,28 +22,162 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
+import java.util.*;
+import java.util.stream.Collectors;
+
 public class FilterAndProjectOperator implements ProcessOperator {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(FilterAndProjectOperator.class);
 
+  private final Expression predicate;
+
+  private final Expression[] outputExpressions;
   private final Operator inputOperator;
 
-  private final UDTFContext predicateUDTFContext;
+  private final boolean hasNonMappableUDF;
 
-  private final UDTFContext outputUDTFContext;
+  private final boolean isAscending;
+
   private final OperatorContext operatorContext;
 
+  private final Map<String, List<InputLocation>> predicateInputLocations;
+
+  private UDTFContext predicateUDTFContext;
+
+  private UDTFContext outputUDTFContext;
+
+  private ColumnTransformer[] outputColumnTransformers;
+
+  private ColumnTransformer predicateColumnTransformer;
+
+  // key: Subexpressions of predicate; Value: Related ColumnTransformer
+  private Map<Expression, ColumnTransformer> predicateMap = new HashMap<>();
+
+  // key: Subexpressions of outputExpressions; Value: Related ColumnTransformer
+  private Map<Expression, ColumnTransformer> outputMap;
+
+  //
+  private Map<Expression, Integer> commonSubexpressionsIndexMap;
+
+  private Set<Expression> commonSubexpressions;
+
+  // record the datatype of the value column in the output TsBlock of filter
+  private List<TSDataType> predicateOutputDataTypes;
+
+  private List<TSDataType> outputDataTypes;
+
   public FilterAndProjectOperator(
-      OperatorContext operatorContext, Operator inputOperator, TypeProvider typeProvider) {
+      OperatorContext operatorContext,
+      Operator inputOperator,
+      List<TSDataType> inputDataTypes,
+      Expression predicate,
+      Expression[] outputExpressions,
+      Set<Expression> commonSubexpressions,
+      TypeProvider typeProvider,
+      Map<String, List<InputLocation>> predicateInputLocations,
+      ZoneId zoneId,
+      boolean hasNonMappableUDF,
+      boolean isAscending) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
+    this.predicateOutputDataTypes = inputDataTypes;
+    this.predicate = predicate;
+    this.outputExpressions = outputExpressions;
+    this.commonSubexpressions = commonSubexpressions;
+    this.predicateInputLocations = predicateInputLocations;
+    this.hasNonMappableUDF = hasNonMappableUDF;
+    this.isAscending = isAscending;
+
+    initFilter(zoneId, typeProvider);
+
+    // init ColumnTransformer of outputExpressions if non-mappable UDF does not exist
+    if (!hasNonMappableUDF) {
+      initTransformer(zoneId, typeProvider);
+    }
+  }
+
+  private void initFilter(ZoneId zoneId, TypeProvider typeProvider) {
+    this.predicateUDTFContext = new UDTFContext(zoneId);
+    predicateUDTFContext.constructUdfExecutors(new Expression[] {predicate});
+    // init ColumnTransformer of predicate
+    predicateColumnTransformer =
+        predicate.constructColumnTransformer(
+            operatorContext.getOperatorId(),
+            predicateUDTFContext,
+            predicateMap,
+            typeProvider,
+            null);
+    addReferenceCountOfCommonExpressions();
+
+    // add datatype of common subexpressions in output datatypes
+    // record the map of expression->columnIndex at the same time
+    commonSubexpressionsIndexMap = new HashMap<>();
+    for (Expression expression : commonSubexpressions) {
+      commonSubexpressionsIndexMap.put(expression, predicateOutputDataTypes.size());
+      predicateOutputDataTypes.add(typeProvider.getType(expression.getExpressionString()));
+    }
+  }
+
+  private void initTransformer(ZoneId zoneId, TypeProvider typeProvider) {
+    this.outputUDTFContext = new UDTFContext(zoneId);
+    outputUDTFContext.constructUdfExecutors(outputExpressions);
+    outputColumnTransformers = new ColumnTransformer[outputExpressions.length];
+    for (int i = 0; i < outputExpressions.length; i++) {
+      outputColumnTransformers[i] =
+          outputExpressions[i].constructColumnTransformer(
+              operatorContext.getOperatorId(),
+              outputUDTFContext,
+              outputMap,
+              typeProvider,
+              commonSubexpressions);
+    }
+    // init output datatypes
+    outputDataTypes =
+        Arrays.stream(outputExpressions)
+            .map(expression -> typeProvider.getType(expression.getExpressionString()))
+            .collect(Collectors.toList());
+  }
+
+  private void initColumnTransformer(
+      Expression[] expressions,
+      Set<Expression> calculatedExpressions,
+      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
+      UDTFContext udtfContext,
+      TypeProvider typeProvider) {
+    for (Expression expression : expressions) {
+      expression.constructColumnTransformer(
+          operatorContext.getOperatorId(),
+          udtfContext,
+          expressionColumnTransformerMap,
+          typeProvider,
+          calculatedExpressions);
+    }
+  }
+
+  // result of commonExpressions should be kept
+  private void addReferenceCountOfCommonExpressions() {
+    for (Expression expression : commonSubexpressions) {
+      if (predicateMap.containsKey(expression)) {
+        predicateMap.get(expression).addReferenceCount();
+      }
+    }
   }
 
   @Override
@@ -53,7 +187,121 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    return null;
+    TsBlock input = inputOperator.next();
+    TsBlock filterResult = getFilterTsBlock(input);
+
+    // contains non-mappable udf, we leave calculation for TransformOperator
+    if (hasNonMappableUDF) {
+      return filterResult;
+    }
+    return getTransformedTsBlock(filterResult);
+  }
+
+  /**
+   * Return the TsBlock that contains both initial input columns and columns of common
+   * subexpressions after filtering
+   *
+   * @param input
+   * @return
+   */
+  private TsBlock getFilterTsBlock(TsBlock input) {
+    // feed Predicate ColumnTransformer
+    for (Expression expression : predicateMap.keySet()) {
+      if (predicateInputLocations.containsKey(expression.getExpressionString())) {
+        predicateMap
+            .get(expression)
+            .initializeColumnCache(
+                input.getColumn(
+                    predicateInputLocations
+                        .get(expression.getExpressionString())
+                        .get(0)
+                        .getValueColumnIndex()));
+      }
+    }
+
+    predicateColumnTransformer.tryEvaluate();
+
+    Column filterColumn = predicateColumnTransformer.getColumn();
+
+    final TimeColumn originTimeColumn = input.getTimeColumn();
+    final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
+    tsBlockBuilder.buildValueColumnBuilders(predicateOutputDataTypes);
+    final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
+    final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+
+    List<Column> resultColumns = new ArrayList<>();
+    for (int i = 0; i < input.getValueColumnCount(); i++) {
+      resultColumns.add(input.getColumn(i));
+    }
+
+    // get result of calculated common sub expressions
+    for (Expression expression : commonSubexpressions) {
+      resultColumns.add(predicateMap.get(expression).getColumn());
+    }
+
+    // construct result TsBlock of filter
+    if (isAscending) {
+      for (int i = 0, n = filterColumn.getPositionCount(); i < n; i++) {
+        if (filterColumn.getBoolean(i)) {
+          timeBuilder.writeLong(originTimeColumn.getLong(i));
+          for (int j = 0, m = resultColumns.size(); j < m; j++) {
+            columnBuilders[j].write(resultColumns.get(j), i);
+          }
+        }
+      }
+    } else {
+      for (int n = filterColumn.getPositionCount(), i = n - 1; i >= 0; i--) {
+        if (filterColumn.getBoolean(i)) {
+          timeBuilder.writeLong(originTimeColumn.getLong(i));
+          for (int j = 0, m = resultColumns.size(); j < m; j++) {
+            columnBuilders[j].write(resultColumns.get(j), i);
+          }
+        }
+      }
+    }
+    return tsBlockBuilder.build();
+  }
+
+  private TsBlock getTransformedTsBlock(TsBlock input) {
+    // feed pre calculated data
+    for (Expression expression : outputMap.keySet()) {
+      if (predicateInputLocations.containsKey(expression.getExpressionString())) {
+        outputMap
+            .get(expression)
+            .initializeColumnCache(
+                input.getColumn(
+                    predicateInputLocations
+                        .get(expression.getExpressionString())
+                        .get(0)
+                        .getValueColumnIndex()));
+      }
+      if (commonSubexpressions.contains(expression)) {
+        outputMap
+            .get(expression)
+            .initializeColumnCache(input.getColumn(commonSubexpressionsIndexMap.get(expression)));
+      }
+    }
+
+    List<Column> resultColumns = new ArrayList<>();
+    for (ColumnTransformer columnTransformer : outputColumnTransformers) {
+      columnTransformer.tryEvaluate();
+      resultColumns.add(columnTransformer.getColumn());
+    }
+
+    final TimeColumn originTimeColumn = input.getTimeColumn();
+    final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
+    tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
+    final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
+    final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+
+    // construct result TsBlock
+    for (int i = 0, n = input.getPositionCount(); i < n; i++) {
+      timeBuilder.writeLong(originTimeColumn.getLong(i));
+      for (int j = 0, m = resultColumns.size(); j < m; j++) {
+        columnBuilders[j].write(resultColumns.get(j), i);
+      }
+    }
+    return tsBlockBuilder.build();
   }
 
   @Override
