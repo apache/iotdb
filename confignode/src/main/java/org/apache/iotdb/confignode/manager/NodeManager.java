@@ -27,14 +27,17 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -53,6 +56,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReentrantLock;
 
 /** NodeManager manages cluster node addition and removal requests */
@@ -76,17 +80,15 @@ public class NodeManager {
 
   private void setGlobalConfig(DataNodeConfigurationResp dataSet) {
     // Set TGlobalConfig
+    final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TGlobalConfig globalConfig = new TGlobalConfig();
-    globalConfig.setDataRegionConsensusProtocolClass(
-        ConfigNodeDescriptor.getInstance().getConf().getDataRegionConsensusProtocolClass());
+    globalConfig.setDataRegionConsensusProtocolClass(conf.getDataRegionConsensusProtocolClass());
     globalConfig.setSchemaRegionConsensusProtocolClass(
-        ConfigNodeDescriptor.getInstance().getConf().getSchemaRegionConsensusProtocolClass());
-    globalConfig.setSeriesPartitionSlotNum(
-        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionSlotNum());
-    globalConfig.setSeriesPartitionExecutorClass(
-        ConfigNodeDescriptor.getInstance().getConf().getSeriesPartitionExecutorClass());
-    globalConfig.setTimePartitionInterval(
-        ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
+        conf.getSchemaRegionConsensusProtocolClass());
+    globalConfig.setSeriesPartitionSlotNum(conf.getSeriesPartitionSlotNum());
+    globalConfig.setSeriesPartitionExecutorClass(conf.getSeriesPartitionExecutorClass());
+    globalConfig.setTimePartitionInterval(conf.getTimePartitionInterval());
+    globalConfig.setReadConsistencyLevel(conf.getReadConsistencyLevel());
     dataSet.setGlobalConfig(globalConfig);
   }
 
@@ -140,6 +142,42 @@ public class NodeManager {
       status.setMessage("activateDataNode success.");
     }
     return status;
+  }
+
+  /**
+   * Remove DataNodes
+   *
+   * @param removeDataNodePlan RemoveDataNodeReq
+   * @return DataNodeToStatusResp, The TSStatue will be SUCCEED_STATUS when request is accept,
+   *     DATANODE_NOT_EXIST when some datanode not exist.
+   */
+  public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+    LOGGER.info("Node manager start to remove DataNode {}", removeDataNodePlan);
+    DataNodeToStatusResp preCheckStatus =
+        configManager.getDataNodeRemoveManager().checkRemoveDataNodeRequest(removeDataNodePlan);
+    if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      LOGGER.error(
+          "the remove Data Node request check failed.  req: {}, check result: {}",
+          removeDataNodePlan,
+          preCheckStatus.getStatus());
+      return preCheckStatus;
+    }
+    // if add request to queue, then return to client
+    DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
+    boolean registerSucceed =
+        configManager.getDataNodeRemoveManager().registerRequest(removeDataNodePlan);
+    TSStatus status;
+    if (registerSucceed) {
+      status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      status.setMessage("Server accept the request");
+    } else {
+      status = new TSStatus(TSStatusCode.NODE_DELETE_FAILED_ERROR.getStatusCode());
+      status.setMessage("Server reject the request, maybe request is too much");
+    }
+    dataSet.setStatus(status);
+
+    LOGGER.info("Node manager finished to remove DataNode {}", removeDataNodePlan);
+    return dataSet;
   }
 
   /**
@@ -202,6 +240,24 @@ public class NodeManager {
           });
     }
     return dataNodesLocations;
+  }
+
+  /**
+   * get data node remove request queue
+   *
+   * @return LinkedBlockingQueue
+   */
+  public LinkedBlockingQueue<RemoveDataNodePlan> getDataNodeRemoveRequestQueue() {
+    return nodeInfo.getDataNodeRemoveRequestQueue();
+  }
+
+  /**
+   * get head data node remove request
+   *
+   * @return RemoveDataNodeReq
+   */
+  public RemoveDataNodePlan getHeadRequestForDataNodeRemove() {
+    return nodeInfo.getHeadRequestForDataNodeRemove();
   }
 
   /**
