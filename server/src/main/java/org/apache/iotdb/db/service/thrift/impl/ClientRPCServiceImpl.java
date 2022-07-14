@@ -644,7 +644,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 SESSION_MANAGER.getSessionInfo(req.sessionId),
                 statement,
                 PARTITION_FETCHER,
-                SCHEMA_FETCHER);
+                SCHEMA_FETCHER,
+                config.getQueryTimeoutThreshold());
         addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
         results.add(result.status);
       } catch (Exception e) {
