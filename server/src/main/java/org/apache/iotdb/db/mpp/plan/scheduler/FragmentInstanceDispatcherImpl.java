@@ -164,6 +164,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                 RpcUtils.getStatus(
                     TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
           }
+          break;
         case WRITE:
           TSendPlanNodeReq sendPlanNodeReq =
               new TSendPlanNodeReq(
@@ -174,6 +175,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             logger.error(sendPlanNodeResp.getStatus().message);
             throw new FragmentInstanceDispatchException(sendPlanNodeResp.getStatus());
           }
+          break;
+        default:
+          throw new FragmentInstanceDispatchException(
+              RpcUtils.getStatus(
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                  String.format("unknown query type [%s]", instance.getType())));
       }
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
@@ -235,11 +242,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                           : readResponse.getException().getMessage())));
         } else {
           FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse.getDataset();
-          if (!info.getState().isFailed()) {
+          if (info.getState().isFailed()) {
             throw new FragmentInstanceDispatchException(
                 RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, info.getMessage()));
           }
         }
+        break;
       case WRITE:
         PlanNode planNode = instance.getFragment().getRoot();
         boolean hasFailedMeasurement = false;
@@ -275,6 +283,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               RpcUtils.getStatus(
                   TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
         }
+        break;
       default:
         throw new FragmentInstanceDispatchException(
             RpcUtils.getStatus(
