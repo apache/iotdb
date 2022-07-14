@@ -275,12 +275,12 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               RpcUtils.getStatus(
                   TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
         }
+      default:
+        throw new FragmentInstanceDispatchException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                String.format("unknown query type [%s]", instance.getType())));
     }
-
-    throw new FragmentInstanceDispatchException(
-        RpcUtils.getStatus(
-            TSStatusCode.INTERNAL_SERVER_ERROR,
-            String.format("unknown query type [%s]", instance.getType())));
   }
 
   @Override
