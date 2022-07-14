@@ -49,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowDataNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowNodesInSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowRegionTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowStorageGroupTask;
@@ -62,7 +63,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -77,6 +80,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
@@ -338,6 +342,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TShowRegionResp showRegionResp = new TShowRegionResp();
     TShowRegionReq showRegionReq = new TShowRegionReq();
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
+    if (showRegionStatement.getStorageGroups() == null) {
+      showRegionReq.setStorageGroups(null);
+    } else {
+      showRegionReq.setStorageGroups(
+          showRegionStatement.getStorageGroups().stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toList()));
+    }
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       showRegionResp = client.showRegion(showRegionReq);
@@ -426,6 +438,42 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
       Template template = ClusterTemplateManager.getInstance().getTemplate(req);
       // build TSBlock
       ShowNodesInSchemaTemplateTask.buildTSBlock(template, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setSchemaTemplate(
+      SetSchemaTemplateStatement setSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    String templateName = setSchemaTemplateStatement.getTemplateName();
+    PartialPath path = setSchemaTemplateStatement.getPath();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      ClusterTemplateManager.getInstance().setSchemaTemplate(templateName, path);
+      // build TSBlock
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showPathSetTemplate(
+      ShowPathSetTemplateStatement showPathSetTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    String templateName = showPathSetTemplateStatement.getTemplateName();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      List<PartialPath> listPath =
+          ClusterTemplateManager.getInstance().getPathsSetTemplate(templateName);
+      // build TSBlock
+      ShowPathSetTemplateTask.buildTSBlock(listPath, future);
     } catch (Exception e) {
       future.setException(e);
     }

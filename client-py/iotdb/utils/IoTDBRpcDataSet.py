@@ -243,34 +243,38 @@ class IoTDBRpcDataSet(object):
                 if len(data_array) < total_length:
                     if data_type == TSDataType.INT32 or data_type == TSDataType.INT64:
                         tmp_array = np.full(total_length, np.nan, np.float32)
-                        if data_array.dtype == np.int32:
-                            tmp_array = pd.Series(tmp_array).astype("Int32")
-                        else:
-                            tmp_array = pd.Series(tmp_array).astype("Int64")
-                    elif (
-                        data_type == TSDataType.FLOAT or data_type == TSDataType.DOUBLE
-                    ):
+                    elif data_type == TSDataType.FLOAT or data_type == TSDataType.DOUBLE:
                         tmp_array = np.full(total_length, np.nan, data_array.dtype)
                     elif data_type == TSDataType.BOOLEAN:
                         tmp_array = np.full(total_length, np.nan, np.float32)
-                        tmp_array = pd.Series(tmp_array).astype("boolean")
                     elif data_type == TSDataType.TEXT:
                         tmp_array = np.full(total_length, None, dtype=data_array.dtype)
+
                     bitmap_buffer = self.__query_data_set.bitmapList[location]
                     bitmap_str = self._to_bitstring(bitmap_buffer)
-                    j = 0
-                    for index in range(total_length):
-                        if bitmap_str[index] == "1":
-                            tmp_array[index] = data_array[j]
-                            j += 1
+                    bit_mask = (np.fromstring(bitmap_str, 'u1') - ord('0')).astype(np.bool)
+                    if len(bit_mask) != total_length:
+                        bit_mask = bit_mask[:total_length]
+                    tmp_array[bit_mask] = data_array
+
+                    if data_type == TSDataType.INT32:
+                        tmp_array = pd.Series(tmp_array).astype("Int32")
+                    elif data_type == TSDataType.INT64:
+                        tmp_array = pd.Series(tmp_array).astype("Int64")
+                    elif data_type == TSDataType.BOOLEAN:
+                        tmp_array = pd.Series(tmp_array).astype("boolean")
+
                     data_array = tmp_array
 
                 if result[column_name] is None:
                     result[column_name] = data_array
                 else:
-                    result[column_name] = np.concatenate(
-                        (result[column_name], data_array), axis=0
-                    )
+                    if isinstance(result[column_name], pd.Series):
+                        result[column_name] = result[column_name].append(data_array)
+                    else:
+                        result[column_name] = np.concatenate(
+                            (result[column_name], data_array), axis=0
+                        )
         for k, v in result.items():
             if v is None:
                 result[k] = []

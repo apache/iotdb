@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -33,12 +32,13 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.CollectorTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeAboveSGCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
-import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -62,20 +62,23 @@ import java.util.TreeSet;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_TEMPLATE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.INTERNAL_MNODE_TYPE;
+import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 import static org.apache.iotdb.db.metadata.MetadataConstant.STORAGE_GROUP_MNODE_TYPE;
 
-// Since the MTreeAboveSG is all stored in memory, thus it is not restricted to manage MNode through
+// Since the ConfigMTree is all stored in memory, thus it is not restricted to manage MNode through
 // MTreeStore.
-public class MTreeAboveSG {
+public class ConfigMTree {
 
-  private final Logger logger = LoggerFactory.getLogger(MTreeAboveSG.class);
+  private final Logger logger = LoggerFactory.getLogger(ConfigMTree.class);
 
   private IMNode root;
   // this store is only used for traverser invoking
   private MemMTreeStore store;
 
-  public MTreeAboveSG() throws MetadataException {
+  public ConfigMTree() throws MetadataException {
     store = new MemMTreeStore(new PartialPath(PATH_ROOT), false);
     root = store.getRoot();
   }
@@ -86,6 +89,8 @@ public class MTreeAboveSG {
       this.root = store.getRoot();
     }
   }
+
+  // region Storage Group Management
 
   /**
    * Set storage group. Make sure check seriesPath before setting storage group
@@ -99,23 +104,17 @@ public class MTreeAboveSG {
       throw new IllegalPathException(path.getFullPath());
     }
     IMNode cur = root;
-    Template upperTemplate = cur.getSchemaTemplate();
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
       IMNode temp = cur.getChild(nodeNames[i]);
       if (temp == null) {
-        if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
-          throw new PathAlreadyExistException(
-              cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
-        }
         cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp.isStorageGroup()) {
         // before set storage group, check whether the storage group already exists
         throw new StorageGroupAlreadySetException(temp.getFullPath());
       }
       cur = cur.getChild(nodeNames[i]);
-      upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
       i++;
     }
 
@@ -130,10 +129,6 @@ public class MTreeAboveSG {
           throw new StorageGroupAlreadySetException(path.getFullPath(), true);
         }
       } else {
-        if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
-          throw new PathAlreadyExistException(
-              cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
-        }
         IStorageGroupMNode storageGroupMNode =
             new StorageGroupMNode(
                 cur, nodeNames[i], CommonDescriptor.getInstance().getConfig().getDefaultTTL());
@@ -463,6 +458,24 @@ public class MTreeAboveSG {
     throw new StorageGroupAlreadySetException(path.getFullPath(), true);
   }
 
+  // endregion
+
+  // region MTree Node Management
+
+  public IMNode getNodeWithAutoCreate(PartialPath path) {
+    String[] nodeNames = path.getNodes();
+    IMNode cur = root;
+    IMNode child;
+    for (int i = 1; i < nodeNames.length; i++) {
+      child = cur.getChild(nodeNames[i]);
+      if (child == null) {
+        child = cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+      }
+      cur = child;
+    }
+    return cur;
+  }
+
   /**
    * Get all paths of nodes in the given level matching the given path. If using prefix match, the
    * path pattern is used to match prefix path.
@@ -555,12 +568,113 @@ public class MTreeAboveSG {
     }
   }
 
+  // endregion
+
+  // region Template Management
+
+  /**
+   * check whether there is template on given path and the subTree has template return true,
+   * otherwise false
+   */
+  public void checkTemplateOnPath(PartialPath path) throws MetadataException {
+    String[] nodeNames = path.getNodes();
+    IMNode cur = root;
+    IMNode child;
+
+    if (cur.getSchemaTemplateId() != NON_TEMPLATE) {
+      throw new MetadataException("Template already exists on " + cur.getFullPath());
+    }
+
+    for (int i = 1; i < nodeNames.length; i++) {
+      child = cur.getChild(nodeNames[i]);
+      if (child == null) {
+        return;
+      }
+      cur = child;
+      if (cur.getSchemaTemplateId() != NON_TEMPLATE) {
+        throw new MetadataException("Template already exists on " + cur.getFullPath());
+      }
+      if (cur.isMeasurement()) {
+        return;
+      }
+    }
+
+    checkTemplateOnSubtree(cur);
+  }
+
+  // traverse  all the  descendant of the given path node
+  private void checkTemplateOnSubtree(IMNode node) throws MetadataException {
+    if (node.isMeasurement()) {
+      return;
+    }
+    IMNode child;
+    IMNodeIterator iterator = store.getChildrenIterator(node);
+    while (iterator.hasNext()) {
+      child = iterator.next();
+
+      if (child.isMeasurement()) {
+        continue;
+      }
+      if (child.getSchemaTemplateId() != NON_TEMPLATE) {
+        throw new MetadataException("Template already exists on " + child.getFullPath());
+      }
+      checkTemplateOnSubtree(child);
+    }
+  }
+
+  public List<String> getPathsSetOnTemplate(int templateId) throws MetadataException {
+    List<String> resSet = new ArrayList<>();
+    CollectorTraverser<Set<String>> setTemplatePaths =
+        new CollectorTraverser<Set<String>>(root, new PartialPath(ALL_RESULT_NODES), store) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+            // will never get here, implement for placeholder
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            // shall not traverse nodes inside template
+            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+              return true;
+            }
+
+            // if node not set template, go on traversing
+            if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+              // if set template, and equals to target or target for all, add to result
+              if (templateId == ALL_TEMPLATE || templateId == node.getSchemaTemplateId()) {
+                resSet.add(node.getFullPath());
+              }
+              // descendants of the node cannot set another template, exit from this branch
+              return true;
+            }
+            return false;
+          }
+        };
+    setTemplatePaths.traverse();
+    return resSet;
+  }
+
+  // endregion
+
+  // region Serialization and Deserialization
+
   public void serialize(OutputStream outputStream) throws IOException {
     serializeInternalNode((InternalMNode) this.root, outputStream);
   }
 
   private void serializeInternalNode(InternalMNode node, OutputStream outputStream)
       throws IOException {
+    serializeChildren(node, outputStream);
+
+    ReadWriteIOUtils.write(INTERNAL_MNODE_TYPE, outputStream);
+    ReadWriteIOUtils.write(node.getName(), outputStream);
+    ReadWriteIOUtils.write(node.getSchemaTemplateId(), outputStream);
+    ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
+  }
+
+  private void serializeChildren(InternalMNode node, OutputStream outputStream) throws IOException {
     for (IMNode child : node.getChildren().values()) {
       if (child.isStorageGroup()) {
         serializeStorageGroupNode((StorageGroupMNode) child, outputStream);
@@ -568,16 +682,15 @@ public class MTreeAboveSG {
         serializeInternalNode((InternalMNode) child, outputStream);
       }
     }
-
-    ReadWriteIOUtils.write(INTERNAL_MNODE_TYPE, outputStream);
-    ReadWriteIOUtils.write(node.getName(), outputStream);
-    ReadWriteIOUtils.write(node.getChildren().size(), outputStream);
   }
 
   private void serializeStorageGroupNode(
       StorageGroupMNode storageGroupNode, OutputStream outputStream) throws IOException {
+    serializeChildren(storageGroupNode, outputStream);
+
     ReadWriteIOUtils.write(STORAGE_GROUP_MNODE_TYPE, outputStream);
     ReadWriteIOUtils.write(storageGroupNode.getName(), outputStream);
+    ReadWriteIOUtils.write(storageGroupNode.getSchemaTemplateId(), outputStream);
     ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(
         storageGroupNode.getStorageGroupSchema(), outputStream);
   }
@@ -626,15 +739,20 @@ public class MTreeAboveSG {
   }
 
   private InternalMNode deserializeInternalMNode(InputStream inputStream) throws IOException {
-    return new InternalMNode(null, ReadWriteIOUtils.readString(inputStream));
+    InternalMNode internalMNode = new InternalMNode(null, ReadWriteIOUtils.readString(inputStream));
+    internalMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
+    return internalMNode;
   }
 
   private StorageGroupMNode deserializeStorageGroupMNode(InputStream inputStream)
       throws IOException {
     StorageGroupMNode storageGroupMNode =
         new StorageGroupMNode(null, ReadWriteIOUtils.readString(inputStream));
+    storageGroupMNode.setSchemaTemplateId(ReadWriteIOUtils.readInt(inputStream));
     storageGroupMNode.setStorageGroupSchema(
         ThriftConfigNodeSerDeUtils.deserializeTStorageGroupSchema(inputStream));
     return storageGroupMNode;
   }
+
+  // endregion
 }

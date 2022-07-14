@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
@@ -58,12 +59,14 @@ import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -596,11 +599,19 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void GetRegionLocaltionsPlanTest() throws IOException {
     GetRegionInfoListPlan req0 = new GetRegionInfoListPlan();
-    req0.setRegionType(TConsensusGroupType.DataRegion);
+    TShowRegionReq showRegionReq = new TShowRegionReq();
+    req0.setShowRegionReq(showRegionReq);
+    showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
     GetRegionInfoListPlan req1 =
         (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0.getType(), req1.getType());
-    Assert.assertEquals(req0.getRegionType(), req1.getRegionType());
+    Assert.assertEquals(req0.getShowRegionReq(), req1.getShowRegionReq());
+    final List<String> sgList = Collections.singletonList("root.sg1, root.sg2, root.*");
+    showRegionReq.setStorageGroups(new ArrayList<>(sgList));
+    GetRegionInfoListPlan req2 =
+        (GetRegionInfoListPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    Assert.assertEquals(req0.getType(), req1.getType());
+    Assert.assertEquals(req0.getShowRegionReq(), req2.getShowRegionReq());
   }
 
   @Test
@@ -647,5 +658,27 @@ public class ConfigPhysicalPlanSerDeTest {
             ConfigPhysicalPlan.Factory.create(
                 getNodesInSchemaTemplatePlan0.serializeToByteBuffer());
     Assert.assertEquals(getNodesInSchemaTemplatePlan0, getNodesInSchemaTemplatePlan1);
+  }
+
+  @Test
+  public void SetSchemaTemplatePlanTest() throws IOException {
+    SetSchemaTemplatePlan setSchemaTemplatePlanPlan0 =
+        new SetSchemaTemplatePlan("template_name_test", "root.in.sg.dw");
+    SetSchemaTemplatePlan setSchemaTemplatePlanPlan1 =
+        (SetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(setSchemaTemplatePlanPlan0.serializeToByteBuffer());
+    Assert.assertEquals(
+        setSchemaTemplatePlanPlan0.getName().equalsIgnoreCase(setSchemaTemplatePlanPlan1.getName()),
+        setSchemaTemplatePlanPlan0.getPath().equals(setSchemaTemplatePlanPlan1.getPath()));
+  }
+
+  @Test
+  public void ShowPathSetTemplatePlanTest() throws IOException {
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan0 =
+        new GetPathsSetTemplatePlan("template_name_test");
+    GetPathsSetTemplatePlan getPathsSetTemplatePlan1 =
+        (GetPathsSetTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(getPathsSetTemplatePlan0.serializeToByteBuffer());
+    Assert.assertEquals(getPathsSetTemplatePlan0.getName(), getPathsSetTemplatePlan1.getName());
   }
 }

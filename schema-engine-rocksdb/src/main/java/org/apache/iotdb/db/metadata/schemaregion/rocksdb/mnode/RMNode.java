@@ -154,6 +154,16 @@ public abstract class RMNode implements IMNode {
   }
 
   @Override
+  public int getSchemaTemplateId() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void setSchemaTemplateId(int schemaTemplateId) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public boolean isStorageGroup() {
     return false;
   }
