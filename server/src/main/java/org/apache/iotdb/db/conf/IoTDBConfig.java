@@ -905,7 +905,7 @@ public class IoTDBConfig {
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
-  private int partitionCacheSize = 0;
+  private int partitionCacheSize = 1000;
 
   /** Cache size of user and role */
   private int authorCacheSize = 100;
@@ -947,6 +947,8 @@ public class IoTDBConfig {
 
   /** Memory allocated for LastCache */
   private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
+
+  private String readConsistencyLevel = "strong";
 
   IoTDBConfig() {}
 
@@ -3008,5 +3010,13 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForLastCache(long allocateMemoryForLastCache) {
     this.allocateMemoryForLastCache = allocateMemoryForLastCache;
+  }
+
+  public String getReadConsistencyLevel() {
+    return readConsistencyLevel;
+  }
+
+  public void setReadConsistencyLevel(String readConsistencyLevel) {
+    this.readConsistencyLevel = readConsistencyLevel;
   }
 }

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
+import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -55,7 +55,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
 
   private StorageGroupLogWriter logWriter;
 
-  private MTreeAboveSG mtree;
+  private ConfigMTree mtree;
 
   private boolean isRecover = true;
 
@@ -75,7 +75,7 @@ public class StorageGroupSchemaManager implements IStorageGroupSchemaManager {
   public synchronized void init() throws MetadataException, IOException {
     isRecover = true;
 
-    mtree = new MTreeAboveSG();
+    mtree = new ConfigMTree();
 
     recoverLog();
     logWriter = new StorageGroupLogWriter(config.getSchemaDir(), STORAGE_GROUP_LOG);
