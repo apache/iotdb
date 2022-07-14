@@ -88,6 +88,7 @@ public class QueryExecution implements IQueryExecution {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final int MAX_RETRY_COUNT = 3;
+  private static final long RETRY_INTERVAL_IN_MS = 2000;
   private int retryCount = 0;
   private final MPPQueryContext context;
   private IScheduler scheduler;
@@ -181,6 +182,12 @@ public class QueryExecution implements IQueryExecution {
       logger.error("reach max retry count. transit query to failed");
       stateMachine.transitionToFailed();
       return;
+    }
+    try {
+      Thread.sleep(RETRY_INTERVAL_IN_MS);
+    } catch (InterruptedException e) {
+      logger.error("interrupted when waiting retry");
+      Thread.currentThread().interrupt();
     }
     retryCount++;
     logger.error("error when executing query. {}", stateMachine.getFailureMessage());
