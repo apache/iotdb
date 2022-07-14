@@ -18,6 +18,8 @@
 package org.apache.iotdb.db.protocol.mqtt;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -44,7 +46,8 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
   private long sessionId;
-
+  private static final boolean isEnableOperationSync =
+      IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
 
   private final PayloadFormatter payloadFormat;
@@ -123,6 +126,10 @@ public class PublishHandler extends AbstractInterceptHandler {
         if (tsStatus != null) {
           LOG.warn(tsStatus.message);
         } else {
+          if (isEnableOperationSync) {
+            // OperationSync should transmit before execute
+            StorageEngine.transmitOperationSync(plan);
+          }
           status = serviceProvider.executeNonQuery(plan);
         }
       } catch (Exception e) {

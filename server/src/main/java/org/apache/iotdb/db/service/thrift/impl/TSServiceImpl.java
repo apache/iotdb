@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.doublelive.OperationSyncPlanTypeUtils;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
@@ -167,6 +168,9 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onQueryException;
 
 /** Thrift RPC implementation at server side. */
 public class TSServiceImpl implements TSIService.Iface {
+
+  private static final boolean isEnableOperationSync =
+      IoTDBDescriptor.getInstance().getConfig().isEnableOperationSync();
 
   protected class QueryTask implements Callable<TSExecuteStatementResp> {
 
@@ -2157,6 +2161,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
+      if (isEnableOperationSync) {
+        // OperationSync should transmit before execute
+        StorageEngine.transmitOperationSync(plan);
+      }
       return serviceProvider.executeNonQuery(plan)
           ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
           : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
