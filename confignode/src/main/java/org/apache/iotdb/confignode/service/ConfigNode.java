@@ -162,6 +162,7 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup MetricsService
     registerManager.register(MetricsService.getInstance());
     MetricsService.getInstance().startAllReporter();
+    configManager.getDataNodeRemoveManager().start();
 
     LOGGER.info("Successfully setup internal services.");
   }
@@ -183,7 +184,8 @@ public class ConfigNode implements ConfigNodeMBean {
             conf.getSchemaReplicationFactor(),
             conf.getSchemaRegionPerDataNode(),
             conf.getDataReplicationFactor(),
-            conf.getDataRegionPerProcessor());
+            conf.getDataRegionPerProcessor(),
+            conf.getReadConsistencyLevel());
 
     TEndPoint targetConfigNode = conf.getTargetConfigNode();
     while (true) {
