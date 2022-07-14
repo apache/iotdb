@@ -82,28 +82,25 @@ public class AsyncDataNodeClientPool {
       return;
     }
     for (int retry = 0; retry < retryNum; retry++) {
-      final int retryCount = retry;
-      final AbstractRetryHandler[] handler = new AbstractRetryHandler[1];
-      final CountDownLatch retryCountDownLatch = countDownLatch;
-      dataNodeLocations.forEach(
-          (index, dataNodeLocation) -> {
-            handler[0] = ((Map<Integer, AbstractRetryHandler>) handlerMap).get(index);
-            // If it is not the first request, then prove that this operation is a retry.
-            // The count of countDownLatch needs to be updated
-            if (retryCount != 0) {
-              handler[0].setCountDownLatch(retryCountDownLatch);
-            }
-            // send request
-            sendAsyncRequestToDataNode(dataNodeLocation, req, handler[0], retryCount);
-          });
+      AbstractRetryHandler handler = null;
+      for (Map.Entry<Integer, TDataNodeLocation> entry : dataNodeLocations.entrySet()) {
+        handler = ((Map<Integer, AbstractRetryHandler>) handlerMap).get(entry.getKey());
+        // If it is not the first request, then prove that this operation is a retry.
+        // The count of countDownLatch needs to be updated
+        if (retry != 0) {
+          handler.setCountDownLatch(countDownLatch);
+        }
+        // send request
+        sendAsyncRequestToDataNode(entry.getValue(), req, handler, retry);
+      }
       try {
-        handler[0].getCountDownLatch().await();
+        handler.getCountDownLatch().await();
       } catch (InterruptedException e) {
-        LOGGER.error("Interrupted during {} on ConfigNode", handler[0].getDataNodeRequestType());
+        LOGGER.error("Interrupted during {} on ConfigNode", handler.getDataNodeRequestType());
       }
       // Check if there is a node that fails to send the request, and retry if there is one
-      if (!handler[0].getDataNodeLocations().isEmpty()) {
-        countDownLatch = new CountDownLatch(handler[0].getDataNodeLocations().size());
+      if (!handler.getDataNodeLocations().isEmpty()) {
+        countDownLatch = new CountDownLatch(handler.getDataNodeLocations().size());
       } else {
         break;
       }
@@ -119,32 +116,32 @@ public class AsyncDataNodeClientPool {
     try {
       client = clientManager.borrowClient(dataNodeLocation.getInternalEndPoint());
       switch (handler.getDataNodeRequestType()) {
-        case setTTL:
+        case SET_TTL:
           client.setTTL((TSetTTLReq) req, (SetTTLHandler) handler);
           break;
-        case createRegions:
+        case CREATE_REGIONS:
           TConsensusGroupType regionType =
               ((CreateRegionHandler) handler).getConsensusGroupId().getType();
-          if (regionType == TConsensusGroupType.SchemaRegion) {
+          if (regionType.equals(TConsensusGroupType.SchemaRegion)) {
             client.createSchemaRegion(
                 (TCreateSchemaRegionReq) ((Map<Integer, Object>) req).get(handler.getIndex()),
                 (CreateRegionHandler) handler);
-          } else if (regionType == TConsensusGroupType.DataRegion) {
+          } else if (regionType.equals(TConsensusGroupType.DataRegion)) {
             client.createDataRegion(
                 (TCreateDataRegionReq) ((Map<Integer, Object>) req).get(handler.getIndex()),
                 (CreateRegionHandler) handler);
           }
           break;
-        case createFunction:
+        case CREATE_FUNCTION:
           client.createFunction((TCreateFunctionRequest) req, (FunctionManagementHandler) handler);
           break;
-        case dropFunction:
+        case DROP_FUNCTION:
           client.dropFunction((TDropFunctionRequest) req, (FunctionManagementHandler) handler);
           break;
-        case flush:
+        case FLUSH:
           client.flush((TFlushReq) req, (FlushHandler) handler);
           break;
-        case updateRegionRouteMap:
+        case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
           break;
         default:

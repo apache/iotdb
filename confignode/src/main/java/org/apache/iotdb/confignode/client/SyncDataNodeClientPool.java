@@ -68,19 +68,19 @@ public class SyncDataNodeClientPool {
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
         switch (requestType) {
-          case invalidatePartitionCache:
+          case INVALIDATE_PARTITION_CACHE:
             return client.invalidatePartitionCache((TInvalidateCacheReq) req);
-          case invalidateSchemaCache:
+          case INVALIDATE_SCHEMA_CACHE:
             return client.invalidateSchemaCache((TInvalidateCacheReq) req);
-          case deleteRegions:
+          case DELETE_REGIONS:
             return client.deleteRegion((TConsensusGroupId) req);
-          case invalidatePermissionCache:
+          case INVALIDATE_PERMISSION_CACHE:
             return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
-          case migrateRegion:
+          case MIGRATE_REGION:
             return client.migrateRegion((TMigrateRegionReq) req);
-          case disableDataNode:
+          case DISABLE_DATA_NODE:
             return client.disableDataNode((TDisableDataNodeReq) req);
-          case stopDataNode:
+          case STOP_DATA_NODE:
             return client.stopDataNode();
           default:
             return RpcUtils.getStatus(
@@ -125,7 +125,8 @@ public class SyncDataNodeClientPool {
     for (TConsensusGroupId regionId : regionIds) {
       LOGGER.debug("Delete region {} ", regionId);
       final TSStatus status =
-          sendSyncRequestToDataNodeWithRetry(endPoint, regionId, DataNodeRequestType.deleteRegions);
+          sendSyncRequestToDataNodeWithRetry(
+              endPoint, regionId, DataNodeRequestType.DELETE_REGIONS);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info("DELETE Region {} successfully", regionId);
         deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));

@@ -35,18 +35,18 @@ public abstract class AbstractRetryHandler {
 
   protected DataNodeRequestType dataNodeRequestType;
   /** Current DataNode */
-  protected TDataNodeLocation dataNodeLocation;
+  protected TDataNodeLocation dataNodeInfo;
 
   public AbstractRetryHandler(
       CountDownLatch countDownLatch,
       DataNodeRequestType dataNodeRequestType,
-      TDataNodeLocation dataNodeLocation,
+      TDataNodeLocation dataNodeInfo,
       ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations,
       int index) {
     this.countDownLatch = countDownLatch;
     this.dataNodeLocations = dataNodeLocations;
     this.dataNodeRequestType = dataNodeRequestType;
-    this.dataNodeLocation = dataNodeLocation;
+    this.dataNodeInfo = dataNodeInfo;
     this.index = index;
   }
 

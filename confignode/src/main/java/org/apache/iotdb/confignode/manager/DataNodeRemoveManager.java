@@ -365,7 +365,7 @@ public class DataNodeRemoveManager {
       status =
           SyncDataNodeClientPool.getInstance()
               .sendSyncRequestToDataNodeWithRetry(
-                  server, disableReq, DataNodeRequestType.disableDataNode);
+                  server, disableReq, DataNodeRequestType.DISABLE_DATA_NODE);
       if (!isSucceed(status)) {
         return status;
       }
@@ -507,7 +507,7 @@ public class DataNodeRemoveManager {
     status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
-                node.getInternalEndPoint(), migrateRegionReq, DataNodeRequestType.migrateRegion);
+                node.getInternalEndPoint(), migrateRegionReq, DataNodeRequestType.MIGRATE_REGION);
     // maybe send rpc failed
     if (isFailed(status)) {
       return status;
@@ -650,7 +650,7 @@ public class DataNodeRemoveManager {
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
             .sendSyncRequestToDataNodeWithRetry(
-                dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.stopDataNode);
+                dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE);
     LOGGER.info("stop Data Node {} result: {}", dataNode, status);
     return status;
   }

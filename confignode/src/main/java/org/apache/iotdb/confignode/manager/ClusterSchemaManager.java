@@ -177,7 +177,7 @@ public class ClusterSchemaManager {
             index.get(),
             new SetTTLHandler(
                 countDownLatch,
-                DataNodeRequestType.setTTL,
+                DataNodeRequestType.SET_TTL,
                 dataNodeLocation,
                 dataNodeLocationMap,
                 index.get()));

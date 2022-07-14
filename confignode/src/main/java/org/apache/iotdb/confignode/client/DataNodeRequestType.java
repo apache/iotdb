@@ -20,18 +20,18 @@
 package org.apache.iotdb.confignode.client;
 
 public enum DataNodeRequestType {
-  deleteRegions,
-  invalidatePartitionCache,
-  invalidatePermissionCache,
-  invalidateSchemaCache,
-  migrateRegion,
-  disableDataNode,
-  stopDataNode,
+  DELETE_REGIONS,
+  INVALIDATE_PARTITION_CACHE,
+  INVALIDATE_PERMISSION_CACHE,
+  INVALIDATE_SCHEMA_CACHE,
+  MIGRATE_REGION,
+  DISABLE_DATA_NODE,
+  STOP_DATA_NODE,
 
-  setTTL,
-  createRegions,
-  createFunction,
-  dropFunction,
-  flush,
-  updateRegionRouteMap;
+  SET_TTL,
+  CREATE_REGIONS,
+  CREATE_FUNCTION,
+  DROP_FUNCTION,
+  FLUSH,
+  UPDATE_REGION_ROUTE_MAP
 }

@@ -312,7 +312,7 @@ public class LoadManager {
               new UpdateRegionRouteMapHandler(
                   dataNodeInfo.getLocation(),
                   latch,
-                  DataNodeRequestType.updateRegionRouteMap,
+                  DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
                   dataNodeLocations,
                   index.get()));
           dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());

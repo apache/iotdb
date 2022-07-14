@@ -464,7 +464,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
                   .sendSyncRequestToConfigNodeWithRetry(
                       configNodeLocation.getInternalEndPoint(),
                       configNodeLocation,
-                      ConfigNodeRequestType.stopConfigNode);
+                      ConfigNodeRequestType.STOP_CONFIG_NODE);
     }
 
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest

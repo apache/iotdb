@@ -464,7 +464,7 @@ public class NodeManager {
           new FlushHandler(
               dataNodeInfo.getLocation(),
               countDownLatch,
-              DataNodeRequestType.flush,
+              DataNodeRequestType.FLUSH,
               dataNodeResponseStatus,
               dataNodeLocations,
               index.get()));

@@ -71,18 +71,18 @@ public class SyncConfigNodeClientPool {
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
         switch (requestType) {
-          case registerConfigNode:
+          case REGISTER_CONFIG_NODE:
             // Only use registerConfigNode when the ConfigNode is first startup.
             return client.registerConfigNode((TConfigNodeRegisterReq) req);
-          case addConsensusGroup:
+          case ADD_CONSENSUS_GROUP:
             addConsensusGroup((List<TConfigNodeLocation>) req, client);
             return null;
-          case notifyRegisterSuccess:
+          case NOTIFY_REGISTER_SUCCESS:
             client.notifyRegisterSuccess();
             return null;
-          case removeConfigNode:
+          case REMOVE_CONFIG_NODE:
             return removeConfigNode((TConfigNodeLocation) req, client);
-          case stopConfigNode:
+          case STOP_CONFIG_NODE:
             // Only use stopConfigNode when the ConfigNode is removed.
             return client.stopConfigNode((TConfigNodeLocation) req);
           default:

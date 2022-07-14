@@ -193,7 +193,7 @@ public class ConfigNode implements ConfigNodeMBean {
           (TConfigNodeRegisterResp)
               SyncConfigNodeClientPool.getInstance()
                   .sendSyncRequestToConfigNodeWithRetry(
-                      targetConfigNode, req, ConfigNodeRequestType.registerConfigNode);
+                      targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
         break;

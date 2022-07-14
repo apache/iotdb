@@ -39,13 +39,13 @@ public class FlushHandler extends AbstractRetryHandler implements AsyncMethodCal
   private final List<TSStatus> dataNodeResponseStatus;
 
   public FlushHandler(
-      TDataNodeLocation dataNodeLocation,
+      TDataNodeLocation dataNodeInfo,
       CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
       List<TSStatus> dataNodeResponseStatus,
       ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations,
       int index) {
-    super(countDownLatch, requestType, dataNodeLocation, dataNodeLocations, index);
+    super(countDownLatch, requestType, dataNodeInfo, dataNodeLocations, index);
     this.dataNodeResponseStatus = dataNodeResponseStatus;
   }
 
@@ -54,7 +54,7 @@ public class FlushHandler extends AbstractRetryHandler implements AsyncMethodCal
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeResponseStatus.add(response);
       dataNodeLocations.remove(index);
-      LOGGER.info("Successfully Flush on DataNode: {}", dataNodeLocation);
+      LOGGER.info("Successfully Flush on DataNode: {}", dataNodeInfo);
     } else {
       LOGGER.error("Failed to Flush on DataNode {}, {}", dataNodeLocations, response);
     }
@@ -69,9 +69,9 @@ public class FlushHandler extends AbstractRetryHandler implements AsyncMethodCal
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
                 "Flush error on DataNode: {id="
-                    + dataNodeLocation.getDataNodeId()
+                    + dataNodeInfo.getDataNodeId()
                     + ", internalEndPoint="
-                    + dataNodeLocation.getInternalEndPoint()
+                    + dataNodeInfo.getInternalEndPoint()
                     + "}"
                     + exception.getMessage())));
   }

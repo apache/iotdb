@@ -81,7 +81,7 @@ public class ConfigNodeRemoveCheck {
                   .sendSyncRequestToConfigNodeWithRetry(
                       configNodeLocation.getInternalEndPoint(),
                       nodeLocation,
-                      ConfigNodeRequestType.removeConfigNode);
+                      ConfigNodeRequestType.REMOVE_CONFIG_NODE);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         break;
       }

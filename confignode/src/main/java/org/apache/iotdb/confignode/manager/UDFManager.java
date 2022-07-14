@@ -102,7 +102,7 @@ public class UDFManager {
               countDownLatch,
               dataNodeInfo.getLocation(),
               dataNodeResponseStatus,
-              DataNodeRequestType.createFunction,
+              DataNodeRequestType.CREATE_FUNCTION,
               dataNodeLocations,
               index.get()));
       dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
@@ -145,7 +145,7 @@ public class UDFManager {
               countDownLatch,
               dataNodeInfo.getLocation(),
               dataNodeResponseStatus,
-              DataNodeRequestType.dropFunction,
+              DataNodeRequestType.DROP_FUNCTION,
               dataNodeLocations,
               index.get()));
       dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());

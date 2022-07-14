@@ -110,7 +110,7 @@ public class PermissionManager {
               .sendSyncRequestToDataNodeWithRetry(
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   req,
-                  DataNodeRequestType.invalidatePermissionCache);
+                  DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }

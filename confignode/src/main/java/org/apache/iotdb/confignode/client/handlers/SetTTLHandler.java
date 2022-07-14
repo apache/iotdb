@@ -37,19 +37,19 @@ public class SetTTLHandler extends AbstractRetryHandler implements AsyncMethodCa
   public SetTTLHandler(
       CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
-      TDataNodeLocation dataNodeLocation,
+      TDataNodeLocation dataNodeInfo,
       ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations,
       int index) {
-    super(countDownLatch, requestType, dataNodeLocation, dataNodeLocations, index);
+    super(countDownLatch, requestType, dataNodeInfo, dataNodeLocations, index);
   }
 
   @Override
   public void onComplete(TSStatus response) {
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       getDataNodeLocations().remove(index);
-      LOGGER.info("Successfully SetTTL on DataNode: {}", dataNodeLocation);
+      LOGGER.info("Successfully SetTTL on DataNode: {}", dataNodeInfo);
     } else {
-      LOGGER.error("Failed to SetTTL on DataNode: {}, {}", dataNodeLocation, response);
+      LOGGER.error("Failed to SetTTL on DataNode: {}, {}", dataNodeInfo, response);
     }
     countDownLatch.countDown();
   }
@@ -57,6 +57,6 @@ public class SetTTLHandler extends AbstractRetryHandler implements AsyncMethodCa
   @Override
   public void onError(Exception e) {
     countDownLatch.countDown();
-    LOGGER.error("Failed to SetTTL on DataNode: {}", dataNodeLocation);
+    LOGGER.error("Failed to SetTTL on DataNode: {}", dataNodeInfo);
   }
 }

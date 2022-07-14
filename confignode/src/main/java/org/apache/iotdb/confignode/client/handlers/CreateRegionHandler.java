@@ -45,9 +45,9 @@ public class CreateRegionHandler extends AbstractRetryHandler
       int index,
       CountDownLatch latch,
       TConsensusGroupId consensusGroupId,
-      TDataNodeLocation dataNodeLocation,
+      TDataNodeLocation dataNodeInfo,
       ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations) {
-    super(latch, DataNodeRequestType.createRegions, dataNodeLocation, dataNodeLocations, index);
+    super(latch, DataNodeRequestType.CREATE_REGIONS, dataNodeInfo, dataNodeLocations, index);
     this.consensusGroupId = consensusGroupId;
   }
 
@@ -58,14 +58,12 @@ public class CreateRegionHandler extends AbstractRetryHandler
       LOGGER.info(
           String.format(
               "Successfully create %s on DataNode: %s",
-              ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeLocation));
+              ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeInfo));
     } else {
       LOGGER.error(
           String.format(
               "Create %s on DataNode: %s failed, %s",
-              ConsensusGroupId.formatTConsensusGroupId(consensusGroupId),
-              dataNodeLocation,
-              tsStatus));
+              ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeInfo, tsStatus));
     }
     countDownLatch.countDown();
   }
@@ -75,7 +73,7 @@ public class CreateRegionHandler extends AbstractRetryHandler
     LOGGER.error(
         String.format(
             "Create %s on DataNode: %s failed, %s",
-            ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeLocation, e));
+            ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeInfo, e));
     countDownLatch.countDown();
   }
 

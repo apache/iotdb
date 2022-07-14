@@ -41,12 +41,12 @@ public class FunctionManagementHandler extends AbstractRetryHandler
 
   public FunctionManagementHandler(
       CountDownLatch countDownLatch,
-      TDataNodeLocation dataNodeLocation,
+      TDataNodeLocation dataNodeInfo,
       List<TSStatus> dataNodeResponseStatus,
       DataNodeRequestType requestType,
       ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations,
       int index) {
-    super(countDownLatch, requestType, dataNodeLocation, dataNodeLocations, index);
+    super(countDownLatch, requestType, dataNodeInfo, dataNodeLocations, index);
     this.dataNodeResponseStatus = dataNodeResponseStatus;
   }
 
@@ -55,9 +55,9 @@ public class FunctionManagementHandler extends AbstractRetryHandler
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeResponseStatus.add(response);
       dataNodeLocations.remove(index);
-      LOGGER.info("Successfully {} on DataNode: {}", dataNodeRequestType, dataNodeLocation);
+      LOGGER.info("Successfully {} on DataNode: {}", dataNodeRequestType, dataNodeInfo);
     } else {
-      LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, dataNodeLocation);
+      LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, dataNodeInfo);
     }
     countDownLatch.countDown();
   }
@@ -66,8 +66,8 @@ public class FunctionManagementHandler extends AbstractRetryHandler
   public void onError(Exception exception) {
     dataNodeResponseStatus.add(
         new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-            .setMessage(dataNodeLocation + exception.getMessage()));
-    LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, dataNodeLocation);
+            .setMessage(dataNodeInfo + exception.getMessage()));
+    LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, dataNodeInfo);
     countDownLatch.countDown();
   }
 }
