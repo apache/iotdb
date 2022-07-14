@@ -45,14 +45,15 @@ public class RuleBasedTimeSliceAllocator implements ITimeSliceAllocator {
   }
 
   public void recordExecutionWeight(OperatorContext operatorContext, int weight) {
-    checkState(operatorToWeightMap.containsKey(operatorContext), "Same operator has been weighted");
+    checkState(
+        !operatorToWeightMap.containsKey(operatorContext), "Same operator has been weighted");
     operatorToWeightMap.put(operatorContext, weight);
     totalWeight += weight;
   }
 
   private int getWeight(OperatorContext operatorContext) {
     checkState(
-        !operatorToWeightMap.containsKey(operatorContext), "This operator has not been weighted");
+        operatorToWeightMap.containsKey(operatorContext), "This operator has not been weighted");
     return operatorToWeightMap.get(operatorContext);
   }
 
