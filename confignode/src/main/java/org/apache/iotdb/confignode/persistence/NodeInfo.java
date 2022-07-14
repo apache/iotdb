@@ -404,6 +404,8 @@ public class NodeInfo implements SnapshotProcessor {
 
       ReadWriteIOUtils.write(nextNodeId.get(), fileOutputStream);
 
+      serializeRegisteredConfigNode(fileOutputStream, protocol);
+
       serializeRegisteredDataNode(fileOutputStream, protocol);
 
       serializeDrainingDataNodes(fileOutputStream, protocol);
@@ -427,6 +429,14 @@ public class NodeInfo implements SnapshotProcessor {
               "Can't delete temporary snapshot file: {}, retrying...", tmpFile.getAbsolutePath());
         }
       }
+    }
+  }
+
+  private void serializeRegisteredConfigNode(OutputStream outputStream, TProtocol protocol)
+      throws IOException, TException {
+    ReadWriteIOUtils.write(registeredConfigNodes.size(), outputStream);
+    for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
+      configNodeLocation.write(protocol);
     }
   }
 
@@ -469,6 +479,8 @@ public class NodeInfo implements SnapshotProcessor {
 
       nextNodeId.set(ReadWriteIOUtils.readInt(fileInputStream));
 
+      deserializeRegisteredConfigNode(fileInputStream, protocol);
+
       deserializeRegisteredDataNode(fileInputStream, protocol);
 
       deserializeDrainingDataNodes(fileInputStream, protocol);
@@ -478,6 +490,17 @@ public class NodeInfo implements SnapshotProcessor {
     } finally {
       configNodeInfoReadWriteLock.writeLock().unlock();
       dataNodeInfoReadWriteLock.writeLock().unlock();
+    }
+  }
+
+  private void deserializeRegisteredConfigNode(InputStream inputStream, TProtocol protocol)
+      throws IOException, TException {
+    int size = ReadWriteIOUtils.readInt(inputStream);
+    while (size > 0) {
+      TConfigNodeLocation configNodeLocation = new TConfigNodeLocation();
+      configNodeLocation.read(protocol);
+      registeredConfigNodes.add(configNodeLocation);
+      size--;
     }
   }
 

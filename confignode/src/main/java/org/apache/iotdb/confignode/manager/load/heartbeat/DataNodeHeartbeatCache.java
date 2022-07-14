@@ -68,6 +68,12 @@ public class DataNodeHeartbeatCache implements INodeCache {
       }
     }
 
+    /* Update loadScore */
+    if (lastSendTime > 0) {
+      loadScore = -lastSendTime;
+    }
+
+    /* Update Node status */
     NodeStatus originStatus;
     switch (status) {
       case Running:
