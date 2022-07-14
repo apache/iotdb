@@ -28,7 +28,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static com.google.common.base.Preconditions.checkState;
+
 public class RuleBasedTimeSliceAllocator implements ITimeSliceAllocator {
+
+  private final long EXECUTION_TIME_SLICE_IN_MS =
+      DriverTaskThread.EXECUTION_TIME_SLICE.roundTo(TimeUnit.MILLISECONDS);
 
   private final Map<OperatorContext, Integer> operatorToWeightMap;
 
@@ -40,26 +45,21 @@ public class RuleBasedTimeSliceAllocator implements ITimeSliceAllocator {
   }
 
   public void recordExecutionWeight(OperatorContext operatorContext, int weight) {
-    if (operatorToWeightMap.containsKey(operatorContext)) {
-      throw new IllegalArgumentException();
-    }
+    checkState(operatorToWeightMap.containsKey(operatorContext), "Same operator has been weighted");
     operatorToWeightMap.put(operatorContext, weight);
     totalWeight += weight;
   }
 
-  public int getWeight(OperatorContext operatorContext) {
-    if (!operatorToWeightMap.containsKey(operatorContext)) {
-      throw new IllegalArgumentException();
-    }
+  private int getWeight(OperatorContext operatorContext) {
+    checkState(
+        !operatorToWeightMap.containsKey(operatorContext), "This operator has not been weighted");
     return operatorToWeightMap.get(operatorContext);
   }
 
   @Override
   public Duration getMaxRunTime(OperatorContext operatorContext) {
     return new Duration(
-        (double) DriverTaskThread.EXECUTION_TIME_SLICE.roundTo(TimeUnit.MILLISECONDS)
-            * getWeight(operatorContext)
-            / totalWeight,
+        (double) EXECUTION_TIME_SLICE_IN_MS * getWeight(operatorContext) / totalWeight,
         TimeUnit.MILLISECONDS);
   }
 }
