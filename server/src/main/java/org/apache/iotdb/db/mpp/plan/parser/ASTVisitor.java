@@ -102,6 +102,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
@@ -2311,6 +2312,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new ShowDataNodesStatement();
   }
 
+  // schema template
+
   @Override
   public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
     CreateSchemaTemplateStatement createTemplateStatement = new CreateSchemaTemplateStatement();
@@ -2486,4 +2489,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     ShowPathSetTemplateStatement statement = new ShowPathSetTemplateStatement(templateName);
     return statement;
   }
+
+  @Override
+  public Statement visitCreateTimeseriesOfSchemaTemplate(
+      IoTDBSqlParser.CreateTimeseriesOfSchemaTemplateContext ctx) {
+    ActivateTemplateStatement statement = new ActivateTemplateStatement();
+    statement.setPath(parsePrefixPath(ctx.prefixPath()));
+    return statement;
+  }
+
+  // schema template
 }
