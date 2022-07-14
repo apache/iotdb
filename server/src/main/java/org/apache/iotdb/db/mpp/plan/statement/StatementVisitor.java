@@ -57,7 +57,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -282,5 +284,15 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowSchemaTemplate(
       ShowSchemaTemplateStatement showSchemaTemplateStatement, C context) {
     return visitStatement(showSchemaTemplateStatement, context);
+  }
+
+  public R visitSetSchemaTemplate(
+      SetSchemaTemplateStatement setSchemaTemplateStatement, C context) {
+    return visitStatement(setSchemaTemplateStatement, context);
+  }
+
+  public R visitShowPathSetTemplate(
+      ShowPathSetTemplateStatement showPathSetTemplateStatement, C context) {
+    return visitStatement(showPathSetTemplateStatement, context);
   }
 }

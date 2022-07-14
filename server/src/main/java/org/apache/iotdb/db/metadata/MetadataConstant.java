@@ -55,6 +55,9 @@ public class MetadataConstant {
   public static final String[] ALL_RESULT_NODES = new String[] {"root", "**"};
   public static final PartialPath ALL_MATCH_PATTERN = new PartialPath(new String[] {"root", "**"});
 
+  public static final int NON_TEMPLATE = -1;
+  public static final int ALL_TEMPLATE = -2;
+
   public static final byte INTERNAL_MNODE_TYPE = 0;
   public static final byte STORAGE_GROUP_MNODE_TYPE = 1;
   public static final byte MEASUREMENT_MNODE_TYPE = 2;

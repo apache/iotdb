@@ -78,6 +78,10 @@ public interface IMNode extends Serializable {
 
   void setSchemaTemplate(Template schemaTemplate);
 
+  int getSchemaTemplateId();
+
+  void setSchemaTemplateId(int schemaTemplateId);
+
   boolean isStorageGroup();
 
   boolean isEntity();

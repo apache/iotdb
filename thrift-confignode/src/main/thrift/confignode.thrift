@@ -49,6 +49,7 @@ struct TGlobalConfig {
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
+  6: required string readConsistencyLevel
 }
 
 struct TDataNodeRegisterResp {
@@ -226,6 +227,7 @@ struct TConfigNodeRegisterReq {
   9: required double schemaRegionPerDataNode
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
+  12: required string readConsistencyLevel
 }
 
 struct TConfigNodeRegisterResp {
@@ -294,6 +296,15 @@ struct TGetAllTemplatesResp {
 struct TGetTemplateResp {
   1: required common.TSStatus status
   2: optional binary template
+}
+
+struct TSetSchemaTemplateReq {
+  1: required string name
+  2: required string path
+}
+struct TGetPathsSetTemplatesResp {
+  1: required common.TSStatus status
+  2: optional list<string> pathList
 }
 
 service IConfigNodeRPCService {
@@ -416,6 +427,10 @@ service IConfigNodeRPCService {
     TGetAllTemplatesResp getAllTemplates()
 
     TGetTemplateResp getTemplate(string req)
+
+    common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
+
+    TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
 }
 

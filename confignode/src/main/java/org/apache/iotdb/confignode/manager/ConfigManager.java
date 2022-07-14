@@ -83,12 +83,14 @@ import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -800,6 +802,12 @@ public class ConfigManager implements IManager {
               "Reject register, please ensure that the data_region_per_processor are consistent.");
       return errorResp;
     }
+    if (!req.getReadConsistencyLevel().equals(conf.getReadConsistencyLevel())) {
+      errorResp
+          .getStatus()
+          .setMessage(
+              "Reject register, please ensure that the read_consistency_level are consistent.");
+    }
     return null;
   }
 
@@ -991,6 +999,26 @@ public class ConfigManager implements IManager {
       return clusterSchemaManager.getTemplate(req);
     } else {
       return new TGetTemplateResp().setStatus(status);
+    }
+  }
+
+  @Override
+  public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.setSchemaTemplate(req.getName(), req.getPath());
+    } else {
+      return status;
+    }
+  }
+
+  @Override
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return clusterSchemaManager.getPathsSetTemplate(req);
+    } else {
+      return new TGetPathsSetTemplatesResp(status);
     }
   }
 }

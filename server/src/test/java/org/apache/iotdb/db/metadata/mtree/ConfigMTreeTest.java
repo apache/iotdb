@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -46,14 +47,14 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class MTreeAboveSGTest {
+public class ConfigMTreeTest {
 
-  private MTreeAboveSG root;
+  private ConfigMTree root;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    root = new MTreeAboveSG();
+    root = new ConfigMTree();
   }
 
   @After
@@ -320,7 +321,7 @@ public class MTreeAboveSGTest {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     root.serialize(outputStream);
 
-    MTreeAboveSG newTree = new MTreeAboveSG();
+    ConfigMTree newTree = new ConfigMTree();
     ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
     newTree.deserialize(inputStream);
 
@@ -340,5 +341,42 @@ public class MTreeAboveSGTest {
         2, newTree.getMatchedStorageGroups(new PartialPath("root.**.b.sg"), false).size());
     Assert.assertEquals(
         1, newTree.getMatchedStorageGroups(new PartialPath("root.*.*.sg"), false).size());
+  }
+
+  @Test
+  public void testSetTemplate() throws IllegalPathException {
+    PartialPath path = new PartialPath("root.a.template0");
+    try {
+      root.checkTemplateOnPath(path);
+    } catch (MetadataException e) {
+      fail();
+    }
+
+    IMNode node = root.getNodeWithAutoCreate(path);
+    node.setSchemaTemplateId(0);
+
+    try {
+      root.checkTemplateOnPath(path);
+      fail();
+    } catch (MetadataException ignore) {
+    }
+
+    path = new PartialPath("root.a.b.template0");
+    node = root.getNodeWithAutoCreate(path);
+    node.setSchemaTemplateId(0);
+
+    try {
+      root.checkTemplateOnPath(path);
+      fail();
+    } catch (MetadataException ignore) {
+    }
+
+    try {
+      List<String> pathList = root.getPathsSetOnTemplate(0);
+      Assert.assertTrue(pathList.contains("root.a.template0"));
+      Assert.assertTrue(pathList.contains("root.a.b.template0"));
+    } catch (MetadataException e) {
+      fail();
+    }
   }
 }
