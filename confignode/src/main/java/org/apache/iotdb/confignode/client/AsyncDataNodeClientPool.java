@@ -77,7 +77,10 @@ public class AsyncDataNodeClientPool {
       Object req,
       Object handlerMap,
       ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations) {
-    CountDownLatch countDownLatch = null;
+    CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
+    if (dataNodeLocations.isEmpty()) {
+      return;
+    }
     for (int retry = 0; retry < retryNum; retry++) {
       final int retryCount = retry;
       final AbstractRetryHandler[] handler = new AbstractRetryHandler[1];
