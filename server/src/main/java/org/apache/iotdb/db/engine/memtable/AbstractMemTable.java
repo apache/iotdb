@@ -74,12 +74,7 @@ public abstract class AbstractMemTable implements IMemTable {
   /** DeviceId -> chunkGroup(MeasurementId -> chunk) */
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
 
-  /**
-   * Parameters for slightly small estimate to control memory of {@link #memTableMap}, if consider
-   * {@link RamUsageEstimator} as accurate one.
-   *
-   * <p>todo: implement reflection to be more accurate
-   */
+  /** Parameters for quick estimating increment of {@link #memTableMap} */
   private static final long WRITABLE_CHUNK_GROUP_SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(WritableMemChunkGroup.class);
 
@@ -89,8 +84,12 @@ public abstract class AbstractMemTable implements IMemTable {
       RamUsageEstimator.shallowSizeOfInstance(WritableMemChunk.class);
   private static final long ALIGNED_CHUNK_SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOf(AlignedWritableMemChunk.class);
-  private static final long MAP_ENTRY_SIZE = 40L;
+
+  /** Shallow size of map and entry based on {@link HashMap}, todo better accuracy by reflection */
   private static final long MAP_BASE_SIZE = 128L;
+
+  private static final long MAP_ENTRY_SIZE = 40L;
+
   private static final long INTEGER_SIZE = 16L;
 
   /**
