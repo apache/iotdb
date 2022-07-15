@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
@@ -38,43 +39,35 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 
-/**
- * AggregationOperator can process the situation: aggregation of intermediate aggregate result, it
- * will output one tsBlock contain many results on aggregation time intervals. One intermediate
- * tsBlock input will contain the result of many time intervals.
- */
-public class AggregationOperator implements ProcessOperator {
+public abstract class SingleInputAggregationOperator implements ProcessOperator {
 
-  private final OperatorContext operatorContext;
+  protected final OperatorContext operatorContext;
+  protected final boolean ascending;
 
-  private final List<Operator> children;
-  private final int inputOperatorsCount;
-  private final TsBlock[] inputTsBlocks;
-  private final boolean[] canCallNext;
+  protected final Operator child;
+  protected TsBlock inputTsBlock;
+  protected boolean canCallNext;
 
-  private final ITimeRangeIterator timeRangeIterator;
+  protected final ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
-  private TimeRange curTimeRange;
+  protected TimeRange curTimeRange;
 
-  private final List<Aggregator> aggregators;
+  protected final List<Aggregator> aggregators;
 
   // using for building result tsBlock
-  private final TsBlockBuilder resultTsBlockBuilder;
+  protected final TsBlockBuilder resultTsBlockBuilder;
 
-  public AggregationOperator(
+  public SingleInputAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
-      List<Operator> children,
+      Operator child,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter,
       boolean outputPartialTimeWindow) {
     this.operatorContext = operatorContext;
-    this.children = children;
+    this.ascending = ascending;
+    this.child = child;
     this.aggregators = aggregators;
-
-    this.inputOperatorsCount = children.size();
-    this.inputTsBlocks = new TsBlock[inputOperatorsCount];
-    this.canCallNext = new boolean[inputOperatorsCount];
 
     this.timeRangeIterator =
         initTimeRangeIterator(groupByTimeParameter, ascending, outputPartialTimeWindow);
@@ -93,13 +86,7 @@ public class AggregationOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      ListenableFuture<?> blocked = children.get(i).isBlocked();
-      if (!blocked.isDone()) {
-        return blocked;
-      }
-    }
-    return NOT_BLOCKED;
+    return child.isBlocked();
   }
 
   @Override
@@ -115,18 +102,11 @@ public class AggregationOperator implements ProcessOperator {
 
     // reset operator state
     resultTsBlockBuilder.reset();
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      canCallNext[i] = true;
-    }
+    canCallNext = true;
 
     while (System.nanoTime() - start < maxRuntime
         && (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
         && !resultTsBlockBuilder.isFull()) {
-      boolean hasCachedData = prepareInput();
-      if (!hasCachedData) {
-        break;
-      }
-
       if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
         // move to next time window
         curTimeRange = timeRangeIterator.nextTimeRange();
@@ -138,7 +118,9 @@ public class AggregationOperator implements ProcessOperator {
       }
 
       // calculate aggregation result on current time window
-      calculateNextAggregationResult();
+      if (!calculateNextAggregationResult()) {
+        break;
+      }
     }
 
     if (resultTsBlockBuilder.getPositionCount() > 0) {
@@ -155,47 +137,12 @@ public class AggregationOperator implements ProcessOperator {
 
   @Override
   public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
-    }
+    child.close();
   }
 
-  private boolean prepareInput() {
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (inputTsBlocks[i] != null) {
-        continue;
-      }
-      if (!canCallNext[i]) {
-        return false;
-      }
+  protected abstract boolean calculateNextAggregationResult();
 
-      inputTsBlocks[i] = children.get(i).next();
-      canCallNext[i] = false;
-      if (inputTsBlocks[i] == null) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  private void calculateNextAggregationResult() {
-    // consume current input tsBlocks
-    for (Aggregator aggregator : aggregators) {
-      aggregator.processTsBlocks(inputTsBlocks);
-    }
-
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      inputTsBlocks[i] = inputTsBlocks[i].skipFirst();
-      if (inputTsBlocks[i].isEmpty()) {
-        inputTsBlocks[i] = null;
-      }
-    }
-
-    // update result using aggregators
-    updateResultTsBlock();
-  }
-
-  private void updateResultTsBlock() {
+  protected void updateResultTsBlock() {
     curTimeRange = null;
     appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
   }
