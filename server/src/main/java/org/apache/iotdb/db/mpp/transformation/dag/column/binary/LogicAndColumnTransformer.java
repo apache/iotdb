@@ -21,12 +21,10 @@ package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTransformer {
-  public ArithmeticBinaryColumnTransformer(
+public class LogicAndColumnTransformer extends LogicBinaryColumnTransformer {
+  public LogicAndColumnTransformer(
       Expression expression,
       Type returnType,
       ColumnTransformer leftTransformer,
@@ -35,19 +33,7 @@ public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTran
   }
 
   @Override
-  protected void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder builder) {
-    for (int i = 0, n = leftColumn.getPositionCount(); i < n; i++) {
-      if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        returnType.writeDouble(
-            builder,
-            transform(
-                leftTransformer.getType().getDouble(leftColumn, i),
-                rightTransformer.getType().getDouble(rightColumn, i)));
-      } else {
-        builder.appendNull();
-      }
-    }
+  protected boolean transform(boolean left, boolean right) {
+    return left && right;
   }
-
-  protected abstract double transform(double d1, double d2);
 }

@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ConstantColumn;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -100,7 +104,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
       Map<String, List<InputLocation>> predicateInputLocations,
       ZoneId zoneId,
       boolean hasNonMappableUDF,
-      boolean isAscending) {
+      boolean isAscending)
+      throws QueryProcessException {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.predicateOutputDataTypes = inputDataTypes;
@@ -119,7 +124,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
   }
 
-  private void initFilter(ZoneId zoneId, TypeProvider typeProvider) {
+  private void initFilter(ZoneId zoneId, TypeProvider typeProvider) throws QueryProcessException {
     this.predicateUDTFContext = new UDTFContext(zoneId);
     predicateUDTFContext.constructUdfExecutors(new Expression[] {predicate});
     // init ColumnTransformer of predicate
@@ -141,7 +146,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
   }
 
-  private void initTransformer(ZoneId zoneId, TypeProvider typeProvider) {
+  private void initTransformer(ZoneId zoneId, TypeProvider typeProvider)
+      throws QueryProcessException {
     this.outputUDTFContext = new UDTFContext(zoneId);
     outputUDTFContext.constructUdfExecutors(outputExpressions);
     outputColumnTransformers = new ColumnTransformer[outputExpressions.length];
@@ -202,7 +208,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
    * @return
    */
   private TsBlock getFilterTsBlock(TsBlock input) {
-    // feed Predicate ColumnTransformer
+    final TimeColumn originTimeColumn = input.getTimeColumn();
+    // feed Predicate ColumnTransformer, including TimeStampColumnTransformer and constant
     for (Expression expression : predicateMap.keySet()) {
       if (predicateInputLocations.containsKey(expression.getExpressionString())) {
         predicateMap
@@ -214,13 +221,20 @@ public class FilterAndProjectOperator implements ProcessOperator {
                         .get(0)
                         .getValueColumnIndex()));
       }
+      if (expression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+        predicateMap.get(expression).initializeColumnCache(originTimeColumn);
+      }
+      if (expression.getExpressionType().equals(ExpressionType.CONSTANT)) {
+        predicateMap
+            .get(expression)
+            .initializeColumnCache(new ConstantColumn((ConstantOperand) expression));
+      }
     }
 
     predicateColumnTransformer.tryEvaluate();
 
     Column filterColumn = predicateColumnTransformer.getColumn();
 
-    final TimeColumn originTimeColumn = input.getTimeColumn();
     final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
     tsBlockBuilder.buildValueColumnBuilders(predicateOutputDataTypes);
     final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
@@ -266,6 +280,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
   }
 
   private TsBlock getTransformedTsBlock(TsBlock input) {
+    final TimeColumn originTimeColumn = input.getTimeColumn();
     // feed pre calculated data
     for (Expression expression : outputMap.keySet()) {
       if (predicateInputLocations.containsKey(expression.getExpressionString())) {
@@ -277,6 +292,14 @@ public class FilterAndProjectOperator implements ProcessOperator {
                         .get(expression.getExpressionString())
                         .get(0)
                         .getValueColumnIndex()));
+      }
+      if (expression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+        outputMap.get(expression).initializeColumnCache(originTimeColumn);
+      }
+      if (expression.getExpressionType().equals(ExpressionType.CONSTANT)) {
+        outputMap
+            .get(expression)
+            .initializeColumnCache(new ConstantColumn((ConstantOperand) expression));
       }
       if (commonSubexpressions.contains(expression)) {
         outputMap
@@ -291,7 +314,6 @@ public class FilterAndProjectOperator implements ProcessOperator {
       resultColumns.add(columnTransformer.getColumn());
     }
 
-    final TimeColumn originTimeColumn = input.getTimeColumn();
     final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
     tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
     final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();

@@ -22,8 +22,8 @@ package org.apache.iotdb.db.mpp.transformation.dag.column.leaf;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-public class TimeSeriesColumnTransformer extends LeafColumnTransformer {
-  public TimeSeriesColumnTransformer(Expression expression, Type returnType) {
+public class TimeStampColumnTransformer extends LeafColumnTransformer {
+  public TimeStampColumnTransformer(Expression expression, Type returnType) {
     super(expression, returnType);
   }
 }

@@ -39,14 +39,8 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
   }
 
   @Override
-  public void evaluate() {
-    leftTransformer.tryEvaluate();
-    rightTransformer.tryEvaluate();
-    Column leftColumn = leftTransformer.getColumn();
-    Column rightColumn = rightTransformer.getColumn();
-    int size = leftColumn.getPositionCount();
-    ColumnBuilder builder = returnType.createColumnBuilder(size);
-    for (int i = 0; i < size; i++) {
+  protected void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder builder) {
+    for (int i = 0, n = leftColumn.getPositionCount(); i < n; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         boolean flag;
         // compare binary type
@@ -68,7 +62,6 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
         builder.appendNull();
       }
     }
-    initializeColumnCache(builder.build());
   }
 
   protected int compare(CharSequence cs1, CharSequence cs2) {

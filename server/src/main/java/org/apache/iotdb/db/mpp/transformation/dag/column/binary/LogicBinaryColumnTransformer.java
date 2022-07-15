@@ -25,8 +25,8 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTransformer {
-  public ArithmeticBinaryColumnTransformer(
+public abstract class LogicBinaryColumnTransformer extends BinaryColumnTransformer {
+  public LogicBinaryColumnTransformer(
       Expression expression,
       Type returnType,
       ColumnTransformer leftTransformer,
@@ -38,16 +38,16 @@ public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTran
   protected void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder builder) {
     for (int i = 0, n = leftColumn.getPositionCount(); i < n; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
-        returnType.writeDouble(
+        returnType.writeBoolean(
             builder,
             transform(
-                leftTransformer.getType().getDouble(leftColumn, i),
-                rightTransformer.getType().getDouble(rightColumn, i)));
+                leftTransformer.getType().getBoolean(leftColumn, i),
+                rightTransformer.getType().getBoolean(rightColumn, i)));
       } else {
         builder.appendNull();
       }
     }
   }
 
-  protected abstract double transform(double d1, double d2);
+  protected abstract boolean transform(boolean left, boolean right);
 }

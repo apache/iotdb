@@ -855,18 +855,22 @@ public class LocalExecutionPlanner {
 
       // Output expressions don't contain Non-Mappable UDF, TransformOperator is not needed
       if (!hasNonMappableUDF(subExpressionsOfTransform, context.getTypeProvider())) {
-        return new FilterAndProjectOperator(
-            operatorContext,
-            inputOperator,
-            inputDataTypes,
-            predicate,
-            outputExpressions,
-            commonSubexpressions,
-            context.getTypeProvider(),
-            inputLocations,
-            node.getZoneId(),
-            false,
-            node.getScanOrder().equals(OrderBy.TIMESTAMP_ASC));
+        try {
+          return new FilterAndProjectOperator(
+              operatorContext,
+              inputOperator,
+              inputDataTypes,
+              predicate,
+              outputExpressions,
+              commonSubexpressions,
+              context.getTypeProvider(),
+              inputLocations,
+              node.getZoneId(),
+              false,
+              node.getScanOrder().equals(OrderBy.TIMESTAMP_ASC));
+        } catch (QueryProcessException e) {
+          throw new RuntimeException(e);
+        }
       }
       return null;
     }
