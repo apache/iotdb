@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
-package org.apache.iotdb.confignode.client.handlers;
+package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -29,24 +29,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class FunctionManagementHandler extends AbstractRetryHandler
-    implements AsyncMethodCallback<TSStatus> {
+public class FlushHandler extends AbstractRetryHandler implements AsyncMethodCallback<TSStatus> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FunctionManagementHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FlushHandler.class);
 
   private final List<TSStatus> dataNodeResponseStatus;
 
-  public FunctionManagementHandler(
+  public FlushHandler(
+      TDataNodeLocation targetDataNode,
       CountDownLatch countDownLatch,
-      TDataNodeLocation dataNodeInfo,
-      List<TSStatus> dataNodeResponseStatus,
       DataNodeRequestType requestType,
-      ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations,
+      List<TSStatus> dataNodeResponseStatus,
+      Map<Integer, TDataNodeLocation> dataNodeLocations,
       int index) {
-    super(countDownLatch, requestType, dataNodeInfo, dataNodeLocations, index);
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
     this.dataNodeResponseStatus = dataNodeResponseStatus;
   }
 
@@ -55,19 +54,25 @@ public class FunctionManagementHandler extends AbstractRetryHandler
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeResponseStatus.add(response);
       dataNodeLocations.remove(index);
-      LOGGER.info("Successfully {} on DataNode: {}", dataNodeRequestType, dataNodeInfo);
+      LOGGER.info("Successfully Flush on DataNode: {}", targetDataNode);
     } else {
-      LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, dataNodeInfo);
+      LOGGER.error("Failed to Flush on DataNode {}, {}", dataNodeLocations, response);
     }
     countDownLatch.countDown();
   }
 
   @Override
   public void onError(Exception exception) {
-    dataNodeResponseStatus.add(
-        new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-            .setMessage(dataNodeInfo + exception.getMessage()));
-    LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, dataNodeInfo);
     countDownLatch.countDown();
+    dataNodeResponseStatus.add(
+        new TSStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode(),
+                "Flush error on DataNode: {id="
+                    + targetDataNode.getDataNodeId()
+                    + ", internalEndPoint="
+                    + targetDataNode.getInternalEndPoint()
+                    + "}"
+                    + exception.getMessage())));
   }
 }

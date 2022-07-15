@@ -17,12 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.handlers;
+package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public abstract class AbstractRetryHandler {
@@ -30,35 +30,34 @@ public abstract class AbstractRetryHandler {
   protected final int index;
 
   protected CountDownLatch countDownLatch;
-  /** Map<Index, TDataNodeLocation> */
-  protected ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations;
+  /**
+   * Map<Index, TDataNodeLocation> The DataNode that successfully execute the request will be
+   * removed from this map
+   */
+  protected Map<Integer, TDataNodeLocation> dataNodeLocations;
 
   protected DataNodeRequestType dataNodeRequestType;
-  /** Current DataNode */
-  protected TDataNodeLocation dataNodeInfo;
+  /** Target DataNode */
+  protected TDataNodeLocation targetDataNode;
 
   public AbstractRetryHandler(
       CountDownLatch countDownLatch,
       DataNodeRequestType dataNodeRequestType,
-      TDataNodeLocation dataNodeInfo,
-      ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations,
+      TDataNodeLocation targetDataNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocations,
       int index) {
     this.countDownLatch = countDownLatch;
     this.dataNodeLocations = dataNodeLocations;
     this.dataNodeRequestType = dataNodeRequestType;
-    this.dataNodeInfo = dataNodeInfo;
+    this.targetDataNode = targetDataNode;
     this.index = index;
-  }
-
-  public CountDownLatch getCountDownLatch() {
-    return countDownLatch;
   }
 
   public void setCountDownLatch(CountDownLatch countDownLatch) {
     this.countDownLatch = countDownLatch;
   }
 
-  public ConcurrentHashMap<Integer, TDataNodeLocation> getDataNodeLocations() {
+  public Map<Integer, TDataNodeLocation> getDataNodeLocations() {
     return dataNodeLocations;
   }
 

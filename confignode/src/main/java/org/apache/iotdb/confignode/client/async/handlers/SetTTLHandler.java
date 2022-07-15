@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.client.handlers;
+package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -27,7 +27,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class SetTTLHandler extends AbstractRetryHandler implements AsyncMethodCallback<TSStatus> {
@@ -37,19 +37,19 @@ public class SetTTLHandler extends AbstractRetryHandler implements AsyncMethodCa
   public SetTTLHandler(
       CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
-      TDataNodeLocation dataNodeInfo,
-      ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations,
+      TDataNodeLocation targetDataNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocations,
       int index) {
-    super(countDownLatch, requestType, dataNodeInfo, dataNodeLocations, index);
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
   }
 
   @Override
   public void onComplete(TSStatus response) {
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       getDataNodeLocations().remove(index);
-      LOGGER.info("Successfully SetTTL on DataNode: {}", dataNodeInfo);
+      LOGGER.info("Successfully SetTTL on DataNode: {}", targetDataNode);
     } else {
-      LOGGER.error("Failed to SetTTL on DataNode: {}, {}", dataNodeInfo, response);
+      LOGGER.error("Failed to SetTTL on DataNode: {}, {}", targetDataNode, response);
     }
     countDownLatch.countDown();
   }
@@ -57,6 +57,6 @@ public class SetTTLHandler extends AbstractRetryHandler implements AsyncMethodCa
   @Override
   public void onError(Exception e) {
     countDownLatch.countDown();
-    LOGGER.error("Failed to SetTTL on DataNode: {}", dataNodeInfo);
+    LOGGER.error("Failed to SetTTL on DataNode: {}", targetDataNode);
   }
 }

@@ -24,9 +24,10 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.handlers.SetTTLHandler;
+import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
+import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
@@ -168,8 +169,8 @@ public class ClusterSchemaManager {
                 setTTLPlan.getStorageGroup(), TConsensusGroupType.DataRegion);
     if (dataNodeLocations.size() > 0) {
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
-      Map<Integer, SetTTLHandler> handler = new HashMap<>();
-      ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+      Map<Integer, AbstractRetryHandler> handler = new HashMap<>();
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
       AtomicInteger index = new AtomicInteger();
       // TODO: Use procedure to protect SetTTL on DataNodes
       for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {

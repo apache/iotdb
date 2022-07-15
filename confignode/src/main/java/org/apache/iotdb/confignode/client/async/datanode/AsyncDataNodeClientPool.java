@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.client;
+package org.apache.iotdb.confignode.client.async.datanode;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -26,13 +26,14 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.client.handlers.AbstractRetryHandler;
-import org.apache.iotdb.confignode.client.handlers.CreateRegionHandler;
-import org.apache.iotdb.confignode.client.handlers.DataNodeHeartbeatHandler;
-import org.apache.iotdb.confignode.client.handlers.FlushHandler;
-import org.apache.iotdb.confignode.client.handlers.FunctionManagementHandler;
-import org.apache.iotdb.confignode.client.handlers.SetTTLHandler;
-import org.apache.iotdb.confignode.client.handlers.UpdateRegionRouteMapHandler;
+import org.apache.iotdb.confignode.client.ConfigNodeClientPoolFactory;
+import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
+import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
+import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
+import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
+import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
+import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
@@ -67,7 +68,8 @@ public class AsyncDataNodeClientPool {
   }
 
   /**
-   * When the request fails, reconnect the DataNode that failed the request
+   * Send asynchronize requests to the specific DataNodes, and reconnect the DataNode that failed to
+   * receive the requests
    *
    * @param req request
    * @param handlerMap Map<index, Handler>
@@ -75,8 +77,8 @@ public class AsyncDataNodeClientPool {
    */
   public void sendAsyncRequestToDataNodeWithRetry(
       Object req,
-      Object handlerMap,
-      ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations) {
+      Map<Integer, AbstractRetryHandler> handlerMap,
+      Map<Integer, TDataNodeLocation> dataNodeLocations) {
     CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
     if (dataNodeLocations.isEmpty()) {
       return;
@@ -84,7 +86,7 @@ public class AsyncDataNodeClientPool {
     for (int retry = 0; retry < retryNum; retry++) {
       AbstractRetryHandler handler = null;
       for (Map.Entry<Integer, TDataNodeLocation> entry : dataNodeLocations.entrySet()) {
-        handler = ((Map<Integer, AbstractRetryHandler>) handlerMap).get(entry.getKey());
+        handler = handlerMap.get(entry.getKey());
         // If it is not the first request, then prove that this operation is a retry.
         // The count of countDownLatch needs to be updated
         if (retry != 0) {
@@ -94,7 +96,7 @@ public class AsyncDataNodeClientPool {
         sendAsyncRequestToDataNode(entry.getValue(), req, handler, retry);
       }
       try {
-        handler.getCountDownLatch().await();
+        countDownLatch.await();
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted during {} on ConfigNode", handler.getDataNodeRequestType());
       }
@@ -175,7 +177,7 @@ public class AsyncDataNodeClientPool {
         regionNum += regionReplicaSet.getDataNodeLocationsSize();
       }
     }
-    Map<Integer, CreateRegionHandler> handlerMap = new ConcurrentHashMap<>();
+    Map<Integer, AbstractRetryHandler> handlerMap = new ConcurrentHashMap<>();
     ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
     Map<Integer, Object> req = new ConcurrentHashMap<>();
     AtomicInteger index = new AtomicInteger();

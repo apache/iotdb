@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.client.handlers;
+package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -29,7 +29,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 /** Only use CreateRegionHandler when the LoadManager wants to create Regions */
@@ -45,9 +45,9 @@ public class CreateRegionHandler extends AbstractRetryHandler
       int index,
       CountDownLatch latch,
       TConsensusGroupId consensusGroupId,
-      TDataNodeLocation dataNodeInfo,
-      ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations) {
-    super(latch, DataNodeRequestType.CREATE_REGIONS, dataNodeInfo, dataNodeLocations, index);
+      TDataNodeLocation targetDataNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocations) {
+    super(latch, DataNodeRequestType.CREATE_REGIONS, targetDataNode, dataNodeLocations, index);
     this.consensusGroupId = consensusGroupId;
   }
 
@@ -58,12 +58,14 @@ public class CreateRegionHandler extends AbstractRetryHandler
       LOGGER.info(
           String.format(
               "Successfully create %s on DataNode: %s",
-              ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeInfo));
+              ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), targetDataNode));
     } else {
       LOGGER.error(
           String.format(
               "Create %s on DataNode: %s failed, %s",
-              ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeInfo, tsStatus));
+              ConsensusGroupId.formatTConsensusGroupId(consensusGroupId),
+              targetDataNode,
+              tsStatus));
     }
     countDownLatch.countDown();
   }
@@ -73,7 +75,7 @@ public class CreateRegionHandler extends AbstractRetryHandler
     LOGGER.error(
         String.format(
             "Create %s on DataNode: %s failed, %s",
-            ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), dataNodeInfo, e));
+            ConsensusGroupId.formatTConsensusGroupId(consensusGroupId), targetDataNode, e));
     countDownLatch.countDown();
   }
 
