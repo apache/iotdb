@@ -401,9 +401,8 @@ public class SeriesScanUtil {
    * overlapped pages are consumed
    */
   @SuppressWarnings("squid:S3776")
-  public
   // Suppress high Cognitive Complexity warning
-  boolean hasNextPage() throws IOException {
+  public boolean hasNextPage() throws IOException {
 
     /*
      * has overlapped data before

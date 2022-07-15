@@ -23,12 +23,12 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanUtil;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanUtil;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -49,17 +49,15 @@ public class SeriesDataBlockReader implements IDataBlockReader {
       TSDataType dataType,
       FragmentInstanceContext context,
       QueryDataSource dataSource,
-      Filter timeFilter,
-      Filter valueFilter,
       boolean ascending) {
     if (seriesPath instanceof AlignedPath) {
       this.seriesScanUtil =
-          new AlignedSeriesScanUtil(
-              seriesPath, allSensors, context, timeFilter, valueFilter, ascending);
-    } else {
+          new AlignedSeriesScanUtil(seriesPath, allSensors, context, null, null, ascending);
+    } else if (seriesPath instanceof MeasurementPath) {
       this.seriesScanUtil =
-          new SeriesScanUtil(
-              seriesPath, allSensors, dataType, context, timeFilter, valueFilter, ascending);
+          new SeriesScanUtil(seriesPath, allSensors, dataType, context, null, null, ascending);
+    } else {
+      throw new IllegalArgumentException("Should call exact sub class!");
     }
     this.seriesScanUtil.initQueryDataSource(dataSource);
   }
@@ -71,19 +69,15 @@ public class SeriesDataBlockReader implements IDataBlockReader {
       FragmentInstanceContext context,
       List<TsFileResource> seqFileResource,
       List<TsFileResource> unseqFileResource,
-      Filter timeFilter,
-      Filter valueFilter,
       boolean ascending) {
     Set<String> allSensors = new HashSet<>();
     if (seriesPath instanceof AlignedPath) {
       this.seriesScanUtil =
-          new AlignedSeriesScanUtil(
-              seriesPath, allSensors, context, timeFilter, valueFilter, ascending);
+          new AlignedSeriesScanUtil(seriesPath, allSensors, context, null, null, ascending);
     } else {
       allSensors.add(seriesPath.getMeasurement());
       this.seriesScanUtil =
-          new SeriesScanUtil(
-              seriesPath, allSensors, dataType, context, timeFilter, valueFilter, ascending);
+          new SeriesScanUtil(seriesPath, allSensors, dataType, context, null, null, ascending);
     }
     seriesScanUtil.initQueryDataSource(seqFileResource, unseqFileResource);
   }

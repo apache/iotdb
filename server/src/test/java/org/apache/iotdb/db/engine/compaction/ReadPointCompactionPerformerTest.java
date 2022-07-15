@@ -109,8 +109,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             seqResources,
             unseqResources,
-            null,
-            null,
             true);
     int count = 0;
     while (tsBlockReader.hasNextBatch()) {
@@ -142,8 +140,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             targetResources,
             new ArrayList<>(),
-            null,
-            null,
             true);
 
     count = 0;
@@ -192,8 +188,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -260,8 +254,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -313,8 +305,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -354,8 +344,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
                 targetResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -407,8 +395,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -467,8 +453,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
                 targetResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -554,8 +538,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -609,8 +591,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
                 targetResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -686,8 +666,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -741,8 +719,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
                 targetResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -820,8 +796,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -859,8 +833,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
                 targetResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -904,8 +876,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
 
         int count = 0;
@@ -951,8 +921,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1008,8 +976,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1066,8 +1032,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1133,8 +1097,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1191,8 +1153,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 false);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1259,8 +1219,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1322,8 +1280,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1434,8 +1390,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1502,8 +1456,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1598,8 +1550,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1663,8 +1613,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1730,8 +1678,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1776,8 +1722,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 new ArrayList<>(),
                 targetResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -1828,8 +1772,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             seqResources,
             unseqResources,
-            null,
-            null,
             true);
     int count = 0;
     while (tsBlockReader.hasNextBatch()) {
@@ -1865,8 +1807,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             targetResources,
             new ArrayList<>(),
-            null,
-            null,
             true);
     count = 0;
     while (tsBlockReader.hasNextBatch()) {
@@ -1928,8 +1868,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2025,8 +1963,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2127,8 +2063,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2225,8 +2159,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2329,8 +2261,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2421,8 +2351,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2523,8 +2451,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2598,8 +2524,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2692,8 +2616,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2804,8 +2726,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -2889,8 +2809,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             seqResources,
             unseqResources,
-            null,
-            null,
             true);
     int count = 0;
     while (tsBlockReader.hasNextBatch()) {
@@ -2929,8 +2847,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                 EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
             targetResources,
             new ArrayList<>(),
-            null,
-            null,
             true);
     count = 0;
     while (tsBlockReader.hasNextBatch()) {
@@ -3000,8 +2916,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -3074,8 +2988,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -3202,8 +3114,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -3310,8 +3220,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -3444,8 +3352,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -3523,8 +3429,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -3661,8 +3565,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 seqResources,
                 unseqResources,
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -3740,8 +3642,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                     EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                 targetResources,
                 new ArrayList<>(),
-                null,
-                null,
                 true);
         int count = 0;
         while (tsBlockReader.hasNextBatch()) {
@@ -3928,8 +3828,6 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
                       EnvironmentUtils.TEST_QUERY_CONTEXT.getQueryId()),
                   targetResources,
                   new ArrayList<>(),
-                  null,
-                  null,
                   true);
           int count = 0;
           while (tsBlockReader.hasNextBatch()) {

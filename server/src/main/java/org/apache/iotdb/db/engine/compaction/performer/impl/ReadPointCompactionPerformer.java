@@ -363,14 +363,7 @@ public class ReadPointCompactionPerformer
       tsDataType = measurementSchemas.get(0).getType();
     }
     return new SeriesDataBlockReader(
-        seriesPath,
-        allSensors,
-        tsDataType,
-        fragmentInstanceContext,
-        queryDataSource,
-        null,
-        null,
-        true);
+        seriesPath, allSensors, tsDataType, fragmentInstanceContext, queryDataSource, true);
   }
 
   public static void writeWithReader(
