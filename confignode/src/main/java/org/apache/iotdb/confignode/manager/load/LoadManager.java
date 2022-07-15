@@ -188,8 +188,8 @@ public class LoadManager {
    *
    * @return Map<DataNodeId, loadScore>
    */
-  public Map<Integer, Float> getAllLoadScores() {
-    Map<Integer, Float> result = new ConcurrentHashMap<>();
+  public Map<Integer, Long> getAllLoadScores() {
+    Map<Integer, Long> result = new ConcurrentHashMap<>();
 
     nodeCacheMap.forEach(
         (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));

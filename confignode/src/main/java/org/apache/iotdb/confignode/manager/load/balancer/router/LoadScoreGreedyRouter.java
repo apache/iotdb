@@ -33,10 +33,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LoadScoreGreedyRouter implements IRouter {
 
   // Map<DataNodeId, loadScore>
-  private final Map<Integer, Float> loadScoreMap;
+  private final Map<Integer, Long> loadScoreMap;
 
   /** The constructor is used to pass in the load information needed by the algorithm */
-  public LoadScoreGreedyRouter(Map<Integer, Float> loadScoreMap) {
+  public LoadScoreGreedyRouter(Map<Integer, Long> loadScoreMap) {
     this.loadScoreMap = loadScoreMap;
   }
 
@@ -63,7 +63,7 @@ public class LoadScoreGreedyRouter implements IRouter {
                         new Pair<>(
                             (double)
                                 loadScoreMap.computeIfAbsent(
-                                    dataNodeLocation.getDataNodeId(), empty -> Float.MAX_VALUE),
+                                    dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
                             dataNodeLocation));
                   });
 
