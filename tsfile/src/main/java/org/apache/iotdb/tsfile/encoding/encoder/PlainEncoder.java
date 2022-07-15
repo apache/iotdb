@@ -73,14 +73,14 @@ public class PlainEncoder extends Encoder {
     // Implementation taken from Apache Avro (org.apache.avro.io.BinaryData)
     // the compiler seems to execute this order the best, likely due to
     // register allocation -- the lifetime of constants is minimized.
-    writeBufferForLong[0] = (byte) (first);
-    writeBufferForLong[4] = (byte) (second);
-    writeBufferForLong[5] = (byte) (second >>> 8);
-    writeBufferForLong[1] = (byte) (first >>> 8);
-    writeBufferForLong[2] = (byte) (first >>> 16);
-    writeBufferForLong[6] = (byte) (second >>> 16);
-    writeBufferForLong[7] = (byte) (second >>> 24);
-    writeBufferForLong[3] = (byte) (first >>> 24);
+    writeBufferForLong[7] = (byte) (first);
+    writeBufferForLong[3] = (byte) (second);
+    writeBufferForLong[2] = (byte) (second >>> 8);
+    writeBufferForLong[6] = (byte) (first >>> 8);
+    writeBufferForLong[5] = (byte) (first >>> 16);
+    writeBufferForLong[1] = (byte) (second >>> 16);
+    writeBufferForLong[0] = (byte) (second >>> 24);
+    writeBufferForLong[4] = (byte) (first >>> 24);
     out.write(writeBufferForLong, 0, 8);
   }
 
