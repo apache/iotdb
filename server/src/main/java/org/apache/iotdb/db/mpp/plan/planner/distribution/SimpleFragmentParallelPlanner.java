@@ -122,7 +122,7 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // enums
     boolean selectRandomDataNode = "weak".equals(readConsistencyLevel);
     int targetIndex;
-    if (!selectRandomDataNode) {
+    if (!selectRandomDataNode || queryContext.getSession() == null) {
       targetIndex = 0;
     } else {
       targetIndex =
