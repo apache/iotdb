@@ -39,7 +39,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FilterAndProjectOperator implements ProcessOperator {
@@ -247,9 +253,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
 
     // construct result TsBlock of filter
+    int rowCount = 0;
     if (isAscending) {
       for (int i = 0, n = filterColumn.getPositionCount(); i < n; i++) {
         if (filterColumn.getBoolean(i)) {
+          rowCount++;
           timeBuilder.writeLong(originTimeColumn.getLong(i));
           for (int j = 0, m = resultColumns.size(); j < m; j++) {
             columnBuilders[j].write(resultColumns.get(j), i);
@@ -266,6 +274,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
         }
       }
     }
+    tsBlockBuilder.declarePositions(rowCount);
     return tsBlockBuilder.build();
   }
 
@@ -302,12 +311,14 @@ public class FilterAndProjectOperator implements ProcessOperator {
     final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
     // construct result TsBlock
-    for (int i = 0, n = input.getPositionCount(); i < n; i++) {
+    int positionCount = input.getPositionCount();
+    for (int i = 0; i < positionCount; i++) {
       timeBuilder.writeLong(originTimeColumn.getLong(i));
       for (int j = 0, m = resultColumns.size(); j < m; j++) {
         columnBuilders[j].write(resultColumns.get(j), i);
       }
     }
+    tsBlockBuilder.declarePositions(positionCount);
     return tsBlockBuilder.build();
   }
 
