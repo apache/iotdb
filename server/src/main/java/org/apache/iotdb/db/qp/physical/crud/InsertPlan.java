@@ -118,6 +118,15 @@ public abstract class InsertPlan extends PhysicalPlan {
     return failedIndices == null ? Collections.emptyList() : failedIndices;
   }
 
+  public boolean hasValidMeasurements() {
+    for (Object o : measurements) {
+      if (o != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public boolean isAligned() {
     return isAligned;
   }
