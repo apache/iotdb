@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -141,7 +142,7 @@ public class Analysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   // extra mesaage from config node, used for node management
-  private Set<String> matchedNodes;
+  private Set<TSchemaNode> matchedNodes;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -396,11 +397,11 @@ public class Analysis {
     this.deviceToIsRawDataSource = deviceToIsRawDataSource;
   }
 
-  public Set<String> getMatchedNodes() {
+  public Set<TSchemaNode> getMatchedNodes() {
     return matchedNodes;
   }
 
-  public void setMatchedNodes(Set<String> matchedNodes) {
+  public void setMatchedNodes(Set<TSchemaNode> matchedNodes) {
     this.matchedNodes = matchedNodes;
   }
 }
