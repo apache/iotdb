@@ -31,7 +31,7 @@ public enum MNodeType {
   STORAGE_GROUP((byte) 2, "STORAGE GROUP"),
   INTERNAL((byte) 3, "INTERNAL"),
   DEVICE((byte) 4, "DEVICE"),
-  MEASUREMENT((byte) 5, "MEASUREMENT"),
+  MEASUREMENT((byte) 5, "TIMESERIES"),
   UNIMPLEMENT((byte) 6, "");
 
   private final byte nodeType;

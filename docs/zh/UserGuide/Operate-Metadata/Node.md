@@ -29,7 +29,7 @@ SHOW CHILD PATHS pathPattern
 
 可以查看此路径模式所匹配的所有路径的下一层的所有路径和它对应的节点类型，即pathPattern.*所匹配的路径及其节点类型。
 
-节点类型：ROOT -> SG INTERNAL -> STORAGE GROUP -> INTERNAL -> DEVICE -> MEASUREMENT
+节点类型：ROOT -> SG INTERNAL -> STORAGE GROUP -> INTERNAL -> DEVICE -> TIMESERIES
 
 示例：
 

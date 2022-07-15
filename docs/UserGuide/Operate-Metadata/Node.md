@@ -28,7 +28,7 @@ SHOW CHILD PATHS pathPattern
 
 Return all child paths and their node types of all the paths matching pathPattern.
 
-node types: ROOT -> SG INTERNAL -> STORAGE GROUP -> INTERNAL -> DEVICE -> MEASUREMENT
+node types: ROOT -> SG INTERNAL -> STORAGE GROUP -> INTERNAL -> DEVICE -> TIMESERIES
 
 
 Example：
