@@ -22,13 +22,8 @@ package org.apache.iotdb.tsfile.read.common.type;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 public class DoubleType implements Type {
-  @Override
-  public boolean getBoolean(Column c, int position) {
-    throw new UnsupportedOperationException("DoubleType cannot getBoolean");
-  }
 
   @Override
   public int getInt(Column c, int position) {
@@ -48,16 +43,6 @@ public class DoubleType implements Type {
   @Override
   public double getDouble(Column c, int position) {
     return c.getDouble(position);
-  }
-
-  @Override
-  public Binary getBinary(Column c, int position) {
-    return Type.super.getBinary(c, position);
-  }
-
-  @Override
-  public void writeBoolean(ColumnBuilder builder, boolean value) {
-    throw new UnsupportedOperationException("DoubleType cannot writeBoolean");
   }
 
   @Override
@@ -81,17 +66,7 @@ public class DoubleType implements Type {
   }
 
   @Override
-  public void writeBinary(ColumnBuilder builder, Binary value) {
-    throw new UnsupportedOperationException("DoubleType cannot writeBinary");
-  }
-
-  @Override
-  public void appendNull(ColumnBuilder builder) {
-    builder.appendNull();
-  }
-
-  @Override
-  public ColumnBuilder createBlockBuilder(int expectedEntries) {
+  public ColumnBuilder createColumnBuilder(int expectedEntries) {
     return new DoubleColumnBuilder(null, expectedEntries);
   }
 }

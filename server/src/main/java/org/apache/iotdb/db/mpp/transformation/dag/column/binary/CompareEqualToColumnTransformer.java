@@ -23,8 +23,8 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-public class GreaterThanColumnTransformer extends CompareBinaryColumnTransformer {
-  public GreaterThanColumnTransformer(
+public class CompareEqualToColumnTransformer extends CompareBinaryColumnTransformer {
+  public CompareEqualToColumnTransformer(
       Expression expression,
       Type returnType,
       ColumnTransformer leftTransformer,
@@ -33,7 +33,7 @@ public class GreaterThanColumnTransformer extends CompareBinaryColumnTransformer
   }
 
   @Override
-  protected boolean transform(double d1, double d2) {
-    return d1 > d2;
+  protected boolean transform(int flag) {
+    return flag == 0;
   }
 }

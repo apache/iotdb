@@ -843,7 +843,7 @@ public class LocalExecutionPlanner {
       Set<Expression> subExpressionsOfTransform = collectSubexpressions(outputExpressions);
 
       // collect all common subExpressions between outputExpressions and predicate
-      // excluding TimeseriesOperand and ConstantOperand
+      // excluding LeafOperand
       Set<Expression> commonSubexpressions = new HashSet<>();
       predicate.findCommonSubexpressions(subExpressionsOfTransform, commonSubexpressions);
 

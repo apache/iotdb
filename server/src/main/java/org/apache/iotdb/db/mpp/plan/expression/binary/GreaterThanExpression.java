@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.binary.GreaterThanColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.binary.CompareGreaterThanColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.CompareBinaryTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.CompareGreaterThanTransformer;
 import org.apache.iotdb.tsfile.read.common.type.Type;
@@ -52,7 +52,7 @@ public class GreaterThanExpression extends CompareBinaryExpression {
       ColumnTransformer leftColumnTransformer,
       ColumnTransformer rightColumnTransformer,
       Type type) {
-    return new GreaterThanColumnTransformer(
+    return new CompareGreaterThanColumnTransformer(
         this, type, leftColumnTransformer, rightColumnTransformer);
   }
 

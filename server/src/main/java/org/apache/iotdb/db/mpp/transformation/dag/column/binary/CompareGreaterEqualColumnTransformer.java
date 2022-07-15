@@ -23,38 +23,17 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-public abstract class BinaryColumnTransformer extends ColumnTransformer {
-
-  protected final ColumnTransformer leftTransformer;
-
-  protected final ColumnTransformer rightTransformer;
-
-  public BinaryColumnTransformer(
+public class CompareGreaterEqualColumnTransformer extends CompareBinaryColumnTransformer {
+  public CompareGreaterEqualColumnTransformer(
       Expression expression,
       Type returnType,
       ColumnTransformer leftTransformer,
       ColumnTransformer rightTransformer) {
-    super(expression, returnType);
-    this.leftTransformer = leftTransformer;
-    this.rightTransformer = rightTransformer;
+    super(expression, returnType, leftTransformer, rightTransformer);
   }
 
   @Override
-  public void reset() {
-    hasEvaluated = false;
-    if (leftTransformer != null) {
-      leftTransformer.reset();
-    }
-    if (rightTransformer != null) {
-      rightTransformer.reset();
-    }
-  }
-
-  public ColumnTransformer getLeftTransformer() {
-    return leftTransformer;
-  }
-
-  public ColumnTransformer getRightTransformer() {
-    return rightTransformer;
+  protected boolean transform(int flag) {
+    return flag >= 0;
   }
 }

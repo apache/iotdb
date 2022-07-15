@@ -162,22 +162,6 @@ public class FilterAndProjectOperator implements ProcessOperator {
             .collect(Collectors.toList());
   }
 
-  private void initColumnTransformer(
-      Expression[] expressions,
-      Set<Expression> calculatedExpressions,
-      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
-      UDTFContext udtfContext,
-      TypeProvider typeProvider) {
-    for (Expression expression : expressions) {
-      expression.constructColumnTransformer(
-          operatorContext.getOperatorId(),
-          udtfContext,
-          expressionColumnTransformerMap,
-          typeProvider,
-          calculatedExpressions);
-    }
-  }
-
   // result of commonExpressions should be kept
   private void addReferenceCountOfCommonExpressions() {
     for (Expression expression : commonSubexpressions) {
@@ -243,7 +227,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
     List<Column> resultColumns = new ArrayList<>();
-    for (int i = 0; i < input.getValueColumnCount(); i++) {
+    for (int i = 0, n = input.getValueColumnCount(); i < n; i++) {
       resultColumns.add(input.getColumn(i));
     }
 
@@ -255,20 +239,23 @@ public class FilterAndProjectOperator implements ProcessOperator {
     // construct result TsBlock of filter
     int rowCount = 0;
     if (isAscending) {
-      for (int i = 0, n = filterColumn.getPositionCount(); i < n; i++) {
+      for (int i = 0, n = filterColumn.getPositionCount(), m = resultColumns.size(); i < n; i++) {
         if (filterColumn.getBoolean(i)) {
           rowCount++;
           timeBuilder.writeLong(originTimeColumn.getLong(i));
-          for (int j = 0, m = resultColumns.size(); j < m; j++) {
+          for (int j = 0; j < m; j++) {
             columnBuilders[j].write(resultColumns.get(j), i);
           }
         }
       }
     } else {
-      for (int n = filterColumn.getPositionCount(), i = n - 1; i >= 0; i--) {
+      for (int n = filterColumn.getPositionCount(), m = resultColumns.size(), i = n - 1;
+          i >= 0;
+          i--) {
         if (filterColumn.getBoolean(i)) {
+          rowCount++;
           timeBuilder.writeLong(originTimeColumn.getLong(i));
-          for (int j = 0, m = resultColumns.size(); j < m; j++) {
+          for (int j = 0; j < m; j++) {
             columnBuilders[j].write(resultColumns.get(j), i);
           }
         }

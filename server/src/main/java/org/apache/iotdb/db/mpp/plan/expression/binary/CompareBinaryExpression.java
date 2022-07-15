@@ -21,9 +21,7 @@ package org.apache.iotdb.db.mpp.plan.expression.binary;
 
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import java.nio.ByteBuffer;
 
@@ -83,13 +81,5 @@ public abstract class CompareBinaryExpression extends BinaryExpression {
     }
 
     return TSDataType.BOOLEAN;
-  }
-
-  @Override
-  protected ColumnTransformer getConcreteBinaryTransformer(
-      ColumnTransformer leftColumnTransformer,
-      ColumnTransformer rightColumnTransformer,
-      Type type) {
-    return null;
   }
 }

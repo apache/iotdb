@@ -85,13 +85,9 @@ public interface Type {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
-  default void appendNull(ColumnBuilder builder) {
-    throw new UnsupportedOperationException(getClass().getName());
-  }
-
   /**
-   * Creates the preferred block builder for this type. This is the builder used to store values
+   * Creates the preferred column builder for this type. This is the builder used to store values
    * after an expression projection within the query.
    */
-  ColumnBuilder createBlockBuilder(int expectedEntries);
+  ColumnBuilder createColumnBuilder(int expectedEntries);
 }

@@ -41,7 +41,7 @@ public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTran
     Column leftColumn = leftTransformer.getColumn();
     Column rightColumn = rightTransformer.getColumn();
     int size = leftColumn.getPositionCount();
-    ColumnBuilder builder = returnType.createBlockBuilder(size);
+    ColumnBuilder builder = returnType.createColumnBuilder(size);
     for (int i = 0; i < size; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         returnType.writeDouble(
@@ -50,7 +50,7 @@ public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTran
                 leftTransformer.getType().getDouble(leftColumn, i),
                 rightTransformer.getType().getDouble(rightColumn, i)));
       } else {
-        returnType.appendNull(builder);
+        builder.appendNull();
       }
     }
     initializeColumnCache(builder.build());
