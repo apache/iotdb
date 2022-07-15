@@ -69,12 +69,12 @@ public class SchemaFetchMergeNode extends AbstractSchemaMergeNode {
   }
 
   public static PlanNode deserialize(ByteBuffer byteBuffer) {
-    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> storageGroupList = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       storageGroupList.add(ReadWriteIOUtils.readString(byteBuffer));
     }
+    PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SchemaFetchMergeNode(planNodeId, storageGroupList);
   }
 
