@@ -713,8 +713,8 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planSchemaFetchMerge() {
-    this.root = new SchemaFetchMergeNode(context.getQueryId().genPlanNodeId());
+  public LogicalPlanBuilder planSchemaFetchMerge(List<String> storageGroupList) {
+    this.root = new SchemaFetchMergeNode(context.getQueryId().genPlanNodeId(), storageGroupList);
     return this;
   }
 

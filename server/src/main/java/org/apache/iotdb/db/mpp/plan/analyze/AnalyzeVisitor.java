@@ -18,15 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -1223,7 +1220,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setStatement(schemaFetchStatement);
-    analysis.setSchemaPartitionInfo(schemaFetchStatement.getSchemaPartition());
+
+    SchemaPartition schemaPartition =
+        partitionFetcher.getSchemaPartition(schemaFetchStatement.getPatternTree());
+    analysis.setSchemaPartitionInfo(schemaPartition);
+
+    if (schemaPartition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+    }
+
     return analysis;
   }
 
@@ -1360,43 +1365,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.appendPathPattern(pathPattern);
     }
 
-    SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
-
-    SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, schemaPartition);
+    SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
     analysis.setSchemaTree(schemaTree);
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
 
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
-        schemaPartition.getSchemaPartitionMap();
-
-    // todo keep the behaviour consistency of cluster and standalone,
-    // the behaviour of standalone fetcher and LocalConfigNode is not consistent with that of
-    // cluster mode's
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      for (String storageGroup : schemaPartitionMap.keySet()) {
-        sgNameToQueryParamsMap.put(
-            storageGroup,
-            schemaPartitionMap.get(storageGroup).keySet().stream()
-                .map(DataPartitionQueryParam::new)
-                .collect(Collectors.toList()));
-      }
-    } else {
-      // the StandalonePartitionFetcher and LocalConfigNode now doesn't support partition fetch
-      // via slotId
-      schemaTree
-          .getMatchedDevices(new PartialPath(ALL_RESULT_NODES))
-          .forEach(
-              deviceSchemaInfo -> {
-                PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-                DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-                queryParam.setDevicePath(devicePath.getFullPath());
-                sgNameToQueryParamsMap
-                    .computeIfAbsent(
-                        schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
-                    .add(queryParam);
-              });
-    }
+    schemaTree
+        .getMatchedDevices(new PartialPath(ALL_RESULT_NODES))
+        .forEach(
+            deviceSchemaInfo -> {
+              PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+              DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+              queryParam.setDevicePath(devicePath.getFullPath());
+              sgNameToQueryParamsMap
+                  .computeIfAbsent(
+                      schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+                  .add(queryParam);
+            });
 
     DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
     analysis.setDataPartitionInfo(dataPartition);

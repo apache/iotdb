@@ -1166,7 +1166,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               SchemaFetchMergeOperator.class.getSimpleName());
       context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-      return new SchemaFetchMergeOperator(operatorContext, children);
+      return new SchemaFetchMergeOperator(operatorContext, children, node.getStorageGroupList());
     }
 
     @Override
