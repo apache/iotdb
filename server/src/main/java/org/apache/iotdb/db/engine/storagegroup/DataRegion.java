@@ -2125,14 +2125,12 @@ public class DataRegion {
           deletion,
           devicePaths,
           updatedModFiles,
-          planIndex,
           timePartitionFilter);
       deleteDataInFiles(
           tsFileManager.getTsFileList(false),
           deletion,
           devicePaths,
           updatedModFiles,
-          planIndex,
           timePartitionFilter);
 
     } catch (Exception e) {
@@ -2207,14 +2205,12 @@ public class DataRegion {
           deletion,
           devicePaths,
           updatedModFiles,
-          planIndex,
           timePartitionFilter);
       deleteDataInFiles(
           tsFileManager.getTsFileList(false),
           deletion,
           devicePaths,
           updatedModFiles,
-          planIndex,
           timePartitionFilter);
 
     } catch (Exception e) {
@@ -2296,7 +2292,6 @@ public class DataRegion {
       Deletion deletion,
       Set<PartialPath> devicePaths,
       List<ModificationFile> updatedModFiles,
-      long planIndex,
       TimePartitionFilter timePartitionFilter)
       throws IOException {
     for (TsFileResource tsFileResource : tsFileResourceList) {
@@ -2320,7 +2315,7 @@ public class DataRegion {
         // remember to close mod file
         tsFileResource.getCompactionModFile().close();
         tsFileResource.getModFile().close();
-      } else {
+      } else if (tsFileResource.isClosed()) {
         deletion.setFileOffset(tsFileResource.getTsFileSize());
         // write deletion into modification file
         tsFileResource.getModFile().write(deletion);
@@ -2333,8 +2328,6 @@ public class DataRegion {
           deletion.getStartTime(),
           deletion.getEndTime(),
           tsFileResource.getModFile().getFilePath());
-
-      tsFileResource.updatePlanIndexes(planIndex);
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {

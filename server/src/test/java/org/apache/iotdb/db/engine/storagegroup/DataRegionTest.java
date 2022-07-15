@@ -978,6 +978,29 @@ public class DataRegionTest {
     }
   }
 
+  @Test
+  public void testDeleteDataInFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+    for (int j = 0; j < 100; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is in memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d2.s0"), 50, 70, 0, null);
+
+    // delete data which is not in memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertTrue(tsFileResource.getModFile().exists());
+    Assert.assertEquals(2, tsFileResource.getModFile().getModifications().size());
+  }
+
   static class DummyDataRegion extends DataRegion {
 
     DummyDataRegion(String systemInfoDir, String storageGroupName) throws DataRegionException {
