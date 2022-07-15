@@ -152,6 +152,10 @@ public class Analysis {
     return dataPartition.getDataRegionReplicaSet(seriesPath.getDevice(), null);
   }
 
+  public List<TRegionReplicaSet> getPartitionInfo(String deviceName, Filter globalTimeFilter) {
+    return dataPartition.getDataRegionReplicaSet(deviceName, null);
+  }
+
   public Statement getStatement() {
     return statement;
   }

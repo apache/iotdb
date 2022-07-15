@@ -538,13 +538,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
   }
 
-  @Override
-  public void createTimeseries(CreateTimeSeriesPlan plan, long offset, String version)
-      throws MetadataException {
-    throw new UnsupportedOperationException(
-        "SchemaRegion schema file mode currently doesn't support timeseries with version");
-  }
-
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
@@ -705,13 +698,6 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
       idTable.createAlignedTimeseries(plan);
     }
-  }
-
-  @Override
-  public void createAlignedTimeSeries(CreateAlignedTimeSeriesPlan plan, List<String> versionList)
-      throws MetadataException {
-    throw new UnsupportedOperationException(
-        "SchemaRegion schema file mode currently doesn't support timeseries with version");
   }
 
   /**

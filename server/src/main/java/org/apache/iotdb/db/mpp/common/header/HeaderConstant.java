@@ -49,6 +49,8 @@ public class HeaderConstant {
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
   public static final String COLUMN_CHILDPATHS = "child paths";
   public static final String COLUMN_CHILDNODES = "child nodes";
+  public static final String COLUMN_VERSION = "version";
+  public static final String COLUMN_PATHS = "paths";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -56,6 +58,32 @@ public class HeaderConstant {
   public static final String COLUMN_COUNT_NODES = "count(nodes)";
   public static final String COLUMN_COUNT_TIMESERIES = "count(timeseries)";
   public static final String COLUMN_COUNT_STORAGE_GROUP = "count(storage group)";
+
+  // column names for show cluster statement
+  public static final String COLUMN_NODE_ID = "NodeID";
+  public static final String COLUMN_NODE_TYPE = "NodeType";
+  public static final String COLUMN_STATUS = "Status";
+  public static final String COLUMN_HOST = "Host";
+  public static final String COLUMN_PORT = "Port";
+
+  // column names for show functions statement
+  public static final String COLUMN_FUNCTION_NAME = "function name";
+  public static final String COLUMN_FUNCTION_TYPE = "function type";
+  public static final String COLUMN_FUNCTION_CLASS = "class name (UDF)";
+
+  // column names for show region statement
+  public static final String COLUMN_REGION_ID = "RegionId";
+  public static final String COLUMN_TYPE = "Type";
+  public static final String COLUMN_DATANODE_ID = "DataNodeId";
+  public static final String COLUMN_SERIES_SLOTS = "Series Slots";
+  public static final String COLUMN_TIME_SLOTS = "Time Slots";
+
+  // column names for show datanodes
+  public static final String COLUMN_DATA_REGION_NUM = "DataRegionNum";
+  public static final String COLUMN_SCHEMA_REGION_NUM = "SchemaRegionNum";
+
+  // column names for show schema template statement
+  public static final String COLUMN_TEMPLATE_NAME = "template name";
 
   // dataset header for schema statement
   public static final DatasetHeader showTimeSeriesHeader;
@@ -65,6 +93,7 @@ public class HeaderConstant {
   public static final DatasetHeader showTTLHeader;
   public static final DatasetHeader showChildPathsHeader;
   public static final DatasetHeader showChildNodesHeader;
+  public static final DatasetHeader showVersionHeader;
 
   // dataset header for count statement
   public static final DatasetHeader countStorageGroupHeader;
@@ -73,8 +102,29 @@ public class HeaderConstant {
   public static final DatasetHeader countTimeSeriesHeader;
   public static final DatasetHeader countLevelTimeSeriesHeader;
 
+  // dataset header for show cluster statement
+  public static final DatasetHeader showClusterHeader;
+
   // dataset header for last query
   public static final DatasetHeader LAST_QUERY_HEADER;
+
+  // dataset header for show functions
+  public static final DatasetHeader SHOW_FUNCTIONS_HEADER;
+
+  // dataset header for show region
+  public static final DatasetHeader showRegionHeader;
+
+  // dataset header for show datanodes
+  public static final DatasetHeader showDataNodesHeader;
+
+  // dataset header for show nodes in schema template
+  public static final DatasetHeader showNodesInSchemaTemplate;
+
+  // dataset header for show schma template
+  public static final DatasetHeader showSchemaTemplate;
+
+  // dataset header for show path set template
+  public static final DatasetHeader showPathSetTemplate;
 
   static {
     countStorageGroupHeader =
@@ -149,6 +199,9 @@ public class HeaderConstant {
     showChildNodesHeader =
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
+    showVersionHeader =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_VERSION, TSDataType.TEXT)), true);
   }
 
   static {
@@ -159,5 +212,72 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_VALUE, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT)),
             false);
+  }
+
+  static {
+    showClusterHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_NODE_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
+            true);
+  }
+
+  static {
+    SHOW_FUNCTIONS_HEADER =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_FUNCTION_NAME, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_FUNCTION_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_FUNCTION_CLASS, TSDataType.TEXT)),
+            true);
+  }
+
+  static {
+    showRegionHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_REGION_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_TYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_STORAGE_GROUP, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_SERIES_SLOTS, TSDataType.INT64),
+                new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
+                new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
+            true);
+  }
+
+  static {
+    showDataNodesHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
+                new ColumnHeader(COLUMN_DATA_REGION_NUM, TSDataType.INT32),
+                new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32)),
+            true);
+  }
+
+  static {
+    showSchemaTemplate =
+        new DatasetHeader(
+            Arrays.asList(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT)), true);
+    showNodesInSchemaTemplate =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_TIMESERIES_DATATYPE, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_TIMESERIES_ENCODING, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT)),
+            true);
+    showPathSetTemplate =
+        new DatasetHeader(Arrays.asList(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT)), true);
   }
 }

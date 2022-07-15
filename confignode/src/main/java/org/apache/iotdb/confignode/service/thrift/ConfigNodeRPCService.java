@@ -21,17 +21,22 @@ package org.apache.iotdb.confignode.service.thrift;
 import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
+import org.apache.iotdb.commons.service.AbstractThriftServiceThread;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPCServiceMBean {
 
-  private static final ConfigNodeConf conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
 
   private ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
@@ -53,7 +58,7 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
   @Override
   public void initTProcessor() throws InstantiationException {
-    processor = new ConfigIService.Processor<>(configNodeRPCServiceProcessor);
+    processor = new IConfigNodeRPCService.Processor<>(configNodeRPCServiceProcessor);
   }
 
   @Override
@@ -75,15 +80,24 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
       throw new IllegalAccessException(e.getMessage());
     }
     thriftServiceThread.setName(ThreadName.CONFIG_NODE_RPC_SERVER.getName());
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.THRIFT_ACTIVE_THREADS.toString(),
+            MetricLevel.CORE,
+            thriftServiceThread,
+            AbstractThriftServiceThread::getActiveThreadCount,
+            Tag.NAME.toString(),
+            ThreadName.CONFIG_NODE_RPC_SERVER.getName());
   }
 
   @Override
   public String getBindIP() {
-    return conf.getRpcAddress();
+    return conf.getInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return conf.getRpcPort();
+    return conf.getInternalPort();
   }
 }

@@ -22,8 +22,8 @@ import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
+import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
 import java.util.List;
 import java.util.Map;
@@ -34,8 +34,13 @@ public interface IPartitionFetcher {
 
   SchemaPartition getOrCreateSchemaPartition(PathPatternTree patternTree);
 
-  SchemaNodeManagementPartition getSchemaNodeManagementPartition(
-      PathPatternTree patternTree, NodeManagementType type);
+  default SchemaNodeManagementPartition getSchemaNodeManagementPartition(
+      PathPatternTree patternTree) {
+    return getSchemaNodeManagementPartitionWithLevel(patternTree, null);
+  }
+
+  SchemaNodeManagementPartition getSchemaNodeManagementPartitionWithLevel(
+      PathPatternTree patternTree, Integer level);
 
   DataPartition getDataPartition(Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
@@ -45,6 +50,8 @@ public interface IPartitionFetcher {
       Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap);
 
   DataPartition getOrCreateDataPartition(List<DataPartitionQueryParam> dataPartitionQueryParams);
+
+  boolean updateRegionCache(TRegionRouteReq req);
 
   void invalidAllCache();
 }

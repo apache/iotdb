@@ -430,10 +430,10 @@ public class IoTDBAuthorizationIT {
         assertTrue(caught);
 
         // duplicate grant
-        adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER on root.a.**");
+        adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER");
         caught = false;
         try {
-          adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER on root.a.**");
+          adminStmt.execute("GRANT USER tempuser PRIVILEGES CREATE_USER");
         } catch (SQLException e) {
           caught = true;
         }
@@ -467,10 +467,10 @@ public class IoTDBAuthorizationIT {
         assertTrue(caught);
 
         // revoke a non-existing privilege
-        adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_USER on root.a.**");
+        adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_USER");
         caught = false;
         try {
-          adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_USER on root.a.**");
+          adminStmt.execute("REVOKE USER tempuser PRIVILEGES CREATE_USER");
         } catch (SQLException e) {
           caught = true;
         }
@@ -479,7 +479,7 @@ public class IoTDBAuthorizationIT {
         // revoke a non-existing user
         caught = false;
         try {
-          adminStmt.execute("REVOKE USER tempuser1 PRIVILEGES CREATE_USER on root.a.**");
+          adminStmt.execute("REVOKE USER tempuser1 PRIVILEGES CREATE_USER");
         } catch (SQLException e) {
           caught = true;
         }

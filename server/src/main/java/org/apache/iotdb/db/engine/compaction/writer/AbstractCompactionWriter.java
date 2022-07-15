@@ -19,10 +19,10 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionMetricsManager;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -152,7 +152,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       throws IOException {
     if (measurementPointCountArray[subTaskId] % 10 == 0 && checkChunkSize(subTaskId)) {
       flushChunkToFileWriter(fileWriter, subTaskId);
-      CompactionMetricsManager.recordWriteInfo(
+      CompactionMetricsRecorder.recordWriteInfo(
           this instanceof CrossSpaceCompactionWriter
               ? CompactionType.CROSS_COMPACTION
               : CompactionType.INNER_UNSEQ_COMPACTION,

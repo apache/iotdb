@@ -54,8 +54,5 @@ public abstract class InternalProcedure<Env> extends Procedure<Env> {
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {}
-
-  @Override
   public void deserialize(ByteBuffer byteBuffer) {}
 }

@@ -36,6 +36,7 @@ public class MQTTClient {
     connection.connect();
 
     Random random = new Random();
+    StringBuilder sb = new StringBuilder();
     for (int i = 0; i < 10; i++) {
       String payload =
           String.format(
@@ -46,10 +47,16 @@ public class MQTTClient {
                   + "\"values\":[%f]\n"
                   + "}",
               System.currentTimeMillis(), random.nextDouble());
+      sb.append(payload).append(",");
 
+      // publish a json object
       Thread.sleep(1);
       connection.publish("root.sg.d1.s1", payload.getBytes(), QoS.AT_LEAST_ONCE, false);
     }
+    // publish a json array
+    sb.insert(0, "[");
+    sb.replace(sb.lastIndexOf(","), sb.length(), "]");
+    connection.publish("root.sg.d1.s1", sb.toString().getBytes(), QoS.AT_LEAST_ONCE, false);
 
     connection.disconnect();
   }

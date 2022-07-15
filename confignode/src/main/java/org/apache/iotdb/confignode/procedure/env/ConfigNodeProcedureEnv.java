@@ -19,13 +19,18 @@
 
 package org.apache.iotdb.confignode.procedure.env;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupReq;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
-import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -34,14 +39,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ConfigNodeProcedureEnv {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConfigNodeProcedureEnv.class);
 
+  private final ReentrantLock addConfigNodeLock = new ReentrantLock();
+
   private final ConfigManager configManager;
+
+  private final ProcedureScheduler scheduler;
 
   private static boolean skipForTest = false;
 
@@ -55,8 +66,9 @@ public class ConfigNodeProcedureEnv {
     ConfigNodeProcedureEnv.invalidCacheResult = result;
   }
 
-  public ConfigNodeProcedureEnv(ConfigManager configManager) {
+  public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
+    this.scheduler = scheduler;
   }
 
   public ConfigManager getConfigManager() {
@@ -64,14 +76,14 @@ public class ConfigNodeProcedureEnv {
   }
 
   /**
-   * Delete config node information, includes (mTree, partitionInfo, regionMap)
+   * Delete ConfigNode cache, includes ClusterSchemaInfo and PartitionInfo
    *
-   * @param deleteSgSchema storage group name
+   * @param name storage group name
    * @return tsStatus
    */
-  public TSStatus deleteConfig(TStorageGroupSchema deleteSgSchema) {
-    DeleteStorageGroupReq deleteStorageGroupReq = new DeleteStorageGroupReq(deleteSgSchema);
-    return configManager.getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupReq);
+  public TSStatus deleteConfig(String name) {
+    DeleteStorageGroupPlan deleteStorageGroupPlan = new DeleteStorageGroupPlan(name);
+    return configManager.getClusterSchemaManager().deleteStorageGroup(deleteStorageGroupPlan);
   }
 
   /**
@@ -80,7 +92,8 @@ public class ConfigNodeProcedureEnv {
    * @param preDeleteType execute/rollback
    * @param deleteSgName storage group name
    */
-  public void preDelete(PreDeleteStorageGroupReq.PreDeleteType preDeleteType, String deleteSgName) {
+  public void preDelete(
+      PreDeleteStorageGroupPlan.PreDeleteType preDeleteType, String deleteSgName) {
     configManager.getPartitionManager().preDeleteStorageGroup(deleteSgName, preDeleteType);
   }
 
@@ -95,19 +108,23 @@ public class ConfigNodeProcedureEnv {
     if (skipForTest) {
       return invalidCacheResult;
     }
-    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getOnlineDataNodes(-1);
+    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getRegisteredDataNodes(-1);
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(storageGroupName);
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       final TSStatus invalidateSchemaStatus =
           SyncDataNodeClientPool.getInstance()
-              .invalidateSchemaCache(
-                  dataNodeInfo.getLocation().getInternalEndPoint(), invalidateCacheReq);
+              .sendSyncRequestToDataNode(
+                  dataNodeInfo.getLocation().getInternalEndPoint(),
+                  invalidateCacheReq,
+                  DataNodeRequestType.invalidateSchemaCache);
       final TSStatus invalidatePartitionStatus =
           SyncDataNodeClientPool.getInstance()
-              .invalidatePartitionCache(
-                  dataNodeInfo.getLocation().getInternalEndPoint(), invalidateCacheReq);
+              .sendSyncRequestToDataNode(
+                  dataNodeInfo.getLocation().getInternalEndPoint(),
+                  invalidateCacheReq,
+                  DataNodeRequestType.invalidatePartitionCache);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
         LOG.error(
             "Invalidate cache failed, invalidate partition cache status is {}， invalidate schema cache status is {}",
@@ -122,5 +139,61 @@ public class ConfigNodeProcedureEnv {
   public boolean verifySucceed(TSStatus... status) {
     return Arrays.stream(status)
         .allMatch(tsStatus -> tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode());
+  }
+
+  /**
+   * Let the remotely new ConfigNode build the ConsensusGroup
+   *
+   * @param tConfigNodeLocation New ConfigNode's location
+   */
+  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation) throws Exception {
+    List<TConfigNodeLocation> configNodeLocations =
+        new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
+    configNodeLocations.add(tConfigNodeLocation);
+    SyncConfigNodeClientPool.getInstance()
+        .sendSyncRequestToConfigNode(
+            tConfigNodeLocation.getInternalEndPoint(),
+            configNodeLocations,
+            ConfigNodeRequestType.addConsensusGroup);
+  }
+
+  /**
+   * Leader will add the new ConfigNode Peer into PartitionRegion
+   *
+   * @param configNodeLocation The new ConfigNode
+   * @throws AddPeerException When addPeer doesn't success
+   */
+  public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
+    configManager.getConsensusManager().addConfigNodePeer(configNodeLocation);
+  }
+
+  /**
+   * Leader will record the new ConfigNode's information
+   *
+   * @param configNodeLocation The new ConfigNode
+   */
+  public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
+    configManager.getNodeManager().applyConfigNode(configNodeLocation);
+  }
+
+  /**
+   * Leader will notify the new ConfigNode that registration success
+   *
+   * @param configNodeLocation The new ConfigNode
+   */
+  public void notifyRegisterSuccess(TConfigNodeLocation configNodeLocation) {
+    SyncConfigNodeClientPool.getInstance()
+        .sendSyncRequestToConfigNode(
+            configNodeLocation.getInternalEndPoint(),
+            null,
+            ConfigNodeRequestType.notifyRegisterSuccess);
+  }
+
+  public ReentrantLock getAddConfigNodeLock() {
+    return addConfigNodeLock;
+  }
+
+  public ProcedureScheduler getScheduler() {
+    return scheduler;
   }
 }

@@ -85,6 +85,15 @@ public abstract class InsertPlan extends PhysicalPlan {
     this.measurements = measurements;
   }
 
+  public boolean hasValidMeasurements() {
+    for (Object o : measurements) {
+      if (o != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public TSDataType[] getDataTypes() {
     return dataTypes;
   }
@@ -122,6 +131,8 @@ public abstract class InsertPlan extends PhysicalPlan {
   }
 
   public abstract long getMinTime();
+
+  public abstract Object getFirstValueOfIndex(int index);
 
   /**
    * This method is overrided in InsertRowPlan and InsertTabletPlan. After marking failed

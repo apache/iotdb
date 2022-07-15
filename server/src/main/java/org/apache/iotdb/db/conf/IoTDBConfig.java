@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
@@ -58,7 +59,7 @@ public class IoTDBConfig {
 
   /* Names of Watermark methods */
   public static final String WATERMARK_GROUPED_LSB = "GroupBasedLSBMethod";
-  static final String CONFIG_NAME = "iotdb-engine.properties";
+  static final String CONFIG_NAME = "iotdb-datanode.properties";
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConfig.class);
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
@@ -113,6 +114,12 @@ public class IoTDBConfig {
   /** Port which the influxdb protocol server listens to. */
   private int influxDBRpcPort = 8086;
 
+  /** Rpc Selector thread num */
+  private int rpcSelectorThreadNum = 1;
+
+  /** Min concurrent client number */
+  private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
+
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
 
@@ -156,18 +163,18 @@ public class IoTDBConfig {
 
   // region Write Ahead Log Configuration
   /** Write mode of wal */
-  private WALMode walMode = WALMode.ASYNC;
+  private volatile WALMode walMode = WALMode.ASYNC;
 
   /** WAL directories */
   private String[] walDirs = {
     IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.WAL_FOLDER_NAME
   };
 
-  /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
-  private volatile long fsyncWalDelayInMs = 10;
-
   /** Max number of wal nodes, each node corresponds to one wal directory */
   private int maxWalNodesNum = 0;
+
+  /** Duration a wal flush operation will wait before calling fsync. Unit: millisecond */
+  private volatile long fsyncWalDelayInMs = 3;
 
   /** Buffer size of each wal node. Unit: byte */
   private int walBufferSize = 16 * 1024 * 1024;
@@ -176,7 +183,7 @@ public class IoTDBConfig {
   private int walBufferEntrySize = 16 * 1024;
 
   /** Blocking queue capacity of each wal buffer */
-  private int walBufferQueueCapacity = 10_000;
+  private int walBufferQueueCapacity = 50;
 
   /** Size threshold of each wal file. Unit: byte */
   private volatile long walFileSizeThresholdInByte = 10 * 1024 * 1024;
@@ -279,6 +286,10 @@ public class IoTDBConfig {
   /** Consensus directory. */
   private String consensusDir = IoTDBConstant.DEFAULT_BASE_DIR + File.separator + "consensus";
 
+  private String dataRegionConsensusDir = consensusDir + File.separator + "data_region";
+
+  private String schemaRegionConsensusDir = consensusDir + File.separator + "schema_region";
+
   /** Maximum MemTable number. Invalid when enableMemControl is true. */
   private int maxMemtableNumber = 0;
 
@@ -290,6 +301,9 @@ public class IoTDBConfig {
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
   private int concurrentQueryThread = 16;
+
+  /** How many queries can be concurrently executed. When <= 0, use 1000. */
+  private int maxAllowedConcurrentQueries = 1000;
 
   /**
    * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
@@ -775,13 +789,13 @@ public class IoTDBConfig {
 
   /**
    * whether enable the rpc service. This parameter has no a corresponding field in the
-   * iotdb-engine.properties
+   * iotdb-datanode.properties
    */
   private boolean enableRpcService = true;
 
   /**
    * whether enable the influxdb rpc service. This parameter has no a corresponding field in the
-   * iotdb-engine.properties
+   * iotdb-datanode.properties
    */
   private boolean enableInfluxDBRpcService = false;
 
@@ -819,28 +833,38 @@ public class IoTDBConfig {
   /** cache size for pages in one schema file */
   private int pageCacheSizeInSchemaFile = 1024;
 
-  /** Internal ip for data node */
-  private String internalIp = "127.0.0.1";
+  /** Internal address for data node */
+  private String internalAddress = "127.0.0.1";
 
   /** Internal port for coordinator */
   private int internalPort = 9003;
 
-  /** Internal port for consensus protocol */
-  private int consensusPort = 40010;
+  /** Internal port for dataRegion consensus protocol */
+  private int dataRegionConsensusPort = 40010;
+
+  /** Internal port for schemaRegion consensus protocol */
+  private int schemaRegionConsensusPort = 50010;
 
   /** Ip and port of config nodes. */
-  private List<TEndPoint> configNodeList =
+  private List<TEndPoint> targetConfigNodeList =
       Collections.singletonList(new TEndPoint("127.0.0.1", 22277));
 
   /** The max time of data node waiting to join into the cluster */
   private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
 
   /**
-   * The consensus protocol class. The Datanode should communicate with ConfigNode on startup and
-   * set this variable so that the correct class name can be obtained later when the consensus layer
-   * singleton is initialized
+   * The consensus protocol class for data region. The Datanode should communicate with ConfigNode
+   * on startup and set this variable so that the correct class name can be obtained later when the
+   * data region consensus layer singleton is initialized
    */
-  private String consensusProtocolClass = "org.apache.iotdb.consensus.ratis.RatisConsensus";
+  private String dataRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
+
+  /**
+   * The consensus protocol class for schema region. The Datanode should communicate with ConfigNode
+   * on startup and set this variable so that the correct class name can be obtained later when the
+   * schema region consensus layer singleton is initialized
+   */
+  private String schemaRegionConsensusProtocolClass = ConsensusFactory.RatisConsensus;
 
   /**
    * The series partition executor class. The Datanode should communicate with ConfigNode on startup
@@ -853,17 +877,17 @@ public class IoTDBConfig {
   /** The number of series partitions in a storage group */
   private int seriesPartitionSlotNum = 10000;
 
-  /** Port that data block manager thrift service listen to. */
-  private int dataBlockManagerPort = 8777;
+  /** Port that mpp data exchange thrift service listen to. */
+  private int mppDataExchangePort = 8777;
 
-  /** Core pool size of data block manager. */
-  private int dataBlockManagerCorePoolSize = 1;
+  /** Core pool size of mpp data exchange. */
+  private int mppDataExchangeCorePoolSize = 10;
 
-  /** Max pool size of data block manager. */
-  private int dataBlockManagerMaxPoolSize = 5;
+  /** Max pool size of mpp data exchange. */
+  private int mppDataExchangeMaxPoolSize = 10;
 
-  /** Thread keep alive time in ms of data block manager. */
-  private int dataBlockManagerKeepAliveTimeInMs = 1000;
+  /** Thread keep alive time in ms of mpp data exchange. */
+  private int mppDataExchangeKeepAliveTimeInMs = 1000;
 
   /** Thrift socket and connection timeout between data node and config node. */
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
@@ -878,22 +902,57 @@ public class IoTDBConfig {
           : 1;
 
   /**
-   * Cache size of dataNodeSchemaCache in{@link
-   * org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache}.
-   */
-  private int dataNodeSchemaCacheSize = 10000;
-
-  /**
    * Cache size of partition cache in {@link
    * org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher}
    */
-  private int partitionCacheSize = 10000;
+  private int partitionCacheSize = 1000;
 
   /** Cache size of user and role */
   private int authorCacheSize = 100;
 
   /** Cache expire time of user and role */
   private int authorCacheExpireTime = 30;
+
+  /** Number of queues per forwarding trigger */
+  private int triggerForwardMaxQueueNumber = 8;
+  /** The length of one of the queues per forwarding trigger */
+  private int triggerForwardMaxSizePerQueue = 2000;
+
+  /** Trigger forwarding data size per batch */
+  private int triggerForwardBatchSize = 50;
+
+  /** Trigger HTTP forward pool size */
+  private int triggerForwardHTTPPoolSize = 200;
+
+  /** Trigger HTTP forward pool max connection for per route */
+  private int triggerForwardHTTPPOOLMaxPerRoute = 20;
+
+  /** Trigger MQTT forward pool size */
+  private int triggerForwardMQTTPoolSize = 4;
+
+  /** ThreadPool size for read operation in coordinator */
+  private int coordinatorReadExecutorSize = 50;
+
+  /** ThreadPool size for write operation in coordinator */
+  private int coordinatorWriteExecutorSize = 50;
+
+  /** Memory allocated for schemaRegion */
+  private long allocateMemoryForSchemaRegion = allocateMemoryForSchema * 8 / 10;
+
+  /** Memory allocated for SchemaCache */
+  private long allocateMemoryForSchemaCache = allocateMemoryForSchema / 10;
+
+  /** Memory allocated for PartitionCache */
+  private long allocateMemoryForPartitionCache = 0;
+
+  /** Memory allocated for LastCache */
+  private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
+
+  private String readConsistencyLevel = "strong";
+
+  /** Maximum execution time of a DriverTask */
+  /** Maximum execution time of a DriverTask */
+  private int driverTaskExecutionTimeSliceInMs = 100;
 
   IoTDBConfig() {}
 
@@ -998,6 +1057,8 @@ public class IoTDBConfig {
     syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
     consensusDir = addHomeDir(consensusDir);
+    dataRegionConsensusDir = addHomeDir(dataRegionConsensusDir);
+    schemaRegionConsensusDir = addHomeDir(schemaRegionConsensusDir);
     indexRootFolder = addHomeDir(indexRootFolder);
     extDir = addHomeDir(extDir);
     udfDir = addHomeDir(udfDir);
@@ -1182,6 +1243,24 @@ public class IoTDBConfig {
 
   public void setConsensusDir(String consensusDir) {
     this.consensusDir = consensusDir;
+    setDataRegionConsensusDir(consensusDir + File.separator + "data_region");
+    setSchemaRegionConsensusDir(consensusDir + File.separator + "schema_region");
+  }
+
+  public String getDataRegionConsensusDir() {
+    return dataRegionConsensusDir;
+  }
+
+  public void setDataRegionConsensusDir(String dataRegionConsensusDir) {
+    this.dataRegionConsensusDir = dataRegionConsensusDir;
+  }
+
+  public String getSchemaRegionConsensusDir() {
+    return schemaRegionConsensusDir;
+  }
+
+  public void setSchemaRegionConsensusDir(String schemaRegionConsensusDir) {
+    this.schemaRegionConsensusDir = schemaRegionConsensusDir;
   }
 
   public String getExtDir() {
@@ -1260,6 +1339,14 @@ public class IoTDBConfig {
     this.concurrentQueryThread = concurrentQueryThread;
   }
 
+  public int getMaxAllowedConcurrentQueries() {
+    return maxAllowedConcurrentQueries;
+  }
+
+  public void setMaxAllowedConcurrentQueries(int maxAllowedConcurrentQueries) {
+    this.maxAllowedConcurrentQueries = maxAllowedConcurrentQueries;
+  }
+
   public int getConcurrentSubRawQueryThread() {
     return concurrentSubRawQueryThread;
   }
@@ -1306,6 +1393,22 @@ public class IoTDBConfig {
 
   public void setUnSeqTsFileSize(long unSeqTsFileSize) {
     this.unSeqTsFileSize = unSeqTsFileSize;
+  }
+
+  public int getRpcSelectorThreadNum() {
+    return rpcSelectorThreadNum;
+  }
+
+  public void setRpcSelectorThreadNum(int rpcSelectorThreadNum) {
+    this.rpcSelectorThreadNum = rpcSelectorThreadNum;
+  }
+
+  public int getRpcMinConcurrentClientNum() {
+    return rpcMinConcurrentClientNum;
+  }
+
+  public void setRpcMinConcurrentClientNum(int rpcMinConcurrentClientNum) {
+    this.rpcMinConcurrentClientNum = rpcMinConcurrentClientNum;
   }
 
   public int getRpcMaxConcurrentClientNum() {
@@ -1438,20 +1541,20 @@ public class IoTDBConfig {
     this.walDirs = walDirs;
   }
 
-  public long getFsyncWalDelayInMs() {
-    return fsyncWalDelayInMs;
-  }
-
-  void setFsyncWalDelayInMs(long fsyncWalDelayInMs) {
-    this.fsyncWalDelayInMs = fsyncWalDelayInMs;
-  }
-
   public int getMaxWalNodesNum() {
     return maxWalNodesNum;
   }
 
   void setMaxWalNodesNum(int maxWalNodesNum) {
     this.maxWalNodesNum = maxWalNodesNum;
+  }
+
+  public long getFsyncWalDelayInMs() {
+    return fsyncWalDelayInMs;
+  }
+
+  void setFsyncWalDelayInMs(long fsyncWalDelayInMs) {
+    this.fsyncWalDelayInMs = fsyncWalDelayInMs;
   }
 
   public int getWalBufferSize() {
@@ -2629,12 +2732,12 @@ public class IoTDBConfig {
     this.pageCacheSizeInSchemaFile = pageCacheSizeInSchemaFile;
   }
 
-  public String getInternalIp() {
-    return internalIp;
+  public String getInternalAddress() {
+    return internalAddress;
   }
 
-  public void setInternalIp(String internalIp) {
-    this.internalIp = internalIp;
+  public void setInternalAddress(String internalAddress) {
+    this.internalAddress = internalAddress;
   }
 
   public int getInternalPort() {
@@ -2645,20 +2748,28 @@ public class IoTDBConfig {
     this.internalPort = internalPort;
   }
 
-  public int getConsensusPort() {
-    return consensusPort;
+  public int getDataRegionConsensusPort() {
+    return dataRegionConsensusPort;
   }
 
-  public void setConsensusPort(int consensusPort) {
-    this.consensusPort = consensusPort;
+  public void setDataRegionConsensusPort(int dataRegionConsensusPort) {
+    this.dataRegionConsensusPort = dataRegionConsensusPort;
   }
 
-  public List<TEndPoint> getConfigNodeList() {
-    return configNodeList;
+  public int getSchemaRegionConsensusPort() {
+    return schemaRegionConsensusPort;
   }
 
-  public void setConfigNodeList(List<TEndPoint> configNodeList) {
-    this.configNodeList = configNodeList;
+  public void setSchemaRegionConsensusPort(int schemaRegionConsensusPort) {
+    this.schemaRegionConsensusPort = schemaRegionConsensusPort;
+  }
+
+  public List<TEndPoint> getTargetConfigNodeList() {
+    return targetConfigNodeList;
+  }
+
+  public void setTargetConfigNodeList(List<TEndPoint> targetConfigNodeList) {
+    this.targetConfigNodeList = targetConfigNodeList;
   }
 
   public long getJoinClusterTimeOutMs() {
@@ -2669,12 +2780,20 @@ public class IoTDBConfig {
     this.joinClusterTimeOutMs = joinClusterTimeOutMs;
   }
 
-  public String getConsensusProtocolClass() {
-    return consensusProtocolClass;
+  public String getDataRegionConsensusProtocolClass() {
+    return dataRegionConsensusProtocolClass;
   }
 
-  public void setConsensusProtocolClass(String consensusProtocolClass) {
-    this.consensusProtocolClass = consensusProtocolClass;
+  public void setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
+    this.dataRegionConsensusProtocolClass = dataRegionConsensusProtocolClass;
+  }
+
+  public String getSchemaRegionConsensusProtocolClass() {
+    return schemaRegionConsensusProtocolClass;
+  }
+
+  public void setSchemaRegionConsensusProtocolClass(String schemaRegionConsensusProtocolClass) {
+    this.schemaRegionConsensusProtocolClass = schemaRegionConsensusProtocolClass;
   }
 
   public String getSeriesPartitionExecutorClass() {
@@ -2693,36 +2812,36 @@ public class IoTDBConfig {
     this.seriesPartitionSlotNum = seriesPartitionSlotNum;
   }
 
-  public int getDataBlockManagerPort() {
-    return dataBlockManagerPort;
+  public int getMppDataExchangePort() {
+    return mppDataExchangePort;
   }
 
-  public void setDataBlockManagerPort(int dataBlockManagerPort) {
-    this.dataBlockManagerPort = dataBlockManagerPort;
+  public void setMppDataExchangePort(int mppDataExchangePort) {
+    this.mppDataExchangePort = mppDataExchangePort;
   }
 
-  public int getDataBlockManagerCorePoolSize() {
-    return dataBlockManagerCorePoolSize;
+  public int getMppDataExchangeCorePoolSize() {
+    return mppDataExchangeCorePoolSize;
   }
 
-  public void setDataBlockManagerCorePoolSize(int dataBlockManagerCorePoolSize) {
-    this.dataBlockManagerCorePoolSize = dataBlockManagerCorePoolSize;
+  public void setMppDataExchangeCorePoolSize(int mppDataExchangeCorePoolSize) {
+    this.mppDataExchangeCorePoolSize = mppDataExchangeCorePoolSize;
   }
 
-  public int getDataBlockManagerMaxPoolSize() {
-    return dataBlockManagerMaxPoolSize;
+  public int getMppDataExchangeMaxPoolSize() {
+    return mppDataExchangeMaxPoolSize;
   }
 
-  public void setDataBlockManagerMaxPoolSize(int dataBlockManagerMaxPoolSize) {
-    this.dataBlockManagerMaxPoolSize = dataBlockManagerMaxPoolSize;
+  public void setMppDataExchangeMaxPoolSize(int mppDataExchangeMaxPoolSize) {
+    this.mppDataExchangeMaxPoolSize = mppDataExchangeMaxPoolSize;
   }
 
-  public int getDataBlockManagerKeepAliveTimeInMs() {
-    return dataBlockManagerKeepAliveTimeInMs;
+  public int getMppDataExchangeKeepAliveTimeInMs() {
+    return mppDataExchangeKeepAliveTimeInMs;
   }
 
-  public void setDataBlockManagerKeepAliveTimeInMs(int dataBlockManagerKeepAliveTimeInMs) {
-    this.dataBlockManagerKeepAliveTimeInMs = dataBlockManagerKeepAliveTimeInMs;
+  public void setMppDataExchangeKeepAliveTimeInMs(int mppDataExchangeKeepAliveTimeInMs) {
+    this.mppDataExchangeKeepAliveTimeInMs = mppDataExchangeKeepAliveTimeInMs;
   }
 
   public int getConnectionTimeoutInMS() {
@@ -2765,14 +2884,6 @@ public class IoTDBConfig {
     this.dataNodeId = dataNodeId;
   }
 
-  public int getDataNodeSchemaCacheSize() {
-    return dataNodeSchemaCacheSize;
-  }
-
-  public void setDataNodeSchemaCacheSize(int dataNodeSchemaCacheSize) {
-    this.dataNodeSchemaCacheSize = dataNodeSchemaCacheSize;
-  }
-
   public int getPartitionCacheSize() {
     return partitionCacheSize;
   }
@@ -2803,5 +2914,121 @@ public class IoTDBConfig {
 
   public void setAuthorCacheExpireTime(int authorCacheExpireTime) {
     this.authorCacheExpireTime = authorCacheExpireTime;
+  }
+
+  public int getTriggerForwardMaxQueueNumber() {
+    return triggerForwardMaxQueueNumber;
+  }
+
+  public void setTriggerForwardMaxQueueNumber(int triggerForwardMaxQueueNumber) {
+    this.triggerForwardMaxQueueNumber = triggerForwardMaxQueueNumber;
+  }
+
+  public int getTriggerForwardMaxSizePerQueue() {
+    return triggerForwardMaxSizePerQueue;
+  }
+
+  public void setTriggerForwardMaxSizePerQueue(int triggerForwardMaxSizePerQueue) {
+    this.triggerForwardMaxSizePerQueue = triggerForwardMaxSizePerQueue;
+  }
+
+  public int getTriggerForwardBatchSize() {
+    return triggerForwardBatchSize;
+  }
+
+  public void setTriggerForwardBatchSize(int triggerForwardBatchSize) {
+    this.triggerForwardBatchSize = triggerForwardBatchSize;
+  }
+
+  public int getTriggerForwardHTTPPoolSize() {
+    return triggerForwardHTTPPoolSize;
+  }
+
+  public void setTriggerForwardHTTPPoolSize(int triggerForwardHTTPPoolSize) {
+    this.triggerForwardHTTPPoolSize = triggerForwardHTTPPoolSize;
+  }
+
+  public int getTriggerForwardHTTPPOOLMaxPerRoute() {
+    return triggerForwardHTTPPOOLMaxPerRoute;
+  }
+
+  public void setTriggerForwardHTTPPOOLMaxPerRoute(int triggerForwardHTTPPOOLMaxPerRoute) {
+    this.triggerForwardHTTPPOOLMaxPerRoute = triggerForwardHTTPPOOLMaxPerRoute;
+  }
+
+  public int getTriggerForwardMQTTPoolSize() {
+    return triggerForwardMQTTPoolSize;
+  }
+
+  public void setTriggerForwardMQTTPoolSize(int triggerForwardMQTTPoolSize) {
+    this.triggerForwardMQTTPoolSize = triggerForwardMQTTPoolSize;
+  }
+
+  public int getCoordinatorReadExecutorSize() {
+    return coordinatorReadExecutorSize;
+  }
+
+  public void setCoordinatorReadExecutorSize(int coordinatorReadExecutorSize) {
+    this.coordinatorReadExecutorSize = coordinatorReadExecutorSize;
+  }
+
+  public int getCoordinatorWriteExecutorSize() {
+    return coordinatorWriteExecutorSize;
+  }
+
+  public void setCoordinatorWriteExecutorSize(int coordinatorWriteExecutorSize) {
+    this.coordinatorWriteExecutorSize = coordinatorWriteExecutorSize;
+  }
+
+  public TEndPoint getAddressAndPort() {
+    return new TEndPoint(rpcAddress, rpcPort);
+  }
+
+  public long getAllocateMemoryForSchemaRegion() {
+    return allocateMemoryForSchemaRegion;
+  }
+
+  public void setAllocateMemoryForSchemaRegion(long allocateMemoryForSchemaRegion) {
+    this.allocateMemoryForSchemaRegion = allocateMemoryForSchemaRegion;
+  }
+
+  public long getAllocateMemoryForSchemaCache() {
+    return allocateMemoryForSchemaCache;
+  }
+
+  public void setAllocateMemoryForSchemaCache(long allocateMemoryForSchemaCache) {
+    this.allocateMemoryForSchemaCache = allocateMemoryForSchemaCache;
+  }
+
+  public long getAllocateMemoryForPartitionCache() {
+    return allocateMemoryForPartitionCache;
+  }
+
+  public void setAllocateMemoryForPartitionCache(long allocateMemoryForPartitionCache) {
+    this.allocateMemoryForPartitionCache = allocateMemoryForPartitionCache;
+  }
+
+  public long getAllocateMemoryForLastCache() {
+    return allocateMemoryForLastCache;
+  }
+
+  public void setAllocateMemoryForLastCache(long allocateMemoryForLastCache) {
+    this.allocateMemoryForLastCache = allocateMemoryForLastCache;
+  }
+
+  public String getReadConsistencyLevel() {
+    return readConsistencyLevel;
+  }
+
+  public void setReadConsistencyLevel(String readConsistencyLevel) {
+    this.readConsistencyLevel = readConsistencyLevel;
+  }
+
+  public int getDriverTaskExecutionTimeSliceInMs() {
+    return driverTaskExecutionTimeSliceInMs;
+  }
+
+  public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
+    this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 }

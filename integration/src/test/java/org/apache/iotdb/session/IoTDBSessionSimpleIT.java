@@ -60,6 +60,7 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -89,33 +90,6 @@ public class IoTDBSessionSimpleIT {
   public void tearDown() throws Exception {
     session.close();
     EnvironmentUtils.cleanEnv();
-  }
-
-  @Test
-  public void testInsertByBlankStrAndInferType()
-      throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
-
-    String deviceId = "root.sg1.d1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("s1 ");
-
-    List<String> values = new ArrayList<>();
-    values.add("1.0");
-    session.insertRecord(deviceId, 1L, measurements, values);
-
-    String[] expected = new String[] {"root.sg1.d1.s1 "};
-
-    assertFalse(session.checkTimeseriesExists("root.sg1.d1.s1 "));
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries");
-    int i = 0;
-    while (dataSet.hasNext()) {
-      assertEquals(expected[i], dataSet.next().getFields().get(0).toString());
-      i++;
-    }
-
-    session.close();
   }
 
   @Test
@@ -1460,9 +1434,7 @@ public class IoTDBSessionSimpleIT {
         try {
           session.insertTablet(tablet, true);
         } catch (StatementExecutionException e) {
-          Assert.assertEquals(
-              "313: failed to insert measurements [s3] caused by DataType mismatch, Insert timeseries root.sg.d.s3 type TEXT, metadata tree type INT64",
-              e.getMessage());
+          Assert.assertEquals(313, e.getStatusCode());
         }
         tablet.reset();
       }
@@ -1473,9 +1445,7 @@ public class IoTDBSessionSimpleIT {
       try {
         session.insertTablet(tablet);
       } catch (StatementExecutionException e) {
-        Assert.assertEquals(
-            "313: failed to insert measurements [s3] caused by DataType mismatch, Insert timeseries root.sg.d.s3 type TEXT, metadata tree type INT64",
-            e.getMessage());
+        Assert.assertEquals(313, e.getStatusCode());
       }
       tablet.reset();
     }
@@ -1488,6 +1458,62 @@ public class IoTDBSessionSimpleIT {
       Assert.assertEquals(15L, rowRecord.getFields().get(1).getLongV());
       Assert.assertEquals(0L, rowRecord.getFields().get(2).getLongV());
     }
+    session.close();
+  }
+
+  @Test
+  public void testInsertBinaryAsText()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    // prepare binary data
+    List<Object> bytesData = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      byte[] bytes = new byte[128];
+      for (int j = 0; j < 128; j++) {
+        bytes[j] = Byte.valueOf("" + (j - i), 10);
+      }
+      bytesData.add(bytes);
+    }
+    // insert data using insertRecord
+    for (int i = 0; i < bytesData.size(); i++) {
+      byte[] data = (byte[]) bytesData.get(i);
+      Binary dataBinary = new Binary(data);
+      session.insertRecord(
+          "root.sg1.d1",
+          i,
+          Collections.singletonList("s0"),
+          Collections.singletonList(TSDataType.TEXT),
+          dataBinary);
+    }
+    // insert data using insertTablet
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.TEXT));
+    Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
+    for (int i = 0; i < bytesData.size(); i++) {
+      byte[] data = (byte[]) bytesData.get(i);
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, i);
+      Binary dataBinary = new Binary(data);
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, dataBinary);
+    }
+    session.insertTablet(tablet);
+    // check result
+    SessionDataSet dataSet = session.executeQueryStatement("select ** from root.sg1.d1");
+    Assert.assertArrayEquals(
+        dataSet.getColumnNames().toArray(new String[0]),
+        new String[] {"Time", "root.sg1.d1.s0", "root.sg1.d1.s1"});
+    while (dataSet.hasNext()) {
+      RowRecord rowRecord = dataSet.next();
+      for (int i = 0; i < 2; i++) {
+        // get Binary value from SessionDataSet
+        byte[] actualBytes = rowRecord.getFields().get(i).getBinaryV().getValues();
+        // compare Binary value to origin bytesData
+        byte[] expectedBytes = (byte[]) bytesData.get((int) rowRecord.getTimestamp());
+        Assert.assertArrayEquals(expectedBytes, actualBytes);
+      }
+    }
+    dataSet.closeOperationHandle();
     session.close();
   }
 

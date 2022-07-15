@@ -32,11 +32,13 @@ import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
@@ -63,6 +65,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.db.mpp.plan.plan.QueryLogicalPlanUtil.querySQLs;
 import static org.apache.iotdb.db.mpp.plan.plan.QueryLogicalPlanUtil.sqlToPlanMap;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 public class LogicalPlannerTest {
@@ -473,7 +476,10 @@ public class LogicalPlannerTest {
     try {
       LimitNode limitNode = (LimitNode) parseSQLToPlanNode(sql);
       OffsetNode offsetNode = (OffsetNode) limitNode.getChild();
-      SchemaQueryMergeNode metaMergeNode = (SchemaQueryMergeNode) offsetNode.getChild();
+      SchemaQueryOrderByHeatNode schemaQueryOrderByHeatNode =
+          (SchemaQueryOrderByHeatNode) offsetNode.getChild();
+      SchemaQueryMergeNode metaMergeNode =
+          (SchemaQueryMergeNode) schemaQueryOrderByHeatNode.getChildren().get(0);
       metaMergeNode.getChildren().forEach(n -> System.out.println(n.toString()));
       TimeSeriesSchemaScanNode showTimeSeriesNode =
           (TimeSeriesSchemaScanNode) metaMergeNode.getChildren().get(0);
@@ -485,9 +491,9 @@ public class LogicalPlannerTest {
       Assert.assertFalse(showTimeSeriesNode.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode.getKey());
       Assert.assertEquals("tagV", showTimeSeriesNode.getValue());
-      Assert.assertEquals(20, showTimeSeriesNode.getLimit());
-      Assert.assertEquals(10, showTimeSeriesNode.getOffset());
-      Assert.assertTrue(showTimeSeriesNode.isHasLimit());
+      Assert.assertEquals(0, showTimeSeriesNode.getLimit());
+      Assert.assertEquals(0, showTimeSeriesNode.getOffset());
+      Assert.assertFalse(showTimeSeriesNode.isHasLimit());
 
       // test serialize and deserialize
       ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
@@ -503,9 +509,9 @@ public class LogicalPlannerTest {
       Assert.assertFalse(showTimeSeriesNode2.isContains());
       Assert.assertEquals("tagK", showTimeSeriesNode2.getKey());
       Assert.assertEquals("tagV", showTimeSeriesNode2.getValue());
-      Assert.assertEquals(20, showTimeSeriesNode2.getLimit());
-      Assert.assertEquals(10, showTimeSeriesNode2.getOffset());
-      Assert.assertTrue(showTimeSeriesNode2.isHasLimit());
+      Assert.assertEquals(0, showTimeSeriesNode2.getLimit());
+      Assert.assertEquals(0, showTimeSeriesNode2.getOffset());
+      Assert.assertFalse(showTimeSeriesNode2.isHasLimit());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -524,8 +530,8 @@ public class LogicalPlannerTest {
       Assert.assertNotNull(showDevicesNode);
       Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode.getPath());
       Assert.assertTrue(showDevicesNode.isHasSgCol());
-      Assert.assertEquals(20, showDevicesNode.getLimit());
-      Assert.assertEquals(10, showDevicesNode.getOffset());
+      Assert.assertEquals(30, showDevicesNode.getLimit());
+      Assert.assertEquals(0, showDevicesNode.getOffset());
       Assert.assertTrue(showDevicesNode.isHasLimit());
 
       // test serialize and deserialize
@@ -536,9 +542,29 @@ public class LogicalPlannerTest {
           (DevicesSchemaScanNode) PlanNodeType.deserialize(byteBuffer);
       Assert.assertNotNull(showDevicesNode2);
       Assert.assertEquals(new PartialPath("root.ln.wf01.wt01"), showDevicesNode2.getPath());
-      Assert.assertEquals(20, showDevicesNode2.getLimit());
-      Assert.assertEquals(10, showDevicesNode2.getOffset());
+      Assert.assertEquals(30, showDevicesNode2.getLimit());
+      Assert.assertEquals(0, showDevicesNode2.getOffset());
       Assert.assertTrue(showDevicesNode2.isHasLimit());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testCountNodes() {
+    String sql = "COUNT NODES root.ln LEVEL=1";
+    try {
+      NodePathsCountNode nodePathsCountNode = (NodePathsCountNode) parseSQLToPlanNode(sql);
+      NodeManagementMemoryMergeNode nodeManagementMemoryMergeNode =
+          (NodeManagementMemoryMergeNode) nodePathsCountNode.getChildren().get(0);
+      SchemaQueryMergeNode schemaQueryMergeNode =
+          (SchemaQueryMergeNode) nodeManagementMemoryMergeNode.getChildren().get(0);
+      NodePathsSchemaScanNode nodePathsSchemaScanNode =
+          (NodePathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
+      Assert.assertNotNull(nodePathsSchemaScanNode);
+      Assert.assertEquals(new PartialPath("root.ln"), nodePathsSchemaScanNode.getPrefixPath());
+      Assert.assertEquals(1, nodePathsSchemaScanNode.getLevel());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -553,10 +579,10 @@ public class LogicalPlannerTest {
           (NodeManagementMemoryMergeNode) parseSQLToPlanNode(sql);
       SchemaQueryMergeNode schemaQueryMergeNode =
           (SchemaQueryMergeNode) memorySourceNode.getChildren().get(0);
-      ChildPathsSchemaScanNode childPathsSchemaScanNode =
-          (ChildPathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
-      Assert.assertNotNull(childPathsSchemaScanNode);
-      Assert.assertEquals(new PartialPath("root.ln"), childPathsSchemaScanNode.getPrefixPath());
+      NodePathsSchemaScanNode nodePathsSchemaScanNode =
+          (NodePathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
+      Assert.assertNotNull(nodePathsSchemaScanNode);
+      Assert.assertEquals(new PartialPath("root.ln"), nodePathsSchemaScanNode.getPrefixPath());
     } catch (Exception e) {
       e.printStackTrace();
       fail();
@@ -567,14 +593,15 @@ public class LogicalPlannerTest {
   public void testShowChildNodes() {
     String sql = "SHOW CHILD NODES root.ln";
     try {
+      NodePathsConvertNode nodePathsConvertNode = (NodePathsConvertNode) parseSQLToPlanNode(sql);
       NodeManagementMemoryMergeNode memorySourceNode =
-          (NodeManagementMemoryMergeNode) parseSQLToPlanNode(sql);
+          (NodeManagementMemoryMergeNode) nodePathsConvertNode.getChildren().get(0);
       SchemaQueryMergeNode schemaQueryMergeNode =
           (SchemaQueryMergeNode) memorySourceNode.getChildren().get(0);
-      ChildNodesSchemaScanNode childNodesSchemaScanNode =
-          (ChildNodesSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
-      Assert.assertNotNull(childNodesSchemaScanNode);
-      Assert.assertEquals(new PartialPath("root.ln"), childNodesSchemaScanNode.getPrefixPath());
+      NodePathsSchemaScanNode nodePathsSchemaScanNode =
+          (NodePathsSchemaScanNode) schemaQueryMergeNode.getChildren().get(0);
+      assertNotNull(nodePathsConvertNode);
+      Assert.assertEquals(new PartialPath("root.ln"), nodePathsSchemaScanNode.getPrefixPath());
     } catch (Exception e) {
       e.printStackTrace();
       fail();

@@ -143,13 +143,13 @@ public class PathPatternTreeTest {
       throws IOException {
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : paths) {
-      patternTree.appendPath(path);
+      patternTree.appendPathPattern(path);
     }
     patternTree.constructTree();
 
     PathPatternTree resultPatternTree = new PathPatternTree();
     for (PartialPath path : compressedPaths) {
-      resultPatternTree.appendPath(path);
+      resultPatternTree.appendPathPattern(path);
     }
     resultPatternTree.constructTree();
 
@@ -160,7 +160,7 @@ public class PathPatternTreeTest {
             .map(PartialPath::getFullPath)
             .sorted()
             .collect(Collectors.toList()),
-        patternTree.findAllDevicePaths().stream().sorted().collect(Collectors.toList()));
+        patternTree.getAllDevicePatterns().stream().sorted().collect(Collectors.toList()));
 
     PublicBAOS outputStream = new PublicBAOS();
     resultPatternTree.serialize(outputStream);
@@ -182,12 +182,12 @@ public class PathPatternTreeTest {
 
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : partialPathList) {
-      patternTree.appendPath(path);
+      patternTree.appendPathPattern(path);
     }
     patternTree.constructTree();
 
     Assert.assertEquals(
         Arrays.asList(new PartialPath("root.sg1.*.t1.s1"), new PartialPath("root.sg1.d1.t2.s2")),
-        patternTree.splitToPathList());
+        patternTree.getAllPathPatterns());
   }
 }

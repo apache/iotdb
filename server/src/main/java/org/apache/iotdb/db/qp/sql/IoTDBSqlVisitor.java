@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.sql;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.exception.sql.SQLParserException;
@@ -45,6 +46,8 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.BetweenExpression;
+import org.apache.iotdb.db.mpp.plan.expression.ternary.TernaryExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.InExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
@@ -183,6 +186,8 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
 
 public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+
   private static final String DELETE_RANGE_ERROR_MSG =
       "For delete statement, where clause can only contain atomic expressions like : "
           + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'";
@@ -194,6 +199,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   // used to match "{x}", where x is an integer.
   // for create-cq clause and select-into clause.
   private static final Pattern leveledPathNodePattern = Pattern.compile("\\$\\{\\w+}");
+
+  // ${} are allowed
+  private static final Pattern NODE_NAME_IN_SELECT_INTO_PATTERN =
+      Pattern.compile("([a-zA-Z0-9_${}\\u2E80-\\u9FFF]+)");
 
   private ZoneId zoneId;
   private QueryOperator queryOp;
@@ -1287,7 +1296,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     PartialPath intoPath = null;
     if (intoPathContext.fullPath() != null) {
-      intoPath = parseFullPath(intoPathContext.fullPath());
+      intoPath = parseFullPathInSelectInto(intoPathContext.fullPath());
 
       Matcher m = leveledPathNodePattern.matcher(intoPath.getFullPath());
       while (m.find()) {
@@ -1315,7 +1324,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
       for (int i = 1; i <= nodeNameWithoutStars.size(); ++i) {
         intoPathNodes[levelLimitOfSourcePrefixPath + i] =
-            parseNodeNameWithoutWildCard(nodeNameWithoutStars.get(i - 1));
+            parseNodeNameWithoutWildCardInSelectInto(nodeNameWithoutStars.get(i - 1));
       }
 
       intoPath = new PartialPath(intoPathNodes);
@@ -1871,7 +1880,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private Pair<Long, Long> parseDeleteTimeInterval(FilterOperator filterOperator) {
     if (!filterOperator.isLeaf() && filterOperator.getFilterType() != FilterType.KW_AND) {
-      throw new SQLParserException(DELETE_RANGE_ERROR_MSG);
+      throw new SemanticException(DELETE_RANGE_ERROR_MSG);
     }
 
     if (filterOperator.isLeaf()) {
@@ -1882,7 +1891,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     FilterOperator lOperator = children.get(0);
     FilterOperator rOperator = children.get(1);
     if (!lOperator.isLeaf() || !rOperator.isLeaf()) {
-      throw new SQLParserException(DELETE_RANGE_ERROR_MSG);
+      throw new SemanticException(DELETE_RANGE_ERROR_MSG);
     }
 
     Pair<Long, Long> leftOpInterval = calcOperatorInterval(lOperator);
@@ -1941,7 +1950,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_USER);
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    String privilege = parsePrivilege(ctx.privileges())[0];
+
+    PartialPath prefixPath;
+    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+      String[] path = {"root"};
+      prefixPath = new PartialPath(path);
+    } else {
+      if (ctx.prefixPath() == null) {
+        throw new SQLParserException("Invalid prefix path");
+      }
+      prefixPath = parsePrefixPath(ctx.prefixPath());
+    }
+    authorOperator.setNodeNameList(prefixPath);
     return authorOperator;
   }
 
@@ -1977,7 +1998,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_USER);
     authorOperator.setUserName(parseIdentifier(ctx.userName.getText()));
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    String privilege = parsePrivilege(ctx.privileges())[0];
+
+    PartialPath prefixPath;
+    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+      String[] path = {"root"};
+      prefixPath = new PartialPath(path);
+    } else {
+      if (ctx.prefixPath() == null) {
+        throw new SQLParserException("Invalid prefix path");
+      }
+      prefixPath = parsePrefixPath(ctx.prefixPath());
+    }
+    authorOperator.setNodeNameList(prefixPath);
     return authorOperator;
   }
 
@@ -2518,6 +2551,21 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
+  private PartialPath parseFullPathInSelectInto(IoTDBSqlParser.FullPathContext ctx) {
+    List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
+        ctx.nodeNameWithoutWildcard();
+    String[] path = new String[nodeNamesWithoutStar.size() + 1];
+    int i = 0;
+    if (ctx.ROOT() != null) {
+      path[0] = ctx.ROOT().getText();
+    }
+    for (IoTDBSqlParser.NodeNameWithoutWildcardContext nodeNameWithoutStar : nodeNamesWithoutStar) {
+      i++;
+      path[i] = parseNodeNameWithoutWildCardInSelectInto(nodeNameWithoutStar);
+    }
+    return new PartialPath(path);
+  }
+
   /** path of expression in withoutNull clause can start with root. */
   private PartialPath parseFullPathInExpression(
       IoTDBSqlParser.FullPathInExpressionContext ctx, boolean inWithoutNull)
@@ -2578,17 +2626,67 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return parseNodeString(ctx.getText());
   }
 
-  private String parseNodeString(String nodeName) {
+  /** in select into, $ and {} are allowed */
+  private String parseNodeNameWithoutWildCardInSelectInto(
+      IoTDBSqlParser.NodeNameWithoutWildcardContext ctx) {
+    String nodeName = ctx.getText();
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
     if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
         && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
       String unWrapped = nodeName.substring(1, nodeName.length() - 1);
       if (StringUtils.isNumeric(unWrapped)
-          || !TsFileConstant.NODE_NAME_PATTERN.matcher(unWrapped).matches()) {
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
         return nodeName;
       }
       return unWrapped;
     }
+    if (!NODE_NAME_IN_SELECT_INTO_PATTERN.matcher(nodeName).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name in select into clause can only consist of digits, characters, $, { and }",
+              nodeName));
+    }
     return nodeName;
+  }
+
+  private String parseNodeString(String nodeName) {
+    if (nodeName.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        || nodeName.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      return nodeName;
+    }
+    if (nodeName.startsWith(TsFileConstant.BACK_QUOTE_STRING)
+        && nodeName.endsWith(TsFileConstant.BACK_QUOTE_STRING)) {
+      String unWrapped = nodeName.substring(1, nodeName.length() - 1);
+      if (StringUtils.isNumeric(unWrapped)
+          || !TsFileConstant.IDENTIFIER_PATTERN.matcher(unWrapped).matches()) {
+        return nodeName;
+      }
+      return unWrapped;
+    }
+    checkNodeName(nodeName);
+    return nodeName;
+  }
+
+  private void checkNodeName(String src) {
+    // node name could start with * and end with *
+    if (!TsFileConstant.NODE_NAME_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted node name can only consist of digits, characters and underscore, or start or end with wildcard",
+              src));
+    }
+  }
+
+  private void checkIdentifier(String src) {
+    if (!TsFileConstant.IDENTIFIER_PATTERN.matcher(src).matches()) {
+      throw new SQLParserException(
+          String.format(
+              "%s is illegal, unquoted identifier can only consist of digits, characters and underscore",
+              src));
+    }
   }
 
   // alias
@@ -2761,6 +2859,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       throw new UnsupportedOperationException();
     }
 
+    if (context.firstExpression != null
+        && context.secondExpression != null
+        && context.thirdExpression != null) {
+      Expression firstExpression = parseExpression(context.firstExpression, inWithoutNull);
+      Expression secondExpression = parseExpression(context.secondExpression, inWithoutNull);
+      Expression thirdExpression = parseExpression(context.thirdExpression, inWithoutNull);
+
+      if (context.OPERATOR_BETWEEN() != null) {
+        return new BetweenExpression(
+            firstExpression, secondExpression, thirdExpression, context.OPERATOR_NOT() != null);
+      }
+    }
+
     if (context.unaryBeforeInExpression != null) {
       return parseInExpression(context, inWithoutNull);
     }
@@ -2785,8 +2896,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     throw new UnsupportedOperationException();
   }
 
-  private Expression parseExpression(
-      IoTDBSqlParser.ExpressionContext context, boolean inWithoutNull) {
+  private Expression parseExpression(ExpressionContext context, boolean inWithoutNull) {
     return parseExpression(context, inWithoutNull, false);
   }
 
@@ -2970,6 +3080,25 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
               FilterType.REGEXP,
               parsePathFromExpression(((RegularExpression) predicate).getExpression()),
               ((RegularExpression) predicate).getPatternString());
+    } else if (predicate instanceof BetweenExpression) {
+      filter = new FilterOperator(FilterType.KW_AND);
+      PartialPath partialPath =
+          parsePathFromExpression(((TernaryExpression) predicate).getFirstExpression());
+      filter.addChildOperator(
+          new BasicFunctionOperator(
+              FilterType.GREATERTHANOREQUALTO,
+              partialPath,
+              parseValueFromExpression(((TernaryExpression) predicate).getSecondExpression())));
+      filter.addChildOperator(
+          new BasicFunctionOperator(
+              FilterType.LESSTHANOREQUALTO,
+              partialPath,
+              parseValueFromExpression(((TernaryExpression) predicate).getThirdExpression())));
+      if (((BetweenExpression) predicate).isNotBetween()) {
+        FilterOperator temp = new FilterOperator(FilterType.KW_NOT);
+        temp.addChildOperator(filter);
+        filter = temp;
+      }
     } else if (predicate instanceof InExpression) {
       filter =
           new InOperator(
@@ -3189,6 +3318,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return src.substring(1, src.length() - 1)
           .replace(TsFileConstant.DOUBLE_BACK_QUOTE_STRING, TsFileConstant.BACK_QUOTE_STRING);
     }
+    checkIdentifier(src);
     return src;
   }
 
@@ -3226,7 +3356,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         } else if (constantContext.INTEGER_LITERAL() != null) {
           return new ConstantOperand(TSDataType.INT64, text);
         } else if (constantContext.realLiteral() != null) {
-          return new ConstantOperand(TSDataType.DOUBLE, text);
+          return parseRealLiteral(text);
         } else if (constantContext.dateExpression() != null) {
           return new ConstantOperand(
               TSDataType.INT64,
@@ -3243,6 +3373,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     } catch (IllegalPathException e) {
       throw new SQLParserException(e.getMessage());
     }
+  }
+
+  private Expression parseRealLiteral(String value) {
+    // 3.33 is float by default
+    return new ConstantOperand(
+        CONFIG.getFloatingStringInferType().equals(TSDataType.DOUBLE)
+            ? TSDataType.DOUBLE
+            : TSDataType.FLOAT,
+        value);
   }
 
   private void setMap(IoTDBSqlParser.AlterClauseContext ctx, Map<String, String> alterMap) {
@@ -3288,7 +3427,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     if (filterOperator.getSinglePath() != null
         && !IoTDBConstant.TIME.equals(filterOperator.getSinglePath().getMeasurement())) {
-      throw new SQLParserException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
+      throw new SemanticException(DELETE_ONLY_SUPPORT_TIME_EXP_ERROR_MSG);
     }
 
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());

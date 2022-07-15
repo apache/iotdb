@@ -38,8 +38,16 @@ public class Pair<L, R> implements Serializable {
     right = r;
   }
 
+  public void setLeft(L left) {
+    this.left = left;
+  }
+
   public L getLeft() {
     return left;
+  }
+
+  public void setRight(R right) {
+    this.right = right;
   }
 
   public R getRight() {

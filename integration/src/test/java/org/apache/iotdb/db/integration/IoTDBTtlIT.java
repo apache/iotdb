@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.itbase.category.RemoteTest;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
@@ -39,7 +40,7 @@ import java.sql.Statement;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@Category({LocalStandaloneTest.class})
+@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBTtlIT {
 
   @Before

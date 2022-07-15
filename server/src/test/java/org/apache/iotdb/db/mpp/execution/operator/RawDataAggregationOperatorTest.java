@@ -63,6 +63,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
 import static org.junit.Assert.assertEquals;
 
 public class RawDataAggregationOperatorTest {
@@ -122,6 +123,9 @@ public class RawDataAggregationOperatorTest {
     int count = 0;
     while (rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       for (int i = 0; i < 2; i++) {
         assertEquals(500, resultTsBlock.getColumn(6 * i).getLong(0));
         assertEquals(6524750.0, resultTsBlock.getColumn(6 * i + 1).getDouble(0), 0.0001);
@@ -172,6 +176,9 @@ public class RawDataAggregationOperatorTest {
     int count = 0;
     while (rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       for (int i = 0; i < 2; i++) {
         assertEquals(13049.5, resultTsBlock.getColumn(i).getDouble(0), 0.001);
       }
@@ -220,6 +227,9 @@ public class RawDataAggregationOperatorTest {
     int count = 0;
     while (rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
       for (int i = 0; i < 2; i++) {
         assertEquals(result[0][count], resultTsBlock.getColumn(6 * i).getLong(0));
@@ -269,6 +279,9 @@ public class RawDataAggregationOperatorTest {
     int count = 0;
     while (rawDataAggregationOperator.hasNext()) {
       TsBlock resultTsBlock = rawDataAggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
       for (int i = 0; i < 2; i++) {
         assertEquals(result[0][count], resultTsBlock.getColumn(i).getDouble(0), 0.001);
@@ -314,6 +327,13 @@ public class RawDataAggregationOperatorTest {
         3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
     fragmentInstanceContext.addOperatorContext(
         4, new PlanNodeId("4"), RawDataAggregationOperatorTest.class.getSimpleName());
+    fragmentInstanceContext
+        .getOperatorContexts()
+        .forEach(
+            operatorContext -> {
+              operatorContext.setMaxRunTime(TEST_TIME_SLICE);
+            });
+
     SeriesScanOperator seriesScanOperator1 =
         new SeriesScanOperator(
             planNodeId1,

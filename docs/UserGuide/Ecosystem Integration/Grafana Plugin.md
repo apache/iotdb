@@ -99,19 +99,22 @@ If compiling successful, you can see that the `distribution/target` directory co
 
 #### Install Grafana-Plugin
 
-* Copy the front-end project target folder generated above to Grafana's plugin directory `${Grafana directory}\data\plugins\`
-  * Windows: the `data\plugins` directory is automatically created
-  * Linux: artificially create `/var/lib/grafana/plugins` directory
-  * MacOS: the plugin directory is `/usr/local/var/lib/grafana/plugins` (see more details after installing Grafana using `brew install`)
+* Copy the front-end project target folder generated above to Grafana's plugin directory `${Grafana directory}\data\plugins\`。If there is no such directory, you can manually create it or start grafana and it will be created automatically. Of course, you can also modify the location of plugins. For details, please refer to the following instructions for modifying the location of Grafana's plugin directory.
+
 
 * Modify Grafana configuration file: the file is in（`${Grafana directory}\conf\defaults.ini`）, and do the following modifications:
 
   ```ini
   allow_loading_unsigned_plugins = iotdb
   ```
-
+* Modify the location of Grafana's plugin directory: the file is in（`${Grafana directory}\conf\defaults.ini`）, and do the following modifications:
+  
+  ```ini
+  plugins = data/plugins
+  ```
 * Start Grafana (restart if the Grafana service is already started)
 
+For more details，please click [here](https://grafana.com/docs/grafana/latest/plugins/installation/)
 
 #### Start Grafana
 
@@ -194,11 +197,11 @@ Click the `New Dashboard` icon on the top right, and select `Add an empty panel`
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/add%20empty%20panel.png?raw=true">
 
-Grafana plugin supports Raw mode and Aggregation mode, and the default mode is Raw mode.
+Grafana plugin supports SQL: Full Customized mode and SQL: Drop-down List mode, and the default mode is SQL: Full Customized mode.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input_style.png?raw=true">
 
-##### Raw input method
+##### SQL: Full Customized input method
 
 Enter content in the SELECT, FROM , WHERE and CONTROL input box, where the WHERE and CONTROL input boxes are optional.
 
@@ -238,7 +241,7 @@ Here are some examples of valid CONTROL content:
 
 Tip: Statements like `select * from root.xx.**` are not recommended because those statements may cause OOM.
 
-##### Aggregation input method
+##### SQL: Drop-down List
 
 Select a time series in the TIME-SERIES selection box, select a function in the FUNCTION option, and enter the contents in the SAMPLING INTERVAL、SLIDING STEP、LEVEL、FILL input boxes, where TIME-SERIES is a required item and the rest are non required items.
 
@@ -246,7 +249,7 @@ Select a time series in the TIME-SERIES selection box, select a function in the 
 
 #### Support for variables and template functions
 
-Both raw and aggregation input methods support the variable and template functions of grafana. In the following example, raw input method is used, and aggregation is similar.
+Both SQL: Full Customized and SQL: Drop-down List input methods support the variable and template functions of grafana. In the following example, raw input method is used, and aggregation is similar.
 
 After creating a new Panel, click the Settings button in the upper right corner:
 

@@ -67,7 +67,7 @@ public class SelectIntoPlan extends PhysicalPlan {
 
     putString(outputStream, fromPath.getFullPath());
 
-    outputStream.write(intoPaths.size());
+    outputStream.writeInt(intoPaths.size());
     for (PartialPath intoPath : intoPaths) {
       putString(outputStream, intoPath.getFullPath());
     }

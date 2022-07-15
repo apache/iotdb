@@ -22,12 +22,17 @@ package org.apache.iotdb.db.mpp.plan.expression.unary;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.InTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -65,22 +70,31 @@ public class InExpression extends UnaryExpression {
   public TSDataType inferTypes(TypeProvider typeProvider) {
     final String expressionString = toString();
     if (!typeProvider.containsTypeInfoOf(expressionString)) {
-      typeProvider.setType(expressionString, expression.inferTypes(typeProvider));
+      expression.inferTypes(typeProvider);
+      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
     }
-    return typeProvider.getType(expressionString);
+    return TSDataType.BOOLEAN;
   }
 
   @Override
   protected String getExpressionStringInternal() {
-    StringBuilder valuesStringBuilder = new StringBuilder();
+    StringBuilder stringBuilder = new StringBuilder();
+    if (expression instanceof FunctionExpression
+        || expression instanceof ConstantOperand
+        || expression instanceof TimeSeriesOperand) {
+      stringBuilder.append(expression).append(" IN (");
+    } else {
+      stringBuilder.append('(').append(expression).append(')').append(" IN (");
+    }
     Iterator<String> iterator = values.iterator();
     if (iterator.hasNext()) {
-      valuesStringBuilder.append(iterator.next());
+      stringBuilder.append(iterator.next());
     }
     while (iterator.hasNext()) {
-      valuesStringBuilder.append(", ").append(iterator.next());
+      stringBuilder.append(',').append(iterator.next());
     }
-    return expression + " IN (" + valuesStringBuilder + ")";
+    stringBuilder.append(')');
+    return stringBuilder.toString();
   }
 
   @Override
@@ -105,6 +119,16 @@ public class InExpression extends UnaryExpression {
     ReadWriteIOUtils.write(values.size(), byteBuffer);
     for (String value : values) {
       ReadWriteIOUtils.write(value, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    super.serialize(stream);
+    ReadWriteIOUtils.write(isNotIn, stream);
+    ReadWriteIOUtils.write(values.size(), stream);
+    for (String value : values) {
+      ReadWriteIOUtils.write(value, stream);
     }
   }
 }

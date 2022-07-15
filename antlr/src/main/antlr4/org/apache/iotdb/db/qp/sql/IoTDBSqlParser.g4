@@ -43,7 +43,7 @@ ddlStatement
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
+    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showRegion | showDataNodes
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -60,7 +60,7 @@ dclStatement
     ;
 
 utilityStatement
-    : merge | fullMerge | flush | clearCache | settle
+    : merge | fullMerge | flush | clearCache | settle | explain
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
@@ -76,15 +76,19 @@ syncStatement
 
 // Create Storage Group
 setStorageGroup
-    : SET STORAGE GROUP TO prefixPath (WITH storageGroupAttributeClause (COMMA storageGroupAttributeClause)*)?
+    : SET STORAGE GROUP TO prefixPath storageGroupAttributesClause?
+    ;
+
+createStorageGroup
+    : CREATE STORAGE GROUP prefixPath storageGroupAttributesClause?
+    ;
+
+storageGroupAttributesClause
+    : WITH storageGroupAttributeClause (COMMA storageGroupAttributeClause)*
     ;
 
 storageGroupAttributeClause
     : (TTL | SCHEMA_REPLICATION_FACTOR | DATA_REPLICATION_FACTOR | TIME_PARTITION_INTERVAL) '=' INTEGER_LITERAL
-    ;
-
-createStorageGroup
-    : CREATE STORAGE GROUP prefixPath
     ;
 
 // Create Timeseries
@@ -299,6 +303,21 @@ showAllTTL
     : SHOW ALL TTL
     ;
 
+// Show Cluster
+showCluster
+    : SHOW CLUSTER
+    ;
+
+// Show Region
+showRegion
+    : SHOW (SCHEMA | DATA)? REGIONS (OF STORAGE GROUP prefixPath? (COMMA prefixPath)*)?
+    ;
+
+// Show Data Nodes
+showDataNodes
+    : SHOW  DATANODES
+    ;
+
 // Show Schema Template
 showSchemaTemplates
     : SHOW SCHEMA? TEMPLATES
@@ -496,7 +515,7 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges ON prefixPath
+    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
     ;
 
 // Grant Role Privileges
@@ -511,7 +530,7 @@ grantRoleToUser
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=identifier PRIVILEGES privileges ON prefixPath
+    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
     ;
 
 // Revoke Role Privileges
@@ -605,7 +624,7 @@ fullMerge
 
 // Flush
 flush
-    : FLUSH prefixPath? (COMMA prefixPath)* BOOLEAN_LITERAL?
+    : FLUSH prefixPath? (COMMA prefixPath)* BOOLEAN_LITERAL? (ON (LOCAL | CLUSTER))?
     ;
 
 // Clear Cache
@@ -616,6 +635,11 @@ clearCache
 // Settle
 settle
     : SETTLE (prefixPath|tsFilePath=STRING_LITERAL)
+    ;
+
+// Explain
+explain
+    : EXPLAIN selectStatement
     ;
 
 // Set System To ReadOnly/Writable
@@ -842,6 +866,8 @@ expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | leftExpression=expression (OPERATOR_GT | OPERATOR_GTE | OPERATOR_LT | OPERATOR_LTE | OPERATOR_SEQ | OPERATOR_DEQ | OPERATOR_NEQ) rightExpression=expression
     | unaryBeforeRegularOrLikeExpression=expression (REGEXP | LIKE) STRING_LITERAL
+    | firstExpression=expression OPERATOR_NOT? OPERATOR_BETWEEN secondExpression=expression OPERATOR_AND thirdExpression=expression
+    | unaryBeforeIsNullExpression=expression OPERATOR_IS OPERATOR_NOT? NULL_LITERAL
     | unaryBeforeInExpression=expression OPERATOR_NOT? (OPERATOR_IN | OPERATOR_CONTAINS) LR_BRACKET constant (COMMA constant)* RR_BRACKET
     | leftExpression=expression OPERATOR_AND rightExpression=expression
     | leftExpression=expression OPERATOR_OR rightExpression=expression

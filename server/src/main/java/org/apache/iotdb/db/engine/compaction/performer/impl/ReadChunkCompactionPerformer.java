@@ -21,16 +21,13 @@ package org.apache.iotdb.db.engine.compaction.performer.impl;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.AlignedSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SingleSeriesCompactionExecutor;
 import org.apache.iotdb.db.engine.compaction.performer.ISeqCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.metadata.idtable.IDTableManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -50,6 +47,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private TsFileResource targetResource;
   private List<TsFileResource> seqFiles;
+  private CompactionTaskSummary summary;
 
   public ReadChunkCompactionPerformer(List<TsFileResource> sourceFiles, TsFileResource targetFile) {
     this.seqFiles = sourceFiles;
@@ -100,6 +98,11 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
     this.targetResource = targetFiles.get(0);
   }
 
+  @Override
+  public void setSummary(CompactionTaskSummary summary) {
+    this.summary = summary;
+  }
+
   private void compactAlignedSeries(
       String device,
       TsFileResource targetResource,
@@ -116,7 +119,7 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
   }
 
   private void checkThreadInterrupted() throws InterruptedException {
-    if (Thread.interrupted()) {
+    if (Thread.interrupted() || summary.isCancel()) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", targetResource.toString()));
@@ -141,20 +144,8 @@ public class ReadChunkCompactionPerformer implements ISeqCompactionPerformer {
       // dead-loop.
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
-      try {
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-          measurementSchema =
-              IDTableManager.getInstance().getSeriesSchema(device, p.getMeasurement());
-        } else {
-          measurementSchema = IoTDB.schemaProcessor.getSeriesSchema(p);
-        }
-      } catch (PathNotExistException e) {
-        LOGGER.info("A deleted path is skipped: {}", e.getMessage());
-        continue;
-      }
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
-          new SingleSeriesCompactionExecutor(
-              p, measurementSchema, readerAndChunkMetadataList, writer, targetResource);
+          new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
   }

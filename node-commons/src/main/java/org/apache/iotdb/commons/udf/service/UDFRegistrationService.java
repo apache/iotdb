@@ -24,12 +24,12 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
-import org.apache.iotdb.commons.udf.api.UDF;
-import org.apache.iotdb.commons.udf.api.exception.UDFRegistrationException;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.builtin.BuiltinTimeSeriesGeneratingFunction;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.udf.api.UDF;
+import org.apache.iotdb.udf.api.exception.UDFRegistrationException;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -184,7 +184,7 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
           String.format(
               "Failed to register UDF %s(%s) because failed to fetch UDF executables(%s)",
               functionName, className, uris);
-      LOGGER.warn(errorMessage);
+      LOGGER.warn(errorMessage, outerException);
       throw new UDFRegistrationException(errorMessage, outerException);
     }
   }
@@ -212,7 +212,7 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
           String.format(
               "Failed to register UDF %s(%s), because its instance can not be constructed successfully. Exception: %s",
               functionName, className, e);
-      LOGGER.warn(errorMessage);
+      LOGGER.warn(errorMessage, e);
       throw new UDFRegistrationException(errorMessage);
     } finally {
       releaseRegistrationLock();
@@ -260,7 +260,7 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
     if (information.isBuiltin()) {
       String errorMessage =
           String.format("Built-in function %s can not be deregistered.", functionName);
-      LOGGER.error(errorMessage);
+      LOGGER.warn(errorMessage);
       throw new UDFRegistrationException(errorMessage);
     }
 
@@ -322,7 +322,7 @@ public class UDFRegistrationService implements IService, SnapshotProcessor {
           String.format(
               "Failed to reflect UDF %s(%s) instance, because %s",
               functionName, information.getClassName(), e);
-      LOGGER.warn(errorMessage);
+      LOGGER.warn(errorMessage, e);
       throw new RuntimeException(errorMessage);
     }
   }

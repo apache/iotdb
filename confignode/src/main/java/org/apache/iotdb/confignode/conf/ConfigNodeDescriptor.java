@@ -19,8 +19,12 @@
 package org.apache.iotdb.confignode.conf;
 
 import org.apache.iotdb.commons.conf.CommonDescriptor;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.manager.load.balancer.RegionBalancer;
+import org.apache.iotdb.confignode.manager.load.balancer.RouteBalancer;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +41,13 @@ public class ConfigNodeDescriptor {
 
   private final CommonDescriptor commonDescriptor = CommonDescriptor.getInstance();
 
-  private final ConfigNodeConf conf = new ConfigNodeConf();
+  private final ConfigNodeConfig conf = new ConfigNodeConfig();
 
   private ConfigNodeDescriptor() {
     loadProps();
   }
 
-  public ConfigNodeConf getConf() {
+  public ConfigNodeConfig getConf() {
     return conf;
   }
 
@@ -105,18 +109,23 @@ public class ConfigNodeDescriptor {
       Properties properties = new Properties();
       properties.load(inputStream);
 
-      conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
+      conf.setInternalAddress(
+          properties.getProperty(IoTDBConstant.INTERNAL_ADDRESS, conf.getInternalAddress()));
 
-      conf.setRpcPort(
-          Integer.parseInt(properties.getProperty("rpc_port", String.valueOf(conf.getRpcPort()))));
+      conf.setInternalPort(
+          Integer.parseInt(
+              properties.getProperty(
+                  IoTDBConstant.INTERNAL_PORT, String.valueOf(conf.getInternalPort()))));
 
       conf.setConsensusPort(
           Integer.parseInt(
-              properties.getProperty("consensus_port", String.valueOf(conf.getConsensusPort()))));
+              properties.getProperty(
+                  IoTDBConstant.CONSENSUS_PORT, String.valueOf(conf.getConsensusPort()))));
 
-      String targetConfigNode = properties.getProperty("target_confignode", null);
-      if (targetConfigNode != null) {
-        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNode));
+      // TODO: Enable multiple target_config_nodes
+      String targetConfigNodes = properties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES, null);
+      if (targetConfigNodes != null) {
+        conf.setTargetConfigNode(NodeUrlUtils.parseTEndPointUrl(targetConfigNodes));
       }
 
       conf.setSeriesPartitionSlotNum(
@@ -128,9 +137,39 @@ public class ConfigNodeDescriptor {
           properties.getProperty(
               "series_partition_executor_class", conf.getSeriesPartitionExecutorClass()));
 
-      conf.setDataNodeConsensusProtocolClass(
+      conf.setConfigNodeConsensusProtocolClass(
           properties.getProperty(
-              "data_node_consensus_protocol_class", conf.getDataNodeConsensusProtocolClass()));
+              "config_node_consensus_protocol_class", conf.getConfigNodeConsensusProtocolClass()));
+
+      conf.setSchemaRegionConsensusProtocolClass(
+          properties.getProperty(
+              "schema_region_consensus_protocol_class",
+              conf.getSchemaRegionConsensusProtocolClass()));
+
+      conf.setSchemaRegionPerDataNode(
+          Double.parseDouble(
+              properties.getProperty(
+                  "schema_region_per_data_node",
+                  String.valueOf(conf.getSchemaRegionPerDataNode()))));
+
+      conf.setDataRegionConsensusProtocolClass(
+          properties.getProperty(
+              "data_region_consensus_protocol_class", conf.getDataRegionConsensusProtocolClass()));
+
+      conf.setDataRegionPerProcessor(
+          Double.parseDouble(
+              properties.getProperty(
+                  "data_region_per_processor", String.valueOf(conf.getDataRegionPerProcessor()))));
+
+      try {
+        conf.setRegionAllocateStrategy(
+            RegionBalancer.RegionAllocateStrategy.valueOf(
+                properties.getProperty(
+                    "region_allocate_strategy", conf.getRegionAllocateStrategy().name())));
+      } catch (IllegalArgumentException e) {
+        LOGGER.warn(
+            "The configured region allocate strategy does not exist, use the default: GREEDY!");
+      }
 
       conf.setRpcAdvancedCompressionEnable(
           Boolean.parseBoolean(
@@ -195,26 +234,32 @@ public class ConfigNodeDescriptor {
               properties.getProperty(
                   "data_replication_factor", String.valueOf(conf.getDataReplicationFactor()))));
 
-      conf.setMaximumSchemaRegionCount(
-          Integer.parseInt(
-              properties.getProperty(
-                  "maximum_schema_region_count",
-                  String.valueOf(conf.getMaximumSchemaRegionCount()))));
-
-      conf.setMaximumDataRegionCount(
-          Integer.parseInt(
-              properties.getProperty(
-                  "maximum_data_region_count", String.valueOf(conf.getMaximumDataRegionCount()))));
-
       conf.setHeartbeatInterval(
           Long.parseLong(
               properties.getProperty(
                   "heartbeat_interval", String.valueOf(conf.getHeartbeatInterval()))));
 
-      conf.setEnableHeartbeat(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_heartbeat", String.valueOf(conf.isEnableHeartbeat()))));
+      String routingPolicy = properties.getProperty("routing_policy", conf.getRoutingPolicy());
+      if (routingPolicy.equals(RouteBalancer.greedyPolicy)
+          || routingPolicy.equals(RouteBalancer.leaderPolicy)) {
+        conf.setRoutingPolicy(routingPolicy);
+      } else {
+        throw new IOException(
+            String.format(
+                "Unknown routing_policy: %s, please set to \"leader\" or \"greedy\"",
+                routingPolicy));
+      }
+
+      String readConsistencyLevel =
+          properties.getProperty("read_consistency_level", conf.getReadConsistencyLevel());
+      if (readConsistencyLevel.equals("strong") || readConsistencyLevel.equals("weak")) {
+        conf.setReadConsistencyLevel(readConsistencyLevel);
+      } else {
+        throw new IOException(
+            String.format(
+                "Unknown read_consistency_level: %s, please set to \"strong\" or \"weak\"",
+                readConsistencyLevel));
+      }
 
       // commons
       commonDescriptor.loadCommonProps(properties);
@@ -245,7 +290,20 @@ public class ConfigNodeDescriptor {
       commonDescriptor
           .getConfig()
           .updatePath(System.getProperty(ConfigNodeConstant.CONFIGNODE_HOME, null));
+      MetricConfigDescriptor.getInstance()
+          .getMetricConfig()
+          .updateRpcInstance(conf.getInternalAddress(), conf.getInternalPort());
     }
+  }
+
+  /**
+   * Check if the current ConfigNode is SeedConfigNode.
+   *
+   * @return True if the target_config_nodes points to itself
+   */
+  public boolean isSeedConfigNode() {
+    return conf.getInternalAddress().equals(conf.getTargetConfigNode().getIp())
+        && conf.getInternalPort() == conf.getTargetConfigNode().getPort();
   }
 
   public static ConfigNodeDescriptor getInstance() {

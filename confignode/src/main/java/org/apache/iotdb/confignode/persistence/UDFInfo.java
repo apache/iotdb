@@ -25,9 +25,10 @@ import org.apache.iotdb.commons.udf.service.UDFClassLoader;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableResource;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.confignode.conf.ConfigNodeConf;
+import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionReq;
+import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -41,15 +42,18 @@ public class UDFInfo implements SnapshotProcessor {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDFInfo.class);
 
-  private static final ConfigNodeConf CONFIG_NODE_CONF =
+  private static final ConfigNodeConfig CONFIG_NODE_CONF =
       ConfigNodeDescriptor.getInstance().getConf();
 
   private final UDFExecutableManager udfExecutableManager;
   private final UDFRegistrationService udfRegistrationService;
 
   public UDFInfo() {
-    udfExecutableManager = UDFExecutableManager.getInstance();
-    udfRegistrationService = UDFRegistrationService.getInstance();
+    udfExecutableManager =
+        UDFExecutableManager.setupAndGetInstance(
+            CONFIG_NODE_CONF.getTemporaryLibDir(), CONFIG_NODE_CONF.getUdfLibDir());
+    udfRegistrationService =
+        UDFRegistrationService.setupAndGetInstance(CONFIG_NODE_CONF.getSystemUdfDir());
   }
 
   public synchronized void validateBeforeRegistration(
@@ -84,7 +88,7 @@ public class UDFInfo implements SnapshotProcessor {
     }
   }
 
-  public synchronized TSStatus createFunction(CreateFunctionReq req) {
+  public synchronized TSStatus createFunction(CreateFunctionPlan req) {
     final String functionName = req.getFunctionName();
     final String className = req.getClassName();
     final List<String> uris = req.getUris();
@@ -95,8 +99,23 @@ public class UDFInfo implements SnapshotProcessor {
     } catch (Exception e) {
       final String errorMessage =
           String.format(
-              "Failed to register UDF %s(class name: %s, uris: %s), because of exception: %s",
+              "[ConfigNode] Failed to register UDF %s(class name: %s, uris: %s), because of exception: %s",
               functionName, className, uris, e);
+      LOGGER.warn(errorMessage, e);
+      return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+          .setMessage(errorMessage);
+    }
+  }
+
+  public synchronized TSStatus dropFunction(DropFunctionPlan req) {
+    try {
+      udfRegistrationService.deregister(req.getFunctionName());
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (Exception e) {
+      final String errorMessage =
+          String.format(
+              "[ConfigNode] Failed to deregister UDF %s, because of exception: %s",
+              req.getFunctionName(), e);
       LOGGER.warn(errorMessage, e);
       return new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
           .setMessage(errorMessage);

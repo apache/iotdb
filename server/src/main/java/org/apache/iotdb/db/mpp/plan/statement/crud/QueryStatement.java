@@ -240,6 +240,11 @@ public class QueryStatement extends Statement {
           throw new SemanticException("Raw data and aggregation hybrid query is not supported.");
         }
       }
+    } else {
+      if (isGroupByTime() || isGroupByLevel()) {
+        throw new SemanticException(
+            "Common queries and aggregated queries are not allowed to appear at the same time");
+      }
     }
 
     if (isAlignByDevice()) {

@@ -19,13 +19,26 @@
 package org.apache.iotdb.db.wal.io;
 
 import org.apache.iotdb.db.wal.buffer.WALEntry;
+import org.apache.iotdb.db.wal.utils.WALFileStatus;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 
 /** WALWriter writes the binary {@link WALEntry} into .wal file. */
 public class WALWriter extends LogWriter {
+  private WALFileStatus walFileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
+
   public WALWriter(File logFile) throws FileNotFoundException {
     super(logFile);
+  }
+
+  public void updateFileStatus(WALFileStatus walFileStatus) {
+    if (walFileStatus == WALFileStatus.CONTAINS_SEARCH_INDEX) {
+      this.walFileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
+    }
+  }
+
+  public WALFileStatus getWalFileStatus() {
+    return walFileStatus;
   }
 }

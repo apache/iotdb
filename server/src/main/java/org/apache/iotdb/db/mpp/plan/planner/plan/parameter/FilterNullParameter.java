@@ -23,6 +23,8 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullPolicy;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +67,14 @@ public class FilterNullParameter {
     ReadWriteIOUtils.write(filterNullColumns.size(), byteBuffer);
     for (Expression filterNullColumn : filterNullColumns) {
       Expression.serialize(filterNullColumn, byteBuffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(filterNullPolicy.ordinal(), stream);
+    ReadWriteIOUtils.write(filterNullColumns.size(), stream);
+    for (Expression filterNullColumn : filterNullColumns) {
+      Expression.serialize(filterNullColumn, stream);
     }
   }
 

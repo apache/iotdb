@@ -28,6 +28,7 @@ public class FragmentInstanceAbortedException extends Exception {
   public static final String BY_FRAGMENT_ABORT_CALLED = "fragment abort called";
   public static final String BY_QUERY_CASCADING_ABORTED = "query cascading aborted";
   public static final String BY_ALREADY_BEING_CANCELLED = "already being cancelled";
+  public static final String BY_INTERNAL_ERROR_SCHEDULED = "internal error scheduled";
 
   public FragmentInstanceAbortedException(FragmentInstanceId id, String causeMsg) {
     super(String.format("FragmentInstance %s is aborted by %s", id.toString(), causeMsg));

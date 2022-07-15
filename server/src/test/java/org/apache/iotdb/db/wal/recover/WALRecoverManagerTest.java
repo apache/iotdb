@@ -157,6 +157,7 @@ public class WALRecoverManagerTest {
   @Test
   public void testNormalProcedure() throws Exception {
     prepareCheckpointAndWALFileForNormal();
+    WALRecoverManager.getInstance().clear();
     recoverAndCheck();
   }
 
@@ -166,10 +167,10 @@ public class WALRecoverManagerTest {
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    int firstWALVersionId = walBuffer.getCurrentWALFileVersion();
+    long firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
       IMemTable fakeMemTable = new PrimitiveMemTable();
-      int memTableId = fakeMemTable.getMemTableId();
+      long memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
             checkpointManager.makeCreateMemTableCP(
@@ -200,7 +201,7 @@ public class WALRecoverManagerTest {
     }
     Thread.sleep(1_000);
     // write normal .wal files
-    int firstValidVersionId = walBuffer.getCurrentWALFileVersion();
+    long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable();
     WALEntry walEntry =
         new WALEntry(targetMemTable.getMemTableId(), getInsertRowPlan(DEVICE2_NAME, 4L), true);
@@ -214,6 +215,7 @@ public class WALRecoverManagerTest {
   @Test
   public void testMemTableSnapshot() throws Exception {
     prepareCheckpointAndWALFileForSnapshot();
+    WALRecoverManager.getInstance().clear();
     recoverAndCheck();
   }
 
@@ -223,10 +225,10 @@ public class WALRecoverManagerTest {
     int threadsNum = 5;
     ExecutorService executorService = Executors.newFixedThreadPool(threadsNum);
     List<Future<Void>> futures = new ArrayList<>();
-    int firstWALVersionId = walBuffer.getCurrentWALFileVersion();
+    long firstWALVersionId = walBuffer.getCurrentWALFileVersion();
     for (int i = 0; i < threadsNum; ++i) {
       IMemTable fakeMemTable = new PrimitiveMemTable();
-      int memTableId = fakeMemTable.getMemTableId();
+      long memTableId = fakeMemTable.getMemTableId();
       Callable<Void> writeTask =
           () -> {
             checkpointManager.makeCreateMemTableCP(
@@ -257,7 +259,7 @@ public class WALRecoverManagerTest {
     }
     Thread.sleep(1_000);
     // write normal .wal files
-    int firstValidVersionId = walBuffer.getCurrentWALFileVersion();
+    long firstValidVersionId = walBuffer.getCurrentWALFileVersion();
     IMemTable targetMemTable = new PrimitiveMemTable();
     InsertRowPlan insertRowPlan = getInsertRowPlan(DEVICE2_NAME, 4L);
     targetMemTable.insert(insertRowPlan);

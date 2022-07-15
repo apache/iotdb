@@ -212,21 +212,22 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
     // read from file first
     while (reader.hasNextFile()) {
-      Statistics fileStatistics = reader.currentFileStatistics();
-      if (fileStatistics.getStartTime() >= curEndTime) {
-        if (ascending) {
-          return results;
-        } else {
+      if (reader.canUseCurrentFileStatistics()) {
+        Statistics fileStatistics = reader.currentFileStatistics();
+        if (fileStatistics.getStartTime() >= curEndTime) {
+          if (ascending) {
+            return results;
+          } else {
+            reader.skipCurrentFile();
+            continue;
+          }
+        }
+        // calc from fileMetaData
+        if (timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
+          calcFromStatistics(fileStatistics);
           reader.skipCurrentFile();
           continue;
         }
-      }
-      // calc from fileMetaData
-      if (reader.canUseCurrentFileStatistics()
-          && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
-        calcFromStatistics(fileStatistics);
-        reader.skipCurrentFile();
-        continue;
       }
 
       // read chunk
@@ -281,22 +282,24 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private boolean readAndCalcFromChunk(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     while (reader.hasNextChunk()) {
-      Statistics chunkStatistics = reader.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curEndTime) {
-        if (ascending) {
-          return true;
-        } else {
+      if (reader.canUseCurrentChunkStatistics()) {
+        Statistics chunkStatistics = reader.currentChunkStatistics();
+        if (chunkStatistics.getStartTime() >= curEndTime) {
+          if (ascending) {
+            return true;
+          } else {
+            reader.skipCurrentChunk();
+            continue;
+          }
+        }
+        // calc from chunkMetaData
+        if (timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+          calcFromStatistics(chunkStatistics);
           reader.skipCurrentChunk();
           continue;
         }
       }
-      // calc from chunkMetaData
-      if (reader.canUseCurrentChunkStatistics()
-          && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-        calcFromStatistics(chunkStatistics);
-        reader.skipCurrentChunk();
-        continue;
-      }
+
       // read page
       if (readAndCalcFromPage(curStartTime, curEndTime)) {
         return true;
@@ -309,9 +312,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private boolean readAndCalcFromPage(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
     while (reader.hasNextPage()) {
-      Statistics pageStatistics = reader.currentPageStatistics();
-      // must be non overlapped page
-      if (pageStatistics != null) {
+      if (reader.canUseCurrentPageStatistics()) {
+        Statistics pageStatistics = reader.currentPageStatistics();
         // current page max than time range
         if (pageStatistics.getStartTime() >= curEndTime) {
           if (ascending) {
@@ -322,8 +324,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
           }
         }
         // can use pageHeader
-        if (reader.canUseCurrentPageStatistics()
-            && timeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
+        if (timeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
           calcFromStatistics(pageStatistics);
           reader.skipCurrentPage();
           if (isEndCalc()) {

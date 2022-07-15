@@ -53,7 +53,7 @@ On Mac machines, the hierarchy of the package should look like this:
 +-- client
 |   +-- include
 |       +-- Session.h
-|       +-- TSIService.h
+|       +-- IClientRPCService.h
 |       +-- rpc_types.h
 |       +-- rpc_constants.h
 |       +-- thrift

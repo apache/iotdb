@@ -88,7 +88,7 @@ public class InTransformer extends UnaryTransformer {
 
   @Override
   public TSDataType getDataType() {
-    return layerPointReaderDataType;
+    return TSDataType.BOOLEAN;
   }
 
   @Override
@@ -96,51 +96,27 @@ public class InTransformer extends UnaryTransformer {
     switch (layerPointReaderDataType) {
       case INT32:
         int intValue = layerPointReader.currentInt();
-        if (satisfy.of(intValue)) {
-          cachedInt = intValue;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(intValue);
         break;
       case INT64:
         long longValue = layerPointReader.currentLong();
-        if (satisfy.of(longValue)) {
-          cachedLong = longValue;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(longValue);
         break;
       case FLOAT:
         float floatValue = layerPointReader.currentFloat();
-        if (satisfy.of(floatValue)) {
-          cachedFloat = floatValue;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(floatValue);
         break;
       case DOUBLE:
         double doubleValue = layerPointReader.currentDouble();
-        if (satisfy.of(doubleValue)) {
-          cachedDouble = doubleValue;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(doubleValue);
         break;
       case BOOLEAN:
         boolean booleanValue = layerPointReader.currentBoolean();
-        if (satisfy.of(booleanValue)) {
-          cachedBoolean = booleanValue;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(booleanValue);
         break;
       case TEXT:
         Binary binaryValue = layerPointReader.currentBinary();
-        if (satisfy.of(binaryValue.getStringValue())) {
-          cachedBinary = binaryValue;
-        } else {
-          currentNull = true;
-        }
+        cachedBoolean = satisfy.of(binaryValue.getStringValue());
         break;
       default:
         throw new QueryProcessException("unsupported data type: " + layerPointReader.getDataType());

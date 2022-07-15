@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,11 +56,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 
 public class AggregationOperatorTest {
+
+  public static Duration TEST_TIME_SLICE = new Duration(500, TimeUnit.MILLISECONDS);
 
   private static final String AGGREGATION_OPERATOR_TEST_SG = "root.AggregationOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
@@ -177,14 +181,17 @@ public class AggregationOperatorTest {
     int count = 0;
     while (aggregationOperator.hasNext()) {
       TsBlock resultTsBlock = aggregationOperator.next();
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[0][count], resultTsBlock.getColumn(0).getLong(0));
-      assertEquals(result[1][count], resultTsBlock.getColumn(1).getDouble(0), 0.0001);
-      assertEquals(result[2][count], resultTsBlock.getColumn(2).getLong(0));
-      assertEquals(result[3][count], resultTsBlock.getColumn(3).getLong(0));
-      assertEquals(result[4][count], resultTsBlock.getColumn(4).getInt(0));
-      assertEquals(result[5][count], resultTsBlock.getColumn(5).getInt(0));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][count], resultTsBlock.getColumn(0).getLong(pos));
+        assertEquals(result[1][count], resultTsBlock.getColumn(1).getDouble(pos), 0.0001);
+        assertEquals(result[2][count], resultTsBlock.getColumn(2).getLong(pos));
+        assertEquals(result[3][count], resultTsBlock.getColumn(3).getLong(pos));
+        assertEquals(result[4][count], resultTsBlock.getColumn(4).getInt(pos));
+        assertEquals(result[5][count], resultTsBlock.getColumn(5).getInt(pos));
+        count++;
+      }
     }
     assertEquals(4, count);
   }
@@ -216,11 +223,14 @@ public class AggregationOperatorTest {
     int count = 0;
     while (aggregationOperator.hasNext()) {
       TsBlock resultTsBlock = aggregationOperator.next();
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[0][count], resultTsBlock.getColumn(0).getDouble(0), 0.001);
-      assertEquals((int) result[1][count], resultTsBlock.getColumn(1).getInt(0));
-      assertEquals((int) result[2][count], resultTsBlock.getColumn(2).getInt(0));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][count], resultTsBlock.getColumn(0).getDouble(pos), 0.001);
+        assertEquals((int) result[1][count], resultTsBlock.getColumn(1).getInt(pos));
+        assertEquals((int) result[2][count], resultTsBlock.getColumn(2).getInt(pos));
+        count++;
+      }
     }
     assertEquals(4, count);
   }
@@ -252,6 +262,12 @@ public class AggregationOperatorTest {
     PlanNodeId planNodeId3 = new PlanNodeId("3");
     fragmentInstanceContext.addOperatorContext(
         3, planNodeId3, AggregationOperator.class.getSimpleName());
+    fragmentInstanceContext
+        .getOperatorContexts()
+        .forEach(
+            operatorContext -> {
+              operatorContext.setMaxRunTime(TEST_TIME_SLICE);
+            });
 
     MeasurementPath measurementPath1 =
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
@@ -316,6 +332,7 @@ public class AggregationOperatorTest {
         finalAggregators,
         children,
         true,
-        groupByTimeParameter);
+        groupByTimeParameter,
+        true);
   }
 }

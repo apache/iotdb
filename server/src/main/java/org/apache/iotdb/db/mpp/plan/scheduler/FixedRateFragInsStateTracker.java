@@ -22,10 +22,12 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 
+import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,9 +43,13 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   private static final Logger logger = LoggerFactory.getLogger(FixedRateFragInsStateTracker.class);
 
+  private static final long SAME_STATE_PRINT_RATE_IN_MS = 10 * 60 * 1000;
+
   // TODO: (xingtanzjr) consider how much Interval is OK for state tracker
   private static final long STATE_FETCH_INTERVAL_IN_MS = 500;
   private ScheduledFuture<?> trackTask;
+  private volatile FragmentInstanceState lastState;
+  private volatile long durationToLastPrintInMS;
 
   public FixedRateFragInsStateTracker(
       QueryStateMachine stateMachine,
@@ -57,22 +63,39 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   @Override
   public void start() {
     trackTask =
-        scheduledExecutor.scheduleAtFixedRate(
-            this::fetchStateAndUpdate, 0, STATE_FETCH_INTERVAL_IN_MS, TimeUnit.MILLISECONDS);
+        ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+            scheduledExecutor,
+            this::fetchStateAndUpdate,
+            0,
+            STATE_FETCH_INTERVAL_IN_MS,
+            TimeUnit.MILLISECONDS);
   }
 
   @Override
   public void abort() {
+    logger.info("start to abort state tracker");
     if (trackTask != null) {
-      trackTask.cancel(true);
+      logger.info("start to cancel fixed rate tracking task");
+      boolean cancelResult = trackTask.cancel(true);
+      if (!cancelResult) {
+        logger.error("cancel state tracking task failed. {}", trackTask.isCancelled());
+      } else {
+        logger.info("cancellation succeeds");
+      }
     }
   }
 
   private void fetchStateAndUpdate() {
     for (FragmentInstance instance : instances) {
-      try {
+      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         FragmentInstanceState state = fetchState(instance);
-        logger.info("Instance {}'s State is {}", instance.getId(), state);
+        if (needPrintState(lastState, state, durationToLastPrintInMS)) {
+          logger.info("State is {}", state);
+          lastState = state;
+          durationToLastPrintInMS = 0;
+        } else {
+          durationToLastPrintInMS += STATE_FETCH_INTERVAL_IN_MS;
+        }
 
         if (state != null) {
           stateMachine.updateFragInstanceState(instance.getId(), state);
@@ -82,5 +105,13 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
         logger.error("error happened while fetching query state", e);
       }
     }
+  }
+
+  private boolean needPrintState(
+      FragmentInstanceState previous, FragmentInstanceState current, long durationToLastPrintInMS) {
+    if (current != previous) {
+      return true;
+    }
+    return durationToLastPrintInMS >= SAME_STATE_PRINT_RATE_IN_MS;
   }
 }

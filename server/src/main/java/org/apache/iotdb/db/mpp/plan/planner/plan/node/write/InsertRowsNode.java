@@ -32,7 +32,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -98,12 +101,6 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   public void setSearchIndex(long index) {
     searchIndex = index;
     insertRowNodeList.forEach(plan -> plan.setSearchIndex(index));
-  }
-
-  @Override
-  public void setSafelyDeletedSearchIndex(long index) {
-    safelyDeletedSearchIndex = index;
-    insertRowNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
   }
 
   public Map<Integer, TSStatus> getResults() {
@@ -184,7 +181,7 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   public List<TSDataType[]> getDataTypesList() {
     List<TSDataType[]> dataTypesList = new ArrayList<>();
     for (InsertRowNode insertRowNode : insertRowNodeList) {
-      dataTypesList.add(insertRowNode.dataTypes);
+      dataTypesList.add(insertRowNode.getDataTypes());
     }
     return dataTypesList;
   }
@@ -228,13 +225,27 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.INSERT_ROWS.serialize(byteBuffer);
 
-    byteBuffer.putInt(insertRowNodeList.size());
+    ReadWriteIOUtils.write(insertRowNodeList.size(), byteBuffer);
 
     for (InsertRowNode node : insertRowNodeList) {
       node.subSerialize(byteBuffer);
     }
     for (Integer index : insertRowNodeIndexList) {
-      byteBuffer.putInt(index);
+      ReadWriteIOUtils.write(index, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.INSERT_ROWS.serialize(stream);
+
+    ReadWriteIOUtils.write(insertRowNodeList.size(), stream);
+
+    for (InsertRowNode node : insertRowNodeList) {
+      node.subSerialize(stream);
+    }
+    for (Integer index : insertRowNodeIndexList) {
+      ReadWriteIOUtils.write(index, stream);
     }
   }
 
@@ -267,5 +278,15 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
   @Override
   public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
     return visitor.visitInsertRows(this, context);
+  }
+
+  @Override
+  public long getMinTime() {
+    throw new NotImplementedException();
+  }
+
+  @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
   }
 }

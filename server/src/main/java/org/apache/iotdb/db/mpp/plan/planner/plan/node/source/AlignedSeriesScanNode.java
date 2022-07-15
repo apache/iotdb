@@ -26,6 +26,7 @@ import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -37,6 +38,8 @@ import com.google.common.collect.ImmutableList;
 
 import javax.annotation.Nullable;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -204,6 +207,27 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
     ReadWriteIOUtils.write(offset, byteBuffer);
   }
 
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.ALIGNED_SERIES_SCAN.serialize(stream);
+    alignedPath.serialize(stream);
+    ReadWriteIOUtils.write(scanOrder.ordinal(), stream);
+    if (timeFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      timeFilter.serialize(stream);
+    }
+    if (valueFilter == null) {
+      ReadWriteIOUtils.write((byte) 0, stream);
+    } else {
+      ReadWriteIOUtils.write((byte) 1, stream);
+      valueFilter.serialize(stream);
+    }
+    ReadWriteIOUtils.write(limit, stream);
+    ReadWriteIOUtils.write(offset, stream);
+  }
+
   public static AlignedSeriesScanNode deserialize(ByteBuffer byteBuffer) {
     AlignedPath alignedPath = (AlignedPath) PathDeserializeUtil.deserialize(byteBuffer);
     OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
@@ -261,7 +285,9 @@ public class AlignedSeriesScanNode extends SeriesSourceNode {
   public String toString() {
     return String.format(
         "AlignedSeriesScanNode-%s:[SeriesPath: %s, DataRegion: %s]",
-        this.getPlanNodeId(), this.getAlignedPath(), this.getRegionReplicaSet());
+        this.getPlanNodeId(),
+        this.getAlignedPath().getFormattedString(),
+        PlanNodeUtil.printRegionReplicaSet(getRegionReplicaSet()));
   }
 
   @Override

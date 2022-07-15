@@ -19,9 +19,12 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.adapter;
 
-import org.apache.iotdb.commons.udf.api.access.Row;
+import org.apache.iotdb.commons.udf.utils.UDFBinaryTransformer;
+import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.type.Binary;
+import org.apache.iotdb.udf.api.type.Type;
 
 public class ElasticSerializableRowRecordListBackedMultiColumnRow implements Row {
 
@@ -67,17 +70,18 @@ public class ElasticSerializableRowRecordListBackedMultiColumnRow implements Row
 
   @Override
   public Binary getBinary(int columnIndex) {
-    return (Binary) rowRecord[columnIndex];
+    return UDFBinaryTransformer.transformToUDFBinary(
+        (org.apache.iotdb.tsfile.utils.Binary) rowRecord[columnIndex]);
   }
 
   @Override
   public String getString(int columnIndex) {
-    return ((Binary) rowRecord[columnIndex]).getStringValue();
+    return ((org.apache.iotdb.tsfile.utils.Binary) rowRecord[columnIndex]).getStringValue();
   }
 
   @Override
-  public TSDataType getDataType(int columnIndex) {
-    return dataTypes[columnIndex];
+  public Type getDataType(int columnIndex) {
+    return UDFDataTypeTransformer.transformToUDFDataType(dataTypes[columnIndex]);
   }
 
   @Override

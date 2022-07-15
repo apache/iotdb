@@ -69,10 +69,12 @@ public enum ServiceType {
   CLUSTER_DATA_ENGINE("Cluster Data Engine", "ClusterDataEngine"),
   REST_SERVICE("REST Service", "REST Service"),
   CONFIG_NODE_SERVICE("Config Node service", "ConfigNodeRPCServer"),
+  DATA_NODE_REGION_MIGRATE_SERVICE("Data Node Region Migrate service", ""),
   DATA_NODE_MANAGEMENT_SERVICE("Data Node management service", "DataNodeManagementServer"),
   FRAGMENT_INSTANCE_MANAGER_SERVICE("Fragment instance manager", "FragmentInstanceManager"),
-  DATA_BLOCK_MANAGER_SERVICE("Data block manager", "DataBlockManager"),
-  INTERNAL_SERVICE("Internal Service", "InternalService");
+  MPP_DATA_EXCHANGE_SERVICE("MPP Data exchange manager", "MPPDataExchangeManager"),
+  INTERNAL_SERVICE("Internal Service", "InternalService"),
+  MULTI_LEADER_CONSENSUS_SERVICE("Multi Leader consensus Service", "MultiLeaderRPCService");
 
   private final String name;
   private final String jmxName;

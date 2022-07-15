@@ -38,6 +38,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
@@ -343,5 +344,11 @@ public abstract class BinaryExpression extends Expression {
   protected void serialize(ByteBuffer byteBuffer) {
     Expression.serialize(leftExpression, byteBuffer);
     Expression.serialize(rightExpression, byteBuffer);
+  }
+
+  @Override
+  protected void serialize(DataOutputStream stream) throws IOException {
+    Expression.serialize(leftExpression, stream);
+    Expression.serialize(rightExpression, stream);
   }
 }

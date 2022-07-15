@@ -27,6 +27,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -85,6 +87,15 @@ public class ProjectNode extends ProcessNode {
     ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
     for (String outputColumnName : outputColumnNames) {
       ReadWriteIOUtils.write(outputColumnName, byteBuffer);
+    }
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    PlanNodeType.PROJECT.serialize(stream);
+    ReadWriteIOUtils.write(outputColumnNames.size(), stream);
+    for (String outputColumnName : outputColumnNames) {
+      ReadWriteIOUtils.write(outputColumnName, stream);
     }
   }
 

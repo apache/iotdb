@@ -22,14 +22,14 @@ package org.apache.iotdb.db.mpp.plan.plan.node.metadata.read;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.NodeManagementType;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildNodesSchemaScanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.ChildPathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManagementMemoryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
@@ -44,17 +44,54 @@ import java.util.Set;
 public class NodeManagementMemoryMergeNodeSerdeTest {
 
   @Test
-  public void testChildPathsSerializeAndDeserialize() throws IllegalPathException {
+  public void testNodePathsSerializeAndDeserialize() throws IllegalPathException {
+    NodeManagementMemoryMergeNode memorySourceNode = createNodeManagementMemoryMergeNode();
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    memorySourceNode.serialize(byteBuffer);
+    byteBuffer.flip();
+    NodeManagementMemoryMergeNode memorySourceNode1 =
+        (NodeManagementMemoryMergeNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+    Assert.assertEquals(memorySourceNode, memorySourceNode1);
+  }
+
+  @Test
+  public void testNodeConvertSerializeAndDeserialize() throws IllegalPathException {
+    NodeManagementMemoryMergeNode memorySourceNode = createNodeManagementMemoryMergeNode();
+    NodePathsConvertNode node = new NodePathsConvertNode(new PlanNodeId("nodePathConvert"));
+    node.addChild(memorySourceNode);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    node.serialize(byteBuffer);
+    byteBuffer.flip();
+    NodePathsConvertNode node1 =
+        (NodePathsConvertNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+    Assert.assertEquals(node, node1);
+  }
+
+  @Test
+  public void testNodeCountSerializeAndDeserialize() throws IllegalPathException {
+    NodeManagementMemoryMergeNode memorySourceNode = createNodeManagementMemoryMergeNode();
+    NodePathsCountNode node = new NodePathsCountNode(new PlanNodeId("nodePathCount"));
+    node.addChild(memorySourceNode);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+    node.serialize(byteBuffer);
+    byteBuffer.flip();
+    NodePathsCountNode node1 =
+        (NodePathsCountNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
+    Assert.assertEquals(node, node1);
+  }
+
+  private NodeManagementMemoryMergeNode createNodeManagementMemoryMergeNode()
+      throws IllegalPathException {
     Set<String> data = new HashSet<>();
     data.add("root.ln");
     data.add("root.abc");
     NodeManagementMemoryMergeNode memorySourceNode =
-        new NodeManagementMemoryMergeNode(
-            new PlanNodeId("nodeManagementMerge"), data, NodeManagementType.CHILD_PATHS);
+        new NodeManagementMemoryMergeNode(new PlanNodeId("nodeManagementMerge"), data);
     SchemaQueryMergeNode schemaMergeNode = new SchemaQueryMergeNode(new PlanNodeId("schemaMerge"));
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
-    ChildPathsSchemaScanNode childPathsSchemaScanNode =
-        new ChildPathsSchemaScanNode(new PlanNodeId("childPathsScan"), new PartialPath("root.ln"));
+    NodePathsSchemaScanNode childPathsSchemaScanNode =
+        new NodePathsSchemaScanNode(
+            new PlanNodeId("NodePathsScan"), new PartialPath("root.ln"), -1);
     FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("fragmentSink"));
     fragmentSinkNode.addChild(childPathsSchemaScanNode);
     fragmentSinkNode.setDownStream(
@@ -68,44 +105,6 @@ public class NodeManagementMemoryMergeNodeSerdeTest {
         new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
         new PlanNodeId("test"));
     memorySourceNode.addChild(exchangeNode);
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    memorySourceNode.serialize(byteBuffer);
-    byteBuffer.flip();
-    NodeManagementMemoryMergeNode memorySourceNode1 =
-        (NodeManagementMemoryMergeNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-    Assert.assertEquals(memorySourceNode, memorySourceNode1);
-  }
-
-  @Test
-  public void testChildNodesSerializeAndDeserialize() throws IllegalPathException {
-    Set<String> data = new HashSet<>();
-    data.add("ln");
-    data.add("abc");
-    NodeManagementMemoryMergeNode memorySourceNode =
-        new NodeManagementMemoryMergeNode(
-            new PlanNodeId("nodeManagementMerge"), data, NodeManagementType.CHILD_NODES);
-    SchemaQueryMergeNode schemaMergeNode = new SchemaQueryMergeNode(new PlanNodeId("schemaMerge"));
-    ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
-    ChildNodesSchemaScanNode childNodesSchemaScanNode =
-        new ChildNodesSchemaScanNode(new PlanNodeId("childNodesScan"), new PartialPath("root.ln"));
-    FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("fragmentSink"));
-    fragmentSinkNode.addChild(childNodesSchemaScanNode);
-    fragmentSinkNode.setDownStream(
-        new TEndPoint("127.0.0.1", 6667),
-        new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
-        new PlanNodeId("test"));
-    exchangeNode.addChild(schemaMergeNode);
-    exchangeNode.setRemoteSourceNode(fragmentSinkNode);
-    exchangeNode.setUpstream(
-        new TEndPoint("127.0.0.1", 6667),
-        new FragmentInstanceId(new PlanFragmentId("q", 1), "ds"),
-        new PlanNodeId("test"));
-    memorySourceNode.addChild(exchangeNode);
-    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-    memorySourceNode.serialize(byteBuffer);
-    byteBuffer.flip();
-    NodeManagementMemoryMergeNode memorySourceNode1 =
-        (NodeManagementMemoryMergeNode) PlanNodeDeserializeHelper.deserialize(byteBuffer);
-    Assert.assertEquals(memorySourceNode, memorySourceNode1);
+    return memorySourceNode;
   }
 }

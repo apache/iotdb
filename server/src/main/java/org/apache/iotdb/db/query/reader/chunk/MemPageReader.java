@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 public class MemPageReader implements IPageReader {
 
@@ -184,4 +185,7 @@ public class MemPageReader implements IPageReader {
   public boolean isModified() {
     return false;
   }
+
+  @Override
+  public void initTsBlockBuilder(List<TSDataType> dataTypes) {}
 }

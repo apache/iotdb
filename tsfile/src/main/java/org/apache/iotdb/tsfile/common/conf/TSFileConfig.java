@@ -55,7 +55,7 @@ public class TSFileConfig implements Serializable {
 
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
-  public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
+  public static final String CONFIG_FILE_NAME = "iotdb-datanode.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER_V2 = "000002";
   public static final String VERSION_NUMBER_V1 = "000001";
@@ -149,6 +149,12 @@ public class TSFileConfig implements Serializable {
   private double bloomFilterErrorRate = 0.05;
   /** The amount of data iterate each time */
   private int batchSize = 1000;
+
+  /** Maximum capacity of a TsBlock */
+  private int maxTsBlockSizeInBytes = 1024 * 1024;
+
+  /** Maximum number of lines in a single TsBlock */
+  private int maxTsBlockLineNumber = 1000;
 
   public TSFileConfig() {}
 
@@ -430,5 +436,21 @@ public class TSFileConfig implements Serializable {
 
   public void setFreqEncodingBlockSize(int freqEncodingBlockSize) {
     this.freqEncodingBlockSize = freqEncodingBlockSize;
+  }
+
+  public int getMaxTsBlockSizeInBytes() {
+    return maxTsBlockSizeInBytes;
+  }
+
+  public void setMaxTsBlockSizeInBytes(int maxTsBlockSizeInBytes) {
+    this.maxTsBlockSizeInBytes = maxTsBlockSizeInBytes;
+  }
+
+  public int getMaxTsBlockLineNumber() {
+    return maxTsBlockLineNumber;
+  }
+
+  public void setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    this.maxTsBlockLineNumber = maxTsBlockLineNumber;
   }
 }

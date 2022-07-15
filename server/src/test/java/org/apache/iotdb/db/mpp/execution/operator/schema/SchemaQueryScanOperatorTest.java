@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import org.apache.commons.lang.StringUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -236,7 +235,7 @@ public class SchemaQueryScanOperatorTest {
                 break;
               case 6:
               case 7:
-                assertTrue(StringUtils.isBlank(value));
+                assertEquals("null", value);
               default:
                 break;
             }

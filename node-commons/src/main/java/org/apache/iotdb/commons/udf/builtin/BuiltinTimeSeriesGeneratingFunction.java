@@ -19,6 +19,17 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
+import org.apache.iotdb.commons.udf.builtin.String.UDTFConcat;
+import org.apache.iotdb.commons.udf.builtin.String.UDTFEndsWith;
+import org.apache.iotdb.commons.udf.builtin.String.UDTFLower;
+import org.apache.iotdb.commons.udf.builtin.String.UDTFStartsWith;
+import org.apache.iotdb.commons.udf.builtin.String.UDTFStrCompare;
+import org.apache.iotdb.commons.udf.builtin.String.UDTFStrLength;
+import org.apache.iotdb.commons.udf.builtin.String.UDTFStrLocate;
+import org.apache.iotdb.commons.udf.builtin.String.UDTFSubstr;
+import org.apache.iotdb.commons.udf.builtin.String.UDTFTrim;
+import org.apache.iotdb.commons.udf.builtin.String.UDTFUpper;
+
 /** All built-in UDFs need to register their function names and classes here. */
 public enum BuiltinTimeSeriesGeneratingFunction {
   CONST("CONST", UDTFConst.class),
@@ -46,6 +57,16 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   SQRT("SQRT", UDTFSqrt.class),
   STRING_CONTAINS("STRING_CONTAINS", UDTFContains.class),
   STRING_MATCHES("STRING_MATCHES", UDTFMatches.class),
+  STRING_LENGTH("LENGTH", UDTFStrLength.class),
+  STRING_LOCATE("LOCATE", UDTFStrLocate.class),
+  STRING_STARTS_WITH("STARTSWITH", UDTFStartsWith.class),
+  STRING_ENDS_WITH("ENDSWITH", UDTFEndsWith.class),
+  STRING_CONCAT("CONCAT", UDTFConcat.class),
+  STRING_SUBSTR("SUBSTR", UDTFSubstr.class),
+  STRING_UPPER("UPPER", UDTFUpper.class),
+  STRING_LOWER("LOWER", UDTFLower.class),
+  STRING_TRIM("TRIM", UDTFTrim.class),
+  STRING_CMP("STRCMP", UDTFStrCompare.class),
   DIFFERENCE("DIFFERENCE", UDTFCommonValueDifference.class),
   NON_NEGATIVE_DIFFERENCE("NON_NEGATIVE_DIFFERENCE", UDTFNonNegativeValueDifference.class),
   TIME_DIFFERENCE("TIME_DIFFERENCE", UDTFTimeDifference.class),

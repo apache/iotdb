@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.common.schematree;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -33,7 +34,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -115,6 +118,10 @@ public class SchemaTree {
       cur = cur.getChild(nodes[i]);
     }
 
+    if (cur == null) {
+      return null;
+    }
+
     List<SchemaMeasurementNode> measurementNodeList = new ArrayList<>();
     SchemaNode node;
     for (String measurement : measurements) {
@@ -140,12 +147,11 @@ public class SchemaTree {
         measurementPath,
         (MeasurementSchema) measurementPath.getMeasurementSchema(),
         measurementPath.isMeasurementAliasExists() ? measurementPath.getMeasurementAlias() : null,
-        measurementPath.isUnderAlignedEntity(),
-        measurementPath.getVersion());
+        measurementPath.isUnderAlignedEntity());
   }
 
   public void appendSingleMeasurement(
-      PartialPath path, MeasurementSchema schema, String alias, boolean isAligned, String version) {
+      PartialPath path, MeasurementSchema schema, String alias, boolean isAligned) {
     String[] nodes = path.getNodes();
     SchemaNode cur = root;
     SchemaNode child;
@@ -153,8 +159,7 @@ public class SchemaTree {
       child = cur.getChild(nodes[i]);
       if (child == null) {
         if (i == nodes.length - 1) {
-          SchemaMeasurementNode measurementNode =
-              new SchemaMeasurementNode(nodes[i], schema, version);
+          SchemaMeasurementNode measurementNode = new SchemaMeasurementNode(nodes[i], schema);
           if (alias != null) {
             measurementNode.setAlias(alias);
             cur.getAsEntityNode().addAliasChild(alias, measurementNode);
@@ -175,16 +180,6 @@ public class SchemaTree {
       }
       cur = child;
     }
-  }
-
-  public void pruneSingleMeasurement(PartialPath path) {
-    String[] nodes = path.getNodes();
-    SchemaNode cur = root;
-    for (int i = 1; i < nodes.length - 1; i++) {
-      cur = cur.getChild(nodes[i]);
-    }
-
-    cur.removeChild(nodes[nodes.length - 1]);
   }
 
   public void mergeSchemaTree(SchemaTree schemaTree) {
@@ -221,31 +216,31 @@ public class SchemaTree {
     }
   }
 
-  public void serialize(ByteBuffer buffer) {
-    root.serialize(buffer);
+  public void serialize(OutputStream outputStream) throws IOException {
+    root.serialize(outputStream);
   }
 
-  public static SchemaTree deserialize(ByteBuffer buffer) {
+  public static SchemaTree deserialize(InputStream inputStream) throws IOException {
 
     byte nodeType;
     int childNum;
     Deque<SchemaNode> stack = new ArrayDeque<>();
     SchemaNode child;
 
-    while (buffer.hasRemaining()) {
-      nodeType = ReadWriteIOUtils.readByte(buffer);
+    while (inputStream.available() > 0) {
+      nodeType = ReadWriteIOUtils.readByte(inputStream);
       if (nodeType == SCHEMA_MEASUREMENT_NODE) {
-        SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(buffer);
+        SchemaMeasurementNode measurementNode = SchemaMeasurementNode.deserialize(inputStream);
         stack.push(measurementNode);
       } else {
         SchemaInternalNode internalNode;
         if (nodeType == SCHEMA_ENTITY_NODE) {
-          internalNode = SchemaEntityNode.deserialize(buffer);
+          internalNode = SchemaEntityNode.deserialize(inputStream);
         } else {
-          internalNode = SchemaInternalNode.deserialize(buffer);
+          internalNode = SchemaInternalNode.deserialize(inputStream);
         }
 
-        childNum = ReadWriteIOUtils.readInt(buffer);
+        childNum = ReadWriteIOUtils.readInt(inputStream);
         while (childNum > 0) {
           child = stack.pop();
           internalNode.addChild(child.getName(), child);
@@ -275,7 +270,7 @@ public class SchemaTree {
    */
   public String getBelongedStorageGroup(String pathName) {
     for (String storageGroup : storageGroups) {
-      if (pathName.startsWith(storageGroup + ".")) {
+      if (PathUtils.isStartWith(pathName, storageGroup)) {
         return storageGroup;
       }
     }

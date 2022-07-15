@@ -22,8 +22,7 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupReq;
-import org.apache.iotdb.confignode.procedure.Procedure;
+import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -38,12 +37,13 @@ import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class DeleteStorageGroupProcedure
     extends StateMachineProcedure<ConfigNodeProcedureEnv, DeleteStorageGroupState> {
-  private static final Logger LOG = LoggerFactory.getLogger(Procedure.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DeleteStorageGroupProcedure.class);
   private static final int retryThreshold = 5;
 
   private TStorageGroupSchema deleteSgSchema;
@@ -79,7 +79,7 @@ public class DeleteStorageGroupProcedure
           break;
         case DELETE_PRE:
           LOG.info("Pre delete for Storage group {}", deleteSgSchema.getName());
-          env.preDelete(PreDeleteStorageGroupReq.PreDeleteType.EXECUTE, deleteSgSchema.getName());
+          env.preDelete(PreDeleteStorageGroupPlan.PreDeleteType.EXECUTE, deleteSgSchema.getName());
           setNextState(DeleteStorageGroupState.INVALIDATE_CACHE);
           break;
         case INVALIDATE_CACHE:
@@ -92,7 +92,7 @@ public class DeleteStorageGroupProcedure
           break;
         case DELETE_CONFIG:
           LOG.info("Delete config info of {}", deleteSgSchema.getName());
-          TSStatus status = env.deleteConfig(deleteSgSchema);
+          TSStatus status = env.deleteConfig(deleteSgSchema.getName());
           if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             return Flow.NO_MORE_STATE;
           } else if (getCycles() > retryThreshold) {
@@ -123,7 +123,7 @@ public class DeleteStorageGroupProcedure
       case DELETE_PRE:
       case INVALIDATE_CACHE:
         LOG.info("Rollback preDeleted:{}", deleteSgSchema.getName());
-        env.preDelete(PreDeleteStorageGroupReq.PreDeleteType.ROLLBACK, deleteSgSchema.getName());
+        env.preDelete(PreDeleteStorageGroupPlan.PreDeleteType.ROLLBACK, deleteSgSchema.getName());
         break;
     }
   }
@@ -154,10 +154,10 @@ public class DeleteStorageGroupProcedure
   }
 
   @Override
-  public void serialize(ByteBuffer byteBuffer) {
-    byteBuffer.putInt(ProcedureFactory.ProcedureType.DELETE_STORAGE_GROUP_PROCEDURE.ordinal());
-    super.serialize(byteBuffer);
-    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(deleteSgSchema, byteBuffer);
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeInt(ProcedureFactory.ProcedureType.DELETE_STORAGE_GROUP_PROCEDURE.ordinal());
+    super.serialize(stream);
+    ThriftConfigNodeSerDeUtils.serializeTStorageGroupSchema(deleteSgSchema, stream);
   }
 
   @Override

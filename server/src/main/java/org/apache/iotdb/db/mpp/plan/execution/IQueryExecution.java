@@ -43,4 +43,6 @@ public interface IQueryExecution {
   DatasetHeader getDatasetHeader();
 
   boolean isQuery();
+
+  String getQueryId();
 }

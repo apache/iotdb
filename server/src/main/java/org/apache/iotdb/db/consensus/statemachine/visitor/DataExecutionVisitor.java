@@ -19,27 +19,26 @@
 package org.apache.iotdb.db.consensus.statemachine.visitor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
-import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.DeleteRegionNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.DeleteDataNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
-import org.apache.iotdb.rpc.RpcUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
+import java.io.IOException;
+import java.util.Map;
 
 public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataExecutionVisitor.class);
@@ -65,11 +64,17 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
     try {
       dataRegion.insertTablet(node);
       return StatusUtils.OK;
-    } catch (TriggerExecutionException e) {
+    } catch (TriggerExecutionException | WriteProcessException e) {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+      LOGGER.warn(
+          "Batch failure in executing a InsertTabletNode. device: {}, startTime: {}, measurements: {}, failing status: {}",
+          node.getDevicePath(),
+          node.getTimes()[0],
+          node.getMeasurements(),
+          e.getFailingStatus());
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
 
@@ -79,7 +84,18 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insert(node);
       return StatusUtils.OK;
     } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+      LOGGER.warn("Batch failure in executing a InsertRowsNode.");
+      // for each error
+      for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
+        InsertRowNode insertRowNode = node.getInsertRowNodeList().get(failedEntry.getKey());
+        LOGGER.warn(
+            "Insert row failed. device: {}, time: {}, measurements: {}, failing status: {}",
+            insertRowNode.getDevicePath(),
+            insertRowNode.getTime(),
+            insertRowNode.getMeasurements(),
+            failedEntry.getValue());
+      }
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
 
@@ -89,7 +105,18 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       dataRegion.insertTablets(node);
       return StatusUtils.OK;
     } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+      LOGGER.warn("Batch failure in executing a InsertMultiTabletsNode.");
+      for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
+        InsertTabletNode insertTabletNode =
+            node.getInsertTabletNodeList().get(failedEntry.getKey());
+        LOGGER.warn(
+            "Insert tablet failed. device: {}, startTime: {}, measurements: {}, failing status: {}",
+            insertTabletNode.getDevicePath(),
+            insertTabletNode.getTimes()[0],
+            insertTabletNode.getMeasurements(),
+            failedEntry.getValue());
+      }
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
 
@@ -103,14 +130,31 @@ public class DataExecutionVisitor extends PlanVisitor<TSStatus, DataRegion> {
       LOGGER.error("Error in executing plan node: {}", node, e);
       return StatusUtils.EXECUTE_STATEMENT_ERROR;
     } catch (BatchProcessException e) {
-      return RpcUtils.getStatus(Arrays.asList(e.getFailingStatus()));
+      LOGGER.warn("Batch failure in executing a InsertRowsOfOneDeviceNode.");
+      for (Map.Entry<Integer, TSStatus> failedEntry : node.getResults().entrySet()) {
+        InsertRowNode insertRowNode = node.getInsertRowNodeList().get(failedEntry.getKey());
+        LOGGER.warn(
+            "Insert row failed. device: {}, time: {}, measurements: {}, failing status: {}",
+            insertRowNode.getDevicePath(),
+            insertRowNode.getTime(),
+            insertRowNode.getMeasurements(),
+            failedEntry.getValue());
+      }
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
     }
   }
 
   @Override
-  public TSStatus visitDeleteRegion(DeleteRegionNode node, DataRegion dataRegion) {
-    dataRegion.syncDeleteDataFiles();
-    StorageEngineV2.getInstance().deleteDataRegion((DataRegionId) node.getConsensusGroupId());
-    return StatusUtils.OK;
+  public TSStatus visitDeleteData(DeleteDataNode node, DataRegion dataRegion) {
+    try {
+      for (PartialPath path : node.getPathList()) {
+        dataRegion.deleteByDevice(
+            path, node.getDeleteStartTime(), node.getDeleteEndTime(), Long.MAX_VALUE, null);
+      }
+      return StatusUtils.OK;
+    } catch (IOException e) {
+      LOGGER.error("Error in executing plan node: {}", node, e);
+      return StatusUtils.EXECUTE_STATEMENT_ERROR;
+    }
   }
 }
