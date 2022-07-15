@@ -432,8 +432,7 @@ public class ConfigManager implements IManager {
           (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionPlan);
       if (isContainedReplicaSet) {
         resp =
-            queryResult.convertToRpcSchemaPartitionResp(
-                getLoadManager().genRealTimeRoutingPolicy());
+            queryResult.convertToRpcSchemaPartitionResp(getLoadManager().genLatestRegionRouteMap());
       } else {
         resp = queryResult.convertToRpcSchemaPartitionTableResp();
       }
@@ -490,8 +489,7 @@ public class ConfigManager implements IManager {
               partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
       if (isContainedReplicaSet) {
         resp =
-            queryResult.convertToRpcSchemaPartitionResp(
-                getLoadManager().genRealTimeRoutingPolicy());
+            queryResult.convertToRpcSchemaPartitionResp(getLoadManager().genLatestRegionRouteMap());
       } else {
         resp = queryResult.convertToRpcSchemaPartitionTableResp();
       }
@@ -526,7 +524,7 @@ public class ConfigManager implements IManager {
               partitionManager.getNodePathsPartition(getNodePathsPartitionPlan);
       TSchemaNodeManagementResp result =
           resp.convertToRpcSchemaNodeManagementPartitionResp(
-              getLoadManager().genRealTimeRoutingPolicy());
+              getLoadManager().genLatestRegionRouteMap());
 
       // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
@@ -558,7 +556,7 @@ public class ConfigManager implements IManager {
           (DataPartitionResp) partitionManager.getDataPartition(getDataPartitionPlan);
 
       if (isContainedReplicaSet) {
-        resp = queryResult.convertToTDataPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
+        resp = queryResult.convertToTDataPartitionResp(getLoadManager().genLatestRegionRouteMap());
       } else {
         resp = queryResult.convertToTDataPartitionTableResp();
       }
@@ -597,7 +595,7 @@ public class ConfigManager implements IManager {
               partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
 
       if (isContainedReplicaSet) {
-        resp = queryResult.convertToTDataPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
+        resp = queryResult.convertToTDataPartitionResp(getLoadManager().genLatestRegionRouteMap());
       } else {
         resp = queryResult.convertToTDataPartitionTableResp();
       }
@@ -858,7 +856,7 @@ public class ConfigManager implements IManager {
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setTimestamp(System.currentTimeMillis());
-      resp.setRegionRouteMap(getLoadManager().genRealTimeRoutingPolicy());
+      resp.setRegionRouteMap(getLoadManager().genLatestRegionRouteMap());
     }
 
     return resp;

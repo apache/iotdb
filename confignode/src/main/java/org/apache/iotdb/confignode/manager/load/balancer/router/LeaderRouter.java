@@ -43,7 +43,7 @@ public class LeaderRouter implements IRouter {
   }
 
   @Override
-  public Map<TConsensusGroupId, TRegionReplicaSet> genRealTimeRoutingPolicy(
+  public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
       List<TRegionReplicaSet> replicaSets) {
     Map<TConsensusGroupId, TRegionReplicaSet> result = new ConcurrentHashMap<>();
 

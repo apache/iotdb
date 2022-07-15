@@ -90,7 +90,7 @@ public class LoadScoreGreedyRouterTest {
     /* Check result */
     Map<TConsensusGroupId, TRegionReplicaSet> result =
         new LoadScoreGreedyRouter(loadScoreMap)
-            .genRealTimeRoutingPolicy(Arrays.asList(regionReplicaSet1, regionReplicaSet2));
+            .genLatestRegionRouteMap(Arrays.asList(regionReplicaSet1, regionReplicaSet2));
     Assert.assertEquals(2, result.size());
 
     TRegionReplicaSet result1 = result.get(groupId1);
