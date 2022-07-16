@@ -21,6 +21,10 @@ package org.apache.iotdb.db.mpp.execution.operator;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 
+import io.airlift.units.Duration;
+
+import java.util.Objects;
+
 /**
  * Contains information about {@link Operator} execution.
  *
@@ -32,6 +36,8 @@ public class OperatorContext {
   private final PlanNodeId planNodeId;
   private final String operatorType;
   private final FragmentInstanceContext instanceContext;
+
+  private Duration maxRunTime;
 
   public OperatorContext(
       int operatorId,
@@ -48,7 +54,36 @@ public class OperatorContext {
     return operatorId;
   }
 
+  public String getOperatorType() {
+    return operatorType;
+  }
+
   public FragmentInstanceContext getInstanceContext() {
     return instanceContext;
+  }
+
+  public Duration getMaxRunTime() {
+    return maxRunTime;
+  }
+
+  public void setMaxRunTime(Duration maxRunTime) {
+    this.maxRunTime = maxRunTime;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    OperatorContext that = (OperatorContext) o;
+    return operatorId == that.operatorId;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(operatorId);
   }
 }

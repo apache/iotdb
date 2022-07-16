@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
@@ -36,16 +38,16 @@ import java.util.List;
 import java.util.Set;
 
 public class NodeManagementMemoryMergeNode extends ProcessNode {
-  private final Set<String> data;
+  private final Set<TSchemaNode> data;
 
   private PlanNode child;
 
-  public NodeManagementMemoryMergeNode(PlanNodeId id, Set<String> data) {
+  public NodeManagementMemoryMergeNode(PlanNodeId id, Set<TSchemaNode> data) {
     super(id);
     this.data = data;
   }
 
-  public Set<String> getData() {
+  public Set<TSchemaNode> getData() {
     return data;
   }
 
@@ -88,7 +90,7 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
     PlanNodeType.NODE_MANAGEMENT_MEMORY_MERGE.serialize(byteBuffer);
     int size = data.size();
     ReadWriteIOUtils.write(size, byteBuffer);
-    data.forEach(node -> ReadWriteIOUtils.write(node, byteBuffer));
+    data.forEach(node -> ThriftCommonsSerDeUtils.serializeTSchemaNode(node, byteBuffer));
   }
 
   @Override
@@ -96,16 +98,14 @@ public class NodeManagementMemoryMergeNode extends ProcessNode {
     PlanNodeType.NODE_MANAGEMENT_MEMORY_MERGE.serialize(stream);
     int size = data.size();
     ReadWriteIOUtils.write(size, stream);
-    for (String node : data) {
-      ReadWriteIOUtils.write(node, stream);
-    }
+    data.forEach(node -> ThriftCommonsSerDeUtils.serializeTSchemaNode(node, stream));
   }
 
   public static NodeManagementMemoryMergeNode deserialize(ByteBuffer byteBuffer) {
-    Set<String> data = new HashSet<>();
+    Set<TSchemaNode> data = new HashSet<>();
     int size = byteBuffer.getInt();
     for (int i = 0; i < size; i++) {
-      data.add(ReadWriteIOUtils.readString(byteBuffer));
+      data.add(ThriftCommonsSerDeUtils.deserializeTSchemaNode(byteBuffer));
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new NodeManagementMemoryMergeNode(planNodeId, data);
