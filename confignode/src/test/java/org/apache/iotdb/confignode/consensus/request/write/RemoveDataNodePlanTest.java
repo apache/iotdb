@@ -38,6 +38,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.fail;
+
 public class RemoveDataNodePlanTest {
   private RemoveDataNodePlan req1;
   private RemoveDataNodePlan req2;
@@ -134,7 +136,7 @@ public class RemoveDataNodePlanTest {
       RemoveDataNodePlan deSerializeReq = runPlanSerializeAndDeSerialize(false);
       Assert.assertEquals(req1, deSerializeReq);
     } catch (IOException e) {
-      // do nothing
+      fail(e.getMessage());
     }
   }
 
@@ -144,7 +146,7 @@ public class RemoveDataNodePlanTest {
       RemoveDataNodePlan deSerializeReq = runPlanSerializeAndDeSerialize(true);
       Assert.assertEquals(req1, deSerializeReq);
     } catch (IOException e) {
-      // do nothing
+      fail(e.getMessage());
     }
   }
 
