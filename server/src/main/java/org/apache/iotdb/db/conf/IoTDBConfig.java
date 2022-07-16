@@ -42,7 +42,6 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1887,7 +1886,8 @@ public class IoTDBConfig {
     return crossCompactionFileSelectionTimeBudget;
   }
 
-  void setCrossCompactionFileSelectionTimeBudget(long crossCompactionFileSelectionTimeBudget) {
+  public void setCrossCompactionFileSelectionTimeBudget(
+      long crossCompactionFileSelectionTimeBudget) {
     this.crossCompactionFileSelectionTimeBudget = crossCompactionFileSelectionTimeBudget;
   }
 
