@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -529,8 +530,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return matchedPathsInNextLevel;
   }
 
-  public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath partialPath) {
-    Pair<Set<String>, Set<PartialPath>> matchedPathsInNextLevel =
+  public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
+      PartialPath partialPath) {
+    Pair<Set<TSchemaNode>, Set<PartialPath>> matchedPathsInNextLevel =
         new Pair<>(new HashSet<>(), new HashSet<>());
     storageGroupReadWriteLock.readLock().lock();
     try {

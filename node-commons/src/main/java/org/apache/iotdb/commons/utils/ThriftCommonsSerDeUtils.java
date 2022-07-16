@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
@@ -47,6 +48,12 @@ public class ThriftCommonsSerDeUtils {
   private static TBinaryProtocol generateWriteProtocol(DataOutputStream stream)
       throws TTransportException {
     TTransport transport = new TIOStreamTransport(stream);
+    return new TBinaryProtocol(transport);
+  }
+
+  private static TBinaryProtocol generateWriteProtocol(ByteBuffer buffer)
+      throws TTransportException {
+    TTransport transport = new TByteBuffer(buffer);
     return new TBinaryProtocol(transport);
   }
 
@@ -185,5 +192,31 @@ public class ThriftCommonsSerDeUtils {
       throw new ThriftSerDeException("Read TRegionReplicaSet failed: ", e);
     }
     return regionReplicaSet;
+  }
+
+  public static void serializeTSchemaNode(TSchemaNode schemaNode, DataOutputStream stream) {
+    try {
+      schemaNode.write(generateWriteProtocol(stream));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TSchemaNode failed: ", e);
+    }
+  }
+
+  public static void serializeTSchemaNode(TSchemaNode schemaNode, ByteBuffer buffer) {
+    try {
+      schemaNode.write(generateWriteProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Write TSchemaNode failed: ", e);
+    }
+  }
+
+  public static TSchemaNode deserializeTSchemaNode(ByteBuffer buffer) {
+    TSchemaNode schemaNode = new TSchemaNode();
+    try {
+      schemaNode.read(generateReadProtocol(buffer));
+    } catch (TException e) {
+      throw new ThriftSerDeException("Read TSchemaNode failed: ", e);
+    }
+    return schemaNode;
   }
 }

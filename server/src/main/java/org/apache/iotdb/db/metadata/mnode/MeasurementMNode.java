@@ -253,4 +253,9 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   public boolean isMeasurement() {
     return true;
   }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.MEASUREMENT;
+  }
 }

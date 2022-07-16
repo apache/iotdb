@@ -140,7 +140,11 @@ public class StandaloneSchedulerTest {
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.wf01.wt01.status"));
     MPPQueryContext context =
         new MPPQueryContext(
-            "", new QueryId("query1"), new SessionInfo(), new TEndPoint(), new TEndPoint());
+            "",
+            new QueryId("query1"),
+            new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
+            new TEndPoint(),
+            new TEndPoint());
     ExecutorService executor = IoTDBThreadPoolFactory.newSingleThreadExecutor("Test");
     QueryStateMachine stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -239,7 +243,11 @@ public class StandaloneSchedulerTest {
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.wf01.GPS"));
     MPPQueryContext context =
         new MPPQueryContext(
-            "", new QueryId("query1"), new SessionInfo(), new TEndPoint(), new TEndPoint());
+            "",
+            new QueryId("query1"),
+            new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
+            new TEndPoint(),
+            new TEndPoint());
     ExecutorService executor = IoTDBThreadPoolFactory.newSingleThreadExecutor("Test");
     QueryStateMachine stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -348,7 +356,11 @@ public class StandaloneSchedulerTest {
     configNode.getBelongedSchemaRegionIdWithAutoCreate(new PartialPath("root.ln.d3"));
     MPPQueryContext context =
         new MPPQueryContext(
-            "", new QueryId("query1"), new SessionInfo(), new TEndPoint(), new TEndPoint());
+            "",
+            new QueryId("query1"),
+            new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
+            new TEndPoint(),
+            new TEndPoint());
     ExecutorService executor = IoTDBThreadPoolFactory.newSingleThreadExecutor("Test");
     QueryStateMachine stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -396,7 +408,11 @@ public class StandaloneSchedulerTest {
     configNode.getBelongedDataRegionIdWithAutoCreate(new PartialPath(deviceId));
     MPPQueryContext context =
         new MPPQueryContext(
-            "", new QueryId("query1"), new SessionInfo(), new TEndPoint(), new TEndPoint());
+            "",
+            new QueryId("query1"),
+            new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
+            new TEndPoint(),
+            new TEndPoint());
     ExecutorService executor = IoTDBThreadPoolFactory.newSingleThreadExecutor("Test");
     QueryStateMachine stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 
@@ -473,7 +489,11 @@ public class StandaloneSchedulerTest {
     configNode.getBelongedDataRegionIdWithAutoCreate(deviceId);
     MPPQueryContext context =
         new MPPQueryContext(
-            "", new QueryId("query1"), new SessionInfo(), new TEndPoint(), new TEndPoint());
+            "",
+            new QueryId("query1"),
+            new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
+            new TEndPoint(),
+            new TEndPoint());
     ExecutorService executor = IoTDBThreadPoolFactory.newSingleThreadExecutor("Test");
     QueryStateMachine stateMachine = new QueryStateMachine(context.getQueryId(), executor);
 

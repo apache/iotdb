@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
@@ -178,6 +179,11 @@ public class RInternalMNode extends RMNode {
   @Override
   public void setSchemaTemplate(Template schemaTemplate) {
     this.schemaTemplate = schemaTemplate;
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
   }
 
   @Override
