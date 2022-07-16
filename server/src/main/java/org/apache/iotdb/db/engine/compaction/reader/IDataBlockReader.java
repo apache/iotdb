@@ -16,13 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.compaction.reader;
 
-package org.apache.iotdb.confignode.client;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-public enum ConfigNodeRequestType {
-  ADD_CONSENSUS_GROUP,
-  NOTIFY_REGISTER_SUCCESS,
-  REGISTER_CONFIG_NODE,
-  REMOVE_CONFIG_NODE,
-  STOP_CONFIG_NODE;
+import java.io.IOException;
+
+public interface IDataBlockReader {
+  boolean hasNextBatch() throws IOException;
+
+  TsBlock nextBatch() throws IOException;
+
+  void close() throws IOException;
 }

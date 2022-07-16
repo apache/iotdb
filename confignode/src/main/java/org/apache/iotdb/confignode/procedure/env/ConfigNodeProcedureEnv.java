@@ -24,8 +24,8 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.exception.AddPeerException;
@@ -115,16 +115,16 @@ public class ConfigNodeProcedureEnv {
     for (TDataNodeInfo dataNodeInfo : allDataNodes) {
       final TSStatus invalidateSchemaStatus =
           SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNode(
+              .sendSyncRequestToDataNodeWithRetry(
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   invalidateCacheReq,
-                  DataNodeRequestType.invalidateSchemaCache);
+                  DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
       final TSStatus invalidatePartitionStatus =
           SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNode(
+              .sendSyncRequestToDataNodeWithRetry(
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   invalidateCacheReq,
-                  DataNodeRequestType.invalidatePartitionCache);
+                  DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
         LOG.error(
             "Invalidate cache failed, invalidate partition cache status is {}， invalidate schema cache status is {}",
@@ -151,10 +151,10 @@ public class ConfigNodeProcedureEnv {
         new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
     configNodeLocations.add(tConfigNodeLocation);
     SyncConfigNodeClientPool.getInstance()
-        .sendSyncRequestToConfigNode(
+        .sendSyncRequestToConfigNodeWithRetry(
             tConfigNodeLocation.getInternalEndPoint(),
             configNodeLocations,
-            ConfigNodeRequestType.addConsensusGroup);
+            ConfigNodeRequestType.ADD_CONSENSUS_GROUP);
   }
 
   /**
@@ -183,10 +183,10 @@ public class ConfigNodeProcedureEnv {
    */
   public void notifyRegisterSuccess(TConfigNodeLocation configNodeLocation) {
     SyncConfigNodeClientPool.getInstance()
-        .sendSyncRequestToConfigNode(
+        .sendSyncRequestToConfigNodeWithRetry(
             configNodeLocation.getInternalEndPoint(),
             null,
-            ConfigNodeRequestType.notifyRegisterSuccess);
+            ConfigNodeRequestType.NOTIFY_REGISTER_SUCCESS);
   }
 
   public ReentrantLock getAddConfigNodeLock() {
