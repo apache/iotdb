@@ -47,7 +47,7 @@ public class LogicOrExpression extends LogicBinaryExpression {
   }
 
   @Override
-  protected ColumnTransformer getConcreteBinaryTransformer(
+  protected ColumnTransformer getConcreteBinaryColumnTransformer(
       ColumnTransformer leftColumnTransformer,
       ColumnTransformer rightColumnTransformer,
       Type type) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -90,4 +91,6 @@ public interface Type {
    * after an expression projection within the query.
    */
   ColumnBuilder createColumnBuilder(int expectedEntries);
+
+  TSDataType getTsDataType();
 }

@@ -17,29 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.transformation.dag.column.leaf;
+package org.apache.iotdb.db.mpp.transformation.dag.util;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.read.common.type.Type;
+import java.util.Objects;
 
-public abstract class LeafColumnTransformer extends ColumnTransformer {
-  public LeafColumnTransformer(Expression expression, Type returnType) {
-    super(expression, returnType);
-  }
+public class TransformUtils {
 
-  @Override
-  public void evaluate() {
-    // do nothing
-  }
+  public static int compare(CharSequence cs1, CharSequence cs2) {
+    if (Objects.requireNonNull(cs1) == Objects.requireNonNull(cs2)) {
+      return 0;
+    }
 
-  @Override
-  public void reset() {
-    // do nothing
-  }
+    if (cs1.getClass() == cs2.getClass() && cs1 instanceof Comparable) {
+      return ((Comparable<Object>) cs1).compareTo(cs2);
+    }
 
-  @Override
-  public void checkType() {
-    // do nothing
+    for (int i = 0, len = Math.min(cs1.length(), cs2.length()); i < len; i++) {
+      char a = cs1.charAt(i);
+      char b = cs2.charAt(i);
+      if (a != b) {
+        return a - b;
+      }
+    }
+
+    return cs1.length() - cs2.length();
   }
 }

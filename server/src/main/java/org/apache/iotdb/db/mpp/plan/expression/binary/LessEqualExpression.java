@@ -47,7 +47,7 @@ public class LessEqualExpression extends CompareBinaryExpression {
   }
 
   @Override
-  protected ColumnTransformer getConcreteBinaryTransformer(
+  protected ColumnTransformer getConcreteBinaryColumnTransformer(
       ColumnTransformer leftColumnTransformer,
       ColumnTransformer rightColumnTransformer,
       Type type) {

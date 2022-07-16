@@ -29,6 +29,7 @@ import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,12 +63,16 @@ public class UDTFExecutor {
     reflectAndValidateUDF(childExpressions, childExpressionDataTypes, attributes);
     configurations.check();
 
-    collector =
-        ElasticSerializableTVList.newElasticSerializableTVList(
-            UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType()),
-            queryId,
-            collectorMemoryBudgetInMB,
-            1);
+    // Mappable UDF does not need PointCollector
+    if (!AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW.equals(
+        configurations.getAccessStrategy().getAccessStrategyType())) {
+      collector =
+          ElasticSerializableTVList.newElasticSerializableTVList(
+              UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType()),
+              queryId,
+              collectorMemoryBudgetInMB,
+              1);
+    }
   }
 
   private void reflectAndValidateUDF(

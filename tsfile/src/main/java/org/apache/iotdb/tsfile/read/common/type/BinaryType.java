@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
@@ -39,5 +40,10 @@ public class BinaryType implements Type {
   @Override
   public ColumnBuilder createColumnBuilder(int expectedEntries) {
     return new BinaryColumnBuilder(null, expectedEntries);
+  }
+
+  @Override
+  public TSDataType getTsDataType() {
+    return TSDataType.TEXT;
   }
 }

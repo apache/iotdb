@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.transformation.dag.column;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
@@ -41,6 +42,7 @@ public abstract class ColumnTransformer {
     this.columnCache = new ColumnCache();
     referenceCount = 1;
     hasEvaluated = false;
+    checkType();
   }
 
   public void tryEvaluate() {
@@ -67,8 +69,14 @@ public abstract class ColumnTransformer {
     return returnType;
   }
 
+  public TSDataType getTsDataType() {
+    return returnType.getTsDataType();
+  }
+
   /** Responsible for the calculation */
   public abstract void evaluate();
 
   public abstract void reset();
+
+  protected abstract void checkType();
 }

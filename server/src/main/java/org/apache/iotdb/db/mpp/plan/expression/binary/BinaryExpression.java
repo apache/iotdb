@@ -352,7 +352,7 @@ public abstract class BinaryExpression extends Expression {
         // and feed it with calculated data
         expressionColumnTransformerMap.put(
             this,
-            getConcreteBinaryTransformer(
+            getConcreteBinaryColumnTransformer(
                 null, null, TypeFactory.getType(typeProvider.getType(getExpressionString()))));
       } else {
         ColumnTransformer leftColumnTransformer =
@@ -371,7 +371,7 @@ public abstract class BinaryExpression extends Expression {
                 calculatedExpressions);
         expressionColumnTransformerMap.put(
             this,
-            getConcreteBinaryTransformer(
+            getConcreteBinaryColumnTransformer(
                 leftColumnTransformer,
                 rightColumnTransformer,
                 TypeFactory.getType(typeProvider.getType(getExpressionString()))));
@@ -380,7 +380,7 @@ public abstract class BinaryExpression extends Expression {
     return expressionColumnTransformerMap.get(this);
   }
 
-  protected abstract ColumnTransformer getConcreteBinaryTransformer(
+  protected abstract ColumnTransformer getConcreteBinaryColumnTransformer(
       ColumnTransformer leftColumnTransformer, ColumnTransformer rightColumnTransformer, Type type);
 
   protected abstract BinaryTransformer constructTransformer(

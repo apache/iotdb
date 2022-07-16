@@ -21,40 +21,33 @@ package org.apache.iotdb.db.mpp.transformation.dag.column.unary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-public abstract class UnaryColumnTransformer extends ColumnTransformer {
-  protected ColumnTransformer childColumnTransformer;
-
-  public UnaryColumnTransformer(
+public class LogicNotColumnTransformer extends UnaryColumnTransformer {
+  public LogicNotColumnTransformer(
       Expression expression, Type returnType, ColumnTransformer childColumnTransformer) {
-    super(expression, returnType);
-    this.childColumnTransformer = childColumnTransformer;
+    super(expression, returnType, childColumnTransformer);
   }
 
   @Override
-  public void evaluate() {
-    childColumnTransformer.tryEvaluate();
-    Column column = childColumnTransformer.getColumn();
-    ColumnBuilder columnBuilder = returnType.createColumnBuilder(column.getPositionCount());
-    doTransform(column, columnBuilder);
-    initializeColumnCache(columnBuilder.build());
-  }
-
-  @Override
-  public void reset() {
-    hasEvaluated = false;
-    if (childColumnTransformer != null) {
-      childColumnTransformer.reset();
+  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      if (!column.isNull(i)) {
+        returnType.writeBoolean(columnBuilder, !column.getBoolean(i));
+      } else {
+        columnBuilder.appendNull();
+      }
     }
   }
 
   @Override
   protected void checkType() {
-    // do nothing
+    if (!childColumnTransformer.getTsDataType().equals(TSDataType.BOOLEAN)) {
+      throw new UnSupportedDataTypeException(childColumnTransformer.getTsDataType().toString());
+    }
   }
-
-  protected abstract void doTransform(Column column, ColumnBuilder columnBuilder);
 }

@@ -20,12 +20,21 @@
 package org.apache.iotdb.db.mpp.transformation.dag.column.unary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnCache;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-public class TimeseriesColumnTransformer extends UnaryColumnTransformer {
-  public TimeseriesColumnTransformer(
-      Expression expression, Type returnType, ColumnCache columnCache) {
-    super(expression, returnType, columnCache);
+public class IsNullColumnTransformer extends UnaryColumnTransformer {
+  public IsNullColumnTransformer(
+      Expression expression, Type returnType, ColumnTransformer childColumnTransformer) {
+    super(expression, returnType, childColumnTransformer);
+  }
+
+  @Override
+  protected void doTransform(Column column, ColumnBuilder columnBuilder) {
+    for (int i = 0, n = column.getPositionCount(); i < n; i++) {
+      returnType.writeBoolean(columnBuilder, column.isNull(i));
+    }
   }
 }

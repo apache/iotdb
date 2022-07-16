@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
@@ -68,5 +69,10 @@ public class DoubleType implements Type {
   @Override
   public ColumnBuilder createColumnBuilder(int expectedEntries) {
     return new DoubleColumnBuilder(null, expectedEntries);
+  }
+
+  @Override
+  public TSDataType getTsDataType() {
+    return TSDataType.DOUBLE;
   }
 }

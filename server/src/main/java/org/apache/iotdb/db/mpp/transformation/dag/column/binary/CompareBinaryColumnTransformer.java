@@ -21,12 +21,13 @@ package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.util.TransformUtils;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.BinaryType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
-
-import java.util.Objects;
 
 public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransformer {
 
@@ -47,7 +48,7 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
         if (leftTransformer.getType() instanceof BinaryType) {
           flag =
               transform(
-                  compare(
+                  TransformUtils.compare(
                       leftTransformer.getType().getBinary(leftColumn, i).getStringValue(),
                       rightTransformer.getType().getBinary(rightColumn, i).getStringValue()));
         } else {
@@ -64,24 +65,16 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
     }
   }
 
-  protected int compare(CharSequence cs1, CharSequence cs2) {
-    if (Objects.requireNonNull(cs1) == Objects.requireNonNull(cs2)) {
-      return 0;
+  @Override
+  protected final void checkType() {
+    if (leftTransformer.getTsDataType().equals(rightTransformer.getTsDataType())) {
+      return;
     }
 
-    if (cs1.getClass() == cs2.getClass() && cs1 instanceof Comparable) {
-      return ((Comparable<Object>) cs1).compareTo(cs2);
+    if (leftTransformer.getTsDataType().equals(TSDataType.BOOLEAN)
+        || rightTransformer.getTsDataType().equals(TSDataType.BOOLEAN)) {
+      throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.toString());
     }
-
-    for (int i = 0, len = Math.min(cs1.length(), cs2.length()); i < len; i++) {
-      char a = cs1.charAt(i);
-      char b = cs2.charAt(i);
-      if (a != b) {
-        return a - b;
-      }
-    }
-
-    return cs1.length() - cs2.length();
   }
 
   protected int compare(double d1, double d2) {

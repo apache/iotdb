@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
@@ -46,6 +48,14 @@ public abstract class LogicBinaryColumnTransformer extends BinaryColumnTransform
       } else {
         builder.appendNull();
       }
+    }
+  }
+
+  @Override
+  protected void checkType() {
+    if (leftTransformer.getTsDataType() != TSDataType.BOOLEAN
+        || rightTransformer.getTsDataType() != TSDataType.BOOLEAN) {
+      throw new UnSupportedDataTypeException("Unsupported data type: " + TSDataType.BOOLEAN);
     }
   }
 

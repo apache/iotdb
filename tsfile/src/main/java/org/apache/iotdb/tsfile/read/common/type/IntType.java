@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.IntColumnBuilder;
@@ -68,5 +69,10 @@ public class IntType implements Type {
   @Override
   public ColumnBuilder createColumnBuilder(int expectedEntries) {
     return new IntColumnBuilder(null, expectedEntries);
+  }
+
+  @Override
+  public TSDataType getTsDataType() {
+    return TSDataType.INT32;
   }
 }

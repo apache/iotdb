@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ternary.TernaryColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
@@ -40,6 +41,8 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -177,8 +180,59 @@ public abstract class TernaryExpression extends Expression {
       Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
       TypeProvider typeProvider,
       Set<Expression> calculatedExpressions) {
-    return null;
+    if (expressionColumnTransformerMap.containsKey(this)) {
+      expressionColumnTransformerMap.get(this).addReferenceCount();
+    } else {
+      if (calculatedExpressions.contains(this)) {
+        // if calculated, further calculation is no longer needed, we construct a fake transformer
+        // and feed it with calculated data
+
+        expressionColumnTransformerMap.put(
+            this,
+            getConcreteTernaryTransformer(
+                null,
+                null,
+                null,
+                TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+      } else {
+        ColumnTransformer firstColumnTransformer =
+            firstExpression.constructColumnTransformer(
+                queryId,
+                udtfContext,
+                expressionColumnTransformerMap,
+                typeProvider,
+                calculatedExpressions);
+        ColumnTransformer secondColumnTransformer =
+            secondExpression.constructColumnTransformer(
+                queryId,
+                udtfContext,
+                expressionColumnTransformerMap,
+                typeProvider,
+                calculatedExpressions);
+        ColumnTransformer thirdColumnTransformer =
+            thirdExpression.constructColumnTransformer(
+                queryId,
+                udtfContext,
+                expressionColumnTransformerMap,
+                typeProvider,
+                calculatedExpressions);
+        expressionColumnTransformerMap.put(
+            this,
+            getConcreteTernaryTransformer(
+                firstColumnTransformer,
+                secondColumnTransformer,
+                thirdColumnTransformer,
+                TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+      }
+    }
+    return expressionColumnTransformerMap.get(this);
   }
+
+  protected abstract TernaryColumnTransformer getConcreteTernaryTransformer(
+      ColumnTransformer firstColumnTransformer,
+      ColumnTransformer secondColumnTransformer,
+      ColumnTransformer thirdColumnTransformer,
+      Type returnType);
 
   @Override
   public void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res) {

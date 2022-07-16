@@ -38,6 +38,8 @@ import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -198,8 +200,36 @@ public abstract class UnaryExpression extends Expression {
       Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
       TypeProvider typeProvider,
       Set<Expression> calculatedExpressions) {
-    return null;
+    if (expressionColumnTransformerMap.containsKey(this)) {
+      expressionColumnTransformerMap.get(this).addReferenceCount();
+    } else {
+      if (calculatedExpressions.contains(this)) {
+        // if calculated, further calculation is no longer needed, we construct a fake transformer
+        // and feed it with calculated data
+        expressionColumnTransformerMap.put(
+            this,
+            getConcreteUnaryColumnTransformer(
+                null, TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+      } else {
+        ColumnTransformer childColumnTransformer =
+            expression.constructColumnTransformer(
+                queryId,
+                udtfContext,
+                expressionColumnTransformerMap,
+                typeProvider,
+                calculatedExpressions);
+        expressionColumnTransformerMap.put(
+            this,
+            getConcreteUnaryColumnTransformer(
+                childColumnTransformer,
+                TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+      }
+    }
+    return expressionColumnTransformerMap.get(this);
   }
+
+  protected abstract ColumnTransformer getConcreteUnaryColumnTransformer(
+      ColumnTransformer childColumnTransformer, Type returnType);
 
   @Override
   public void collectSubexpressions(Set<Expression> expressions) {
