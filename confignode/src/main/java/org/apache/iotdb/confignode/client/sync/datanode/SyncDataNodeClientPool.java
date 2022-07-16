@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.client;
+package org.apache.iotdb.confignode.client.sync.datanode;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -25,6 +25,8 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.confignode.client.ConfigNodeClientPoolFactory;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
@@ -62,25 +64,25 @@ public class SyncDataNodeClientPool {
                 new ConfigNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
-  public TSStatus sendSyncRequestToDataNode(
+  public TSStatus sendSyncRequestToDataNodeWithRetry(
       TEndPoint endPoint, Object req, DataNodeRequestType requestType) {
     Throwable lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncDataNodeInternalServiceClient client = clientManager.borrowClient(endPoint)) {
         switch (requestType) {
-          case invalidatePartitionCache:
+          case INVALIDATE_PARTITION_CACHE:
             return client.invalidatePartitionCache((TInvalidateCacheReq) req);
-          case invalidateSchemaCache:
+          case INVALIDATE_SCHEMA_CACHE:
             return client.invalidateSchemaCache((TInvalidateCacheReq) req);
-          case deleteRegions:
+          case DELETE_REGIONS:
             return client.deleteRegion((TConsensusGroupId) req);
-          case invalidatePermissionCache:
+          case INVALIDATE_PERMISSION_CACHE:
             return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
-          case migrateRegion:
+          case MIGRATE_REGION:
             return client.migrateRegion((TMigrateRegionReq) req);
-          case disableDataNode:
+          case DISABLE_DATA_NODE:
             return client.disableDataNode((TDisableDataNodeReq) req);
-          case stopDataNode:
+          case STOP_DATA_NODE:
             return client.stopDataNode();
           default:
             return RpcUtils.getStatus(
@@ -125,7 +127,8 @@ public class SyncDataNodeClientPool {
     for (TConsensusGroupId regionId : regionIds) {
       LOGGER.debug("Delete region {} ", regionId);
       final TSStatus status =
-          sendSyncRequestToDataNode(endPoint, regionId, DataNodeRequestType.deleteRegions);
+          sendSyncRequestToDataNodeWithRetry(
+              endPoint, regionId, DataNodeRequestType.DELETE_REGIONS);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         LOGGER.info("DELETE Region {} successfully", regionId);
         deletedRegionSet.removeIf(k -> k.getRegionId().equals(regionId));

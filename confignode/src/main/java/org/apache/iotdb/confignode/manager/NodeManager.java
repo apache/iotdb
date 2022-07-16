@@ -25,8 +25,10 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
-import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.handlers.FlushHandler;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
+import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
@@ -53,10 +55,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /** NodeManager manages cluster node addition and removal requests */
@@ -452,19 +458,23 @@ public class NodeManager {
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
     CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
+    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
+    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    AtomicInteger index = new AtomicInteger();
     for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
-      AsyncDataNodeClientPool.getInstance()
-          .flush(
-              dataNodeInfo.getLocation().getInternalEndPoint(),
-              req,
-              new FlushHandler(dataNodeInfo.getLocation(), countDownLatch, dataNodeResponseStatus));
+      handlerMap.put(
+          index.get(),
+          new FlushHandler(
+              dataNodeInfo.getLocation(),
+              countDownLatch,
+              DataNodeRequestType.FLUSH,
+              dataNodeResponseStatus,
+              dataNodeLocations,
+              index.get()));
+      dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
     }
-    try {
-      countDownLatch.await();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.error("NodeManager was interrupted during flushing on data nodes", e);
-    }
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(req, handlerMap, dataNodeLocations);
     return dataNodeResponseStatus;
   }
 

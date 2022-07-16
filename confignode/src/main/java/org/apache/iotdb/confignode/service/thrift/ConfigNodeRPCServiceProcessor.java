@@ -29,7 +29,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -461,10 +461,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       status =
           (TSStatus)
               SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNode(
+                  .sendSyncRequestToConfigNodeWithRetry(
                       configNodeLocation.getInternalEndPoint(),
                       configNodeLocation,
-                      ConfigNodeRequestType.stopConfigNode);
+                      ConfigNodeRequestType.STOP_CONFIG_NODE);
     }
 
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
