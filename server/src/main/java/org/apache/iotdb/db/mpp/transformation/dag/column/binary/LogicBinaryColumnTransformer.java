@@ -37,14 +37,21 @@ public abstract class LogicBinaryColumnTransformer extends BinaryColumnTransform
   }
 
   @Override
-  protected void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder builder) {
-    for (int i = 0, n = leftColumn.getPositionCount(); i < n; i++) {
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         returnType.writeBoolean(
             builder,
             transform(
                 leftTransformer.getType().getBoolean(leftColumn, i),
                 rightTransformer.getType().getBoolean(rightColumn, i)));
+      } else if (!leftColumn.isNull(i)) {
+        returnType.writeBoolean(
+            builder, transform(leftTransformer.getType().getBoolean(leftColumn, i), false));
+      } else if (!rightColumn.isNull(i)) {
+        returnType.writeBoolean(
+            builder, transform(false, rightTransformer.getType().getBoolean(rightColumn, i)));
       } else {
         builder.appendNull();
       }
@@ -53,6 +60,9 @@ public abstract class LogicBinaryColumnTransformer extends BinaryColumnTransform
 
   @Override
   protected void checkType() {
+    if (leftTransformer == null || rightTransformer == null) {
+      return;
+    }
     if (leftTransformer.getTsDataType() != TSDataType.BOOLEAN
         || rightTransformer.getTsDataType() != TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException("Unsupported data type: " + TSDataType.BOOLEAN);

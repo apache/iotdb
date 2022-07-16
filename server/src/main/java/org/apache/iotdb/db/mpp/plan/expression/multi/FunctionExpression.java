@@ -31,6 +31,8 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TransparentColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.MultiInputColumnIntermediateLayer;
@@ -50,6 +52,7 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
@@ -324,7 +327,54 @@ public class FunctionExpression extends Expression {
       Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
       TypeProvider typeProvider,
       Set<Expression> calculatedExpressions) {
-    return null;
+    if (expressionColumnTransformerMap.containsKey(this)) {
+      expressionColumnTransformerMap.get(this).addReferenceCount();
+    } else {
+      if (isBuiltInAggregationFunctionExpression) {
+        expressionColumnTransformerMap.put(
+            this,
+            new TransparentColumnTransformer(
+                this, TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+      } else {
+        if (calculatedExpressions.contains(this)) {
+          expressionColumnTransformerMap.put(
+              this,
+              new MappableUDFColumnTransformer(
+                  this,
+                  TypeFactory.getType(typeProvider.getType(getExpressionString())),
+                  null,
+                  null,
+                  null));
+        } else {
+          ColumnTransformer[] inputColumnTransformers =
+              expressions.stream()
+                  .map(
+                      expression ->
+                          expression.constructColumnTransformer(
+                              queryId,
+                              udtfContext,
+                              expressionColumnTransformerMap,
+                              typeProvider,
+                              calculatedExpressions))
+                  .toArray(ColumnTransformer[]::new);
+
+          TSDataType[] inputDataTypes =
+              expressions.stream()
+                  .map(expression -> expression.inferTypes(typeProvider))
+                  .toArray(TSDataType[]::new);
+
+          expressionColumnTransformerMap.put(
+              this,
+              new MappableUDFColumnTransformer(
+                  this,
+                  TypeFactory.getType(typeProvider.getType(getExpressionString())),
+                  inputColumnTransformers,
+                  inputDataTypes,
+                  udtfContext.getExecutorByFunctionExpression(this)));
+        }
+      }
+    }
+    return expressionColumnTransformerMap.get(this);
   }
 
   @Override

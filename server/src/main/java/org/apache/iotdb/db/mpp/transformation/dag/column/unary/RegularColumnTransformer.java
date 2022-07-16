@@ -46,7 +46,10 @@ public class RegularColumnTransformer extends UnaryColumnTransformer {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
         returnType.writeBoolean(
-            columnBuilder, pattern.matcher(column.getBinary(i).getStringValue()).find());
+            columnBuilder,
+            pattern
+                .matcher(childColumnTransformer.getType().getBinary(column, i).getStringValue())
+                .find());
       } else {
         columnBuilder.appendNull();
       }
@@ -55,6 +58,9 @@ public class RegularColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void checkType() {
+    if (childColumnTransformer == null) {
+      return;
+    }
     if (!childColumnTransformer.getTsDataType().equals(TSDataType.TEXT)) {
       throw new UnSupportedDataTypeException(childColumnTransformer.getTsDataType().toString());
     }

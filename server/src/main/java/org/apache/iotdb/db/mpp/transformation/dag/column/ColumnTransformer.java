@@ -74,7 +74,7 @@ public abstract class ColumnTransformer {
   }
 
   /** Responsible for the calculation */
-  public abstract void evaluate();
+  protected abstract void evaluate();
 
   public abstract void reset();
 

@@ -55,6 +55,10 @@ public interface Type {
   default Binary getBinary(Column c, int position) {
     throw new UnsupportedOperationException(getClass().getName());
   }
+  /** Gets a Object at {@code position}. */
+  default Object getObject(Column c, int position) {
+    return c.getObject(position);
+  }
 
   /** Write a boolean to the current entry; */
   default void writeBoolean(ColumnBuilder builder, boolean value) {
@@ -84,6 +88,11 @@ public interface Type {
   /** Write a Binary to the current entry; */
   default void writeBinary(ColumnBuilder builder, Binary value) {
     throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Write a Object to the current entry; */
+  default void writeObject(ColumnBuilder builder, Object value) {
+    builder.writeObject(value);
   }
 
   /**

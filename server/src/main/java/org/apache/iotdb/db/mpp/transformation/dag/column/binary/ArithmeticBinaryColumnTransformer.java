@@ -37,8 +37,9 @@ public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTran
   }
 
   @Override
-  protected void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder builder) {
-    for (int i = 0, n = leftColumn.getPositionCount(); i < n; i++) {
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         returnType.writeDouble(
             builder,
@@ -53,6 +54,9 @@ public abstract class ArithmeticBinaryColumnTransformer extends BinaryColumnTran
 
   @Override
   protected void checkType() {
+    if (leftTransformer == null || rightTransformer == null) {
+      return;
+    }
     if (leftTransformer.getTsDataType() == TSDataType.BOOLEAN
         || rightTransformer.getTsDataType() == TSDataType.BOOLEAN) {
       throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.name());

@@ -50,13 +50,25 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
     Column firstColumn = firstColumnTransformer.getColumn();
     Column secondColumn = secondColumnTransformer.getColumn();
     Column thirdColumn = thirdColumnTransformer.getColumn();
-    ColumnBuilder columnBuilder = returnType.createColumnBuilder(firstColumn.getPositionCount());
-    doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder);
+    int positionCount = firstColumn.getPositionCount();
+    if (positionCount < 0) {
+      positionCount =
+          secondColumn.getPositionCount() >= 0
+              ? secondColumn.getPositionCount()
+              : thirdColumn.getPositionCount();
+    }
+    ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
+    doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount);
     initializeColumnCache(columnBuilder.build());
   }
 
   @Override
   protected final void checkType() {
+    if (firstColumnTransformer == null
+        || secondColumnTransformer == null
+        || thirdColumnTransformer == null) {
+      return;
+    }
     if ((firstColumnTransformer.getTsDataType()).equals(secondColumnTransformer.getTsDataType())
         && (firstColumnTransformer.getTsDataType())
             .equals(thirdColumnTransformer.getTsDataType())) {
@@ -71,5 +83,9 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
   }
 
   protected abstract void doTransform(
-      Column firstColumn, Column secondColumn, Column thirdColumn, ColumnBuilder builder);
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      int positionCount);
 }

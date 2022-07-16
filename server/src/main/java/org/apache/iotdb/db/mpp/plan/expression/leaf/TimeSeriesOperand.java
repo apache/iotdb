@@ -29,7 +29,7 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeSeriesColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TransparentColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
@@ -185,7 +185,7 @@ public class TimeSeriesOperand extends LeafOperand {
     } else {
       expressionColumnTransformerMap.put(
           this,
-          new TimeSeriesColumnTransformer(
+          new TransparentColumnTransformer(
               this, TypeFactory.getType(typeProvider.getType(getExpressionString()))));
     }
     return expressionColumnTransformerMap.get(this);

@@ -131,9 +131,10 @@ public class ConstantColumn implements Column {
     return false;
   }
 
+  // we return -1 here to represent that it's ConstantColumn
   @Override
   public int getPositionCount() {
-    throw new UnsupportedOperationException(getClass().getName());
+    return -1;
   }
 
   @Override

@@ -37,7 +37,8 @@ public class ArithmeticNegationColumnTransformer extends UnaryColumnTransformer 
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        returnType.writeDouble(columnBuilder, -column.getDouble(i));
+        returnType.writeDouble(
+            columnBuilder, -childColumnTransformer.getType().getDouble(column, i));
       } else {
         columnBuilder.appendNull();
       }
@@ -46,6 +47,9 @@ public class ArithmeticNegationColumnTransformer extends UnaryColumnTransformer 
 
   @Override
   protected final void checkType() {
+    if (childColumnTransformer == null) {
+      return;
+    }
     TSDataType childType = childColumnTransformer.getTsDataType();
     if (!(childType.equals(TSDataType.INT32)
         || childType.equals(TSDataType.INT64)

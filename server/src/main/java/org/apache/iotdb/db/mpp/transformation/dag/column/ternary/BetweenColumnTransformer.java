@@ -48,8 +48,12 @@ public class BetweenColumnTransformer extends CompareTernaryColumnTransformer {
 
   @Override
   protected void doTransform(
-      Column firstColumn, Column secondColumn, Column thirdColumn, ColumnBuilder builder) {
-    for (int i = 0, n = firstColumn.getPositionCount(); i < n; i++) {
+      Column firstColumn,
+      Column secondColumn,
+      Column thirdColumn,
+      ColumnBuilder builder,
+      int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
       if (!firstColumn.isNull(i) && !secondColumn.isNull(i) && !thirdColumn.isNull(i)) {
         boolean flag;
         if (firstColumnTransformer.getType() instanceof BinaryType) {
@@ -87,6 +91,7 @@ public class BetweenColumnTransformer extends CompareTernaryColumnTransformer {
                           <= 0))
                   ^ isNotBetween;
         }
+        returnType.writeBoolean(builder, flag);
       } else {
         builder.appendNull();
       }

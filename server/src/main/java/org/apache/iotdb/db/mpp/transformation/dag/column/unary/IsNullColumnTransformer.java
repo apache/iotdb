@@ -26,15 +26,22 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public class IsNullColumnTransformer extends UnaryColumnTransformer {
+
+  private final boolean isNot;
+
   public IsNullColumnTransformer(
-      Expression expression, Type returnType, ColumnTransformer childColumnTransformer) {
+      Expression expression,
+      Type returnType,
+      ColumnTransformer childColumnTransformer,
+      boolean isNot) {
     super(expression, returnType, childColumnTransformer);
+    this.isNot = isNot;
   }
 
   @Override
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
-      returnType.writeBoolean(columnBuilder, column.isNull(i));
+      returnType.writeBoolean(columnBuilder, column.isNull(i) ^ isNot);
     }
   }
 }

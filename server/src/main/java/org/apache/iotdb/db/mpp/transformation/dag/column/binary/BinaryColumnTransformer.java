@@ -47,8 +47,12 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
     rightTransformer.tryEvaluate();
     Column leftColumn = leftTransformer.getColumn();
     Column rightColumn = rightTransformer.getColumn();
-    ColumnBuilder builder = returnType.createColumnBuilder(leftColumn.getPositionCount());
-    doTransform(leftColumn, rightColumn, builder);
+    int positionCount =
+        leftColumn.getPositionCount() >= 0
+            ? leftColumn.getPositionCount()
+            : rightColumn.getPositionCount();
+    ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
+    doTransform(leftColumn, rightColumn, builder, positionCount);
     initializeColumnCache(builder.build());
   }
 
@@ -63,7 +67,8 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
     }
   }
 
-  protected abstract void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder builder);
+  protected abstract void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount);
 
   public ColumnTransformer getLeftTransformer() {
     return leftTransformer;

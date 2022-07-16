@@ -21,6 +21,8 @@ package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public class CompareEqualToColumnTransformer extends CompareBinaryColumnTransformer {
@@ -30,6 +32,23 @@ public class CompareEqualToColumnTransformer extends CompareBinaryColumnTransfor
       ColumnTransformer leftTransformer,
       ColumnTransformer rightTransformer) {
     super(expression, returnType, leftTransformer, rightTransformer);
+  }
+
+  @Override
+  protected final void checkType() {
+    if (leftTransformer == null || rightTransformer == null) {
+      return;
+    }
+
+    if (leftTransformer.getTsDataType().equals(rightTransformer.getTsDataType())) {
+      return;
+    }
+
+    // Boolean type can not be compared with other types
+    if (leftTransformer.getTsDataType().equals(TSDataType.BOOLEAN)
+        || rightTransformer.getTsDataType().equals(TSDataType.BOOLEAN)) {
+      throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.toString());
+    }
   }
 
   @Override

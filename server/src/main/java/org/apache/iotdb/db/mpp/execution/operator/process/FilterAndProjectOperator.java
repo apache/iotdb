@@ -146,8 +146,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
   }
 
-  private void initTransformer(ZoneId zoneId, TypeProvider typeProvider)
-      throws QueryProcessException {
+  private void initTransformer(ZoneId zoneId, TypeProvider typeProvider) {
     this.outputUDTFContext = new UDTFContext(zoneId);
     outputUDTFContext.constructUdfExecutors(outputExpressions);
     outputColumnTransformers = new ColumnTransformer[outputExpressions.length];
@@ -186,8 +185,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
   public TsBlock next() {
     // reset ColumnTransformer for next input
     predicateColumnTransformer.reset();
-    for (ColumnTransformer columnTransformer : outputColumnTransformers) {
-      columnTransformer.reset();
+
+    if (!hasNonMappableUDF) {
+      for (ColumnTransformer columnTransformer : outputColumnTransformers) {
+        columnTransformer.reset();
+      }
     }
 
     TsBlock input = inputOperator.next();
@@ -245,36 +247,30 @@ public class FilterAndProjectOperator implements ProcessOperator {
       resultColumns.add(input.getColumn(i));
     }
 
-    // get result of calculated common sub expressions
-    for (Expression expression : commonSubexpressions) {
-      resultColumns.add(predicateMap.get(expression).getColumn());
+    // todo: remove this if, add calculated common sub expressions anyway
+    if (!hasNonMappableUDF) {
+      // get result of calculated common sub expressions
+      for (Expression expression : commonSubexpressions) {
+        resultColumns.add(predicateMap.get(expression).getColumn());
+      }
     }
 
     // construct result TsBlock of filter
     int rowCount = 0;
-    if (isAscending) {
-      for (int i = 0, n = filterColumn.getPositionCount(), m = resultColumns.size(); i < n; i++) {
-        if (filterColumn.getBoolean(i)) {
-          rowCount++;
-          timeBuilder.writeLong(originTimeColumn.getLong(i));
-          for (int j = 0; j < m; j++) {
-            columnBuilders[j].write(resultColumns.get(j), i);
-          }
-        }
-      }
-    } else {
-      for (int n = filterColumn.getPositionCount(), m = resultColumns.size(), i = n - 1;
-          i >= 0;
-          i--) {
-        if (filterColumn.getBoolean(i)) {
-          rowCount++;
-          timeBuilder.writeLong(originTimeColumn.getLong(i));
-          for (int j = 0; j < m; j++) {
+    for (int i = 0, n = filterColumn.getPositionCount(), m = resultColumns.size(); i < n; i++) {
+      if (filterColumn.getBoolean(i)) {
+        rowCount++;
+        timeBuilder.writeLong(originTimeColumn.getLong(i));
+        for (int j = 0; j < m; j++) {
+          if (resultColumns.get(j).isNull(i)) {
+            columnBuilders[j].appendNull();
+          } else {
             columnBuilders[j].write(resultColumns.get(j), i);
           }
         }
       }
     }
+
     tsBlockBuilder.declarePositions(rowCount);
     return tsBlockBuilder.build();
   }
@@ -324,7 +320,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
     for (int i = 0; i < positionCount; i++) {
       timeBuilder.writeLong(originTimeColumn.getLong(i));
       for (int j = 0, m = resultColumns.size(); j < m; j++) {
-        columnBuilders[j].write(resultColumns.get(j), i);
+        if (resultColumns.get(j).isNull(i)) {
+          columnBuilders[j].appendNull();
+        } else {
+          columnBuilders[j].write(resultColumns.get(j), i);
+        }
       }
     }
     tsBlockBuilder.declarePositions(positionCount);

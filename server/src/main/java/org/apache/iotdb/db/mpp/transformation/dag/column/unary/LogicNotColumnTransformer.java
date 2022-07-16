@@ -37,7 +37,8 @@ public class LogicNotColumnTransformer extends UnaryColumnTransformer {
   protected void doTransform(Column column, ColumnBuilder columnBuilder) {
     for (int i = 0, n = column.getPositionCount(); i < n; i++) {
       if (!column.isNull(i)) {
-        returnType.writeBoolean(columnBuilder, !column.getBoolean(i));
+        returnType.writeBoolean(
+            columnBuilder, !childColumnTransformer.getType().getBoolean(column, i));
       } else {
         columnBuilder.appendNull();
       }
@@ -46,6 +47,9 @@ public class LogicNotColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void checkType() {
+    if (childColumnTransformer == null) {
+      return;
+    }
     if (!childColumnTransformer.getTsDataType().equals(TSDataType.BOOLEAN)) {
       throw new UnSupportedDataTypeException(childColumnTransformer.getTsDataType().toString());
     }

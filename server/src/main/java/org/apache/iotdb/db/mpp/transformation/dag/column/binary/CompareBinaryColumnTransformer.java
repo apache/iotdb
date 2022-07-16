@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.type.BinaryType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransformer {
@@ -40,17 +39,24 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
   }
 
   @Override
-  protected void doTransform(Column leftColumn, Column rightColumn, ColumnBuilder builder) {
-    for (int i = 0, n = leftColumn.getPositionCount(); i < n; i++) {
+  protected void doTransform(
+      Column leftColumn, Column rightColumn, ColumnBuilder builder, int positionCount) {
+    for (int i = 0; i < positionCount; i++) {
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         boolean flag;
         // compare binary type
-        if (leftTransformer.getType() instanceof BinaryType) {
+        if (leftTransformer.getTsDataType().equals(TSDataType.TEXT)) {
           flag =
               transform(
                   TransformUtils.compare(
                       leftTransformer.getType().getBinary(leftColumn, i).getStringValue(),
                       rightTransformer.getType().getBinary(rightColumn, i).getStringValue()));
+        } else if (leftTransformer.getTsDataType().equals(TSDataType.BOOLEAN)) {
+          flag =
+              transform(
+                  Boolean.compare(
+                      leftTransformer.getType().getBoolean(leftColumn, i),
+                      rightTransformer.getType().getBoolean(rightColumn, i)));
         } else {
           flag =
               transform(
@@ -66,14 +72,18 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
   }
 
   @Override
-  protected final void checkType() {
-    if (leftTransformer.getTsDataType().equals(rightTransformer.getTsDataType())) {
+  protected void checkType() {
+    if (leftTransformer == null || rightTransformer == null) {
       return;
     }
 
+    // Boolean type can only be compared by == or !=
     if (leftTransformer.getTsDataType().equals(TSDataType.BOOLEAN)
         || rightTransformer.getTsDataType().equals(TSDataType.BOOLEAN)) {
       throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.toString());
+    }
+    if (leftTransformer.getTsDataType().equals(rightTransformer.getTsDataType())) {
+      return;
     }
   }
 

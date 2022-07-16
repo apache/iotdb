@@ -60,17 +60,23 @@ public class InColumnTransformer extends UnaryColumnTransformer {
         switch (childType) {
           case INT32:
             returnType.writeBoolean(columnBuilder, satisfy.of(column.getInt(i)));
+            break;
           case INT64:
             returnType.writeBoolean(columnBuilder, satisfy.of(column.getLong(i)));
+            break;
           case FLOAT:
             returnType.writeBoolean(columnBuilder, satisfy.of(column.getFloat(i)));
+            break;
           case DOUBLE:
             returnType.writeBoolean(columnBuilder, satisfy.of(column.getDouble(i)));
+            break;
           case BOOLEAN:
             returnType.writeBoolean(columnBuilder, satisfy.of(column.getBoolean(i)));
+            break;
           case TEXT:
             returnType.writeBoolean(
                 columnBuilder, satisfy.of(column.getBinary(i).getStringValue()));
+            break;
           default:
             throw new UnsupportedOperationException(
                 "unsupported data type: " + returnType.getTsDataType());
