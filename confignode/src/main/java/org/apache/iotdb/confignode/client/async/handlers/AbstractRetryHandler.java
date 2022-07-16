@@ -57,6 +57,10 @@ public abstract class AbstractRetryHandler {
     this.countDownLatch = countDownLatch;
   }
 
+  public CountDownLatch getCountDownLatch() {
+    return countDownLatch;
+  }
+
   public Map<Integer, TDataNodeLocation> getDataNodeLocations() {
     return dataNodeLocations;
   }

@@ -96,7 +96,7 @@ public class AsyncDataNodeClientPool {
         sendAsyncRequestToDataNode(entry.getValue(), req, handler, retry);
       }
       try {
-        countDownLatch.await();
+        handler.getCountDownLatch().await();
       } catch (InterruptedException e) {
         LOGGER.error("Interrupted during {} on ConfigNode", handler.getDataNodeRequestType());
       }
