@@ -100,11 +100,21 @@ public class kafkaTest {
     KafkaWriter kw = kf.get();
     try {
       kw.open();
+
       String[] Timeseries = {"root", "a", "b"};
       kw.createTimeSeries(Timeseries, DataType.BOOLEAN);
       kw.insertBoolean(Timeseries, 123, true);
       kw.delete(Timeseries, 123);
       kw.deleteTimeSeries(Timeseries);
+
+      String[] Timeseries2 = {"root", "a", "c"};
+      kw.createTimeSeries(Timeseries2, DataType.VECTOR);
+      kw.insertVector(
+          Timeseries2,
+          new DataType[] {DataType.DOUBLE, DataType.TEXT},
+          133,
+          new Object[] {12.3, "testing"});
+
       kw.flush();
       kw.close();
     } catch (Exception e) {
