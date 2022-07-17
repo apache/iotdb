@@ -68,6 +68,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -1034,6 +1035,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   public ChunkHeader readChunkHeader(byte chunkType) throws IOException {
     try {
       return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), chunkType);
+    } catch (ClosedByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.error("Exception happened while reading chunk header of {}", file, t);
       throw t;
@@ -1049,6 +1052,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   private ChunkHeader readChunkHeader(long position, int chunkHeaderSize) throws IOException {
     try {
       return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize);
+    } catch (ClosedByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.error("Exception happened while reading chunk header of {}", file, t);
       throw t;
@@ -1065,6 +1070,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   private ByteBuffer readChunk(long position, int dataSize) throws IOException {
     try {
       return readData(position, dataSize);
+    } catch (ClosedByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.error("Exception happened while reading chunk of {}", file, t);
       throw t;
@@ -1085,6 +1092,8 @@ public class TsFileSequenceReader implements AutoCloseable {
           readChunk(
               metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
       return new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
+    } catch (ClosedByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.error("Exception happened while reading chunk of {}", file, t);
       throw t;
@@ -1116,6 +1125,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   public PageHeader readPageHeader(TSDataType type, boolean hasStatistic) throws IOException {
     try {
       return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, hasStatistic);
+    } catch (ClosedByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.error("Exception happened while reading page header of {}", file, t);
       throw t;
@@ -1234,6 +1245,8 @@ public class TsFileSequenceReader implements AutoCloseable {
   protected ByteBuffer readData(long start, long end) throws IOException {
     try {
       return readData(start, (int) (end - start));
+    } catch (ClosedByInterruptException e) {
+      throw e;
     } catch (Throwable t) {
       logger.error("Exception happened while reading data of {}", file, t);
       throw t;
