@@ -32,7 +32,6 @@ import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
@@ -117,6 +116,9 @@ public class NodeManager {
       registerDataNodePlan.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextNodeId());
       getConsensusManager().write(registerDataNodePlan);
 
+      // Adjust the maximum RegionGroup number of each StorageGroup
+      getClusterSchemaManager().adjustMaxRegionGroupCount();
+
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("registerDataNode success.");
     }
@@ -126,28 +128,6 @@ public class NodeManager {
     dataSet.setConfigNodeList(getRegisteredConfigNodes());
     setGlobalConfig(dataSet);
     return dataSet;
-  }
-
-  /**
-   * Active DataNode
-   *
-   * @param activateDataNodePlan ActiveDataNodeReq
-   * @return TSStatus The TSStatus will be set to SUCCESS_STATUS when active success, and
-   *     DATANODE_ALREADY_REGISTERED when the DataNode is already exist.
-   */
-  public TSStatus activateDataNode(ActivateDataNodePlan activateDataNodePlan) {
-    TSStatus status = new TSStatus();
-    if (nodeInfo.isRegisteredDataNode(activateDataNodePlan.getInfo().getLocation())) {
-      status.setCode(TSStatusCode.DATANODE_ALREADY_ACTIVATED.getStatusCode());
-      status.setMessage("DataNode already activated.");
-    } else {
-      getConsensusManager().write(activateDataNodePlan);
-      // Adjust the maximum RegionGroup number of each StorageGroup
-      getClusterSchemaManager().adjustMaxRegionGroupCount();
-      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("activateDataNode success.");
-    }
-    return status;
   }
 
   /**

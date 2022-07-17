@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePla
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
@@ -163,8 +162,6 @@ public class ConfigPlanExecutor {
     switch (req.getType()) {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodePlan) req);
-      case ActivateDataNode:
-        return nodeInfo.activateDataNode((ActivateDataNodePlan) req);
       case RemoveDataNode:
         return nodeInfo.removeDataNode((RemoveDataNodePlan) req);
       case SetStorageGroup:
