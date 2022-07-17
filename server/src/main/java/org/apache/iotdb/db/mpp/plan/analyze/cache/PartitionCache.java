@@ -651,6 +651,10 @@ public class PartitionCache {
         cachedSeriesPartitionTable.getSeriesPartitionMap();
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
         seriesSlotToTimePartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
+    // Notice: when query all time partition, then miss
+    if (0 == dataPartitionQueryParam.getTimePartitionSlotList().size()) {
+      return false;
+    }
     // check cache for each time partition
     for (TTimePartitionSlot timePartitionSlot :
         dataPartitionQueryParam.getTimePartitionSlotList()) {
