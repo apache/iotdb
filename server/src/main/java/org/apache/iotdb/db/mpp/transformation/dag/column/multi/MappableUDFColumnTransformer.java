@@ -65,7 +65,11 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
 
       Object[] values = new Object[size];
       for (int j = 0; j < size; j++) {
-        values[j] = columns[j].getObject(i);
+        if (columns[j].isNull(j)) {
+          values[j] = null;
+        } else {
+          values[j] = columns[j].getObject(i);
+        }
       }
       // construct input row for executor
       ElasticSerializableRowRecordListBackedMultiColumnRow row =
@@ -79,6 +83,7 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
         columnBuilder.appendNull();
       }
     }
+    initializeColumnCache(columnBuilder.build());
   }
 
   @Override

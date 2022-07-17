@@ -363,6 +363,18 @@ public class FunctionExpression extends Expression {
                   .map(expression -> expression.inferTypes(typeProvider))
                   .toArray(TSDataType[]::new);
 
+          UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
+
+          // Mappable UDF does not need PointCollector, so memoryBudget is not needed.
+          executor.beforeStart(
+              queryId,
+              0,
+              expressions.stream().map(Expression::toString).collect(Collectors.toList()),
+              expressions.stream()
+                  .map(f -> typeProvider.getType(f.toString()))
+                  .collect(Collectors.toList()),
+              functionAttributes);
+
           expressionColumnTransformerMap.put(
               this,
               new MappableUDFColumnTransformer(
