@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.function.Predicate;
 
 public class AvgAggrResult extends AggregateResult {
 
@@ -84,16 +85,14 @@ public class AvgAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
-    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
+    updateResultFromPageData(batchIterator, time -> false);
   }
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, long minBound, long maxBound) {
-    while (batchIterator.hasNext(minBound, maxBound)) {
-      if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
-        break;
-      }
+      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
+    while (batchIterator.hasNext(boundPredicate)
+        && !boundPredicate.test(batchIterator.currentTime())) {
       updateAvg(seriesDataType, batchIterator.currentValue());
       batchIterator.next();
     }

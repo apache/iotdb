@@ -33,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
@@ -2127,6 +2128,43 @@ public class SessionPool {
     }
   }
 
+  public void createTimeseriesOfTemplateOnPath(String path)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.createTimeseriesOfTemplateOnPath(path);
+        putBack(session);
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn(String.format("create timeseries of template on [%s] failed", path), e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public void deactivateTempalte(String templateName, String prefixPath)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.deactivateTemplateOn(templateName, prefixPath);
+        putBack(session);
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn(
+            String.format("Deactivate template [%s] on [%s] failed", templateName, prefixPath), e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
   public void dropSchemaTemplate(String templateName)
       throws StatementExecutionException, IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
@@ -2255,6 +2293,28 @@ public class SessionPool {
     }
     // never go here
     return null;
+  }
+
+  /** Transmit insert record request for OperationSync */
+  public boolean operationSyncTransmit(ByteBuffer buffer)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        buffer.position(0);
+        session.operationSyncTransmit(buffer);
+        putBack(session);
+        return true;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+
+    return false;
   }
 
   public int getMaxSize() {

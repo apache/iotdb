@@ -22,6 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -393,6 +394,259 @@ public class TemplateUT {
       RowRecord rec = res.next();
       // x is not inside template
       assertEquals(2, rec.getFields().size());
+    }
+  }
+
+  @Test
+  public void testUnsetTemplate()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    Template temp1 = getTemplate("template1");
+    session.createSchemaTemplate(temp1);
+    session.setSchemaTemplate("template1", "root.sg.v1");
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.l1.d1");
+
+    try {
+      session.executeNonQueryStatement("delete timeseries root.sg.v1.l1.d1.x");
+      fail();
+    } catch (BatchExecutionException e) {
+    }
+
+    // wildcard usage on prefix
+    session.deactivateTemplateOn("template1", "root");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.*");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.**");
+    assertEquals(0, session.showPathsTemplateUsingOn("template1").size());
+
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.l1.d1");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.sg.v1.l1.d1.*");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.sg.v1.l1.d1.**");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.sg.v1.l1.d1");
+    assertEquals(0, session.showPathsTemplateUsingOn("template1").size());
+
+    session.deactivateTemplateOn("template1", "root.sg.v1.l1.d1");
+    session.unsetSchemaTemplate("root.sg.v1", "template1");
+    assertEquals(0, session.showPathsTemplateSetOn("template1").size());
+    session.dropSchemaTemplate("template1");
+    assertEquals(0, session.showAllTemplates().size());
+
+    // data delete and rewrite
+    session.createSchemaTemplate(temp1);
+    session.setSchemaTemplate("template1", "root.sg.v1");
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1");
+    session.insertAlignedRecord(
+        "root.sg.v1", 11L, Collections.singletonList("x"), Collections.singletonList("1.1"));
+    SessionDataSet sds = session.executeQueryStatement("select * from root.sg.v1");
+    int cnt = 0;
+    while (sds.hasNext()) {
+      cnt++;
+      sds.next();
+    }
+    assertEquals(1, cnt);
+    session.deactivateTemplateOn("template1", "root.**");
+
+    sds = session.executeQueryStatement("select * from root.sg.v1");
+    cnt = 0;
+    while (sds.hasNext()) {
+      cnt++;
+      sds.next();
+    }
+    assertEquals(0, cnt);
+
+    try {
+      session.insertAlignedRecord(
+          "root.sg.v1", 999L, Collections.singletonList("x"), Collections.singletonList("abcd"));
+      fail();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    try {
+      session.insertRecord(
+          "root.sg.v1", 999L, Collections.singletonList("x"), Collections.singletonList("abcd"));
+      fail();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    session.deactivateTemplateOn("template1", "root.**");
+    session.unsetSchemaTemplate("root.sg.v1", "template1");
+    session.insertAlignedRecord(
+        "root.sg.v1", 911L, Collections.singletonList("x"), Collections.singletonList("abcd"));
+
+    sds = session.executeQueryStatement("select * from root.sg.v1");
+    cnt = 0;
+    while (sds.hasNext()) {
+      cnt++;
+      assertEquals("abcd", sds.next().getFields().get(0).toString());
+    }
+    assertEquals(1, cnt);
+  }
+
+  @Test
+  public void testTemplatePrivilege() throws Exception {
+    session.executeNonQueryStatement("CREATE USER tpl_user 'tpl_pwd'");
+    Session nSession = new Session("127.0.0.1", 6667, "tpl_user", "tpl_pwd", ZoneId.of("+05:00"));
+    nSession.open();
+    try {
+      nSession.createSchemaTemplate(getTemplate("t1"));
+    } catch (Exception e) {
+      assertEquals("602: No permissions for this operation CREATE_TEMPLATE", e.getMessage());
+    }
+
+    session.executeNonQueryStatement(
+        "grant user tpl_user privileges UPDATE_TEMPLATE on root.irrelevant");
+    nSession.createSchemaTemplate(getTemplate("t1"));
+    nSession.createSchemaTemplate(getTemplate("t2"));
+    assertEquals(2, nSession.showAllTemplates().size());
+    nSession.dropSchemaTemplate("t2");
+    assertEquals(1, nSession.showAllTemplates().size());
+
+    try {
+      nSession.setSchemaTemplate("t1", "root.sg2.d1");
+    } catch (Exception e) {
+      assertEquals("602: No permissions for this operation SET_TEMPLATE", e.getMessage());
+    }
+
+    session.executeNonQueryStatement("grant user tpl_user privileges APPLY_TEMPLATE on root.sg1");
+    try {
+      nSession.setSchemaTemplate("t1", "root.sg2.d1");
+    } catch (Exception e) {
+      assertEquals("602: No permissions for this operation SET_TEMPLATE", e.getMessage());
+    }
+
+    session.executeNonQueryStatement("grant user tpl_user privileges APPLY_TEMPLATE on root.sg2");
+    nSession.setSchemaTemplate("t1", "root.sg1.d1");
+    nSession.setSchemaTemplate("t1", "root.sg2.d1");
+    nSession.createTimeseriesOfTemplateOnPath("root.sg1.d1.v1");
+    nSession.createTimeseriesOfTemplateOnPath("root.sg2.d1.v1");
+
+    try {
+      nSession.deactivateTemplateOn("t1", "root.sg1.d1.*");
+    } catch (Exception e) {
+      assertEquals("602: No permissions for this operation DEACTIVATE_TEMPLATE", e.getMessage());
+    }
+
+    session.close();
+    nSession.close();
+    EnvironmentUtils.restartDaemon();
+
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    nSession = new Session("127.0.0.1", 6667, "tpl_user", "tpl_pwd", ZoneId.of("+05:00"));
+    session.open();
+    nSession.open();
+    assertEquals(2, nSession.showPathsTemplateUsingOn("t1").size());
+
+    session.executeNonQueryStatement(
+        "grant user tpl_user privileges DELETE_TIMESERIES on root.sg2");
+    nSession.deactivateTemplateOn("t1", "root.sg2.**");
+    assertEquals(1, nSession.showPathsTemplateUsingOn("t1").size());
+
+    try {
+      nSession.deactivateTemplateOn("t1", "root.sg1.d1.*");
+    } catch (Exception e) {
+      assertEquals("602: No permissions for this operation DEACTIVATE_TEMPLATE", e.getMessage());
+    }
+
+    session.executeNonQueryStatement(
+        "grant user tpl_user privileges DELETE_TIMESERIES on root.sg1");
+    nSession.deactivateTemplateOn("t1", "root.sg1.**");
+    assertEquals(0, nSession.showPathsTemplateUsingOn("t1").size());
+    nSession.unsetSchemaTemplate("root.sg1.d1", "t1");
+    nSession.unsetSchemaTemplate("root.sg2.d1", "t1");
+    nSession.dropSchemaTemplate("t1");
+    assertEquals(0, nSession.showAllTemplates().size());
+
+    session.close();
+    nSession.close();
+    EnvironmentUtils.restartDaemon();
+
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    nSession = new Session("127.0.0.1", 6667, "tpl_user", "tpl_pwd", ZoneId.of("+05:00"));
+    session.open();
+    nSession.open();
+    assertEquals(0, nSession.showAllTemplates().size());
+
+    nSession.close();
+  }
+
+  @Test
+  public void testUnsetTemplateSQL()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    session.createSchemaTemplate(getTemplate("template1"));
+    session.setSchemaTemplate("template1", "root.sg.v1");
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.dd1");
+    session.executeNonQueryStatement("deactivate schema template template1 from root.sg.v1.dd1");
+    assertEquals(0, session.showPathsTemplateUsingOn("template1").size());
+
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.dd2");
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.dd3");
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.g1.d1");
+    assertEquals(3, session.showPathsTemplateUsingOn("template1").size());
+
+    session.executeNonQueryStatement("deactivate schema template template1 from root.sg.v1.*");
+    assertEquals(1, session.showPathsTemplateUsingOn("template1").size());
+
+    session.executeNonQueryStatement("deactivate schema template template1 from root.sg.v1.**");
+    assertEquals(0, session.showPathsTemplateUsingOn("template1").size());
+    session.unsetSchemaTemplate("root.sg.v1", "template1");
+    session.dropSchemaTemplate("template1");
+    assertEquals(0, session.showAllTemplates().size());
+  }
+
+  @Test
+  public void testActivateTemplate()
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    Template temp1 = getTemplate("template1");
+
+    assertEquals("[]", session.showAllTemplates().toString());
+
+    session.createSchemaTemplate(temp1);
+
+    session.setSchemaTemplate("template1", "root.sg.v1");
+
+    try {
+      session.createTimeseriesOfTemplateOnPath("root.sg.v2");
+      fail();
+    } catch (Exception e) {
+      assertEquals("303: Path [root.sg.v2] has not been set any template.", e.getMessage());
+    }
+
+    assertEquals(
+        new HashSet<>(Collections.singletonList("Time")),
+        new HashSet<>(session.executeQueryStatement("SELECT * FROM root.**").getColumnNames()));
+
+    session.createTimeseriesOfTemplateOnPath("root.sg.v1.d1");
+    assertEquals("[root.sg.v1.d1]", session.showPathsTemplateUsingOn("template1").toString());
+
+    assertEquals(
+        new HashSet<>(
+            Arrays.asList(
+                "Time",
+                "root.sg.v1.d1.x",
+                "root.sg.v1.d1.y",
+                "root.sg.v1.d1.GPS.x",
+                "root.sg.v1.d1.GPS.y",
+                "root.sg.v1.d1.vehicle.x",
+                "root.sg.v1.d1.vehicle.y",
+                "root.sg.v1.d1.vehicle.GPS.x",
+                "root.sg.v1.d1.vehicle.GPS.y")),
+        new HashSet<>(session.executeQueryStatement("SELECT * FROM root.**").getColumnNames()));
+
+    try {
+      session.unsetSchemaTemplate("root.sg.v1", "template1");
+      fail();
+    } catch (Exception e) {
+      assertEquals("326: Template is in use on root.sg.v1.d1", e.getMessage());
     }
   }
 

@@ -34,6 +34,7 @@ import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
@@ -219,6 +220,10 @@ public class MLogWriter implements AutoCloseable {
 
   public void setUsingSchemaTemplate(PartialPath path) throws IOException {
     ActivateTemplatePlan plan = new ActivateTemplatePlan(path);
+    putLog(plan);
+  }
+
+  public void deactivateSchemaTemplate(DeactivateTemplatePlan plan) throws IOException {
     putLog(plan);
   }
 

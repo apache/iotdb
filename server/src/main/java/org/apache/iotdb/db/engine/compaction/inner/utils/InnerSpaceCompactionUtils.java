@@ -270,6 +270,13 @@ public class InnerSpaceCompactionUtils {
    */
   public static void moveTargetFile(TsFileResource targetResource, String fullStorageGroupName)
       throws IOException {
+    if (!targetResource.getTsFile().exists()) {
+      logger.info(
+          "{} [Compaction] Tmp target tsfile {} may be deleted after compaction.",
+          fullStorageGroupName,
+          targetResource.getTsFilePath());
+      return;
+    }
     if (!targetResource.getTsFilePath().endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)) {
       logger.warn(
           "{} [Compaction] Tmp target tsfile {} should be end with {}",

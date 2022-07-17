@@ -289,7 +289,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |CREATE\_TIMESERIES|create timeseries; path dependent|
 |INSERT\_TIMESERIES|insert data; path dependent|
 |READ\_TIMESERIES|query data; path dependent|
-|DELETE\_TIMESERIES|delete data or timeseries; path dependent|
+|DELETE\_TIMESERIES|delete data or timeseries, deactivate template; path dependent|
 |DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|
 |CREATE\_USER|create users; path independent|
 |DELETE\_USER|delete users; path independent|
@@ -312,6 +312,8 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |STOP_TRIGGER|stop triggers; path dependent|
 |CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|
 |DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|
+|UPDATE_TEMPLATE|create, drop, append and prune schema template; path independent|
+|APPLY_TEMPLATE|set, unset and activate schema template; path dependent|
 
 ### Username Restrictions
 

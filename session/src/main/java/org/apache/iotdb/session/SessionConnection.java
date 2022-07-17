@@ -47,12 +47,14 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSOperationSyncWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetUsingTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -69,12 +71,13 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.StringJoiner;
 
 public class SessionConnection {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionConnection.class);
   public static final String MSG_RECONNECTION_FAIL =
-      "Fail to reconnect to server. Please check server status";
+      "Fail to reconnect to server. Please check server status.";
   private Session session;
   private TTransport transport;
   private TSIService.Iface client;
@@ -207,7 +210,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
     RpcUtils.verifySuccess(resp);
@@ -233,7 +236,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -250,7 +253,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -269,7 +272,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -288,7 +291,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -307,7 +310,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -349,7 +352,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
 
@@ -385,7 +388,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -410,7 +413,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
 
@@ -448,7 +451,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
 
@@ -480,7 +483,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -499,7 +502,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -519,7 +522,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -539,7 +542,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -558,7 +561,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -577,7 +580,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -596,7 +599,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -616,7 +619,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -633,7 +636,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -652,7 +655,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -671,7 +674,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -690,7 +693,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -709,7 +712,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -728,7 +731,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -747,7 +750,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -766,7 +769,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -820,7 +823,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -839,7 +842,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -858,7 +861,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -877,7 +880,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
 
@@ -899,7 +902,7 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
-        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+        throw new IoTDBConnectionException(logForReconnectionFailure());
       }
     }
   }
@@ -914,6 +917,42 @@ public class SessionConnection {
         try {
           request.setSessionId(sessionId);
           RpcUtils.verifySuccess(client.unsetSchemaTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+  }
+
+  protected void setUsingTemplate(TSSetUsingTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.setUsingTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.setUsingTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected void deactivateTemplate(String tName, String pPath)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try {
+      RpcUtils.verifySuccess(client.unsetUsingTemplate(sessionId, tName, pPath));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          RpcUtils.verifySuccess(client.unsetUsingTemplate(sessionId, tName, pPath));
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }
@@ -937,6 +976,25 @@ public class SessionConnection {
           throw new IoTDBConnectionException(tException);
         }
       } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+  }
+
+  protected void executeOperationSync(TSOperationSyncWriteReq request)
+      throws IoTDBConnectionException, StatementExecutionException, RedirectException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccessWithRedirection(client.executeOperationSync(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.executeOperationSync(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
         throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
       }
     }
@@ -956,6 +1014,21 @@ public class SessionConnection {
 
   public void setEndPoint(EndPoint endPoint) {
     this.endPoint = endPoint;
+  }
+
+  // error log for connection failure
+  private String logForReconnectionFailure() {
+    if (endPointList == null) {
+      return MSG_RECONNECTION_FAIL;
+    }
+    StringJoiner urls = new StringJoiner(",");
+    for (EndPoint endPoint : endPointList) {
+      StringJoiner url = new StringJoiner(":");
+      url.add(endPoint.getIp());
+      url.add(String.valueOf(endPoint.getPort()));
+      urls.add(url.toString());
+    }
+    return MSG_RECONNECTION_FAIL.concat(urls.toString());
   }
 
   @Override

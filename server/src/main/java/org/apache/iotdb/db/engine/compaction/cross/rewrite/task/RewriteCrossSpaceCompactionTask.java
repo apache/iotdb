@@ -87,7 +87,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       executeCompaction();
     } catch (Throwable throwable) {
       // catch throwable instead of exception to handle OOM errors
-      logger.error("Meet errors in cross space compaction, {}", throwable.getMessage());
+      logger.error("Meet errors in cross space compaction", throwable);
       CompactionExceptionHandler.handleException(
           fullStorageGroupName,
           logFile,
@@ -121,6 +121,14 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           "{} [Compaction] Cross space compaction file list is empty, end it",
           fullStorageGroupName);
       return;
+    }
+
+    long totalSize = 0L;
+    for (TsFileResource resource : selectedSeqTsFileResourceList) {
+      totalSize += resource.getTsFileSize();
+    }
+    for (TsFileResource resource : selectedUnSeqTsFileResourceList) {
+      totalSize += resource.getTsFileSize();
     }
 
     logger.info(
@@ -170,10 +178,12 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
+      double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       logger.info(
-          "{} [Compaction] CrossSpaceCompactionTask Costs {} s",
+          "{} [Compaction] CrossSpaceCompactionTask Costs {} s, compaction speed is {} MB/s",
           fullStorageGroupName,
-          (System.currentTimeMillis() - startTime) / 1000);
+          costTime,
+          totalSize / 1024.0d / 1024.0d / costTime);
     }
   }
 

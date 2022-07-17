@@ -27,9 +27,9 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -96,13 +96,19 @@ public class MemTableFlushTask {
         "The memTable size of SG {} is {}, the avg series points num in chunk is {}, total timeseries number is {}",
         storageGroup,
         memTable.memSize(),
-        memTable.getTotalPointsNum() / memTable.getSeriesNumber(),
+        memTable.getSeriesNumber() == 0
+            ? 0
+            : memTable.getTotalPointsNum() / memTable.getSeriesNumber(),
         memTable.getSeriesNumber());
 
     long estimatedTemporaryMemSize = 0L;
     if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {
       estimatedTemporaryMemSize =
-          memTable.memSize() / memTable.getSeriesNumber() * config.getIoTaskQueueSizeForFlushing();
+          memTable.getSeriesNumber() == 0
+              ? 0
+              : memTable.memSize()
+                  / memTable.getSeriesNumber()
+                  * config.getIoTaskQueueSizeForFlushing();
       SystemInfo.getInstance().applyTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
     }
     long start = System.currentTimeMillis();

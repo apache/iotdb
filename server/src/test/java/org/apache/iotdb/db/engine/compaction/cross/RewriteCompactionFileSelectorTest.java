@@ -88,7 +88,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
         new CrossSpaceCompactionResource(seqResources, unseqResources);
     ICrossSpaceMergeFileSelector mergeFileSelector = new RewriteCompactionFileSelector(resource, 1);
     List[] result = mergeFileSelector.select();
-    assertEquals(0, result.length);
+    assertEquals(2, result.length);
     resource.clear();
   }
 
@@ -320,7 +320,7 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
       // the second selection should be empty
       mergeFileSelector = new RewriteCompactionFileSelector(resource, 29000);
       result = mergeFileSelector.select();
-      assertEquals(0, result.length);
+      assertEquals(2, result.length);
       resource.clear();
     } finally {
       removeFiles(seqList, unseqList);
@@ -891,5 +891,26 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setMaxCrossCompactionCandidateFileNum(oldMaxCrossCompactionCandidateFileNum);
+  }
+
+  @Test
+  public void testAtLeastOneUnseqFileBeenSelected() throws IOException, MergeException {
+    int maxCrossFilesNum =
+        IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+    IoTDBDescriptor.getInstance().getConfig().setMaxCrossCompactionCandidateFileNum(1);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    List<TsFileResource> seqSelected = result[0];
+    List<TsFileResource> unseqSelected = result[1];
+    assertEquals(1, seqSelected.size());
+    assertEquals(1, unseqSelected.size());
+    resource.clear();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxCrossCompactionCandidateFileNum(maxCrossFilesNum);
   }
 }

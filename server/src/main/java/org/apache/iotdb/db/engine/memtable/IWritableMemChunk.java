@@ -61,7 +61,10 @@ public interface IWritableMemChunk {
   void write(long insertTime, Object objectValue);
 
   void writeAlignedValue(
-      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
+      long insertTime,
+      Object[] objectValue,
+      List<Integer> failedIndices,
+      List<IMeasurementSchema> schemaList);
 
   /**
    * write data in the range [start, end). Null value in the valueList will be replaced by the
@@ -74,6 +77,7 @@ public interface IWritableMemChunk {
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       int start,
       int end);

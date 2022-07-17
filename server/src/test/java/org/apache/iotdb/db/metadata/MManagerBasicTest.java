@@ -2431,12 +2431,17 @@ public class MManagerBasicTest {
   @Test
   public void testTagIndexRecovery() throws Exception {
     MManager manager = IoTDB.metaManager;
-    PartialPath path = new PartialPath("root.sg.d.s");
+    String tagKey = "description";
+    String tagValue = "oldValue";
     Map<String, String> tags = new HashMap<>();
-    tags.put("description", "oldValue");
+    tags.put(tagKey, tagValue);
+
+    // SCENE 1:create TimeSeries and add tags
+    PartialPath path1 = new PartialPath("root.sg.d.s1");
+
     manager.createTimeseries(
         new CreateTimeSeriesPlan(
-            path,
+            path1,
             TSDataType.valueOf("INT32"),
             TSEncoding.valueOf("RLE"),
             compressionType,
@@ -2444,47 +2449,63 @@ public class MManagerBasicTest {
             tags,
             null,
             null));
+    testTagIndexRecovery(path1, tagKey, tagValue);
 
+    // SCENE 2:first create TimeSeries no tags ,after alter TimeSeries add tags
+    PartialPath path2 = new PartialPath("root.sg.d.s2");
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            path2,
+            TSDataType.valueOf("INT32"),
+            TSEncoding.valueOf("RLE"),
+            compressionType,
+            null,
+            null,
+            null,
+            null));
+    // alter
+    manager.addTags(tags, path2);
+    testTagIndexRecovery(path2, tagKey, tagValue);
+  }
+
+  private void testTagIndexRecovery(PartialPath path, String tagKey, String tagValue)
+      throws Exception {
+    MManager manager = IoTDB.metaManager;
     ShowTimeSeriesPlan showTimeSeriesPlan =
-        new ShowTimeSeriesPlan(
-            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+        new ShowTimeSeriesPlan(path, true, tagKey, tagValue, 0, 0, false);
     List<ShowTimeSeriesResult> results =
         manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(1, results.size());
     Map<String, String> resultTag = results.get(0).getTag();
-    assertEquals("oldValue", resultTag.get("description"));
+    assertEquals(tagValue, resultTag.get(tagKey));
 
-    tags.put("description", "newValue");
+    String newValue = "newValue";
+    Map<String, String> tags = new HashMap<>();
+    tags.put(tagKey, newValue);
     manager.upsertTagsAndAttributes(null, tags, null, path);
 
-    showTimeSeriesPlan =
-        new ShowTimeSeriesPlan(
-            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    showTimeSeriesPlan = new ShowTimeSeriesPlan(path, true, tagKey, newValue, 0, 0, false);
     results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(1, results.size());
     resultTag = results.get(0).getTag();
-    assertEquals("newValue", resultTag.get("description"));
+    assertEquals(newValue, resultTag.get(tagKey));
 
     manager.clear();
     manager.init();
 
-    showTimeSeriesPlan =
-        new ShowTimeSeriesPlan(
-            new PartialPath("root.sg.d.s"), true, "description", "oldValue", 0, 0, false);
+    showTimeSeriesPlan = new ShowTimeSeriesPlan(path, true, tagKey, tagValue, 0, 0, false);
     results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(0, results.size());
 
-    showTimeSeriesPlan =
-        new ShowTimeSeriesPlan(
-            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    showTimeSeriesPlan = new ShowTimeSeriesPlan(path, true, tagKey, newValue, 0, 0, false);
     results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
 
     assertEquals(1, results.size());
     resultTag = results.get(0).getTag();
-    assertEquals("newValue", resultTag.get("description"));
+    assertEquals(newValue, resultTag.get(tagKey));
   }
 
   @Test

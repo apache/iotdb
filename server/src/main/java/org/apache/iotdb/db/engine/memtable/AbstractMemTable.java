@@ -28,9 +28,9 @@ import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -152,8 +152,15 @@ public abstract class AbstractMemTable implements IMemTable {
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
+    int nullPointsNumber = 0;
     for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
+      // use measurements[i] to ignore failed partial insert
       if (measurements[i] == null) {
+        continue;
+      }
+      // use values[i] to ignore null value
+      if (values[i] == null) {
+        nullPointsNumber++;
         continue;
       }
       IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
@@ -161,10 +168,17 @@ public abstract class AbstractMemTable implements IMemTable {
       dataTypes.add(schema.getType());
     }
     memSize += MemUtils.getRecordsSize(dataTypes, values, disableMemControl);
-    write(insertRowPlan.getDeviceID(), schemaList, insertRowPlan.getTime(), values);
+    write(
+        insertRowPlan.getDeviceID(),
+        insertRowPlan.getFailedIndices(),
+        schemaList,
+        insertRowPlan.getTime(),
+        values);
 
     int pointsInserted =
-        insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
+        insertRowPlan.getMeasurements().length
+            - insertRowPlan.getFailedMeasurementNumber()
+            - nullPointsNumber;
 
     totalPointsNum += pointsInserted;
 
@@ -190,9 +204,12 @@ public abstract class AbstractMemTable implements IMemTable {
 
     updatePlanIndexes(insertRowPlan.getIndex());
     String[] measurements = insertRowPlan.getMeasurements();
+    Object[] values = insertRowPlan.getValues();
+
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
+      // use measurements[i] to ignore failed partial insert
       if (measurements[i] == null) {
         continue;
       }
@@ -203,13 +220,13 @@ public abstract class AbstractMemTable implements IMemTable {
     if (schemaList.isEmpty()) {
       return;
     }
-    memSize +=
-        MemUtils.getAlignedRecordsSize(dataTypes, insertRowPlan.getValues(), disableMemControl);
+    memSize += MemUtils.getAlignedRecordsSize(dataTypes, values, disableMemControl);
     writeAlignedRow(
         insertRowPlan.getDeviceID(),
+        insertRowPlan.getFailedIndices(),
         schemaList,
         insertRowPlan.getTime(),
-        insertRowPlan.getValues());
+        values);
     int pointsInserted =
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
     totalPointsNum += pointsInserted;
@@ -281,23 +298,25 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void write(
       IDeviceID deviceId,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       long insertTime,
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    memChunkGroup.write(insertTime, objectValue, schemaList);
+    memChunkGroup.write(insertTime, objectValue, failedIndices, schemaList);
   }
 
   @Override
   public void writeAlignedRow(
       IDeviceID deviceId,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       long insertTime,
       Object[] objectValue) {
     IWritableMemChunkGroup memChunkGroup =
         createAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
-    memChunkGroup.write(insertTime, objectValue, schemaList);
+    memChunkGroup.write(insertTime, objectValue, failedIndices, schemaList);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -323,6 +342,7 @@ public abstract class AbstractMemTable implements IMemTable {
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
+        insertTabletPlan.getFailedIndices(),
         schemaList,
         start,
         end);
@@ -353,6 +373,7 @@ public abstract class AbstractMemTable implements IMemTable {
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
+        insertTabletPlan.getFailedIndices(),
         schemaList,
         start,
         end);

@@ -1020,6 +1020,4 @@ class Session(object):
         """
         if status.code == Session.SUCCESS_CODE:
             return 0
-
-        logger.error("error status is", status)
         return -1

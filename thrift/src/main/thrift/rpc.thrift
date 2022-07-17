@@ -411,9 +411,20 @@ struct TSUnsetSchemaTemplateReq {
   3: required string templateName
 }
 
+struct TSSetUsingTemplateReq {
+  1: required i64 sessionId
+  2: required string dstPath
+}
+
 struct TSDropSchemaTemplateReq {
   1: required i64 sessionId
   2: required string templateName
+}
+
+struct TSOperationSyncWriteReq {
+  1: required i64 sessionId
+  2: required byte operationSyncType
+  3: required binary physicalPlan
 }
 
 service TSIService {
@@ -505,5 +516,11 @@ service TSIService {
 
   TSStatus unsetSchemaTemplate(1:TSUnsetSchemaTemplateReq req);
 
+  TSStatus setUsingTemplate(1:TSSetUsingTemplateReq req);
+
+  TSStatus unsetUsingTemplate(1:i64 sessionId, 2:string templateName, 3:string prefixPath);
+
   TSStatus dropSchemaTemplate(1:TSDropSchemaTemplateReq req);
+
+  TSStatus executeOperationSync(1:TSOperationSyncWriteReq req);
 }

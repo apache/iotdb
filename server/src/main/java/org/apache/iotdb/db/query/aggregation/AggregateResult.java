@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.function.Predicate;
 
 public abstract class AggregateResult {
 
@@ -84,11 +85,11 @@ public abstract class AggregateResult {
    * This method is used in GROUP BY aggregation query.
    *
    * @param batchIterator the data in Page
-   * @param minBound calculate points whose time >= bound
-   * @param maxBound calculate points whose time < bound
+   * @param boundPredicate used to judge whether the current timestamp is out of time range, returns
+   *     true if it is.
    */
   public abstract void updateResultFromPageData(
-      IBatchDataIterator batchIterator, long minBound, long maxBound) throws IOException;
+      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) throws IOException;
 
   /**
    * This method calculates the aggregation using common timestamps of the cross series filter.

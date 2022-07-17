@@ -86,19 +86,20 @@ If compiling successful, you can see that the `distribution/target` directory co
 
 #### Install Grafana-Plugin
 
-* Copy the front-end project target folder generated above to Grafana's plugin directory `${Grafana directory}\data\plugins\`
-  * Windows: the `data\plugins` directory is automatically created
-  * Linux: artificially create `/var/lib/grafana/plugins` directory
-  * MacOS: the plugin directory is `/usr/local/var/lib/grafana/plugins` (see more details after installing Grafana using `brew install`)
+* Copy the front-end project target folder generated above to Grafana's plugin directory `${Grafana directory}\data\plugins\`.If there is no such directory, you can manually create it or start grafana and it will be created automatically. Of course, you can also modify the location of plugins. For details, please refer to the following instructions for modifying the location of Grafana's plugin directory.
 
 * Modify Grafana configuration file: the file is in（`${Grafana directory}\conf\defaults.ini`）, and do the following modifications:
 
   ```ini
   allow_loading_unsigned_plugins = iotdb
   ```
+* Modify the location of Grafana's plugin directory: the file is in（`${Grafana directory}\conf\defaults.ini`）, and do the following modifications:
 
+  ```ini
+  plugins = data/plugins
+  ```
 * Start Grafana (restart if the Grafana service is already started)
-
+  For more details，please click [here](https://grafana.com/docs/grafana/latest/plugins/installation/)
 
 #### Start Grafana
 

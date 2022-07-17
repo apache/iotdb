@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.function.Predicate;
 
 public class ExtremeAggrResult extends AggregateResult {
 
@@ -95,18 +96,15 @@ public class ExtremeAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
-    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
+    updateResultFromPageData(batchIterator, time -> false);
   }
 
   @Override
   public void updateResultFromPageData(
-      IBatchDataIterator batchIterator, long minBound, long maxBound) {
+      IBatchDataIterator batchIterator, Predicate<Long> boundPredicate) {
     Comparable<Object> extVal = null;
-
-    while (batchIterator.hasNext(minBound, maxBound)
-        && batchIterator.currentTime() < maxBound
-        && batchIterator.currentTime() >= minBound) {
-
+    while (batchIterator.hasNext(boundPredicate)
+        && !boundPredicate.test(batchIterator.currentTime())) {
       extVal = getExtremeValue(extVal, (Comparable<Object>) batchIterator.currentValue());
       batchIterator.next();
     }

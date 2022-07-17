@@ -410,7 +410,7 @@ public class Template {
   }
 
   public Set<PartialPath> getRelatedStorageGroup() {
-    return relatedStorageGroup;
+    return new HashSet<>(relatedStorageGroup);
   }
 
   public boolean markStorageGroup(IMNode setNode) {

@@ -154,6 +154,9 @@ public class IoTDBConstant {
   public static final String UDF_FOLDER_NAME = "udf";
   public static final String TRIGGER_FOLDER_NAME = "trigger";
 
+  // Operation Sync folder name
+  public static final String OPERATION_SYNC_FOLDER_NAME = "operationsync";
+
   // mqtt
   public static final String ENABLE_MQTT = "enable_mqtt_service";
   public static final String MQTT_HOST_NAME = "mqtt_host";

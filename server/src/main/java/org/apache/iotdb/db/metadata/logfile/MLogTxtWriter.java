@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
@@ -58,6 +59,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class MLogTxtWriter implements AutoCloseable {
 
@@ -140,12 +142,14 @@ public class MLogTxtWriter implements AutoCloseable {
     buf.append(
         String.format(
             "%s,%s,%s,%s,%s,%s",
-            MetadataOperationType.CREATE_TIMESERIES,
+            MetadataOperationType.CREATE_ALIGNED_TIMESERIES,
             plan.getPrefixPath().getFullPath(),
             plan.getMeasurements(),
-            plan.getDataTypes().stream().map(TSDataType::serialize),
-            plan.getEncodings().stream().map(TSEncoding::serialize),
-            plan.getCompressors().stream().map(CompressionType::serialize)));
+            plan.getDataTypes().stream().map(TSDataType::serialize).collect(Collectors.toList()),
+            plan.getEncodings().stream().map(TSEncoding::serialize).collect(Collectors.toList()),
+            plan.getCompressors().stream()
+                .map(CompressionType::serialize)
+                .collect(Collectors.toList())));
 
     buf.append(",[");
     if (plan.getAliasList() != null) {
@@ -360,6 +364,16 @@ public class MLogTxtWriter implements AutoCloseable {
     StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_USING_TEMPLATE));
     buf.append(",");
     buf.append(plan.getPrefixPath());
+    buf.append(LINE_SEPARATOR);
+    ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
+    channel.write(buff);
+    lineNumber.incrementAndGet();
+  }
+
+  public void deactivateTemplate(DeactivateTemplatePlan plan) throws IOException {
+    StringBuilder buf = new StringBuilder((MetadataOperationType.UNSET_USING_TEMPLATE));
+    buf.append(",");
+    buf.append(plan.getPrefixPath().getFullPath());
     buf.append(LINE_SEPARATOR);
     ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
     channel.write(buff);

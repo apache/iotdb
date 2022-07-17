@@ -109,6 +109,7 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
+        <module>rewriteFileTool</module>
         <!--        <module>library-udf</module>-->
     </modules>
     <!-- Properties Management -->
@@ -301,21 +302,6 @@
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-webapp</artifactId>
                 <version>${jetty.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-core</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-jvm</artifactId>
-                <version>${metrics.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.dropwizard.metrics</groupId>
-                <artifactId>metrics-json</artifactId>
-                <version>${metrics.version}</version>
             </dependency>
             <dependency>
                 <groupId>me.tongfei</groupId>

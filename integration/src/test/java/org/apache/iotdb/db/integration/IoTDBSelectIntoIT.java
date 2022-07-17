@@ -543,11 +543,7 @@ public class IoTDBSelectIntoIT {
       statement.execute("select s1 into target from root.sg.*");
       fail();
     } catch (SQLException throwable) {
-      assertTrue(
-          throwable
-              .getMessage()
-              .contains(
-                  "the number of source paths and the number of target paths should be the same"));
+      assertTrue(throwable.getMessage().contains("* and ** are not allowed in a target path."));
     }
 
     try (Connection connection =

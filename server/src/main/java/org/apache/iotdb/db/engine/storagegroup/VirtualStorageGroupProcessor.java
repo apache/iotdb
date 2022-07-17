@@ -67,9 +67,9 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
-import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
@@ -572,6 +572,11 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void initCompaction() {
+    if (!config.isEnableSeqSpaceCompaction()
+        && !config.isEnableUnseqSpaceCompaction()
+        && !config.isEnableCrossSpaceCompaction()) {
+      return;
+    }
     timedCompactionScheduleTask =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
             ThreadName.COMPACTION_SCHEDULE.getName()

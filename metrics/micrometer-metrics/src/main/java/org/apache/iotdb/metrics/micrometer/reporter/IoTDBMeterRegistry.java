@@ -88,38 +88,40 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
     getMeters()
         .forEach(
             meter -> {
-              Meter.Id id = meter.getId();
-              String name = id.getName();
-              List<Tag> tags = id.getTags();
-              Map<String, String> labels = tagsConvertToMap(tags);
-              meter.use(
-                  gauge -> {
-                    updateValue(name, labels, gauge.value(), time);
-                  },
-                  counter -> {
-                    updateValue(name, labels, counter.count(), time);
-                  },
-                  timer -> {
-                    writeSnapshotAndCount(name, labels, timer.takeSnapshot(), time);
-                  },
-                  summary -> {
-                    writeSnapshotAndCount(name, labels, summary.takeSnapshot(), time);
-                  },
-                  longTaskTimer -> {
-                    updateValue(name, labels, (double) longTaskTimer.activeTasks(), time);
-                  },
-                  timeGauge -> {
-                    updateValue(name, labels, timeGauge.value(getBaseTimeUnit()), time);
-                  },
-                  functionCounter -> {
-                    updateValue(name, labels, functionCounter.count(), time);
-                  },
-                  functionTimer -> {
-                    updateValue(name, labels, functionTimer.count(), time);
-                  },
-                  m -> {
-                    logger.debug("unknown meter:" + meter);
-                  });
+              if (null != meter) {
+                Meter.Id id = meter.getId();
+                String name = id.getName();
+                List<Tag> tags = id.getTags();
+                Map<String, String> labels = tagsConvertToMap(tags);
+                meter.use(
+                    gauge -> {
+                      updateValue(name, labels, gauge.value(), time);
+                    },
+                    counter -> {
+                      updateValue(name, labels, counter.count(), time);
+                    },
+                    timer -> {
+                      writeSnapshotAndCount(name, labels, timer.takeSnapshot(), time);
+                    },
+                    summary -> {
+                      writeSnapshotAndCount(name, labels, summary.takeSnapshot(), time);
+                    },
+                    longTaskTimer -> {
+                      updateValue(name, labels, (double) longTaskTimer.activeTasks(), time);
+                    },
+                    timeGauge -> {
+                      updateValue(name, labels, timeGauge.value(getBaseTimeUnit()), time);
+                    },
+                    functionCounter -> {
+                      updateValue(name, labels, functionCounter.count(), time);
+                    },
+                    functionTimer -> {
+                      updateValue(name, labels, functionTimer.count(), time);
+                    },
+                    m -> {
+                      logger.debug("unknown meter:" + meter);
+                    });
+              }
             });
   }
 

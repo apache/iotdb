@@ -42,6 +42,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
       long[] times,
       Object[] columns,
       BitMap[] bitMaps,
+      List<Integer> failedIndices,
       List<IMeasurementSchema> schemaList,
       int start,
       int end) {
@@ -90,7 +91,11 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
+  public void write(
+      long insertTime,
+      Object[] objectValue,
+      List<Integer> failedIndices,
+      List<IMeasurementSchema> schemaList) {
     int emptyColumnCount = 0;
     for (int i = 0; i < objectValue.length; i++) {
       if (objectValue[i] == null) {

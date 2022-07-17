@@ -38,11 +38,13 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsOfOneDeviceReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
+import org.apache.iotdb.service.rpc.thrift.TSOperationSyncWriteReq;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSSetUsingTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
@@ -2367,6 +2369,20 @@ public class Session {
     defaultSessionConnection.unsetSchemaTemplate(request);
   }
 
+  /** Set designated path using template, act like the sql-statement with same name and syntax. */
+  public void createTimeseriesOfTemplateOnPath(String path)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSSetUsingTemplateReq request = new TSSetUsingTemplateReq();
+    request.setDstPath(path);
+    defaultSessionConnection.setUsingTemplate(request);
+  }
+
+  /** Inverse of {@linkplain #createTimeseriesOfTemplateOnPath}, IMPLYING data deletion. */
+  public void deactivateTemplateOn(String templateName, String prefixPath)
+      throws IoTDBConnectionException, StatementExecutionException {
+    defaultSessionConnection.deactivateTemplate(templateName, prefixPath);
+  }
+
   public void dropSchemaTemplate(String templateName)
       throws IoTDBConnectionException, StatementExecutionException {
     TSDropSchemaTemplateReq request = getTSDropSchemaTemplateReq(templateName);
@@ -2458,6 +2474,24 @@ public class Session {
     if (errMsgBuilder.length() > 0) {
       throw new StatementExecutionException(errMsgBuilder.toString());
     }
+  }
+
+  /** Transmit insert record request for operation sync */
+  public void operationSyncTransmit(ByteBuffer buffer)
+      throws IoTDBConnectionException, StatementExecutionException {
+    try {
+      TSOperationSyncWriteReq request = genTSExecuteOperationSyncReq(buffer);
+      defaultSessionConnection.executeOperationSync(request);
+    } catch (RedirectException e) {
+      // ignored
+    }
+  }
+
+  private TSOperationSyncWriteReq genTSExecuteOperationSyncReq(ByteBuffer buffer) {
+    TSOperationSyncWriteReq request = new TSOperationSyncWriteReq();
+    request.setOperationSyncType((byte) 0);
+    request.setPhysicalPlan(buffer);
+    return request;
   }
 
   public boolean isEnableQueryRedirection() {
