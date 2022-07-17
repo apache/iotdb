@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -163,6 +164,14 @@ public class SeriesScanUtil {
     orderUtils.setCurSeqFileIndex(dataSource);
   }
 
+  @TestOnly
+  public void initQueryDataSource(
+      List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource) {
+    dataSource = new QueryDataSource(seqFileResource, unseqFileResource);
+    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), orderUtils.getAscending());
+    orderUtils.setCurSeqFileIndex(dataSource);
+  }
+
   protected PriorityMergeReader getPriorityMergeReader() {
     return new PriorityMergeReader();
   }
@@ -175,7 +184,7 @@ public class SeriesScanUtil {
     return !(hasNextPage() || hasNextChunk() || hasNextFile());
   }
 
-  boolean hasNextFile() throws IOException {
+  public boolean hasNextFile() throws IOException {
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -250,7 +259,7 @@ public class SeriesScanUtil {
    * This method should be called after hasNextFile() until no next chunk, make sure that all
    * overlapped chunks are consumed
    */
-  boolean hasNextChunk() throws IOException {
+  public boolean hasNextChunk() throws IOException {
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -383,7 +392,7 @@ public class SeriesScanUtil {
    */
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
-  boolean hasNextPage() throws IOException {
+  public boolean hasNextPage() throws IOException {
 
     /*
      * has overlapped data before
@@ -601,7 +610,7 @@ public class SeriesScanUtil {
   }
 
   /** This method should only be used when the method isPageOverlapped() return true. */
-  TsBlock nextPage() throws IOException {
+  public TsBlock nextPage() throws IOException {
 
     if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;

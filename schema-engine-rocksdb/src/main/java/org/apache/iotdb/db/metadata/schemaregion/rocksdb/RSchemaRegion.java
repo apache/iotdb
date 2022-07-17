@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -44,6 +45,7 @@ import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaRegionUtils;
@@ -113,6 +115,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.ALL_NODE_TYPE_ARRAY;
 import static org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants.DEFAULT_ALIGNED_ENTITY_VALUE;
@@ -995,14 +998,15 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
+  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
     // todo support wildcard
     if (pathPattern.getFullPath().contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
       throw new MetadataException(
           "Wildcards are not currently supported for this operation"
               + " [SHOW CHILD PATHS pathPattern].");
     }
-    Set<String> result = Collections.synchronizedSet(new HashSet<>());
+    Set<TSchemaNode> result = Collections.synchronizedSet(new HashSet<>());
     String innerNameByLevel =
         RSchemaUtils.getLevelPath(
                 pathPattern.getNodes(),
@@ -1012,7 +1016,9 @@ public class RSchemaRegion implements ISchemaRegion {
             + pathPattern.getNodeLength();
     Function<String, Boolean> function =
         s -> {
-          result.add(RSchemaUtils.getPathByInnerName(s));
+          result.add(
+              new TSchemaNode(
+                  RSchemaUtils.getPathByInnerName(s), MNodeType.UNIMPLEMENT.getNodeType()));
           return true;
         };
 
@@ -1024,7 +1030,10 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    Set<String> childPath = getChildNodePathInNextLevel(pathPattern);
+    Set<String> childPath =
+        getChildNodePathInNextLevel(pathPattern).stream()
+            .map(node -> node.getNodeName())
+            .collect(Collectors.toSet());
     Set<String> childName = new HashSet<>();
     for (String str : childPath) {
       childName.add(str.substring(str.lastIndexOf(RSchemaConstants.PATH_SEPARATOR) + 1));

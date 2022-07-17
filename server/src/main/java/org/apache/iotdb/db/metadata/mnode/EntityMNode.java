@@ -163,6 +163,11 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.DEVICE;
+  }
+
+  @Override
   public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
     return visitor.visitEntityMNode(this, context);
   }

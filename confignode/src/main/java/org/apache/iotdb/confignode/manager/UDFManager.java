@@ -20,10 +20,12 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.handlers.FunctionManagementHandler;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
+import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -37,8 +39,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class UDFManager {
 
@@ -87,24 +93,23 @@ public class UDFManager {
     final CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
     final TCreateFunctionRequest request =
         new TCreateFunctionRequest(functionName, className, uris);
-
+    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
+    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    AtomicInteger index = new AtomicInteger(0);
     for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
-      final TEndPoint endPoint = dataNodeInfo.getLocation().getInternalEndPoint();
-      AsyncDataNodeClientPool.getInstance()
-          .createFunction(
-              endPoint,
-              request,
-              new FunctionManagementHandler(
-                  countDownLatch, dataNodeResponseStatus, endPoint.getIp(), endPoint.getPort()));
+      handlerMap.put(
+          index.get(),
+          new FunctionManagementHandler(
+              countDownLatch,
+              dataNodeInfo.getLocation(),
+              dataNodeResponseStatus,
+              DataNodeRequestType.CREATE_FUNCTION,
+              dataNodeLocations,
+              index.get()));
+      dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
     }
-
-    try {
-      countDownLatch.await();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.error("UDFManager was interrupted during creating functions on data nodes", e);
-    }
-
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(request, handlerMap, dataNodeLocations);
     return dataNodeResponseStatus;
   }
 
@@ -131,24 +136,23 @@ public class UDFManager {
         Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
     final CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
     final TDropFunctionRequest request = new TDropFunctionRequest(functionName);
-
+    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
+    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    AtomicInteger index = new AtomicInteger(0);
     for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
-      final TEndPoint endPoint = dataNodeInfo.getLocation().getInternalEndPoint();
-      AsyncDataNodeClientPool.getInstance()
-          .dropFunction(
-              endPoint,
-              request,
-              new FunctionManagementHandler(
-                  countDownLatch, dataNodeResponseStatus, endPoint.getIp(), endPoint.getPort()));
+      handlerMap.put(
+          index.get(),
+          new FunctionManagementHandler(
+              countDownLatch,
+              dataNodeInfo.getLocation(),
+              dataNodeResponseStatus,
+              DataNodeRequestType.DROP_FUNCTION,
+              dataNodeLocations,
+              index.get()));
+      dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
     }
-
-    try {
-      countDownLatch.await();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOGGER.error("UDFManager was interrupted during dropping functions on data nodes", e);
-    }
-
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(request, handlerMap, dataNodeLocations);
     return dataNodeResponseStatus;
   }
 }

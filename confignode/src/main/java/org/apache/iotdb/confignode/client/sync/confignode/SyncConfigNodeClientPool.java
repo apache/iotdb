@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.client;
+package org.apache.iotdb.confignode.client.sync.confignode;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
@@ -65,24 +66,24 @@ public class SyncConfigNodeClientPool {
     }
   }
 
-  public Object sendSyncRequestToConfigNode(
+  public Object sendSyncRequestToConfigNodeWithRetry(
       TEndPoint endPoint, Object req, ConfigNodeRequestType requestType) {
     Throwable lastException = null;
     for (int retry = 0; retry < retryNum; retry++) {
       try (SyncConfigNodeIServiceClient client = clientManager.borrowClient(endPoint)) {
         switch (requestType) {
-          case registerConfigNode:
+          case REGISTER_CONFIG_NODE:
             // Only use registerConfigNode when the ConfigNode is first startup.
             return client.registerConfigNode((TConfigNodeRegisterReq) req);
-          case addConsensusGroup:
+          case ADD_CONSENSUS_GROUP:
             addConsensusGroup((List<TConfigNodeLocation>) req, client);
             return null;
-          case notifyRegisterSuccess:
+          case NOTIFY_REGISTER_SUCCESS:
             client.notifyRegisterSuccess();
             return null;
-          case removeConfigNode:
+          case REMOVE_CONFIG_NODE:
             return removeConfigNode((TConfigNodeLocation) req, client);
-          case stopConfigNode:
+          case STOP_CONFIG_NODE:
             // Only use stopConfigNode when the ConfigNode is removed.
             return client.stopConfigNode((TConfigNodeLocation) req);
           default:

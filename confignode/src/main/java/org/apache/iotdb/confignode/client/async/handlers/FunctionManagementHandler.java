@@ -17,34 +17,48 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client.handlers;
+package org.apache.iotdb.confignode.client.async.handlers;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class FunctionManagementHandler implements AsyncMethodCallback<TSStatus> {
+public class FunctionManagementHandler extends AbstractRetryHandler
+    implements AsyncMethodCallback<TSStatus> {
 
-  private final CountDownLatch countDownLatch;
+  private static final Logger LOGGER = LoggerFactory.getLogger(FunctionManagementHandler.class);
+
   private final List<TSStatus> dataNodeResponseStatus;
-  private final String ip;
-  private final int port;
 
   public FunctionManagementHandler(
-      CountDownLatch countDownLatch, List<TSStatus> dataNodeResponseStatus, String ip, int port) {
-    this.countDownLatch = countDownLatch;
+      CountDownLatch countDownLatch,
+      TDataNodeLocation targetDataNode,
+      List<TSStatus> dataNodeResponseStatus,
+      DataNodeRequestType requestType,
+      Map<Integer, TDataNodeLocation> dataNodeLocations,
+      int index) {
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
     this.dataNodeResponseStatus = dataNodeResponseStatus;
-    this.ip = ip;
-    this.port = port;
   }
 
   @Override
   public void onComplete(TSStatus response) {
-    dataNodeResponseStatus.add(response);
+    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      dataNodeResponseStatus.add(response);
+      dataNodeLocations.remove(index);
+      LOGGER.info("Successfully {} on DataNode: {}", dataNodeRequestType, targetDataNode);
+    } else {
+      LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, targetDataNode);
+    }
     countDownLatch.countDown();
   }
 
@@ -52,7 +66,8 @@ public class FunctionManagementHandler implements AsyncMethodCallback<TSStatus> 
   public void onError(Exception exception) {
     dataNodeResponseStatus.add(
         new TSStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
-            .setMessage("DataNode[" + ip + ":" + port + "] " + exception.getMessage()));
+            .setMessage(targetDataNode + exception.getMessage()));
+    LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, targetDataNode);
     countDownLatch.countDown();
   }
 }
