@@ -90,7 +90,8 @@ public class RewriteCompactionFileSelectorTest extends MergeTest {
   public void testWithFewMemoryBudgeSelection() throws MergeException, IOException {
     CrossSpaceCompactionResource resource =
         new CrossSpaceCompactionResource(seqResources, unseqResources);
-    ICrossSpaceCompactionFileSelector mergeFileSelector = new RewriteCompactionFileSelector(resource, 1);
+    ICrossSpaceCompactionFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, 1);
     List[] result = mergeFileSelector.select();
     assertEquals(2, result.length);
   }

@@ -131,7 +131,9 @@ public class TsFileValidationTool {
           }
           // get time partition dirs and sort them
           List<File> timePartitionDirs =
-              Arrays.asList(Objects.requireNonNull(dataRegionDir.listFiles())).stream().filter(file -> Pattern.compile("[0-9]*").matcher(file.getName()).matches()).collect(Collectors.toList());
+              Arrays.asList(Objects.requireNonNull(dataRegionDir.listFiles())).stream()
+                  .filter(file -> Pattern.compile("[0-9]*").matcher(file.getName()).matches())
+                  .collect(Collectors.toList());
           timePartitionDirs.sort(
               (f1, f2) ->
                   Long.compareUnsigned(Long.parseLong(f1.getName()), Long.parseLong(f2.getName())));
@@ -499,13 +501,13 @@ public class TsFileValidationTool {
         }
       } catch (Throwable e) {
         logger.error("Meet errors in reading file {} , skip it.", tsFile.getAbsolutePath(), e);
-        if(!isBadFileMap.get(tsFile.getName())){
+        if (!isBadFileMap.get(tsFile.getName())) {
           if (printDetails) {
             printBoth(
-                    "-- Meet errors in reading file "
-                            + tsFile.getAbsolutePath()
-                            + ", tsfile may be corrupted.");
-          }else{
+                "-- Meet errors in reading file "
+                    + tsFile.getAbsolutePath()
+                    + ", tsfile may be corrupted.");
+          } else {
             printBoth(tsFile.getAbsolutePath());
           }
           isBadFileMap.put(tsFile.getName(), true);

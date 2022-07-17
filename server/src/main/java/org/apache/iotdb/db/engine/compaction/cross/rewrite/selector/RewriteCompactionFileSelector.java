@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.cross.utils.AbstractCompactionEstim
 import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -262,19 +263,12 @@ public class RewriteCompactionFileSelector implements ICrossSpaceCompactionFileS
 
         long seqEndTime = seqFile.getEndTime(deviceId);
         long seqStartTime = seqFile.getStartTime(deviceId);
-        if (unseqEndTime < seqStartTime) {
-          // Suppose the time range in unseq file is 10-20, seq file is 30-40. If this unseq file
-          // has no overlapped seq files, then select this seq file. Otherwise, skip this seq file.
-          // There is no more overlap later.
-          // if (tmpSelectedSeqFiles.size() == 0) {
-          tmpSelectedSeqFiles.add(i);
-          // }
-          noMoreOverlap = true;
-        } else if (!seqFile.isClosed()) {
+        if (!seqFile.isClosed()) {
           // we cannot make sure whether unclosed file has overlap or not, so we just add it.
           tmpSelectedSeqFiles.add(i);
-        } else if (unseqEndTime <= seqEndTime) {
-          // if time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
+        } else if (unseqEndTime < seqStartTime || unseqEndTime <= seqEndTime) {
+          // if time range in unseq file is 10-20, seq file is 30-40, or
+          // time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
           // there is no more overlap later.
           tmpSelectedSeqFiles.add(i);
           noMoreOverlap = true;
