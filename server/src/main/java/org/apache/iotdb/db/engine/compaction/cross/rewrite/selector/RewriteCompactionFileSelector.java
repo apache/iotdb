@@ -176,6 +176,13 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         break;
       }
 
+      // Filter out the selected seq files
+      for (int i = 0; i < seqSelected.length; i++) {
+        if (seqSelected[i]) {
+          tmpSelectedSeqFiles.remove(i);
+        }
+      }
+
       tempMaxSeqFileCost = maxSeqFileCost;
       long newCost =
           useTightBound
@@ -258,25 +265,18 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        if (tmpSelectedSeqFiles.contains(i) || !seqFile.mayContainsDevice(deviceId)) {
+        if (!seqFile.mayContainsDevice(deviceId)) {
           continue;
         }
 
         long seqEndTime = seqFile.getEndTime(deviceId);
         long seqStartTime = seqFile.getStartTime(deviceId);
-        if (unseqEndTime < seqStartTime) {
-          // Suppose the time range in unseq file is 10-20, seq file is 30-40. If this unseq file
-          // has no overlapped seq files, then select this seq file. Otherwise, skip this seq file.
-          // There is no more overlap later.
-          if (tmpSelectedSeqFiles.size() == 0) {
-            tmpSelectedSeqFiles.add(i);
-          }
-          noMoreOverlap = true;
-        } else if (!seqFile.isClosed()) {
+        if (!seqFile.isClosed()) {
           // we cannot make sure whether unclosed file has overlap or not, so we just add it.
           tmpSelectedSeqFiles.add(i);
-        } else if (unseqEndTime <= seqEndTime) {
-          // if time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
+        } else if (unseqEndTime < seqStartTime || unseqEndTime <= seqEndTime) {
+          // if time range in unseq file is 10-20, seq file is 30-40, or
+          // time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
           // there is no more overlap later.
           tmpSelectedSeqFiles.add(i);
           noMoreOverlap = true;
