@@ -75,6 +75,41 @@ public class kafkaTest {
     } catch (Exception e) {
       System.out.println(e.getMessage() + "\nbrokers/1.1.1.1:8000,localhost:66666, topic/IoTDB");
     }
+
+    sinkParams.put("brokers", "1.1.1.1:8000,localhost:65535");
+    sinkParams.put("means", "non-serial");
+    sinkParams.put("partition", "0");
+    try {
+      kf.validateSinkParams(sinkParams);
+      System.out.println(
+          "Correct!\nbrokers/1.1.1.1:8000,localhost:65535, topic/IoTDB, means/non-serial, partition/0");
+    } catch (Exception e) {
+      System.out.println(
+          e.getMessage()
+              + "\nbrokers/1.1.1.1:8000,localhost:65535, topic/IoTDB, means/non-serial, partition/0");
+    }
+
+    sinkParams.put("partition", "x");
+    try {
+      kf.validateSinkParams(sinkParams);
+      System.out.println(
+          "Correct!\nbrokers/1.1.1.1:8000,localhost:65535, topic/IoTDB, means/non-serial, partition/x");
+    } catch (Exception e) {
+      System.out.println(
+          e.getMessage()
+              + "\nbrokers/1.1.1.1:8000,localhost:65535, topic/IoTDB, means/non-serial, partition/x");
+    }
+
+    sinkParams.put("means", "serial");
+    try {
+      kf.validateSinkParams(sinkParams);
+      System.out.println(
+          "Correct!\nbrokers/1.1.1.1:8000,localhost:65535, topic/IoTDB, means/serial, partition/x");
+    } catch (Exception e) {
+      System.out.println(
+          e.getMessage()
+              + "\nbrokers/1.1.1.1:8000,localhost:65535, topic/IoTDB, means/serial, partition/x");
+    }
   }
 
   @Test
@@ -84,11 +119,13 @@ public class kafkaTest {
 
     sinkParams.put("brokers", "localhost:9092");
     sinkParams.put("topic", "IoTDB");
+    sinkParams.put("means", "serial");
+
     try {
       kf.validateSinkParams(sinkParams);
-      System.out.println("Correct!\nbrokers/localhost:8000, topic/IoTDB");
+      System.out.println("Correct!\nbrokers/localhost:9092, topic/IoTDB");
     } catch (Exception e) {
-      System.out.println(e.getMessage() + "\nbrokers/localhost:8000, topic/IoTDB");
+      System.out.println(e.getMessage() + "\nbrokers/localhost:9092, topic/IoTDB");
     }
 
     try {
@@ -116,7 +153,54 @@ public class kafkaTest {
           new Object[] {12.3, "testing"});
 
       kw.flush();
+      System.out.println("\n\n-----------------------------------------\n\n");
+      System.out.println("status" + kw.getStatus());
+      System.out.println("\n\n-----------------------------------------\n\n");
       kw.close();
+    } catch (Exception e) {
+      System.out.println("Pipe writing failed!");
+    }
+
+    sinkParams.put("means", "non-serial");
+    sinkParams.put("key", "test");
+
+    try {
+      kf.validateSinkParams(sinkParams);
+      System.out.println("Correct!\nbrokers/localhost:9092, topic/IoTDB, means/non-serial");
+    } catch (Exception e) {
+      System.out.println(
+          e.getMessage() + "\nbrokers/localhost:9092, topic/IoTDB, means/non-serial");
+    }
+
+    try {
+      kf.initialize(sinkParams);
+    } catch (Exception e) {
+      System.out.println("?? Why initializing should cause exception here");
+    }
+
+    KafkaWriter kw2 = kf.get();
+    try {
+      kw2.open();
+
+      String[] Timeseries = {"root", "a", "b"};
+      kw2.createTimeSeries(Timeseries, DataType.BOOLEAN);
+      kw2.insertBoolean(Timeseries, 123, true);
+      kw2.delete(Timeseries, 123);
+      kw2.deleteTimeSeries(Timeseries);
+
+      String[] Timeseries2 = {"root", "a", "c"};
+      kw2.createTimeSeries(Timeseries2, DataType.VECTOR);
+      kw2.insertVector(
+          Timeseries2,
+          new DataType[] {DataType.DOUBLE, DataType.TEXT},
+          133,
+          new Object[] {12.3, "testing"});
+
+      kw2.flush();
+      System.out.println("\n\n-----------------------------------------\n\n");
+      System.out.println("status" + kw2.getStatus());
+      System.out.println("\n\n-----------------------------------------\n\n");
+      kw2.close();
     } catch (Exception e) {
       System.out.println("Pipe writing failed!");
     }

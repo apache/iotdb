@@ -35,6 +35,15 @@ public class KafkaWriterFactory implements IExternalPipeSinkWriterFactory {
     if (!Pattern.matches(ip_format, brokers)) {
       throw new Exception("Incorrect IP format.");
     }
+
+    String int_format = "^\\d*$";
+    if (sinkParams.containsKey("means")
+        && sinkParams.get("means").equals("non-serial")
+        && sinkParams.containsKey("partition")) {
+      if (!Pattern.matches(int_format, sinkParams.get("partition"))) {
+        throw new Exception("Incorrect partition format.");
+      }
+    }
   }
 
   public void initialize(Map<String, String> sinkParams) throws Exception {

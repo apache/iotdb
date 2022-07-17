@@ -21,10 +21,14 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
 
   public KafkaWriter(Map<String, String> kafkaParams) {
     this.kafkaParams = kafkaParams;
+    this.status = new ExternalPipeSinkWriterStatus();
+    this.status.setStartTime(System.currentTimeMillis());
+    this.status.setNumOfBytesTransmitted((long) 0);
+    this.status.setNumOfRecordsTransmitted((long) 0);
   }
 
   public void open() throws IOException {
-    if (producer != null) {
+    if (this.producer != null) {
       return;
     }
     Properties props = new Properties();
@@ -38,52 +42,103 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
     }
   }
 
-  private void insertData(String[] path, long time, Object value) throws IOException {
+  private void status_update(String data) {
+    this.status.setNumOfBytesTransmitted(this.status.getNumOfBytesTransmitted() + data.length());
+    this.status.setNumOfRecordsTransmitted(this.status.getNumOfRecordsTransmitted() + 1);
+  }
+
+  private void kafka_send(String data) throws IOException {
+    status_update(data);
     try {
-      String Timeseries = String.join(".", path);
-      String data = "insert:" + Timeseries + ':' + time + ':' + value;
-      producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
+      if (this.kafkaParams.containsKey("means")
+          && this.kafkaParams.get("means").equals("non-serial")) {
+        if (this.kafkaParams.containsKey("partition")) {
+          this.producer.send(
+              new ProducerRecord<>(
+                  this.kafkaParams.get("topic"),
+                  Integer.parseInt(this.kafkaParams.get("partition")),
+                  "IoTDB",
+                  data));
+        } else if (this.kafkaParams.containsKey("key")) {
+          this.producer.send(
+              new ProducerRecord<>(
+                  this.kafkaParams.get("topic"), this.kafkaParams.get("key"), data));
+        } else {
+          this.producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), data));
+        }
+      } else {
+        this.producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
+      }
     } catch (Exception e) {
-      throw new IOException();
+      throw new IOException("insertion failed, data=" + data);
     }
   }
 
+  private void insertData(String[] path, long time, Object value, DataType type)
+      throws IOException {
+    String data;
+    String Timeseries = String.join(".", path);
+    if (this.kafkaParams.containsKey("means")
+        && this.kafkaParams.get("means").equals("non-serial")) {
+      data = Timeseries + ':' + time + ':' + type + ':' + value;
+    } else {
+      data = "insert:" + Timeseries + ':' + time + ':' + value;
+    }
+    kafka_send(data);
+  }
+
   public void insertBoolean(String[] path, long time, boolean value) throws IOException {
-    insertData(path, time, value);
+    insertData(path, time, value, DataType.BOOLEAN);
   }
 
   public void insertInt32(String[] path, long time, int value) throws IOException {
-    insertData(path, time, value);
+    insertData(path, time, value, DataType.INT32);
   }
 
   public void insertInt64(String[] path, long time, long value) throws IOException {
-    insertData(path, time, value);
+    insertData(path, time, value, DataType.INT64);
   }
 
   public void insertFloat(String[] path, long time, float value) throws IOException {
-    insertData(path, time, value);
+    insertData(path, time, value, DataType.FLOAT);
   }
 
   public void insertDouble(String[] path, long time, double value) throws IOException {
-    insertData(path, time, value);
+    insertData(path, time, value, DataType.DOUBLE);
   }
 
   public void insertText(String[] path, long time, String value) throws IOException {
-    insertData(path, time, value);
+    insertData(path, time, value, DataType.TEXT);
   }
 
   public void insertVector(String[] path, DataType[] dataTypes, long time, Object[] values)
       throws IOException {
-    for (Object value : values) {
-      insertData(path, time, value);
+    if (this.kafkaParams.containsKey("means")
+        && this.kafkaParams.get("means").equals("non-serial")) {
+      String Timeseries = String.join(".", path);
+      String[] pairs = new String[values.length];
+      for (int i = 0; i < values.length; ++i) {
+        pairs[i] = dataTypes[i].toString() + ':' + values[i].toString();
+      }
+      String Values = String.join(":", pairs);
+      String data = Timeseries + ':' + time + ':' + DataType.VECTOR + ':' + Values;
+      kafka_send(data);
+    } else {
+      for (int i = 0; i < values.length; ++i) {
+        insertData(path, time, values[i], dataTypes[i]);
+      }
     }
   }
 
   public void delete(String[] path, long time) throws IOException {
     try {
+      if (this.kafkaParams.containsKey("means")
+          && this.kafkaParams.get("means").equals("non-serial")) {
+        return;
+      }
       String Timeseries = String.join(".", path);
       String data = "delete:" + Timeseries + ':' + time;
-      producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
+      this.producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
     } catch (Exception e) {
       throw new IOException();
     }
@@ -92,6 +147,10 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
   // The "vector" TimeSeries does not contain its dataTypes currently.
   public void createTimeSeries(String[] path, DataType dataType) throws IOException {
     try {
+      if (this.kafkaParams.containsKey("means")
+          && this.kafkaParams.get("means").equals("non-serial")) {
+        return;
+      }
       String Timeseries = String.join(".", path);
       String data = "create:" + Timeseries + ':' + dataType;
       producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
@@ -102,6 +161,10 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
 
   public void deleteTimeSeries(String[] path) throws IOException {
     try {
+      if (this.kafkaParams.containsKey("means")
+          && this.kafkaParams.get("means").equals("non-serial")) {
+        return;
+      }
       String Timeseries = String.join(".", path);
       String data = "del_time:" + Timeseries;
       producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
