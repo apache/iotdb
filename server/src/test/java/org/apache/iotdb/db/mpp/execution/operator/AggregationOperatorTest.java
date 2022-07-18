@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
@@ -108,8 +109,18 @@ public class AggregationOperatorTest {
     AggregationOperator aggregationOperator =
         initAggregationOperator(aggregationTypes, null, inputLocations);
     int count = 0;
-    while (aggregationOperator.hasNext()) {
+    while (true) {
+      ListenableFuture<?> blocked = aggregationOperator.isBlocked();
+      if (!blocked.isDone()) {
+        continue;
+      }
+      if (!aggregationOperator.hasNext()) {
+        break;
+      }
       TsBlock resultTsBlock = aggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
       assertEquals(6524750.0, resultTsBlock.getColumn(1).getDouble(0), 0.0001);
       assertEquals(0, resultTsBlock.getColumn(2).getLong(0));
@@ -140,8 +151,18 @@ public class AggregationOperatorTest {
     AggregationOperator aggregationOperator =
         initAggregationOperator(aggregationTypes, null, inputLocations);
     int count = 0;
-    while (aggregationOperator.hasNext()) {
+    while (true) {
+      ListenableFuture<?> blocked = aggregationOperator.isBlocked();
+      if (!blocked.isDone()) {
+        continue;
+      }
+      if (!aggregationOperator.hasNext()) {
+        break;
+      }
       TsBlock resultTsBlock = aggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(13049.5, resultTsBlock.getColumn(0).getDouble(0), 0.001);
       assertEquals(20000, resultTsBlock.getColumn(1).getInt(0));
       assertEquals(10499, resultTsBlock.getColumn(2).getInt(0));
@@ -179,8 +200,18 @@ public class AggregationOperatorTest {
     AggregationOperator aggregationOperator =
         initAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
-    while (aggregationOperator.hasNext()) {
+    while (true) {
+      ListenableFuture<?> blocked = aggregationOperator.isBlocked();
+      if (!blocked.isDone()) {
+        continue;
+      }
+      if (!aggregationOperator.hasNext()) {
+        break;
+      }
       TsBlock resultTsBlock = aggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
@@ -221,8 +252,18 @@ public class AggregationOperatorTest {
     AggregationOperator aggregationOperator =
         initAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
-    while (aggregationOperator.hasNext()) {
+    while (true) {
+      ListenableFuture<?> blocked = aggregationOperator.isBlocked();
+      if (!blocked.isDone()) {
+        continue;
+      }
+      if (!aggregationOperator.hasNext()) {
+        break;
+      }
       TsBlock resultTsBlock = aggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       int positionCount = resultTsBlock.getPositionCount();
       for (int pos = 0; pos < positionCount; pos++) {
         assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
