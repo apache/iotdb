@@ -502,12 +502,13 @@ public class MTree implements Serializable {
 
   private Pair<IMNode, Template> checkAndAutoCreateDeviceNode(
       String deviceName, IMNode deviceParent, Template upperTemplate)
-      throws PathAlreadyExistException {
+      throws PathAlreadyExistException, TemplateImcompatibeException {
     if (!deviceParent.hasChild(deviceName)) {
       if (upperTemplate != null && upperTemplate.getDirectNode(deviceName) != null) {
-        throw new PathAlreadyExistException(
-            deviceParent.getPartialPath().concatNode(deviceName).getFullPath()
-                + " ( which is incompatible with template )");
+        throw new TemplateImcompatibeException(
+            deviceParent.getPartialPath().concatNode(deviceName).getFullPath(),
+            upperTemplate.getName(),
+            deviceName);
       }
       deviceParent.addChild(deviceName, new InternalMNode(deviceParent, deviceName));
     }
