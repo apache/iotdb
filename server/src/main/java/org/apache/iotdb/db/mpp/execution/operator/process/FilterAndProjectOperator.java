@@ -183,6 +183,11 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
+    TsBlock input = inputOperator.next();
+    if (input == null) {
+      return null;
+    }
+
     // reset ColumnTransformer for next input
     predicateColumnTransformer.reset();
 
@@ -192,7 +197,6 @@ public class FilterAndProjectOperator implements ProcessOperator {
       }
     }
 
-    TsBlock input = inputOperator.next();
     TsBlock filterResult = getFilterTsBlock(input);
 
     // contains non-mappable udf, we leave calculation for TransformOperator
@@ -222,11 +226,9 @@ public class FilterAndProjectOperator implements ProcessOperator {
                         .get(expression.getExpressionString())
                         .get(0)
                         .getValueColumnIndex()));
-      }
-      if (expression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+      } else if (expression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
         predicateMap.get(expression).initializeColumnCache(originTimeColumn);
-      }
-      if (expression.getExpressionType().equals(ExpressionType.CONSTANT)) {
+      } else if (expression.getExpressionType().equals(ExpressionType.CONSTANT)) {
         predicateMap
             .get(expression)
             .initializeColumnCache(new ConstantColumn((ConstantOperand) expression));
@@ -288,16 +290,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
                         .get(expression.getExpressionString())
                         .get(0)
                         .getValueColumnIndex()));
-      }
-      if (expression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
+      } else if (expression.getExpressionType().equals(ExpressionType.TIMESTAMP)) {
         outputMap.get(expression).initializeColumnCache(originTimeColumn);
-      }
-      if (expression.getExpressionType().equals(ExpressionType.CONSTANT)) {
+      } else if (expression.getExpressionType().equals(ExpressionType.CONSTANT)) {
         outputMap
             .get(expression)
             .initializeColumnCache(new ConstantColumn((ConstantOperand) expression));
-      }
-      if (commonSubexpressions.contains(expression)) {
+      } else if (commonSubexpressions.contains(expression)) {
         outputMap
             .get(expression)
             .initializeColumnCache(input.getColumn(commonSubexpressionsIndexMap.get(expression)));

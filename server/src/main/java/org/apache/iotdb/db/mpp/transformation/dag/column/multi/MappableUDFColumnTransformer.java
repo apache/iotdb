@@ -65,7 +65,7 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
 
       Object[] values = new Object[size];
       for (int j = 0; j < size; j++) {
-        if (columns[j].isNull(j)) {
+        if (columns[j].isNull(i)) {
           values[j] = null;
         } else {
           values[j] = columns[j].getObject(i);
