@@ -101,10 +101,6 @@ public class RemoveConfigNodeProcedure
   protected void rollbackState(ConfigNodeProcedureEnv env, RemoveConfigNodeState state)
       throws IOException, InterruptedException, ProcedureException {
     switch (state) {
-      case REMOVE_CONSENSUS_GROUP:
-        env.addConsensusGroup(tConfigNodeLocation);
-        LOG.info("Rollback remove consensus group:{}", tConfigNodeLocation);
-        break;
       case REMOVE_PEER:
         try {
           env.addConfigNodePeer(tConfigNodeLocation);
@@ -119,7 +115,6 @@ public class RemoveConfigNodeProcedure
   @Override
   protected boolean isRollbackSupported(RemoveConfigNodeState state) {
     switch (state) {
-      case REMOVE_CONSENSUS_GROUP:
       case REMOVE_PEER:
         return true;
     }
