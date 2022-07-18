@@ -37,6 +37,7 @@ import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -455,6 +456,7 @@ public class IoTDBSyncSenderIT {
   }
 
   @Test
+  @Ignore
   public void testRealtimeDel() {
     try {
       prepareSchema(); // history
