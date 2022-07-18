@@ -203,7 +203,7 @@ public class QueryDataSetUtils {
       }
       TsBlock tsBlock = optionalTsBlock.get();
       if (tsBlock.isEmpty()) {
-        break;
+        continue;
       }
 
       int currentCount = tsBlock.getPositionCount();
