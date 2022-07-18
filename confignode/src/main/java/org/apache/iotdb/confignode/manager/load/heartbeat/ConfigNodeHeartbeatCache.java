@@ -91,7 +91,7 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
   }
 
   @Override
-  public float getLoadScore() {
+  public long getLoadScore() {
     // Return a copy of loadScore
     switch (status) {
       case Running:
@@ -99,7 +99,7 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
       case Unknown:
       default:
         // The Unknown Node will get the highest loadScore
-        return Float.MAX_VALUE;
+        return Long.MAX_VALUE;
     }
   }
 

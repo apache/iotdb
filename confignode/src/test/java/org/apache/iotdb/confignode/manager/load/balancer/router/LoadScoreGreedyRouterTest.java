@@ -23,70 +23,84 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
+import org.apache.iotdb.confignode.manager.load.heartbeat.NodeHeartbeatSample;
 
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class LoadScoreGreedyRouterTest {
 
-  private static final TDataNodeLocation dataNodeLocation1 =
-      new TDataNodeLocation(
-          1,
-          new TEndPoint("0.0.0.0", 6667),
-          new TEndPoint("0.0.0.0", 9003),
-          new TEndPoint("0.0.0.0", 8777),
-          new TEndPoint("0.0.0.0", 40010),
-          new TEndPoint("0.0.0.0", 50010));
-
-  private static final TDataNodeLocation dataNodeLocation2 =
-      new TDataNodeLocation(
-          2,
-          new TEndPoint("0.0.0.0", 6668),
-          new TEndPoint("0.0.0.0", 9004),
-          new TEndPoint("0.0.0.0", 8778),
-          new TEndPoint("0.0.0.0", 40011),
-          new TEndPoint("0.0.0.0", 50011));
-
-  private static final TDataNodeLocation dataNodeLocation3 =
-      new TDataNodeLocation(
-          3,
-          new TEndPoint("0.0.0.0", 6669),
-          new TEndPoint("0.0.0.0", 9005),
-          new TEndPoint("0.0.0.0", 8779),
-          new TEndPoint("0.0.0.0", 40012),
-          new TEndPoint("0.0.0.0", 50012));
-
   @Test
-  public void testGenRealTimeRoutingPolicy() {
-    /* Build loadScoreMap */
-    Map<Integer, Float> loadScoreMap = new HashMap<>();
-    loadScoreMap.put(1, (float) -10.0);
-    loadScoreMap.put(2, (float) -20.0);
-    loadScoreMap.put(3, (float) -30.0);
+  public void testGenLoadScoreGreedyRoutingPolicy() {
+    /* Build TDataNodeLocations */
+    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
+    for (int i = 0; i < 6; i++) {
+      dataNodeLocations.add(
+          new TDataNodeLocation(
+              i,
+              new TEndPoint("0.0.0.0", 6667 + i),
+              new TEndPoint("0.0.0.0", 9003 + i),
+              new TEndPoint("0.0.0.0", 8777 + i),
+              new TEndPoint("0.0.0.0", 40010 + i),
+              new TEndPoint("0.0.0.0", 50010 + i)));
+    }
+
+    /* Build nodeCacheMap */
+    long currentTimeMillis = System.currentTimeMillis();
+    Map<Integer, INodeCache> nodeCacheMap = new HashMap<>();
+    for (int i = 0; i < 6; i++) {
+      nodeCacheMap.put(i, new DataNodeHeartbeatCache());
+      // Simulate that the DataNode-i returned a heartbeat at (currentTime - i * 1000) ms
+      nodeCacheMap
+          .get(i)
+          .cacheHeartbeatSample(
+              new NodeHeartbeatSample(currentTimeMillis - i * 1000, currentTimeMillis - i * 1000));
+    }
+    nodeCacheMap.values().forEach(INodeCache::updateLoadStatistic);
+
+    /* Get the loadScoreMap */
+    Map<Integer, Long> loadScoreMap = new ConcurrentHashMap<>();
+    nodeCacheMap.forEach(
+        (dataNodeId, heartbeatCache) ->
+            loadScoreMap.put(dataNodeId, heartbeatCache.getLoadScore()));
 
     /* Build TRegionReplicaSet */
-    TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
-    TConsensusGroupId groupId = new TConsensusGroupId(TConsensusGroupType.DataRegion, 0);
-    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
-    dataNodeLocations.add(dataNodeLocation1);
-    dataNodeLocations.add(dataNodeLocation2);
-    dataNodeLocations.add(dataNodeLocation3);
-    regionReplicaSet.setRegionId(groupId);
-    regionReplicaSet.setDataNodeLocations(dataNodeLocations);
+    TConsensusGroupId groupId1 = new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 1);
+    TRegionReplicaSet regionReplicaSet1 =
+        new TRegionReplicaSet(
+            groupId1,
+            Arrays.asList(
+                dataNodeLocations.get(2), dataNodeLocations.get(1), dataNodeLocations.get(0)));
+    TConsensusGroupId groupId2 = new TConsensusGroupId(TConsensusGroupType.DataRegion, 2);
+    TRegionReplicaSet regionReplicaSet2 =
+        new TRegionReplicaSet(
+            groupId2,
+            Arrays.asList(
+                dataNodeLocations.get(5), dataNodeLocations.get(4), dataNodeLocations.get(3)));
 
-    TRegionReplicaSet result =
+    /* Check result */
+    Map<TConsensusGroupId, TRegionReplicaSet> result =
         new LoadScoreGreedyRouter(loadScoreMap)
-            .genRealTimeRoutingPolicy(Collections.singletonList(regionReplicaSet))
-            .get(groupId);
-    /* Sort the Replicas by their loadScore */
-    Assert.assertEquals(dataNodeLocation3, result.getDataNodeLocations().get(0));
-    Assert.assertEquals(dataNodeLocation2, result.getDataNodeLocations().get(1));
-    Assert.assertEquals(dataNodeLocation1, result.getDataNodeLocations().get(2));
+            .genLatestRegionRouteMap(Arrays.asList(regionReplicaSet1, regionReplicaSet2));
+    Assert.assertEquals(2, result.size());
+
+    TRegionReplicaSet result1 = result.get(groupId1);
+    for (int i = 0; i < 3; i++) {
+      Assert.assertEquals(dataNodeLocations.get(i), result1.getDataNodeLocations().get(i));
+    }
+
+    TRegionReplicaSet result2 = result.get(groupId2);
+    for (int i = 3; i < 6; i++) {
+      Assert.assertEquals(dataNodeLocations.get(i), result2.getDataNodeLocations().get(i - 3));
+    }
   }
 }
