@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common.block;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
@@ -43,6 +44,9 @@ public class TsBlockBuilder {
   //
   // This could be any other small number.
   private static final int DEFAULT_INITIAL_EXPECTED_ENTRIES = 8;
+
+  private static final int MAX_LINE_NUMBER =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
 
   private TimeColumnBuilder timeColumnBuilder;
   private ColumnBuilder[] valueColumnBuilders;
@@ -254,7 +258,7 @@ public class TsBlockBuilder {
   }
 
   public boolean isFull() {
-    return declaredPositions == Integer.MAX_VALUE || tsBlockBuilderStatus.isFull();
+    return declaredPositions == MAX_LINE_NUMBER || tsBlockBuilderStatus.isFull();
   }
 
   public boolean isEmpty() {

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.confignode.consensus.request.write;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -30,18 +30,18 @@ import java.util.Objects;
 
 public class RegisterDataNodePlan extends ConfigPhysicalPlan {
 
-  private TDataNodeInfo info;
+  private TDataNodeConfiguration info;
 
   public RegisterDataNodePlan() {
     super(ConfigPhysicalPlanType.RegisterDataNode);
   }
 
-  public RegisterDataNodePlan(TDataNodeInfo info) {
+  public RegisterDataNodePlan(TDataNodeConfiguration info) {
     this();
     this.info = info;
   }
 
-  public TDataNodeInfo getInfo() {
+  public TDataNodeConfiguration getInfo() {
     return info;
   }
 

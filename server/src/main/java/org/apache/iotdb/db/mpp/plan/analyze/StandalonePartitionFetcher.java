@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
@@ -32,6 +33,7 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -94,12 +96,12 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
       PathPatternTree patternTree, Integer level) {
     try {
       patternTree.constructTree();
-      Set<String> matchedNodes = new HashSet<>();
+      Set<TSchemaNode> matchedNodes = new HashSet<>();
       Set<PartialPath> involvedStorageGroup = new HashSet<>();
       if (level == null) {
         // Get Child
         for (PartialPath pathPattern : patternTree.getAllPathPatterns()) {
-          Pair<Set<String>, Set<PartialPath>> result =
+          Pair<Set<TSchemaNode>, Set<PartialPath>> result =
               localConfigNode.getChildNodePathInNextLevel(pathPattern);
           matchedNodes.addAll(result.left);
           involvedStorageGroup.addAll(result.right);
@@ -109,7 +111,11 @@ public class StandalonePartitionFetcher implements IPartitionFetcher {
           Pair<List<PartialPath>, Set<PartialPath>> result =
               localConfigNode.getNodesListInGivenLevel(pathPattern, level, false, null);
           matchedNodes.addAll(
-              result.left.stream().map(PartialPath::getFullPath).collect(Collectors.toList()));
+              result.left.stream()
+                  .map(
+                      path ->
+                          new TSchemaNode(path.getFullPath(), MNodeType.UNIMPLEMENT.getNodeType()))
+                  .collect(Collectors.toList()));
           involvedStorageGroup.addAll(result.right);
         }
       }

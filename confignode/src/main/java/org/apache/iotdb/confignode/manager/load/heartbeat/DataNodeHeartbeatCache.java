@@ -32,7 +32,7 @@ public class DataNodeHeartbeatCache implements INodeCache {
   private final LinkedList<NodeHeartbeatSample> slidingWindow;
 
   // For guiding queries, the higher the score the higher the load
-  private volatile float loadScore;
+  private volatile long loadScore;
   // For showing cluster
   private volatile NodeStatus status;
 
@@ -68,6 +68,12 @@ public class DataNodeHeartbeatCache implements INodeCache {
       }
     }
 
+    /* Update loadScore */
+    if (lastSendTime > 0) {
+      loadScore = -lastSendTime;
+    }
+
+    /* Update Node status */
     NodeStatus originStatus;
     switch (status) {
       case Running:
@@ -88,7 +94,7 @@ public class DataNodeHeartbeatCache implements INodeCache {
   }
 
   @Override
-  public float getLoadScore() {
+  public long getLoadScore() {
     // Return a copy of loadScore
     switch (status) {
       case Running:
@@ -96,7 +102,7 @@ public class DataNodeHeartbeatCache implements INodeCache {
       case Unknown:
       default:
         // The Unknown Node will get the highest loadScore
-        return Float.MAX_VALUE;
+        return Long.MAX_VALUE;
     }
   }
 

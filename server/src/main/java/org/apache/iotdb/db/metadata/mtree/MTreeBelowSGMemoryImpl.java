@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -747,14 +748,18 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   @Override
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
+  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
     try {
-      MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(
+      MNodeCollector<Set<TSchemaNode>> collector =
+          new MNodeCollector<Set<TSchemaNode>>(
               storageGroupMNode, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
             @Override
             protected void transferToResult(IMNode node) {
-              resultSet.add(getCurrentPartialPath(node).getFullPath());
+              resultSet.add(
+                  new TSchemaNode(
+                      getCurrentPartialPath(node).getFullPath(),
+                      node.getMNodeType(false).getNodeType()));
             }
           };
       collector.setResultSet(new TreeSet<>());

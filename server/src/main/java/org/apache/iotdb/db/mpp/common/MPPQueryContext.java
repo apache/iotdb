@@ -76,4 +76,8 @@ public class MPPQueryContext {
   public TEndPoint getLocalInternalEndpoint() {
     return localInternalEndpoint;
   }
+
+  public SessionInfo getSession() {
+    return session;
+  }
 }

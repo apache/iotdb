@@ -63,6 +63,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
 import static org.junit.Assert.assertEquals;
 
 public class RawDataAggregationOperatorTest {
@@ -326,6 +327,13 @@ public class RawDataAggregationOperatorTest {
         3, new PlanNodeId("3"), TimeJoinOperator.class.getSimpleName());
     fragmentInstanceContext.addOperatorContext(
         4, new PlanNodeId("4"), RawDataAggregationOperatorTest.class.getSimpleName());
+    fragmentInstanceContext
+        .getOperatorContexts()
+        .forEach(
+            operatorContext -> {
+              operatorContext.setMaxRunTime(TEST_TIME_SLICE);
+            });
+
     SeriesScanOperator seriesScanOperator1 =
         new SeriesScanOperator(
             planNodeId1,

@@ -16,43 +16,47 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.client.handlers;
+package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class SetTTLHandler implements AsyncMethodCallback<TSStatus> {
+public class SetTTLHandler extends AbstractRetryHandler implements AsyncMethodCallback<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(SetTTLHandler.class);
 
-  private final TDataNodeLocation dataNodeLocation;
-  private final CountDownLatch latch;
-
-  public SetTTLHandler(TDataNodeLocation dataNodeLocation, CountDownLatch latch) {
-    this.dataNodeLocation = dataNodeLocation;
-    this.latch = latch;
+  public SetTTLHandler(
+      CountDownLatch countDownLatch,
+      DataNodeRequestType requestType,
+      TDataNodeLocation targetDataNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocations,
+      int index) {
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
   }
 
   @Override
-  public void onComplete(TSStatus status) {
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info("Successfully SetTTL on DataNode: {}", dataNodeLocation);
+  public void onComplete(TSStatus response) {
+    if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      getDataNodeLocations().remove(index);
+      LOGGER.info("Successfully SetTTL on DataNode: {}", targetDataNode);
     } else {
-      LOGGER.error("Failed to SetTTL on DataNode: {}, {}", dataNodeLocation, status);
+      LOGGER.error("Failed to SetTTL on DataNode: {}, {}", targetDataNode, response);
     }
-    latch.countDown();
+    countDownLatch.countDown();
   }
 
   @Override
   public void onError(Exception e) {
-    latch.countDown();
-    LOGGER.error("Failed to SetTTL on DataNode: {}", dataNodeLocation);
+    countDownLatch.countDown();
+    LOGGER.error("Failed to SetTTL on DataNode: {}", targetDataNode);
   }
 }

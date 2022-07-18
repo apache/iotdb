@@ -216,6 +216,11 @@ public class InternalMNode extends MNode {
   }
 
   @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
+  }
+
+  @Override
   public Template getSchemaTemplate() {
     return schemaTemplate;
   }

@@ -74,7 +74,7 @@ public class QueryPlannerTest {
             new MPPQueryContext(
                 querySql,
                 new QueryId("query1"),
-                new SessionInfo(),
+                new SessionInfo(1L, "fakeUsername", "fakeZoneId"),
                 new TEndPoint(),
                 new TEndPoint()),
             IoTDBThreadPoolFactory.newSingleThreadExecutor("test_query"),
