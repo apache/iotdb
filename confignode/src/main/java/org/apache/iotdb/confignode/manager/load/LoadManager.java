@@ -182,8 +182,8 @@ public class LoadManager {
    *     for each Region is based on the order in the TRegionReplicaSet. The replica with higher
    *     sorting result have higher priority.
    */
-  public Map<TConsensusGroupId, TRegionReplicaSet> genRealTimeRoutingPolicy() {
-    return routeBalancer.genRealTimeRoutingPolicy(getPartitionManager().getAllReplicaSets());
+  public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap() {
+    return routeBalancer.genLatestRegionRouteMap(getPartitionManager().getAllReplicaSets());
   }
 
   /**
@@ -191,8 +191,8 @@ public class LoadManager {
    *
    * @return Map<DataNodeId, loadScore>
    */
-  public Map<Integer, Float> getAllLoadScores() {
-    Map<Integer, Float> result = new ConcurrentHashMap<>();
+  public Map<Integer, Long> getAllLoadScores() {
+    Map<Integer, Long> result = new ConcurrentHashMap<>();
 
     nodeCacheMap.forEach(
         (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
@@ -298,7 +298,7 @@ public class LoadManager {
   }
 
   private void broadcastLatestRegionRouteMap() {
-    Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genRealTimeRoutingPolicy();
+    Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genLatestRegionRouteMap();
     List<TDataNodeConfiguration> onlineDataNodes = getOnlineDataNodes(-1);
     CountDownLatch latch = new CountDownLatch(onlineDataNodes.size());
 
