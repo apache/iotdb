@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.storagegroup;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -45,14 +46,6 @@ public interface IStorageGroupSchemaManager {
    * @param path storage group path
    */
   void setStorageGroup(PartialPath path) throws MetadataException;
-
-  /**
-   * different with LocalConfigNode.ensureStorageGroup, this method won't init storageGroup
-   * resources.
-   *
-   * @param path storage group path
-   */
-  void ensureStorageGroup(PartialPath path) throws MetadataException;
 
   /**
    * Delete storage groups of given paths from MTree. Log format: "delete_storage_group,sg1,sg2,sg3"
@@ -141,20 +134,20 @@ public interface IStorageGroupSchemaManager {
    */
   int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch) throws MetadataException;
 
-  /**
-   * E.g., root.sg is storage group given [root, sg], return the MNode of root.sg given [root, sg],
-   * return the MNode of root.sg Get storage group node by path. Give path like [root, sg, device],
-   * MNodeTypeMismatchException will be thrown. If storage group is not set,
-   * StorageGroupNotSetException will be thrown.
-   */
-  IStorageGroupMNode getStorageGroupNodeByStorageGroupPath(PartialPath path)
-      throws MetadataException;
-
   /** Get storage group node by path. the give path don't need to be storage group path. */
   IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException;
 
   /** Get all storage group MNodes */
   List<IStorageGroupMNode> getAllStorageGroupNodes();
+
+  /**
+   * Different with LocalConfigNode.ensureStorageGroup, this method won't init storageGroup
+   * resources and the input is the target storage group path.
+   *
+   * @param storageGroup storage group path
+   */
+  IStorageGroupMNode ensureStorageGroupByStorageGroupPath(PartialPath storageGroup)
+      throws MetadataException;
 
   /**
    * Check whether the storage group of given path is set. The path may be a prefix path of some
@@ -197,7 +190,7 @@ public interface IStorageGroupSchemaManager {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath pathPattern)
+  Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath pathPattern)
       throws MetadataException;
 
   /**

@@ -20,12 +20,13 @@ package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.User;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.util.List;
 import java.util.Map;
 
 /** This interface provides accesses to users. */
-public interface IUserManager {
+public interface IUserManager extends SnapshotProcessor {
 
   /**
    * Get a user object.

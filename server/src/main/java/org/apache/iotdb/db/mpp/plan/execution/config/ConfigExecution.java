@@ -19,15 +19,22 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.ClusterConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.StandaloneConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
@@ -43,6 +50,8 @@ import java.util.concurrent.ExecutorService;
 
 public class ConfigExecution implements IQueryExecution {
 
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   private final MPPQueryContext context;
   private final Statement statement;
   private final ExecutorService executor;
@@ -53,6 +62,7 @@ public class ConfigExecution implements IQueryExecution {
   private DatasetHeader datasetHeader;
   private boolean resultSetConsumed;
   private final IConfigTask task;
+  private IConfigTaskExecutor configTaskExecutor;
 
   public ConfigExecution(MPPQueryContext context, Statement statement, ExecutorService executor) {
     this.context = context;
@@ -62,6 +72,11 @@ public class ConfigExecution implements IQueryExecution {
     this.taskFuture = SettableFuture.create();
     this.task = statement.accept(new ConfigTaskVisitor(), new ConfigTaskVisitor.TaskContext());
     this.resultSetConsumed = false;
+    if (config.isClusterMode()) {
+      configTaskExecutor = ClusterConfigTaskExecutor.getInstance();
+    } else {
+      configTaskExecutor = StandaloneConfigTaskExecutor.getInstance();
+    }
   }
 
   @TestOnly
@@ -78,7 +93,7 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public void start() {
     try {
-      ListenableFuture<ConfigTaskResult> future = task.execute();
+      ListenableFuture<ConfigTaskResult> future = task.execute(configTaskExecutor);
       Futures.addCallback(
           future,
           new FutureCallback<ConfigTaskResult>() {
@@ -104,7 +119,18 @@ public class ConfigExecution implements IQueryExecution {
 
   public void fail(Throwable cause) {
     stateMachine.transitionToFailed(cause);
-    taskFuture.set(new ConfigTaskResult(TSStatusCode.INTERNAL_SERVER_ERROR));
+    ConfigTaskResult result;
+    if (cause instanceof IoTDBException) {
+      result =
+          new ConfigTaskResult(TSStatusCode.representOf(((IoTDBException) cause).getErrorCode()));
+    } else if (cause instanceof StatementExecutionException) {
+      result =
+          new ConfigTaskResult(
+              TSStatusCode.representOf(((StatementExecutionException) cause).getStatusCode()));
+    } else {
+      result = new ConfigTaskResult(TSStatusCode.INTERNAL_SERVER_ERROR);
+    }
+    taskFuture.set(result);
   }
 
   @Override
@@ -151,7 +177,7 @@ public class ConfigExecution implements IQueryExecution {
 
   @Override
   public int getOutputValueColumnCount() {
-    return datasetHeader.getColumnHeaders().size();
+    return datasetHeader.getOutputValueColumnCount();
   }
 
   @Override
@@ -162,5 +188,10 @@ public class ConfigExecution implements IQueryExecution {
   @Override
   public boolean isQuery() {
     return context.getQueryType() == QueryType.READ;
+  }
+
+  @Override
+  public String getQueryId() {
+    return context.getQueryId().getId();
   }
 }

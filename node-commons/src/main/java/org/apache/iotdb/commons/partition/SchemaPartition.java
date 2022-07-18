@@ -20,24 +20,14 @@ package org.apache.iotdb.commons.partition;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.commons.utils.PathUtils;
 
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TByteBuffer;
-import org.apache.thrift.transport.TIOStreamTransport;
-import org.apache.thrift.transport.TTransport;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
+// TODO: Remove this class
 public class SchemaPartition extends Partition {
 
   // Map<StorageGroup, Map<TSeriesPartitionSlot, TSchemaRegionPlaceInfo>>
@@ -80,7 +70,7 @@ public class SchemaPartition extends Partition {
 
   private String getStorageGroupByDevice(String deviceName) {
     for (String storageGroup : schemaPartitionMap.keySet()) {
-      if (deviceName.startsWith(storageGroup + ".")) {
+      if (PathUtils.isStartWith(deviceName, storageGroup)) {
         return storageGroup;
       }
     }
@@ -88,141 +78,17 @@ public class SchemaPartition extends Partition {
     return null;
   }
 
-  /* Interfaces for ConfigNode */
-
-  /**
-   * Get SchemaPartition by partitionSlotsMap
-   *
-   * @param partitionSlotsMap Map<StorageGroup, List<SeriesPartitionSlot>>
-   * @return Subset of current SchemaPartition, including Map<StorageGroup, Map<SeriesPartitionSlot,
-   *     RegionReplicaSet>>
-   */
-  public SchemaPartition getSchemaPartition(
-      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
-    if (partitionSlotsMap.isEmpty()) {
-      // Return all SchemaPartitions when the partitionSlotsMap is empty
-      return new SchemaPartition(
-          new HashMap<>(schemaPartitionMap), seriesSlotExecutorName, seriesPartitionSlotNum);
-    } else {
-      Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> result = new HashMap<>();
-
-      partitionSlotsMap.forEach(
-          (storageGroup, seriesPartitionSlots) -> {
-            if (schemaPartitionMap.containsKey(storageGroup)) {
-              if (seriesPartitionSlots.isEmpty()) {
-                // Return all SchemaPartitions in one StorageGroup when the queried
-                // SeriesPartitionSlots is empty
-                result.put(storageGroup, new HashMap<>(schemaPartitionMap.get(storageGroup)));
-              } else {
-                // Return the specific SchemaPartition
-                seriesPartitionSlots.forEach(
-                    seriesPartitionSlot -> {
-                      if (schemaPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
-                        result
-                            .computeIfAbsent(storageGroup, key -> new HashMap<>())
-                            .put(
-                                seriesPartitionSlot,
-                                schemaPartitionMap.get(storageGroup).get(seriesPartitionSlot));
-                      }
-                    });
-              }
-            }
-          });
-
-      return new SchemaPartition(result, seriesSlotExecutorName, seriesPartitionSlotNum);
-    }
-  }
-
-  /**
-   * Filter out unassigned PartitionSlots
-   *
-   * @param partitionSlotsMap Map<StorageGroupName, List<SeriesPartitionSlot>>
-   * @return Map<String, List < SeriesPartitionSlot>>, unassigned PartitionSlots
-   */
-  public Map<String, List<TSeriesPartitionSlot>> filterNoAssignedSchemaPartitionSlot(
-      Map<String, List<TSeriesPartitionSlot>> partitionSlotsMap) {
-    Map<String, List<TSeriesPartitionSlot>> result = new HashMap<>();
-
-    partitionSlotsMap.forEach(
-        (storageGroup, seriesPartitionSlots) -> {
-          // Compare StorageGroup
-          if (!schemaPartitionMap.containsKey(storageGroup)) {
-            result.put(storageGroup, partitionSlotsMap.get(storageGroup));
-          } else {
-            seriesPartitionSlots.forEach(
-                seriesPartitionSlot -> {
-                  // Compare SeriesPartitionSlot
-                  if (!schemaPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot)) {
-                    result
-                        .computeIfAbsent(storageGroup, key -> new ArrayList<>())
-                        .add(seriesPartitionSlot);
-                  }
-                });
+  @Override
+  public List<RegionReplicaSetInfo> getDistributionInfo() {
+    Map<TRegionReplicaSet, RegionReplicaSetInfo> distributionMap = new HashMap<>();
+    schemaPartitionMap.forEach(
+        (storageGroup, partition) -> {
+          for (TRegionReplicaSet regionReplicaSet : partition.values()) {
+            distributionMap
+                .computeIfAbsent(regionReplicaSet, RegionReplicaSetInfo::new)
+                .setStorageGroup(storageGroup);
           }
         });
-
-    return result;
-  }
-
-  /** Create a SchemaPartition by ConfigNode */
-  public void createSchemaPartition(
-      String storageGroup,
-      TSeriesPartitionSlot seriesPartitionSlot,
-      TRegionReplicaSet regionReplicaSet) {
-    schemaPartitionMap
-        .computeIfAbsent(storageGroup, key -> new HashMap<>())
-        .put(seriesPartitionSlot, regionReplicaSet);
-  }
-
-  public void serialize(ByteBuffer buffer) throws IOException, TException {
-    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
-      for (Entry<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> entry :
-          schemaPartitionMap.entrySet()) {
-        ReadWriteIOUtils.write(entry.getKey(), byteArrayOutputStream);
-        writeMap(entry.getValue(), byteArrayOutputStream);
-      }
-      byte[] toArray = byteArrayOutputStream.toByteArray();
-      buffer.putInt(toArray.length);
-      buffer.put(toArray);
-    }
-  }
-
-  public void deserialize(ByteBuffer buffer) throws TException, IOException {
-    int length = buffer.getInt();
-    byte[] result = new byte[length];
-    buffer.get(result);
-    ByteBuffer byteBuffer = ByteBuffer.wrap(result);
-    while (byteBuffer.hasRemaining()) {
-      String key = ReadWriteIOUtils.readString(byteBuffer);
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> value = readMap(byteBuffer);
-      schemaPartitionMap.put(key, value);
-    }
-  }
-
-  private Map<TSeriesPartitionSlot, TRegionReplicaSet> readMap(ByteBuffer buffer)
-      throws TException {
-    Map<TSeriesPartitionSlot, TRegionReplicaSet> result = new HashMap<>();
-    try (TTransport transport = new TByteBuffer(buffer)) {
-      TProtocol protocol = new TBinaryProtocol(transport);
-      TSeriesPartitionSlot tSeriesPartitionSlot = new TSeriesPartitionSlot();
-      tSeriesPartitionSlot.read(protocol);
-      TRegionReplicaSet tRegionReplicaSet = new TRegionReplicaSet();
-      tRegionReplicaSet.read(protocol);
-      result.put(tSeriesPartitionSlot, tRegionReplicaSet);
-    }
-    return result;
-  }
-
-  private void writeMap(
-      Map<TSeriesPartitionSlot, TRegionReplicaSet> valueMap,
-      ByteArrayOutputStream byteArrayOutputStream)
-      throws TException {
-    try (TIOStreamTransport tioStreamTransport = new TIOStreamTransport(byteArrayOutputStream)) {
-      TProtocol protocol = new TBinaryProtocol(tioStreamTransport);
-      for (Entry<TSeriesPartitionSlot, TRegionReplicaSet> entry : valueMap.entrySet()) {
-        entry.getKey().write(protocol);
-        entry.getValue().write(protocol);
-      }
-    }
+    return new ArrayList<>(distributionMap.values());
   }
 }

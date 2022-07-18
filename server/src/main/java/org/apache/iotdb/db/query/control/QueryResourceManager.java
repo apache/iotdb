@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
-import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
+import org.apache.iotdb.db.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -134,7 +134,7 @@ public class QueryResourceManager {
       // when all the selected series are under the same device, the QueryDataSource will be
       // filtered according to timeIndex
       Set<String> selectedDeviceIdSet =
-          pathList.stream().map(PartialPath::getDeviceIdString).collect(Collectors.toSet());
+          pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
 
       long queryId = context.getQueryId();
       String storageGroupPath = processor.getStorageGroupPath();
@@ -162,7 +162,7 @@ public class QueryResourceManager {
 
     long queryId = context.getQueryId();
     String storageGroupPath = StorageEngine.getInstance().getStorageGroupPath(selectedPath);
-    String deviceId = selectedPath.getDeviceIdString();
+    String deviceId = selectedPath.getDevice();
 
     // get cached QueryDataSource
     QueryDataSource cachedQueryDataSource;
@@ -176,7 +176,7 @@ public class QueryResourceManager {
       cachedQueryDataSource =
           processor.query(
               Collections.singletonList(translatedPath),
-              translatedPath.getDeviceIdString(),
+              translatedPath.getDevice(),
               context,
               filePathsManager,
               timeFilter);
@@ -199,7 +199,7 @@ public class QueryResourceManager {
    * Whenever the jdbc request is closed normally or abnormally, this method must be invoked. All
    * query tokens created by this jdbc request must be cleared.
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  // Suppress high Cognitive Complexity warning
   public void endQuery(long queryId) throws StorageEngineException {
     // close file stream of external sort files, and delete
     if (externalSortFileMap.get(queryId) != null) {

@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.container.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -77,11 +78,17 @@ public interface IMNode extends Serializable {
 
   void setSchemaTemplate(Template schemaTemplate);
 
+  int getSchemaTemplateId();
+
+  void setSchemaTemplateId(int schemaTemplateId);
+
   boolean isStorageGroup();
 
   boolean isEntity();
 
   boolean isMeasurement();
+
+  MNodeType getMNodeType(Boolean isConfig);
 
   IStorageGroupMNode getAsStorageGroupMNode();
 
@@ -100,4 +107,6 @@ public interface IMNode extends Serializable {
   CacheEntry getCacheEntry();
 
   void setCacheEntry(CacheEntry cacheEntry);
+
+  <R, C> R accept(MNodeVisitor<R, C> visitor, C context);
 }

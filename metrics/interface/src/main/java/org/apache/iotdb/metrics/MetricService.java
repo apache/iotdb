@@ -61,6 +61,7 @@ public abstract class MetricService {
     // do some init work
     metricManager.init();
     // do start all reporter without first time
+
     if (!firstInit.getAndSet(false)) {
       startAllReporter();
     }
@@ -70,8 +71,6 @@ public abstract class MetricService {
       enablePredefinedMetric(predefinedMetric);
     }
     logger.info("Start metric at level: " + metricConfig.getMetricLevel().name());
-
-    collectFileSystemInfo();
   }
 
   /** Stop metric service. if is disabled, do nothing */
@@ -149,12 +148,7 @@ public abstract class MetricService {
    * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback
    * metrics are not supported
    */
-  public void enablePredefinedMetric(PredefinedMetric metric) {
-    metricManager.enablePredefinedMetric(metric);
-  }
-
-  /** collect file system info in metric way */
-  protected abstract void collectFileSystemInfo();
+  public abstract void enablePredefinedMetric(PredefinedMetric metric);
 
   /**
    * support hot load of some properties

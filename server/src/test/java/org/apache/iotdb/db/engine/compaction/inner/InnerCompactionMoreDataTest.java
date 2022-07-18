@@ -207,15 +207,12 @@ public class InnerCompactionMoreDataTest extends InnerCompactionTest {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
     try {
       Thread.sleep(500);
     } catch (Exception e) {
 
     }
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      // wait
-    }
+    CompactionTaskManager.getInstance().waitAllCompactionFinish();
     QueryContext context = new QueryContext();
     MeasurementPath path =
         SchemaTestUtils.getMeasurementPath(

@@ -226,8 +226,9 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
-    task.call();
+            new AtomicInteger(0),
+            0);
+    task.start();
 
     for (TsFileResource resource : seqResources) {
       resource.resetModFile();
@@ -245,7 +246,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
                   .replace(CROSS_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
       resource.resetModFile();
       Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(24, resource.getModFile().getModifications().size());
+      Assert.assertEquals(4, resource.getModFile().getModifications().size());
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
@@ -462,8 +463,9 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
-    task.call();
+            new AtomicInteger(0),
+            0);
+    task.start();
 
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getModFile().exists());
@@ -481,7 +483,7 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
         continue;
       }
       Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(180, resource.getModFile().getModifications().size());
+      Assert.assertEquals(30, resource.getModFile().getModifications().size());
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
 
@@ -570,8 +572,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
    * forth and fifth file has d0 and s0 ~ s4, time range is 450 ~ 549 and 550 ~ 649, value range is
    * 20450 ~ 20549 and 20550 ~ 20649.
    *
-   * <p>The data of d3.s0 is deleted in each file. Test when there is a deletion to the file before
-   * compaction, then comes to a deletion during compaction.
+   * <p>The data of d3.s0 is deleted. Test when there is a deletion to the file before compaction,
+   * then comes to a deletion during compaction.
    */
   @Test
   public void testOneDeletionDuringCompaction() throws Exception {
@@ -608,7 +610,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data in source file during compaction
@@ -627,23 +630,27 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
-      Assert.assertTrue(resource.getCompactionModFile().exists());
-      Assert.assertEquals(1, resource.getCompactionModFile().getModifications().size());
-      Assert.assertTrue(resource.getModFile().exists());
-      if (i == 3) {
-        Assert.assertEquals(1, resource.getModFile().getModifications().size());
-      } else {
+      if (i < 2) {
+        Assert.assertFalse(resource.getCompactionModFile().exists());
+        Assert.assertFalse(resource.getModFile().exists());
+      } else if (i == 2) {
+        Assert.assertTrue(resource.getCompactionModFile().exists());
+        Assert.assertTrue(resource.getModFile().exists());
         Assert.assertEquals(2, resource.getModFile().getModifications().size());
+        Assert.assertEquals(1, resource.getCompactionModFile().getModifications().size());
+      } else {
+        Assert.assertTrue(resource.getCompactionModFile().exists());
+        Assert.assertTrue(resource.getModFile().exists());
+        Assert.assertEquals(1, resource.getModFile().getModifications().size());
+        Assert.assertEquals(1, resource.getCompactionModFile().getModifications().size());
       }
     }
     for (TsFileResource resource : unseqResources) {
       resource.resetModFile();
-      Assert.assertTrue(resource.getCompactionModFile().exists());
-      Assert.assertEquals(1, resource.getCompactionModFile().getModifications().size());
-      Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(2, resource.getModFile().getModifications().size());
+      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getModFile().exists());
     }
-    task.call();
+    task.start();
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.getModFile().exists());
@@ -654,13 +661,19 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
       Assert.assertFalse(resource.getModFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
-    for (TsFileResource seqResource : seqResources) {
+    for (int i = 0; i < seqResources.size(); i++) {
+      TsFileResource seqResource = seqResources.get(i);
       TsFileResource resource =
           new TsFileResource(
               TsFileNameGenerator.increaseCrossCompactionCnt(seqResource.getTsFile()));
-      Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(6, resource.getModFile().getModifications().size());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      if (i < 2) {
+        Assert.assertFalse(resource.getCompactionModFile().exists());
+        Assert.assertFalse(resource.getModFile().exists());
+      } else {
+        Assert.assertFalse(resource.getCompactionModFile().exists());
+        Assert.assertTrue(resource.getModFile().exists());
+        Assert.assertEquals(1, resource.getModFile().getModifications().size());
+      }
     }
   }
 
@@ -679,8 +692,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
    * forth and fifth file has d0 and s0 ~ s4, time range is 450 ~ 549 and 550 ~ 649, value range is
    * 20450 ~ 20549 and 20550 ~ 20649.
    *
-   * <p>The data of d3.s0 is deleted in each file. Test when there is a deletion to the file before
-   * compaction, then comes to serveral deletions during compaction.
+   * <p>The data of d3.s0 is deleted. Test when there is a deletion to the file before compaction,
+   * then comes to serveral deletions during compaction.
    */
   @Test
   public void testSeveralDeletionsDuringCompaction() throws Exception {
@@ -717,7 +730,8 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
             seqResources,
             unseqResources,
             new ReadPointCompactionPerformer(),
-            new AtomicInteger(0));
+            new AtomicInteger(0),
+            0);
     task.setSourceFilesToCompactionCandidate();
     task.checkValidAndSetMerging();
     // delete data in source file during compaction
@@ -748,23 +762,27 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
     for (int i = 0; i < seqResources.size(); i++) {
       TsFileResource resource = seqResources.get(i);
       resource.resetModFile();
-      Assert.assertTrue(resource.getCompactionModFile().exists());
-      Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
-      Assert.assertTrue(resource.getModFile().exists());
-      if (i == 3) {
-        Assert.assertEquals(2, resource.getModFile().getModifications().size());
-      } else {
+      if (i < 2) {
+        Assert.assertFalse(resource.getCompactionModFile().exists());
+        Assert.assertFalse(resource.getModFile().exists());
+      } else if (i == 2) {
+        Assert.assertTrue(resource.getCompactionModFile().exists());
+        Assert.assertTrue(resource.getModFile().exists());
         Assert.assertEquals(3, resource.getModFile().getModifications().size());
+        Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
+      } else {
+        Assert.assertTrue(resource.getCompactionModFile().exists());
+        Assert.assertTrue(resource.getModFile().exists());
+        Assert.assertEquals(2, resource.getModFile().getModifications().size());
+        Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
       }
     }
     for (TsFileResource resource : unseqResources) {
       resource.resetModFile();
-      Assert.assertTrue(resource.getCompactionModFile().exists());
-      Assert.assertEquals(2, resource.getCompactionModFile().getModifications().size());
-      Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(3, resource.getModFile().getModifications().size());
+      Assert.assertFalse(resource.getCompactionModFile().exists());
+      Assert.assertFalse(resource.getModFile().exists());
     }
-    task.call();
+    task.start();
     for (TsFileResource resource : seqResources) {
       Assert.assertFalse(resource.getTsFile().exists());
       Assert.assertFalse(resource.getModFile().exists());
@@ -775,13 +793,19 @@ public class RewriteCrossSpaceCompactionTest extends AbstractCompactionTest {
       Assert.assertFalse(resource.getModFile().exists());
       Assert.assertFalse(resource.getCompactionModFile().exists());
     }
-    for (TsFileResource seqResource : seqResources) {
+    for (int i = 0; i < seqResources.size(); i++) {
+      TsFileResource seqResource = seqResources.get(i);
       TsFileResource resource =
           new TsFileResource(
               TsFileNameGenerator.increaseCrossCompactionCnt(seqResource.getTsFile()));
-      Assert.assertTrue(resource.getModFile().exists());
-      Assert.assertEquals(12, resource.getModFile().getModifications().size());
-      Assert.assertFalse(resource.getCompactionModFile().exists());
+      if (i < 2) {
+        Assert.assertFalse(resource.getCompactionModFile().exists());
+        Assert.assertFalse(resource.getModFile().exists());
+      } else {
+        Assert.assertFalse(resource.getCompactionModFile().exists());
+        Assert.assertTrue(resource.getModFile().exists());
+        Assert.assertEquals(2, resource.getModFile().getModifications().size());
+      }
     }
   }
 

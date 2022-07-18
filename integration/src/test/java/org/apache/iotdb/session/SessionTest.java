@@ -612,40 +612,40 @@ public class SessionTest {
 
     // path does not exist test
     try {
-      session.unsetSchemaTemplate("root.sg.1", "template1");
+      session.unsetSchemaTemplate("root.sg.`1`", "template1");
       fail("No exception thrown.");
     } catch (Exception e) {
-      assertEquals("304: Path [root.sg.1] does not exist", e.getMessage());
+      assertEquals("304: Path [root.sg.`1`] does not exist", e.getMessage());
     }
 
-    session.setSchemaTemplate("template1", "root.sg.1");
+    session.setSchemaTemplate("template1", "root.sg.`1`");
 
     // template already exists test
     try {
-      session.setSchemaTemplate("template1", "root.sg.1");
+      session.setSchemaTemplate("template1", "root.sg.`1`");
       fail("No exception thrown.");
     } catch (Exception e) {
-      assertEquals("303: Template already exists on root.sg.1", e.getMessage());
+      assertEquals("303: Template already exists on root.sg.`1`", e.getMessage());
     }
 
     // template unset test
-    session.unsetSchemaTemplate("root.sg.1", "template1");
+    session.unsetSchemaTemplate("root.sg.`1`", "template1");
 
-    session.setSchemaTemplate("template1", "root.sg.1");
+    session.setSchemaTemplate("template1", "root.sg.`1`");
 
     // no template on path test
-    session.unsetSchemaTemplate("root.sg.1", "template1");
+    session.unsetSchemaTemplate("root.sg.`1`", "template1");
     try {
-      session.unsetSchemaTemplate("root.sg.1", "template1");
+      session.unsetSchemaTemplate("root.sg.`1`", "template1");
       fail("No exception thrown.");
     } catch (Exception e) {
-      assertEquals("324: NO template on root.sg.1", e.getMessage());
+      assertEquals("324: NO template on root.sg.`1`", e.getMessage());
     }
 
     // template is in use test
-    session.setSchemaTemplate("template1", "root.sg.1");
+    session.setSchemaTemplate("template1", "root.sg.`1`");
 
-    String deviceId = "root.sg.1.cd";
+    String deviceId = "root.sg.`1`.cd";
     List<String> measurements = new ArrayList<>();
     List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
@@ -664,10 +664,10 @@ public class SessionTest {
     }
 
     try {
-      session.unsetSchemaTemplate("root.sg.1", "template1");
+      session.unsetSchemaTemplate("root.sg.`1`", "template1");
       fail("No exception thrown.");
     } catch (Exception e) {
-      assertEquals("326: Template is in use on root.sg.1.cd", e.getMessage());
+      assertEquals("326: Template is in use on root.sg.`1`.cd", e.getMessage());
     }
   }
 }

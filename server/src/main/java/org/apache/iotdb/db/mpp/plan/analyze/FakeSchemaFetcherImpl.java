@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -43,6 +44,11 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
+  public SchemaTree fetchSchema(PathPatternTree patternTree, SchemaPartition schemaPartition) {
+    return null;
+  }
+
+  @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
     return schemaTree;
@@ -60,23 +66,29 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
     SchemaNode sg = new SchemaInternalNode("sg");
     root.addChild("sg", sg);
 
-    SchemaEntityNode d1 = new SchemaEntityNode("d1");
-    sg.addChild("d1", d1);
-
     SchemaMeasurementNode s1 =
         new SchemaMeasurementNode("s1", new MeasurementSchema("s1", TSDataType.INT32));
-    d1.addChild("s1", s1);
     SchemaMeasurementNode s2 =
-        new SchemaMeasurementNode("s2", new MeasurementSchema("s1", TSDataType.INT32));
+        new SchemaMeasurementNode("s2", new MeasurementSchema("s2", TSDataType.DOUBLE));
+    SchemaMeasurementNode s3 =
+        new SchemaMeasurementNode("s3", new MeasurementSchema("s3", TSDataType.BOOLEAN));
+    SchemaMeasurementNode s4 =
+        new SchemaMeasurementNode("s4", new MeasurementSchema("s4", TSDataType.TEXT));
     s2.setAlias("status");
+
+    SchemaEntityNode d1 = new SchemaEntityNode("d1");
+    sg.addChild("d1", d1);
+    d1.addChild("s1", s1);
     d1.addChild("s2", s2);
     d1.addAliasChild("status", s2);
+    d1.addChild("s3", s3);
 
     SchemaEntityNode d2 = new SchemaEntityNode("d2");
     sg.addChild("d2", d2);
     d2.addChild("s1", s1);
     d2.addChild("s2", s2);
     d2.addAliasChild("status", s2);
+    d2.addChild("s4", s4);
 
     SchemaEntityNode a = new SchemaEntityNode("a");
     a.setAligned(true);
@@ -96,4 +108,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
       List<Boolean> aligned) {
     return null;
   }
+
+  @Override
+  public void invalidAllCache() {}
 }

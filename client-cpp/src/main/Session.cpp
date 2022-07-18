@@ -614,10 +614,10 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
     }
     if (enableRPCCompression) {
         shared_ptr<TCompactProtocol> protocol(new TCompactProtocol(transport));
-        client = std::make_shared<TSIServiceClient>(protocol);
+        client = std::make_shared<IClientRPCServiceClient>(protocol);
     } else {
         shared_ptr<TBinaryProtocol> protocol(new TBinaryProtocol(transport));
-        client = std::make_shared<TSIServiceClient>(protocol);
+        client = std::make_shared<IClientRPCServiceClient>(protocol);
     }
 
     std::map<std::string, std::string> configuration;
@@ -1015,11 +1015,7 @@ void Session::insertTablet(Tablet &tablet) {
 }
 
 void Session::insertTablet(Tablet &tablet, bool sorted) {
-    if (sorted) {
-        if (!checkSorted(tablet)) {
-            throw BatchExecutionException("Times in Tablet are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(tablet)) {
         sortTablet(tablet);
     }
 
@@ -1085,11 +1081,7 @@ void Session::insertTablets(unordered_map<string, Tablet *> &tablets, bool sorte
         if (isFirstTabletAligned != item.second->isAligned) {
             throw BatchExecutionException("The tablets should be all aligned or non-aligned!");
         }
-        if (sorted) {
-            if (!checkSorted(*(item.second))) {
-                throw BatchExecutionException("Times in Tablet are not in ascending order");
-            }
-        } else {
+        if (!checkSorted(*(item.second))) {
             sortTablet(*(item.second));
         }
         request.prefixPaths.push_back(item.second->deviceId);

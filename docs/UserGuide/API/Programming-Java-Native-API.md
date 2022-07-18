@@ -45,15 +45,13 @@ In root directory:
 </dependencies>
 ```
 
-## Syntax Description
+## Syntax Convention
 
 - **IoTDB-SQL interface:** The input SQL parameter needs to conform to the [syntax conventions](../Reference/Syntax-Conventions.md) and be escaped for JAVA strings. For example, you need to add a backslash before the double-quotes. (That is: after JAVA escaping, it is consistent with the SQL statement executed on the command line.)
 - **Other interfaces:**
-  - The node names in path or path prefix as parameter:
-    - The node names which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
-    - The node names enclosed in single or double quotes still need to be enclosed in single or double quotes and must be escaped for JAVA strings.
-    - For the `checkTimeseriesExists` interface, since the IoTDB-SQL interface is called internally, the time-series pathname must be consistent with the SQL syntax conventions and be escaped for JAVA strings.
+  - The node names in path or path prefix as parameter: The node names which should be escaped by backticks (`) in the SQL statement,  escaping is required here.
   - Identifiers (such as template names) as parameters: The identifiers which should be escaped by backticks (`) in the SQL statement, and escaping is not required here.
+- **Code example for syntax convention could be found at:** `example/session/src/main/java/org/apache/iotdb/SyntaxConventionRelatedExample.java`
 
 ## Native APIs
 
@@ -327,7 +325,7 @@ Attention: Unsetting the template named 'templateName' from node at path 'prefix
 
 ### Data Manipulation Interface (DML Interface)
 
-##### Insert
+#### Insert
 
 It is recommended to use insertTablet to help improve write efficiency.
 
@@ -365,6 +363,17 @@ void insertTablets(Map<String, Tablet> tablet)
 ```
 
 * Insert a Record, which contains multiple measurement value of a device at a timestamp. This method is equivalent to providing a common interface for multiple data types of values. Later, the value can be cast to the original type through TSDataType.
+
+  The correspondence between the Object type and the TSDataType type is shown in the following table.
+
+  | TSDataType | Object         |
+  | ---------- | -------------- |
+  | BOOLEAN    | Boolean        |
+  | INT32      | Integer        |
+  | INT64      | Long           |
+  | FLOAT      | Float          |
+  | DOUBLE     | Double         |
+  | TEXT       | String, Binary |
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,

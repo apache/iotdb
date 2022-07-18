@@ -147,7 +147,7 @@ public class TsFileIOWriterTest {
 
     // make sure timeseriesMetadata is only
     Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
-        reader.getAllTimeseriesMetadata();
+        reader.getAllTimeseriesMetadata(false);
     Set<String> pathSet = new HashSet<>();
     for (Map.Entry<String, List<TimeseriesMetadata>> entry :
         deviceTimeseriesMetadataMap.entrySet()) {

@@ -35,9 +35,13 @@ public class ConsensusReadResponse extends ConsensusResponse {
     return dataset;
   }
 
+  public boolean isSuccess() {
+    return exception == null;
+  }
+
   @Override
   public String toString() {
-    return "ConsensusReadResponse{" + "dataset=" + dataset + "} " + super.toString();
+    return "ConsensusReadResponse{" + "dataset=" + dataset + ", exception=" + exception + "}";
   }
 
   public static ConsensusReadResponse.Builder newBuilder() {

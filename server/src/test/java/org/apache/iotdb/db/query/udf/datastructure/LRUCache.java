@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.datastructure;
 
+import org.apache.iotdb.db.mpp.transformation.datastructure.Cache;
+
 import java.util.Arrays;
 
 public class LRUCache extends Cache {

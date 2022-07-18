@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -26,7 +27,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -43,6 +43,7 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -76,7 +77,7 @@ import java.util.Set;
 public interface ISchemaRegion {
 
   // region Interfaces for initialization、recover and clear
-  void init(IStorageGroupMNode storageGroupMNode) throws MetadataException;
+  void init() throws MetadataException;
 
   /** clear all metadata components of this schemaRegion */
   void clear();
@@ -91,6 +92,10 @@ public interface ISchemaRegion {
 
   // delete this schemaRegion and clear all resources
   void deleteSchemaRegion() throws MetadataException;
+
+  boolean createSnapshot(File snapshotDir);
+
+  void loadSnapshot(File latestSnapshotRootDir);
   // endregion
 
   // region Interfaces for Timeseries operation
@@ -177,7 +182,7 @@ public interface ISchemaRegion {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
+  Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
 
   /**
    * Get child node in the next level of the given path pattern.

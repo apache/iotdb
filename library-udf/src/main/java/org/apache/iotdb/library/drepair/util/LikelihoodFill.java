@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.library.drepair.util;
 
-import org.apache.iotdb.db.query.udf.api.access.RowIterator;
+import org.apache.iotdb.udf.api.access.RowIterator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -71,11 +71,11 @@ public class LikelihoodFill extends ValueFill {
             || Double.isNaN(repaired[currentIndex + 1])) {
           continue;
         }
-        double intervalPrev1 = time[currentIndex] - time[currentIndex - 1];
-        double intervalPost1 = time[currentIndex + 1] - time[currentIndex];
+        double intervalPrev1 = (double) (time[currentIndex] - time[currentIndex - 1]);
+        double intervalPost1 = (double) (time[currentIndex + 1] - time[currentIndex]);
         double squareAPrev = 0.0, squareBPrev = 0.0;
         if (currentIndex >= 2 && !Double.isNaN(repaired[currentIndex - 2])) {
-          double intervalPrev2 = time[currentIndex - 2] - time[currentIndex - 1];
+          double intervalPrev2 = (double) (time[currentIndex - 2] - time[currentIndex - 1]);
           squareAPrev = 1.0 / (intervalPrev1 * intervalPrev1);
           squareBPrev =
               2.0 * repaired[currentIndex - 2] / (intervalPrev2 * intervalPrev1)
@@ -99,7 +99,7 @@ public class LikelihoodFill extends ValueFill {
                     / (intervalPrev1 * intervalPost1 * intervalPost1);
         double squareAPost = 0.0, squareBPost = 0.0;
         if (currentIndex <= n - 3 && !Double.isNaN(repaired[currentIndex + 2])) {
-          double intervalPost2 = time[currentIndex + 2] - time[currentIndex + 1];
+          double intervalPost2 = (double) (time[currentIndex + 2] - time[currentIndex + 1]);
           squareAPost = 1.0 / (intervalPost1 * intervalPost1);
           squareBPost =
               2.0 * repaired[currentIndex + 2] / (intervalPost1 * intervalPost2)

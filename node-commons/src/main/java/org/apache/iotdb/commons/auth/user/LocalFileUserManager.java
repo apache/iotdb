@@ -20,9 +20,24 @@ package org.apache.iotdb.commons.auth.user;
 
 import org.apache.iotdb.commons.auth.AuthException;
 
+import org.apache.thrift.TException;
+
+import java.io.File;
+import java.io.IOException;
+
 public class LocalFileUserManager extends BasicUserManager {
 
   public LocalFileUserManager(String userDirPath) throws AuthException {
     super(new LocalFileUserAccessor(userDirPath));
+  }
+
+  @Override
+  public boolean processTakeSnapshot(File snapshotDir) throws TException, IOException {
+    return accessor.processTakeSnapshot(snapshotDir);
+  }
+
+  @Override
+  public void processLoadSnapshot(File snapshotDir) throws TException, IOException {
+    accessor.processLoadSnapshot(snapshotDir);
   }
 }

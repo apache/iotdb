@@ -73,20 +73,20 @@ IF "%IOTDB_CONF%" == "" (
 
 SET IOTDB_LOGS=%IOTDB_HOME%\logs
 
-IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
+IF EXIST "%IOTDB_CONF%\datanode-env.bat" (
   IF  "%enable_printgc%" == "true" (
-    CALL "%IOTDB_CONF%\iotdb-env.bat" printgc
+    CALL "%IOTDB_CONF%\datanode-env.bat" printgc
   ) ELSE (
-    CALL "%IOTDB_CONF%\iotdb-env.bat"
+    CALL "%IOTDB_CONF%\datanode-env.bat"
   )
-) ELSE IF EXIST "%IOTDB_HOME%/conf/iotdb-env.bat" (
+) ELSE IF EXIST "%IOTDB_HOME%/conf/datanode-env.bat" (
   IF  "%enable_printgc%" == "true" (
-    CALL "%IOTDB_HOME%/conf/iotdb-env.bat" printgc
+    CALL "%IOTDB_HOME%/conf/datanode-env.bat" printgc
   ) ELSE (
-    CALL "%IOTDB_HOME%/conf/iotdb-env.bat"
+    CALL "%IOTDB_HOME%/conf/datanode-env.bat"
    )
 ) ELSE (
-  echo "can't find iotdb-env.bat"
+  echo "can't find datanode-env.bat"
 )
 
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
@@ -105,7 +105,7 @@ set JAVA_OPTS=-ea^
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH="%IOTDB_HOME%\lib\*"
+if EXIST %IOTDB_HOME%\lib (set CLASSPATH="%IOTDB_HOME%\lib\*") else set CLASSPATH="%IOTDB_HOME%\..\lib\*"
 
 @REM this special suffix 'iotdb.DataNode' is mandatory as stop-node.bat uses it to filter the process id.
 set CLASSPATH=%CLASSPATH%;iotdb.DataNode

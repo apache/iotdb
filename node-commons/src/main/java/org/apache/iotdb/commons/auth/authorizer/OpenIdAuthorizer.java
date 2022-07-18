@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
 import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.RSAKey;
@@ -57,7 +58,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
   public static final String IOTDB_ADMIN_ROLE_NAME = "iotdb_admin";
   public static final String OPENID_USER_PREFIX = "openid-";
 
-  private static final CommonConfig config = CommonConfig.getInstance();
+  private static final CommonConfig config = CommonDescriptor.getInstance().getConfig();
 
   private final RSAPublicKey providerKey;
 

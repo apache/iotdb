@@ -21,6 +21,8 @@ parser grammar InfluxDBSqlParser;
 
 options { tokenVocab=SqlLexer; }
 
+import IdentifierParser;
+
 singleStatement
     : statement SEMI? EOF
     ;
@@ -71,18 +73,10 @@ fromClause
 
 nodeName
     : STAR
-    | ID
-    | QUOTED_ID
+    | identifier
     | LAST
     | COUNT
     | DEVICE
-    ;
-
-// Identifier
-
-identifier
-    : ID
-    | QUOTED_ID
     ;
 
 

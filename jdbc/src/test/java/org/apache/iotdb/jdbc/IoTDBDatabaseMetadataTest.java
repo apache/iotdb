@@ -21,11 +21,11 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 
 import org.apache.thrift.TException;
 import org.junit.Assert;
@@ -55,7 +55,7 @@ public class IoTDBDatabaseMetadataTest {
   private long sessionId;
   private TSStatus resp;
   @Mock private IoTDBConnection connection;
-  @Mock private TSIService.Iface client;
+  @Mock private IClientRPCService.Iface client;
   @Mock private Statement statement;
   @Mock private DatabaseMetaData databaseMetaData;
   @Mock private TSStatus successStatus = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

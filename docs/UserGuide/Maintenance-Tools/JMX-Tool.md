@@ -34,7 +34,7 @@ View `$IOTDB_HOME/conf/jmx.password`, and use default user or add new users here
 If new users are added, remember to edit `$IOTDB_HOME/conf/jmx.access` and add new users' access
 
 * IoTDB is not LOCAL
-Edit `$IOTDB_HOME/conf/iotdb-env.sh`, and modify config below:
+Edit `$IOTDB_HOME/conf/datanode-env.sh`, and modify config below:
 ```
 JMX_LOCAL="false"
 JMX_IP="the_real_iotdb_server_ip"  # Write the actual IoTDB IP address

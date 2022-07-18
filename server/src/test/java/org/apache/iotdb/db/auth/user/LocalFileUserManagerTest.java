@@ -22,7 +22,7 @@ import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.auth.user.LocalFileUserManager;
-import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -211,7 +211,7 @@ public class LocalFileUserManagerTest {
     // list users
     List<String> usernames = manager.listAllUsers();
     usernames.sort(null);
-    assertEquals(CommonConfig.getInstance().getAdminName(), usernames.get(0));
+    assertEquals(CommonDescriptor.getInstance().getConfig().getAdminName(), usernames.get(0));
     for (int i = 0; i < users.length - 1; i++) {
       assertEquals(users[i].getName(), usernames.get(i + 1));
     }

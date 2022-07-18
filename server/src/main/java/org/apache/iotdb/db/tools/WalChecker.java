@@ -21,9 +21,9 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.exception.SystemCheckException;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
-import org.apache.iotdb.db.wal.io.WALWriter;
-import org.apache.iotdb.db.wal.node.WALNode;
+import org.apache.iotdb.db.wal.utils.WALFileUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +36,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -64,13 +65,7 @@ public class WalChecker {
       throw new SystemCheckException(walFolder);
     }
 
-    File[] walNodeFolders =
-        walFolderFile.listFiles(
-            (dir, name) -> {
-              File walNodeFolder = SystemFileFactory.INSTANCE.getFile(dir, name);
-              return walNodeFolder.isDirectory()
-                  && WALNode.WAL_NODE_FOLDER_PATTERN.matcher(name).find();
-            });
+    File[] walNodeFolders = walFolderFile.listFiles(File::isDirectory);
     if (walNodeFolders == null || walNodeFolders.length == 0) {
       logger.info("No sub-directories under the given directory, check ends");
       return Collections.emptyList();
@@ -80,7 +75,7 @@ public class WalChecker {
     for (int dirIndex = 0; dirIndex < walNodeFolders.length; dirIndex++) {
       File walNodeFolder = walNodeFolders[dirIndex];
       logger.info("Checking the No.{} directory {}", dirIndex, walNodeFolder.getName());
-      File[] walFiles = walNodeFolder.listFiles(WALWriter::walFilenameFilter);
+      File[] walFiles = WALFileUtils.listAllWALFiles(walNodeFolder);
       if (walFiles == null) {
         continue;
       }
@@ -100,6 +95,12 @@ public class WalChecker {
       while (logStream.available() > 0) {
         WALEntry walEntry = WALEntry.deserialize(logStream);
         totalSize += walEntry.serializedSize();
+        if (walEntry.getValue() instanceof InsertTabletNode) {
+          InsertTabletNode insertNode = (InsertTabletNode) walEntry.getValue();
+          System.err.printf(
+              "searchIndex: %s, timestamp: %s%n",
+              insertNode.getSearchIndex(), Arrays.toString(insertNode.getTimes()));
+        }
       }
     } catch (EOFException e) {
       if (totalSize == walFile.length()) {
@@ -129,12 +130,7 @@ public class WalChecker {
 
   /** @param args walRootDirectory */
   public static void main(String[] args) throws SystemCheckException {
-    if (args.length < 1) {
-      logger.error("No enough args: require the walRootDirectory");
-      return;
-    }
-
-    WalChecker checker = new WalChecker(args[0]);
+    WalChecker checker = new WalChecker("/Users/heimingz/Desktop/0");
     List<File> files = checker.doCheck();
     report(files);
   }

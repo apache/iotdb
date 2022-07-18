@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -29,8 +30,6 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -57,6 +56,8 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 public class SeriesScanUtil {
   private final FragmentInstanceContext context;
@@ -158,9 +159,16 @@ public class SeriesScanUtil {
   }
 
   public void initQueryDataSource(QueryDataSource dataSource) {
-    QueryUtils.fillOrderIndexes(
-        dataSource, seriesPath.getDeviceIdString(), orderUtils.getAscending());
+    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), orderUtils.getAscending());
     this.dataSource = dataSource;
+    orderUtils.setCurSeqFileIndex(dataSource);
+  }
+
+  @TestOnly
+  public void initQueryDataSource(
+      List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource) {
+    dataSource = new QueryDataSource(seqFileResource, unseqFileResource);
+    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), orderUtils.getAscending());
     orderUtils.setCurSeqFileIndex(dataSource);
   }
 
@@ -176,7 +184,7 @@ public class SeriesScanUtil {
     return !(hasNextPage() || hasNextChunk() || hasNextFile());
   }
 
-  boolean hasNextFile() throws IOException {
+  public boolean hasNextFile() throws IOException {
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -227,18 +235,13 @@ public class SeriesScanUtil {
     return firstTimeSeriesMetadata.getStatistics();
   }
 
-  Statistics currentFileStatistics(int index) throws IOException {
-    if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
-      throw new IOException("Can only get statistics by index from alignedTimeSeriesMetaData");
-    }
-    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
+  protected Statistics currentFileStatistics(int index) throws IOException {
+    checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
+    return currentFileStatistics();
   }
 
-  public Statistics currentFileTimeStatistics() throws IOException {
-    if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
-      throw new IOException("Can only get statistics of time column from alignedChunkMetaData");
-    }
-    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics();
+  protected Statistics currentFileTimeStatistics() throws IOException {
+    return currentFileStatistics();
   }
 
   boolean currentFileModified() throws IOException {
@@ -256,7 +259,7 @@ public class SeriesScanUtil {
    * This method should be called after hasNextFile() until no next chunk, make sure that all
    * overlapped chunks are consumed
    */
-  boolean hasNextChunk() throws IOException {
+  public boolean hasNextChunk() throws IOException {
 
     if (!unSeqPageReaders.isEmpty()
         || firstPageReader != null
@@ -363,18 +366,13 @@ public class SeriesScanUtil {
     return firstChunkMetadata.getStatistics();
   }
 
-  Statistics currentChunkStatistics(int index) throws IOException {
-    if (!(firstChunkMetadata instanceof AlignedChunkMetadata)) {
-      throw new IOException("Can only get statistics by index from vectorChunkMetaData");
-    }
-    return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
+  protected Statistics currentChunkStatistics(int index) throws IOException {
+    checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
+    return currentChunkStatistics();
   }
 
-  Statistics currentChunkTimeStatistics() throws IOException {
-    if (!(firstChunkMetadata instanceof AlignedChunkMetadata)) {
-      throw new IOException("Can only get statistics of time column from alignedChunkMetaData");
-    }
-    return ((AlignedChunkMetadata) firstChunkMetadata).getTimeStatistics();
+  protected Statistics currentChunkTimeStatistics() throws IOException {
+    return currentChunkStatistics();
   }
 
   boolean currentChunkModified() throws IOException {
@@ -394,7 +392,7 @@ public class SeriesScanUtil {
    */
   @SuppressWarnings("squid:S3776")
   // Suppress high Cognitive Complexity warning
-  boolean hasNextPage() throws IOException {
+  public boolean hasNextPage() throws IOException {
 
     /*
      * has overlapped data before
@@ -515,6 +513,9 @@ public class SeriesScanUtil {
     List<IPageReader> pageReaderList =
         FileLoaderUtils.loadPageReaderList(chunkMetaData, timeFilter);
 
+    // init TsBlockBuilder for each page reader
+    pageReaderList.forEach(p -> p.initTsBlockBuilder(getTsDataTypeList()));
+
     if (chunkMetaData.isSeq()) {
       if (orderUtils.getAscending()) {
         for (IPageReader iPageReader : pageReaderList) {
@@ -588,24 +589,13 @@ public class SeriesScanUtil {
     return firstPageReader.getStatistics();
   }
 
-  Statistics currentPageStatistics(int index) throws IOException {
-    if (firstPageReader == null) {
-      return null;
-    }
-    if (!(firstPageReader.isAlignedPageReader())) {
-      throw new IOException("Can only get statistics by index from AlignedPageReader");
-    }
-    return firstPageReader.getStatistics(index);
+  protected Statistics currentPageStatistics(int index) throws IOException {
+    checkArgument(index == 0, "Only one sensor in non-aligned SeriesScanUtil.");
+    return currentPageStatistics();
   }
 
-  Statistics currentPageTimeStatistics() throws IOException {
-    if (firstPageReader == null) {
-      return null;
-    }
-    if (!(firstPageReader.isAlignedPageReader())) {
-      throw new IOException("Can only get statistics of time column from AlignedPageReader");
-    }
-    return firstPageReader.getTimeStatistics();
+  protected Statistics currentPageTimeStatistics() throws IOException {
+    return currentPageStatistics();
   }
 
   boolean currentPageModified() throws IOException {
@@ -620,7 +610,7 @@ public class SeriesScanUtil {
   }
 
   /** This method should only be used when the method isPageOverlapped() return true. */
-  TsBlock nextPage() throws IOException {
+  public TsBlock nextPage() throws IOException {
 
     if (hasCachedNextOverlappedPage) {
       hasCachedNextOverlappedPage = false;
@@ -1092,7 +1082,7 @@ public class SeriesScanUtil {
     return orderUtils;
   }
 
-  private class VersionPageReader {
+  protected class VersionPageReader {
 
     protected PriorityMergeReader.MergeReaderPriority version;
     protected IPageReader data;
@@ -1197,7 +1187,7 @@ public class SeriesScanUtil {
 
     @Override
     public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getEndTime(seriesPath.getDeviceIdString());
+      return fileResource.getEndTime(seriesPath.getDevice());
     }
 
     @Override
@@ -1217,7 +1207,7 @@ public class SeriesScanUtil {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time <= right.getEndTime(seriesPath.getDeviceIdString());
+      return time <= right.getEndTime(seriesPath.getDevice());
     }
 
     @Override
@@ -1259,8 +1249,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getDeviceIdString(), timeFilter, null, true, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, true, false)) {
           break;
         }
         curSeqFileIndex--;
@@ -1273,8 +1262,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getDeviceIdString(), timeFilter, null, false, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, false, false)) {
           break;
         }
         curUnseqFileIndex++;
@@ -1315,7 +1303,7 @@ public class SeriesScanUtil {
 
     @Override
     public long getOrderTime(TsFileResource fileResource) {
-      return fileResource.getStartTime(seriesPath.getDeviceIdString());
+      return fileResource.getStartTime(seriesPath.getDevice());
     }
 
     @Override
@@ -1335,7 +1323,7 @@ public class SeriesScanUtil {
 
     @Override
     public boolean isOverlapped(long time, TsFileResource right) {
-      return time >= right.getStartTime(seriesPath.getDeviceIdString());
+      return time >= right.getStartTime(seriesPath.getDevice());
     }
 
     @Override
@@ -1377,8 +1365,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getDeviceIdString(), timeFilter, null, true, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, true, false)) {
           break;
         }
         curSeqFileIndex++;
@@ -1391,8 +1378,7 @@ public class SeriesScanUtil {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
-            && tsFileResource.isSatisfied(
-                seriesPath.getDeviceIdString(), timeFilter, null, false, false)) {
+            && tsFileResource.isSatisfied(seriesPath.getDevice(), timeFilter, null, false, false)) {
           break;
         }
         curUnseqFileIndex++;

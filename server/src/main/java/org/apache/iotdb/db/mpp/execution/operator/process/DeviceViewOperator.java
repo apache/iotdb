@@ -94,8 +94,8 @@ public class DeviceViewOperator implements ProcessOperator {
   }
 
   @Override
-  public ListenableFuture<Void> isBlocked() {
-    ListenableFuture<Void> blocked = getCurDeviceOperator().isBlocked();
+  public ListenableFuture<?> isBlocked() {
+    ListenableFuture<?> blocked = getCurDeviceOperator().isBlocked();
     if (!blocked.isDone()) {
       return blocked;
     }
@@ -105,6 +105,9 @@ public class DeviceViewOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
     TsBlock tsBlock = getCurDeviceOperator().next();
+    if (tsBlock == null) {
+      return null;
+    }
     List<Integer> indexes = getCurDeviceIndexes();
 
     // fill existing columns

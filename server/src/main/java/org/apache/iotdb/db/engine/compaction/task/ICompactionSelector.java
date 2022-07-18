@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.cross.utils.AbstractCompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.cross.utils.ReadPointCrossCompactionEstimator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -49,6 +52,23 @@ public interface ICompactionSelector {
       List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
     {
       throw new RuntimeException("This kind of selector cannot be used to select cross space task");
+    }
+  }
+
+  static AbstractCompactionEstimator getCompactionEstimator(
+      CrossCompactionPerformer compactionPerformer, boolean isInnerSpace) {
+    switch (compactionPerformer) {
+      case READ_POINT:
+        if (!isInnerSpace) {
+          return new ReadPointCrossCompactionEstimator();
+        }
+      default:
+        throw new RuntimeException(
+            "Corresponding memory estimator for "
+                + compactionPerformer
+                + " performer of "
+                + (isInnerSpace ? "inner" : "cross")
+                + " space compaction is not existed.");
     }
   }
 }

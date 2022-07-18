@@ -26,8 +26,12 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 public interface Accumulator {
 
-  /** Column should be like: | Time | Value | */
-  void addInput(Column[] column, TimeRange timeRange);
+  /**
+   * Column should be like: | Time | Value |
+   *
+   * <p>Return the last read row index of current timeColumn
+   */
+  int addInput(Column[] column, TimeRange timeRange);
 
   /**
    * For aggregation function like COUNT, SUM, partialResult should be single; But for AVG,
@@ -49,7 +53,8 @@ public interface Accumulator {
 
   /**
    * For aggregation function like COUNT, SUM, partialResult should be single, so its output column
-   * is single too; But for AVG, last_value, it should be double column with dictionary order.
+   * is single too; But for AVG(COUNT and SUM), LAST_VALUE(LAST_VALUE and MAX_TIME), the output
+   * columns should be double in dictionary order.
    */
   void outputIntermediate(ColumnBuilder[] tsBlockBuilder);
 

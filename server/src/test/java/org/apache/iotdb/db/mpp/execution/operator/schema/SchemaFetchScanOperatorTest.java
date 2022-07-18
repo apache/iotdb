@@ -43,7 +43,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.ByteBuffer;
+import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -66,8 +66,8 @@ public class SchemaFetchScanOperatorTest {
     ISchemaRegion schemaRegion = prepareSchemaRegion();
 
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPath(new PartialPath("root.**.status"));
-    patternTree.appendPath(new PartialPath("root.**.s1"));
+    patternTree.appendPathPattern(new PartialPath("root.**.status"));
+    patternTree.appendPathPattern(new PartialPath("root.**.s1"));
     patternTree.constructTree();
 
     SchemaFetchScanOperator schemaFetchScanOperator =
@@ -80,7 +80,7 @@ public class SchemaFetchScanOperatorTest {
     Assert.assertFalse(schemaFetchScanOperator.hasNext());
 
     Binary binary = tsBlock.getColumn(0).getBinary(0);
-    SchemaTree schemaTree = SchemaTree.deserialize(ByteBuffer.wrap(binary.getValues()));
+    SchemaTree schemaTree = SchemaTree.deserialize(new ByteArrayInputStream(binary.getValues()));
 
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(

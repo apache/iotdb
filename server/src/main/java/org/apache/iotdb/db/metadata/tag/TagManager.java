@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.tag;
 
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -35,9 +36,11 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -71,6 +74,56 @@ public class TagManager {
   public TagManager(String sgSchemaDirPath) throws IOException {
     this.sgSchemaDirPath = sgSchemaDirPath;
     tagLogFile = new TagLogFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
+  }
+
+  public synchronized boolean createSnapshot(File targetDir) {
+    File tagLogSnapshot =
+        SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+    File tagLogSnapshotTmp =
+        SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT_TMP);
+    try {
+      tagLogFile.copyTo(tagLogSnapshotTmp);
+      if (tagLogSnapshot.exists() && !tagLogSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot {} while creating tagManager snapshot.",
+            tagLogSnapshot.getName());
+        return false;
+      }
+      if (!tagLogSnapshotTmp.renameTo(tagLogSnapshot)) {
+        logger.error(
+            "Failed to rename {} to {} while creating tagManager snapshot.",
+            tagLogSnapshotTmp.getName(),
+            tagLogSnapshot.getName());
+        tagLogSnapshot.delete();
+        return false;
+      }
+
+      return true;
+    } catch (IOException e) {
+      logger.error("Failed to create tagManager snapshot due to {}", e.getMessage(), e);
+      tagLogSnapshot.delete();
+      return false;
+    } finally {
+      tagLogSnapshotTmp.delete();
+    }
+  }
+
+  public static TagManager loadFromSnapshot(File snapshotDir, String sgSchemaDirPath)
+      throws IOException {
+    File tagSnapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+    File tagFile = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
+    if (tagFile.exists()) {
+      tagFile.delete();
+    }
+
+    try {
+      FileUtils.copyFile(tagSnapshot, tagFile);
+      return new TagManager(sgSchemaDirPath);
+    } catch (IOException e) {
+      tagFile.delete();
+      throw e;
+    }
   }
 
   public boolean recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {

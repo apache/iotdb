@@ -265,6 +265,9 @@ public class PageReader implements IPageReader {
     return pageHeader.isModified();
   }
 
+  @Override
+  public void initTsBlockBuilder(List<TSDataType> dataTypes) {}
+
   protected boolean isDeleted(long timestamp) {
     while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {
       if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {

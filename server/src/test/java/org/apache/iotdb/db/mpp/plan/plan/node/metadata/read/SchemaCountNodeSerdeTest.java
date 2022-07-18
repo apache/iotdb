@@ -44,7 +44,7 @@ public class SchemaCountNodeSerdeTest {
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
     DevicesCountNode devicesCountNode =
         new DevicesCountNode(
-            new PlanNodeId("devicesCount"), new PartialPath("root.sg.device"), true);
+            new PlanNodeId("devicesCount"), new PartialPath("root.sg.device0"), true);
     FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("fragmentSink"));
     fragmentSinkNode.addChild(devicesCountNode);
     fragmentSinkNode.setDownStream(
@@ -70,7 +70,7 @@ public class SchemaCountNodeSerdeTest {
     ExchangeNode exchangeNode = new ExchangeNode(new PlanNodeId("exchange"));
     LevelTimeSeriesCountNode levelTimeSeriesCountNode =
         new LevelTimeSeriesCountNode(
-            new PlanNodeId("timeseriesCount"), new PartialPath("root.sg.device"), true, 10);
+            new PlanNodeId("timeseriesCount"), new PartialPath("root.sg.device0"), true, 10);
     FragmentSinkNode fragmentSinkNode = new FragmentSinkNode(new PlanNodeId("fragmentSink"));
     fragmentSinkNode.addChild(levelTimeSeriesCountNode);
     fragmentSinkNode.setDownStream(

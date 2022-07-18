@@ -28,8 +28,10 @@ import org.apache.iotdb.db.query.reader.universal.AlignedPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -55,6 +57,42 @@ public class AlignedSeriesScanUtil extends SeriesScanUtil {
     dataTypes =
         ((AlignedPath) seriesPath)
             .getSchemaList().stream().map(IMeasurementSchema::getType).collect(Collectors.toList());
+  }
+
+  @Override
+  protected Statistics currentFileStatistics(int index) throws IOException {
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
+  }
+
+  @Override
+  protected Statistics currentFileTimeStatistics() throws IOException {
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics();
+  }
+
+  @Override
+  protected Statistics currentChunkStatistics(int index) throws IOException {
+    return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
+  }
+
+  @Override
+  protected Statistics currentChunkTimeStatistics() {
+    return ((AlignedChunkMetadata) firstChunkMetadata).getTimeStatistics();
+  }
+
+  @Override
+  protected Statistics currentPageStatistics(int index) throws IOException {
+    if (firstPageReader == null) {
+      return null;
+    }
+    return firstPageReader.getStatistics(index);
+  }
+
+  @Override
+  protected Statistics currentPageTimeStatistics() throws IOException {
+    if (firstPageReader == null) {
+      return null;
+    }
+    return firstPageReader.getTimeStatistics();
   }
 
   @Override

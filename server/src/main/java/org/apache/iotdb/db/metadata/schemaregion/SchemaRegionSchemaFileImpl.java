@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -161,6 +162,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
   private TimeseriesStatistics timeseriesStatistics = TimeseriesStatistics.getInstance();
   private MemoryStatistics memoryStatistics = MemoryStatistics.getInstance();
+
+  private final IStorageGroupMNode storageGroupMNode;
   private MTreeBelowSGCachedImpl mtree;
   // device -> DeviceMNode
   private LoadingCache<PartialPath, IMNode> mNodeCache;
@@ -194,12 +197,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
                     return mtree.getNodeByPath(partialPath);
                   }
                 });
-
-    init(storageGroupMNode);
+    this.storageGroupMNode = storageGroupMNode;
+    init();
   }
 
   @SuppressWarnings("squid:S2093")
-  public synchronized void init(IStorageGroupMNode storageGroupMNode) throws MetadataException {
+  public synchronized void init() throws MetadataException {
     if (initialized) {
       return;
     }
@@ -418,6 +421,20 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
 
     // delete all the schema region files
     SchemaRegionUtils.deleteSchemaRegionFolder(schemaRegionDirPath, logger);
+  }
+
+  @Override
+  public boolean createSnapshot(File snapshotDir) {
+    // todo implement this
+    throw new UnsupportedOperationException(
+        "Schema_File mode currently doesn't support snapshot feature.");
+  }
+
+  @Override
+  public void loadSnapshot(File latestSnapshotRootDir) {
+    // todo implement this
+    throw new UnsupportedOperationException(
+        "Schema_File mode currently doesn't support snapshot feature.");
   }
 
   // endregion
@@ -905,7 +922,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
+  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
     return mtree.getChildNodePathInNextLevel(pathPattern);
   }
 

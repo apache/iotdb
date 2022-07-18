@@ -34,6 +34,7 @@ public class SumAccumulator implements Accumulator {
 
   private TSDataType seriesDataType;
   private double sumValue = 0;
+  private boolean initResult = false;
 
   public SumAccumulator(TSDataType seriesDataType) {
     this.seriesDataType = seriesDataType;
@@ -41,20 +42,16 @@ public class SumAccumulator implements Accumulator {
 
   // Column should be like: | Time | Value |
   @Override
-  public void addInput(Column[] column, TimeRange timeRange) {
+  public int addInput(Column[] column, TimeRange timeRange) {
     switch (seriesDataType) {
       case INT32:
-        addIntInput(column, timeRange);
-        break;
+        return addIntInput(column, timeRange);
       case INT64:
-        addLongInput(column, timeRange);
-        break;
+        return addLongInput(column, timeRange);
       case FLOAT:
-        addFloatInput(column, timeRange);
-        break;
+        return addFloatInput(column, timeRange);
       case DOUBLE:
-        addDoubleInput(column, timeRange);
-        break;
+        return addDoubleInput(column, timeRange);
       case TEXT:
       case BOOLEAN:
       default:
@@ -67,11 +64,19 @@ public class SumAccumulator implements Accumulator {
   @Override
   public void addIntermediate(Column[] partialResult) {
     checkArgument(partialResult.length == 1, "partialResult of Sum should be 1");
+    if (partialResult[0].isNull(0)) {
+      return;
+    }
+    initResult = true;
     sumValue += partialResult[0].getDouble(0);
   }
 
   @Override
   public void addStatistics(Statistics statistics) {
+    if (statistics == null) {
+      return;
+    }
+    initResult = true;
     if (statistics instanceof IntegerStatistics) {
       sumValue += statistics.getSumLongValue();
     } else {
@@ -83,6 +88,9 @@ public class SumAccumulator implements Accumulator {
   @Override
   public void setFinal(Column finalResult) {
     reset();
+    if (finalResult.isNull(0)) {
+      return;
+    }
     sumValue = finalResult.getDouble(0);
   }
 
@@ -90,16 +98,25 @@ public class SumAccumulator implements Accumulator {
   @Override
   public void outputIntermediate(ColumnBuilder[] columnBuilders) {
     checkArgument(columnBuilders.length == 1, "partialResult of Sum should be 1");
-    columnBuilders[0].writeDouble(sumValue);
+    if (!initResult) {
+      columnBuilders[0].appendNull();
+    } else {
+      columnBuilders[0].writeDouble(sumValue);
+    }
   }
 
   @Override
   public void outputFinal(ColumnBuilder columnBuilder) {
-    columnBuilder.writeDouble(sumValue);
+    if (!initResult) {
+      columnBuilder.appendNull();
+    } else {
+      columnBuilder.writeDouble(sumValue);
+    }
   }
 
   @Override
   public void reset() {
+    initResult = false;
     this.sumValue = 0;
   }
 
@@ -118,55 +135,75 @@ public class SumAccumulator implements Accumulator {
     return TSDataType.DOUBLE;
   }
 
-  private void addIntInput(Column[] column, TimeRange timeRange) {
+  private int addIntInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         sumValue += column[1].getInt(i);
       }
     }
+    return timeColumn.getPositionCount();
   }
 
-  private void addLongInput(Column[] column, TimeRange timeRange) {
+  private int addLongInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         sumValue += column[1].getLong(i);
       }
     }
+    return timeColumn.getPositionCount();
   }
 
-  private void addFloatInput(Column[] column, TimeRange timeRange) {
+  private int addFloatInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         sumValue += column[1].getFloat(i);
       }
     }
+    return timeColumn.getPositionCount();
   }
 
-  private void addDoubleInput(Column[] column, TimeRange timeRange) {
+  private int addDoubleInput(Column[] column, TimeRange timeRange) {
     TimeColumn timeColumn = (TimeColumn) column[0];
-    for (int i = 0; i < timeColumn.getPositionCount(); i++) {
+    int curPositionCount = timeColumn.getPositionCount();
+    long curMinTime = timeRange.getMin();
+    long curMaxTime = timeRange.getMax();
+    for (int i = 0; i < curPositionCount; i++) {
       long curTime = timeColumn.getLong(i);
-      if (curTime >= timeRange.getMax() || curTime < timeRange.getMin()) {
-        break;
+      if (curTime > curMaxTime || curTime < curMinTime) {
+        return i;
       }
       if (!column[1].isNull(i)) {
+        initResult = true;
         sumValue += column[1].getDouble(i);
       }
     }
+    return timeColumn.getPositionCount();
   }
 }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -70,12 +69,8 @@ public class GroupByLevelDataSet extends QueryDataSet {
 
       if (paths.isEmpty()) {
         for (Map.Entry<String, AggregateResult> entry : groupPathResultMap.entrySet()) {
-          try {
-            String alias = plan.getGroupByLevelController().getAlias(entry.getKey());
-            this.paths.add(new PartialPath(alias != null ? alias : entry.getKey()));
-          } catch (IllegalPathException e) {
-            logger.error("Query result IllegalPathException occurred: {}.", entry.getKey());
-          }
+          String alias = plan.getGroupByLevelController().getAlias(entry.getKey());
+          this.paths.add(new PartialPath(alias != null ? alias : entry.getKey(), false));
           this.dataTypes.add(entry.getValue().getResultDataType());
         }
       }

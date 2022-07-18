@@ -20,9 +20,9 @@ package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.auth.AuthException;
-import org.apache.iotdb.commons.auth.authorizer.AuthorizerManager;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.mpp.common.SessionInfo;
@@ -157,7 +157,8 @@ public class SessionManager {
       long queryId,
       long statementId,
       boolean haveStatementId,
-      boolean haveSetQueryId) {
+      boolean haveSetQueryId,
+      Consumer<Long> releaseByQueryId) {
     if (!checkLogin(sessionId)) {
       return RpcUtils.getStatus(
           TSStatusCode.NOT_LOGIN_ERROR,
@@ -174,9 +175,9 @@ public class SessionManager {
     try {
       if (haveStatementId) {
         if (haveSetQueryId) {
-          this.closeDataset(statementId, queryId);
+          this.closeDataset(statementId, queryId, releaseByQueryId);
         } else {
-          this.closeStatement(sessionId, statementId);
+          this.closeStatement(sessionId, statementId, releaseByQueryId);
         }
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
@@ -189,13 +190,29 @@ public class SessionManager {
     }
   }
 
+  public TSStatus closeOperation(
+      long sessionId,
+      long queryId,
+      long statementId,
+      boolean haveStatementId,
+      boolean haveSetQueryId) {
+    return closeOperation(
+        sessionId,
+        queryId,
+        statementId,
+        haveStatementId,
+        haveSetQueryId,
+        this::releaseQueryResourceNoExceptions);
+  }
+
   /**
    * Check whether current user has logged in.
    *
    * @return true: If logged in; false: If not logged in
    */
   public boolean checkLogin(long sessionId) {
-    boolean isLoggedIn = sessionIdToUsername.get(sessionId) != null;
+    Long currentSessionId = getCurrSessionId();
+    boolean isLoggedIn = currentSessionId != null && currentSessionId == sessionId;
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
     } else {
@@ -212,6 +229,7 @@ public class SessionManager {
     sessionIdToUsername.put(sessionId, username);
     sessionIdToZoneId.put(sessionId, ZoneId.of(zoneId));
     sessionIdToClientVersion.put(sessionId, clientVersion);
+    sessionIdToSessionInfo.put(sessionId, new SessionInfo(sessionId, username, zoneId));
 
     return sessionId;
   }
@@ -261,11 +279,11 @@ public class SessionManager {
     return statementId;
   }
 
-  public void closeStatement(long sessionId, long statementId) {
+  public void closeStatement(long sessionId, long statementId, Consumer<Long> releaseByQueryId) {
     Set<Long> queryIdSet = statementIdToQueryId.remove(statementId);
     if (queryIdSet != null) {
       for (Long queryId : queryIdSet) {
-        releaseQueryResourceNoExceptions(queryId);
+        releaseByQueryId.accept(queryId);
       }
     }
 
@@ -377,8 +395,8 @@ public class SessionManager {
     queryIdToDataSet.remove(queryId);
   }
 
-  public void closeDataset(Long statementId, Long queryId) {
-    releaseQueryResourceNoExceptions(queryId);
+  public void closeDataset(Long statementId, Long queryId, Consumer<Long> releaseByQueryId) {
+    releaseByQueryId.accept(queryId);
     if (statementIdToQueryId.containsKey(statementId)) {
       statementIdToQueryId.get(statementId).remove(queryId);
     }

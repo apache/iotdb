@@ -23,8 +23,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -32,12 +34,18 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class FilterOperator extends TransformOperator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(FilterOperator.class);
 
   private LayerPointReader filterPointReader;
 
@@ -45,20 +53,24 @@ public class FilterOperator extends TransformOperator {
       OperatorContext operatorContext,
       Operator inputOperator,
       List<TSDataType> inputDataTypes,
+      Map<String, List<InputLocation>> inputLocations,
       Expression filterExpression,
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      TypeProvider typeProvider)
+      TypeProvider typeProvider,
+      boolean isAscending)
       throws QueryProcessException, IOException {
     super(
         operatorContext,
         inputOperator,
         inputDataTypes,
+        inputLocations,
         bindExpressions(filterExpression, outputExpressions),
         keepNull,
         zoneId,
-        typeProvider);
+        typeProvider,
+        isAscending);
   }
 
   private static Expression[] bindExpressions(
@@ -70,8 +82,12 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  protected void initTransformers() throws QueryProcessException, IOException {
-    super.initTransformers();
+  protected void initTransformers(
+      Map<String, List<InputLocation>> inputLocations,
+      Expression[] outputExpressions,
+      TypeProvider typeProvider)
+      throws QueryProcessException, IOException {
+    super.initTransformers(inputLocations, outputExpressions, typeProvider);
 
     filterPointReader = transformers[transformers.length - 1];
     if (filterPointReader.getDataType() != TSDataType.BOOLEAN) {
@@ -83,79 +99,145 @@ public class FilterOperator extends TransformOperator {
   }
 
   @Override
-  protected void readyForFirstIteration() throws QueryProcessException, IOException {
-    iterateFilterReaderToNextValid();
-  }
-
-  private void iterateFilterReaderToNextValid() throws QueryProcessException, IOException {
-    while (filterPointReader.next()
-        && (filterPointReader.isCurrentNull() || !filterPointReader.currentBoolean())) {
-      filterPointReader.readyForNext();
-    }
-  }
-
-  @Override
   public TsBlock next() {
-    final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
-
-    final int outputColumnCount = transformers.length - 1;
-
-    if (outputDataTypes == null) {
-      outputDataTypes = new ArrayList<>();
-      for (int i = 0; i < outputColumnCount; ++i) {
-        outputDataTypes.add(transformers[i].getDataType());
-      }
-    }
-    tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
-
-    final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
     try {
-      int rowCount = 0;
-      while (rowCount < FETCH_SIZE && filterPointReader.next()) {
-        final long currentTime = filterPointReader.currentTime();
+      YieldableState yieldableState = iterateAllColumnsToNextValid();
+      if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+        return null;
+      }
 
-        boolean hasAtLeastOneValid = false;
+      final TsBlockBuilder tsBlockBuilder = TsBlockBuilder.createWithOnlyTimeColumn();
+      final int outputColumnCount = transformers.length - 1;
+      if (outputDataTypes == null) {
+        outputDataTypes = new ArrayList<>();
         for (int i = 0; i < outputColumnCount; ++i) {
-          if (currentTime == iterateValueReadersToNextValid(transformers[i], currentTime)) {
-            hasAtLeastOneValid = true;
-          }
+          outputDataTypes.add(transformers[i].getDataType());
+        }
+      }
+      tsBlockBuilder.buildValueColumnBuilders(outputDataTypes);
+      final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
+      final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
+
+      int rowCount = 0;
+      while (!timeHeap.isEmpty()) {
+        final long currentTime = timeHeap.pollFirst();
+
+        yieldableState = filterPointReader.yield();
+        if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+          timeHeap.add(currentTime);
+          tsBlockBuilder.declarePositions(rowCount);
+          return tsBlockBuilder.build();
         }
 
-        if (hasAtLeastOneValid) {
-          timeBuilder.writeLong(currentTime);
+        if (yieldableState == YieldableState.YIELDABLE
+            && filterPointReader.currentTime() == currentTime) {
+
+          boolean isReaderContinueNull = true;
+          for (int i = 0; isReaderContinueNull && i < outputColumnCount; ++i) {
+            isReaderContinueNull = collectReaderAppendIsNull(transformers[i], currentTime);
+          } // After the loop, isReaderContinueNull is true means all values of readers are null
+
+          if (!filterPointReader.isCurrentNull()
+              && filterPointReader.currentBoolean()
+              && !isReaderContinueNull) {
+            // time
+            timeBuilder.writeLong(currentTime);
+
+            // values
+            for (int i = 0; i < outputColumnCount; ++i) {
+              yieldableState = collectDataPoint(transformers[i], columnBuilders[i], currentTime, i);
+              if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+                for (int j = 0; j <= i; ++j) {
+                  shouldIterateReadersToNextValid[j] = false;
+                }
+                timeHeap.add(currentTime);
+
+                tsBlockBuilder.declarePositions(rowCount);
+                return tsBlockBuilder.build();
+              }
+            }
+            shouldIterateReadersToNextValid[outputColumnCount] = true;
+
+            for (int i = 0; i <= outputColumnCount; ++i) {
+              if (shouldIterateReadersToNextValid[i]) {
+                transformers[i].readyForNext();
+              }
+            }
+
+            ++rowCount;
+          } else {
+            // values
+            for (int i = 0; i < outputColumnCount; ++i) {
+              yieldableState = skipDataPoint(transformers[i], currentTime, i);
+              if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+                for (int j = 0; j <= i; ++j) {
+                  shouldIterateReadersToNextValid[j] = false;
+                }
+                timeHeap.add(currentTime);
+
+                tsBlockBuilder.declarePositions(rowCount);
+                return tsBlockBuilder.build();
+              }
+            }
+            shouldIterateReadersToNextValid[outputColumnCount] = true;
+
+            for (int i = 0; i <= outputColumnCount; ++i) {
+              if (shouldIterateReadersToNextValid[i]) {
+                transformers[i].readyForNext();
+              }
+            }
+          }
+        } else {
+          // values
           for (int i = 0; i < outputColumnCount; ++i) {
-            collectDataPoint(transformers[i], columnBuilders[i], currentTime);
+            yieldableState = skipDataPoint(transformers[i], currentTime, i);
+            if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+              for (int j = 0; j <= i; ++j) {
+                shouldIterateReadersToNextValid[j] = false;
+              }
+              timeHeap.add(currentTime);
+
+              tsBlockBuilder.declarePositions(rowCount);
+              return tsBlockBuilder.build();
+            }
           }
-          ++rowCount;
+
+          for (int i = 0; i < outputColumnCount; ++i) {
+            if (shouldIterateReadersToNextValid[i]) {
+              transformers[i].readyForNext();
+            }
+          }
         }
 
-        iterateFilterReaderToNextValid();
+        yieldableState = iterateAllColumnsToNextValid();
+        if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+          tsBlockBuilder.declarePositions(rowCount);
+          return tsBlockBuilder.build();
+        }
 
         inputLayer.updateRowRecordListEvictionUpperBound();
       }
+
+      tsBlockBuilder.declarePositions(rowCount);
+      return tsBlockBuilder.build();
     } catch (Exception e) {
+      LOGGER.error("FilterOperator#next()", e);
       throw new RuntimeException(e);
     }
-
-    return tsBlockBuilder.build();
   }
 
-  private long iterateValueReadersToNextValid(LayerPointReader reader, long currentTime)
-      throws QueryProcessException, IOException {
-    while (reader.next() && (reader.isCurrentNull() || reader.currentTime() < currentTime)) {
-      reader.readyForNext();
+  private YieldableState skipDataPoint(LayerPointReader reader, long currentTime, int readerIndex)
+      throws IOException, QueryProcessException {
+    final YieldableState yieldableState = reader.yield();
+    if (yieldableState != YieldableState.YIELDABLE) {
+      return yieldableState;
     }
-    return reader.currentTime();
-  }
 
-  @Override
-  public boolean hasNext() {
-    try {
-      return filterPointReader.next();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
+    if (reader.currentTime() == currentTime) {
+      shouldIterateReadersToNextValid[readerIndex] = true;
     }
+
+    return YieldableState.YIELDABLE;
   }
 }

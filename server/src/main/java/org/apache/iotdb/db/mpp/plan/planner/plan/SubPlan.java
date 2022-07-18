@@ -62,7 +62,7 @@ public class SubPlan {
     result.add(this.planFragment);
     this.children.forEach(
         child -> {
-          result.add(child.getPlanFragment());
+          result.addAll(child.getPlanFragmentList());
         });
     return result;
   }

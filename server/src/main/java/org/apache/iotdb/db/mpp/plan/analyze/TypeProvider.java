@@ -23,6 +23,8 @@ import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
@@ -55,11 +57,23 @@ public class TypeProvider {
     this.typeMap.put(path, dataType);
   }
 
+  public boolean containsTypeInfoOf(String path) {
+    return typeMap.containsKey(path);
+  }
+
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(typeMap.size(), byteBuffer);
     for (Map.Entry<String, TSDataType> entry : typeMap.entrySet()) {
       ReadWriteIOUtils.write(entry.getKey(), byteBuffer);
       ReadWriteIOUtils.write(entry.getValue().ordinal(), byteBuffer);
+    }
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(typeMap.size(), stream);
+    for (Map.Entry<String, TSDataType> entry : typeMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), stream);
+      ReadWriteIOUtils.write(entry.getValue().ordinal(), stream);
     }
   }
 

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
@@ -33,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
@@ -43,6 +45,9 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public abstract class InsertNode extends WritePlanNode {
+
+  /** this insert node doesn't need to participate in multi-leader consensus */
+  public static final long NO_CONSENSUS_INDEX = ConsensusReqReader.DEFAULT_SEARCH_INDEX;
 
   /**
    * if use id table, this filed is id form of device path <br>
@@ -66,8 +71,14 @@ public abstract class InsertNode extends WritePlanNode {
    */
   protected IDeviceID deviceID;
 
+  /**
+   * this index is used by wal search, its order should be protected by the upper layer, and the
+   * value should start from 1
+   */
+  protected long searchIndex = NO_CONSENSUS_INDEX;
+
   /** Physical address of data region after splitting */
-  TRegionReplicaSet dataRegionReplicaSet;
+  protected TRegionReplicaSet dataRegionReplicaSet;
 
   protected InsertNode(PlanNodeId id) {
     super(id);
@@ -138,6 +149,26 @@ public abstract class InsertNode extends WritePlanNode {
     this.deviceID = deviceID;
   }
 
+  public long getSearchIndex() {
+    return searchIndex;
+  }
+
+  /** Search index should start from 1 */
+  public void setSearchIndex(long searchIndex) {
+    this.searchIndex = searchIndex;
+  }
+
+  @Override
+  protected void serializeAttributes(ByteBuffer byteBuffer) {
+    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  @Override
+  protected void serializeAttributes(DataOutputStream stream) throws IOException {
+    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
+  }
+
+  // region Serialization methods for WAL
   /** Serialized size of measurement schemas, ignoring failed time series */
   protected int serializeMeasurementSchemasSize() {
     int byteLen = 0;
@@ -172,6 +203,7 @@ public abstract class InsertNode extends WritePlanNode {
       measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }
+  // endregion
 
   public TRegionReplicaSet getRegionReplicaSet() {
     return dataRegionReplicaSet;
@@ -192,12 +224,18 @@ public abstract class InsertNode extends WritePlanNode {
                   devicePath.getFullPath(),
                   measurements[i],
                   measurementSchemas[i].getType(),
-                  dataTypes[i]));
+                  dataTypes[i],
+                  getMinTime(),
+                  getFirstValueOfIndex(i)));
         }
       }
     }
     return true;
   }
+
+  public abstract long getMinTime();
+
+  public abstract Object getFirstValueOfIndex(int index);
 
   // region partial insert
   /**
@@ -211,6 +249,15 @@ public abstract class InsertNode extends WritePlanNode {
    */
   public void markFailedMeasurement(int index, Exception cause) {
     throw new UnsupportedOperationException();
+  }
+
+  public boolean hasValidMeasurements() {
+    for (Object o : measurements) {
+      if (o != null) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public boolean hasFailedMeasurements() {
@@ -267,11 +314,6 @@ public abstract class InsertNode extends WritePlanNode {
     }
   }
   // endregion
-
-  @Override
-  protected void serializeAttributes(ByteBuffer byteBuffer) {
-    throw new NotImplementedException("serializeAttributes of InsertNode is not implemented");
-  }
 
   @Override
   public boolean equals(Object o) {

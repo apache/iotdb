@@ -66,14 +66,21 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
         // Startup environment check
         StartupChecks checks = new StartupChecks().withDefaultTest();
         checks.verify();
+        // Do ConfigNode startup checks
         ConfigNodeStartupCheck.getInstance().startUpCheck();
-      } catch (IOException | ConfigurationException | StartupException e) {
+      } catch (StartupException | ConfigurationException | IOException e) {
         LOGGER.error("Meet error when doing start checking", e);
         return -1;
       }
       ConfigNode.getInstance().active();
     } else if (MODE_REMOVE.equals(mode)) {
-      // TODO: remove node
+      // remove node
+      try {
+        ConfigNode.getInstance().doRemoveNode(args);
+      } catch (IOException e) {
+        LOGGER.error("Meet error when doing remove", e);
+        return -1;
+      }
     }
 
     return 0;

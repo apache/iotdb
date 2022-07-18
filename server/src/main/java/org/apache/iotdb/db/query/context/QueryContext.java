@@ -48,7 +48,7 @@ public class QueryContext {
    */
   private final Map<String, List<Modification>> fileModCache = new HashMap<>();
 
-  private long queryId;
+  protected long queryId;
 
   private long queryTimeLowerBound = Long.MIN_VALUE;
 

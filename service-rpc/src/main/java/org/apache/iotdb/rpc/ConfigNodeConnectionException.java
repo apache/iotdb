@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.rpc;
 
-public class ConfigNodeConnectionException extends RuntimeException {
+public class ConfigNodeConnectionException extends Exception {
 
   public ConfigNodeConnectionException(String message) {
     super(message);

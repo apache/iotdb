@@ -20,8 +20,11 @@
 package org.apache.iotdb.db.mpp.plan.statement.literal;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -36,10 +39,6 @@ public class DoubleLiteral extends Literal {
     this.value = value;
   }
 
-  public double getValue() {
-    return value;
-  }
-
   @Override
   public void serialize(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(LiteralType.DOUBLE.ordinal(), byteBuffer);
@@ -47,8 +46,21 @@ public class DoubleLiteral extends Literal {
   }
 
   @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(LiteralType.DOUBLE.ordinal(), stream);
+    ReadWriteIOUtils.write(value, stream);
+  }
+
+  @Override
   public boolean isDataTypeConsistency(TSDataType dataType) {
-    return dataType == TSDataType.FLOAT || dataType == TSDataType.DOUBLE;
+    return dataType == TSDataType.FLOAT
+        || dataType == TSDataType.DOUBLE
+        || dataType == TSDataType.TEXT;
+  }
+
+  @Override
+  public String getDataTypeString() {
+    return TSDataType.DOUBLE.toString();
   }
 
   @Override
@@ -66,5 +78,20 @@ public class DoubleLiteral extends Literal {
   @Override
   public int hashCode() {
     return Objects.hash(value);
+  }
+
+  @Override
+  public double getDouble() {
+    return value;
+  }
+
+  @Override
+  public float getFloat() {
+    return (float) value;
+  }
+
+  @Override
+  public Binary getBinary() {
+    return new Binary(String.valueOf(value));
   }
 }

@@ -186,13 +186,13 @@ public class TsFileSketchTool {
 
       printlnBoth(
           pw,
-          String.format("%20s", (reader.getFileMetadataPos() + reader.getFileMetadataSize()))
+          String.format("%20s", (reader.getFileMetadataPos() + reader.getTsFileMetadataSize()))
               + "|\t[TsFileMetadataSize] "
-              + reader.getFileMetadataSize());
+              + reader.getTsFileMetadataSize());
 
       printlnBoth(
           pw,
-          String.format("%20s", reader.getFileMetadataPos() + reader.getFileMetadataSize() + 4)
+          String.format("%20s", reader.getFileMetadataPos() + reader.getTsFileMetadataSize() + 4)
               + "|\t[magic tail] "
               + reader.readTailMagic());
     } catch (IOException e) {

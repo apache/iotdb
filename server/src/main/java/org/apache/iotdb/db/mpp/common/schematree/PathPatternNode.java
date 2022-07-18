@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -108,7 +109,19 @@ public class PathPatternNode {
     serializeChildren(outputStream);
   }
 
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(children.size(), outputStream);
+    serializeChildren(outputStream);
+  }
+
   void serializeChildren(PublicBAOS outputStream) throws IOException {
+    for (PathPatternNode childNode : children.values()) {
+      childNode.serialize(outputStream);
+    }
+  }
+
+  void serializeChildren(DataOutputStream outputStream) throws IOException {
     for (PathPatternNode childNode : children.values()) {
       childNode.serialize(outputStream);
     }

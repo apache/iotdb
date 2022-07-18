@@ -30,9 +30,9 @@
     <artifactId>iotdb-confignode</artifactId>
     <name>IoTDB ConfigNode</name>
     <properties>
-        <iotdb.test.skip>false</iotdb.test.skip>
-        <iotdb.it.skip>${iotdb.test.skip}</iotdb.it.skip>
-        <iotdb.ut.skip>${iotdb.test.skip}</iotdb.ut.skip>
+        <confignode.test.skip>false</confignode.test.skip>
+        <confignode.it.skip>${confignode.test.skip}</confignode.it.skip>
+        <confignode.ut.skip>${confignode.test.skip}</confignode.ut.skip>
     </properties>
     <dependencies>
         <dependency>
@@ -102,6 +102,44 @@
                     </execution>
                 </executions>
             </plugin>
+            <!--using `mvn test` to run UT, `mvn verify` to run ITs
+                        Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>${confignode.ut.skip}</skipTests>
+                    <forkMode>pertest</forkMode>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>skipConfigNodeTests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <confignode.test.skip>true</confignode.test.skip>
+                <confignode.ut.skip>true</confignode.ut.skip>
+                <confignode.it.skip>true</confignode.it.skip>
+            </properties>
+        </profile>
+        <profile>
+            <id>skipUT_ConfigNode_Tests</id>
+            <activation>
+                <property>
+                    <name>skipUTs</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <confignode.ut.skip>true</confignode.ut.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>

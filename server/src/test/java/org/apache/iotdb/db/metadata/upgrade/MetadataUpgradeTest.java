@@ -132,7 +132,11 @@ public class MetadataUpgradeTest {
     Assert.assertTrue(
         new File(schemaDirPath + File.separator + MetadataConstant.TAG_LOG + ".bak").exists());
     Assert.assertTrue(
-        new File(schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT + ".bak")
+        new File(
+                schemaDirPath
+                    + File.separator
+                    + MetadataConstant.MTREE_SNAPSHOT_OLD_VERSION
+                    + ".bak")
             .exists());
   }
 
@@ -245,7 +249,7 @@ public class MetadataUpgradeTest {
   }
 
   private CreateAlignedTimeSeriesPlan getCreateAlignedTimeseriesPlan() throws IllegalPathException {
-    PartialPath devicePath = new PartialPath("root.unsetTemplate1.sg1.device");
+    PartialPath devicePath = new PartialPath("root.unsetTemplate1.sg1.device0");
     List<String> measurements = Arrays.asList("s1", "s2", "s3", "s4", "s5");
     List<TSDataType> tsDataTypes =
         Arrays.asList(
@@ -306,7 +310,8 @@ public class MetadataUpgradeTest {
     entityMNode.addChild(measurementMNode);
     entityMNode.addAlias("first", measurementMNode);
     try (MLogWriter mLogWriter =
-        new MLogWriter(schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT)) {
+        new MLogWriter(
+            schemaDirPath + File.separator + MetadataConstant.MTREE_SNAPSHOT_OLD_VERSION)) {
       root.serializeTo(mLogWriter);
     }
   }

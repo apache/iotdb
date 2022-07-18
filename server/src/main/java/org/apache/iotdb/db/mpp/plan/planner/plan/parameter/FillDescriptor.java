@@ -23,6 +23,8 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -50,6 +52,13 @@ public class FillDescriptor {
     }
   }
 
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(fillPolicy.ordinal(), stream);
+    if (fillPolicy == FillPolicy.VALUE) {
+      fillValue.serialize(stream);
+    }
+  }
+
   public static FillDescriptor deserialize(ByteBuffer byteBuffer) {
     FillPolicy fillPolicy = FillPolicy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     if (fillPolicy == FillPolicy.VALUE) {
@@ -58,6 +67,14 @@ public class FillDescriptor {
     } else {
       return new FillDescriptor(fillPolicy);
     }
+  }
+
+  public FillPolicy getFillPolicy() {
+    return fillPolicy;
+  }
+
+  public Literal getFillValue() {
+    return fillValue;
   }
 
   @Override

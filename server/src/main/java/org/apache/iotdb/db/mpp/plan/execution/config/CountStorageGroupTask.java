@@ -20,33 +20,20 @@
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
-import org.apache.iotdb.db.client.ConfigNodeClient;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
+import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 public class CountStorageGroupTask implements IConfigTask {
-  private static final Logger LOGGER = LoggerFactory.getLogger(CountStorageGroupTask.class);
-
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private CountStorageGroupStatement countStorageGroupStatement;
 
@@ -55,33 +42,12 @@ public class CountStorageGroupTask implements IConfigTask {
   }
 
   @Override
-  public ListenableFuture<ConfigTaskResult> execute() throws InterruptedException {
-    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    int storageGroupNum = 0;
-    if (config.isClusterMode()) {
-      List<String> storageGroupPathPattern =
-          Arrays.asList(countStorageGroupStatement.getPartialPath().getNodes());
-      ConfigNodeClient client = null;
-      try {
-        client = new ConfigNodeClient();
-        TCountStorageGroupResp resp = client.countMatchedStorageGroups(storageGroupPathPattern);
-        storageGroupNum = resp.getCount();
-      } catch (IoTDBConnectionException e) {
-        LOGGER.error("Failed to connect to config node.");
-        future.setException(e);
-      }
-    } else {
-      try {
-        storageGroupNum =
-            LocalConfigNode.getInstance()
-                .getStorageGroupNum(
-                    countStorageGroupStatement.getPartialPath(),
-                    countStorageGroupStatement.isPrefixPath());
-      } catch (MetadataException e) {
-        future.setException(e);
-      }
-    }
-    // build TSBlock
+  public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
+      throws InterruptedException {
+    return configTaskExecutor.countStorageGroup(countStorageGroupStatement);
+  }
+
+  public static void buildTSBlock(int storageGroupNum, SettableFuture<ConfigTaskResult> future) {
     TsBlockBuilder builder = new TsBlockBuilder(Collections.singletonList(TSDataType.INT32));
     builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeInt(storageGroupNum);
@@ -91,6 +57,5 @@ public class CountStorageGroupTask implements IConfigTask {
     DatasetHeader datasetHeader =
         new DatasetHeader(Collections.singletonList(storageGroupColumnHeader), true);
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
-    return future;
   }
 }

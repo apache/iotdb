@@ -34,8 +34,10 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.internal.util.collections.Sets;
 
-import java.nio.ByteBuffer;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -435,20 +437,36 @@ public class SchemaTreeTest {
     Assert.assertEquals(2, deviceSchemaInfo.getMeasurements(Sets.newSet("*")).size());
 
     deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.*"), false);
+    deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
     Assert.assertEquals(2, deviceSchemaInfoList.size());
+    Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.sg.d2"), deviceSchemaInfoList.get(1).getDevicePath());
 
     deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.sg.**"), false);
+    deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
     Assert.assertEquals(3, deviceSchemaInfoList.size());
+    Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.sg.d2"), deviceSchemaInfoList.get(1).getDevicePath());
+    Assert.assertEquals(
+        new PartialPath("root.sg.d2.a"), deviceSchemaInfoList.get(2).getDevicePath());
+
+    deviceSchemaInfoList = schemaTree.getMatchedDevices(new PartialPath("root.**"), false);
+    deviceSchemaInfoList.sort(Comparator.comparing(DeviceSchemaInfo::getDevicePath));
+    Assert.assertEquals(3, deviceSchemaInfoList.size());
+    Assert.assertEquals(new PartialPath("root.sg.d1"), deviceSchemaInfoList.get(0).getDevicePath());
+    Assert.assertEquals(new PartialPath("root.sg.d2"), deviceSchemaInfoList.get(1).getDevicePath());
+    Assert.assertEquals(
+        new PartialPath("root.sg.d2.a"), deviceSchemaInfoList.get(2).getDevicePath());
   }
 
   @Test
   public void testSerialization() throws Exception {
     SchemaNode root = generateSchemaTree();
-    ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);
-    root.serialize(buffer);
-    buffer.flip();
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    root.serialize(outputStream);
 
-    SchemaTree schemaTree = SchemaTree.deserialize(buffer);
+    ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
+    SchemaTree schemaTree = SchemaTree.deserialize(inputStream);
 
     Pair<List<MeasurementPath>, Integer> visitResult =
         schemaTree.searchMeasurementPaths(new PartialPath("root.sg.**.status"), 2, 1, true);
@@ -518,6 +536,19 @@ public class SchemaTreeTest {
     }
 
     testSchemaTree(schemaTree.getRoot());
+  }
+
+  @Test
+  public void testMergeSchemaTreeAndSearchDeviceSchemaInfo() throws Exception {
+    SchemaTree schemaTree = new SchemaTree();
+    for (SchemaTree tree : generateSchemaTrees()) {
+      schemaTree.mergeSchemaTree(tree);
+    }
+    PartialPath devicePath = new PartialPath("root.sg.d99999");
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
   }
 
   private List<SchemaTree> generateSchemaTrees() throws Exception {

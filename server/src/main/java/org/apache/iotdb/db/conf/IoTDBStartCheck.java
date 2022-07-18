@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.db.conf;
 
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -41,7 +39,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -112,8 +109,9 @@ public class IoTDBStartCheck {
 
   private static final String DATA_NODE_ID = "data_node_id";
 
-  private static final String CONFIG_NODE_LIST = "config_node_list";
+  private static final String SCHEMA_REGION_CONSENSUS_PROTOCOL = "schema_region_consensus_protocol";
 
+  private static final String DATA_REGION_CONSENSUS_PROTOCOL = "data_region_consensus_protocol";
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBStartCheck getInstance() {
@@ -383,15 +381,34 @@ public class IoTDBStartCheck {
       throwException(SCHEMA_ENGINE_MODE, schemaEngineMode);
     }
 
-    // properties contain DATA_NODE_ID only when start as Data node
+    // load configuration from system properties only when start as Data node
     if (properties.containsKey(DATA_NODE_ID)) {
       config.setDataNodeId(Integer.parseInt(properties.getProperty(DATA_NODE_ID)));
+    }
+
+    if (properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL)) {
+      config.setSchemaRegionConsensusProtocolClass(
+          properties.getProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL));
+    }
+
+    if (properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL)) {
+      config.setDataRegionConsensusProtocolClass(
+          properties.getProperty(DATA_REGION_CONSENSUS_PROTOCOL));
     }
   }
 
   private void throwException(String parameter, Object badValue) throws ConfigurationException {
     throw new ConfigurationException(
         parameter, String.valueOf(badValue), properties.getProperty(parameter));
+  }
+
+  // reload properties from system.properties
+  private void reloadProperties() throws IOException {
+    try (FileInputStream inputStream = new FileInputStream(propertiesFile);
+        InputStreamReader inputStreamReader =
+            new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET)) {
+      properties.load(inputStreamReader);
+    }
   }
 
   /** call this method to serialize DataNodeId */
@@ -403,6 +420,8 @@ public class IoTDBStartCheck {
       logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
       System.exit(-1);
     }
+
+    reloadProperties();
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
       properties.setProperty(DATA_NODE_ID, String.valueOf(dataNodeId));
@@ -416,8 +435,9 @@ public class IoTDBStartCheck {
     FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 
-  /** call this method to serialize config node list */
-  public void serializeConfigNodeList(List<TEndPoint> configNodeList) throws IOException {
+  /** call this method to serialize consensus protocol */
+  public void serializeConsensusProtocol(String regionConsensusProtocol, TConsensusGroupType type)
+      throws IOException {
     // create an empty tmpPropertiesFile
     if (tmpPropertiesFile.createNewFile()) {
       logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
@@ -426,8 +446,14 @@ public class IoTDBStartCheck {
       System.exit(-1);
     }
 
+    reloadProperties();
+
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-      properties.setProperty(CONFIG_NODE_LIST, NodeUrlUtils.convertTEndPointUrls(configNodeList));
+      if (type == TConsensusGroupType.DataRegion) {
+        properties.setProperty(DATA_REGION_CONSENSUS_PROTOCOL, regionConsensusProtocol);
+      } else if (type == TConsensusGroupType.SchemaRegion) {
+        properties.setProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL, regionConsensusProtocol);
+      }
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {
@@ -438,15 +464,14 @@ public class IoTDBStartCheck {
     FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 
-  public void loadConfigNodeList() {
-    // properties contain CONFIG_NODE_LIST only when start as Data node
-    try {
-      if (properties.containsKey(CONFIG_NODE_LIST)) {
-        config.setConfigNodeList(
-            NodeUrlUtils.parseTEndPointUrls(properties.getProperty(CONFIG_NODE_LIST)));
-      }
-    } catch (BadNodeUrlException e) {
-      logger.error("Cannot parse config node list in system.properties");
+  public boolean checkConsensusProtocolExists(TConsensusGroupType type) {
+    if (type == TConsensusGroupType.DataRegion) {
+      return properties.containsKey(DATA_REGION_CONSENSUS_PROTOCOL);
+    } else if (type == TConsensusGroupType.SchemaRegion) {
+      return properties.containsKey(SCHEMA_REGION_CONSENSUS_PROTOCOL);
     }
+
+    logger.error("Unexpected consensus group type");
+    return false;
   }
 }

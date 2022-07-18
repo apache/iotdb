@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -155,16 +156,18 @@ public abstract class Statistics<T extends Serializable> {
   @SuppressWarnings("unchecked")
   public void mergeStatistics(Statistics<? extends Serializable> stats) {
     if (this.getClass() == stats.getClass()) {
-      if (stats.startTime < this.startTime) {
-        this.startTime = stats.startTime;
+      if (!stats.isEmpty) {
+        if (stats.startTime < this.startTime) {
+          this.startTime = stats.startTime;
+        }
+        if (stats.endTime > this.endTime) {
+          this.endTime = stats.endTime;
+        }
+        // must be sure no overlap between two statistics
+        this.count += stats.count;
+        mergeStatisticsValue((Statistics<T>) stats);
+        isEmpty = false;
       }
-      if (stats.endTime > this.endTime) {
-        this.endTime = stats.endTime;
-      }
-      // must be sure no overlap between two statistics
-      this.count += stats.count;
-      mergeStatisticsValue((Statistics<T>) stats);
-      isEmpty = false;
     } else {
       Class<?> thisClass = this.getClass();
       Class<?> statsClass = stats.getClass();
@@ -370,6 +373,10 @@ public abstract class Statistics<T extends Serializable> {
   }
 
   public abstract long calculateRamSize();
+
+  public boolean containedByTimeFilter(Filter timeFilter) {
+    return timeFilter == null || timeFilter.containStartEndTime(getStartTime(), getEndTime());
+  }
 
   @Override
   public String toString() {

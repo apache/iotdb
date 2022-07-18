@@ -20,12 +20,13 @@ package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.util.List;
 import java.util.Map;
 
 /** This interface maintains roles in memory and is responsible for their modifications. */
-public interface IRoleManager {
+public interface IRoleManager extends SnapshotProcessor {
 
   /**
    * Get a role object.

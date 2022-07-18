@@ -19,16 +19,13 @@
 
 package org.apache.iotdb.library.dquality.util;
 
-import org.apache.iotdb.db.query.udf.api.access.Row;
-import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.udf.api.access.Row;
+import org.apache.iotdb.udf.api.access.RowIterator;
 
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 
-import java.io.File;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Scanner;
 
 /** Class for computing data quality index. */
 public class TimeSeriesQuality {
@@ -53,32 +50,7 @@ public class TimeSeriesQuality {
       Row row = dataIterator.next();
       cnt++;
       double v = Util.getValueAsDouble(row);
-      double t = Long.valueOf(row.getTime()).doubleValue();
-      if (Double.isFinite(v)) {
-        timeList.add(t);
-        originList.add(v);
-      } else { // processing NAN，INF
-        specialCnt++;
-        timeList.add(t);
-        originList.add(Double.NaN);
-      }
-    }
-    time = Util.toDoubleArray(timeList);
-    origin = Util.toDoubleArray(originList);
-    processNaN();
-  }
-
-  public TimeSeriesQuality(String filename) throws Exception {
-    Scanner sc = new Scanner(new File(filename));
-    ArrayList<Double> timeList = new ArrayList<>();
-    ArrayList<Double> originList = new ArrayList<>();
-    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    sc.useDelimiter("\\s*(,|\\r|\\n)\\s*"); // set separator
-    sc.nextLine();
-    while (sc.hasNext()) {
-      cnt++;
-      double t = format.parse(sc.next()).getTime();
-      double v = sc.nextDouble();
+      double t = (double) row.getTime();
       if (Double.isFinite(v)) {
         timeList.add(t);
         originList.add(v);

@@ -381,13 +381,12 @@ class AlignedResourceByPathUtils extends ResourceByPathUtils {
 
     List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
     List<ChunkMetadata> timeChunkMetadataList =
-        writer.getVisibleMetadataList(
-            partialPath.getDeviceIdString(), "", partialPath.getSeriesType());
+        writer.getVisibleMetadataList(partialPath.getDevice(), "", partialPath.getSeriesType());
     List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
     for (int i = 0; i < partialPath.getMeasurementList().size(); i++) {
       valueChunkMetadataList.add(
           writer.getVisibleMetadataList(
-              partialPath.getDeviceIdString(),
+              partialPath.getDevice(),
               partialPath.getMeasurementList().get(i),
               partialPath.getSchemaList().get(i).getType()));
     }
@@ -595,7 +594,7 @@ class MeasurementResourceByPathUtils extends ResourceByPathUtils {
     List<IChunkMetadata> chunkMetadataList =
         new ArrayList<>(
             writer.getVisibleMetadataList(
-                partialPath.getDeviceIdString(),
+                partialPath.getDevice(),
                 partialPath.getMeasurement(),
                 partialPath.getSeriesType()));
 

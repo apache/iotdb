@@ -25,8 +25,8 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.wal.exception.WALRecoverException;
-import org.apache.iotdb.db.wal.node.WALNode;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
 
@@ -38,15 +38,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 /** First set allVsgScannedLatch, then call recover method. */
 public class WALRecoverManager {
   private static final Logger logger = LoggerFactory.getLogger(WALRecoverManager.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  /** true when the recover procedure has started */
+  private volatile boolean hasStarted = false;
   /** start recovery after all virtual storage groups have submitted unsealed zero-level TsFiles */
   private volatile CountDownLatch allDataRegionScannedLatch;
   /** threads to recover wal nodes */
@@ -64,7 +69,7 @@ public class WALRecoverManager {
       List<File> walNodeDirs = new ArrayList<>();
       for (String walDir : config.getWalDirs()) {
         File walDirFile = SystemFileFactory.INSTANCE.getFile(walDir);
-        File[] nodeDirs = walDirFile.listFiles(WALNode::walNodeFolderNameFilter);
+        File[] nodeDirs = walDirFile.listFiles(File::isDirectory);
         if (nodeDirs == null) {
           continue;
         }
@@ -78,6 +83,7 @@ public class WALRecoverManager {
       // which means walRecoverManger.addRecoverPerformer method won't be call anymore
       try {
         allDataRegionScannedLatch.await();
+        hasStarted = true;
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         throw new WALRecoverException("Fail to recover wal.", e);
@@ -101,21 +107,7 @@ public class WALRecoverManager {
         }
       }
       // deal with remaining TsFiles which don't have wal
-      for (UnsealedTsFileRecoverPerformer recoverPerformer :
-          absolutePath2RecoverPerformer.values()) {
-        try {
-          recoverPerformer.startRecovery();
-          // skip redo logs because it doesn't belong to any wal node
-          recoverPerformer.endRecovery();
-          recoverPerformer.getRecoverListener().succeed();
-        } catch (DataRegionException | IOException e) {
-          logger.error(
-              "Fail to recover unsealed TsFile {}, skip it.",
-              recoverPerformer.getTsFileAbsolutePath(),
-              e);
-          recoverPerformer.getRecoverListener().fail(e);
-        }
-      }
+      asyncRecoverLeftTsFiles();
     } catch (Exception e) {
       for (UnsealedTsFileRecoverPerformer recoverPerformer :
           absolutePath2RecoverPerformer.values()) {
@@ -132,13 +124,60 @@ public class WALRecoverManager {
           // continue
         }
       }
-      clear();
+      stop();
     }
     logger.info("Successfully recover all wal nodes.");
   }
 
+  private void asyncRecoverLeftTsFiles() {
+    if (absolutePath2RecoverPerformer.isEmpty()) {
+      return;
+    }
+
+    List<Future<Void>> futures = new ArrayList<>();
+    ExecutorService recoverTsFilesThreadPool =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors(), "TsFile-Recover");
+    // async recover
+    for (UnsealedTsFileRecoverPerformer recoverPerformer : absolutePath2RecoverPerformer.values()) {
+      Callable<Void> recoverTsFileTask =
+          () -> {
+            try {
+              recoverPerformer.startRecovery();
+              // skip redo logs because it doesn't belong to any wal node
+              recoverPerformer.endRecovery();
+              recoverPerformer.getRecoverListener().succeed();
+            } catch (DataRegionException | IOException | WALRecoverException e) {
+              logger.error(
+                  "Fail to recover unsealed TsFile {}, skip it.",
+                  recoverPerformer.getTsFileAbsolutePath(),
+                  e);
+              recoverPerformer.getRecoverListener().fail(e);
+            }
+            return null;
+          };
+      futures.add(recoverTsFilesThreadPool.submit(recoverTsFileTask));
+    }
+    // wait until all tasks done
+    for (Future<Void> future : futures) {
+      try {
+        future.get();
+      } catch (ExecutionException e) {
+        throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
+      }
+    }
+    recoverTsFilesThreadPool.shutdown();
+  }
+
   public WALRecoverListener addRecoverPerformer(UnsealedTsFileRecoverPerformer recoverPerformer) {
-    absolutePath2RecoverPerformer.put(recoverPerformer.getTsFileAbsolutePath(), recoverPerformer);
+    if (hasStarted) {
+      logger.error("Cannot recover tsfile from wal because wal recovery has already started");
+    } else {
+      absolutePath2RecoverPerformer.put(recoverPerformer.getTsFileAbsolutePath(), recoverPerformer);
+    }
     return recoverPerformer.getRecoverListener();
   }
 
@@ -154,13 +193,18 @@ public class WALRecoverManager {
     this.allDataRegionScannedLatch = allDataRegionScannedLatch;
   }
 
-  @TestOnly
-  public void clear() {
+  public void stop() {
     absolutePath2RecoverPerformer.clear();
     if (recoverThreadPool != null) {
       recoverThreadPool.shutdown();
       recoverThreadPool = null;
     }
+  }
+
+  @TestOnly
+  public void clear() {
+    stop();
+    hasStarted = false;
   }
 
   public static WALRecoverManager getInstance() {

@@ -110,7 +110,9 @@ public class ReceiverManager {
   }
 
   public PipeInfo getPipeInfo(String pipeName, String remoteIp, long createTime) {
-    if (pipeInfos.containsKey(pipeName) && pipeInfos.get(pipeName).containsKey(remoteIp)) {
+    if (pipeInfos.containsKey(pipeName)
+        && pipeInfos.get(pipeName).containsKey(remoteIp)
+        && pipeInfos.get(pipeName).get(remoteIp).containsKey(createTime)) {
       return new PipeInfo(
           pipeName, remoteIp, pipeInfos.get(pipeName).get(remoteIp).get(createTime), createTime);
     }

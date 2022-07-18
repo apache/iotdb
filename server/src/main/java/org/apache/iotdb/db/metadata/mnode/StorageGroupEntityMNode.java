@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 
 import java.io.IOException;
 
@@ -81,9 +82,19 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   }
 
   @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.STORAGE_GROUP;
+  }
+
+  @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     serializeChildren(logWriter);
 
     logWriter.serializeStorageGroupMNode(this);
+  }
+
+  @Override
+  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+    return visitor.visitStorageGroupEntityMNode(this, context);
   }
 }

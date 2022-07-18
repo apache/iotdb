@@ -19,11 +19,13 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
+import org.apache.iotdb.db.engine.compaction.cross.utils.AbstractCompactionEstimator;
+import org.apache.iotdb.db.engine.compaction.task.ICompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
-import org.apache.iotdb.db.utils.MergeUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,10 +33,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 
 /**
  * MaxFileMergeFileSelector selects the most files from given seqFiles and unseqFiles which can be
@@ -42,40 +42,33 @@ import java.util.Map;
  * queried at the same time is 1 to maximize the number of file merged.
  */
 public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelector {
+  private static final Logger logger =
+      LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
-  private static final Logger logger = LoggerFactory.getLogger(RewriteCompactionFileSelector.class);
-  private static final String LOG_FILE_COST = "Memory cost of file {} is {}";
+  private final CrossSpaceCompactionResource resource;
 
-  RewriteCrossSpaceCompactionResource resource;
+  private long totalCost;
+  private final long memoryBudget;
+  private final int maxCrossCompactionFileNum;
 
-  long totalCost;
-  private long memoryBudget;
-  private long maxSeqFileCost;
-  private int maxCrossCompactionFileNum;
-
-  // the number of timeseries being queried at the same time
-  int concurrentMergeNum = 1;
-
-  /** Total metadata size of each file. */
-  private Map<TsFileResource, Long> fileMetaSizeMap = new HashMap<>();
-  /** Maximum memory cost of querying a timeseries in each file. */
-  private Map<TsFileResource, Long> maxSeriesQueryCostMap = new HashMap<>();
-
-  List<TsFileResource> selectedUnseqFiles;
-  List<TsFileResource> selectedSeqFiles;
+  private List<TsFileResource> selectedUnseqFiles;
+  private List<TsFileResource> selectedSeqFiles;
 
   private Collection<Integer> tmpSelectedSeqFiles;
-  private long tempMaxSeqFileCost;
 
   private boolean[] seqSelected;
   private int seqSelectedNum;
 
-  public RewriteCompactionFileSelector(
-      RewriteCrossSpaceCompactionResource resource, long memoryBudget) {
+  private AbstractCompactionEstimator compactionEstimator;
+
+  public RewriteCompactionFileSelector(CrossSpaceCompactionResource resource, long memoryBudget) {
     this.resource = resource;
     this.memoryBudget = memoryBudget;
     this.maxCrossCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCrossCompactionCandidateFileNum();
+    this.compactionEstimator =
+        ICompactionSelector.getCompactionEstimator(
+            IoTDBDescriptor.getInstance().getConfig().getCrossCompactionPerformer(), false);
   }
 
   /**
@@ -108,29 +101,28 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
           "Selecting merge candidates from {} seqFile, {} unseqFiles",
           resource.getSeqFiles().size(),
           resource.getUnseqFiles().size());
-      select(false);
-      if (selectedUnseqFiles.isEmpty()) {
-        select(true);
-      }
-      resource.setSeqFiles(selectedSeqFiles);
-      resource.setUnseqFiles(selectedUnseqFiles);
-      resource.removeOutdatedSeqReaders();
+      selectSourceFiles();
       if (selectedUnseqFiles.isEmpty()) {
         logger.debug("No merge candidates are found");
         return new List[0];
       }
     } catch (IOException e) {
       throw new MergeException(e);
+    } finally {
+      try {
+        compactionEstimator.clear();
+      } catch (IOException e) {
+        throw new MergeException(e);
+      }
     }
-    if (logger.isInfoEnabled()) {
-      logger.info(
-          "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
-              + "time consumption {}ms",
-          selectedSeqFiles.size(),
-          selectedUnseqFiles.size(),
-          totalCost,
-          System.currentTimeMillis() - startTime);
-    }
+    logger.info(
+        "Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
+            + "time consumption {}ms",
+        selectedSeqFiles.size(),
+        selectedUnseqFiles.size(),
+        totalCost,
+        System.currentTimeMillis() - startTime);
+
     return new List[] {selectedSeqFiles, selectedUnseqFiles};
   }
 
@@ -141,18 +133,13 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
    * that may be added by compacting them (preferably using the loop estimate), and if it does not
    * exceed the memory overhead preset by the system for the compaction thread, put them into the
    * selectedSeqFiles and selectedUnseqFiles.
-   *
-   * @param useTightBound whether is tight estimate or loop estimate
-   * @throws IOException
    */
-  void select(boolean useTightBound) throws IOException {
+  void selectSourceFiles() throws IOException {
     tmpSelectedSeqFiles = new HashSet<>();
     seqSelected = new boolean[resource.getSeqFiles().size()];
     seqSelectedNum = 0;
     selectedSeqFiles = new ArrayList<>();
     selectedUnseqFiles = new ArrayList<>();
-    maxSeqFileCost = 0;
-    tempMaxSeqFileCost = 0;
 
     totalCost = 0;
 
@@ -167,6 +154,9 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     while (unseqIndex < resource.getUnseqFiles().size() && timeConsumption < timeLimit) {
       // select next unseq files
       TsFileResource unseqFile = resource.getUnseqFiles().get(unseqIndex);
+      if (!unseqFile.getTsFile().exists() || unseqFile.isDeleted()) {
+        break;
+      }
 
       if (seqSelectedNum != resource.getSeqFiles().size()) {
         selectOverlappedSeqFiles(unseqFile);
@@ -177,11 +167,12 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         break;
       }
 
-      tempMaxSeqFileCost = maxSeqFileCost;
+      List<TsFileResource> tmpSelectedSeqFileResources = new ArrayList<>();
+      for (int seqIndex : tmpSelectedSeqFiles) {
+        tmpSelectedSeqFileResources.add(resource.getSeqFiles().get(seqIndex));
+      }
       long newCost =
-          useTightBound
-              ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit)
-              : calculateLooseMemoryCost(unseqFile, tmpSelectedSeqFiles, startTime, timeLimit);
+          compactionEstimator.estimateCrossCompactionMemory(tmpSelectedSeqFileResources, unseqFile);
       if (!updateSelectedFiles(newCost, unseqFile)) {
         // older unseq files must be merged before newer ones
         break;
@@ -204,7 +195,6 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
                 <= maxCrossCompactionFileNum
             && totalCost + newCost < memoryBudget)) {
       selectedUnseqFiles.add(unseqFile);
-      maxSeqFileCost = tempMaxSeqFileCost;
 
       for (Integer seqIdx : tmpSelectedSeqFiles) {
         if (!seqSelected[seqIdx]) {
@@ -235,7 +225,8 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
     for (Integer seqIdx : tmpSelectedSeqFiles) {
       if (resource.getSeqFiles().get(seqIdx).isCompactionCandidate()
           || resource.getSeqFiles().get(seqIdx).isCompacting()
-          || !resource.getSeqFiles().get(seqIdx).isClosed()) {
+          || !resource.getSeqFiles().get(seqIdx).isClosed()
+          || !resource.getSeqFiles().get(seqIdx).getTsFile().exists()) {
         return false;
       }
     }
@@ -288,109 +279,5 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         }
       }
     }
-  }
-
-  private long calculateMemoryCost(
-      TsFileResource tmpSelectedUnseqFile,
-      Collection<Integer> tmpSelectedSeqFiles,
-      IFileQueryMemMeasurement unseqMeasurement,
-      IFileQueryMemMeasurement seqMeasurement,
-      long startTime,
-      long timeLimit)
-      throws IOException {
-    long cost = 0;
-    Long fileCost = unseqMeasurement.measure(tmpSelectedUnseqFile);
-    cost += fileCost;
-
-    for (Integer seqFileIdx : tmpSelectedSeqFiles) {
-      TsFileResource seqFile = resource.getSeqFiles().get(seqFileIdx);
-      fileCost = seqMeasurement.measure(seqFile);
-      if (fileCost > tempMaxSeqFileCost) {
-        // only one file will be read at the same time, so only the largest one is recorded here
-        cost -= tempMaxSeqFileCost;
-        cost += fileCost;
-        tempMaxSeqFileCost = fileCost;
-      }
-      // but writing data into a new file may generate the same amount of metadata in memory
-      cost += calculateMetadataSize(seqFile);
-      long timeConsumption = System.currentTimeMillis() - startTime;
-      if (timeConsumption > timeLimit) {
-        return Long.MAX_VALUE;
-      }
-    }
-    return cost;
-  }
-
-  private long calculateLooseMemoryCost(
-      TsFileResource tmpSelectedUnseqFile,
-      Collection<Integer> tmpSelectedSeqFiles,
-      long startTime,
-      long timeLimit)
-      throws IOException {
-    return calculateMemoryCost(
-        tmpSelectedUnseqFile,
-        tmpSelectedSeqFiles,
-        TsFileResource::getTsFileSize,
-        this::calculateMetadataSize,
-        startTime,
-        timeLimit);
-  }
-
-  private long calculateTightMemoryCost(
-      TsFileResource tmpSelectedUnseqFile,
-      Collection<Integer> tmpSelectedSeqFiles,
-      long startTime,
-      long timeLimit)
-      throws IOException {
-    return calculateMemoryCost(
-        tmpSelectedUnseqFile,
-        tmpSelectedSeqFiles,
-        this::calculateTightUnseqMemoryCost,
-        this::calculateTightSeqMemoryCost,
-        startTime,
-        timeLimit);
-  }
-
-  private long calculateMetadataSize(TsFileResource seqFile) throws IOException {
-    Long cost = fileMetaSizeMap.get(seqFile);
-    if (cost == null) {
-      cost = MergeUtils.getFileMetaSize(seqFile, resource.getFileReader(seqFile));
-      fileMetaSizeMap.put(seqFile, cost);
-      logger.debug(LOG_FILE_COST, seqFile, cost);
-    }
-    return cost;
-  }
-
-  private long calculateTightFileMemoryCost(
-      TsFileResource seqFile, IFileQueryMemMeasurement measurement) throws IOException {
-    Long cost = maxSeriesQueryCostMap.get(seqFile);
-    if (cost == null) {
-      long[] chunkNums =
-          MergeUtils.findTotalAndLargestSeriesChunkNum(seqFile, resource.getFileReader(seqFile));
-      long totalChunkNum = chunkNums[0];
-      long maxChunkNum = chunkNums[1];
-      cost = measurement.measure(seqFile) * maxChunkNum / totalChunkNum;
-      maxSeriesQueryCostMap.put(seqFile, cost);
-      logger.debug(LOG_FILE_COST, seqFile, cost);
-    }
-    return cost;
-  }
-
-  // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
-  // its proportion to all series to get a maximum estimation
-  private long calculateTightSeqMemoryCost(TsFileResource seqFile) throws IOException {
-    long singleSeriesCost = calculateTightFileMemoryCost(seqFile, this::calculateMetadataSize);
-    long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
-    long maxCost = calculateMetadataSize(seqFile);
-    return Math.min(multiSeriesCost, maxCost);
-  }
-
-  // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
-  // its proportion among all series to get a maximum estimation
-  private long calculateTightUnseqMemoryCost(TsFileResource unseqFile) throws IOException {
-    long singleSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getTsFileSize);
-    long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
-    long maxCost = unseqFile.getTsFileSize();
-    return Math.min(multiSeriesCost, maxCost);
   }
 }

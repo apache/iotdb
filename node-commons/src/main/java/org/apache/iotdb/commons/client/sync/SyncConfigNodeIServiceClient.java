@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.BaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TimeoutChangeableTransport;
@@ -37,16 +37,16 @@ import org.apache.thrift.transport.TTransportException;
 import java.lang.reflect.Constructor;
 import java.net.SocketException;
 
-public class SyncConfigNodeIServiceClient extends ConfigIService.Client
+public class SyncConfigNodeIServiceClient extends IConfigNodeRPCService.Client
     implements SyncThriftClient, AutoCloseable {
 
-  private final TEndPoint endpoint;
+  private final TEndPoint endPoint;
   private final ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager;
 
   public SyncConfigNodeIServiceClient(
       TProtocolFactory protocolFactory,
       int connectionTimeout,
-      TEndPoint endpoint,
+      TEndPoint endPoint,
       ClientManager<TEndPoint, SyncConfigNodeIServiceClient> clientManager)
       throws TTransportException {
     super(
@@ -54,17 +54,17 @@ public class SyncConfigNodeIServiceClient extends ConfigIService.Client
             RpcTransportFactory.INSTANCE.getTransport(
                 new TSocket(
                     TConfigurationConst.defaultTConfiguration,
-                    endpoint.getIp(),
-                    endpoint.getPort(),
+                    endPoint.getIp(),
+                    endPoint.getPort(),
                     connectionTimeout))));
-    this.endpoint = endpoint;
+    this.endPoint = endPoint;
     this.clientManager = clientManager;
     getInputProtocol().getTransport().open();
   }
 
   public void close() {
     if (clientManager != null) {
-      clientManager.returnClient(endpoint, this);
+      clientManager.returnClient(endPoint, this);
     }
   }
 
@@ -77,13 +77,18 @@ public class SyncConfigNodeIServiceClient extends ConfigIService.Client
     getInputProtocol().getTransport().close();
   }
 
+  @Override
+  public void invalidateAll() {
+    clientManager.clear(endPoint);
+  }
+
   public int getTimeout() throws SocketException {
     return ((TimeoutChangeableTransport) getInputProtocol().getTransport()).getTimeOut();
   }
 
   @Override
   public String toString() {
-    return String.format("SyncConfigNodeIServiceClient{%s}", endpoint);
+    return String.format("SyncConfigNodeIServiceClient{%s}", endPoint);
   }
 
   public static class Factory extends BaseClientFactory<TEndPoint, SyncConfigNodeIServiceClient> {

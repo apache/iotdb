@@ -23,7 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.AsyncBaseClientFactory;
 import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.confignode.rpc.thrift.ConfigIService;
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.rpc.TNonblockingSocketWrapper;
 
 import org.apache.commons.pool2.PooledObject;
@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-public class AsyncConfigNodeIServiceClient extends ConfigIService.AsyncClient {
+public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncClient {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncConfigNodeIServiceClient.class);
 

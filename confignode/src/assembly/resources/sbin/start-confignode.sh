@@ -57,8 +57,14 @@ else
     echo "can't find $CONFIGNODE_CONF/confignode-env.sh"
 fi
 
+if [ -d ${CONFIGNODE_HOME}/lib ]; then
+LIB_PATH=${CONFIGNODE_HOME}/lib
+else
+LIB_PATH=${CONFIGNODE_HOME}/../lib
+fi
+
 CLASSPATH=""
-for f in ${CONFIGNODE_HOME}/lib/*.jar; do
+for f in ${LIB_PATH}/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 classname=org.apache.iotdb.confignode.service.ConfigNode

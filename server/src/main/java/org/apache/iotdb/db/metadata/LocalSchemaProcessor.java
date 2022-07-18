@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -25,6 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.MeasurementAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -308,7 +310,9 @@ public class LocalSchemaProcessor {
     try {
       createTimeseries(
           new CreateTimeSeriesPlan(path, dataType, encoding, compressor, props, null, null, null));
-    } catch (PathAlreadyExistException | AliasAlreadyExistException e) {
+    } catch (PathAlreadyExistException
+        | AliasAlreadyExistException
+        | MeasurementAlreadyExistException e) {
       if (logger.isDebugEnabled()) {
         logger.debug(
             "Ignore PathAlreadyExistException and AliasAlreadyExistException when Concurrent inserting"
@@ -604,10 +608,11 @@ public class LocalSchemaProcessor {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
-    Pair<Set<String>, Set<PartialPath>> pair =
+  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
+    Pair<Set<TSchemaNode>, Set<PartialPath>> pair =
         configManager.getChildNodePathInNextLevel(pathPattern);
-    Set<String> result = pair.left;
+    Set<TSchemaNode> result = pair.left;
     for (PartialPath storageGroup : pair.right) {
       for (ISchemaRegion schemaRegion : getSchemaRegionsByStorageGroup(storageGroup)) {
         result.addAll(schemaRegion.getChildNodePathInNextLevel(pathPattern));

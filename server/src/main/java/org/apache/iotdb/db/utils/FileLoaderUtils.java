@@ -69,7 +69,7 @@ public class FileLoaderUtils {
   public static void updateTsFileResource(
       TsFileSequenceReader reader, TsFileResource tsFileResource) throws IOException {
     for (Entry<String, List<TimeseriesMetadata>> entry :
-        reader.getAllTimeseriesMetadata().entrySet()) {
+        reader.getAllTimeseriesMetadata(false).entrySet()) {
       for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
         tsFileResource.updateStartTime(
             entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
@@ -107,7 +107,7 @@ public class FileLoaderUtils {
               .get(
                   new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(
                       resource.getTsFilePath(),
-                      seriesPath.getDeviceIdString(),
+                      seriesPath.getDevice(),
                       seriesPath.getMeasurement()),
                   allSensors,
                   resource.getTimeIndexType() != 1,
@@ -167,7 +167,7 @@ public class FileLoaderUtils {
       allSensors.add("");
       boolean isDebug = context.isDebug();
       String filePath = resource.getTsFilePath();
-      String deviceId = vectorPath.getDeviceIdString();
+      String deviceId = vectorPath.getDevice();
 
       // when resource.getTimeIndexType() == 1, TsFileResource.timeIndexType is deviceTimeIndex
       // we should not ignore the non-exist of device in TsFileMetadata

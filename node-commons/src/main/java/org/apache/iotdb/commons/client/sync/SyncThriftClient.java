@@ -22,4 +22,10 @@ public interface SyncThriftClient {
 
   /** close the connection */
   void invalidate();
+
+  /**
+   * Clears the specified pool, removing all pooled instances corresponding to current instance's
+   * endPoint.
+   */
+  void invalidateAll();
 }

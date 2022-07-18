@@ -19,12 +19,13 @@
 package org.apache.iotdb.commons.auth.role;
 
 import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 
 import java.io.IOException;
 import java.util.List;
 
 /** This interface manages the serialization/deserialization of the role objects. */
-public interface IRoleAccessor {
+public interface IRoleAccessor extends SnapshotProcessor {
 
   /**
    * Deserialize a role from lower storage.

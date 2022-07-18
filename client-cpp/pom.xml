@@ -165,8 +165,8 @@
                                 <configuration>
                                     <fileSets>
                                         <fileSet>
-                                            <sourceFile>../thrift/src/main/thrift/rpc.thrift</sourceFile>
-                                            <destinationFile>${project.build.directory}/thrift/rpc.thrift</destinationFile>
+                                            <sourceFile>../thrift/src/main/thrift/client.thrift</sourceFile>
+                                            <destinationFile>${project.build.directory}/thrift/client.thrift</destinationFile>
                                         </fileSet>
                                         <fileSet>
                                             <sourceFile>../thrift-commons/src/main/thrift/common.thrift</sourceFile>

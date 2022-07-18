@@ -37,9 +37,9 @@ import java.util.Set;
  */
 public abstract class BasicRoleManager implements IRoleManager {
 
-  private Map<String, Role> roleMap;
-  private IRoleAccessor accessor;
-  private HashLock lock;
+  protected Map<String, Role> roleMap;
+  protected IRoleAccessor accessor;
+  protected HashLock lock;
 
   BasicRoleManager(LocalFileRoleAccessor accessor) {
     this.roleMap = new HashMap<>();

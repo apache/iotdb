@@ -19,11 +19,12 @@
 
 package org.apache.iotdb.db.metadata.schemaregion.rocksdb.mnode;
 
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaConstants;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaReadWriteHandler;
 import org.apache.iotdb.db.metadata.schemaregion.rocksdb.RSchemaUtils;
@@ -52,7 +53,7 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
     super(fullPath, readWriteHandler);
     Object ttl = RSchemaUtils.parseNodeValue(value, RMNodeValueType.TTL);
     if (ttl == null) {
-      ttl = IoTDBDescriptor.getInstance().getConfig().getDefaultTTL();
+      ttl = CommonDescriptor.getInstance().getConfig().getDefaultTTL();
     }
     this.dataTTL = (long) ttl;
   }
@@ -84,6 +85,11 @@ public class RStorageGroupMNode extends RInternalMNode implements IStorageGroupM
   @Override
   public boolean isMeasurement() {
     return false;
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.STORAGE_GROUP;
   }
 
   @Override

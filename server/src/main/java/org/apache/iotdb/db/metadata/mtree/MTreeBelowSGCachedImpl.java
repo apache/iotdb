@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
@@ -457,6 +458,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   @Override
   public IMNode getDeviceNodeWithAutoCreating(PartialPath deviceId) throws MetadataException {
     String[] nodeNames = deviceId.getNodes();
+    MetaFormatUtils.checkTimeseries(deviceId);
     IMNode cur = storageGroupMNode;
     IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
@@ -761,14 +763,18 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   @Override
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
+  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
     try {
-      MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(
+      MNodeCollector<Set<TSchemaNode>> collector =
+          new MNodeCollector<Set<TSchemaNode>>(
               storageGroupMNode, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
             @Override
             protected void transferToResult(IMNode node) {
-              resultSet.add(getCurrentPartialPath(node).getFullPath());
+              resultSet.add(
+                  new TSchemaNode(
+                      getCurrentPartialPath(node).getFullPath(),
+                      node.getMNodeType(false).getNodeType()));
             }
           };
       collector.setResultSet(new TreeSet<>());
@@ -1150,7 +1156,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
   public void checkIsTemplateCompatibleWithChild(IMNode node, Template template)
       throws MetadataException {
     for (String measurementPath : template.getSchemaMap().keySet()) {
-      String directNodeName = PathUtils.splitPathToDetachedPath(measurementPath)[0];
+      String directNodeName = PathUtils.splitPathToDetachedNodes(measurementPath)[0];
       if (store.hasChild(node, directNodeName)) {
         throw new MetadataException(
             "Node name "
@@ -1208,7 +1214,7 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
       // node
       Set<String> overlapSet = new HashSet<>();
       for (String path : appendMeasurements) {
-        overlapSet.add(PathUtils.splitPathToDetachedPath(path)[0]);
+        overlapSet.add(PathUtils.splitPathToDetachedNodes(path)[0]);
       }
 
       while (setNodes.size() != 0) {

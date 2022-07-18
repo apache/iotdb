@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.library.drepair.util;
 
-import org.apache.iotdb.db.query.udf.api.access.RowIterator;
 import org.apache.iotdb.library.util.Util;
+import org.apache.iotdb.udf.api.access.RowIterator;
+import org.apache.iotdb.udf.api.exception.UDFException;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -49,7 +50,7 @@ public class ScreenFill extends ValueFill {
   }
 
   @Override
-  public void calMeanAndVar() {
+  public void calMeanAndVar() throws UDFException {
     super.calMeanAndVar();
   }
 
