@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpac
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
+import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -1524,6 +1525,217 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     Assert.assertEquals(result[0].get(2), seqResources.get(4));
     Assert.assertEquals(result[0].get(3), seqResources.get(5));
     Assert.assertEquals(result[0].get(4), seqResources.get(7));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400<br>
+   * 1 Unseq files: 2500 ~ 3500<br>
+   * Selected seq file index: 3, 4<br>
+   * Selected unseq file index: 1
+   */
+  @Test
+  public void testWithUnclosedSeqFile() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
+
+    TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
+    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    TsFileResource lastSeqResource = seqResources.get(4);
+    for (String deviceID : lastSeqResource.getDevices()) {
+      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
+    }
+    seqResources.remove(4);
+    seqResources.add(4, unclosedSeqResource);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400<br>
+   * 1 Unseq files: 2500 ~ 3500<br>
+   * Selected seq file index: none<br>
+   * Selected unseq file index: none
+   */
+  @Test
+  public void testWithUnclosedSeqFileAndNewSensorInUnseqFile()
+      throws MergeException, IOException, MetadataException, WriteProcessException {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(3, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 3300, 3300, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 4400, 4400, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
+
+    TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
+    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    TsFileResource lastSeqResource = seqResources.get(4);
+    for (String deviceID : lastSeqResource.getDevices()) {
+      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
+    }
+    seqResources.remove(4);
+    seqResources.add(4, unclosedSeqResource);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(0, result.length);
+  }
+
+  /**
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400<br>
+   * 2 Unseq files: 2500 ~ 3500, 1500 ~ 4500<br>
+   * Selected seq file index: 3, 4<br>
+   * Selected unseq file index: 1
+   */
+  @Test
+  public void testUnseqFileOverlapWithUnclosedSeqFile() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
+    createFiles(1, 5, 5, 3000, 1500, 1500, 100, 100, false, false);
+
+    TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
+    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    TsFileResource lastSeqResource = seqResources.get(4);
+    for (String deviceID : lastSeqResource.getDevices()) {
+      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
+    }
+    seqResources.remove(4);
+    seqResources.add(4, unclosedSeqResource);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400<br>
+   * 2 Unseq files: 2500 ~ 3500, 1500 ~ 4500<br>
+   * Selected seq file index: 3, 4<br>
+   * Selected unseq file index: 1
+   */
+  @Test
+  public void testUnseqFileOverlapWithUnclosedSeqFile2() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
+    createFiles(1, 5, 5, 50, 4310, 4310, 100, 100, false, false);
+
+    TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
+    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    TsFileResource lastSeqResource = seqResources.get(4);
+    for (String deviceID : lastSeqResource.getDevices()) {
+      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
+    }
+    seqResources.remove(4);
+    seqResources.add(4, unclosedSeqResource);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400<br>
+   * 2 Unseq files: 2500 ~ 3500, 1500 ~ 4500<br>
+   * Selected seq file index: 3, 4<br>
+   * Selected unseq file index: 1
+   */
+  @Test
+  public void testWithUnclosedUnSeqFile() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
+    createFiles(1, 5, 5, 3000, 1500, 1500, 100, 100, false, false);
+
+    TsFileResource unclosedUnSeqResource = new TsFileResource(unseqResources.get(1).getTsFile());
+    unclosedUnSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    TsFileResource lastUnSeqResource = unseqResources.get(1);
+    for (String deviceID : lastUnSeqResource.getDevices()) {
+      unclosedUnSeqResource.updateStartTime(deviceID, lastUnSeqResource.getStartTime(deviceID));
+      unclosedUnSeqResource.updateEndTime(deviceID, lastUnSeqResource.getEndTime(deviceID));
+    }
+    unseqResources.remove(1);
+    unseqResources.add(1, unclosedUnSeqResource);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
 
     new RewriteCrossSpaceCompactionTask(
