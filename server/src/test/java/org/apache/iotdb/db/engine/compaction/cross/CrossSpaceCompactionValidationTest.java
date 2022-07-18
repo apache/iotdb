@@ -400,7 +400,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile10() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile10() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -441,7 +441,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile11() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile11() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -483,7 +483,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile12() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile12() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -525,7 +525,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile20() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile20() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -567,7 +567,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile21() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile21() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -610,7 +610,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile22() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile22() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(2, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, true, false);
@@ -654,7 +654,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile30() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile30() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, true, true);
@@ -698,7 +698,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile31() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile31() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, true, true);
@@ -743,7 +743,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1, 2
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile32() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile32() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, true, true);
@@ -785,7 +785,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile50() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile50() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -831,7 +831,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile51() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile51() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -877,7 +877,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile52() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile52() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -923,7 +923,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * Selected unseq file index: 1
    */
   @Test
-  public void testWithNewDeviceAndSensorInUnseqFile53() throws Exception {
+  public void testWithNewAlignedDeviceAndSensorInUnseqFile53() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(1, 10, 10, 1000, 0, 0, 100, 100, true, true);
     createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, true, true);
@@ -935,6 +935,578 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     createFiles(1, 10, 7, 1000, 7700, 7700, 100, 100, true, true);
     createFiles(1, 10, 10, 1000, 8800, 8800, 100, 100, true, true);
     createFiles(1, 10, 10, 3300, 2150, 2150, 100, 100, true, false);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(5, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[0].get(2), seqResources.get(4));
+    Assert.assertEquals(result[0].get(3), seqResources.get(5));
+    Assert.assertEquals(result[0].get(4), seqResources.get(7));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * [Time range]:<br>
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400<br>
+   * 2 Unseq files: 2100 ~ 3100, 3200 ~ 4200<br>
+   * [DeviceNum, SensorNum]:<br>
+   * seq files: [10,10], [10,10], [5,5], [10,10], [10,10]<br>
+   * unseq files: [10,10], [10,10]<br>
+   * Selected seq file index: 3, 4<br>
+   * Selected unseq file index: 1, 2
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile10() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
+    createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
+    createFiles(2, 10, 10, 1000, 5300, 5300, 100, 100, false, true);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * [Time range]:<br>
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400<br>
+   * 2 Unseq files: 2100 ~ 3100, 3200 ~ 4200<br>
+   * [DeviceNum, SensorNum]:<br>
+   * seq files: [10,10], [10,10], [5,5], [10,5], [10,10]<br>
+   * unseq files: [10,10], [10,10]<br>
+   * Selected seq file index: 3, 4<br>
+   * Selected unseq file index: 1, 2
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile11() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
+    createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
+    createFiles(1, 10, 5, 1000, 5300, 5300, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 6400, 6400, 100, 100, false, true);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * [Time range]:<br>
+   * 6 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400, 7500 ~ 8500<br>
+   * 2 Unseq files: 2100 ~ 3100, 3200 ~ 4200<br>
+   * [DeviceNum, SensorNum]:<br>
+   * seq files: [10,10], [10,10], [5,5], [5,10], [10,7], [10,10]<br>
+   * unseq files: [10,10], [10,10]<br>
+   * Selected seq file index: 3, 5<br>
+   * Selected unseq file index: 1, 2
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile12() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(2, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
+    createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
+    createFiles(1, 5, 10, 1000, 5300, 5300, 100, 100, false, true);
+    createFiles(1, 10, 7, 1000, 6400, 6400, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 7500, 7500, 100, 100, false, true);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(4));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * [Time range]:<br>
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400<br>
+   * 2 Unseq files: 2100 ~ 3100, 3200 ~ 4700<br>
+   * [DeviceNum, SensorNum]:<br>
+   * seq files: [10,10], [10,10], [5,5], [10,10], [10,10]<br>
+   * unseq files: [10,10], [10,10]<br>
+   * Selected seq file index: 3, 4<br>
+   * Selected unseq file index: 1, 2
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile20() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
+    createFiles(1, 10, 10, 1500, 3200, 3200, 100, 100, false, false);
+    createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
+    createFiles(2, 10, 10, 1000, 5300, 5300, 100, 100, false, true);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * [Time range]:<br>
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400<br>
+   * 2 Unseq files: 2100 ~ 3100, 3200 ~ 4700<br>
+   * [DeviceNum, SensorNum]:<br>
+   * seq files: [10,10], [10,10], [5,5], [10,5], [10,10]<br>
+   * unseq files: [10,10], [10,10]<br>
+   * Selected seq file index: 3, 4<br>
+   * Selected unseq file index: 1, 2
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile21() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
+    createFiles(1, 10, 10, 1500, 3200, 3200, 100, 100, false, false);
+    createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
+    createFiles(1, 10, 5, 1000, 5300, 5300, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 6400, 6400, 100, 100, false, true);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * [Time range]:<br>
+   * 6 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400, 7500 ~ 8500<br>
+   * 2 Unseq files: 2100 ~ 3100, 3200 ~ 4700<br>
+   * [DeviceNum, SensorNum]:<br>
+   * seq files: [10,10], [10,10], [5,5], [5,10], [10,7], [10,10]<br>
+   * unseq files: [10,10], [10,10]<br>
+   * Selected seq file index: 3, 5<br>
+   * Selected unseq file index: 1, 2
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile22() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(2, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2100, 2100, 100, 100, false, false);
+    createFiles(1, 10, 10, 1500, 3200, 3200, 100, 100, false, false);
+    createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
+    createFiles(1, 5, 10, 1000, 5300, 5300, 100, 100, false, true);
+    createFiles(1, 10, 7, 1000, 6400, 6400, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 7500, 7500, 100, 100, false, true);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(4));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * [Time range]:<br>
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400<br>
+   * 2 Unseq files: 1500 ~ 3000, 3100 ~ 4100<br>
+   * [DeviceNum, SensorNum]:<br>
+   * seq files: [10,10], [5,5], [5,5], [5,10], [10,10], [10,10]<br>
+   * unseq files: [10,10], [10,10]<br>
+   * Selected seq file index: 2, 3, 4<br>
+   * Selected unseq file index: 1, 2
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile30() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
+    createFiles(2, 10, 10, 1000, 5300, 5300, 100, 100, false, true);
+    createFiles(1, 10, 10, 1500, 1500, 1500, 100, 100, false, false);
+    createFiles(1, 10, 10, 1000, 3100, 3100, 100, 100, false, false);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(3, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+
+    Assert.assertEquals(result[0].get(0), seqResources.get(1));
+    Assert.assertEquals(result[0].get(1), seqResources.get(2));
+    Assert.assertEquals(result[0].get(2), seqResources.get(3));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * [Time range]:<br>
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400<br>
+   * 2 Unseq files: 1500 ~ 3000, 3100 ~ 4100<br>
+   * [DeviceNum, SensorNum]:<br>
+   * seq files: [10,10], [5,5], [5,5], [5,10], [10,5], [10,10]<br>
+   * unseq files: [10,10], [10,10]<br>
+   * Selected seq file index: 2, 3, 4<br>
+   * Selected unseq file index: 1, 2
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile31() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
+    createFiles(1, 10, 5, 1000, 5300, 5300, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 6400, 6400, 100, 100, false, true);
+    createFiles(1, 10, 10, 1500, 1500, 1500, 100, 100, false, false);
+    createFiles(1, 10, 10, 1000, 3100, 3100, 100, 100, false, false);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(3, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+
+    Assert.assertEquals(result[0].get(0), seqResources.get(1));
+    Assert.assertEquals(result[0].get(1), seqResources.get(2));
+    Assert.assertEquals(result[0].get(2), seqResources.get(3));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * [Time range]:<br>
+   * 6 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400, 7500 ~ 8500<br>
+   * 2 Unseq files: 1500 ~ 3000, 3100 ~ 4100<br>
+   * [DeviceNum, SensorNum]:<br>
+   * seq files: [10,10], [5,5], [5,5], [5,10], [10,7], [10,10]<br>
+   * unseq files: [10,10], [10,10]<br>
+   * Selected seq file index: 2, 3, 5<br>
+   * Selected unseq file index: 1, 2
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile32() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 1100, 1100, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 4200, 4200, 100, 100, false, true);
+    createFiles(1, 5, 10, 1000, 5300, 5300, 100, 100, false, true);
+    createFiles(1, 10, 7, 1000, 6400, 6400, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 7500, 7500, 100, 100, false, true);
+    createFiles(1, 10, 10, 1500, 1500, 1500, 100, 100, false, false);
+    createFiles(1, 10, 10, 1000, 3100, 3100, 100, 100, false, false);
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(3, result[0].size());
+    Assert.assertEquals(2, result[1].size());
+
+    Assert.assertEquals(result[0].get(0), seqResources.get(1));
+    Assert.assertEquals(result[0].get(1), seqResources.get(2));
+    Assert.assertEquals(result[0].get(2), seqResources.get(4));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * 9 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400,......<br>
+   * 1 Unseq files: 2150 ~ 5450<br>
+   * Selected seq file index: 3, 4, 5, 6, 7<br>
+   * Selected unseq file index: 1
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile50() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 2200, 2200, 100, 100, false, true);
+    createFiles(1, 4, 4, 1000, 3300, 3300, 100, 100, false, true);
+    createFiles(1, 3, 3, 1000, 4400, 4400, 100, 100, false, true);
+    createFiles(1, 2, 2, 1000, 5500, 5500, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 6600, 6600, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 7700, 7700, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 8800, 8800, 100, 100, false, true);
+    createFiles(1, 10, 10, 3300, 2150, 2150, 100, 100, false, false);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(5, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[0].get(2), seqResources.get(4));
+    Assert.assertEquals(result[0].get(3), seqResources.get(5));
+    Assert.assertEquals(result[0].get(4), seqResources.get(6));
+
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * 9 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400,......<br>
+   * 1 Unseq files: 2150 ~ 5450<br>
+   * Selected seq file index: 3, 4, 5, 6, 7<br>
+   * Selected unseq file index: 1
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile51() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 2200, 2200, 100, 100, false, true);
+    createFiles(1, 4, 4, 1000, 3300, 3300, 100, 100, false, true);
+    createFiles(1, 3, 3, 1000, 4400, 4400, 100, 100, false, true);
+    createFiles(1, 2, 2, 1000, 5500, 5500, 100, 100, false, true);
+    createFiles(1, 10, 5, 1000, 6600, 6600, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 7700, 7700, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 8800, 8800, 100, 100, false, true);
+    createFiles(1, 10, 10, 3300, 2150, 2150, 100, 100, false, false);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(5, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[0].get(2), seqResources.get(4));
+    Assert.assertEquals(result[0].get(3), seqResources.get(5));
+    Assert.assertEquals(result[0].get(4), seqResources.get(6));
+
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * 9 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400,......<br>
+   * 1 Unseq files: 2150 ~ 5450<br>
+   * Selected seq file index: 3, 4, 5, 6, 7, 8<br>
+   * Selected unseq file index: 1
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile52() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 2200, 2200, 100, 100, false, true);
+    createFiles(1, 4, 4, 1000, 3300, 3300, 100, 100, false, true);
+    createFiles(1, 3, 3, 1000, 4400, 4400, 100, 100, false, true);
+    createFiles(1, 2, 2, 1000, 5500, 5500, 100, 100, false, true);
+    createFiles(1, 5, 10, 1000, 6600, 6600, 100, 100, false, true);
+    createFiles(1, 10, 7, 1000, 7700, 7700, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 8800, 8800, 100, 100, false, true);
+    createFiles(1, 10, 10, 3300, 2150, 2150, 100, 100, false, false);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceMergeFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(6, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[0].get(2), seqResources.get(4));
+    Assert.assertEquals(result[0].get(3), seqResources.get(5));
+    Assert.assertEquals(result[0].get(4), seqResources.get(6));
+    Assert.assertEquals(result[0].get(5), seqResources.get(7));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * 9 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400,......<br>
+   * 1 Unseq files: 2150 ~ 5450<br>
+   * Selected seq file index: 3, 4, 5, 6, 8<br>
+   * Selected unseq file index: 1
+   */
+  @Test
+  public void testWithNewDeviceAndSensorInUnseqFile53() throws Exception {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(1, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 6, 6, 1000, 1100, 1100, 100, 100, false, true);
+    createFiles(1, 5, 5, 1000, 2200, 2200, 100, 100, false, true);
+    createFiles(1, 4, 4, 1000, 3300, 3300, 100, 100, false, true);
+    createFiles(1, 3, 3, 1000, 4400, 4400, 100, 100, false, true);
+    createFiles(1, 5, 2, 1000, 5500, 5500, 100, 100, false, true);
+    createFiles(1, 5, 10, 1000, 6600, 6600, 100, 100, false, true);
+    createFiles(1, 10, 7, 1000, 7700, 7700, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 8800, 8800, 100, 100, false, true);
+    createFiles(1, 10, 10, 3300, 2150, 2150, 100, 100, false, false);
 
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
