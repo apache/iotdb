@@ -18,6 +18,7 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import org.glassfish.jaxb.runtime.v2.schemagen.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,12 +76,13 @@ public class TsFileRewriteExcutor {
         boolean aligned = deviceInfo.right;
         // write chunkGroup header
         writer.startChunkGroup(device);
+        String targetMeasurement = fullPath.getMeasurement();
         // write chunk & page data
         if (aligned) {
           // TODO
           List<AlignedChunkMetadata> alignedChunkMetadata = reader.getAlignedChunkMetadata(device);
         } else {
-          rewriteNotAligned(device, reader, writer);
+          rewriteNotAligned(device, reader, writer, targetMeasurement);
         }
         // chunkGroup end
         writer.endChunkGroup();
@@ -98,7 +100,7 @@ public class TsFileRewriteExcutor {
     }
   }
 
-  private void rewriteNotAligned(String device, TsFileSequenceReader reader, TsFileIOWriter writer)
+  private void rewriteNotAligned(String device, TsFileSequenceReader reader, TsFileIOWriter writer, String targetMeasurement)
       throws IOException {
     Map<String, List<ChunkMetadata>> measurementMap = reader.readChunkMetadataInDevice(device);
     if (measurementMap == null) {
@@ -111,13 +113,14 @@ public class TsFileRewriteExcutor {
             logger.warn("[alter timeseries] empty measurement({})", measurementId);
             return;
           }
+          boolean findTarget = Util.equal(measurementId, targetMeasurement);
           // target chunk writer
           ChunkWriterImpl chunkWriter =
               new ChunkWriterImpl(
                   new MeasurementSchema(
                       measurementId,
-                      chunkMetadatas.get(0).getDataType(),
-                      curEncoding,
+                          chunkMetadatas.get(0).getDataType(),
+                          curEncoding,
                       curCompressionType));
           chunkMetadatas.forEach(
               chunkMetadata -> {
@@ -125,6 +128,11 @@ public class TsFileRewriteExcutor {
                 try {
                   // old mem chunk
                   currentChunk = reader.readMemChunk(chunkMetadata);
+                  if(!findTarget) {
+                    // skip
+                    writer.writeChunk(currentChunk, chunkMetadata);
+                    return;
+                  }
                   IChunkReader chunkReader = new ChunkReader(currentChunk, null);
                   while (chunkReader.hasNextSatisfiedPage()) {
                     IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
