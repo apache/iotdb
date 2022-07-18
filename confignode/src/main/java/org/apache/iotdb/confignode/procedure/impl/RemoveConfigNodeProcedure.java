@@ -22,12 +22,13 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
-import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
+import org.apache.iotdb.confignode.procedure.state.RemoveConfigNodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.slf4j.Logger;
@@ -37,54 +38,54 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-/** add config node procedure */
-public class AddConfigNodeProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, AddConfigNodeState> {
-  private static final Logger LOG = LoggerFactory.getLogger(AddConfigNodeProcedure.class);
+/** remove config node procedure */
+public class RemoveConfigNodeProcedure
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, RemoveConfigNodeState> {
+  private static final Logger LOG = LoggerFactory.getLogger(RemoveConfigNodeProcedure.class);
   private static final int retryThreshold = 5;
 
   private TConfigNodeLocation tConfigNodeLocation;
 
-  public AddConfigNodeProcedure() {
+  public RemoveConfigNodeProcedure() {
     super();
   }
 
-  public AddConfigNodeProcedure(TConfigNodeLocation tConfigNodeLocation) {
+  public RemoveConfigNodeProcedure(TConfigNodeLocation tConfigNodeLocation) {
     super();
     this.tConfigNodeLocation = tConfigNodeLocation;
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, AddConfigNodeState state) {
+  protected Flow executeFromState(ConfigNodeProcedureEnv env, RemoveConfigNodeState state) {
     if (tConfigNodeLocation == null) {
       return Flow.NO_MORE_STATE;
     }
     try {
       switch (state) {
-        case ADD_CONFIG_NODE_PREPARE:
-          setNextState(AddConfigNodeState.ADD_CONSENSUS_GROUP);
+        case REMOVE_CONFIG_NODE_PREPARE:
+          setNextState(RemoveConfigNodeState.REMOVE_PEER);
           break;
-        case ADD_CONSENSUS_GROUP:
-          env.addConsensusGroup(tConfigNodeLocation);
-          setNextState(AddConfigNodeState.ADD_PEER);
-          LOG.info("Add consensus group {}", tConfigNodeLocation);
+        case REMOVE_PEER:
+          env.removeConfigNodePeer(tConfigNodeLocation);
+          setNextState(RemoveConfigNodeState.REMOVE_CONSENSUS_GROUP);
+          LOG.info("Remove peer {}", tConfigNodeLocation);
           break;
-        case ADD_PEER:
-          env.addConfigNodePeer(tConfigNodeLocation);
-          setNextState(AddConfigNodeState.REGISTER_SUCCESS);
-          LOG.info("Add Peer of {}", tConfigNodeLocation);
+        case REMOVE_CONSENSUS_GROUP:
+          env.removeConsensusGroup(tConfigNodeLocation);
+          setNextState(RemoveConfigNodeState.STOP_CONFIG_NODE);
+          LOG.info("Remove Consensus Group {}", tConfigNodeLocation);
           break;
-        case REGISTER_SUCCESS:
-          env.notifyRegisterSuccess(tConfigNodeLocation);
-          env.applyConfigNode(tConfigNodeLocation);
+        case STOP_CONFIG_NODE:
+          env.stopConfigNode(tConfigNodeLocation);
+          LOG.info("Stop Config Node {}", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Add Config Node failed " + state));
+        setFailure(new ProcedureException("Remove Config Node failed " + state));
       } else {
         LOG.error(
-            "Retrievable error trying to add config node {}, state {}",
+            "Retrievable error trying to remove config node {}, state {}",
             tConfigNodeLocation,
             state,
             e);
@@ -97,25 +98,29 @@ public class AddConfigNodeProcedure
   }
 
   @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, AddConfigNodeState state)
-      throws ProcedureException {
+  protected void rollbackState(ConfigNodeProcedureEnv env, RemoveConfigNodeState state)
+      throws IOException, InterruptedException, ProcedureException {
     switch (state) {
-      case ADD_CONSENSUS_GROUP:
-        env.removeConsensusGroup(tConfigNodeLocation);
-        LOG.info("Rollback add consensus group:{}", tConfigNodeLocation);
+      case REMOVE_CONSENSUS_GROUP:
+        env.addConsensusGroup(tConfigNodeLocation);
+        LOG.info("Rollback remove consensus group:{}", tConfigNodeLocation);
         break;
-      case ADD_PEER:
-        env.removeConfigNodePeer(tConfigNodeLocation);
+      case REMOVE_PEER:
+        try {
+          env.addConfigNodePeer(tConfigNodeLocation);
+        } catch (AddPeerException e) {
+          throw new ProcedureException(e);
+        }
         LOG.info("Rollback remove peer:{}", tConfigNodeLocation);
         break;
     }
   }
 
   @Override
-  protected boolean isRollbackSupported(AddConfigNodeState state) {
+  protected boolean isRollbackSupported(RemoveConfigNodeState state) {
     switch (state) {
-      case ADD_CONSENSUS_GROUP:
-      case ADD_PEER:
+      case REMOVE_CONSENSUS_GROUP:
+      case REMOVE_PEER:
         return true;
     }
     return false;
@@ -149,23 +154,23 @@ public class AddConfigNodeProcedure
   }
 
   @Override
-  protected AddConfigNodeState getState(int stateId) {
-    return AddConfigNodeState.values()[stateId];
+  protected RemoveConfigNodeState getState(int stateId) {
+    return RemoveConfigNodeState.values()[stateId];
   }
 
   @Override
-  protected int getStateId(AddConfigNodeState deleteStorageGroupState) {
+  protected int getStateId(RemoveConfigNodeState deleteStorageGroupState) {
     return deleteStorageGroupState.ordinal();
   }
 
   @Override
-  protected AddConfigNodeState getInitialState() {
-    return AddConfigNodeState.ADD_CONFIG_NODE_PREPARE;
+  protected RemoveConfigNodeState getInitialState() {
+    return RemoveConfigNodeState.REMOVE_CONFIG_NODE_PREPARE;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.ADD_CONFIG_NODE_PROCEDURE.ordinal());
+    stream.writeInt(ProcedureFactory.ProcedureType.REMOVE_CONFIG_NODE_PROCEDURE.ordinal());
     super.serialize(stream);
     ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(tConfigNodeLocation, stream);
   }
@@ -176,14 +181,14 @@ public class AddConfigNodeProcedure
     try {
       tConfigNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(byteBuffer);
     } catch (ThriftSerDeException e) {
-      LOG.error("Error in deserialize AddConfigNodeProcedure", e);
+      LOG.error("Error in deserialize RemoveConfigNodeProcedure", e);
     }
   }
 
   @Override
   public boolean equals(Object that) {
-    if (that instanceof AddConfigNodeProcedure) {
-      AddConfigNodeProcedure thatProc = (AddConfigNodeProcedure) that;
+    if (that instanceof RemoveConfigNodeProcedure) {
+      RemoveConfigNodeProcedure thatProc = (RemoveConfigNodeProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
           && thatProc.tConfigNodeLocation.equals(this.tConfigNodeLocation);

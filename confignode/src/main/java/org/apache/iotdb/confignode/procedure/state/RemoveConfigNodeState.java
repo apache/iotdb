@@ -17,13 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client;
+package org.apache.iotdb.confignode.procedure.state;
 
-public enum ConfigNodeRequestType {
-  ADD_CONSENSUS_GROUP,
-  NOTIFY_REGISTER_SUCCESS,
-  REGISTER_CONFIG_NODE,
-  REMOVE_CONFIG_NODE,
+public enum RemoveConfigNodeState {
+  REMOVE_CONFIG_NODE_PREPARE,
   REMOVE_CONSENSUS_GROUP,
-  STOP_CONFIG_NODE;
+  REMOVE_PEER,
+  STOP_CONFIG_NODE
 }
