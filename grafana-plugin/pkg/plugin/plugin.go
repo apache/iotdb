@@ -185,8 +185,10 @@ func (d *IoTDBDataSource) query(cxt context.Context, pCtx backend.PluginContext,
 			qp.Control += " fill" + qp.FillClauses
 		}
 		qdReq = *NewQueryDataReq(expressions, prefixPaths, qp.StartTime, qp.EndTime, qp.Condition, qp.Control)
-	} else {
+	} else if qp.SqlType == "SQL: Full Customized" {
 		qdReq = *NewQueryDataReq(qp.Expression, qp.PrefixPath, qp.StartTime, qp.EndTime, qp.Condition, qp.Control)
+	} else {
+		return response
 	}
 	qpJson, _ := json.Marshal(qdReq)
 	reader := bytes.NewReader(qpJson)

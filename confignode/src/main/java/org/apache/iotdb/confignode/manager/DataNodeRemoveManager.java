@@ -28,9 +28,9 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.enums.DataNodeRemoveState;
 import org.apache.iotdb.commons.enums.RegionMigrateState;
-import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
@@ -364,7 +364,8 @@ public class DataNodeRemoveManager {
       TDisableDataNodeReq disableReq = new TDisableDataNodeReq(disabledDataNode);
       status =
           SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNode(server, disableReq, DataNodeRequestType.disableDataNode);
+              .sendSyncRequestToDataNodeWithRetry(
+                  server, disableReq, DataNodeRequestType.DISABLE_DATA_NODE);
       if (!isSucceed(status)) {
         return status;
       }
@@ -505,8 +506,8 @@ public class DataNodeRemoveManager {
     migrateRegionReq.setNewLeaderNode(newLeaderNode.get());
     status =
         SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNode(
-                node.getInternalEndPoint(), migrateRegionReq, DataNodeRequestType.migrateRegion);
+            .sendSyncRequestToDataNodeWithRetry(
+                node.getInternalEndPoint(), migrateRegionReq, DataNodeRequestType.MIGRATE_REGION);
     // maybe send rpc failed
     if (isFailed(status)) {
       return status;
@@ -648,8 +649,8 @@ public class DataNodeRemoveManager {
     AsyncDataNodeClientPool.getInstance().resetClient(dataNode.getInternalEndPoint());
     TSStatus status =
         SyncDataNodeClientPool.getInstance()
-            .sendSyncRequestToDataNode(
-                dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.stopDataNode);
+            .sendSyncRequestToDataNodeWithRetry(
+                dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE);
     LOGGER.info("stop Data Node {} result: {}", dataNode, status);
     return status;
   }

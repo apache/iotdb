@@ -93,7 +93,6 @@ public class RemoveDataNodePlan extends ConfigPhysicalPlan {
     isUpdate = buffer.getInt() == 1;
     if (isUpdate) {
       execDataNodeIndex = buffer.getInt();
-      buffer.putInt(execDataNodeState.getCode());
       execDataNodeState = DataNodeRemoveState.getStateByCode(buffer.getInt());
       int regionSize = buffer.getInt();
       execDataNodeRegionIds = new ArrayList<>(regionSize);

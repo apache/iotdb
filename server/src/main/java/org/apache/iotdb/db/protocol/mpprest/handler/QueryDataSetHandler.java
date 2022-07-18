@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import javax.ws.rs.core.Response;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -48,11 +47,12 @@ public class QueryDataSetHandler {
    */
   public static Response fillQueryDataSet(
       IQueryExecution queryExecution, Statement statement, int actualRowSizeLimit)
-      throws IOException, IoTDBException {
+      throws IoTDBException {
     if (statement instanceof ShowStatement) {
       return fillShowPlanDataSet(queryExecution, actualRowSizeLimit);
     } else if (statement instanceof QueryStatement) {
-      if (((QueryStatement) statement).isAggregationQuery()) {
+      if (((QueryStatement) statement).isAggregationQuery()
+          && !((QueryStatement) statement).isGroupByTime()) {
         return fillAggregationPlanDataSet(queryExecution, actualRowSizeLimit);
       }
       return fillDataSetWithTimestamps(queryExecution, actualRowSizeLimit, 1);
@@ -141,7 +141,18 @@ public class QueryDataSetHandler {
       throws IoTDBException {
     int fetched = 0;
     int columnNum = queryExecution.getOutputValueColumnCount();
-    while (fetched < actualRowSizeLimit) {
+    while (true) {
+      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
+        return Response.ok()
+            .entity(
+                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
+                    .message(
+                        String.format(
+                            "Dataset row size exceeded the given max row size (%d)",
+                            actualRowSizeLimit)))
+            .build();
+      }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent()) {
         break;
@@ -184,7 +195,18 @@ public class QueryDataSetHandler {
       throws IoTDBException {
     int fetched = 0;
     int columnNum = queryExecution.getOutputValueColumnCount();
-    while (fetched < actualRowSizeLimit) {
+    while (true) {
+      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
+        return Response.ok()
+            .entity(
+                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
+                    .message(
+                        String.format(
+                            "Dataset row size exceeded the given max row size (%d)",
+                            actualRowSizeLimit)))
+            .build();
+      }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent()) {
         break;

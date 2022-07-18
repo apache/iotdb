@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.persistence.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
@@ -33,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePla
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
@@ -67,6 +67,7 @@ import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -161,8 +162,6 @@ public class ConfigPlanExecutor {
     switch (req.getType()) {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodePlan) req);
-      case ActivateDataNode:
-        return nodeInfo.activateDataNode((ActivateDataNodePlan) req);
       case RemoveDataNode:
         return nodeInfo.removeDataNode((RemoveDataNodePlan) req);
       case SetStorageGroup:
@@ -295,7 +294,7 @@ public class ConfigPlanExecutor {
   private DataSet getSchemaNodeManagementPartition(ConfigPhysicalPlan req) {
     int level;
     PartialPath partialPath;
-    Set<String> alreadyMatchedNode;
+    Set<TSchemaNode> alreadyMatchedNode;
     Set<PartialPath> needMatchedNode;
     List<String> matchedStorageGroups = new ArrayList<>();
 
@@ -304,7 +303,7 @@ public class ConfigPlanExecutor {
     level = getNodePathsPartitionPlan.getLevel();
     if (-1 == level) {
       // get child paths
-      Pair<Set<String>, Set<PartialPath>> matchedChildInNextLevel =
+      Pair<Set<TSchemaNode>, Set<PartialPath>> matchedChildInNextLevel =
           clusterSchemaInfo.getChildNodePathInNextLevel(partialPath);
       alreadyMatchedNode = matchedChildInNextLevel.left;
       needMatchedNode = matchedChildInNextLevel.right;
@@ -314,7 +313,7 @@ public class ConfigPlanExecutor {
           clusterSchemaInfo.getNodesListInGivenLevel(partialPath, level);
       alreadyMatchedNode =
           matchedChildInNextLevel.left.stream()
-              .map(PartialPath::getFullPath)
+              .map(path -> new TSchemaNode(path.getFullPath(), MNodeType.UNIMPLEMENT.getNodeType()))
               .collect(Collectors.toSet());
       needMatchedNode = matchedChildInNextLevel.right;
     }

@@ -73,11 +73,22 @@ public class FragmentInstanceContext extends QueryContext {
     return instanceContext;
   }
 
+  public static FragmentInstanceContext createFragmentInstanceContextForCompaction(long queryId) {
+    return new FragmentInstanceContext(queryId);
+  }
+
   private FragmentInstanceContext(
       FragmentInstanceId id, FragmentInstanceStateMachine stateMachine) {
     this.id = id;
     this.stateMachine = stateMachine;
     this.executionEndTime.set(END_TIME_INITIAL_VALUE);
+  }
+
+  // used for compaction
+  private FragmentInstanceContext(long queryId) {
+    this.queryId = queryId;
+    this.id = null;
+    this.stateMachine = null;
   }
 
   public void start() {

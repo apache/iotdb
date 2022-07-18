@@ -39,10 +39,6 @@ struct TRegionMigrateResultReportReq {
   3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
 }
 
-struct TDataNodeActiveReq {
-  1: required common.TDataNodeInfo dataNodeInfo
-}
-
 struct TGlobalConfig {
   1: required string dataRegionConsensusProtocolClass
   2: required string schemaRegionConsensusProtocolClass
@@ -147,7 +143,7 @@ struct TSchemaNodeManagementResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
-  3: optional set<string> matchedNode
+  3: optional set<common.TSchemaNode> matchedNode
 }
 
 // Data
@@ -314,8 +310,6 @@ service IConfigNodeRPCService {
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
   TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
-
-  common.TSStatus activeDataNode(TDataNodeActiveReq req)
 
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
 
