@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager.load;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -299,7 +299,7 @@ public class LoadManager {
 
   private void broadcastLatestRegionRouteMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genRealTimeRoutingPolicy();
-    List<TDataNodeInfo> onlineDataNodes = getOnlineDataNodes(-1);
+    List<TDataNodeConfiguration> onlineDataNodes = getOnlineDataNodes(-1);
     CountDownLatch latch = new CountDownLatch(onlineDataNodes.size());
 
     LOGGER.info("Begin to broadcast RegionRouteMap: {}", latestRegionRouteMap);
@@ -345,9 +345,9 @@ public class LoadManager {
    *
    * @param registeredDataNodes DataNodes that registered in cluster
    */
-  private void pingRegisteredDataNodes(List<TDataNodeInfo> registeredDataNodes) {
+  private void pingRegisteredDataNodes(List<TDataNodeConfiguration> registeredDataNodes) {
     // Send heartbeat requests
-    for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
+    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       DataNodeHeartbeatHandler handler =
           new DataNodeHeartbeatHandler(
               dataNodeInfo.getLocation(),
@@ -413,7 +413,7 @@ public class LoadManager {
         .collect(Collectors.toList());
   }
 
-  public List<TDataNodeInfo> getOnlineDataNodes(int dataNodeId) {
+  public List<TDataNodeConfiguration> getOnlineDataNodes(int dataNodeId) {
     return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
         .filter(
             registeredDataNode ->
