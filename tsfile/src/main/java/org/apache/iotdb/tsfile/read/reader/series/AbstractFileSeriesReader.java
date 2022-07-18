@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 
 import java.io.IOException;
 import java.util.List;
@@ -34,7 +34,7 @@ public abstract class AbstractFileSeriesReader implements IBatchReader {
 
   protected IChunkLoader chunkLoader;
   protected List<IChunkMetadata> chunkMetadataList;
-  protected ChunkReader chunkReader;
+  protected IChunkReader chunkReader;
   private int chunkToRead;
 
   protected Filter filter;

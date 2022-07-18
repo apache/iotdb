@@ -303,9 +303,9 @@
           date: '2020/09/04'
         },
         {
-          avatar:'/img/contributor-avatar/user.svg',
+          avatar:'/img/contributor-avatar/qhl.jpg',
           name: 'Houliang Qi',
-          role: 'Committer',
+          role: 'PMC, Committer',
           id: 'neuyilan',
           date: '2020/12/18'
         },
@@ -331,10 +331,10 @@
           date: '2021/02/20'
         },
         {
-          avatar:'/img/contributor-avatar/user.svg',
+          avatar:'https://avatars.githubusercontent.com/u/30497621',
           name: 'Steve Yurong Su',
           role: 'Committer',
-          id: 'SteveYurongSu',
+          id: 'rong',
           date: '2021/05/12'
         },
         {
@@ -343,6 +343,13 @@
           role: 'Committer',
           id: 'wangchao316',
           date: '2021/06/30'
+        },
+        {
+          avatar:'/img/contributor-avatar/ericpai.jpg',
+          name: 'Jian Bai',
+          role: 'Committer',
+          id: 'ericpai',
+          date: '2021/12/24'
         },
         ]
       }

@@ -20,21 +20,15 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.utils.MmapUtil;
-import org.apache.iotdb.db.utils.TestOnly;
 
-import java.nio.ByteBuffer;
-import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /** The storageGroupInfo records the total memory cost of the Storage Group. */
 public class StorageGroupInfo {
 
-  private StorageGroupProcessor storageGroupProcessor;
+  private DataRegion dataRegion;
 
   /**
    * The total Storage group memory cost, including unsealed TsFileResource, ChunkMetadata, WAL,
@@ -51,13 +45,13 @@ public class StorageGroupInfo {
   /** A set of all unclosed TsFileProcessors in this SG */
   private List<TsFileProcessor> reportedTsps = new CopyOnWriteArrayList<>();
 
-  public StorageGroupInfo(StorageGroupProcessor storageGroupProcessor) {
-    this.storageGroupProcessor = storageGroupProcessor;
+  public StorageGroupInfo(DataRegion dataRegion) {
+    this.dataRegion = dataRegion;
     memoryCost = new AtomicLong();
   }
 
-  public StorageGroupProcessor getStorageGroupProcessor() {
-    return storageGroupProcessor;
+  public DataRegion getDataRegion() {
+    return dataRegion;
   }
 
   /** When create a new TsFileProcessor, call this method */
@@ -98,38 +92,5 @@ public class StorageGroupInfo {
   public void closeTsFileProcessorAndReportToSystem(TsFileProcessor tsFileProcessor) {
     reportedTsps.remove(tsFileProcessor);
     SystemInfo.getInstance().resetStorageGroupStatus(this);
-  }
-
-  public Supplier<ByteBuffer[]> getWalSupplier() {
-    if (storageGroupProcessor != null) {
-      return storageGroupProcessor::getWalDirectByteBuffer;
-    } else { // only happens in test
-      return this::walSupplier;
-    }
-  }
-
-  @TestOnly
-  private ByteBuffer[] walSupplier() {
-    ByteBuffer[] buffers = new ByteBuffer[2];
-    buffers[0] =
-        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    buffers[1] =
-        ByteBuffer.allocateDirect(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
-    return buffers;
-  }
-
-  public Consumer<ByteBuffer[]> getWalConsumer() {
-    if (storageGroupProcessor != null) {
-      return storageGroupProcessor::releaseWalBuffer;
-    } else { // only happens in test
-      return this::walConsumer;
-    }
-  }
-
-  @TestOnly
-  private void walConsumer(ByteBuffer[] buffers) {
-    for (ByteBuffer byteBuffer : buffers) {
-      MmapUtil.clean((MappedByteBuffer) byteBuffer);
-    }
   }
 }

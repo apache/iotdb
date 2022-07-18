@@ -62,7 +62,11 @@ public enum TSDataType {
     return getTsDataType(type);
   }
 
-  private static TSDataType getTsDataType(byte type) {
+  public byte getType() {
+    return type;
+  }
+
+  public static TSDataType getTsDataType(byte type) {
     switch (type) {
       case 0:
         return TSDataType.BOOLEAN;
@@ -120,5 +124,23 @@ public enum TSDataType {
   /** @return byte number */
   public byte serialize() {
     return type;
+  }
+
+  /** @return whether a numeric datatype */
+  public boolean isNumeric() {
+    switch (this) {
+      case INT32:
+      case INT64:
+      case FLOAT:
+      case DOUBLE:
+        return true;
+        // For text: return the size of reference here
+      case BOOLEAN:
+      case TEXT:
+      case VECTOR:
+        return false;
+      default:
+        throw new UnSupportedDataTypeException(this.toString());
+    }
   }
 }

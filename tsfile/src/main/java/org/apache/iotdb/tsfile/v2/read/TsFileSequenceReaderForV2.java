@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -235,7 +237,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
 
   @SuppressWarnings("squid:S3776")
   @Override
-  public List<TimeseriesMetadata> readTimeseriesMetadata(String device, Set<String> measurements)
+  public List<ITimeSeriesMetadata> readITimeseriesMetadata(String device, Set<String> measurements)
       throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
@@ -245,7 +247,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
     if (metadataIndexPair == null) {
       return Collections.emptyList();
     }
-    List<TimeseriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
+    List<ITimeSeriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
     List<String> measurementList = new ArrayList<>(measurements);
     Set<String> measurementsHadFound = new HashSet<>();
     for (int i = 0; i < measurementList.size(); i++) {
@@ -424,7 +426,8 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
   }
 
   @Override
-  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata() throws IOException {
+  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata(boolean needChunkMetadata)
+      throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();
     }
@@ -605,7 +608,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
       return;
     }
     int versionIndex = 0;
-    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+    for (IChunkMetadata chunkMetadata : chunkMetadataList) {
 
       while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
         versionIndex++;

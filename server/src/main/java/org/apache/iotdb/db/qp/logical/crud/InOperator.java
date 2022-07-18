@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -70,6 +70,10 @@ public class InOperator extends FunctionOperator {
 
   public boolean getNot() {
     return not;
+  }
+
+  public void setNot(boolean not) {
+    this.not = not;
   }
 
   @Override
@@ -156,11 +160,7 @@ public class InOperator extends FunctionOperator {
   @Override
   public InOperator copy() {
     InOperator ret =
-        new InOperator(
-            this.filterType,
-            new PartialPath(singlePath.getNodes().clone()),
-            not,
-            new HashSet<>(values));
+        new InOperator(this.filterType, singlePath.clone(), not, new HashSet<>(values));
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;
@@ -198,7 +198,7 @@ public class InOperator extends FunctionOperator {
 
     public static <T extends Comparable<T>> IUnaryExpression getUnaryExpression(
         Path path, Set<T> values, boolean not) {
-      if (path.equals("time")) {
+      if (path != null && path.toString().equals("time")) {
         return new GlobalTimeExpression(TimeFilter.in((Set<Long>) values, not));
       } else {
         return new SingleSeriesExpression(path, ValueFilter.in(values, not));

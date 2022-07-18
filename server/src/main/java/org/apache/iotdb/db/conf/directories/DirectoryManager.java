@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.conf.directories;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
@@ -157,10 +157,6 @@ public class DirectoryManager {
     private static final DirectoryManager INSTANCE = new DirectoryManager();
   }
 
-  public String getWALFolder() {
-    return IoTDBDescriptor.getInstance().getConfig().getWalDir();
-  }
-
   public String getIndexRootFolder() {
     return IoTDBDescriptor.getInstance().getConfig().getIndexRootFolder();
   }
@@ -188,5 +184,11 @@ public class DirectoryManager {
 
   public List<String> getAllUnSequenceFileFolders() {
     return new ArrayList<>(unsequenceFileFolders);
+  }
+
+  public List<String> getAllFilesFolders() {
+    List<String> folders = new ArrayList<>(sequenceFileFolders);
+    folders.addAll(unsequenceFileFolders);
+    return folders;
   }
 }

@@ -24,10 +24,15 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class QueryUtils {
 
@@ -47,8 +52,7 @@ public class QueryUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void modifyChunkMetaData(
       List<? extends IChunkMetadata> chunkMetaData, List<Modification> modifications) {
-    for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
-      IChunkMetadata metaData = chunkMetaData.get(metaIndex);
+    for (IChunkMetadata metaData : chunkMetaData) {
       for (Modification modification : modifications) {
         // When the chunkMetadata come from an old TsFile, the method modification.getFileOffset()
         // is gerVersionNum actually. In this case, we compare the versions of modification and
@@ -87,6 +91,74 @@ public class QueryUtils {
         });
   }
 
+  public static void modifyAlignedChunkMetaData(
+      List<AlignedChunkMetadata> chunkMetaData, List<List<Modification>> modifications) {
+    for (AlignedChunkMetadata metaData : chunkMetaData) {
+      List<IChunkMetadata> valueChunkMetadataList = metaData.getValueChunkMetadataList();
+      // deal with each sub sensor
+      for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+        IChunkMetadata v = valueChunkMetadataList.get(i);
+        if (v != null) {
+          List<Modification> modificationList = modifications.get(i);
+          for (Modification modification : modificationList) {
+            // The case modification.getFileOffset() == metaData.getOffsetOfChunkHeader()
+            // is not supposed to exist as getFileOffset() is offset containing full chunk,
+            // while getOffsetOfChunkHeader() returns the chunk header offset
+            if (modification.getFileOffset() > v.getOffsetOfChunkHeader()) {
+              doModifyChunkMetaData(modification, v);
+            }
+          }
+        }
+      }
+    }
+    // if all sub sensors' chunk metadata are deleted, then remove the aligned chunk metadata
+    // otherwise, set the deleted chunk metadata of some sensors to null
+    chunkMetaData.removeIf(
+        alignedChunkMetadata -> {
+          // the whole aligned path need to be removed, only set to be true if all the sub sensors
+          // are deleted
+          boolean removed = true;
+          // the whole aligned path is modified, set to be true if any sub sensor is modified
+          boolean modified = false;
+          List<IChunkMetadata> valueChunkMetadataList =
+              alignedChunkMetadata.getValueChunkMetadataList();
+          for (int i = 0; i < valueChunkMetadataList.size(); i++) {
+            IChunkMetadata valueChunkMetadata = valueChunkMetadataList.get(i);
+            if (valueChunkMetadata == null) {
+              continue;
+            }
+            // current sub sensor's chunk metadata is completely removed
+            boolean currentRemoved = false;
+            if (valueChunkMetadata.getDeleteIntervalList() != null) {
+              for (TimeRange range : valueChunkMetadata.getDeleteIntervalList()) {
+                if (range.contains(
+                    valueChunkMetadata.getStartTime(), valueChunkMetadata.getEndTime())) {
+                  valueChunkMetadataList.set(i, null);
+                  currentRemoved = true;
+                  break;
+                } else {
+                  if (!valueChunkMetadata.isModified()
+                      && range.overlaps(
+                          new TimeRange(
+                              valueChunkMetadata.getStartTime(),
+                              valueChunkMetadata.getEndTime()))) {
+                    valueChunkMetadata.setModified(true);
+                    modified = true;
+                  }
+                }
+              }
+            }
+            // current sub sensor's chunk metadata is not completely removed,
+            // so the whole aligned path don't need to be removed from list
+            if (!currentRemoved) {
+              removed = false;
+            }
+          }
+          alignedChunkMetadata.setModified(modified);
+          return removed;
+        });
+  }
+
   private static void doModifyChunkMetaData(Modification modification, IChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
@@ -104,5 +176,48 @@ public class QueryUtils {
     List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
     seqResources.removeIf(fileFilter::fileNotSatisfy);
     unseqResources.removeIf(fileFilter::fileNotSatisfy);
+  }
+
+  public static ValueIterator generateValueIterator(Object[] values) {
+    if (values == null) {
+      return null;
+    }
+    // find the first element that is not NULL
+    int index = 0;
+    while (index < values.length && values[index] == null) {
+      index++;
+    }
+    if (index == values.length) {
+      // all elements are NULL
+      return null;
+    }
+    if (values[index] instanceof TsPrimitiveType[]) {
+      return new AlignedValueIterator(values);
+    } else {
+      return new ValueIterator(values);
+    }
+  }
+
+  public static void fillOrderIndexes(
+      QueryDataSource dataSource, String deviceId, boolean ascending) {
+    List<TsFileResource> unseqResources = dataSource.getUnseqResources();
+    int[] orderIndex = new int[unseqResources.size()];
+    AtomicInteger index = new AtomicInteger();
+    Map<Integer, Long> intToOrderTimeMap =
+        unseqResources.stream()
+            .collect(
+                Collectors.toMap(
+                    key -> index.getAndIncrement(),
+                    resource -> resource.getOrderTime(deviceId, ascending)));
+    index.set(0);
+    intToOrderTimeMap.entrySet().stream()
+        .sorted(
+            (t1, t2) ->
+                ascending
+                    ? Long.compare(t1.getValue(), t2.getValue())
+                    : Long.compare(t2.getValue(), t1.getValue()))
+        .collect(Collectors.toList())
+        .forEach(item -> orderIndex[index.getAndIncrement()] = item.getKey());
+    dataSource.setUnSeqFileOrderIndex(orderIndex);
   }
 }

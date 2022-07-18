@@ -34,12 +34,13 @@ public class InfluxDBExample {
 
   private static InfluxDB influxDB;
 
-  public static void main(String[] args) throws Exception {
-    influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:6667", "root", "root");
+  public static void main(String[] args) {
+    influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
     influxDB.createDatabase("database");
     influxDB.setDatabase("database");
     insertData();
     queryData();
+    influxDB.close();
   }
 
   private static void insertData() {
@@ -48,7 +49,7 @@ public class InfluxDBExample {
     Map<String, Object> fields = new HashMap<>();
     tags.put("name", "xie");
     tags.put("sex", "m");
-    fields.put("score", 87);
+    fields.put("score", 87.0);
     fields.put("tel", "110");
     fields.put("country", "china");
     builder.tag(tags);
@@ -63,7 +64,7 @@ public class InfluxDBExample {
     tags.put("name", "xie");
     tags.put("sex", "m");
     tags.put("province", "anhui");
-    fields.put("score", 99);
+    fields.put("score", 99.0);
     fields.put("country", "china");
     builder.tag(tags);
     builder.fields(fields);
@@ -76,20 +77,25 @@ public class InfluxDBExample {
     Query query;
     QueryResult result;
 
-    // the selector query is parallel to the field value
+    //     the selector query is parallel to the field value
     query =
         new Query(
             "select * from student where (name=\"xie\" and sex=\"m\")or time<now()-7d", "database");
     result = influxDB.query(query);
     System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
 
+    //     the selector query is parallel to the field value
+    query = new Query("select * from student ", "database");
+    result = influxDB.query(query);
+    System.out.println("query2 result:" + result.getResults().get(0).getSeries().get(0).toString());
+
     // use iotdb built-in func
     query =
         new Query(
-            "select max(score),min(score),sum(score),count(score),spread(score),mean(score),first(score),last(score) from student ",
+            "select max(score),min(score),sum(score),count(score),first(score),last(score) from student ",
             "database");
     result = influxDB.query(query);
-    System.out.println("query2 result:" + result.getResults().get(0).getSeries().get(0).toString());
+    System.out.println("query3 result:" + result.getResults().get(0).getSeries().get(0).toString());
 
     // aggregate query and selector query are parallel
     query =
@@ -97,6 +103,6 @@ public class InfluxDBExample {
             "select count(score),first(score),last(country),max(score),mean(score),median(score),min(score),mode(score),spread(score),stddev(score),sum(score) from student where (name=\"xie\" and sex=\"m\")or score<99",
             "database");
     result = influxDB.query(query);
-    System.out.println("query3 result:" + result.getResults().get(0).getSeries().get(0).toString());
+    System.out.println("query4 result:" + result.getResults().get(0).getSeries().get(0).toString());
   }
 }

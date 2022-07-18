@@ -27,8 +27,6 @@ import java.util.List;
 public interface IChunkMetadataLoader {
 
   /** read all chunk metadata of one time series in one file. */
-  List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeseriesMetadata)
+  List<IChunkMetadata> loadChunkMetadataList(ITimeSeriesMetadata timeSeriesMetadata)
       throws IOException;
-
-  boolean isMemChunkMetadataLoader();
 }

@@ -19,25 +19,26 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 /** this class maintains information from select clause. */
-public final class SelectComponent {
+public class SelectComponent {
 
   private final ZoneId zoneId;
 
-  private boolean hasAggregationFunction = false;
+  private boolean hasPlainAggregationFunction = false;
   private boolean hasTimeSeriesGeneratingFunction = false;
+  private boolean hasUserDefinedAggregationFunction = false;
 
-  private List<ResultColumn> resultColumns = new ArrayList<>();
+  protected List<ResultColumn> resultColumns = new ArrayList<>();
 
   private List<PartialPath> pathsCache;
   private List<String> aggregationFunctionsCache;
@@ -49,27 +50,44 @@ public final class SelectComponent {
 
   public SelectComponent(SelectComponent selectComponent) {
     zoneId = selectComponent.zoneId;
-    hasAggregationFunction = selectComponent.hasAggregationFunction;
+
+    hasPlainAggregationFunction = selectComponent.hasPlainAggregationFunction;
     hasTimeSeriesGeneratingFunction = selectComponent.hasTimeSeriesGeneratingFunction;
+    hasUserDefinedAggregationFunction = selectComponent.hasUserDefinedAggregationFunction;
+
     resultColumns.addAll(selectComponent.resultColumns);
+
+    pathsCache = null;
+    aggregationFunctionsCache = null;
   }
 
   public ZoneId getZoneId() {
     return zoneId;
   }
 
-  public boolean hasAggregationFunction() {
-    return hasAggregationFunction;
+  public void setHasPlainAggregationFunction(boolean hasPlainAggregationFunction) {
+    this.hasPlainAggregationFunction = hasPlainAggregationFunction;
+  }
+
+  public boolean hasPlainAggregationFunction() {
+    return hasPlainAggregationFunction;
   }
 
   public boolean hasTimeSeriesGeneratingFunction() {
     return hasTimeSeriesGeneratingFunction;
   }
 
+  public boolean hasUserDefinedAggregationFunction() {
+    return hasUserDefinedAggregationFunction;
+  }
+
   public void addResultColumn(ResultColumn resultColumn) {
     resultColumns.add(resultColumn);
-    if (resultColumn.getExpression().isAggregationFunctionExpression()) {
-      hasAggregationFunction = true;
+    if (resultColumn.getExpression().isUserDefinedAggregationFunctionExpression()) {
+      hasUserDefinedAggregationFunction = true;
+    }
+    if (resultColumn.getExpression().isBuiltInAggregationFunctionExpression()) {
+      hasPlainAggregationFunction = true;
     }
     if (resultColumn.getExpression().isTimeSeriesGeneratingFunctionExpression()) {
       hasTimeSeriesGeneratingFunction = true;
@@ -95,10 +113,8 @@ public final class SelectComponent {
         if (expression instanceof TimeSeriesOperand) {
           pathsCache.add(((TimeSeriesOperand) expression).getPath());
         } else if (expression instanceof FunctionExpression
-            && expression.isAggregationFunctionExpression()) {
-          pathsCache.add(
-              ((TimeSeriesOperand) ((FunctionExpression) expression).getExpressions().get(0))
-                  .getPath());
+            && expression.isBuiltInAggregationFunctionExpression()) {
+          pathsCache.add(((TimeSeriesOperand) expression.getExpressions().get(0)).getPath());
         } else {
           pathsCache.add(null);
         }
@@ -108,9 +124,6 @@ public final class SelectComponent {
   }
 
   public List<String> getAggregationFunctions() {
-    if (!hasAggregationFunction()) {
-      return null;
-    }
     if (aggregationFunctionsCache == null) {
       aggregationFunctionsCache = new ArrayList<>();
       for (ResultColumn resultColumn : resultColumns) {

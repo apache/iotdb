@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
@@ -45,6 +46,7 @@ public class MaxValueAggrResult extends AggregateResult {
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     Comparable<Object> maxVal = (Comparable<Object>) statistics.getMaxValue();
+    setTime(statistics.getStartTime());
     updateResult(maxVal);
   }
 
@@ -58,7 +60,7 @@ public class MaxValueAggrResult extends AggregateResult {
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
     Comparable<Object> maxVal = null;
 
-    while (batchIterator.hasNext()
+    while (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       if (maxVal == null || maxVal.compareTo(batchIterator.currentValue()) < 0) {
@@ -66,6 +68,7 @@ public class MaxValueAggrResult extends AggregateResult {
       }
       batchIterator.next();
     }
+    setTime(minBound);
     updateResult(maxVal);
   }
 
@@ -79,17 +82,20 @@ public class MaxValueAggrResult extends AggregateResult {
         maxVal = (Comparable<Object>) values[i];
       }
     }
+    setTime(timestamps[0]);
     updateResult(maxVal);
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
     Comparable<Object> maxVal = null;
-    for (int i = 0; i < length; i++) {
-      if (values[i] != null && (maxVal == null || maxVal.compareTo(values[i]) < 0)) {
-        maxVal = (Comparable<Object>) values[i];
+    while (valueIterator.hasNext()) {
+      Object value = valueIterator.next();
+      if (maxVal == null || maxVal.compareTo(value) < 0) {
+        maxVal = (Comparable<Object>) value;
       }
     }
+    setTime(timestamps[0]);
     updateResult(maxVal);
   }
 

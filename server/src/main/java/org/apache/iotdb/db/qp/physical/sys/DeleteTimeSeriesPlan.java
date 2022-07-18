@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.StatusUtils;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.StatusUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -46,12 +46,12 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   private TimePartitionFilter partitionFilter;
 
   public DeleteTimeSeriesPlan(List<PartialPath> deletePathList) {
-    super(false, Operator.OperatorType.DELETE_TIMESERIES);
+    super(Operator.OperatorType.DELETE_TIMESERIES);
     this.deletePathList = deletePathList;
   }
 
   public DeleteTimeSeriesPlan() {
-    super(false, Operator.OperatorType.DELETE_TIMESERIES);
+    super(Operator.OperatorType.DELETE_TIMESERIES);
   }
 
   @Override
@@ -84,7 +84,7 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.DELETE_TIMESERIES.ordinal();
     buffer.put((byte) type);
     buffer.putInt(deletePathList.size());
@@ -117,5 +117,17 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
 
   public TSStatus[] getFailingStatus() {
     return StatusUtils.getFailingStatus(results, deletePathList.size());
+  }
+
+  @Override
+  public String toString() {
+    return "DeleteTimeSeriesPlan{"
+        + "deletePathList="
+        + deletePathList
+        + ", results="
+        + results
+        + ", partitionFilter="
+        + partitionFilter
+        + '}';
   }
 }

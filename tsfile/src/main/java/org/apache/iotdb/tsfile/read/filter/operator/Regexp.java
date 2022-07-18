@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -43,7 +44,7 @@ public class Regexp<T extends Comparable<T>> implements Filter {
 
   protected Pattern pattern;
 
-  private Regexp() {}
+  public Regexp() {}
 
   public Regexp(String value, FilterType filterType) {
     this.value = value;
@@ -51,7 +52,7 @@ public class Regexp<T extends Comparable<T>> implements Filter {
     try {
       this.pattern = Pattern.compile(this.value);
     } catch (PatternSyntaxException e) {
-      throw new PatternSyntaxException("Regular expression error", value.toString(), e.getIndex());
+      throw new PatternSyntaxException("Regular expression error", value, e.getIndex());
     }
   }
 
@@ -88,7 +89,7 @@ public class Regexp<T extends Comparable<T>> implements Filter {
     try {
       outputStream.write(getSerializeId().ordinal());
       outputStream.write(filterType.ordinal());
-      ReadWriteIOUtils.writeObject(value, outputStream);
+      ReadWriteIOUtils.write(value, outputStream);
     } catch (IOException ex) {
       throw new IllegalArgumentException("Failed to serialize outputStream of type:", ex);
     }
@@ -98,11 +99,25 @@ public class Regexp<T extends Comparable<T>> implements Filter {
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
     value = ReadWriteIOUtils.readString(buffer);
+    if (value != null) {
+      try {
+        this.pattern = Pattern.compile(value);
+      } catch (PatternSyntaxException e) {
+        throw new PatternSyntaxException("Regular expression error", value, e.getIndex());
+      }
+    }
   }
 
   @Override
   public String toString() {
     return filterType + " is " + value;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    return o instanceof Regexp
+        && Objects.equals(((Regexp<?>) o).value, value)
+        && ((Regexp<?>) o).filterType == filterType;
   }
 
   @Override

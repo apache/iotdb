@@ -23,7 +23,12 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.thrift.annotation.Nullable;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -111,9 +116,10 @@ public abstract class AbstractScript {
   }
 
   protected static CSVParser readCsvFile(String path) throws IOException {
-    return CSVFormat.EXCEL
-        .withQuote('\'')
-        .withEscape('\\')
+    return CSVFormat.Builder.create(CSVFormat.EXCEL)
+        .setEscape('\\')
+        .setQuote('\'')
+        .build()
         .parse(new InputStreamReader(new FileInputStream(path)));
   }
 }

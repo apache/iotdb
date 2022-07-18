@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.utils.StatusUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -65,7 +65,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
   private List<Integer> indexes;
 
   public CreateMultiTimeSeriesPlan() {
-    super(false, Operator.OperatorType.CREATE_MULTI_TIMESERIES);
+    super(Operator.OperatorType.CREATE_MULTI_TIMESERIES);
   }
 
   @Override
@@ -142,6 +142,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
     this.indexes = indexes;
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
@@ -166,7 +167,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
-    stream.write(type);
+    stream.write((byte) type);
     stream.writeInt(paths.size());
     stream.writeInt(dataTypes.size()); // size of datatypes, encodings for aligned timeseries
 
@@ -222,7 +223,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     buffer.put((byte) type);
     buffer.putInt(paths.size());

@@ -22,7 +22,7 @@ package org.apache.iotdb.tsfile.read.query.timegenerator;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -41,8 +41,8 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -55,7 +55,7 @@ import java.io.IOException;
 public class TimeGeneratorReadEmptyTest {
 
   private final String TEMPLATE_NAME = "template";
-  private final String tsfilePath = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);;
+  private final String tsfilePath = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
 
   @Before
   public void before() throws IOException, WriteProcessException {
@@ -89,8 +89,8 @@ public class TimeGeneratorReadEmptyTest {
             .setExpression(finalExpression);
 
     try (TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath)) {
-      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
-      QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+      TsFileReader tsFileReader = new TsFileReader(fileReader);
+      QueryDataSet dataSet = tsFileReader.query(queryExpression);
       int i = 0;
       while (dataSet.hasNext()) {
         dataSet.next();
@@ -113,9 +113,9 @@ public class TimeGeneratorReadEmptyTest {
 
     Schema schema = new Schema();
     schema.extendTemplate(
-        TEMPLATE_NAME, new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        TEMPLATE_NAME, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(
-        TEMPLATE_NAME, new UnaryMeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        TEMPLATE_NAME, new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     TsFileWriter tsFileWriter = new TsFileWriter(new File(tsfilePath), schema);
 

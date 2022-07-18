@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.qp.logical;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.sql.SQLParserException;
+import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -176,10 +177,10 @@ public class LogicalPlanSmallTest {
         "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 2 soffset 1";
     QueryOperator operator =
         (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
-    IoTDB.metaManager.init();
+    IoTDB.configManager.init();
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
     concatPathOptimizer.transform(operator);
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
     // expected to throw LogicalOptimizeException: The value of SOFFSET (%d) is equal to or exceeds
     // the number of sequences (%d) that can actually be returned.
   }
@@ -306,7 +307,7 @@ public class LogicalPlanSmallTest {
     String errorMsg = null;
     try {
       LogicalGenerator.generate(sql, ZoneId.systemDefault());
-    } catch (SQLParserException e) {
+    } catch (SemanticException e) {
       errorMsg = e.getMessage();
     }
     Assert.assertEquals(
@@ -318,7 +319,7 @@ public class LogicalPlanSmallTest {
     errorMsg = null;
     try {
       LogicalGenerator.generate(sql, ZoneId.systemDefault());
-    } catch (SQLParserException e) {
+    } catch (SemanticException e) {
       errorMsg = e.getMessage();
     }
     Assert.assertEquals(

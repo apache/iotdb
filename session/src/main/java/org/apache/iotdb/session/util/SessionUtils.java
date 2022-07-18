@@ -18,15 +18,17 @@
  */
 package org.apache.iotdb.session.util;
 
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,9 +37,12 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.session.Session.MSG_UNSUPPORTED_DATA_TYPE;
+
 public class SessionUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(SessionUtils.class);
+  private static final byte TYPE_NULL = -2;
 
   public static ByteBuffer getTimeBuffer(Tablet tablet) {
     ByteBuffer timeBuffer = ByteBuffer.allocate(tablet.getTimeBytesSize());
@@ -51,19 +56,9 @@ public class SessionUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static ByteBuffer getValueBuffer(Tablet tablet) {
     ByteBuffer valueBuffer = ByteBuffer.allocate(tablet.getTotalValueOccupation());
-    int indexOfValues = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema instanceof UnaryMeasurementSchema) {
-        getValueBufferOfDataType(schema.getType(), tablet, indexOfValues, valueBuffer);
-        indexOfValues++;
-      } else {
-        for (int j = 0; j < schema.getSubMeasurementsTSDataTypeList().size(); j++) {
-          getValueBufferOfDataType(
-              schema.getSubMeasurementsTSDataTypeList().get(j), tablet, indexOfValues, valueBuffer);
-          indexOfValues++;
-        }
-      }
+      MeasurementSchema schema = tablet.getSchemas().get(i);
+      getValueBufferOfDataType(schema.getType(), tablet, i, valueBuffer);
     }
     if (tablet.bitMaps != null) {
       for (BitMap bitMap : tablet.bitMaps) {
@@ -79,6 +74,99 @@ public class SessionUtils {
     }
     valueBuffer.flip();
     return valueBuffer;
+  }
+
+  public static ByteBuffer getValueBuffer(List<TSDataType> types, List<Object> values)
+      throws IoTDBConnectionException {
+    ByteBuffer buffer = ByteBuffer.allocate(SessionUtils.calculateLength(types, values));
+    SessionUtils.putValues(types, values, buffer);
+    return buffer;
+  }
+
+  private static int calculateLength(List<TSDataType> types, List<Object> values)
+      throws IoTDBConnectionException {
+    int res = 0;
+    for (int i = 0; i < types.size(); i++) {
+      // types
+      res += Byte.BYTES;
+      switch (types.get(i)) {
+        case BOOLEAN:
+          res += 1;
+          break;
+        case INT32:
+          res += Integer.BYTES;
+          break;
+        case INT64:
+          res += Long.BYTES;
+          break;
+        case FLOAT:
+          res += Float.BYTES;
+          break;
+        case DOUBLE:
+          res += Double.BYTES;
+          break;
+        case TEXT:
+          res += Integer.BYTES;
+          if (values.get(i) instanceof Binary) {
+            res += ((Binary) values.get(i)).getValues().length;
+          } else {
+            res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
+          }
+          break;
+        default:
+          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
+      }
+    }
+    return res;
+  }
+
+  /**
+   * put value in buffer
+   *
+   * @param types types list
+   * @param values values list
+   * @param buffer buffer to insert
+   * @throws IoTDBConnectionException
+   */
+  private static void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
+      throws IoTDBConnectionException {
+    for (int i = 0; i < values.size(); i++) {
+      if (values.get(i) == null) {
+        ReadWriteIOUtils.write(TYPE_NULL, buffer);
+        continue;
+      }
+      ReadWriteIOUtils.write(types.get(i), buffer);
+      switch (types.get(i)) {
+        case BOOLEAN:
+          ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
+          break;
+        case INT32:
+          ReadWriteIOUtils.write((Integer) values.get(i), buffer);
+          break;
+        case INT64:
+          ReadWriteIOUtils.write((Long) values.get(i), buffer);
+          break;
+        case FLOAT:
+          ReadWriteIOUtils.write((Float) values.get(i), buffer);
+          break;
+        case DOUBLE:
+          ReadWriteIOUtils.write((Double) values.get(i), buffer);
+          break;
+        case TEXT:
+          byte[] bytes;
+          if (values.get(i) instanceof Binary) {
+            bytes = ((Binary) values.get(i)).getValues();
+          } else {
+            bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
+          }
+          ReadWriteIOUtils.write(bytes.length, buffer);
+          buffer.put(bytes);
+          break;
+        default:
+          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
+      }
+    }
+    buffer.flip();
   }
 
   private static void getValueBufferOfDataType(
@@ -158,20 +246,20 @@ public class SessionUtils {
     }
   }
 
-  public static List<EndPoint> parseSeedNodeUrls(List<String> nodeUrls) {
+  public static List<TEndPoint> parseSeedNodeUrls(List<String> nodeUrls) {
     if (nodeUrls == null) {
       throw new NumberFormatException("nodeUrls is null");
     }
-    List<EndPoint> endPointsList = new ArrayList<>();
+    List<TEndPoint> endPointsList = new ArrayList<>();
     for (String nodeUrl : nodeUrls) {
-      EndPoint endPoint = parseNodeUrl(nodeUrl);
+      TEndPoint endPoint = parseNodeUrl(nodeUrl);
       endPointsList.add(endPoint);
     }
     return endPointsList;
   }
 
-  private static EndPoint parseNodeUrl(String nodeUrl) {
-    EndPoint endPoint = new EndPoint();
+  private static TEndPoint parseNodeUrl(String nodeUrl) {
+    TEndPoint endPoint = new TEndPoint();
     String[] split = nodeUrl.split(":");
     if (split.length != 2) {
       throw new NumberFormatException("NodeUrl Incorrect format");

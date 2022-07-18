@@ -18,16 +18,18 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 
 // This method implements the measurement count function.
 // One MultiMeasurement will only be count once.
 public class MeasurementCounter extends CounterTraverser {
 
-  public MeasurementCounter(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
+  public MeasurementCounter(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
     isMeasurementTraverser = true;
   }
 

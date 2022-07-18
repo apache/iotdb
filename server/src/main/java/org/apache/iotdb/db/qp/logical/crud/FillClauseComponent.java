@@ -27,6 +27,7 @@ import java.util.Map;
 public class FillClauseComponent extends SpecialClauseComponent {
 
   private Map<TSDataType, IFill> fillTypes;
+  private IFill singleFill;
 
   public FillClauseComponent() {}
 
@@ -34,7 +35,15 @@ public class FillClauseComponent extends SpecialClauseComponent {
     return fillTypes;
   }
 
+  public IFill getSingleFill() {
+    return singleFill;
+  }
+
   public void setFillTypes(Map<TSDataType, IFill> fillTypes) {
     this.fillTypes = fillTypes;
+  }
+
+  public void setSingleFill(IFill singleFill) {
+    this.singleFill = singleFill;
   }
 }

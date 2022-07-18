@@ -110,8 +110,7 @@ public class PriorityMergeReader implements IPointReader {
       top.next();
       topNext = top.currPair();
     }
-    long topNextTime = topNext == null ? Long.MAX_VALUE : topNext.getTimestamp();
-    updateHeap(ret.getTimestamp(), topNextTime);
+    updateHeap(ret, topNext);
     if (topNext != null) {
       top.timeValuePair = topNext;
       heap.add(top);
@@ -124,17 +123,25 @@ public class PriorityMergeReader implements IPointReader {
     return heap.peek().getTimeValuePair();
   }
 
-  protected void updateHeap(long topTime, long topNextTime) throws IOException {
+  /**
+   * remove all the TimeValuePair that shares the same timestamp if it's an aligned path we may need
+   * to use those records that share the same timestamp to fill the null sub sensor value in current
+   * TimeValuePair
+   */
+  protected void updateHeap(TimeValuePair ret, TimeValuePair topNext) throws IOException {
+    long topTime = ret.getTimestamp();
+    long topNextTime = (topNext == null ? Long.MAX_VALUE : topNext.getTimestamp());
     while (!heap.isEmpty() && heap.peek().currTime() == topTime) {
       Element e = heap.poll();
+      fillNullValue(ret, e.getTimeValuePair());
       if (!e.hasNext()) {
         e.reader.close();
         continue;
       }
-
       e.next();
       if (e.currTime() == topNextTime) {
         // if the next value of the peek will be overwritten by the next of the top, skip it
+        fillNullValue(topNext, e.getTimeValuePair());
         if (e.hasNext()) {
           e.next();
           heap.add(e);
@@ -146,6 +153,11 @@ public class PriorityMergeReader implements IPointReader {
         heap.add(e);
       }
     }
+  }
+
+  /** this method only take effect for aligned time series, so the override version */
+  protected void fillNullValue(TimeValuePair v, TimeValuePair c) {
+    // do nothing for non-aligned time series
   }
 
   @Override

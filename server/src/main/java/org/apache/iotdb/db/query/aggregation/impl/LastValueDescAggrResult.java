@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
@@ -49,7 +50,7 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
     }
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    if (batchIterator.hasNext()
+    if (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       time = batchIterator.currentTime();
@@ -87,16 +88,13 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
     if (hasFinalResult()) {
       return;
     }
-    for (int i = 0; i < length; i++) {
-      if (values[i] != null) {
-        timestamp = timestamps[i];
-        setValue(values[i]);
-        return;
-      }
+    if (valueIterator.hasNext()) {
+      timestamp = timestamps[valueIterator.getCurPos()];
+      setValue(valueIterator.next());
     }
   }
 

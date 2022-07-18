@@ -18,12 +18,13 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -69,33 +70,33 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   public InsertRowsOfOneDevicePlan(
       PartialPath prefixPath,
-      Long[] insertTimes,
+      List<Long> insertTimes,
       List<List<String>> measurements,
-      ByteBuffer[] insertValues,
+      List<ByteBuffer> insertValues,
       boolean isAligned)
       throws QueryProcessException {
     this();
-    this.prefixPath = prefixPath;
-    rowPlans = new InsertRowPlan[insertTimes.length];
-    rowPlanIndexList = new int[insertTimes.length];
-    for (int i = 0; i < insertTimes.length; i++) {
+    this.devicePath = prefixPath;
+    rowPlans = new InsertRowPlan[insertTimes.size()];
+    rowPlanIndexList = new int[insertTimes.size()];
+    for (int i = 0; i < insertTimes.size(); i++) {
       rowPlans[i] =
           new InsertRowPlan(
               prefixPath,
-              insertTimes[i],
+              insertTimes.get(i),
               measurements.get(i).toArray(new String[0]),
-              insertValues[i],
+              insertValues.get(i),
               isAligned);
       if (rowPlans[i].getMeasurements().length == 0) {
         throw new QueryProcessException(
-            "The measurements are null, deviceId:" + prefixPath + ", time:" + insertTimes[i]);
+            "The measurements are null, deviceId:" + prefixPath + ", time:" + insertTimes.get(i));
       }
       if (rowPlans[i].getValues().length == 0) {
         throw new QueryProcessException(
             "The size of values in InsertRowsOfOneDevicePlan is 0, deviceId:"
                 + prefixPath
                 + ", time:"
-                + insertTimes[i]);
+                + insertTimes.get(i));
       }
       rowPlanIndexList[i] = i;
     }
@@ -108,7 +109,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   public InsertRowsOfOneDevicePlan(
       PartialPath prefixPath, InsertRowPlan[] rowPlans, int[] rowPlanIndexList) {
     this();
-    this.prefixPath = prefixPath;
+    this.devicePath = prefixPath;
     this.rowPlans = rowPlans;
     this.rowPlanIndexList = rowPlanIndexList;
   }
@@ -143,10 +144,15 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
+  public Object getFirstValueOfIndex(int index) {
+    throw new NotImplementedException();
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     stream.writeByte((byte) type);
-    putString(stream, prefixPath.getFullPath());
+    putString(stream, devicePath.getFullPath());
 
     stream.writeInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
@@ -159,11 +165,11 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     buffer.put((byte) type);
 
-    putString(buffer, prefixPath.getFullPath());
+    putString(buffer, devicePath.getFullPath());
     buffer.putInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
       buffer.putLong(plan.getTime());
@@ -176,11 +182,11 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    this.prefixPath = new PartialPath(readString(buffer));
+    this.devicePath = new PartialPath(readString(buffer));
     this.rowPlans = new InsertRowPlan[buffer.getInt()];
     for (int i = 0; i < rowPlans.length; i++) {
       rowPlans[i] = new InsertRowPlan();
-      rowPlans[i].setPrefixPath(prefixPath);
+      rowPlans[i].setDevicePath(devicePath);
       rowPlans[i].setTime(buffer.getLong());
       rowPlans[i].deserializeMeasurementsAndValues(buffer);
     }
@@ -201,7 +207,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   @Override
   public String toString() {
-    return "deviceId: " + prefixPath + ", times: " + rowPlans.length;
+    return "deviceId: " + devicePath + ", times: " + rowPlans.length;
   }
 
   @Override
@@ -239,13 +245,14 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     return isExecuted[i];
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
 
   @Override
   public List<PartialPath> getPrefixPaths() {
-    return Collections.singletonList(this.prefixPath);
+    return Collections.singletonList(this.devicePath);
   }
 
   @Override
@@ -276,7 +283,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
         && Arrays.equals(((InsertRowsOfOneDevicePlan) o).rowPlanIndexList, this.rowPlanIndexList)
         && Arrays.equals(((InsertRowsOfOneDevicePlan) o).rowPlans, this.rowPlans)
         && ((InsertRowsOfOneDevicePlan) o).results.equals(this.results)
-        && ((InsertRowsOfOneDevicePlan) o).getPrefixPath().equals(this.getPrefixPath());
+        && ((InsertRowsOfOneDevicePlan) o).getDevicePath().equals(this.getDevicePath());
   }
 
   @Override

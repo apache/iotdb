@@ -21,7 +21,7 @@ package org.apache.iotdb.session;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,7 +39,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 
-public class SessionDataSet {
+public class SessionDataSet implements AutoCloseable {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
 
@@ -50,7 +50,7 @@ public class SessionDataSet {
       Map<String, Integer> columnNameIndex,
       long queryId,
       long statementId,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       long sessionId,
       TSQueryDataSet queryDataSet,
       boolean ignoreTimeStamp) {
@@ -77,7 +77,7 @@ public class SessionDataSet {
       Map<String, Integer> columnNameIndex,
       long queryId,
       long statementId,
-      TSIService.Iface client,
+      IClientRPCService.Iface client,
       long sessionId,
       TSQueryDataSet queryDataSet,
       boolean ignoreTimeStamp,
@@ -194,6 +194,11 @@ public class SessionDataSet {
 
   public DataIterator iterator() {
     return new DataIterator();
+  }
+
+  @Override
+  public void close() throws IoTDBConnectionException, StatementExecutionException {
+    closeOperationHandle();
   }
 
   public class DataIterator {

@@ -68,13 +68,17 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private long maxPlanIndex = Long.MIN_VALUE;
 
   /** all chunk group metadata which have been serialized on disk. */
-  private Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = new HashMap<>();
+  private final Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = new HashMap<>();
 
   /**
    * @param file a given tsfile path you want to (continue to) write
    * @throws IOException if write failed, or the file is broken but autoRepair==false.
    */
   public RestorableTsFileIOWriter(File file) throws IOException {
+    this(file, true);
+  }
+
+  public RestorableTsFileIOWriter(File file, boolean truncate) throws IOException {
     if (logger.isDebugEnabled()) {
       logger.debug("{} is opened.", file.getName());
     }
@@ -107,7 +111,9 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
           crashed = true;
           canWrite = true;
           // remove broken data
-          out.truncate(truncatedSize);
+          if (truncate) {
+            out.truncate(truncatedSize);
+          }
         }
       }
     }
@@ -194,7 +200,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         List<ChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
 
         String device = chunkGroupMetadata.getDevice();
-        for (IChunkMetadata chunkMetaData : rowMetaDataList) {
+        for (ChunkMetadata chunkMetaData : rowMetaDataList) {
           String measurementId = chunkMetaData.getMeasurementUid();
           if (!metadatasForQuery.containsKey(device)) {
             metadatasForQuery.put(device, new HashMap<>());
@@ -202,12 +208,17 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
           if (!metadatasForQuery.get(device).containsKey(measurementId)) {
             metadatasForQuery.get(device).put(measurementId, new ArrayList<>());
           }
-          metadatasForQuery.get(device).get(measurementId).add((ChunkMetadata) chunkMetaData);
+          metadatasForQuery.get(device).get(measurementId).add(chunkMetaData);
         }
       }
     }
   }
 
+  /**
+   * Whether this TsFile is crashed.
+   *
+   * @return false when this TsFile is complete
+   */
   public boolean hasCrashed() {
     return crashed;
   }

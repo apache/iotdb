@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.qp.utils;
 
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.utils.TestOnly;
 
 import java.time.DateTimeException;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -47,7 +47,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WIDTH_1_2 =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NEVER)
             .appendLiteral('-')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('-')
@@ -61,7 +61,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WITH_SLASH =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NEVER)
             .appendLiteral('/')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('/')
@@ -75,7 +75,7 @@ public class DatetimeUtils {
   static {
     ISO_LOCAL_DATE_WITH_DOT =
         new DateTimeFormatterBuilder()
-            .appendValue(ChronoField.YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+            .appendValue(ChronoField.YEAR, 4, 19, SignStyle.NEVER)
             .appendLiteral('.')
             .appendValue(ChronoField.MONTH_OF_YEAR, 1, 2, SignStyle.NEVER)
             .appendLiteral('.')
@@ -449,39 +449,36 @@ public class DatetimeUtils {
           .appendOptional(ISO_OFFSET_DATE_TIME_WITH_DOT_WITH_SPACE_NS)
           .toFormatter();
 
-  public static long convertDatetimeStrToLong(String str, ZoneId zoneId)
-      throws LogicalOperatorException {
+  public static long convertDatetimeStrToLong(String str, ZoneId zoneId) {
     return convertDatetimeStrToLong(str, toZoneOffset(zoneId), 0);
   }
 
-  public static long getInstantWithPrecision(String str, String timestampPrecision)
-      throws LogicalOperatorException {
+  public static long getInstantWithPrecision(String str, String timestampPrecision) {
     try {
       ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
       Instant instant = zonedDateTime.toInstant();
-      if (timestampPrecision.equals("us")) {
+      if ("us".equals(timestampPrecision)) {
         if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
           // adjustment can reduce the loss of the division
-          long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000);
+          long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000L);
           long adjustment = instant.getNano() / 1000 - 1L;
           return Math.addExact(millis, adjustment);
         } else {
-          long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000);
+          long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000L);
           return Math.addExact(millis, instant.getNano() / 1000);
         }
-      } else if (timestampPrecision.equals("ns")) {
+      } else if ("ns".equals(timestampPrecision)) {
         long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000_000L);
         return Math.addExact(millis, instant.getNano());
       }
       return instant.toEpochMilli();
     } catch (DateTimeParseException e) {
-      throw new LogicalOperatorException(e.getMessage());
+      throw new RuntimeException(e.getMessage());
     }
   }
 
   /** convert date time string to millisecond, microsecond or nanosecond. */
-  public static long convertDatetimeStrToLong(String str, ZoneOffset offset, int depth)
-      throws LogicalOperatorException {
+  public static long convertDatetimeStrToLong(String str, ZoneOffset offset, int depth) {
 
     String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
 
@@ -609,7 +606,7 @@ public class DatetimeUtils {
         break;
     }
 
-    if (timestampPrecision.equals("us")) {
+    if ("us".equals(timestampPrecision)) {
       if (unit.equals(DurationUnit.ns.toString())) {
         return value / 1000;
       } else if (unit.equals(DurationUnit.us.toString())) {
@@ -617,7 +614,7 @@ public class DatetimeUtils {
       } else {
         return res * 1000;
       }
-    } else if (timestampPrecision.equals("ns")) {
+    } else if ("ns".equals(timestampPrecision)) {
       if (unit.equals(DurationUnit.ns.toString())) {
         return value;
       } else if (unit.equals(DurationUnit.us.toString())) {
@@ -637,9 +634,9 @@ public class DatetimeUtils {
   }
 
   public static TimeUnit timestampPrecisionStringToTimeUnit(String timestampPrecision) {
-    if (timestampPrecision.equals("us")) {
+    if ("us".equals(timestampPrecision)) {
       return TimeUnit.MICROSECONDS;
-    } else if (timestampPrecision.equals("ns")) {
+    } else if ("ns".equals(timestampPrecision)) {
       return TimeUnit.NANOSECONDS;
     } else {
       return TimeUnit.MILLISECONDS;
@@ -657,6 +654,20 @@ public class DatetimeUtils {
       default:
         return System.currentTimeMillis();
     }
+  }
+
+  public static String convertLongToDate(long timestamp) {
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        timestamp /= 1000_000_000;
+        break;
+      case "us":
+        timestamp /= 1000_000;
+        break;
+    }
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(timestamp), ZoneId.systemDefault())
+        .toString();
   }
 
   public static ZoneOffset toZoneOffset(ZoneId zoneId) {
@@ -678,5 +689,46 @@ public class DatetimeUtils {
     ms,
     us,
     ns
+  }
+
+  public static TimeUnit toTimeUnit(String t) {
+    switch (t) {
+      case "h":
+        return TimeUnit.HOURS;
+      case "m":
+        return TimeUnit.MINUTES;
+      case "s":
+        return TimeUnit.SECONDS;
+      case "ms":
+        return TimeUnit.MILLISECONDS;
+      case "u":
+        return TimeUnit.MICROSECONDS;
+      case "n":
+        return TimeUnit.NANOSECONDS;
+      default:
+        throw new IllegalArgumentException("time precision must be one of: h,m,s,ms,u,n");
+    }
+  }
+
+  public static final long MS_TO_MONTH = 30 * 86400_000L;
+
+  /**
+   * add natural months based on the startTime to avoid edge cases, ie 2/28
+   *
+   * @param startTime current start time
+   * @param numMonths numMonths is updated in hasNextWithoutConstraint()
+   * @return nextStartTime
+   */
+  public static long calcIntervalByMonth(long startTime, long numMonths) {
+    Calendar calendar = Calendar.getInstance();
+    calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
+    calendar.setTimeInMillis(startTime);
+    boolean isLastDayOfMonth =
+        calendar.get(Calendar.DAY_OF_MONTH) == calendar.getActualMaximum(Calendar.DAY_OF_MONTH);
+    calendar.add(Calendar.MONTH, (int) (numMonths));
+    if (isLastDayOfMonth) {
+      calendar.set(Calendar.DAY_OF_MONTH, calendar.getActualMaximum(Calendar.DAY_OF_MONTH));
+    }
+    return calendar.getTimeInMillis();
   }
 }

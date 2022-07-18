@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
-import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -30,7 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 /** used in query. */
-public class Chunk implements Accountable {
+public class Chunk {
 
   private ChunkHeader chunkHeader;
   private Statistics chunkStatistic;
@@ -68,7 +67,7 @@ public class Chunk implements Accountable {
     this.deleteIntervalList = list;
   }
 
-  public void mergeChunk(Chunk chunk) throws IOException {
+  public void mergeChunkByAppendPage(Chunk chunk) throws IOException {
     int dataSize = 0;
     // from where the page data of the merged chunk starts, if -1, it means the merged chunk has
     // more than one page
@@ -146,16 +145,6 @@ public class Chunk implements Accountable {
       newChunkData.put(b, offset1, b.length - offset1);
     }
     chunkData = newChunkData;
-  }
-
-  @Override
-  public void setRamSize(long size) {
-    this.ramSize = size;
-  }
-
-  @Override
-  public long getRamSize() {
-    return ramSize;
   }
 
   public Statistics getChunkStatistic() {

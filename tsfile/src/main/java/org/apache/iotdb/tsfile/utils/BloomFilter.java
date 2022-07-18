@@ -20,7 +20,9 @@ package org.apache.iotdb.tsfile.utils;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
+import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Objects;
 
 public class BloomFilter {
 
@@ -127,6 +129,26 @@ public class BloomFilter {
     return bits.toByteArray();
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    BloomFilter that = (BloomFilter) o;
+    return size == that.size
+        && hashFunctionSize == that.hashFunctionSize
+        && Objects.equals(bits, that.bits)
+        && Arrays.equals(func, that.func);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(size, hashFunctionSize, bits, func);
+  }
+
   private class HashFunction {
 
     private int cap;
@@ -138,7 +160,29 @@ public class BloomFilter {
     }
 
     public int hash(String value) {
-      return Math.abs(Murmur128Hash.hash(value, seed)) % cap;
+      int res = Murmur128Hash.hash(value, seed);
+      if (res == Integer.MIN_VALUE) {
+        res = 0;
+      }
+
+      return Math.abs(res) % cap;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      HashFunction that = (HashFunction) o;
+      return cap == that.cap && seed == that.seed;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(cap, seed);
     }
   }
 }

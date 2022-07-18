@@ -21,7 +21,9 @@ package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.RemovableAggregateResult;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
@@ -34,7 +36,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class SumAggrResult extends AggregateResult {
+public class SumAggrResult extends AggregateResult implements RemovableAggregateResult {
 
   private TSDataType seriesDataType;
 
@@ -42,23 +44,25 @@ public class SumAggrResult extends AggregateResult {
     super(TSDataType.DOUBLE, AggregationType.SUM);
     this.seriesDataType = seriesDataType;
     reset();
-    setDoubleValue(0.0);
   }
 
   @Override
   public Double getResult() {
-    return getDoubleValue();
+    return hasCandidateResult() ? getDoubleValue() : null;
   }
 
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    double preValue = getDoubleValue();
-    if (statistics instanceof IntegerStatistics || statistics instanceof BooleanStatistics) {
-      preValue += statistics.getSumLongValue();
-    } else {
-      preValue += statistics.getSumDoubleValue();
+    if (statistics != null && statistics.getCount() > 0) {
+      double preValue = getDoubleValue();
+      if (statistics instanceof IntegerStatistics || statistics instanceof BooleanStatistics) {
+        preValue += statistics.getSumLongValue();
+      } else {
+        preValue += statistics.getSumDoubleValue();
+      }
+      setTime(statistics.getStartTime());
+      setDoubleValue(preValue);
     }
-    setDoubleValue(preValue);
   }
 
   @Override
@@ -69,13 +73,14 @@ public class SumAggrResult extends AggregateResult {
   @Override
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
-    while (batchIterator.hasNext()) {
+    while (batchIterator.hasNext(minBound, maxBound)) {
       if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
         break;
       }
       updateSum(batchIterator.currentValue());
       batchIterator.next();
     }
+    setTime(minBound);
   }
 
   @Override
@@ -87,39 +92,45 @@ public class SumAggrResult extends AggregateResult {
         updateSum(values[i]);
       }
     }
+    setTime(timestamps[0]);
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
-    for (int i = 0; i < length; i++) {
-      if (values[i] != null) {
-        updateSum(values[i]);
-      }
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
+    while (valueIterator.hasNext()) {
+      updateSum(valueIterator.next());
     }
+    setTime(timestamps[0]);
   }
 
   private void updateSum(Object sumVal) throws UnSupportedDataTypeException {
-    double preValue = getDoubleValue();
-    switch (seriesDataType) {
-      case INT32:
-        preValue += (int) sumVal;
-        break;
-      case INT64:
-        preValue += (long) sumVal;
-        break;
-      case FLOAT:
-        preValue += (float) sumVal;
-        break;
-      case DOUBLE:
-        preValue += (double) sumVal;
-        break;
-      case TEXT:
-      case BOOLEAN:
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Unsupported data type in aggregation SUM : %s", seriesDataType));
+    if (sumVal != null) {
+      double preValue = getDoubleValue();
+      switch (seriesDataType) {
+        case INT32:
+          preValue += (int) sumVal;
+          break;
+        case INT64:
+          preValue += (long) sumVal;
+          break;
+        case FLOAT:
+          preValue += (float) sumVal;
+          break;
+        case DOUBLE:
+          preValue += (double) sumVal;
+          break;
+        case TEXT:
+        case BOOLEAN:
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Unsupported data type in aggregation SUM : %s", seriesDataType));
+      }
+      setDoubleValue(preValue);
     }
-    setDoubleValue(preValue);
+  }
+
+  public boolean isNotNull() {
+    return hasCandidateResult;
   }
 
   @Override
@@ -129,8 +140,24 @@ public class SumAggrResult extends AggregateResult {
 
   @Override
   public void merge(AggregateResult another) {
-    SumAggrResult anotherSum = (SumAggrResult) another;
-    setDoubleValue(getDoubleValue() + anotherSum.getDoubleValue());
+    if (another instanceof SumAggrResult && ((SumAggrResult) another).isNotNull()) {
+      SumAggrResult anotherSum = (SumAggrResult) another;
+      double preValue = getDoubleValue();
+      setDoubleValue(preValue + anotherSum.getDoubleValue());
+    }
+  }
+
+  @Override
+  public void remove(AggregateResult another) {
+    if (another instanceof SumAggrResult && ((SumAggrResult) another).isNotNull()) {
+      SumAggrResult anotherSum = (SumAggrResult) another;
+      double preValue = getDoubleValue();
+      if (preValue == anotherSum.getDoubleValue()) {
+        reset();
+      } else {
+        setDoubleValue(preValue - anotherSum.getDoubleValue());
+      }
+    }
   }
 
   @Override

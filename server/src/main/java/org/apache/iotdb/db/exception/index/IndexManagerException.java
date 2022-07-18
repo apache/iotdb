@@ -17,7 +17,7 @@
  */
 package org.apache.iotdb.db.exception.index;
 
-import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 
 public class IndexManagerException extends QueryProcessException {

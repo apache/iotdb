@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.query.udf.datastructure;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
-import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.datastructure.SerializableList;
+import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.udf.api.type.Binary;
 
 import org.junit.After;
 import org.junit.Before;
@@ -33,6 +34,7 @@ import java.io.IOException;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -91,13 +93,9 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
   }
 
   private void initESTVList(TSDataType dataType) {
-    try {
-      tvList =
-          ElasticSerializableTVList.newElasticSerializableTVList(
-              dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
-    } catch (QueryProcessException e) {
-      fail(e.toString());
-    }
+    tvList =
+        ElasticSerializableTVList.newElasticSerializableTVList(
+            dataType, QUERY_ID, MEMORY_USAGE_LIMIT_IN_MB, CACHE_SIZE);
     assertEquals(0, tvList.size());
   }
 
@@ -106,36 +104,60 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
       switch (dataType) {
         case INT32:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
-            tvList.putInt(i, i);
+            if (i % 7 == 0) {
+              tvList.putNull(i);
+            } else {
+              tvList.putInt(i, i);
+            }
           }
           break;
         case INT64:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
-            tvList.putLong(i, i);
+            if (i % 7 == 0) {
+              tvList.putNull(i);
+            } else {
+              tvList.putLong(i, i);
+            }
           }
           break;
         case FLOAT:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
-            tvList.putFloat(i, i);
+            if (i % 7 == 0) {
+              tvList.putNull(i);
+            } else {
+              tvList.putFloat(i, i);
+            }
           }
           break;
         case DOUBLE:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
-            tvList.putDouble(i, i);
+            if (i % 7 == 0) {
+              tvList.putNull(i);
+            } else {
+              tvList.putDouble(i, i);
+            }
           }
           break;
         case BOOLEAN:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
-            tvList.putBoolean(i, i % 2 == 0);
+            if (i % 7 == 0) {
+              tvList.putNull(i);
+            } else {
+              tvList.putBoolean(i, i % 2 == 0);
+            }
           }
           break;
         case TEXT:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
-            tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
+            if (i % 7 == 0) {
+              tvList.putNull(i);
+            } else {
+              tvList.putBinary(i, Binary.valueOf(String.valueOf(i)));
+            }
           }
           break;
       }
-    } catch (IOException | QueryProcessException e) {
+    } catch (IOException e) {
       fail(e.toString());
     }
     assertEquals(ITERATION_TIMES, tvList.size());
@@ -147,37 +169,69 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
         case INT32:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
             assertEquals(i, tvList.getTime(i));
-            assertEquals(i, tvList.getInt(i));
+            if (i % 7 == 0) {
+              assertTrue(tvList.isNull(i));
+            } else {
+              assertFalse(tvList.isNull(i));
+              assertEquals(i, tvList.getInt(i));
+            }
           }
           break;
         case INT64:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
             assertEquals(i, tvList.getTime(i));
-            assertEquals(i, tvList.getLong(i));
+            if (i % 7 == 0) {
+              assertTrue(tvList.isNull(i));
+            } else {
+              assertFalse(tvList.isNull(i));
+              assertEquals(i, tvList.getLong(i));
+            }
           }
           break;
         case FLOAT:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
             assertEquals(i, tvList.getTime(i));
-            assertEquals(i, tvList.getFloat(i), 0);
+            if (i % 7 == 0) {
+              assertTrue(tvList.isNull(i));
+            } else {
+              assertFalse(tvList.isNull(i));
+              assertEquals(i, tvList.getFloat(i), 0);
+            }
           }
           break;
         case DOUBLE:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
             assertEquals(i, tvList.getTime(i));
-            assertEquals(i, tvList.getDouble(i), 0);
+            if (i % 7 == 0) {
+              assertTrue(tvList.isNull(i));
+            } else {
+              assertFalse(tvList.isNull(i));
+              assertEquals(i, tvList.getDouble(i), 0);
+            }
           }
           break;
         case BOOLEAN:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
             assertEquals(i, tvList.getTime(i));
-            assertEquals(i % 2 == 0, tvList.getBoolean(i));
+            if (i % 7 == 0) {
+              assertTrue(tvList.isNull(i));
+            } else {
+              assertFalse(tvList.isNull(i));
+              assertEquals(i % 2 == 0, tvList.getBoolean(i));
+            }
           }
           break;
         case TEXT:
           for (int i = 0; i < ITERATION_TIMES; ++i) {
             assertEquals(i, tvList.getTime(i));
-            assertEquals(Binary.valueOf(String.valueOf(i)), tvList.getBinary(i));
+            if (i % 7 == 0) {
+              assertTrue(tvList.isNull(i));
+            } else {
+              assertFalse(tvList.isNull(i));
+              assertEquals(
+                  org.apache.iotdb.tsfile.utils.Binary.valueOf(String.valueOf(i)),
+                  tvList.getBinary(i));
+            }
           }
           break;
       }
@@ -196,59 +250,99 @@ public class ElasticSerializableTVListTest extends SerializableListTest {
 
     try {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        tvList.putBinary(
-            i,
-            Binary.valueOf(
-                generateRandomString(
-                    byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        if (i % 7 == 0) {
+          tvList.putNull(i);
+        } else {
+          tvList.putBinary(
+              i,
+              Binary.valueOf(
+                  generateRandomString(
+                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        }
       }
       LayerPointReader reader = tvList.constructPointReaderUsingTrivialEvictionStrategy();
+      int index = 0;
       while (reader.next()) {
-        int length = reader.currentBinary().getLength();
-        assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        if (index % 7 == 0) {
+          assertTrue(reader.isCurrentNull());
+        } else {
+          int length = reader.currentBinary().getLength();
+          assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        }
         reader.readyForNext();
+        index++;
       }
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        tvList.putBinary(
-            i,
-            Binary.valueOf(
-                generateRandomString(
-                    byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        if (i % 7 == 0) {
+          tvList.putNull(i);
+        } else {
+          tvList.putBinary(
+              i,
+              Binary.valueOf(
+                  generateRandomString(
+                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        }
       }
+      index = 0;
       while (reader.next()) {
-        int length = reader.currentBinary().getLength();
-        assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        if (index % 7 == 0) {
+          assertTrue(reader.isCurrentNull());
+        } else {
+          int length = reader.currentBinary().getLength();
+          assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        }
         reader.readyForNext();
+        index++;
       }
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        tvList.putBinary(
-            i,
-            Binary.valueOf(
-                generateRandomString(
-                    byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        if (i % 7 == 0) {
+          tvList.putNull(i);
+        } else {
+          tvList.putBinary(
+              i,
+              Binary.valueOf(
+                  generateRandomString(
+                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        }
       }
+      index = 0;
       while (reader.next()) {
-        int length = reader.currentBinary().getLength();
-        assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        if (index % 7 == 0) {
+          assertTrue(reader.isCurrentNull());
+        } else {
+          int length = reader.currentBinary().getLength();
+          assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        }
         reader.readyForNext();
+        index++;
       }
 
+      index = 0;
       for (int i = 0; i < 2 * ITERATION_TIMES; ++i) {
-        tvList.putBinary(
-            i,
-            Binary.valueOf(
-                generateRandomString(
-                    byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        if (i % 7 == 0) {
+          tvList.putNull(i);
+        } else {
+          tvList.putBinary(
+              i,
+              Binary.valueOf(
+                  generateRandomString(
+                      byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin))));
+        }
         reader.next();
-        int length = reader.currentBinary().getLength();
-        assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        if (index % 7 == 0) {
+          assertTrue(reader.isCurrentNull());
+        } else {
+          int length = reader.currentBinary().getLength();
+          assertTrue(byteLengthMin <= length && length < byteLengthMax);
+        }
         reader.readyForNext();
+        index++;
       }
 
       assertEquals(ITERATION_TIMES * 5, tvList.size());

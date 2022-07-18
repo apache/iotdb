@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
@@ -32,9 +33,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public class LastValueAggrResult extends AggregateResult {
-
-  // timestamp of current value
-  protected long timestamp = Long.MIN_VALUE;
 
   public LastValueAggrResult(TSDataType dataType) {
     super(dataType, AggregationType.LAST_VALUE);
@@ -69,7 +67,7 @@ public class LastValueAggrResult extends AggregateResult {
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    while (batchIterator.hasNext()
+    while (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       time = batchIterator.currentTime();
@@ -97,11 +95,11 @@ public class LastValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
     for (int i = length - 1; i >= 0; i--) {
-      if (values[i] != null) {
+      if (valueIterator.get(i) != null) {
         timestamp = timestamps[i];
-        setValue(values[i]);
+        setValue(valueIterator.get(i));
         return;
       }
     }

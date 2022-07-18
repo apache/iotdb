@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -25,9 +27,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -48,7 +48,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -263,8 +263,7 @@ public class TsFileRewriteToolTest {
           String device = entry.getKey();
           for (String sensor : entry.getValue()) {
             tsFileWriter.registerTimeseries(
-                new Path(device, sensor),
-                new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
+                new Path(device), new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
           }
         }
       } catch (WriteProcessException e) {
@@ -304,8 +303,7 @@ public class TsFileRewriteToolTest {
           String device = entry.getKey();
           for (String sensor : entry.getValue()) {
             tsFileWriter.registerTimeseries(
-                new Path(device, sensor),
-                new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
+                new Path(device), new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
           }
         }
       } catch (WriteProcessException e) {
@@ -334,7 +332,7 @@ public class TsFileRewriteToolTest {
       String tsFilePath, int index, HashMap<String, List<String>> deviceSensorsMap)
       throws IOException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+        TsFileReader readTsFile = new TsFileReader(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
 
       int totalSensorCount = 0;
@@ -378,8 +376,7 @@ public class TsFileRewriteToolTest {
       // add measurements into file schema
       try {
         tsFileWriter.registerTimeseries(
-            new Path(device, sensor),
-            new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
+            new Path(device), new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
       } catch (WriteProcessException e) {
         Assert.fail(e.getMessage());
       }
@@ -439,7 +436,7 @@ public class TsFileRewriteToolTest {
   public void queryAndCheckTsFile(String tsFilePath, int index, String device, String sensor)
       throws IOException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+        TsFileReader readTsFile = new TsFileReader(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path(device, sensor));
 

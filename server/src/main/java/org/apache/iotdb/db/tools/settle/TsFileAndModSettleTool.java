@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.tools.settle;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.settle.SettleLog;
 import org.apache.iotdb.db.engine.settle.SettleLog.SettleCheckStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -66,7 +67,7 @@ public class TsFileAndModSettleTool {
     for (Map.Entry<String, Integer> entry : getInstance().recoverSettleFileMap.entrySet()) {
       String path = entry.getKey();
       TsFileResource resource = new TsFileResource(new File(path));
-      resource.setClosed(true);
+      resource.setStatus(TsFileResourceStatus.CLOSED);
       oldTsFileResources.put(resource.getTsFile().getName(), resource);
     }
     List<File> tsFiles = checkArgs(args);
@@ -74,7 +75,7 @@ public class TsFileAndModSettleTool {
       if (!oldTsFileResources.containsKey(file.getName())) {
         if (new File(file + TsFileResource.RESOURCE_SUFFIX).exists()) {
           TsFileResource resource = new TsFileResource(file);
-          resource.setClosed(true);
+          resource.setStatus(TsFileResourceStatus.CLOSED);
           oldTsFileResources.put(file.getName(), resource);
         }
       }
@@ -214,9 +215,6 @@ public class TsFileAndModSettleTool {
     try (TsFileRewriteTool tsFileRewriteTool = new TsFileRewriteTool(resourceToBeSettled)) {
       tsFileRewriteTool.parseAndRewriteFile(settledResources);
     }
-    if (settledResources.size() == 0) {
-      resourceToBeSettled.setDeleted(true);
-    }
   }
 
   public static void findFilesToBeRecovered() {
@@ -226,7 +224,7 @@ public class TsFileAndModSettleTool {
               new FileReader(
                   FSFactoryProducer.getFSFactory().getFile(SettleLog.getSettleLogPath())))) {
         String line = null;
-        while ((line = settleLogReader.readLine()) != null && !line.equals("")) {
+        while ((line = settleLogReader.readLine()) != null && !"".equals(line)) {
           String oldFilePath = line.split(SettleLog.COMMA_SEPERATOR)[0];
           int settleCheckStatus = Integer.parseInt(line.split(SettleLog.COMMA_SEPERATOR)[1]);
           if (settleCheckStatus == SettleCheckStatus.SETTLE_SUCCESS.getCheckStatus()) {
@@ -336,7 +334,7 @@ public class TsFileAndModSettleTool {
 
         // move .resource File
         newTsFileResource.setFile(fsFactory.getFile(oldTsFile.getParent(), newTsFile.getName()));
-        newTsFileResource.setClosed(true);
+        newTsFileResource.setStatus(TsFileResourceStatus.CLOSED);
         try {
           newTsFileResource.serialize();
         } catch (IOException e) {
@@ -350,7 +348,9 @@ public class TsFileAndModSettleTool {
         }
       }
       // if the newPartition folder is empty, then it will be deleted
-      if (newPartitionDir.exists()) newPartitionDir.delete();
+      if (newPartitionDir.exists()) {
+        newPartitionDir.delete();
+      }
     }
   }
 

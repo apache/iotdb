@@ -31,7 +31,7 @@ print(long_description)
 
 setuptools.setup(
     name="apache-iotdb",  # Replace with your own username
-    version="0.12.0",
+    version="0.13.0",
     author=" Apache Software Foundation",
     author_email="dev@iotdb.apache.org",
     description="Apache IoTDB client API",
@@ -42,7 +42,10 @@ setuptools.setup(
     install_requires=[
         "thrift>=0.13.0",
         "pandas>=1.0.0,<1.99.99",
+        "numpy>=1.0.0",
         "testcontainers>=2.0.0",
+        "sqlalchemy>=1.3.16, <1.4, !=1.3.21",
+        "sqlalchemy-utils>=0.37.8, <0.38",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -54,4 +57,9 @@ setuptools.setup(
     python_requires=">=3.7",
     license="Apache License, Version 2.0",
     website="https://iotdb.apache.org",
+    entry_points={
+        "sqlalchemy.dialects": [
+            "iotdb = iotdb.sqlalchemy.IoTDBDialect:IoTDBDialect",
+        ],
+    },
 )

@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.expression.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
-import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
-import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,15 +42,14 @@ import java.util.Set;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
-  protected final ZoneId zoneId;
+  protected final UDTFContext udtfContext;
 
-  protected Map<String, UDTFExecutor> expressionName2Executor = new HashMap<>();
-  protected Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
-  protected Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
+  protected final Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
+  protected final Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
 
   public UDTFPlan(ZoneId zoneId) {
     super();
-    this.zoneId = zoneId;
+    udtfContext = new UDTFContext(zoneId);
     setOperatorType(Operator.OperatorType.UDTF);
   }
 
@@ -72,14 +71,10 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
 
-      boolean isUdf =
-          !(resultColumns.get(originalIndex).getExpression() instanceof TimeSeriesOperand);
-
-      String columnForReader = getColumnForReaderFromPath(originalPath, originalIndex);
-      if (!columnForReaderSet.contains(columnForReader)) {
+      String columnForReader = originalPath.getFullPath();
+      if (!columnForReaderSet.contains(columnForReader)
+          && !TimestampOperand.TIMESTAMP_PARTIAL_PATH.getFullPath().equals(columnForReader)) {
         addDeduplicatedPaths(originalPath);
-        addDeduplicatedDataTypes(
-            isUdf ? IoTDB.metaManager.getSeriesType(originalPath) : dataTypes.get(originalIndex));
         pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
         columnForReaderSet.add(columnForReader);
       }
@@ -92,44 +87,63 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
         columnForDisplaySet.add(columnForDisplay);
       }
     }
+
+    // Aligned timeseries is not supported in current query for now.
+    // To judge whether an aligned timeseries is used, we need to traversal all the paths in
+    // deduplicatedPaths.
+    for (PartialPath path : getDeduplicatedPaths()) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (measurementPath.isUnderAlignedEntity()) {
+        throw new MetadataException(
+            "Aligned timeseries is not supported in current query for now.");
+      }
+    }
   }
 
-  private void setDatasetOutputIndexToResultColumnIndex(
+  @Override
+  public List<TSDataType> getWideQueryHeaders(
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList) {
+    List<TSDataType> seriesTypes = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      respColumns.add(resultColumns.get(i).getResultColumnName());
+      seriesTypes.add(resultColumns.get(i).getDataType());
+    }
+    return seriesTypes;
+  }
+
+  protected void setDatasetOutputIndexToResultColumnIndex(
       int datasetOutputIndex, Integer originalIndex) {
     datasetOutputIndexToResultColumnIndex.put(datasetOutputIndex, originalIndex);
   }
 
   @Override
-  public void constructUdfExecutors(List<ResultColumn> resultColumns) {
+  public List<PartialPath> getAuthPaths() {
+    Set<PartialPath> authPaths = new HashSet<>();
     for (ResultColumn resultColumn : resultColumns) {
-      resultColumn.getExpression().constructUdfExecutors(expressionName2Executor, zoneId);
+      authPaths.addAll(resultColumn.collectPaths());
     }
+    return new ArrayList<>(authPaths);
+  }
+
+  @Override
+  public void constructUdfExecutors(List<ResultColumn> resultColumns) {
+    udtfContext.constructUdfExecutors(resultColumns);
   }
 
   @Override
   public void finalizeUDFExecutors(long queryId) {
-    try {
-      for (UDTFExecutor executor : expressionName2Executor.values()) {
-        executor.beforeDestroy();
-      }
-    } finally {
-      UDFClassLoaderManager.getInstance().finalizeUDFQuery(queryId);
-    }
+    udtfContext.finalizeUDFExecutors(queryId);
   }
 
   public ResultColumn getResultColumnByDatasetOutputIndex(int datasetOutputIndex) {
     return resultColumns.get(datasetOutputIndexToResultColumnIndex.get(datasetOutputIndex));
   }
 
-  public UDTFExecutor getExecutorByFunctionExpression(FunctionExpression functionExpression) {
-    return expressionName2Executor.get(functionExpression.getExpressionString());
+  public Integer getReaderIndexByExpressionName(String expressionName) {
+    return pathNameToReaderIndex.get(expressionName);
   }
 
-  public int getReaderIndex(String pathName) {
-    return pathNameToReaderIndex.get(pathName);
-  }
-
-  public void setPathNameToReaderIndex(Map<String, Integer> pathNameToReaderIndex) {
-    this.pathNameToReaderIndex = pathNameToReaderIndex;
+  public UDTFContext getUdtfContext() {
+    return udtfContext;
   }
 }

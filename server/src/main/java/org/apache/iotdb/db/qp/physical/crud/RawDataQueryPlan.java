@@ -18,15 +18,19 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
@@ -40,7 +44,7 @@ import java.util.Set;
 public class RawDataQueryPlan extends QueryPlan {
 
   private List<PartialPath> deduplicatedPaths = new ArrayList<>();
-  private List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
+
   private IExpression expression = null;
   private Map<String, Set<String>> deviceToMeasurements = new HashMap<>();
 
@@ -48,14 +52,8 @@ public class RawDataQueryPlan extends QueryPlan {
   /** used to group all the sub sensors of one vector into VectorPartialPath */
   private List<PartialPath> deduplicatedVectorPaths = new ArrayList<>();
 
-  private List<TSDataType> deduplicatedVectorDataTypes = new ArrayList<>();
-
   public RawDataQueryPlan() {
     super();
-  }
-
-  public RawDataQueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
-    super(isQuery, operatorType);
   }
 
   @Override
@@ -67,7 +65,6 @@ public class RawDataQueryPlan extends QueryPlan {
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
-    Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
     Set<String> columnForReaderSet = new HashSet<>();
     Set<String> columnForDisplaySet = new HashSet<>();
 
@@ -75,11 +72,10 @@ public class RawDataQueryPlan extends QueryPlan {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
 
+      // TODO this method must have some big problem
       String columnForReader = getColumnForReaderFromPath(originalPath, originalIndex);
       if (!columnForReaderSet.contains(columnForReader)) {
         addDeduplicatedPaths(originalPath);
-        addDeduplicatedDataTypes(dataTypes.get(originalIndex));
-        pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
         if (this instanceof AggregationPlan) {
           ((AggregationPlan) this)
               .addDeduplicatedAggregations(getAggregations().get(originalIndex));
@@ -94,9 +90,31 @@ public class RawDataQueryPlan extends QueryPlan {
       }
     }
 
-    // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
-    // vector into one VectorPartialPath
+    // group all the aligned sensors of one device into one AlignedPath
     groupVectorPaths(physicalGenerator);
+  }
+
+  @Override
+  public void convertSpecialClauseValues(SpecialClauseComponent specialClauseComponent)
+      throws QueryProcessException {
+    if (specialClauseComponent != null) {
+      if (!specialClauseComponent.getWithoutNullColumns().isEmpty()) {
+        withoutNullColumnsIndex = new HashSet<>();
+      }
+      for (Expression expression : specialClauseComponent.getWithoutNullColumns()) {
+        if (getPathToIndex().containsKey(expression.getExpressionString())) {
+          withoutNullColumnsIndex.add(getPathToIndex().get(expression.getExpressionString()));
+        } else {
+          throw new QueryProcessException(QueryPlan.WITHOUT_NULL_FILTER_ERROR_MESSAGE);
+        }
+      }
+      setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
+      setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());
+      setRowLimit(specialClauseComponent.getRowLimit());
+      setRowOffset(specialClauseComponent.getRowOffset());
+      setAscending(specialClauseComponent.isAscending());
+      setAlignByTime(specialClauseComponent.isAlignByTime());
+    }
   }
 
   public IExpression getExpression() {
@@ -105,6 +123,19 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public void setExpression(IExpression expression) throws QueryProcessException {
     this.expression = expression;
+    updateDeviceMeasurementsUsingExpression(expression);
+  }
+
+  public void updateDeviceMeasurementsUsingExpression(IExpression expression) {
+    if (expression instanceof SingleSeriesExpression) {
+      Path path = ((SingleSeriesExpression) expression).getSeriesPath();
+      deviceToMeasurements
+          .computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+          .add(path.getMeasurement());
+    } else if (expression instanceof IBinaryExpression) {
+      updateDeviceMeasurementsUsingExpression(((IBinaryExpression) expression).getLeft());
+      updateDeviceMeasurementsUsingExpression(((IBinaryExpression) expression).getRight());
+    }
   }
 
   public List<PartialPath> getDeduplicatedPaths() {
@@ -118,6 +149,10 @@ public class RawDataQueryPlan extends QueryPlan {
     this.deduplicatedPaths.add(path);
   }
 
+  public List<TSDataType> getDeduplicatedDataTypes() {
+    return SchemaUtils.getSeriesTypesByPaths(deduplicatedPaths);
+  }
+
   /**
    * used for AlignByDevice Query, the query is executed by each device, So we only maintain
    * measurements of current device.
@@ -128,9 +163,10 @@ public class RawDataQueryPlan extends QueryPlan {
         path -> {
           Set<String> set =
               deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>());
-          set.add(path.getMeasurement());
-          if (path instanceof VectorPartialPath) {
-            set.addAll(((VectorPartialPath) path).getSubSensorsList());
+          if (path instanceof AlignedPath) {
+            set.addAll(((AlignedPath) path).getMeasurementList());
+          } else {
+            set.add(path.getMeasurement());
           }
         });
     this.deduplicatedPaths = deduplicatedPaths;
@@ -138,18 +174,6 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public void setDeduplicatedPaths(List<PartialPath> deduplicatedPaths) {
     this.deduplicatedPaths = deduplicatedPaths;
-  }
-
-  public List<TSDataType> getDeduplicatedDataTypes() {
-    return deduplicatedDataTypes;
-  }
-
-  public void addDeduplicatedDataTypes(TSDataType dataType) {
-    this.deduplicatedDataTypes.add(dataType);
-  }
-
-  public void setDeduplicatedDataTypes(List<TSDataType> deduplicatedDataTypes) {
-    this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
 
   public Set<String> getAllMeasurementsInDevice(String device) {
@@ -168,43 +192,26 @@ public class RawDataQueryPlan extends QueryPlan {
 
   /**
    * Group all the subSensors of one vector into one VectorPartialPath save the grouped
-   * VectorPartialPath in deduplicatedVectorPaths and deduplicatedVectorDataTypes instead of putting
-   * them directly into deduplicatedPaths and deduplicatedDataTypes, because we don't know whether
-   * the raw query has value filter here.
+   * VectorPartialPath in deduplicatedVectorPaths instead of putting them directly into
+   * deduplicatedPaths, because we don't know whether the raw query has value filter here.
    */
   public void groupVectorPaths(PhysicalGenerator physicalGenerator) throws MetadataException {
     List<PartialPath> vectorizedDeduplicatedPaths =
         physicalGenerator.groupVectorPaths(getDeduplicatedPaths());
-    List<TSDataType> vectorizedDeduplicatedDataTypes =
-        new ArrayList<>(physicalGenerator.getSeriesTypes(vectorizedDeduplicatedPaths));
     setDeduplicatedVectorPaths(vectorizedDeduplicatedPaths);
-    setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
-  }
-
-  public List<PartialPath> getDeduplicatedVectorPaths() {
-    return deduplicatedVectorPaths;
   }
 
   public void setDeduplicatedVectorPaths(List<PartialPath> deduplicatedVectorPaths) {
     this.deduplicatedVectorPaths = deduplicatedVectorPaths;
   }
 
-  public List<TSDataType> getDeduplicatedVectorDataTypes() {
-    return deduplicatedVectorDataTypes;
-  }
-
-  public void setDeduplicatedVectorDataTypes(List<TSDataType> deduplicatedVectorDataTypes) {
-    this.deduplicatedVectorDataTypes = deduplicatedVectorDataTypes;
-  }
-
   /**
    * RawQueryWithoutValueFilter should call this method to use grouped vector partial path to
-   * replace the previous deduplicatedPaths and deduplicatedDataTypes
+   * replace the previous deduplicatedPaths
    */
   public void transformToVector() {
     if (!this.deduplicatedVectorPaths.isEmpty()) {
       this.deduplicatedPaths = this.deduplicatedVectorPaths;
-      this.deduplicatedDataTypes = this.deduplicatedVectorDataTypes;
     }
   }
 }

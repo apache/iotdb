@@ -22,9 +22,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,7 +37,7 @@ import java.util.Map;
  *
  * <p>time, m1, m2, m3 1, 1, 2, 3 2, 1, 2, 3 3, 1, 2, 3
  *
- * <p>Notice: The tablet should not have empty cell
+ * <p>Notice: The tablet should not have empty cell, please use BitMap to denote null value
  */
 public class Tablet {
 
@@ -47,13 +45,13 @@ public class Tablet {
   private static final String NOT_SUPPORT_DATATYPE = "Data type %s is not supported.";
 
   /** deviceId of this tablet */
-  public String prefixPath;
+  public String deviceId;
 
   /** the list of measurement schemas for creating the tablet */
-  private List<IMeasurementSchema> schemas;
+  private List<MeasurementSchema> schemas;
 
   /** measurementId->indexOf(measurementSchema) */
-  private Map<String, Integer> measurementIndex;
+  private final Map<String, Integer> measurementIndex;
 
   /** timestamps in this tablet */
   public long[] timestamps;
@@ -64,46 +62,38 @@ public class Tablet {
   /** the number of rows to include in this tablet */
   public int rowSize;
   /** the maximum number of rows for this tablet */
-  private int maxRowNumber;
-  /** whether this tablet store data of aligned timeseries or not */
-  private boolean isAligned;
+  private final int maxRowNumber;
 
   /**
    * Return a tablet with default specified row number. This is the standard constructor (all Tablet
    * should be the same size).
    *
-   * @param prefixPath the name of the device specified to be written in
+   * @param deviceId the name of the device specified to be written in
    * @param schemas the list of measurement schemas for creating the tablet, only measurementId and
    *     type take effects
    */
-  public Tablet(String prefixPath, List<IMeasurementSchema> schemas) {
-    this(prefixPath, schemas, DEFAULT_SIZE);
+  public Tablet(String deviceId, List<MeasurementSchema> schemas) {
+    this(deviceId, schemas, DEFAULT_SIZE);
   }
 
   /**
    * Return a tablet with the specified number of rows (maxBatchSize). Only call this constructor
    * directly for testing purposes. Tablet should normally always be default size.
    *
-   * @param prefixPath the name of the device specified to be written in
+   * @param deviceId the name of the device specified to be written in
    * @param schemas the list of measurement schemas for creating the row batch, only measurementId
    *     and type take effects
    * @param maxRowNumber the maximum number of rows for this tablet
    */
-  public Tablet(String prefixPath, List<IMeasurementSchema> schemas, int maxRowNumber) {
-    this.prefixPath = prefixPath;
+  public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {
+    this.deviceId = deviceId;
     this.schemas = new ArrayList<>(schemas);
     this.maxRowNumber = maxRowNumber;
     measurementIndex = new HashMap<>();
 
     int indexInSchema = 0;
-    for (IMeasurementSchema schema : schemas) {
-      if (schema.getType() == TSDataType.VECTOR) {
-        for (String measurementId : schema.getSubMeasurementsList()) {
-          measurementIndex.put(measurementId, indexInSchema);
-        }
-      } else {
-        measurementIndex.put(schema.getMeasurementId(), indexInSchema);
-      }
+    for (MeasurementSchema schema : schemas) {
+      measurementIndex.put(schema.getMeasurementId(), indexInSchema);
       indexInSchema++;
     }
 
@@ -112,8 +102,19 @@ public class Tablet {
     reset();
   }
 
-  public void setPrefixPath(String prefixPath) {
-    this.prefixPath = prefixPath;
+  public void setDeviceId(String deviceId) {
+    this.deviceId = deviceId;
+  }
+
+  public void setSchemas(List<MeasurementSchema> schemas) {
+    this.schemas = schemas;
+  }
+
+  public void initBitMaps() {
+    this.bitMaps = new BitMap[schemas.size()];
+    for (int column = 0; column < schemas.size(); column++) {
+      this.bitMaps[column] = new BitMap(getMaxRowNumber());
+    }
   }
 
   public void addTimestamp(int rowIndex, long timestamp) {
@@ -122,14 +123,8 @@ public class Tablet {
 
   public void addValue(String measurementId, int rowIndex, Object value) {
     int indexOfSchema = measurementIndex.get(measurementId);
-    IMeasurementSchema measurementSchema = schemas.get(indexOfSchema);
-    if (measurementSchema.getType().equals(TSDataType.VECTOR)) {
-      int indexInVector = measurementSchema.getSubMeasurementIndex(measurementId);
-      TSDataType dataType = measurementSchema.getSubMeasurementsTSDataTypeList().get(indexInVector);
-      addValueOfDataType(dataType, rowIndex, indexInVector, value);
-    } else {
-      addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfSchema, value);
-    }
+    MeasurementSchema measurementSchema = schemas.get(indexOfSchema);
+    addValueOfDataType(measurementSchema.getType(), rowIndex, indexOfSchema, value);
   }
 
   private void addValueOfDataType(
@@ -150,7 +145,11 @@ public class Tablet {
       case TEXT:
         {
           Binary[] sensor = (Binary[]) values[indexOfSchema];
-          sensor[rowIndex] = value != null ? (Binary) value : Binary.EMPTY_VALUE;
+          if (value instanceof Binary) {
+            sensor[rowIndex] = (Binary) value;
+          } else {
+            sensor[rowIndex] = value != null ? new Binary((String) value) : Binary.EMPTY_VALUE;
+          }
           break;
         }
       case FLOAT:
@@ -188,7 +187,7 @@ public class Tablet {
     }
   }
 
-  public List<IMeasurementSchema> getSchemas() {
+  public List<MeasurementSchema> getSchemas() {
     return schemas;
   }
 
@@ -214,36 +213,16 @@ public class Tablet {
     timestamps = new long[maxRowNumber];
 
     // calculate total value column size
-    int valueColumnsSize = 0;
-    for (IMeasurementSchema schema : schemas) {
-      if (schema instanceof VectorMeasurementSchema) {
-        valueColumnsSize += schema.getSubMeasurementsList().size();
-      } else {
-        valueColumnsSize++;
-      }
-    }
+    int valueColumnsSize = schemas.size();
 
     // value column
     values = new Object[valueColumnsSize];
     int columnIndex = 0;
-    for (IMeasurementSchema schema : schemas) {
+    for (MeasurementSchema schema : schemas) {
       TSDataType dataType = schema.getType();
-      if (dataType.equals(TSDataType.VECTOR)) {
-        columnIndex = buildVectorColumns((VectorMeasurementSchema) schema, columnIndex);
-      } else {
-        values[columnIndex] = createValueColumnOfDataType(dataType);
-        columnIndex++;
-      }
+      values[columnIndex] = createValueColumnOfDataType(dataType);
+      columnIndex++;
     }
-  }
-
-  private int buildVectorColumns(VectorMeasurementSchema schema, int idx) {
-    for (int i = 0; i < schema.getSubMeasurementsList().size(); i++) {
-      TSDataType dataType = schema.getSubMeasurementsTSDataTypeList().get(i);
-      values[idx] = createValueColumnOfDataType(dataType);
-      idx++;
-    }
-    return idx;
   }
 
   private Object createValueColumnOfDataType(TSDataType dataType) {
@@ -282,18 +261,9 @@ public class Tablet {
   public int getTotalValueOccupation() {
     int valueOccupation = 0;
     int columnIndex = 0;
-    for (int i = 0; i < schemas.size(); i++) {
-      IMeasurementSchema schema = schemas.get(i);
-      if (schema instanceof UnaryMeasurementSchema) {
-        valueOccupation += calOccupationOfOneColumn(schema.getType(), columnIndex);
-        columnIndex++;
-      } else {
-        for (int j = 0; j < schema.getSubMeasurementsTSDataTypeList().size(); j++) {
-          TSDataType dataType = schema.getSubMeasurementsTSDataTypeList().get(j);
-          valueOccupation += calOccupationOfOneColumn(dataType, columnIndex);
-          columnIndex++;
-        }
-      }
+    for (MeasurementSchema schema : schemas) {
+      valueOccupation += calOccupationOfOneColumn(schema.getType(), columnIndex);
+      columnIndex++;
     }
     // add bitmap size if the tablet has bitMaps
     if (bitMaps != null) {
@@ -333,13 +303,5 @@ public class Tablet {
         throw new UnSupportedDataTypeException(String.format(NOT_SUPPORT_DATATYPE, dataType));
     }
     return valueOccupation;
-  }
-
-  public boolean isAligned() {
-    return isAligned;
-  }
-
-  public void setAligned(boolean aligned) {
-    isAligned = aligned;
   }
 }

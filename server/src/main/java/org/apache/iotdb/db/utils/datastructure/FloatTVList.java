@@ -20,12 +20,18 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.utils.MathUtils;
+import org.apache.iotdb.db.wal.buffer.IWALByteBufferView;
+import org.apache.iotdb.db.wal.utils.WALWriteUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -49,20 +55,20 @@ public class FloatTVList extends TVList {
   @Override
   public void putFloat(long timestamp, float value) {
     checkExpansion();
-    int arrayIndex = size / ARRAY_SIZE;
-    int elementIndex = size % ARRAY_SIZE;
+    int arrayIndex = rowCount / ARRAY_SIZE;
+    int elementIndex = rowCount % ARRAY_SIZE;
     minTime = Math.min(minTime, timestamp);
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     values.get(arrayIndex)[elementIndex] = value;
-    size++;
-    if (sorted && size > 1 && timestamp < getTime(size - 2)) {
+    rowCount++;
+    if (sorted && rowCount > 1 && timestamp < getTime(rowCount - 2)) {
       sorted = false;
     }
   }
 
   @Override
   public float getFloat(int index) {
-    if (index >= size) {
+    if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
@@ -71,7 +77,7 @@ public class FloatTVList extends TVList {
   }
 
   protected void set(int index, long timestamp, float value) {
-    if (index >= size) {
+    if (index >= rowCount) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
     int arrayIndex = index / ARRAY_SIZE;
@@ -98,15 +104,17 @@ public class FloatTVList extends TVList {
 
   @Override
   public void sort() {
-    if (sortedTimestamps == null || sortedTimestamps.length < size) {
+    if (sortedTimestamps == null
+        || sortedTimestamps.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
       sortedTimestamps =
-          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, size);
+          (long[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.INT64, rowCount);
     }
-    if (sortedValues == null || sortedValues.length < size) {
+    if (sortedValues == null
+        || sortedValues.length < PrimitiveArrayManager.getArrayRowCount(rowCount)) {
       sortedValues =
-          (float[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.FLOAT, size);
+          (float[][]) PrimitiveArrayManager.createDataListsByType(TSDataType.FLOAT, rowCount);
     }
-    sort(0, size);
+    sort(0, rowCount);
     clearSortedValue();
     clearSortedTime();
     sorted = true;
@@ -196,6 +204,25 @@ public class FloatTVList extends TVList {
   }
 
   @Override
+  protected void writeValidValuesIntoTsBlock(
+      TsBlockBuilder builder,
+      int floatPrecision,
+      TSEncoding encoding,
+      List<TimeRange> deletionList) {
+    Integer deleteCursor = 0;
+    for (int i = 0; i < rowCount; i++) {
+      if (!isPointDeleted(getTime(i), deletionList, deleteCursor)
+          && (i == rowCount - 1 || getTime(i) != getTime(i + 1))) {
+        builder.getTimeColumnBuilder().writeLong(getTime(i));
+        builder
+            .getColumnBuilder(0)
+            .writeFloat(roundValueWithGivenPrecision(getFloat(i), floatPrecision, encoding));
+        builder.declarePosition();
+      }
+    }
+  }
+
+  @Override
   protected void releaseLastValueArray() {
     PrimitiveArrayManager.release(values.remove(values.size() - 1));
   }
@@ -223,15 +250,15 @@ public class FloatTVList extends TVList {
 
     while (idx < end) {
       int inputRemaining = end - idx;
-      int arrayIdx = size / ARRAY_SIZE;
-      int elementIdx = size % ARRAY_SIZE;
+      int arrayIdx = rowCount / ARRAY_SIZE;
+      int elementIdx = rowCount % ARRAY_SIZE;
       int internalRemaining = ARRAY_SIZE - elementIdx;
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
         System.arraycopy(
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
-        size += inputRemaining;
+        rowCount += inputRemaining;
         break;
       } else {
         // the remaining inputs cannot fit the last array, fill the last array and create a new
@@ -240,7 +267,7 @@ public class FloatTVList extends TVList {
             time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
         idx += internalRemaining;
-        size += internalRemaining;
+        rowCount += internalRemaining;
         checkExpansion();
       }
     }
@@ -272,12 +299,40 @@ public class FloatTVList extends TVList {
       }
     }
     minTime = Math.min(inPutMinTime, minTime);
-    sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
+    sorted = sorted && inputSorted && (rowCount == 0 || inPutMinTime >= getTime(rowCount - 1));
     return nullCnt;
   }
 
   @Override
   public TSDataType getDataType() {
     return TSDataType.FLOAT;
+  }
+
+  @Override
+  public int serializedSize() {
+    return Byte.BYTES + Integer.BYTES + rowCount * (Long.BYTES + Float.BYTES);
+  }
+
+  @Override
+  public void serializeToWAL(IWALByteBufferView buffer) {
+    WALWriteUtils.write(TSDataType.FLOAT, buffer);
+    buffer.putInt(rowCount);
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      buffer.putLong(getTime(rowIdx));
+      buffer.putFloat(getFloat(rowIdx));
+    }
+  }
+
+  public static FloatTVList deserialize(DataInputStream stream) throws IOException {
+    FloatTVList tvList = new FloatTVList();
+    int rowCount = stream.readInt();
+    long[] times = new long[rowCount];
+    float[] values = new float[rowCount];
+    for (int rowIdx = 0; rowIdx < rowCount; ++rowIdx) {
+      times[rowIdx] = stream.readLong();
+      values[rowIdx] = stream.readFloat();
+    }
+    tvList.putFloats(times, values, null, 0, rowCount);
+    return tvList;
   }
 }

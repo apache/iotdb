@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.lastCache.container.LastCacheContainer;
+import org.apache.iotdb.db.metadata.mnode.visitor.MNodeVisitor;
 
 import java.util.Collections;
 import java.util.Map;
@@ -35,9 +36,17 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   @SuppressWarnings("squid:S3077")
   private transient volatile Map<String, IMeasurementMNode> aliasChildren = null;
 
-  private volatile boolean useTemplate = false;
+  private volatile boolean isAligned = false;
 
   private volatile Map<String, ILastCacheContainer> lastCacheMap = null;
+
+  @Override
+  public String getFullPath() {
+    if (fullPath == null) {
+      fullPath = concatFullPath().intern();
+    }
+    return fullPath;
+  }
 
   /**
    * Constructor of MNode.
@@ -106,13 +115,13 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   @Override
-  public boolean isUseTemplate() {
-    return useTemplate;
+  public boolean isAligned() {
+    return isAligned;
   }
 
   @Override
-  public void setUseTemplate(boolean useTemplate) {
-    this.useTemplate = useTemplate;
+  public void setAligned(boolean isAligned) {
+    this.isAligned = isAligned;
   }
 
   public ILastCacheContainer getLastCacheContainer(String measurementId) {
@@ -136,7 +145,30 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   @Override
+  public void moveDataToNewMNode(IMNode newMNode) {
+    super.moveDataToNewMNode(newMNode);
+
+    if (newMNode.isEntity()) {
+      IEntityMNode newEntityMNode = newMNode.getAsEntityMNode();
+      newEntityMNode.setAligned(isAligned);
+      if (aliasChildren != null) {
+        newEntityMNode.setAliasChildren(aliasChildren);
+      }
+    }
+  }
+
+  @Override
   public boolean isEntity() {
     return true;
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.DEVICE;
+  }
+
+  @Override
+  public <R, C> R accept(MNodeVisitor<R, C> visitor, C context) {
+    return visitor.visitEntityMNode(this, context);
   }
 }

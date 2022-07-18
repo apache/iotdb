@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.engine.trigger.sink.local;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
 import org.apache.iotdb.db.engine.trigger.sink.exception.SinkException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -64,15 +64,15 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
       TSDataType dataType = dataTypes[i];
 
       PartialPath path = new PartialPath(device.getFullPath(), measurement);
-      if (!IoTDB.metaManager.isPathExist(path)) {
-        IoTDB.metaManager.createTimeseries(
+      if (!IoTDB.schemaProcessor.isPathExist(path)) {
+        IoTDB.schemaProcessor.createTimeseries(
             path,
             dataType,
             getDefaultEncoding(dataType),
             TSFileDescriptor.getInstance().getConfig().getCompressor(),
             Collections.emptyMap());
       } else {
-        if (!IoTDB.metaManager.getSeriesSchema(device, measurement).getType().equals(dataType)) {
+        if (!IoTDB.schemaProcessor.getSeriesType(path).equals(dataType)) {
           throw new SinkException(
               String.format("The data type of %s you provided was not correct.", path));
         }
@@ -85,7 +85,7 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setNeedInferType(false);
-    plan.setPrefixPath(device);
+    plan.setDevicePath(device);
     plan.setMeasurements(measurements);
     plan.setDataTypes(dataTypes);
     plan.setTime(event.getTimestamp());

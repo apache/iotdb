@@ -19,8 +19,9 @@
 
 package org.apache.iotdb.db.engine.flush.pool;
 
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.db.rescon.AbstractPoolManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

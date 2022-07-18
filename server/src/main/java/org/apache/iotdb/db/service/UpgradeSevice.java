@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
@@ -29,7 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class UpgradeSevice implements IService {
@@ -37,8 +39,7 @@ public class UpgradeSevice implements IService {
   private static final Logger logger = LoggerFactory.getLogger(UpgradeSevice.class);
 
   private ExecutorService upgradeThreadPool;
-  private AtomicInteger threadCnt = new AtomicInteger();
-  private static AtomicInteger cntUpgradeFileNum = new AtomicInteger();
+  private static final AtomicInteger cntUpgradeFileNum = new AtomicInteger();
 
   private UpgradeSevice() {}
 
@@ -58,9 +59,7 @@ public class UpgradeSevice implements IService {
     if (updateThreadNum <= 0) {
       updateThreadNum = 1;
     }
-    upgradeThreadPool =
-        Executors.newFixedThreadPool(
-            updateThreadNum, r -> new Thread(r, "UpgradeThread-" + threadCnt.getAndIncrement()));
+    upgradeThreadPool = IoTDBThreadPoolFactory.newFixedThreadPool(updateThreadNum, "UpgradeThread");
     UpgradeLog.createUpgradeLog();
     countUpgradeFiles();
     if (cntUpgradeFileNum.get() == 0) {

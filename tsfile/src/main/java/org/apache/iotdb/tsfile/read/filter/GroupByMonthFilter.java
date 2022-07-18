@@ -19,7 +19,12 @@
 package org.apache.iotdb.tsfile.read.filter;
 
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Calendar;
 import java.util.Objects;
 import java.util.TimeZone;
@@ -30,14 +35,23 @@ import java.util.TimeZone;
  */
 public class GroupByMonthFilter extends GroupByFilter {
 
-  private final boolean isSlidingStepByMonth;
-  private final boolean isIntervalByMonth;
   private int slidingStepsInMo;
   private int intervalInMo;
   private Calendar calendar = Calendar.getInstance();
   private static final long MS_TO_MONTH = 30 * 86400_000L;
   /** 10.31 -> 11.30 -> 12.31, not 10.31 -> 11.30 -> 12.30 */
-  private final long initialStartTime;
+  private long initialStartTime;
+
+  // These fields will be serialized to remote nodes, as other fields may be updated during process
+  private TimeZone timeZone;
+  private boolean isSlidingStepByMonth;
+  private boolean isIntervalByMonth;
+  private long originalSlidingStep;
+  private long originalInterval;
+  private long originalStartTime;
+  private long originalEndTime;
+
+  public GroupByMonthFilter() {}
 
   public GroupByMonthFilter(
       long interval,
@@ -48,19 +62,11 @@ public class GroupByMonthFilter extends GroupByFilter {
       boolean isIntervalByMonth,
       TimeZone timeZone) {
     super(interval, slidingStep, startTime, endTime);
-    initialStartTime = startTime;
-    calendar.setTimeZone(timeZone);
-    calendar.setTimeInMillis(startTime);
-    this.isIntervalByMonth = isIntervalByMonth;
-    this.isSlidingStepByMonth = isSlidingStepByMonth;
-    if (isIntervalByMonth) {
-      // TODO: 1mo1d
-      intervalInMo = (int) (interval / MS_TO_MONTH);
-    }
-    if (isSlidingStepByMonth) {
-      slidingStepsInMo = (int) (slidingStep / MS_TO_MONTH);
-    }
-    getNthTimeInterval(0);
+    this.originalInterval = interval;
+    this.originalSlidingStep = slidingStep;
+    this.originalStartTime = startTime;
+    this.originalEndTime = endTime;
+    initMonthGroupByParameters(isSlidingStepByMonth, isIntervalByMonth, timeZone);
   }
 
   public GroupByMonthFilter(GroupByMonthFilter filter) {
@@ -70,9 +76,14 @@ public class GroupByMonthFilter extends GroupByFilter {
     intervalInMo = filter.intervalInMo;
     slidingStepsInMo = filter.slidingStepsInMo;
     initialStartTime = filter.initialStartTime;
+    originalStartTime = filter.originalStartTime;
+    originalEndTime = filter.originalEndTime;
+    originalSlidingStep = filter.originalSlidingStep;
+    originalInterval = filter.originalInterval;
     calendar = Calendar.getInstance();
     calendar.setTimeZone(filter.calendar.getTimeZone());
     calendar.setTimeInMillis(filter.calendar.getTimeInMillis());
+    timeZone = filter.timeZone;
   }
 
   // TODO: time descending order
@@ -133,6 +144,40 @@ public class GroupByMonthFilter extends GroupByFilter {
     }
   }
 
+  @Override
+  public void serialize(DataOutputStream outputStream) {
+    try {
+      outputStream.write(getSerializeId().ordinal());
+      ReadWriteIOUtils.write(originalInterval, outputStream);
+      ReadWriteIOUtils.write(originalSlidingStep, outputStream);
+      ReadWriteIOUtils.write(originalStartTime, outputStream);
+      ReadWriteIOUtils.write(originalEndTime, outputStream);
+      ReadWriteIOUtils.write(isSlidingStepByMonth, outputStream);
+      ReadWriteIOUtils.write(isIntervalByMonth, outputStream);
+      ReadWriteIOUtils.write(timeZone.getID(), outputStream);
+    } catch (IOException ignored) {
+      // ignored
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    originalInterval = ReadWriteIOUtils.readLong(buffer);
+    originalSlidingStep = ReadWriteIOUtils.readLong(buffer);
+    originalStartTime = ReadWriteIOUtils.readLong(buffer);
+    originalEndTime = ReadWriteIOUtils.readLong(buffer);
+    isSlidingStepByMonth = ReadWriteIOUtils.readBool(buffer);
+    isIntervalByMonth = ReadWriteIOUtils.readBool(buffer);
+    timeZone = TimeZone.getTimeZone(ReadWriteIOUtils.readString(buffer));
+
+    interval = originalInterval;
+    slidingStep = originalSlidingStep;
+    startTime = originalStartTime;
+    endTime = originalEndTime;
+
+    initMonthGroupByParameters(isSlidingStepByMonth, isIntervalByMonth, timeZone);
+  }
+
   private boolean isContainedByCurrentInterval(long startTime, long endTime) {
     if (startTime < this.startTime || endTime > this.endTime) {
       return false;
@@ -147,18 +192,40 @@ public class GroupByMonthFilter extends GroupByFilter {
       return false;
     }
     GroupByMonthFilter other = (GroupByMonthFilter) obj;
-    return this.interval == other.interval
-        && this.slidingStep == other.slidingStep
-        && this.startTime == other.startTime
-        && this.endTime == other.endTime
+    return this.originalInterval == other.originalInterval
+        && this.originalSlidingStep == other.originalSlidingStep
+        && this.originalStartTime == other.originalStartTime
+        && this.originalEndTime == other.originalEndTime
         && this.isSlidingStepByMonth == other.isSlidingStepByMonth
-        && this.isIntervalByMonth == other.isIntervalByMonth;
+        && this.isIntervalByMonth == other.isIntervalByMonth
+        && this.timeZone.equals(other.timeZone)
+        && this.initialStartTime == other.initialStartTime
+        && this.intervalInMo == other.intervalInMo
+        && this.slidingStepsInMo == other.slidingStepsInMo;
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
         interval, slidingStep, startTime, endTime, isSlidingStepByMonth, isIntervalByMonth);
+  }
+
+  private void initMonthGroupByParameters(
+      boolean isSlidingStepByMonth, boolean isIntervalByMonth, TimeZone timeZone) {
+    initialStartTime = startTime;
+    calendar.setTimeZone(timeZone);
+    calendar.setTimeInMillis(startTime);
+    this.timeZone = timeZone;
+    this.isIntervalByMonth = isIntervalByMonth;
+    this.isSlidingStepByMonth = isSlidingStepByMonth;
+    if (isIntervalByMonth) {
+      // TODO: 1mo1d
+      intervalInMo = (int) (interval / MS_TO_MONTH);
+    }
+    if (isSlidingStepByMonth) {
+      slidingStepsInMo = (int) (slidingStep / MS_TO_MONTH);
+    }
+    getNthTimeInterval(0);
   }
 
   /** Get the interval that @param time belongs to. */
@@ -209,5 +276,10 @@ public class GroupByMonthFilter extends GroupByFilter {
       calendar.add(Calendar.MONTH, (int) (slidingStepsInMo * (n + 1)));
       this.slidingStep = calendar.getTimeInMillis() - startTime;
     }
+  }
+
+  @Override
+  public FilterSerializeId getSerializeId() {
+    return FilterSerializeId.GROUP_BY_MONTH;
   }
 }

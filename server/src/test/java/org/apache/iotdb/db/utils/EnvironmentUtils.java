@@ -18,35 +18,43 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.commons.auth.AuthException;
+import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.exception.UDFRegistrationException;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
-import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
+import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
+import org.apache.iotdb.db.wal.WALManager;
+import org.apache.iotdb.db.wal.recover.WALRecoverManager;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
+import org.apache.iotdb.udf.api.exception.UDFRegistrationException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.thrift.TConfiguration;
@@ -92,7 +100,7 @@ public class EnvironmentUtils {
 
   public static void cleanEnv() throws IOException, StorageEngineException {
     // wait all compaction finished
-    CompactionMergeTaskPoolManager.getInstance().waitAllCompactionFinish();
+    CompactionTaskManager.getInstance().waitAllCompactionFinish();
 
     // deregister all user defined classes
     try {
@@ -103,7 +111,7 @@ public class EnvironmentUtils {
       fail(e.getMessage());
     }
 
-    logger.warn("EnvironmentUtil cleanEnv...");
+    logger.debug("EnvironmentUtil cleanEnv...");
     if (daemon != null) {
       daemon.stop();
       daemon = null;
@@ -130,6 +138,10 @@ public class EnvironmentUtils {
       }
     }
 
+    // clean wal manager
+    WALManager.getInstance().clear();
+    WALRecoverManager.getInstance().clear();
+
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
       logger.error("Can't close the storage group manager in EnvironmentUtils");
@@ -137,14 +149,18 @@ public class EnvironmentUtils {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
+    // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
+    // unit tests.
+    IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
 
     // clean cache
     if (config.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
+      BloomFilterCache.getInstance().clear();
     }
     // close metadata
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
 
     QueryTimeManager.getInstance().clear();
 
@@ -159,6 +175,15 @@ public class EnvironmentUtils {
 
     // clear tsFileResource manager info
     TsFileResourceManager.getInstance().clear();
+
+    // clear id table manager
+    IDTableManager.getInstance().clear();
+
+    // clear last query executor
+    LastQueryExecutor.clear();
+
+    // clear pipe data queue
+    PipeDataQueueFactory.clear();
 
     // delete all directory
     cleanAllDir();
@@ -203,8 +228,8 @@ public class EnvironmentUtils {
     }
     // try MetricService
     try (Socket socket = new Socket()) {
-      socket.connect(new InetSocketAddress("127.0.0.1", 8181), 100);
-      logger.error("stop MetricService failed. 8181 can be connected now.");
+      socket.connect(new InetSocketAddress("127.0.0.1", 9091), 100);
+      logger.error("stop MetricService failed. 9091 can be connected now.");
       return false;
     } catch (Exception e) {
       // do nothing
@@ -224,8 +249,6 @@ public class EnvironmentUtils {
     }
     // delete system info
     cleanDir(config.getSystemDir());
-    // delete wal
-    cleanDir(config.getWalDir());
     // delete query
     cleanDir(config.getQueryDir());
     // delete tracing
@@ -234,6 +257,18 @@ public class EnvironmentUtils {
     cleanDir(config.getUdfDir());
     // delete tlog
     cleanDir(config.getTriggerDir());
+    // delete extPipe
+    cleanDir(config.getExtPipeDir());
+    // delete ext
+    cleanDir(config.getExtDir());
+    // delete mqtt dir
+    cleanDir(config.getMqttDir());
+    // delete wal
+    for (String walDir : config.getWalDirs()) {
+      cleanDir(walDir);
+    }
+    // delete sync dir
+    cleanDir(config.getSyncDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
       cleanDir(dataDir);
@@ -244,28 +279,29 @@ public class EnvironmentUtils {
     FileUtils.deleteDirectory(new File(dir));
   }
 
-  /** disable the system monitor</br> this function should be called before all code in the setup */
-  public static void closeStatMonitor() {
-    config.setEnableStatMonitor(false);
-  }
-
   /** disable memory control</br> this function should be called before all code in the setup */
   public static void envSetUp() {
-    logger.warn("EnvironmentUtil setup...");
-    IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(60);
-    // we do not start 8181 port in test.
-    IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
-    IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    logger.debug("EnvironmentUtil setup...");
+    config.setThriftServerAwaitTimeForStopService(60);
+    // we do not start 9091 port in test.
+    MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
+    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
+    // use async wal mode in test
+    config.setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     if (daemon == null) {
       daemon = new IoTDB();
     }
     try {
       EnvironmentUtils.daemon.active();
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
     createAllDir();
+
+    // reset id method
+    DeviceIDFactory.getInstance().reset();
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
@@ -301,8 +337,11 @@ public class EnvironmentUtils {
   public static void restartDaemon() throws Exception {
     shutdownDaemon();
     stopDaemon();
-    IoTDB.metaManager.clear();
+    IoTDB.configManager.clear();
+    IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
+    WALManager.getInstance().clear();
+    WALRecoverManager.getInstance().clear();
     reactiveDaemon();
   }
 
@@ -320,18 +359,22 @@ public class EnvironmentUtils {
     // create sg dir
     String sgDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     createDir(sgDir);
-    // create wal
-    createDir(config.getWalDir());
+    // create sync
+    createDir(config.getSyncDir());
     // create query
     createDir(config.getQueryDir());
     createDir(TestConstant.OUTPUT_DATA_DIR);
+    // create wal
+    for (String walDir : config.getWalDirs()) {
+      createDir(walDir);
+    }
     // create data
     for (String dataDir : config.getDataDirs()) {
       createDir(dataDir);
     }
     // create user and roles folder
     try {
-      BasicAuthorizer.getInstance().reset();
+      AuthorizerManager.getInstance().reset();
     } catch (AuthException e) {
       logger.error("create user and role folders failed", e);
       fail(e.getMessage());

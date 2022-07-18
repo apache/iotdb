@@ -22,8 +22,7 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -144,8 +143,8 @@ public class TabletExample {
     measureTSTypeInfos.put("s3", TSDataType.DOUBLE);
     measureTSTypeInfos.put("s4", TSDataType.INT64);
     measureTSTypeInfos.put("s5", TSDataType.TEXT);
-    List<IMeasurementSchema> schemas = new ArrayList<>();
-    measureTSTypeInfos.forEach((mea, type) -> schemas.add(new UnaryMeasurementSchema(mea, type)));
+    List<MeasurementSchema> schemas = new ArrayList<>();
+    measureTSTypeInfos.forEach((mea, type) -> schemas.add(new MeasurementSchema(mea, type)));
 
     System.out.println(
         String.format(

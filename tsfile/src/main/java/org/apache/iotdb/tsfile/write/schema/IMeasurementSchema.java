@@ -39,6 +39,8 @@ public interface IMeasurementSchema {
 
   TSDataType getType();
 
+  byte getTypeInByte();
+
   void setType(TSDataType dataType);
 
   TSEncoding getTimeTSEncoding();
@@ -63,6 +65,8 @@ public interface IMeasurementSchema {
 
   /* test whether the schema contains Measurement with given measurementId */
   boolean containsSubMeasurement(String measurementId);
+
+  int serializedSize();
 
   int serializeTo(ByteBuffer buffer);
 

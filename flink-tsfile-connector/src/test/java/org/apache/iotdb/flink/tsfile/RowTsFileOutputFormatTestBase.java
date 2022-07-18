@@ -21,14 +21,14 @@ package org.apache.iotdb.flink.tsfile;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -58,13 +58,11 @@ public abstract class RowTsFileOutputFormatTestBase extends RowTsFileConnectorTe
   protected TSRecordOutputFormat<Row> prepareTSRecordOutputFormat(String path) {
     schema = new Schema();
     schema.extendTemplate(
-        DEFAULT_TEMPLATE, new UnaryMeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
+        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(
-        DEFAULT_TEMPLATE,
-        new UnaryMeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
     schema.extendTemplate(
-        DEFAULT_TEMPLATE,
-        new UnaryMeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        DEFAULT_TEMPLATE, new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
     rowTSRecordConverter = new RowTSRecordConverter(rowTypeInfo);
     return new TSRecordOutputFormat<>(path, schema, rowTSRecordConverter, config);
   }
@@ -106,7 +104,7 @@ public abstract class RowTsFileOutputFormatTestBase extends RowTsFileConnectorTe
   protected String[] readTsFile(String tsFilePath, List<Path> paths) throws IOException {
     QueryExpression expression = QueryExpression.create(paths, null);
     TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-    ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
+    TsFileReader readTsFile = new TsFileReader(reader);
     QueryDataSet queryDataSet = readTsFile.query(expression);
     List<String> result = new ArrayList<>();
     while (queryDataSet.hasNext()) {

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
@@ -45,6 +46,7 @@ public class MinValueAggrResult extends AggregateResult {
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
+    setTime(statistics.getStartTime());
     updateResult(minVal);
   }
 
@@ -56,12 +58,13 @@ public class MinValueAggrResult extends AggregateResult {
   @Override
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
-    while (batchIterator.hasNext()
+    while (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       updateResult((Comparable<Object>) batchIterator.currentValue());
       batchIterator.next();
     }
+    setTime(minBound);
   }
 
   @Override
@@ -74,17 +77,20 @@ public class MinValueAggrResult extends AggregateResult {
         minVal = (Comparable<Object>) values[i];
       }
     }
+    setTime(timestamps[0]);
     updateResult(minVal);
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
     Comparable<Object> minVal = null;
-    for (int i = 0; i < length; i++) {
-      if (values[i] != null && (minVal == null || minVal.compareTo(values[i]) > 0)) {
-        minVal = (Comparable<Object>) values[i];
+    while (valueIterator.hasNext()) {
+      Object value = valueIterator.next();
+      if (minVal == null || minVal.compareTo(value) > 0) {
+        minVal = (Comparable<Object>) value;
       }
     }
+    setTime(timestamps[0]);
     updateResult(minVal);
   }
 

@@ -53,7 +53,7 @@ public class WatermarkDetector {
       throw new IOException("Parameter out of range.");
     }
 
-    if (!dataType.equals("int") && !dataType.equals("float") && !dataType.equals("double")) {
+    if (!"int".equals(dataType) && !"float".equals(dataType) && !"double".equals(dataType)) {
       throw new IOException("invalid parameter: supported data types are int/float/double");
     }
 
@@ -68,7 +68,7 @@ public class WatermarkDetector {
         dataType);
   }
 
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  // Suppress high Cognitive Complexity warning
   public static boolean isWatermarked(
       String filePath,
       String secretKey,
@@ -95,7 +95,7 @@ public class WatermarkDetector {
                 String.format("%s%d", secretKey, timestamp), embed_row_cycle)
             == 0) {
           String str = items[columnIndex];
-          if (str.equals("null")) {
+          if ("null".equals(str)) {
             continue;
           }
 
@@ -171,12 +171,7 @@ public class WatermarkDetector {
     try {
       timestamp = Long.parseLong(str);
     } catch (NumberFormatException e) {
-      try {
-        ZoneId zoneId = ZoneId.systemDefault();
-        timestamp = DatetimeUtils.convertDatetimeStrToLong(str, zoneId);
-      } catch (LogicalOperatorException e1) {
-        throw new LogicalOperatorException("The format of timestamp is not unexpected.");
-      }
+      timestamp = DatetimeUtils.convertDatetimeStrToLong(str, ZoneId.systemDefault());
     }
     return timestamp;
   }

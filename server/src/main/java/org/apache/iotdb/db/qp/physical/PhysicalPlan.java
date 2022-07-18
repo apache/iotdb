@@ -18,21 +18,23 @@
  */
 package org.apache.iotdb.db.qp.physical;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.runtime.SerializationRunTimeException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
@@ -43,7 +45,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -52,6 +54,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropIndexPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -59,32 +62,43 @@ import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
+import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartPipeServerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopPipeServerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/** This class is a abstract class for all type of PhysicalPlan. */
-public abstract class PhysicalPlan {
+/** This class is an abstract class for all type of PhysicalPlan. */
+public abstract class PhysicalPlan implements IConsensusRequest {
+  private static final Logger logger = LoggerFactory.getLogger(PhysicalPlan.class);
 
   private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
 
-  private boolean isQuery;
+  private boolean isQuery = false;
+
   private Operator.OperatorType operatorType;
-  private static final int NULL_VALUE_LEN = -1;
 
   // for cluster mode, whether the plan may be splitted into several sub plans
   protected boolean canBeSplit = true;
@@ -97,25 +111,24 @@ public abstract class PhysicalPlan {
 
   private boolean debug;
 
+  /**
+   * Since IoTDB v0.13, all DDL and DML use patternMatch as default. Before IoTDB v0.13, all DDL and
+   * DML use prefixMatch.
+   */
+  private boolean isPrefixMatch = false;
+
   /** whether the plan can be split into more than one Plans. Only used in the cluster mode. */
   public boolean canBeSplit() {
     return canBeSplit;
   }
 
-  protected PhysicalPlan(boolean isQuery) {
-    this.isQuery = isQuery;
-  }
+  protected PhysicalPlan() {}
 
-  protected PhysicalPlan(boolean isQuery, Operator.OperatorType operatorType) {
-    this.isQuery = isQuery;
+  protected PhysicalPlan(Operator.OperatorType operatorType) {
     this.operatorType = operatorType;
   }
 
-  public String printQueryPlan() {
-    return "abstract plan";
-  }
-
-  public abstract List<PartialPath> getPaths();
+  public abstract List<? extends PartialPath> getPaths();
 
   public void setPaths(List<PartialPath> paths) {}
 
@@ -129,6 +142,10 @@ public abstract class PhysicalPlan {
 
   public Operator.OperatorType getOperatorType() {
     return operatorType;
+  }
+
+  public String getOperatorName() {
+    return operatorType.toString();
   }
 
   public void setOperatorType(Operator.OperatorType operatorType) {
@@ -161,19 +178,53 @@ public abstract class PhysicalPlan {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
-  /**
-   * Serialize the plan into the given buffer. This is provided for WAL, so fields that can be
-   * recovered will not be serialized.
-   *
-   * @param buffer
-   */
-  public void serialize(ByteBuffer buffer) {
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
+    try (PublicBAOS byteArrayOutputStream = new PublicBAOS();
+        DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream)) {
+      serialize(outputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.getBuf(), 0, byteArrayOutputStream.size());
+    } catch (IOException e) {
+      logger.error("Unexpected error occurs when serializing this physical plan.", e);
+      throw new SerializationRunTimeException(e);
+    }
+  }
+
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
   /**
-   * Deserialize the plan from the given buffer. This is provided for WAL, and must be used with
-   * serializeToWAL.
+   * Serialize the plan into the given buffer. This is provided for WAL, so fields that can be
+   * recovered will not be serialized. If error occurs when serializing this plan, the buffer will
+   * be reset.
+   *
+   * @param buffer
+   */
+  public final void serialize(ByteBuffer buffer) {
+    buffer.mark();
+    try {
+      serializeImpl(buffer);
+    } catch (UnsupportedOperationException e) {
+      // ignore and throw
+      throw e;
+    } catch (BufferOverflowException e) {
+      buffer.reset();
+      throw e;
+    } catch (Exception e) {
+      logger.error(
+          "Rollback buffer entry because error occurs when serializing this physical plan.", e);
+      buffer.reset();
+      throw e;
+    }
+  }
+
+  protected void serializeImpl(ByteBuffer buffer) {
+    throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
+  }
+
+  /**
+   * Deserialize the plan from the given buffer.
    *
    * @param buffer
    */
@@ -182,11 +233,7 @@ public abstract class PhysicalPlan {
   }
 
   protected void putString(ByteBuffer buffer, String value) {
-    if (value == null) {
-      buffer.putInt(NULL_VALUE_LEN);
-    } else {
-      ReadWriteIOUtils.write(value, buffer);
-    }
+    ReadWriteIOUtils.write(value, buffer);
   }
 
   protected void putStrings(ByteBuffer buffer, List<String> values) {
@@ -196,11 +243,7 @@ public abstract class PhysicalPlan {
   }
 
   protected void putString(DataOutputStream stream, String value) throws IOException {
-    if (value == null) {
-      stream.writeInt(NULL_VALUE_LEN);
-    } else {
-      ReadWriteIOUtils.write(value, stream);
-    }
+    ReadWriteIOUtils.write(value, stream);
   }
 
   protected void putStrings(DataOutputStream stream, List<String> values) throws IOException {
@@ -210,11 +253,7 @@ public abstract class PhysicalPlan {
   }
 
   protected String readString(ByteBuffer buffer) {
-    int valueLen = buffer.getInt();
-    if (valueLen == NULL_VALUE_LEN) {
-      return null;
-    }
-    return ReadWriteIOUtils.readStringWithLength(buffer, valueLen);
+    return ReadWriteIOUtils.readString(buffer);
   }
 
   protected List<String> readStrings(ByteBuffer buffer, int totalSize) {
@@ -235,6 +274,15 @@ public abstract class PhysicalPlan {
     }
   }
 
+  public boolean isAuthenticationRequired() {
+    return true;
+  }
+
+  /** Used to check whether a user has the permission to execute the plan with these paths. */
+  public List<? extends PartialPath> getAuthPaths() {
+    return getPaths();
+  }
+
   public static class Factory {
 
     private Factory() {
@@ -243,7 +291,21 @@ public abstract class PhysicalPlan {
 
     public static PhysicalPlan create(ByteBuffer buffer) throws IOException, IllegalPathException {
       int typeNum = buffer.get();
-      if (typeNum >= PhysicalPlanType.values().length) {
+      PhysicalPlan plan = createByTypeNum(typeNum);
+      plan.deserialize(buffer);
+      return plan;
+    }
+
+    public static PhysicalPlan create(DataInputStream stream)
+        throws IOException, IllegalPathException {
+      int typeNum = stream.readByte();
+      PhysicalPlan plan = createByTypeNum(typeNum);
+      plan.deserialize(stream);
+      return plan;
+    }
+
+    private static PhysicalPlan createByTypeNum(int typeNum) throws IOException {
+      if (typeNum < 0 || typeNum >= PhysicalPlanType.values().length) {
         throw new IOException("unrecognized log type " + typeNum);
       }
       PhysicalPlanType type = PhysicalPlanType.values()[typeNum];
@@ -257,7 +319,7 @@ public abstract class PhysicalPlan {
           plan = new InsertTabletPlan();
           break;
         case MULTI_BATCH_INSERT:
-          plan = new InsertMultiTabletPlan();
+          plan = new InsertMultiTabletsPlan();
           break;
         case DELETE:
           plan = new DeletePlan();
@@ -382,11 +444,23 @@ public abstract class PhysicalPlan {
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
           break;
-        case SET_SCHEMA_TEMPLATE:
-          plan = new SetSchemaTemplatePlan();
+        case APPEND_TEMPLATE:
+          plan = new AppendTemplatePlan();
           break;
-        case SET_USING_SCHEMA_TEMPLATE:
-          plan = new SetUsingSchemaTemplatePlan();
+        case PRUNE_TEMPLATE:
+          plan = new PruneTemplatePlan();
+          break;
+        case DROP_TEMPLATE:
+          plan = new DropTemplatePlan();
+          break;
+        case UNSET_TEMPLATE:
+          plan = new UnsetTemplatePlan();
+          break;
+        case SET_TEMPLATE:
+          plan = new SetTemplatePlan();
+          break;
+        case ACTIVATE_TEMPLATE:
+          plan = new ActivateTemplatePlan();
           break;
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
@@ -399,9 +473,6 @@ public abstract class PhysicalPlan {
           break;
         case MERGE:
           plan = new MergePlan();
-          break;
-        case CREATE_SNAPSHOT:
-          plan = new CreateSnapshotPlan();
           break;
         case CLEARCACHE:
           plan = new ClearCachePlan();
@@ -418,10 +489,15 @@ public abstract class PhysicalPlan {
         case SET_SYSTEM_MODE:
           plan = new SetSystemModePlan();
           break;
+        case START_PIPE_SERVER:
+          plan = new StartPipeServerPlan();
+          break;
+        case STOP_PIPE_SERVER:
+          plan = new StopPipeServerPlan();
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
-      plan.deserialize(buffer);
       return plan;
     }
   }
@@ -466,8 +542,8 @@ public abstract class PhysicalPlan {
     BATCH_INSERT_ROWS,
     SHOW_DEVICES,
     CREATE_TEMPLATE,
-    SET_SCHEMA_TEMPLATE,
-    SET_USING_SCHEMA_TEMPLATE,
+    SET_TEMPLATE,
+    ACTIVATE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
     CREATE_ALIGNED_TIMESERIES,
     CLUSTER_LOG,
@@ -479,12 +555,18 @@ public abstract class PhysicalPlan {
     DROP_CONTINUOUS_QUERY,
     SHOW_CONTINUOUS_QUERIES,
     MERGE,
-    CREATE_SNAPSHOT,
+    CREATE_SNAPSHOT, // the snapshot feature has been deprecated, this is kept for compatibility
     CLEARCACHE,
     CREATE_FUNCTION,
     DROP_FUNCTION,
     SELECT_INTO,
-    SET_SYSTEM_MODE
+    SET_SYSTEM_MODE,
+    UNSET_TEMPLATE,
+    APPEND_TEMPLATE,
+    PRUNE_TEMPLATE,
+    START_PIPE_SERVER,
+    STOP_PIPE_SERVER,
+    DROP_TEMPLATE
   }
 
   public long getIndex() {
@@ -501,5 +583,14 @@ public abstract class PhysicalPlan {
    *
    * @throws QueryProcessException when the check fails
    */
+  // TODO(INSERT) move this check into analyze
   public void checkIntegrity() throws QueryProcessException {}
+
+  public boolean isPrefixMatch() {
+    return isPrefixMatch;
+  }
+
+  public void setPrefixMatch(boolean prefixMatch) {
+    isPrefixMatch = prefixMatch;
+  }
 }

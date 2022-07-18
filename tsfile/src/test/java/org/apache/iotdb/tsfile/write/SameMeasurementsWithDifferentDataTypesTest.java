@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.write;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -33,8 +33,8 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -78,8 +78,8 @@ public class SameMeasurementsWithDifferentDataTypesTest {
     pathList.add(new Path("d2", "s1"));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath);
-    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
-    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    TsFileReader tsFileReader = new TsFileReader(fileReader);
+    QueryDataSet dataSet = tsFileReader.query(queryExpression);
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();
@@ -107,16 +107,16 @@ public class SameMeasurementsWithDifferentDataTypesTest {
 
     Schema schema = new Schema();
     schema.extendTemplate(
-        TEMPLATE_1, new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        TEMPLATE_1, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(
-        TEMPLATE_1, new UnaryMeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        TEMPLATE_1, new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
     schema.extendTemplate(
-        TEMPLATE_1, new UnaryMeasurementSchema("s3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        TEMPLATE_1, new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     schema.extendTemplate(
-        TEMPLATE_2, new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        TEMPLATE_2, new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.extendTemplate(
-        TEMPLATE_2, new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+        TEMPLATE_2, new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
 
     schema.registerDevice("d1", TEMPLATE_1);
     schema.registerDevice("d2", TEMPLATE_2);

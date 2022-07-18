@@ -18,15 +18,21 @@
  */
 package org.apache.iotdb.db.metadata.utils;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -34,56 +40,6 @@ import java.util.Map.Entry;
 public class MetaUtils {
 
   private MetaUtils() {}
-
-  /**
-   * @param path the path will split. ex, root.ln.
-   * @return string array. ex, [root, ln]
-   * @throws IllegalPathException if path isn't correct, the exception will throw
-   */
-  public static String[] splitPathToDetachedPath(String path) throws IllegalPathException {
-    List<String> nodes = new ArrayList<>();
-    int startIndex = 0;
-    for (int i = 0; i < path.length(); i++) {
-      if (path.charAt(i) == IoTDBConstant.PATH_SEPARATOR) {
-        String node = path.substring(startIndex, i);
-        if (node.isEmpty()) {
-          throw new IllegalPathException(path);
-        }
-        nodes.add(node);
-        startIndex = i + 1;
-        if (startIndex == path.length()) {
-          throw new IllegalPathException(path);
-        }
-      } else if (path.charAt(i) == '"') {
-        int endIndex = path.indexOf('"', i + 1);
-        // if a double quotes with escape character
-        while (endIndex != -1 && path.charAt(endIndex - 1) == '\\') {
-          endIndex = path.indexOf('"', endIndex + 1);
-        }
-        if (endIndex != -1 && (endIndex == path.length() - 1 || path.charAt(endIndex + 1) == '.')) {
-          String node = path.substring(startIndex, endIndex + 1);
-          if (node.isEmpty()) {
-            throw new IllegalPathException(path);
-          }
-          nodes.add(node);
-          i = endIndex + 1;
-          startIndex = endIndex + 2;
-        } else {
-          throw new IllegalPathException(path);
-        }
-      } else if (path.charAt(i) == '\'') {
-        throw new IllegalPathException(path);
-      }
-    }
-    if (startIndex <= path.length() - 1) {
-      String node = path.substring(startIndex);
-      if (node.isEmpty()) {
-        throw new IllegalPathException(path);
-      }
-      nodes.add(node);
-    }
-    return nodes.toArray(new String[0]);
-  }
 
   /**
    * Get storage group path when creating schema automatically is enable
@@ -102,6 +58,59 @@ public class MetaUtils {
     String[] storageGroupNodes = new String[level + 1];
     System.arraycopy(nodeNames, 0, storageGroupNodes, 0, level + 1);
     return new PartialPath(storageGroupNodes);
+  }
+
+  /**
+   * PartialPath of aligned time series will be organized to one AlignedPath. BEFORE this method,
+   * all the aligned time series is NOT united. For example, given root.sg.d1.vector1[s1] and
+   * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
+   *
+   * @param fullPaths full path list without uniting the sub measurement under the same aligned time
+   *     series. The list has been sorted by the alphabetical order, so all the aligned time series
+   *     of one device has already been placed contiguously.
+   * @return Size of partial path list could NOT equal to the input list size. For example, the
+   *     vector1 (s1,s2) would be returned once.
+   */
+  public static List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) {
+    List<PartialPath> result = new LinkedList<>();
+    AlignedPath alignedPath = null;
+    for (PartialPath path : fullPaths) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (!measurementPath.isUnderAlignedEntity()) {
+        result.add(measurementPath);
+        alignedPath = null;
+      } else {
+        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
+          alignedPath = new AlignedPath(measurementPath);
+          result.add(alignedPath);
+        } else {
+          alignedPath.addMeasurement(measurementPath);
+        }
+      }
+    }
+    return result;
+  }
+
+  public static List<PartialPath> groupAlignedSeries(List<PartialPath> fullPaths) {
+    List<PartialPath> result = new ArrayList<>();
+    Map<String, AlignedPath> deviceToAlignedPathMap = new HashMap<>();
+    for (PartialPath path : fullPaths) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (!measurementPath.isUnderAlignedEntity()) {
+        result.add(measurementPath);
+      } else {
+        String deviceName = measurementPath.getDevice();
+        if (!deviceToAlignedPathMap.containsKey(deviceName)) {
+          AlignedPath alignedPath = new AlignedPath(measurementPath);
+          deviceToAlignedPathMap.put(deviceName, alignedPath);
+        } else {
+          AlignedPath alignedPath = deviceToAlignedPathMap.get(deviceName);
+          alignedPath.addMeasurement(measurementPath);
+        }
+      }
+    }
+    result.addAll(deviceToAlignedPathMap.values());
+    return result;
   }
 
   @TestOnly
@@ -134,5 +143,108 @@ public class MetaUtils {
         collectLastNode(childNode, lastNodeList);
       }
     }
+  }
+
+  /**
+   * Merge same series and convert to series map. For example: Given: paths: s1, s2, s3, s1 and
+   * aggregations: count, sum, count, sum. Then: pathToAggrIndexesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
+   *
+   * @param selectedPaths selected series
+   * @return path to aggregation indexes map
+   */
+  public static Map<PartialPath, List<Integer>> groupAggregationsBySeries(
+      List<? extends Path> selectedPaths) {
+    Map<PartialPath, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
+    for (int i = 0; i < selectedPaths.size(); i++) {
+      PartialPath series = (PartialPath) selectedPaths.get(i);
+      pathToAggrIndexesMap.computeIfAbsent(series, key -> new ArrayList<>()).add(i);
+    }
+    return pathToAggrIndexesMap;
+  }
+
+  /**
+   * Group all the series under an aligned entity into one AlignedPath and remove these series from
+   * pathToAggrIndexesMap. For example, input map: d1[s1] -> [1, 3], d1[s2] -> [2,4], will return
+   * d1[s1,s2], [[1,3], [2,4]]
+   */
+  public static Map<AlignedPath, List<List<Integer>>> groupAlignedSeriesWithAggregations(
+      Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
+    Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap = new HashMap<>();
+    Map<String, AlignedPath> temp = new HashMap<>();
+    List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
+    for (PartialPath seriesPath : seriesPaths) {
+      // for with value filter
+      if (seriesPath instanceof AlignedPath) {
+        List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
+        AlignedPath groupPath = temp.get(seriesPath.getFullPath());
+        if (groupPath == null) {
+          groupPath = (AlignedPath) seriesPath.copy();
+          temp.put(groupPath.getFullPath(), groupPath);
+          alignedPathToAggrIndexesMap
+              .computeIfAbsent(groupPath, key -> new ArrayList<>())
+              .add(indexes);
+        } else {
+          // groupPath is changed here so we update it
+          List<List<Integer>> subIndexes = alignedPathToAggrIndexesMap.remove(groupPath);
+          subIndexes.add(indexes);
+          groupPath.addMeasurements(((AlignedPath) seriesPath).getMeasurementList());
+          groupPath.addSchemas(((AlignedPath) seriesPath).getSchemaList());
+          alignedPathToAggrIndexesMap.put(groupPath, subIndexes);
+        }
+      } else if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
+        // for without value filter
+        List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
+        AlignedPath groupPath = temp.get(seriesPath.getDevice());
+        if (groupPath == null) {
+          groupPath = new AlignedPath((MeasurementPath) seriesPath);
+          temp.put(seriesPath.getDevice(), groupPath);
+          alignedPathToAggrIndexesMap
+              .computeIfAbsent(groupPath, key -> new ArrayList<>())
+              .add(indexes);
+        } else {
+          // groupPath is changed here so we update it
+          List<List<Integer>> subIndexes = alignedPathToAggrIndexesMap.remove(groupPath);
+          subIndexes.add(indexes);
+          groupPath.addMeasurement((MeasurementPath) seriesPath);
+          alignedPathToAggrIndexesMap.put(groupPath, subIndexes);
+        }
+      }
+    }
+    return alignedPathToAggrIndexesMap;
+  }
+
+  public static Map<PartialPath, List<AggregationDescriptor>> groupAlignedAggregations(
+      Map<PartialPath, List<AggregationDescriptor>> pathToAggregations) {
+    Map<PartialPath, List<AggregationDescriptor>> result = new HashMap<>();
+    Map<String, List<MeasurementPath>> deviceToAlignedPathsMap = new HashMap<>();
+    for (PartialPath path : pathToAggregations.keySet()) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (!measurementPath.isUnderAlignedEntity()) {
+        result
+            .computeIfAbsent(measurementPath, key -> new ArrayList<>())
+            .addAll(pathToAggregations.get(path));
+      } else {
+        deviceToAlignedPathsMap
+            .computeIfAbsent(path.getDevice(), key -> new ArrayList<>())
+            .add(measurementPath);
+      }
+    }
+    for (Map.Entry<String, List<MeasurementPath>> alignedPathEntry :
+        deviceToAlignedPathsMap.entrySet()) {
+      List<MeasurementPath> measurementPathList = alignedPathEntry.getValue();
+      AlignedPath alignedPath = null;
+      List<AggregationDescriptor> aggregationDescriptorList = new ArrayList<>();
+      for (int i = 0; i < measurementPathList.size(); i++) {
+        MeasurementPath measurementPath = measurementPathList.get(i);
+        if (i == 0) {
+          alignedPath = new AlignedPath(measurementPath);
+        } else {
+          alignedPath.addMeasurement(measurementPath);
+        }
+        aggregationDescriptorList.addAll(pathToAggregations.get(measurementPath));
+      }
+      result.put(alignedPath, aggregationDescriptorList);
+    }
+    return result;
   }
 }

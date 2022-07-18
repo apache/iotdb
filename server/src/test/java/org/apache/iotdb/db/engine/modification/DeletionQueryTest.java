@@ -19,18 +19,17 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -60,8 +59,6 @@ public class DeletionQueryTest {
   private TSEncoding encoding = TSEncoding.PLAIN;
   private QueryRouter router = new QueryRouter();
 
-  private int prevUnseqLevelNum = 0;
-
   static {
     for (int i = 0; i < 10; i++) {
       measurements[i] = "m" + i;
@@ -70,12 +67,10 @@ public class DeletionQueryTest {
 
   @Before
   public void setup() throws MetadataException {
-    prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
     EnvironmentUtils.envSetUp();
-    IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
+    IoTDB.schemaProcessor.setStorageGroup(new PartialPath(processorName));
     for (int i = 0; i < 10; i++) {
-      IoTDB.metaManager.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[i]),
           dataType,
           encoding,
@@ -87,18 +82,11 @@ public class DeletionQueryTest {
   @After
   public void teardown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
-  }
-
-  private void insertToStorageEngine(TSRecord record)
-      throws StorageEngineException, IllegalPathException {
-    InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    StorageEngine.getInstance().insert(insertRowPlan);
   }
 
   @Test
   public void testDeleteInBufferWriteCache()
-      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -118,16 +106,17 @@ public class DeletionQueryTest {
         .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -141,7 +130,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInBufferWriteFile()
-      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -159,17 +148,17 @@ public class DeletionQueryTest {
         .delete(new PartialPath(processorName, measurements[3]), 0, 30, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
-
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -183,7 +172,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInOverflowCache()
-      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -213,16 +202,17 @@ public class DeletionQueryTest {
         .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -236,7 +226,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testDeleteInOverflowFile()
-      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -265,17 +255,17 @@ public class DeletionQueryTest {
         .delete(new PartialPath(processorName, measurements[3]), 0, 30, -1, null);
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
-
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -289,7 +279,7 @@ public class DeletionQueryTest {
 
   @Test
   public void testSuccessiveDeletion()
-      throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -348,16 +338,17 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().syncCloseAllProcessor();
 
     List<PartialPath> pathList = new ArrayList<>();
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
-    pathList.add(new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
-    dataTypes.add(dataType);
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[3]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[4]));
+    pathList.add(
+        SchemaTestUtils.getMeasurementPath(
+            processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet dataSet = router.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 

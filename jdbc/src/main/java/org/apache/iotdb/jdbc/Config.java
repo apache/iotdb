@@ -44,6 +44,9 @@ public class Config {
   public static final int DEFAULT_FETCH_SIZE = 5000;
   static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
+  public static final String VERSION = "version";
+  static final Constant.Version DEFAULT_VERSION = Constant.Version.V_0_13;
+
   public static final String JDBC_DRIVER_NAME = "org.apache.iotdb.jdbc.IoTDBDriver";
 
   public static boolean rpcThriftCompressionEnable = false;
@@ -53,4 +56,10 @@ public class Config {
 
   /** key of thrift max frame size */
   public static final String THRIFT_FRAME_MAX_SIZE = "thrift_max_frame_size";
+
+  /** key of underlying transport socketTimeout and connectionTimeout */
+  public static final String NETWORK_TIMEOUT = "network_timeout";
+
+  /** key of connection's time zone */
+  public static final String TIME_ZONE = "time_zone";
 }

@@ -48,7 +48,7 @@ public class SnappyTest {
   public void tearDown() {}
 
   @Test
-  public void testBytes() throws IOException {
+  public void testBytes1() throws IOException {
     int n = 500000;
     String input = randomString(n);
     byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
@@ -60,6 +60,21 @@ public class SnappyTest {
     byte[] uncompressed = Snappy.uncompress(compressed);
     System.out.println("decompression time cost:" + ((System.nanoTime() - time)) / 1000 / 1000);
 
+    Assert.assertArrayEquals(uncom, uncompressed);
+  }
+
+  @Test
+  public void testBytes2() throws IOException {
+    ICompressor.SnappyCompressor compressor = new ICompressor.SnappyCompressor();
+    IUnCompressor.SnappyUnCompressor unCompressor = new IUnCompressor.SnappyUnCompressor();
+
+    int n = 500000;
+    String input = randomString(n);
+    byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
+    byte[] compressed = compressor.compress(uncom, 0, uncom.length);
+    // length should be same
+    Assert.assertEquals(compressor.compress(uncom).length, compressed.length);
+    byte[] uncompressed = unCompressor.uncompress(compressed);
     Assert.assertArrayEquals(uncom, uncompressed);
   }
 

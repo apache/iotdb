@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.db.exception;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.util.Arrays;
 
@@ -31,6 +31,11 @@ public class BatchProcessException extends QueryProcessException {
   public BatchProcessException(TSStatus[] failingStatus) {
     super("Batch process failed:" + Arrays.toString(failingStatus));
     this.failingStatus = failingStatus;
+  }
+
+  public BatchProcessException(String message) {
+    super(message);
+    failingStatus = null;
   }
 
   public TSStatus[] getFailingStatus() {

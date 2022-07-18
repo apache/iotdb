@@ -18,22 +18,25 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -67,6 +71,8 @@ public class SchemaUtils {
     intSet.add(TSEncoding.RLE);
     intSet.add(TSEncoding.TS_2DIFF);
     intSet.add(TSEncoding.GORILLA);
+    intSet.add(TSEncoding.ZIGZAG);
+    intSet.add(TSEncoding.FREQ);
     schemaChecker.put(TSDataType.INT32, intSet);
     schemaChecker.put(TSDataType.INT64, intSet);
 
@@ -76,6 +82,7 @@ public class SchemaUtils {
     floatSet.add(TSEncoding.TS_2DIFF);
     floatSet.add(TSEncoding.GORILLA_V1);
     floatSet.add(TSEncoding.GORILLA);
+    floatSet.add(TSEncoding.FREQ);
     schemaChecker.put(TSDataType.FLOAT, floatSet);
     schemaChecker.put(TSDataType.DOUBLE, floatSet);
 
@@ -94,7 +101,7 @@ public class SchemaUtils {
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
-      IoTDB.metaManager.createTimeseries(
+      IoTDB.schemaProcessor.createTimeseries(
           path, dataType, encoding, compressionType, Collections.emptyMap());
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
@@ -118,18 +125,17 @@ public class SchemaUtils {
     TSEncoding encoding = schema.getEncodingType();
     CompressionType compressionType = schema.getCompressor();
     IMeasurementSchema measurementSchema =
-        new UnaryMeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
+        new MeasurementSchema(path.getMeasurement(), dataType, encoding, compressionType);
 
     IMeasurementMNode measurementMNode =
         MeasurementMNode.getMeasurementMNode(null, path.getMeasurement(), measurementSchema, null);
-    IoTDB.metaManager.cacheMeta(path, measurementMNode, true);
+    IoTDB.schemaProcessor.cacheMeta(path, measurementMNode, true);
   }
 
-  public static List<TSDataType> getSeriesTypesByPaths(Collection<PartialPath> paths)
-      throws MetadataException {
+  public static List<TSDataType> getSeriesTypesByPaths(Collection<? extends PartialPath> paths) {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (PartialPath path : paths) {
-      dataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
+      dataTypes.add(path == null ? null : path.getSeriesType());
     }
     return dataTypes;
   }
@@ -152,12 +158,8 @@ public class SchemaUtils {
     return measurementDataType;
   }
 
-  public static TSDataType getSeriesTypeByPath(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getSeriesType(path);
-  }
-
   public static List<TSDataType> getSeriesTypesByPaths(
-      List<PartialPath> paths, List<String> aggregations) throws MetadataException {
+      List<MeasurementPath> paths, List<String> aggregations) {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       String aggrStr = aggregations != null ? aggregations.get(i) : null;
@@ -166,10 +168,19 @@ public class SchemaUtils {
         tsDataTypes.add(dataType);
       } else {
         PartialPath path = paths.get(i);
-        tsDataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
+        tsDataTypes.add(path == null ? null : path.getSeriesType());
       }
     }
     return tsDataTypes;
+  }
+
+  public static TSDataType getSeriesTypeByPath(PartialPath path, String aggregation) {
+    TSDataType dataType = getAggregationType(aggregation);
+    if (dataType != null) {
+      return dataType;
+    } else {
+      return path.getSeriesType();
+    }
   }
 
   /**
@@ -194,6 +205,33 @@ public class SchemaUtils {
       case SQLConstant.MAX_VALUE:
       default:
         return null;
+    }
+  }
+
+  /**
+   * judge whether the order of aggregation calculation is consistent with the order of traversing
+   * data
+   */
+  public static boolean isConsistentWithScanOrder(
+      AggregationType aggregationFunction, OrderBy scanOrder) {
+    boolean ascending = scanOrder == OrderBy.TIMESTAMP_ASC;
+    switch (aggregationFunction) {
+      case MIN_TIME:
+      case FIRST_VALUE:
+        return ascending;
+      case MAX_TIME:
+      case LAST_VALUE:
+        return !ascending;
+      case SUM:
+      case MIN_VALUE:
+      case MAX_VALUE:
+      case EXTREME:
+      case COUNT:
+      case AVG:
+        return true;
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid Aggregation function: %s", aggregationFunction));
     }
   }
 
@@ -223,6 +261,28 @@ public class SchemaUtils {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(
           String.format("encoding %s does not support %s", encoding, dataType), true);
+    }
+  }
+
+  public static List<AggregationType> splitPartialAggregation(AggregationType aggregationType) {
+    switch (aggregationType) {
+      case FIRST_VALUE:
+        return Collections.singletonList(AggregationType.MIN_TIME);
+      case LAST_VALUE:
+        return Collections.singletonList(AggregationType.MAX_TIME);
+      case AVG:
+        return Arrays.asList(AggregationType.COUNT, AggregationType.SUM);
+      case SUM:
+      case MIN_VALUE:
+      case MAX_VALUE:
+      case EXTREME:
+      case COUNT:
+      case MIN_TIME:
+      case MAX_TIME:
+        return Collections.emptyList();
+      default:
+        throw new IllegalArgumentException(
+            String.format("Invalid Aggregation function: %s", aggregationType));
     }
   }
 }

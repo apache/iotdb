@@ -52,13 +52,28 @@ public class GZIPTest {
   public void tearDown() {}
 
   @Test
-  public void testBytes() throws IOException {
+  public void testBytes1() throws IOException {
     int n = 500000;
     String input = randomString(n);
     byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
     byte[] compressed = ICompressor.GZIPCompress.compress(uncom);
     byte[] uncompressed = ICompressor.GZIPCompress.uncompress(compressed);
 
+    Assert.assertArrayEquals(uncom, uncompressed);
+  }
+
+  @Test
+  public void testBytes2() throws IOException {
+    ICompressor.GZIPCompressor compressor = new ICompressor.GZIPCompressor();
+    IUnCompressor.GZIPUnCompressor unCompressor = new IUnCompressor.GZIPUnCompressor();
+
+    int n = 500000;
+    String input = randomString(n);
+    byte[] uncom = input.getBytes(StandardCharsets.UTF_8);
+    byte[] compressed = compressor.compress(uncom, 0, uncom.length);
+    // length should be same
+    Assert.assertEquals(compressor.compress(uncom).length, compressed.length);
+    byte[] uncompressed = unCompressor.uncompress(compressed);
     Assert.assertArrayEquals(uncom, uncompressed);
   }
 

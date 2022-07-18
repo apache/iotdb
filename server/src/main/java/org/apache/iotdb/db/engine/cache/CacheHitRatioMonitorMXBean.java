@@ -40,6 +40,16 @@ public interface CacheHitRatioMonitorMXBean {
 
   long getTimeSeriesMetaDataCacheAverageSize();
 
+  double getBloomFilterHitRatio();
+
+  long getBloomFilterCacheEvictionCount();
+
+  long getBloomFilterCacheMaxMemory();
+
+  double getBloomFilterCacheAverageLoadPenalty();
+
+  long getBloomFilterCacheAverageSize();
+
   long getTotalMemTableSize();
 
   double getFlushThershold();

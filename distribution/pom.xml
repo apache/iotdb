@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.13.0-SNAPSHOT</version>
+        <version>0.14.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-distribution</artifactId>
@@ -47,11 +47,12 @@
                         <configuration>
                             <descriptors>
                                 <descriptor>src/assembly/all.xml</descriptor>
-                                <descriptor>src/assembly/server.xml</descriptor>
-                                <descriptor>src/assembly/cluster.xml</descriptor>
+                                <descriptor>src/assembly/datanode.xml</descriptor>
+                                <descriptor>src/assembly/confignode.xml</descriptor>
                                 <descriptor>src/assembly/cli.xml</descriptor>
-                                <descriptor>src/assembly/grafana.xml</descriptor>
                                 <descriptor>src/assembly/client-cpp.xml</descriptor>
+                                <descriptor>src/assembly/grafana-plugin.xml</descriptor>
+                                <descriptor>src/assembly/library-udf.xml</descriptor>
                             </descriptors>
                             <finalName>apache-iotdb-${project.version}</finalName>
                         </configuration>
@@ -82,11 +83,12 @@
                                     <directory>${project.build.directory}</directory>
                                     <includes>
                                         <include>apache-iotdb-${project.version}-all-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-server-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-datanode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-cluster-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-grafana-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-confignode-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-grafana-plugin-bin.zip</include>
+                                        <include>apache-iotdb-${project.version}-library-udf-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
@@ -111,13 +113,19 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-grafana</artifactId>
+            <artifactId>iotdb-grafana-connector</artifactId>
             <version>${project.version}</version>
             <type>war</type>
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-cluster</artifactId>
+            <artifactId>iotdb-grafana-plugin</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-confignode</artifactId>
             <version>${project.version}</version>
             <type>zip</type>
         </dependency>
@@ -127,6 +135,18 @@
             <version>${project.version}</version>
             <type>pom</type>
             <!--            <classifier>${os.classifier}</classifier>-->
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>influxdb-protocol</artifactId>
+            <version>${project.version}</version>
+            <type>pom</type>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>library-udf</artifactId>
+            <version>${project.version}</version>
+            <type>jar</type>
         </dependency>
     </dependencies>
 </project>

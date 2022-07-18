@@ -25,6 +25,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -35,7 +36,7 @@ public class ReadWriteIOUtilsTest {
   protected static final int DEFAULT_BUFFER_SIZE = 4096;
 
   @Test
-  public void readStringBufferTest() {
+  public void stringSerdeTest() {
     // 1. not null value
     String str = "string";
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
@@ -67,7 +68,7 @@ public class ReadWriteIOUtilsTest {
   }
 
   @Test
-  public void readMapTest() {
+  public void mapSerdeTest() {
     // 1. key: not null; value: not null
     String key = "string";
     String value = "string";
@@ -136,5 +137,30 @@ public class ReadWriteIOUtilsTest {
     result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     Assert.assertNotNull(result);
     Assert.assertEquals(map, result);
+
+    // 5. empty map
+    map = Collections.emptyMap();
+    byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
+    stream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      ReadWriteIOUtils.write(map, stream);
+    } catch (IOException e) {
+      fail(e.toString());
+    }
+    result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    Assert.assertNotNull(result);
+    Assert.assertTrue(result.isEmpty());
+
+    // 6. null
+    map = null;
+    byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
+    stream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      ReadWriteIOUtils.write(map, stream);
+    } catch (IOException e) {
+      fail(e.toString());
+    }
+    result = ReadWriteIOUtils.readMap(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    Assert.assertNull(result);
   }
 }

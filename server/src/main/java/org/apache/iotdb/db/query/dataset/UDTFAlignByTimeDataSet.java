@@ -20,11 +20,12 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.input.IUDFInputDataSet;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
@@ -44,6 +45,7 @@ import java.util.List;
 public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignByTimeDataSet {
 
   protected TimeSelector timeHeap;
+  private final boolean keepNull;
 
   /** execute with value filter */
   public UDTFAlignByTimeDataSet(
@@ -51,6 +53,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       UDTFPlan udtfPlan,
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
+      List<List<Integer>> readerToIndexList,
       List<Boolean> cached)
       throws IOException, QueryProcessException {
     super(
@@ -60,7 +63,9 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         udtfPlan.getDeduplicatedDataTypes(),
         timestampGenerator,
         readersOfSelectedSeries,
+        readerToIndexList,
         cached);
+    keepNull = false;
     initTimeHeap();
   }
 
@@ -74,15 +79,22 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         udtfPlan.getDeduplicatedPaths(),
         udtfPlan.getDeduplicatedDataTypes(),
         readersOfSelectedSeries);
+    keepNull = false;
+    initTimeHeap();
+  }
+
+  public UDTFAlignByTimeDataSet(
+      QueryContext context, UDTFPlan udtfPlan, IUDFInputDataSet inputDataSet, boolean keepNull)
+      throws QueryProcessException, IOException {
+    super(context, udtfPlan, inputDataSet);
+    this.keepNull = keepNull;
     initTimeHeap();
   }
 
   protected void initTimeHeap() throws IOException, QueryProcessException {
     timeHeap = new TimeSelector(transformers.length << 1, true);
     for (LayerPointReader reader : transformers) {
-      if (reader.next()) {
-        timeHeap.add(reader.currentTime());
-      }
+      iterateReaderToNextValid(reader);
     }
   }
 
@@ -106,8 +118,49 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     while (rowCount < fetchSize
         && (rowLimit <= 0 || alreadyReturnedRowNum < rowLimit)
         && !timeHeap.isEmpty()) {
-
       long minTime = timeHeap.pollFirst();
+      if (withoutAllNull || withoutAnyNull) {
+        int nullFieldsCnt = 0, index = 0;
+        for (LayerPointReader reader : transformers) {
+          if (withoutNullColumnsIndex != null && !withoutNullColumnsIndex.contains(index)) {
+            index++;
+            continue;
+          }
+          if (!reader.next() || reader.currentTime() != minTime || reader.isCurrentNull()) {
+            nullFieldsCnt++;
+          }
+          index++;
+        }
+        // In method QueryDataSetUtils.convertQueryDataSetByFetchSize(), we fetch a row and can
+        // easily
+        // use rowRecord.isAllNull() or rowRecord.hasNullField() to judge whether this row should be
+        // kept with clause 'with null'.
+        // Here we get a timestamp first and then construct the row column by column.
+        // We don't record this row when nullFieldsCnt > 0 and withoutAnyNull == true
+        // or (
+        //        (
+        //            (withoutNullColumnsIndex != null && nullFieldsCnt ==
+        // withoutNullColumnsIndex.size())
+        //            or
+        //            (withoutNullColumnsIndex == null && nullFieldsCnt == columnsNum)
+        //        )
+        //        and withoutAllNull = true
+        //     )
+        if ((((withoutNullColumnsIndex != null && nullFieldsCnt == withoutNullColumnsIndex.size())
+                    || (withoutNullColumnsIndex == null && nullFieldsCnt == columnsNum))
+                && withoutAllNull)
+            || (nullFieldsCnt > 0 && withoutAnyNull)) {
+          for (LayerPointReader reader : transformers) {
+            // if reader.currentTime() == minTime, it means that the value at this timestamp should
+            // not be kept, thus we need to prepare next data point.
+            if (reader.next() && reader.currentTime() == minTime) {
+              reader.readyForNext();
+              iterateReaderToNextValid(reader);
+            }
+          }
+          continue;
+        }
+      }
       if (rowOffset == 0) {
         timeBAOS.write(BytesUtils.longToBytes(minTime));
       }
@@ -123,58 +176,60 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         }
 
         if (rowOffset == 0) {
-          currentBitmapList[i] = (currentBitmapList[i] << 1) | FLAG;
-          TSDataType type = reader.getDataType();
-          switch (type) {
-            case INT32:
-              int intValue = reader.currentInt();
-              ReadWriteIOUtils.write(
-                  encoder != null && encoder.needEncode(minTime)
-                      ? encoder.encodeInt(intValue, minTime)
-                      : intValue,
-                  valueBAOSList[i]);
-              break;
-            case INT64:
-              long longValue = reader.currentLong();
-              ReadWriteIOUtils.write(
-                  encoder != null && encoder.needEncode(minTime)
-                      ? encoder.encodeLong(longValue, minTime)
-                      : longValue,
-                  valueBAOSList[i]);
-              break;
-            case FLOAT:
-              float floatValue = reader.currentFloat();
-              ReadWriteIOUtils.write(
-                  encoder != null && encoder.needEncode(minTime)
-                      ? encoder.encodeFloat(floatValue, minTime)
-                      : floatValue,
-                  valueBAOSList[i]);
-              break;
-            case DOUBLE:
-              double doubleValue = reader.currentDouble();
-              ReadWriteIOUtils.write(
-                  encoder != null && encoder.needEncode(minTime)
-                      ? encoder.encodeDouble(doubleValue, minTime)
-                      : doubleValue,
-                  valueBAOSList[i]);
-              break;
-            case BOOLEAN:
-              ReadWriteIOUtils.write(reader.currentBoolean(), valueBAOSList[i]);
-              break;
-            case TEXT:
-              ReadWriteIOUtils.write(reader.currentBinary(), valueBAOSList[i]);
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", type));
+          if (!reader.isCurrentNull()) {
+            currentBitmapList[i] = (currentBitmapList[i] << 1) | FLAG;
+            TSDataType type = reader.getDataType();
+            switch (type) {
+              case INT32:
+                int intValue = reader.currentInt();
+                ReadWriteIOUtils.write(
+                    encoder != null && encoder.needEncode(minTime)
+                        ? encoder.encodeInt(intValue, minTime)
+                        : intValue,
+                    valueBAOSList[i]);
+                break;
+              case INT64:
+                long longValue = reader.currentLong();
+                ReadWriteIOUtils.write(
+                    encoder != null && encoder.needEncode(minTime)
+                        ? encoder.encodeLong(longValue, minTime)
+                        : longValue,
+                    valueBAOSList[i]);
+                break;
+              case FLOAT:
+                float floatValue = reader.currentFloat();
+                ReadWriteIOUtils.write(
+                    encoder != null && encoder.needEncode(minTime)
+                        ? encoder.encodeFloat(floatValue, minTime)
+                        : floatValue,
+                    valueBAOSList[i]);
+                break;
+              case DOUBLE:
+                double doubleValue = reader.currentDouble();
+                ReadWriteIOUtils.write(
+                    encoder != null && encoder.needEncode(minTime)
+                        ? encoder.encodeDouble(doubleValue, minTime)
+                        : doubleValue,
+                    valueBAOSList[i]);
+                break;
+              case BOOLEAN:
+                ReadWriteIOUtils.write(reader.currentBoolean(), valueBAOSList[i]);
+                break;
+              case TEXT:
+                ReadWriteIOUtils.write(reader.currentBinary(), valueBAOSList[i]);
+                break;
+              default:
+                throw new UnSupportedDataTypeException(
+                    String.format("Data type %s is not supported.", type));
+            }
+          } else {
+            // there's no data in the current field, so put a null placeholder 0x00
+            currentBitmapList[i] = (currentBitmapList[i] << 1);
           }
         }
 
         reader.readyForNext();
-
-        if (reader.next()) {
-          timeHeap.add(reader.currentTime());
-        }
+        iterateReaderToNextValid(reader);
       }
 
       if (rowOffset == 0) {
@@ -192,7 +247,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         --rowOffset;
       }
 
-      rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
+      queryDataSetInputLayer.updateRowRecordListEvictionUpperBound();
     }
 
     /*
@@ -260,42 +315,59 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
           rowRecord.addField(null);
           continue;
         }
-        Object value;
-        switch (reader.getDataType()) {
-          case INT32:
-            value = reader.currentInt();
-            break;
-          case INT64:
-            value = reader.currentLong();
-            break;
-          case FLOAT:
-            value = reader.currentFloat();
-            break;
-          case DOUBLE:
-            value = reader.currentDouble();
-            break;
-          case BOOLEAN:
-            value = reader.currentBoolean();
-            break;
-          case TEXT:
-            value = reader.currentBinary();
-            break;
-          default:
-            throw new UnSupportedDataTypeException("Unsupported data type.");
+        if (reader.isCurrentNull()) {
+          rowRecord.addField(null);
+        } else {
+          Object value;
+          switch (reader.getDataType()) {
+            case INT32:
+              value = reader.currentInt();
+              break;
+            case INT64:
+              value = reader.currentLong();
+              break;
+            case FLOAT:
+              value = reader.currentFloat();
+              break;
+            case DOUBLE:
+              value = reader.currentDouble();
+              break;
+            case BOOLEAN:
+              value = reader.currentBoolean();
+              break;
+            case TEXT:
+              value = reader.currentBinary();
+              break;
+            default:
+              throw new UnSupportedDataTypeException("Unsupported data type.");
+          }
+          rowRecord.addField(value, reader.getDataType());
         }
-        rowRecord.addField(value, reader.getDataType());
         reader.readyForNext();
 
-        if (reader.next()) {
-          timeHeap.add(reader.currentTime());
-        }
+        iterateReaderToNextValid(reader);
       }
     } catch (QueryProcessException e) {
       throw new IOException(e.getMessage());
     }
 
-    rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
+    queryDataSetInputLayer.updateRowRecordListEvictionUpperBound();
 
     return rowRecord;
+  }
+
+  private void iterateReaderToNextValid(LayerPointReader reader)
+      throws QueryProcessException, IOException {
+    // Since a constant operand is not allowed to be a result column, the reader will not be
+    // a ConstantLayerPointReader.
+    // If keepNull is false, we must iterate the reader until a non-null row is returned.
+    while (reader.next()) {
+      if (reader.isCurrentNull() && !keepNull) {
+        reader.readyForNext();
+        continue;
+      }
+      timeHeap.add(reader.currentTime());
+      break;
+    }
   }
 }

@@ -18,53 +18,12 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 
 /** IChunkWriter provides a list of writing methods for different value types. */
 public interface IChunkWriter {
-
-  /** write a time value pair. */
-  void write(long time, int value, boolean isNull);
-
-  /** write a time value pair. */
-  void write(long time, long value, boolean isNull);
-
-  /** write a time value pair. */
-  void write(long time, boolean value, boolean isNull);
-
-  /** write a time value pair. */
-  void write(long time, float value, boolean isNull);
-
-  /** write a time value pair. */
-  void write(long time, double value, boolean isNull);
-
-  /** write a time value pair. */
-  void write(long time, Binary value, boolean isNull);
-
-  /** write a time. */
-  void write(long time);
-
-  /** write time series */
-  void write(long[] timestamps, int[] values, int batchSize);
-
-  /** write time series */
-  void write(long[] timestamps, long[] values, int batchSize);
-
-  /** write time series */
-  void write(long[] timestamps, boolean[] values, int batchSize);
-
-  /** write time series */
-  void write(long[] timestamps, float[] values, int batchSize);
-
-  /** write time series */
-  void write(long[] timestamps, double[] values, int batchSize);
-
-  /** write time series */
-  void write(long[] timestamps, Binary[] values, int batchSize);
 
   /** flush data to TsFileIOWriter. */
   void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
@@ -79,15 +38,11 @@ public interface IChunkWriter {
    * If there is no data points in the chunk, return 0 (i.e., in this case, the size of header is
    * not calculated, because nothing will be serialized latter)</>
    */
-  long getCurrentChunkSize();
+  long getSerializedChunkSize();
 
   /** seal the current page which may has not enough data points in force. */
   void sealCurrentPage();
 
   /** set the current pageWriter to null, friendly for gc */
   void clearPageWriter();
-
-  int getNumOfPages();
-
-  TSDataType getDataType();
 }

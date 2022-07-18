@@ -20,9 +20,9 @@ package org.apache.iotdb.jdbc;
 
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -57,7 +57,7 @@ import java.util.TreeMap;
 public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   private IoTDBConnection connection;
-  private TSIService.Iface client;
+  private IClientRPCService.Iface client;
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDatabaseMetadata.class);
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
   // when running the program in IDE, we can not get the version info using
@@ -70,7 +70,8 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   private WatermarkEncoder groupedLSBWatermarkEncoder;
   private static String sqlKeywordsThatArentSQL92;
 
-  IoTDBDatabaseMetadata(IoTDBConnection connection, TSIService.Iface client, long sessionId) {
+  IoTDBDatabaseMetadata(
+      IoTDBConnection connection, IClientRPCService.Iface client, long sessionId) {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
@@ -261,15 +262,22 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       "YEAR", "EXCEPT", "OUTPUT", "ZONE", "EXCEPTION"
     };
     TreeMap myKeywordMap = new TreeMap();
-    for (int i = 0; i < allIotdbSQLKeywords.length; i++)
+    for (int i = 0; i < allIotdbSQLKeywords.length; i++) {
       myKeywordMap.put(allIotdbSQLKeywords[i], null);
+    }
     HashMap sql92KeywordMap = new HashMap(sql92Keywords.length);
-    for (int j = 0; j < sql92Keywords.length; j++) sql92KeywordMap.put(sql92Keywords[j], null);
+    for (int j = 0; j < sql92Keywords.length; j++) {
+      sql92KeywordMap.put(sql92Keywords[j], null);
+    }
     Iterator it = sql92KeywordMap.keySet().iterator();
-    while (it.hasNext()) myKeywordMap.remove(it.next());
+    while (it.hasNext()) {
+      myKeywordMap.remove(it.next());
+    }
     StringBuffer keywordBuf = new StringBuffer();
     it = myKeywordMap.keySet().iterator();
-    if (it.hasNext()) keywordBuf.append(it.next().toString());
+    if (it.hasNext()) {
+      keywordBuf.append(it.next().toString());
+    }
     while (it.hasNext()) {
       keywordBuf.append(",");
       keywordBuf.append(it.next().toString());
@@ -389,7 +397,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -433,7 +441,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
 
     return new IoTDBJDBCResultSet(
@@ -491,7 +499,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(rs, stmt);
+      close(rs, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -512,8 +520,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   public static TSQueryDataSet convertQueryDataSetByFetchSize(
       QueryDataSet queryDataSet, int fetchSize, WatermarkEncoder watermarkEncoder)
       throws IOException {
-    List<TSDataType> dataTypes = queryDataSet.getDataTypes();
-    int columnNum = dataTypes.size();
+    int columnNum = queryDataSet.getColumnNum();
     TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
     // one time column and each value column has a actual value buffer and a bitmap value to
     // indicate whether it is a null
@@ -666,6 +673,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       dataSet.putRecord(record);
     }
     dataSet.setDataTypes(listType);
+    dataSet.setColumnNum(listType.size());
   }
 
   @Override
@@ -704,7 +712,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(rs, stmt);
+      close(rs, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -808,7 +816,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(rs, stmt);
+      close(rs, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -863,7 +871,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -977,7 +985,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1063,7 +1071,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         m.put("type", listType.get(i));
         if (i == 2) {
           m.put("val", rs.getString(1));
-        } else if (fields[i].getSqlType().equals("INT32")) {
+        } else if ("INT32".equals(fields[i].getSqlType())) {
           m.put("val", 0);
         } else {
           m.put("val", "");
@@ -1080,7 +1088,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(rs, stmt);
+      close(rs, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1153,7 +1161,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(rs, stmt);
+      close(rs, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1206,7 +1214,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1255,7 +1263,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1417,7 +1425,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(resultSet, statement);
+      close(resultSet, statement);
     }
     return result;
   }
@@ -1471,7 +1479,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1527,7 +1535,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1572,7 +1580,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1649,7 +1657,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1728,7 +1736,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(rs, stmt);
+      close(rs, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1782,7 +1790,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1823,7 +1831,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1860,7 +1868,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception ex) {
       ex.printStackTrace();
     } finally {
-      colse(resultSet, statement);
+      close(resultSet, statement);
     }
     return result;
   }
@@ -1942,7 +1950,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(rs, stmt);
+      close(rs, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -1985,7 +1993,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -2154,7 +2162,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(rs, stmt);
+      close(rs, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -2172,7 +2180,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         false);
   }
 
-  private void colse(ResultSet rs, Statement stmt) {
+  private void close(ResultSet rs, Statement stmt) {
 
     try {
       if (rs != null) {
@@ -2542,7 +2550,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (IOException e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -2585,7 +2593,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -2639,7 +2647,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     } catch (Exception e) {
       e.printStackTrace();
     } finally {
-      colse(null, stmt);
+      close(null, stmt);
     }
     return new IoTDBJDBCResultSet(
         stmt,
@@ -2759,12 +2767,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public boolean storesUpperCaseIdentifiers() {
-    return true;
+    return false;
   }
 
   @Override
   public boolean storesUpperCaseQuotedIdentifiers() {
-    return true;
+    return false;
   }
 
   @Override

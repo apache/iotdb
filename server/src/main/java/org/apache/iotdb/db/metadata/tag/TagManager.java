@@ -18,27 +18,38 @@
  */
 package org.apache.iotdb.db.metadata.tag;
 
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.stream.Collectors.toList;
@@ -55,35 +66,80 @@ public class TagManager {
   private static final Logger logger = LoggerFactory.getLogger(TagManager.class);
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
+  private String sgSchemaDirPath;
   private TagLogFile tagLogFile;
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<IMeasurementMNode>>> tagIndex = new ConcurrentHashMap<>();
 
-  private static class TagManagerHolder {
+  public TagManager(String sgSchemaDirPath) throws IOException {
+    this.sgSchemaDirPath = sgSchemaDirPath;
+    tagLogFile = new TagLogFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
+  }
 
-    private TagManagerHolder() {
-      // allowed to do nothing
+  public synchronized boolean createSnapshot(File targetDir) {
+    File tagLogSnapshot =
+        SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+    File tagLogSnapshotTmp =
+        SystemFileFactory.INSTANCE.getFile(targetDir, MetadataConstant.TAG_LOG_SNAPSHOT_TMP);
+    try {
+      tagLogFile.copyTo(tagLogSnapshotTmp);
+      if (tagLogSnapshot.exists() && !tagLogSnapshot.delete()) {
+        logger.error(
+            "Failed to delete old snapshot {} while creating tagManager snapshot.",
+            tagLogSnapshot.getName());
+        return false;
+      }
+      if (!tagLogSnapshotTmp.renameTo(tagLogSnapshot)) {
+        logger.error(
+            "Failed to rename {} to {} while creating tagManager snapshot.",
+            tagLogSnapshotTmp.getName(),
+            tagLogSnapshot.getName());
+        tagLogSnapshot.delete();
+        return false;
+      }
+
+      return true;
+    } catch (IOException e) {
+      logger.error("Failed to create tagManager snapshot due to {}", e.getMessage(), e);
+      tagLogSnapshot.delete();
+      return false;
+    } finally {
+      tagLogSnapshotTmp.delete();
+    }
+  }
+
+  public static TagManager loadFromSnapshot(File snapshotDir, String sgSchemaDirPath)
+      throws IOException {
+    File tagSnapshot =
+        SystemFileFactory.INSTANCE.getFile(snapshotDir, MetadataConstant.TAG_LOG_SNAPSHOT);
+    File tagFile = SystemFileFactory.INSTANCE.getFile(sgSchemaDirPath, MetadataConstant.TAG_LOG);
+    if (tagFile.exists()) {
+      tagFile.delete();
     }
 
-    private static final TagManager INSTANCE = new TagManager();
+    try {
+      FileUtils.copyFile(tagSnapshot, tagFile);
+      return new TagManager(sgSchemaDirPath);
+    } catch (IOException e) {
+      tagFile.delete();
+      throw e;
+    }
   }
 
-  public static TagManager getInstance() {
-    return TagManagerHolder.INSTANCE;
-  }
-
-  @TestOnly
-  public static TagManager getNewInstanceForTest() {
-    return new TagManager();
-  }
-
-  private TagManager() {}
-
-  public void init() throws IOException {
-    tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
+  public boolean recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
+    Map<String, String> tags = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
+    if (tags == null || tags.isEmpty()) {
+      return false;
+    } else {
+      addIndex(tags, measurementMNode);
+      return true;
+    }
   }
 
   public void addIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
+    if (tagKey == null || tagValue == null || measurementMNode == null) {
+      return;
+    }
     tagIndex
         .computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()))
@@ -108,11 +164,11 @@ public class TagManager {
   public List<IMeasurementMNode> getMatchedTimeseriesInIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     if (!tagIndex.containsKey(plan.getKey())) {
-      throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
+      return Collections.emptyList();
     }
     Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(plan.getKey());
     if (value2Node.isEmpty()) {
-      throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
+      return Collections.emptyList();
     }
 
     List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
@@ -141,25 +197,40 @@ public class TagManager {
     // if ordered by heat, we sort all the timeseries by the descending order of the last insert
     // timestamp
     if (plan.isOrderByHeat()) {
-      List<StorageGroupProcessor> list;
+      List<DataRegion> list;
       try {
-        list =
-            StorageEngine.getInstance()
-                .mergeLock(allMatchedNodes.stream().map(IMNode::getPartialPath).collect(toList()));
+        Pair<List<DataRegion>, Map<DataRegion, List<PartialPath>>>
+            lockListAndProcessorToSeriesMapPair =
+                StorageEngine.getInstance()
+                    .mergeLock(
+                        allMatchedNodes.stream()
+                            .map(IMeasurementMNode::getMeasurementPath)
+                            .collect(toList()));
+        list = lockListAndProcessorToSeriesMapPair.left;
+        Map<DataRegion, List<PartialPath>> processorToSeriesMap =
+            lockListAndProcessorToSeriesMapPair.right;
+
         try {
-          allMatchedNodes =
-              allMatchedNodes.stream()
-                  .sorted(
-                      Comparator.comparingLong(
-                              (IMeasurementMNode mNode) ->
-                                  LastCacheManager.getLastTimeStamp(mNode, context))
-                          .reversed()
-                          .thenComparing(IMNode::getFullPath))
-                  .collect(toList());
+          // init QueryDataSource cache
+          QueryResourceManager.getInstance()
+              .initQueryDataSourceCache(processorToSeriesMap, context, null);
+        } catch (Exception e) {
+          logger.error("Meet error when init QueryDataSource ", e);
+          throw new QueryProcessException("Meet error when init QueryDataSource.", e);
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
         }
-      } catch (StorageEngineException e) {
+
+        allMatchedNodes =
+            allMatchedNodes.stream()
+                .sorted(
+                    Comparator.comparingLong(
+                            (IMeasurementMNode mNode) ->
+                                LastCacheManager.getLastTimeStamp(mNode, context))
+                        .reversed()
+                        .thenComparing(IMNode::getFullPath))
+                .collect(toList());
+      } catch (StorageEngineException | QueryProcessException e) {
         throw new MetadataException(e);
       }
     } else {

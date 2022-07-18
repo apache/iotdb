@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleLog;
@@ -26,8 +32,6 @@ import org.apache.iotdb.db.engine.settle.SettleTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 
 import org.slf4j.Logger;
@@ -39,13 +43,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SettleService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(SettleService.class);
 
-  private AtomicInteger threadCnt = new AtomicInteger();
   private ExecutorService settleThreadPool;
   private boolean isRecoverFinish;
 
@@ -66,8 +68,8 @@ public class SettleService implements IService {
     if (settleThreadPool == null) {
       int settleThreadNum = IoTDBDescriptor.getInstance().getConfig().getSettleThreadNum();
       settleThreadPool =
-          Executors.newFixedThreadPool(
-              settleThreadNum, r -> new Thread(r, "SettleThread-" + threadCnt.getAndIncrement()));
+          IoTDBThreadPoolFactory.newFixedThreadPool(
+              settleThreadNum, ThreadName.SETTLE_SERVICE.getName());
     }
     TsFileAndModSettleTool.findFilesToBeRecovered();
 

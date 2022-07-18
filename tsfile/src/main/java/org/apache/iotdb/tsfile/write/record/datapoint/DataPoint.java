@@ -23,10 +23,9 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 
 /**
  * This is a abstract class representing a data point. DataPoint consists of a measurement id and a
@@ -64,19 +63,19 @@ public abstract class DataPoint {
     try {
       switch (dataType) {
         case INT32:
-          dataPoint = new IntDataPoint(measurementId, Integer.valueOf(value));
+          dataPoint = new IntDataPoint(measurementId, Integer.parseInt(value));
           break;
         case INT64:
-          dataPoint = new LongDataPoint(measurementId, Long.valueOf(value));
+          dataPoint = new LongDataPoint(measurementId, Long.parseLong(value));
           break;
         case FLOAT:
-          dataPoint = new FloatDataPoint(measurementId, Float.valueOf(value));
+          dataPoint = new FloatDataPoint(measurementId, Float.parseFloat(value));
           break;
         case DOUBLE:
-          dataPoint = new DoubleDataPoint(measurementId, Double.valueOf(value));
+          dataPoint = new DoubleDataPoint(measurementId, Double.parseDouble(value));
           break;
         case BOOLEAN:
-          dataPoint = new BooleanDataPoint(measurementId, Boolean.valueOf(value));
+          dataPoint = new BooleanDataPoint(measurementId, Boolean.parseBoolean(value));
           break;
         case TEXT:
           dataPoint = new StringDataPoint(measurementId, new Binary(value));
@@ -101,7 +100,7 @@ public abstract class DataPoint {
    * @param writer writer
    * @throws IOException exception in IO
    */
-  public abstract void writeTo(long time, IChunkWriter writer) throws IOException;
+  public abstract void writeTo(long time, ChunkWriterImpl writer) throws IOException;
 
   public String getMeasurementId() {
     return measurementId;
@@ -142,9 +141,5 @@ public abstract class DataPoint {
 
   public void setString(Binary value) {
     throw new UnsupportedOperationException("set String not support in DataPoint");
-  }
-
-  public void setBigDecimal(BigDecimal value) {
-    throw new UnsupportedOperationException("set BigDecimal not support in DataPoint");
   }
 }

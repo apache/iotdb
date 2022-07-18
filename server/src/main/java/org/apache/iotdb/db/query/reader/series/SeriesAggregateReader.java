@@ -18,8 +18,11 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.utils.ResourceByPathUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
 public class SeriesAggregateReader implements IAggregateReader {
@@ -45,15 +49,39 @@ public class SeriesAggregateReader implements IAggregateReader {
       TsFileFilter fileFilter,
       boolean ascending) {
     this.seriesReader =
+        ResourceByPathUtils.getResourceInstance(seriesPath)
+            .createSeriesReader(
+                allSensors,
+                dataType,
+                context,
+                dataSource,
+                timeFilter,
+                valueFilter,
+                fileFilter,
+                ascending);
+  }
+
+  @TestOnly
+  public SeriesAggregateReader(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      Filter timeFilter,
+      Filter valueFilter,
+      boolean ascending) {
+    this.seriesReader =
         new SeriesReader(
             seriesPath,
             allSensors,
             dataType,
             context,
-            dataSource,
+            seqFileResource,
+            unseqFileResource,
             timeFilter,
             valueFilter,
-            fileFilter,
             ascending);
   }
 

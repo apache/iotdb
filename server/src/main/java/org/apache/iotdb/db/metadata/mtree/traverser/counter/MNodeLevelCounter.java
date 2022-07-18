@@ -18,19 +18,32 @@
  */
 package org.apache.iotdb.db.metadata.mtree.traverser.counter;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 
-// This node implements node count function.
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+
+//
+
+/**
+ * This Traverser implements node count function. On finding a path matching the given pattern, if
+ * the path is longer than the specified level, MNodeLevelCounter finds the node of the specified
+ * level on the path and counts it. The same node will not be counted more than once.
+ */
 public class MNodeLevelCounter extends CounterTraverser {
 
   // level query option
   protected int targetLevel;
 
-  public MNodeLevelCounter(IMNode startNode, PartialPath path, int targetLevel)
+  private Set<IMNode> processedNodes = new HashSet<>();
+
+  public MNodeLevelCounter(IMNode startNode, PartialPath path, IMTreeStore store, int targetLevel)
       throws MetadataException {
-    super(startNode, path);
+    super(startNode, path, store);
     this.targetLevel = targetLevel;
   }
 
@@ -41,11 +54,30 @@ public class MNodeLevelCounter extends CounterTraverser {
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (level == targetLevel) {
-      count++;
-      return true;
-    } else {
+    return processLevelMatchedMNode(node, level);
+  }
+
+  private boolean processLevelMatchedMNode(IMNode node, int level) {
+    // move the cursor the given level when matched
+    if (level < targetLevel) {
       return false;
     }
+    // record processed node so they will not be processed twice
+    IMNode levelMatchedAncestor = getLevelMatchedAncestor(node, level);
+    if (!processedNodes.contains(levelMatchedAncestor)) {
+      processedNodes.add(levelMatchedAncestor);
+      count++;
+    }
+    return true;
+  }
+
+  private IMNode getLevelMatchedAncestor(IMNode node, int level) {
+    Iterator<IMNode> iterator = traverseContext.iterator();
+    while (level > targetLevel && iterator.hasNext()) {
+      node = iterator.next();
+      level--;
+    }
+
+    return node;
   }
 }

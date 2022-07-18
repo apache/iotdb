@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.Serializable;
 
@@ -49,8 +49,8 @@ public class TestHelper {
     return metaDataIndex;
   }
 
-  public static UnaryMeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
-    return new UnaryMeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
+  public static MeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
+    return new MeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
   }
 
   public static TimeseriesMetadata createSimpleTimseriesMetaData(String measurementuid) {

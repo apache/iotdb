@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
 import java.io.Serializable;
 import java.nio.charset.Charset;
 
-/** TSFileConfig is a configure class. Every variables is public and has default value. */
+/** TSFileConfig is a configuration class. Every variable is public and has default value. */
 public class TSFileConfig implements Serializable {
 
   /** encoding configuration */
@@ -55,7 +55,7 @@ public class TSFileConfig implements Serializable {
 
   public static final String STRING_ENCODING = "UTF-8";
   public static final Charset STRING_CHARSET = Charset.forName(STRING_ENCODING);
-  public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
+  public static final String CONFIG_FILE_NAME = "iotdb-datanode.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER_V2 = "000002";
   public static final String VERSION_NUMBER_V1 = "000001";
@@ -107,6 +107,10 @@ public class TSFileConfig implements Serializable {
   private double sdtMaxError = 100;
   /** Default DFT satisfy rate is 0.1 */
   private double dftSatisfyRate = 0.1;
+  /** Default SNR for FREQ encoding is 40dB. */
+  private double freqEncodingSNR = 40;
+  /** Default block size for FREQ encoding is 1024. */
+  private int freqEncodingBlockSize = 1024;
   /** Data compression method, TsFile supports UNCOMPRESSED, SNAPPY or LZ4. */
   private CompressionType compressor = CompressionType.SNAPPY;
   /** Line count threshold for checking page memory occupied size. */
@@ -145,6 +149,12 @@ public class TSFileConfig implements Serializable {
   private double bloomFilterErrorRate = 0.05;
   /** The amount of data iterate each time */
   private int batchSize = 1000;
+
+  /** Maximum capacity of a TsBlock */
+  private int maxTsBlockSizeInBytes = 1024 * 1024;
+
+  /** Maximum number of lines in a single TsBlock */
+  private int maxTsBlockLineNumber = 1000;
 
   public TSFileConfig() {}
 
@@ -410,5 +420,37 @@ public class TSFileConfig implements Serializable {
 
   public void setBatchSize(int batchSize) {
     this.batchSize = batchSize;
+  }
+
+  public double getFreqEncodingSNR() {
+    return freqEncodingSNR;
+  }
+
+  public void setFreqEncodingSNR(double freqEncodingSNR) {
+    this.freqEncodingSNR = freqEncodingSNR;
+  }
+
+  public int getFreqEncodingBlockSize() {
+    return freqEncodingBlockSize;
+  }
+
+  public void setFreqEncodingBlockSize(int freqEncodingBlockSize) {
+    this.freqEncodingBlockSize = freqEncodingBlockSize;
+  }
+
+  public int getMaxTsBlockSizeInBytes() {
+    return maxTsBlockSizeInBytes;
+  }
+
+  public void setMaxTsBlockSizeInBytes(int maxTsBlockSizeInBytes) {
+    this.maxTsBlockSizeInBytes = maxTsBlockSizeInBytes;
+  }
+
+  public int getMaxTsBlockLineNumber() {
+    return maxTsBlockLineNumber;
+  }
+
+  public void setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    this.maxTsBlockLineNumber = maxTsBlockLineNumber;
   }
 }

@@ -20,7 +20,8 @@
 package org.apache.iotdb.tsfile.read;
 
 public class TsFileCheckStatus {
-  public static final long COMPLETE_FILE = -1;
-  public static final long INCOMPATIBLE_FILE = -3;
-  public static final long FILE_NOT_FOUND = -4;
+  public static final long COMPLETE_FILE = 0;
+  public static final long FILE_EXISTS_MISTAKES = -1;
+  public static final long INCOMPATIBLE_FILE = -2;
+  public static final long FILE_NOT_FOUND = -3;
 }
