@@ -724,19 +724,22 @@ public class PartitionCache {
             result = new DataPartitionTable();
             dataPartitionCache.put(storageGroupName, result);
           }
-          Map<TSeriesPartitionSlot, SeriesPartitionTable> result2 = result.getDataPartitionMap();
+          Map<TSeriesPartitionSlot, SeriesPartitionTable>
+              seriesPartitionSlotSeriesPartitionTableMap = result.getDataPartitionMap();
           for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
               entry2 : entry1.getValue().entrySet()) {
             TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
             if (null != seriesPartitionSlot) {
               SeriesPartitionTable seriesPartitionTable;
-              if (!result2.containsKey(seriesPartitionSlot)) {
+              if (!seriesPartitionSlotSeriesPartitionTableMap.containsKey(seriesPartitionSlot)) {
                 // if device not exists, then add new seriesPartitionTable
                 seriesPartitionTable = new SeriesPartitionTable(entry2.getValue());
-                result2.put(seriesPartitionSlot, seriesPartitionTable);
+                seriesPartitionSlotSeriesPartitionTableMap.put(
+                    seriesPartitionSlot, seriesPartitionTable);
               } else {
                 // if device exists, then merge
-                seriesPartitionTable = result2.get(seriesPartitionSlot);
+                seriesPartitionTable =
+                    seriesPartitionSlotSeriesPartitionTableMap.get(seriesPartitionSlot);
                 Map<TTimePartitionSlot, List<TConsensusGroupId>> result3 =
                     seriesPartitionTable.getSeriesPartitionMap();
                 result3.putAll(entry2.getValue());
