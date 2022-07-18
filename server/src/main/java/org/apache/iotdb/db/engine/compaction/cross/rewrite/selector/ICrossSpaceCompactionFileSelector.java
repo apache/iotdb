@@ -27,7 +27,7 @@ import java.util.List;
  * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be merged
  * without exceeding given memory budget.
  */
-public interface ICrossSpaceMergeFileSelector {
+public interface ICrossSpaceCompactionFileSelector {
 
   List[] select() throws MergeException;
 }
