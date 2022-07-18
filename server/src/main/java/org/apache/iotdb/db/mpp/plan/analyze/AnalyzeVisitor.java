@@ -42,7 +42,6 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
@@ -383,24 +382,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
       }
 
-      if (queryStatement.getFilterNullComponent() != null) {
-        FilterNullParameter filterNullParameter = new FilterNullParameter();
-        filterNullParameter.setFilterNullPolicy(
-            queryStatement.getFilterNullComponent().getWithoutPolicyType());
-        List<Expression> resultFilterNullColumns;
-        if (queryStatement.isAlignByDevice()) {
-          resultFilterNullColumns =
-              analyzeWithoutNullAlignByDevice(
-                  queryStatement,
-                  outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toSet()));
-        } else {
-          resultFilterNullColumns =
-              analyzeWithoutNull(queryStatement, schemaTree, analysis.getTransformExpressions());
-        }
-        filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
-        analysis.setFilterNullParameter(filterNullParameter);
-      }
-
       if (queryStatement.getFillComponent() != null) {
         FillComponent fillComponent = queryStatement.getFillComponent();
         List<Expression> fillColumnList =
@@ -718,59 +699,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     transformExpressions.addAll(
         groupByLevelExpressions.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
     return groupByLevelExpressions;
-  }
-
-  private List<Expression> analyzeWithoutNullAlignByDevice(
-      QueryStatement queryStatement, Set<Expression> outputExpressions) {
-    List<Expression> resultFilterNullColumns = new ArrayList<>();
-    List<Expression> rawFilterNullColumns =
-        queryStatement.getFilterNullComponent().getWithoutNullColumns();
-
-    // don't specify columns, by default, it is effective for all columns
-    if (rawFilterNullColumns.isEmpty()) {
-      resultFilterNullColumns.addAll(outputExpressions);
-      return resultFilterNullColumns;
-    }
-
-    for (Expression filterNullColumn : rawFilterNullColumns) {
-      if (!outputExpressions.contains(filterNullColumn)) {
-        throw new SemanticException(
-            String.format(
-                "The without null column '%s' don't match the columns queried.", filterNullColumn));
-      }
-      resultFilterNullColumns.add(filterNullColumn);
-    }
-    return resultFilterNullColumns;
-  }
-
-  private List<Expression> analyzeWithoutNull(
-      QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> transformExpressions) {
-    List<Expression> resultFilterNullColumns = new ArrayList<>();
-    List<Expression> rawFilterNullColumns =
-        queryStatement.getFilterNullComponent().getWithoutNullColumns();
-
-    // don't specify columns, by default, it is effective for all columns
-    if (rawFilterNullColumns.isEmpty()) {
-      resultFilterNullColumns.addAll(transformExpressions);
-      return resultFilterNullColumns;
-    }
-
-    for (Expression filterNullColumn : rawFilterNullColumns) {
-      List<Expression> resultExpressions =
-          ExpressionAnalyzer.removeWildcardInExpression(filterNullColumn, schemaTree);
-      for (Expression expression : resultExpressions) {
-        Expression expressionWithoutAlias =
-            ExpressionAnalyzer.removeAliasFromExpression(expression);
-        if (!transformExpressions.contains(expressionWithoutAlias)) {
-          throw new SemanticException(
-              String.format(
-                  "The without null column '%s' don't match the columns queried.",
-                  filterNullColumn));
-        }
-        resultFilterNullColumns.add(expressionWithoutAlias);
-      }
-    }
-    return resultFilterNullColumns;
   }
 
   private DatasetHeader analyzeOutput(

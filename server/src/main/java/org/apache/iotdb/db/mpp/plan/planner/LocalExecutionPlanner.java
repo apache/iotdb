@@ -133,7 +133,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
@@ -849,11 +848,6 @@ public class LocalExecutionPlanner {
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
-    }
-
-    @Override
-    public Operator visitFilterNull(FilterNullNode node, LocalExecutionPlanContext context) {
-      return super.visitFilterNull(node, context);
     }
 
     @Override

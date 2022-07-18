@@ -143,7 +143,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     // other common upstream node
     planBuilder =
         planBuilder
-            .planFilterNull(analysis.getFilterNullParameter())
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultOrder())
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
