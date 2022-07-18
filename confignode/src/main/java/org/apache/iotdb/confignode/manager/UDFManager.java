@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -86,7 +86,7 @@ public class UDFManager {
 
   private List<TSStatus> createFunctionOnDataNodes(
       String functionName, String className, List<String> uris) {
-    final List<TDataNodeInfo> registeredDataNodes =
+    final List<TDataNodeConfiguration> registeredDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes(-1);
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
@@ -96,7 +96,7 @@ public class UDFManager {
     Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
     Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
     AtomicInteger index = new AtomicInteger(0);
-    for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
+    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       handlerMap.put(
           index.get(),
           new FunctionManagementHandler(
@@ -130,7 +130,7 @@ public class UDFManager {
   }
 
   private List<TSStatus> dropFunctionOnDataNodes(String functionName) {
-    final List<TDataNodeInfo> registeredDataNodes =
+    final List<TDataNodeConfiguration> registeredDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes(-1);
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
@@ -139,7 +139,7 @@ public class UDFManager {
     Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
     Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
     AtomicInteger index = new AtomicInteger(0);
-    for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
+    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       handlerMap.put(
           index.get(),
           new FunctionManagementHandler(

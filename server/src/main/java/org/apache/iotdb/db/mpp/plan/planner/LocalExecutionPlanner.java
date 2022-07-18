@@ -133,7 +133,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
@@ -852,11 +851,6 @@ public class LocalExecutionPlanner {
     }
 
     @Override
-    public Operator visitFilterNull(FilterNullNode node, LocalExecutionPlanContext context) {
-      return super.visitFilterNull(node, context);
-    }
-
-    @Override
     public Operator visitGroupByLevel(GroupByLevelNode node, LocalExecutionPlanContext context) {
       checkArgument(
           node.getGroupByLevelDescriptors().size() >= 1,
@@ -1166,7 +1160,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               SchemaFetchMergeOperator.class.getSimpleName());
       context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-      return new SchemaFetchMergeOperator(operatorContext, children);
+      return new SchemaFetchMergeOperator(operatorContext, children, node.getStorageGroupList());
     }
 
     @Override

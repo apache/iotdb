@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionMigrateFailedType;
@@ -355,7 +355,7 @@ public class DataNodeRemoveManager {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<TEndPoint> otherOnlineDataNodes =
         configManager.getLoadManager().getOnlineDataNodes(-1).stream()
-            .map(TDataNodeInfo::getLocation)
+            .map(TDataNodeConfiguration::getLocation)
             .filter(loc -> !loc.equals(disabledDataNode))
             .map(TDataNodeLocation::getInternalEndPoint)
             .collect(Collectors.toList());
@@ -544,7 +544,7 @@ public class DataNodeRemoveManager {
   private Optional<TDataNodeLocation> pickNewReplicaNodeForRegion(
       List<TDataNodeLocation> regionReplicaNodes) {
     return configManager.getLoadManager().getOnlineDataNodes(-1).stream()
-        .map(TDataNodeInfo::getLocation)
+        .map(TDataNodeConfiguration::getLocation)
         .filter(e -> !regionReplicaNodes.contains(e))
         .findAny();
   }
@@ -773,7 +773,7 @@ public class DataNodeRemoveManager {
 
     List<TDataNodeLocation> allDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes(-1).stream()
-            .map(TDataNodeInfo::getLocation)
+            .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
     boolean hasNotExistNode =
         removeDataNodePlan.getDataNodeLocations().stream()

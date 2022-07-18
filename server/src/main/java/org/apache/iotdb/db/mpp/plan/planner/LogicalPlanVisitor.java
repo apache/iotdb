@@ -143,7 +143,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     // other common upstream node
     planBuilder =
         planBuilder
-            .planFilterNull(analysis.getFilterNullParameter())
             .planFill(analysis.getFillDescriptor(), queryStatement.getResultOrder())
             .planOffset(queryStatement.getRowOffset())
             .planLimit(queryStatement.getRowLimit());
@@ -635,12 +634,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitSchemaFetch(
       SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
+    List<String> storageGroupList =
+        new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
     return planBuilder
-        .planSchemaFetchMerge()
-        .planSchemaFetchSource(
-            new ArrayList<>(
-                schemaFetchStatement.getSchemaPartition().getSchemaPartitionMap().keySet()),
-            schemaFetchStatement.getPatternTree())
+        .planSchemaFetchMerge(storageGroupList)
+        .planSchemaFetchSource(storageGroupList, schemaFetchStatement.getPatternTree())
         .getRoot();
   }
 

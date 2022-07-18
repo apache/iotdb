@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.manager.load.balancer;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -70,7 +70,7 @@ public class RegionBalancer {
 
     // TODO: After waiting for the IT framework to complete, change the following code to:
     //  List<TDataNodeInfo> onlineDataNodes = getLoadManager().getOnlineDataNodes(-1);
-    List<TDataNodeInfo> registeredDataNodes = getNodeManager().getRegisteredDataNodes(-1);
+    List<TDataNodeConfiguration> registeredDataNodes = getNodeManager().getRegisteredDataNodes(-1);
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllReplicaSets();
 
     for (Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
