@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
@@ -34,7 +34,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePla
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
@@ -118,8 +117,8 @@ public class ConfigPlanExecutor {
   public DataSet executeQueryPlan(ConfigPhysicalPlan req)
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
-      case GetDataNodeInfo:
-        return nodeInfo.getDataNodeInfo((GetDataNodeInfoPlan) req);
+      case GetDataNodeConfiguration:
+        return nodeInfo.getDataNodeInfo((GetDataNodeConfigurationPlan) req);
       case CountStorageGroup:
         return clusterSchemaInfo.countMatchedStorageGroups((CountStorageGroupPlan) req);
       case GetStorageGroup:
@@ -163,8 +162,6 @@ public class ConfigPlanExecutor {
     switch (req.getType()) {
       case RegisterDataNode:
         return nodeInfo.registerDataNode((RegisterDataNodePlan) req);
-      case ActivateDataNode:
-        return nodeInfo.activateDataNode((ActivateDataNodePlan) req);
       case RemoveDataNode:
         return nodeInfo.removeDataNode((RemoveDataNodePlan) req);
       case SetStorageGroup:

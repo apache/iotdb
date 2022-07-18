@@ -23,7 +23,7 @@ namespace py iotdb.thrift.confignode
 
 // DataNode
 struct TDataNodeRegisterReq {
-  1: required common.TDataNodeInfo dataNodeInfo
+  1: required common.TDataNodeConfiguration dataNodeConfiguration
   // Map<StorageGroupName, TStorageGroupSchema>
   // DataNode can use statusMap to report its status to the ConfigNode when restart
   2: optional map<string, TStorageGroupSchema> statusMap
@@ -37,10 +37,6 @@ struct TRegionMigrateResultReportReq {
   1: required common.TConsensusGroupId regionId
   2: required common.TSStatus migrateResult
   3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
-}
-
-struct TDataNodeActiveReq {
-  1: required common.TDataNodeInfo dataNodeInfo
 }
 
 struct TGlobalConfig {
@@ -63,10 +59,10 @@ struct TDataNodeRemoveResp {
   1: required common.TSStatus status
   2: optional map<common.TDataNodeLocation, common.TSStatus> nodeToStatus
 }
-struct TDataNodeInfoResp {
+struct TDataNodeConfigurationResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeLocation>
-  2: optional map<i32, common.TDataNodeInfo> dataNodeInfoMap
+  2: optional map<i32, common.TDataNodeConfiguration> dataNodeConfigurationMap
 }
 
 // StorageGroup
@@ -315,9 +311,7 @@ service IConfigNodeRPCService {
 
   TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
 
-  common.TSStatus activeDataNode(TDataNodeActiveReq req)
-
-  TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
+  TDataNodeConfigurationResp getDataNodeConfiguration(i32 dataNodeId)
 
   common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
@@ -367,9 +361,9 @@ service IConfigNodeRPCService {
 
   TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req)
 
+  // TODO: Replace this by getOrCreateDataPartitionTable
   TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
-  // TODO: Replace this by getOrCreateDataPartitionTable
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
   /* Authorize */
@@ -420,17 +414,17 @@ service IConfigNodeRPCService {
 
   TShowDataNodesResp showDataNodes()
 
-   /* Template */
+  /* Template */
 
-    common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
+  common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
 
-    TGetAllTemplatesResp getAllTemplates()
+  TGetAllTemplatesResp getAllTemplates()
 
-    TGetTemplateResp getTemplate(string req)
+  TGetTemplateResp getTemplate(string req)
 
-    common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
+  common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
 
-    TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
+  TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
 }
 

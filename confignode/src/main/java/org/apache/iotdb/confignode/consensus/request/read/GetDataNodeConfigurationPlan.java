@@ -27,44 +27,44 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Get DataNodeInfo by the specific DataNode's id. And return all when dataNodeID is set to -1. */
-public class GetDataNodeInfoPlan extends ConfigPhysicalPlan {
+public class GetDataNodeConfigurationPlan extends ConfigPhysicalPlan {
 
-  private int dataNodeID;
+  private int dataNodeId;
 
-  public GetDataNodeInfoPlan() {
-    super(ConfigPhysicalPlanType.GetDataNodeInfo);
+  public GetDataNodeConfigurationPlan() {
+    super(ConfigPhysicalPlanType.GetDataNodeConfiguration);
   }
 
-  public GetDataNodeInfoPlan(int dataNodeID) {
+  public GetDataNodeConfigurationPlan(int dataNodeId) {
     this();
-    this.dataNodeID = dataNodeID;
+    this.dataNodeId = dataNodeId;
   }
 
-  public Integer getDataNodeID() {
-    return dataNodeID;
+  public Integer getDataNodeId() {
+    return dataNodeId;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetDataNodeInfo.ordinal());
-    stream.writeInt(dataNodeID);
+    stream.writeInt(ConfigPhysicalPlanType.GetDataNodeConfiguration.ordinal());
+    stream.writeInt(dataNodeId);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) {
-    this.dataNodeID = buffer.getInt();
+    this.dataNodeId = buffer.getInt();
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    GetDataNodeInfoPlan that = (GetDataNodeInfoPlan) o;
-    return dataNodeID == that.dataNodeID;
+    GetDataNodeConfigurationPlan that = (GetDataNodeConfigurationPlan) o;
+    return dataNodeId == that.dataNodeId;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(dataNodeID);
+    return Objects.hash(dataNodeId);
   }
 }
