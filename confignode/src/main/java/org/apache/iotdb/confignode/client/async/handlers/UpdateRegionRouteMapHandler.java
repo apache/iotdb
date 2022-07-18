@@ -16,43 +16,48 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.client.handlers;
+package org.apache.iotdb.confignode.client.async.handlers;
 
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
-public class UpdateRegionRouteMapHandler implements AsyncMethodCallback<TSStatus> {
+public class UpdateRegionRouteMapHandler extends AbstractRetryHandler
+    implements AsyncMethodCallback<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UpdateRegionRouteMapHandler.class);
 
-  private final TDataNodeLocation dataNodeLocation;
-  private final CountDownLatch latch;
-
-  public UpdateRegionRouteMapHandler(TDataNodeLocation dataNodeLocation, CountDownLatch latch) {
-    this.dataNodeLocation = dataNodeLocation;
-    this.latch = latch;
+  public UpdateRegionRouteMapHandler(
+      TDataNodeLocation targetDataNode,
+      CountDownLatch countDownLatch,
+      DataNodeRequestType requestType,
+      Map<Integer, TDataNodeLocation> dataNodeLocations,
+      int index) {
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
   }
 
   @Override
   public void onComplete(TSStatus status) {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      LOGGER.info("Successfully update the RegionRouteMap on DataNode: {}", dataNodeLocation);
+      getDataNodeLocations().remove(targetDataNode);
+      LOGGER.info("Successfully update the RegionRouteMap on DataNode: {}", targetDataNode);
     } else {
-      LOGGER.error("Update RegionRouteMap on DataNode: {} failed", dataNodeLocation);
+      LOGGER.error("Update RegionRouteMap on DataNode: {} failed", targetDataNode);
     }
-    latch.countDown();
+    countDownLatch.countDown();
   }
 
   @Override
   public void onError(Exception e) {
-    LOGGER.error("Update RegionRouteMap on DataNode: {} failed", dataNodeLocation);
-    latch.countDown();
+    LOGGER.error("Update RegionRouteMap on DataNode: {} failed", targetDataNode);
+    countDownLatch.countDown();
   }
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 
 public class StatementConstructionHandler {
   private StatementConstructionHandler() {}
@@ -50,7 +51,7 @@ public class StatementConstructionHandler {
     TSDataType[] dataTypes = new TSDataType[columnSize];
 
     for (int i = 0; i < columnSize; i++) {
-      dataTypes[i] = TSDataType.valueOf(rawDataType.get(i));
+      dataTypes[i] = TSDataType.valueOf(rawDataType.get(i).toUpperCase(Locale.ROOT));
     }
 
     for (int columnIndex = 0; columnIndex < columnSize; columnIndex++) {

@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.manager.load.balancer.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
@@ -37,7 +37,7 @@ public class GreedyRegionAllocator implements IRegionAllocator {
 
   @Override
   public TRegionReplicaSet allocateRegion(
-      List<TDataNodeInfo> onlineDataNodes,
+      List<TDataNodeConfiguration> onlineDataNodes,
       List<TRegionReplicaSet> allocatedRegions,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
@@ -49,9 +49,9 @@ public class GreedyRegionAllocator implements IRegionAllocator {
   }
 
   private List<TDataNodeLocation> buildWeightList(
-      List<TDataNodeInfo> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions) {
+      List<TDataNodeConfiguration> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions) {
     Map<TDataNodeLocation, Integer> countMap = new HashMap<>();
-    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
+    for (TDataNodeConfiguration dataNodeInfo : onlineDataNodes) {
       countMap.put(dataNodeInfo.getLocation(), 0);
     }
 

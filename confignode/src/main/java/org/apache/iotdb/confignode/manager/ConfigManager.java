@@ -21,7 +21,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -39,7 +39,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
@@ -47,7 +47,6 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
@@ -59,7 +58,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
@@ -191,7 +190,7 @@ public class ConfigManager implements IManager {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return nodeManager.registerDataNode(registerDataNodePlan);
     } else {
-      DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
+      DataNodeRegisterResp dataSet = new DataNodeRegisterResp();
       dataSet.setStatus(status);
       dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
       return dataSet;
@@ -212,21 +211,13 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TSStatus activateDataNode(ActivateDataNodePlan activateDataNodePlan) {
+  public DataSet getDataNodeConfiguration(
+      GetDataNodeConfigurationPlan getDataNodeConfigurationPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return nodeManager.activateDataNode(activateDataNodePlan);
-    }
-    return status;
-  }
-
-  @Override
-  public DataSet getDataNodeInfo(GetDataNodeInfoPlan getDataNodeInfoPlan) {
-    TSStatus status = confirmLeader();
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return nodeManager.getDataNodeInfo(getDataNodeInfoPlan);
+      return nodeManager.getDataNodeConfiguration(getDataNodeConfigurationPlan);
     } else {
-      DataNodeInfosResp dataSet = new DataNodeInfosResp();
+      DataNodeConfigurationResp dataSet = new DataNodeConfigurationResp();
       dataSet.setStatus(status);
       return dataSet;
     }
@@ -241,7 +232,7 @@ public class ConfigManager implements IManager {
           Comparator.comparingInt(configNodeLocation -> configNodeLocation.getConfigNodeId()));
       List<TDataNodeLocation> dataNodeInfoLocations =
           getNodeManager().getRegisteredDataNodes(-1).stream()
-              .map(TDataNodeInfo::getLocation)
+              .map(TDataNodeConfiguration::getLocation)
               .collect(Collectors.toList());
       dataNodeInfoLocations.sort(
           Comparator.comparingInt(dataNodeInfoLocation -> dataNodeInfoLocation.getDataNodeId()));
@@ -432,8 +423,7 @@ public class ConfigManager implements IManager {
           (SchemaPartitionResp) partitionManager.getSchemaPartition(getSchemaPartitionPlan);
       if (isContainedReplicaSet) {
         resp =
-            queryResult.convertToRpcSchemaPartitionResp(
-                getLoadManager().genRealTimeRoutingPolicy());
+            queryResult.convertToRpcSchemaPartitionResp(getLoadManager().genLatestRegionRouteMap());
       } else {
         resp = queryResult.convertToRpcSchemaPartitionTableResp();
       }
@@ -490,8 +480,7 @@ public class ConfigManager implements IManager {
               partitionManager.getOrCreateSchemaPartition(getOrCreateSchemaPartitionPlan);
       if (isContainedReplicaSet) {
         resp =
-            queryResult.convertToRpcSchemaPartitionResp(
-                getLoadManager().genRealTimeRoutingPolicy());
+            queryResult.convertToRpcSchemaPartitionResp(getLoadManager().genLatestRegionRouteMap());
       } else {
         resp = queryResult.convertToRpcSchemaPartitionTableResp();
       }
@@ -526,7 +515,7 @@ public class ConfigManager implements IManager {
               partitionManager.getNodePathsPartition(getNodePathsPartitionPlan);
       TSchemaNodeManagementResp result =
           resp.convertToRpcSchemaNodeManagementPartitionResp(
-              getLoadManager().genRealTimeRoutingPolicy());
+              getLoadManager().genLatestRegionRouteMap());
 
       // TODO: Delete or hide this LOGGER before officially release.
       LOGGER.info(
@@ -558,7 +547,7 @@ public class ConfigManager implements IManager {
           (DataPartitionResp) partitionManager.getDataPartition(getDataPartitionPlan);
 
       if (isContainedReplicaSet) {
-        resp = queryResult.convertToTDataPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
+        resp = queryResult.convertToTDataPartitionResp(getLoadManager().genLatestRegionRouteMap());
       } else {
         resp = queryResult.convertToTDataPartitionTableResp();
       }
@@ -597,7 +586,7 @@ public class ConfigManager implements IManager {
               partitionManager.getOrCreateDataPartition(getOrCreateDataPartitionReq);
 
       if (isContainedReplicaSet) {
-        resp = queryResult.convertToTDataPartitionResp(getLoadManager().genRealTimeRoutingPolicy());
+        resp = queryResult.convertToTDataPartitionResp(getLoadManager().genLatestRegionRouteMap());
       } else {
         resp = queryResult.convertToTDataPartitionTableResp();
       }
@@ -858,7 +847,7 @@ public class ConfigManager implements IManager {
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       resp.setTimestamp(System.currentTimeMillis());
-      resp.setRegionRouteMap(getLoadManager().genRealTimeRoutingPolicy());
+      resp.setRegionRouteMap(getLoadManager().genLatestRegionRouteMap());
     }
 
     return resp;
@@ -890,10 +879,10 @@ public class ConfigManager implements IManager {
   public DataSet showDataNodes() {
     TSStatus status = confirmLeader();
     GetRegionInfoListPlan getRegionsinfoReq = new GetRegionInfoListPlan();
-    DataNodeInfosResp dataNodeInfosResp = new DataNodeInfosResp();
+    DataNodeConfigurationResp dataNodeConfigurationResp = new DataNodeConfigurationResp();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeInfosResp.setStatus(status);
-      return dataNodeInfosResp;
+      dataNodeConfigurationResp.setStatus(status);
+      return dataNodeConfigurationResp;
     }
     List<TDataNodesInfo> dataNodesInfoList = nodeManager.getRegisteredDataNodesInfoList();
     RegionInfoListResp regionsInfoDataSet =
@@ -936,11 +925,11 @@ public class ConfigManager implements IManager {
           }));
     }
 
-    dataNodesInfoList.sort(Comparator.comparingInt(dataNodeInfo -> dataNodeInfo.getDataNodeId()));
-    dataNodeInfosResp.setStatus(regionsInfoDataSet.getStatus());
-    dataNodeInfosResp.setDataNodesInfoList(dataNodesInfoList);
+    dataNodesInfoList.sort(Comparator.comparingInt(TDataNodesInfo::getDataNodeId));
+    dataNodeConfigurationResp.setStatus(regionsInfoDataSet.getStatus());
+    dataNodeConfigurationResp.setDataNodesInfoList(dataNodesInfoList);
 
-    return dataNodeInfosResp;
+    return dataNodeConfigurationResp;
   }
 
   public ProcedureManager getProcedureManager() {

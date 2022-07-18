@@ -88,6 +88,8 @@ public interface IMNode extends Serializable {
 
   boolean isMeasurement();
 
+  MNodeType getMNodeType(Boolean isConfig);
+
   IStorageGroupMNode getAsStorageGroupMNode();
 
   IEntityMNode getAsEntityMNode();
