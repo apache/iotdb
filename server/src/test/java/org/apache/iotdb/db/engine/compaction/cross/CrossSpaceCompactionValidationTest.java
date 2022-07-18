@@ -2009,6 +2009,60 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
   /**
    * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400<br>
+   * 2 Unseq files: 2500 ~ 3500, 4310 ~ 4360<br>
+   * Selected seq file index: 3, 4<br>
+   * Selected unseq file index: 1
+   */
+  @Test
+  public void testUnseqFileOverlapWithUnclosedSeqFile2()
+      throws MergeException, IOException, MetadataException, WriteProcessException {
+    registerTimeseriesInMManger(5, 10, true);
+    createFiles(5, 10, 10, 1000, 0, 0, 100, 100, false, true);
+    createFiles(1, 10, 10, 1000, 2500, 2500, 100, 100, false, false);
+    createFiles(1, 5, 5, 50, 4310, 4310, 100, 100, false, false);
+
+    TsFileResource unclosedSeqResource = new TsFileResource(seqResources.get(4).getTsFile());
+    unclosedSeqResource.setStatus(TsFileResourceStatus.UNCLOSED);
+    TsFileResource lastSeqResource = seqResources.get(4);
+    for (String deviceID : lastSeqResource.getDevices()) {
+      unclosedSeqResource.updateStartTime(deviceID, lastSeqResource.getStartTime(deviceID));
+    }
+    seqResources.remove(4);
+    seqResources.add(4, unclosedSeqResource);
+
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+
+    CrossSpaceCompactionResource resource =
+        new CrossSpaceCompactionResource(seqResources, unseqResources);
+    ICrossSpaceCompactionFileSelector mergeFileSelector =
+        new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
+    List[] result = mergeFileSelector.select();
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+
+    new CrossSpaceCompactionTask(
+            0,
+            tsFileManager,
+            result[0],
+            result[1],
+            IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getCrossCompactionPerformer()
+                .createInstance(),
+            new AtomicInteger(0),
+            tsFileManager.getNextCompactionTaskId())
+        .doCompaction();
+
+    validateSeqFiles();
+  }
+
+  /**
+   * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400<br>
    * 2 Unseq files: 2500 ~ 3500, 1500 ~ 4500<br>
    * Selected seq file index: 3, 4<br>
    * Selected unseq file index: 1
