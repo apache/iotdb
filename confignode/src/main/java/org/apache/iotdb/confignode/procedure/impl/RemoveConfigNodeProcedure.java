@@ -100,25 +100,11 @@ public class RemoveConfigNodeProcedure
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, RemoveConfigNodeState state)
       throws IOException, InterruptedException, ProcedureException {
-    switch (state) {
-      case REMOVE_PEER:
-        try {
-          env.addConfigNodePeer(tConfigNodeLocation);
-        } catch (AddPeerException e) {
-          throw new ProcedureException(e);
-        }
-        LOG.info("Rollback remove peer:{}", tConfigNodeLocation);
-        break;
-    }
   }
 
   @Override
   protected boolean isRollbackSupported(RemoveConfigNodeState state) {
-    switch (state) {
-      case REMOVE_PEER:
-        return true;
-    }
-    return false;
+    return true;
   }
 
   @Override
