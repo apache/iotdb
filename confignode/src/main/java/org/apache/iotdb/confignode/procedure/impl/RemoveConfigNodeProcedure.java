@@ -22,7 +22,6 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
@@ -99,8 +98,7 @@ public class RemoveConfigNodeProcedure
 
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, RemoveConfigNodeState state)
-      throws IOException, InterruptedException, ProcedureException {
-  }
+      throws IOException, InterruptedException, ProcedureException {}
 
   @Override
   protected boolean isRollbackSupported(RemoveConfigNodeState state) {
