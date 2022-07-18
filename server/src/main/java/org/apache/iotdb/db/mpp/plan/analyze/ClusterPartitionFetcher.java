@@ -361,12 +361,8 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> deviceToTimePartitionMap =
           new HashMap<>();
       for (DataPartitionQueryParam queryParam : entry.getValue()) {
-        if (queryParam.getSeriesPartitionSlot() == null) {
-          queryParam.setSeriesPartitionSlot(
-              partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()));
-        }
         deviceToTimePartitionMap.put(
-            new TSeriesPartitionSlot(queryParam.getSeriesPartitionSlot().getSlotId()),
+            partitionExecutor.getSeriesPartitionSlot(queryParam.getDevicePath()),
             queryParam.getTimePartitionSlotList().stream()
                 .map(timePartitionSlot -> new TTimePartitionSlot(timePartitionSlot.getStartTime()))
                 .collect(Collectors.toList()));

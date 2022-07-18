@@ -617,11 +617,6 @@ public class PartitionCache {
             dataPartitionMap.computeIfAbsent(storageGroupName, k -> new HashMap<>());
     // check cache for each device
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
-      if (null == dataPartitionQueryParam.getSeriesPartitionSlot()) {
-        dataPartitionQueryParam.setSeriesPartitionSlot(
-            new TSeriesPartitionSlot(
-                partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath())));
-      }
       if (!getDeviceDataPartition(
           seriesSlotToTimePartitionMap, dataPartitionQueryParam, cachedStorageGroupPartitionMap)) {
         return false;
@@ -647,8 +642,6 @@ public class PartitionCache {
     if (null != dataPartitionQueryParam.getDevicePath()) {
       seriesPartitionSlot =
           partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath());
-    } else if (null != dataPartitionQueryParam.getSeriesPartitionSlot()) {
-      seriesPartitionSlot = dataPartitionQueryParam.getSeriesPartitionSlot();
     } else {
       return false;
     }
