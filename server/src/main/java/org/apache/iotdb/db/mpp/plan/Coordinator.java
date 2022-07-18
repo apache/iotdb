@@ -22,7 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -58,6 +60,8 @@ public class Coordinator {
   private static final String COORDINATOR_WRITE_EXECUTOR_NAME = "MPPCoordinatorWrite";
   private static final String COORDINATOR_SCHEDULED_EXECUTOR_NAME = "MPPCoordinatorScheduled";
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
 
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       INTERNAL_SERVICE_CLIENT_MANAGER =
@@ -104,6 +108,29 @@ public class Coordinator {
         INTERNAL_SERVICE_CLIENT_MANAGER);
   }
 
+  private IQueryExecution createQueryExecution(
+      Statement statement,
+      MPPQueryContext queryContext,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher,
+      long timeOut,long startTime) {
+    queryContext.setTimeOut(timeOut);
+    queryContext.setStartTime(startTime);
+    if (statement instanceof IConfigStatement) {
+      queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
+      return new ConfigExecution(queryContext, statement, executor);
+    }
+    return new QueryExecution(
+        statement,
+        queryContext,
+        executor,
+        writeOperationExecutor,
+        scheduledExecutor,
+        partitionFetcher,
+        schemaFetcher,
+        INTERNAL_SERVICE_CLIENT_MANAGER);
+  }
+
   public ExecutionResult execute(
       Statement statement,
       long queryId,
@@ -112,6 +139,7 @@ public class Coordinator {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       long timeOut) {
+    long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (sql != null && sql.length() > 0) {
@@ -128,7 +156,42 @@ public class Coordinator {
                   DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
               partitionFetcher,
               schemaFetcher,
-              timeOut);
+              timeOut,startTime);
+      if (execution.isQuery()) {
+        queryExecutionMap.put(queryId, execution);
+      }
+      execution.start();
+
+      return execution.getStatus();
+    }
+  }
+
+  @TestOnly
+  public ExecutionResult execute(
+      Statement statement,
+      long queryId,
+      SessionInfo session,
+      String sql,
+      IPartitionFetcher partitionFetcher,
+      ISchemaFetcher schemaFetcher) {
+    QueryId globalQueryId = queryIdGenerator.createNextQueryId();
+    try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
+      if (sql != null && sql.length() > 0) {
+        LOGGER.info("start executing sql: {}", sql);
+      }
+      IQueryExecution execution =
+          createQueryExecution(
+              statement,
+              new MPPQueryContext(
+                  sql,
+                  globalQueryId,
+                  session,
+                  DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+                  DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
+              partitionFetcher,
+              schemaFetcher,
+              config.getQueryTimeoutThreshold()
+              );
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
       }

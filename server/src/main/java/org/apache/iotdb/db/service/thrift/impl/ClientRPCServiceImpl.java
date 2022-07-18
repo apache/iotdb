@@ -314,8 +314,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (Exception e) {

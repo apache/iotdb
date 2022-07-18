@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.QueryState;
@@ -161,13 +162,17 @@ public class QueryExecution implements IQueryExecution {
       stateMachine.transitionToRunning();
       return;
     }
-    long startTime = System.currentTimeMillis();
+    long remainTime = context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime());
+    if(remainTime<=0){
+      throw new QueryTimeoutRuntimeException();
+    }
+    context.setTimeOut(remainTime);
+
     doLogicalPlan();
     doDistributedPlan();
     if (context.getQueryType() == QueryType.READ) {
       initResultHandle();
     }
-    context.setTimeOut(context.getTimeOut() - (System.currentTimeMillis() - startTime));
     schedule();
   }
 

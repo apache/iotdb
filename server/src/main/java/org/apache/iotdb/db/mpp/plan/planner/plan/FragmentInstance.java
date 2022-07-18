@@ -76,7 +76,7 @@ public class FragmentInstance implements IConsensusRequest {
     this.timeFilter = timeFilter;
     this.id = id;
     this.type = type;
-    this.timeOut = timeOut;
+    this.timeOut = timeOut > 0 ? timeOut : config.getQueryTimeoutThreshold();
   }
 
   public TRegionReplicaSet getDataRegionId() {
@@ -153,6 +153,7 @@ public class FragmentInstance implements IConsensusRequest {
             getRegionReplicaSet() == null ? "Not set" : getRegionReplicaSet().getRegionId()));
     ret.append("\n---- Plan Node Tree ----\n");
     ret.append(PlanNodeUtil.nodeToString(getFragment().getRoot()));
+    ret.append(String.format("timeOut-%s:", getTimeOut()));
     return ret.toString();
   }
 
@@ -177,7 +178,7 @@ public class FragmentInstance implements IConsensusRequest {
       id.serialize(outputStream);
       fragment.serialize(outputStream);
       ReadWriteIOUtils.write(
-          timeOut > 0 ? timeOut : config.getQueryTimeoutThreshold(), outputStream);
+          timeOut, outputStream);
       ReadWriteIOUtils.write(timeFilter != null, outputStream);
       if (timeFilter != null) {
         timeFilter.serialize(outputStream);
@@ -219,4 +220,5 @@ public class FragmentInstance implements IConsensusRequest {
   public long getTimeOut() {
     return timeOut;
   }
+
 }

@@ -2501,6 +2501,7 @@ public class Session {
     private int thriftMaxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
     private Version version = Config.DEFAULT_VERSION;
+    private long timeOut = Config.DEFAULT_QUERY_TIME_OUT;
 
     private List<String> nodeUrls = null;
 
@@ -2556,6 +2557,11 @@ public class Session {
 
     public Builder version(Version version) {
       this.version = version;
+      return this;
+    }
+
+    public Builder timeOut(long timeOut){
+      this.timeOut = timeOut;
       return this;
     }
 

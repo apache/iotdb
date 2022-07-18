@@ -238,7 +238,6 @@ struct TSInsertTabletsReq {
   6: required list<list<i32>> typesList
   7: required list<i32> sizeList
   8: optional bool isAligned
-  9: optional i64 timeout
 }
 
 struct TSInsertRecordsReq {
@@ -248,7 +247,6 @@ struct TSInsertRecordsReq {
   4: required list<binary> valuesList
   5: required list<i64> timestamps
   6: optional bool isAligned
-  7: optional i64 timeout
 }
 
 struct TSInsertRecordsOfOneDeviceReq {
@@ -268,7 +266,6 @@ struct TSInsertStringRecordsOfOneDeviceReq {
     4: required list<list<string>> valuesList
     5: required list<i64> timestamps
     6: optional bool isAligned
-    7: optional i64 timeout
 }
 
 struct TSInsertStringRecordsReq {
@@ -278,7 +275,6 @@ struct TSInsertStringRecordsReq {
   4: required list<list<string>> valuesList
   5: required list<i64> timestamps
   6: optional bool isAligned
-  7: optional i64 timeout
 }
 
 struct TSDeleteDataReq {
@@ -286,7 +282,6 @@ struct TSDeleteDataReq {
   2: required list<string> paths
   3: required i64 startTime
   4: required i64 endTime
-  5: optional i64 timeout
 }
 
 struct TSCreateTimeseriesReq {
@@ -299,7 +294,6 @@ struct TSCreateTimeseriesReq {
   7: optional map<string, string> tags
   8: optional map<string, string> attributes
   9: optional string measurementAlias
-  10: optional i64 timeout
 }
 
 struct TSCreateAlignedTimeseriesReq {
@@ -312,7 +306,6 @@ struct TSCreateAlignedTimeseriesReq {
   7: optional list<string> measurementAlias
   8: optional list<map<string, string>> tagsList
   9: optional list<map<string, string>> attributesList
-  10: optional i64 timeout
 }
 
 struct TSRawDataQueryReq {
@@ -348,7 +341,6 @@ struct TSCreateMultiTimeseriesReq {
   7: optional list<map<string, string>> tagsList
   8: optional list<map<string, string>> attributesList
   9: optional list<string> measurementAliasList
-  10: optional i64 timeout
 }
 
 struct ServerProperties {
