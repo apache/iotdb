@@ -332,9 +332,10 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 |:---|:---|----|
 |SET\_STORAGE\_GROUP|创建存储组。包含设置存储组的权限。路径相关|Eg: `set storage group to root.ln;`|
 |DELETE\_STORAGE\_GROUP|删除存储组。路径相关|Eg: `delete storage group root.ln;`|
+|READ_STORAGE_GROUP|查看存储组。路径相关|Eg: `show storage group;`|
 |CREATE\_TIMESERIES|创建时间序列。路径相关|Eg1: 创建时间序列<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: 创建对齐时间序列<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
 |INSERT\_TIMESERIES|插入数据。路径相关|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
-|READ\_TIMESERIES|查询数据。路径相关|Eg1: `show storage group;` <br />Eg2: `show child paths root.ln, show child nodes root.ln;`<br />Eg3: `show devices;`<br />Eg4: `show timeseries root.**;`<br />Eg5: `show schema templates;`<br />Eg6: `show all ttl`<br />Eg7: [数据查询](../Query-Data/Overview.md)（这一节之下的查询语句均使用该权限）<br />Eg8: CVS格式数据导出<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg9: 查询性能追踪<br />`tracing select * from root`<br />Eg10: UDF查询<br />`select example(*) from root.sg.d1`<br />Eg11: 查询触发器<br />`show triggers`|
+|READ\_TIMESERIES|查询数据。路径相关|Eg1: `show child paths root.ln, show child nodes root.ln;`<br />Eg2: `show devices;`<br />Eg3: `show timeseries root.**;`<br />Eg4: `show schema templates;`<br />Eg5: `show all ttl`<br />Eg6: [数据查询](../Query-Data/Overview.md)（这一节之下的查询语句均使用该权限）<br />Eg7: CVS格式数据导出<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg8: 查询性能追踪<br />`tracing select * from root`<br />Eg9: UDF查询<br />`select example(*) from root.sg.d1`<br />Eg10: 查询触发器<br />`show triggers`|
 |DELETE\_TIMESERIES|删除数据或时间序列。路径相关|Eg1: 删除时间序列<br />`delete timeseries root.ln.wf01.wt01.status`<br />Eg2: 删除数据<br />`delete from root.ln.wf02.wt02.status where time < 10`|
 |CREATE\_USER|创建用户。路径无关|Eg: `create user thulab 'passwd';`|
 |DELETE\_USER|删除用户。路径无关|Eg: `drop user xiaoming;`|

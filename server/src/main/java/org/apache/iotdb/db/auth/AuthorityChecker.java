@@ -293,6 +293,8 @@ public class AuthorityChecker {
         return PrivilegeType.SET_STORAGE_GROUP.ordinal();
       case DELETE_STORAGE_GROUP:
         return PrivilegeType.DELETE_STORAGE_GROUP.ordinal();
+      case READ_STORAGE_GROUP:
+        return PrivilegeType.READ_STORAGE_GROUP.ordinal();
       case CREATE_TIMESERIES:
       case CREATE_ALIGNED_TIMESERIES:
         return PrivilegeType.CREATE_TIMESERIES.ordinal();
