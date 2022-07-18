@@ -161,7 +161,7 @@ import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
-import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -1496,7 +1496,7 @@ public class PlanExecutor implements IPlanExecutor {
         logger.info(
             "try to split the tsFile={} du to it spans multi partitions",
             tsFileResource.getTsFile().getPath());
-        TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
+        TsFileSplitByPartitionTool.rewriteTsFile(tsFileResource, splitResources);
         tsFileResource.writeLock();
         tsFileResource.removeModFile();
         tsFileResource.writeUnlock();
