@@ -950,6 +950,10 @@ public class IoTDBConfig {
 
   private String readConsistencyLevel = "strong";
 
+  /** Maximum execution time of a DriverTask */
+  /** Maximum execution time of a DriverTask */
+  private int driverTaskExecutionTimeSliceInMs = 100;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -3018,5 +3022,13 @@ public class IoTDBConfig {
 
   public void setReadConsistencyLevel(String readConsistencyLevel) {
     this.readConsistencyLevel = readConsistencyLevel;
+  }
+
+  public int getDriverTaskExecutionTimeSliceInMs() {
+    return driverTaskExecutionTimeSliceInMs;
+  }
+
+  public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
+    this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 }

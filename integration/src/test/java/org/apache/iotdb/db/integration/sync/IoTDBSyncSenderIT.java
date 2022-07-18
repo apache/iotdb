@@ -234,7 +234,7 @@ public class IoTDBSyncSenderIT {
     }
 
     List<PipeData> resultList = new ArrayList<>();
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 3; i++) {
       resultList.add(simpleDeletionPipeData);
     }
     for (int i = 0; i < 2; i++) {

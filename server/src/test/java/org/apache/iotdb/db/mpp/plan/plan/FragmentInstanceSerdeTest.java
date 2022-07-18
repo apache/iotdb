@@ -33,12 +33,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
@@ -46,7 +44,6 @@ import com.google.common.collect.ImmutableList;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -123,13 +120,6 @@ public class FragmentInstanceSerdeTest {
     OffsetNode offsetNode = new OffsetNode(new PlanNodeId("OffsetNode"), 100);
     LimitNode limitNode = new LimitNode(new PlanNodeId("LimitNode"), 100);
 
-    FilterNullNode filterNullNode =
-        new FilterNullNode(
-            new PlanNodeId("TestFilterNullNode"),
-            null,
-            FilterNullPolicy.ALL_NULL,
-            new ArrayList<>());
-
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(new PlanNodeId("TimeJoinNode"), OrderBy.TIMESTAMP_DESC);
     SeriesScanNode seriesScanNode1 =
@@ -146,8 +136,7 @@ public class FragmentInstanceSerdeTest {
     timeJoinNode.addChild(seriesScanNode1);
     timeJoinNode.addChild(seriesScanNode2);
     timeJoinNode.addChild(seriesScanNode3);
-    filterNullNode.addChild(timeJoinNode);
-    limitNode.addChild(filterNullNode);
+    limitNode.addChild(timeJoinNode);
     offsetNode.addChild(limitNode);
 
     return offsetNode;

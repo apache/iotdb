@@ -38,6 +38,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.fail;
+
 public class RemoveDataNodePlanTest {
   private RemoveDataNodePlan req1;
   private RemoveDataNodePlan req2;
@@ -129,23 +131,44 @@ public class RemoveDataNodePlanTest {
   }
 
   @Test
-  public void testSerializeAndDeSerialized() throws IOException {
+  public void testNotUpdatePlanSerializeAndDeSerialize() {
+    try {
+      RemoveDataNodePlan deSerializeReq = runPlanSerializeAndDeSerialize(false);
+      Assert.assertEquals(req1, deSerializeReq);
+    } catch (IOException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testUpdatePlanSerializeAndDeSerialize() {
+    try {
+      RemoveDataNodePlan deSerializeReq = runPlanSerializeAndDeSerialize(true);
+      Assert.assertEquals(req1, deSerializeReq);
+    } catch (IOException e) {
+      fail(e.getMessage());
+    }
+  }
+
+  private RemoveDataNodePlan runPlanSerializeAndDeSerialize(boolean update) throws IOException {
     try (DataOutputStream outputStream =
         new DataOutputStream(Files.newOutputStream(Paths.get(serializedFileName)))) {
+      req1.setUpdate(update);
       req1.serializeImpl(outputStream);
     }
 
-    byte[] data = new byte[40240];
+    byte[] data = new byte[2048];
     try (DataInputStream inputStream =
         new DataInputStream(Files.newInputStream(Paths.get(serializedFileName)))) {
       inputStream.read(data);
     }
     ByteBuffer buffer = ByteBuffer.wrap(data);
+    buffer.rewind();
+    ByteBuffer readOnlyBuffer = buffer.asReadOnlyBuffer();
 
     RemoveDataNodePlan req = new RemoveDataNodePlan();
-    buffer.getInt();
-    req.deserializeImpl(buffer);
-
-    Assert.assertEquals(req, req1);
+    readOnlyBuffer.getInt();
+    req.deserializeImpl(readOnlyBuffer);
+    return req;
   }
 }

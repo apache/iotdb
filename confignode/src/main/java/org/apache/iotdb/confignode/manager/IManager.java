@@ -24,12 +24,11 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
@@ -125,14 +124,6 @@ public interface IManager {
   DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan);
 
   /**
-   * activate DataNode
-   *
-   * @param activateDataNodePlan ActivateDataNodePlan
-   * @return TSStatus
-   */
-  TSStatus activateDataNode(ActivateDataNodePlan activateDataNodePlan);
-
-  /**
    * Remove DataNode
    *
    * @param removeDataNodePlan
@@ -143,9 +134,9 @@ public interface IManager {
   /**
    * Get DataNode info
    *
-   * @return DataNodesInfoDataSet
+   * @return DataNodesConfigurationDataSet
    */
-  DataSet getDataNodeInfo(GetDataNodeInfoPlan getDataNodeInfoPlan);
+  DataSet getDataNodeConfiguration(GetDataNodeConfigurationPlan getDataNodeConfigurationPlan);
 
   TClusterNodeInfos getAllClusterNodeInfos();
 

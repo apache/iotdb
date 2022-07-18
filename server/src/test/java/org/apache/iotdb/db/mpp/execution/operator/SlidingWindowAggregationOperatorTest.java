@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
-import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregator;
 import org.apache.iotdb.db.mpp.aggregation.slidingwindow.SlidingWindowAggregatorFactory;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
@@ -61,6 +60,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
 
 public class SlidingWindowAggregationOperatorTest {
 
@@ -148,8 +148,11 @@ public class SlidingWindowAggregationOperatorTest {
         continue;
       }
       Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
-      Assert.assertEquals(retArray[count], getResultString(resultTsBlock));
-      count++;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        Assert.assertEquals(retArray[count], getResultString(resultTsBlock, pos));
+        count++;
+      }
     }
     Assert.assertEquals(retArray.length, count);
 
@@ -161,32 +164,35 @@ public class SlidingWindowAggregationOperatorTest {
         continue;
       }
       Assert.assertEquals(rootAggregationTypes.size(), resultTsBlock.getValueColumnCount());
-      Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock));
-      count--;
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        Assert.assertEquals(retArray[count - 1], getResultString(resultTsBlock, pos));
+        count--;
+      }
     }
     Assert.assertEquals(0, count);
   }
 
-  private String getResultString(TsBlock resultTsBlock) {
-    return resultTsBlock.getTimeColumn().getLong(0)
+  private String getResultString(TsBlock resultTsBlock, int pos) {
+    return resultTsBlock.getTimeColumn().getLong(pos)
         + ","
-        + resultTsBlock.getColumn(0).getLong(0)
+        + resultTsBlock.getColumn(0).getLong(pos)
         + ","
-        + resultTsBlock.getColumn(1).getDouble(0)
+        + resultTsBlock.getColumn(1).getDouble(pos)
         + ","
-        + resultTsBlock.getColumn(2).getDouble(0)
+        + resultTsBlock.getColumn(2).getDouble(pos)
         + ","
-        + resultTsBlock.getColumn(3).getInt(0)
+        + resultTsBlock.getColumn(3).getInt(pos)
         + ","
-        + resultTsBlock.getColumn(4).getLong(0)
+        + resultTsBlock.getColumn(4).getLong(pos)
         + ","
-        + resultTsBlock.getColumn(5).getLong(0)
+        + resultTsBlock.getColumn(5).getLong(pos)
         + ","
-        + resultTsBlock.getColumn(6).getInt(0)
+        + resultTsBlock.getColumn(6).getInt(pos)
         + ","
-        + resultTsBlock.getColumn(7).getInt(0)
+        + resultTsBlock.getColumn(7).getInt(pos)
         + ","
-        + resultTsBlock.getColumn(8).getInt(0);
+        + resultTsBlock.getColumn(8).getInt(pos);
   }
 
   private SlidingWindowAggregationOperator initSlidingWindowAggregationOperator(boolean ascending)
@@ -204,6 +210,12 @@ public class SlidingWindowAggregationOperatorTest {
         0, sourceId, SeriesAggregationScanOperator.class.getSimpleName());
     fragmentInstanceContext.addOperatorContext(
         1, queryId.genPlanNodeId(), SlidingWindowAggregationOperator.class.getSimpleName());
+    fragmentInstanceContext
+        .getOperatorContexts()
+        .forEach(
+            operatorContext -> {
+              operatorContext.setMaxRunTime(TEST_TIME_SLICE);
+            });
 
     MeasurementPath d0s0 =
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
@@ -226,7 +238,7 @@ public class SlidingWindowAggregationOperatorTest {
     seriesAggregationScanOperator.initQueryDataSource(
         new QueryDataSource(seqResources, unSeqResources));
 
-    List<SlidingWindowAggregator> finalAggregators = new ArrayList<>();
+    List<Aggregator> finalAggregators = new ArrayList<>();
     for (int i = 0; i < rootAggregationTypes.size(); i++) {
       finalAggregators.add(
           SlidingWindowAggregatorFactory.createSlidingWindowAggregator(

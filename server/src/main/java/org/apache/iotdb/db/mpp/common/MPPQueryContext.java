@@ -104,6 +104,10 @@ public class MPPQueryContext {
     return localInternalEndpoint;
   }
 
+  public SessionInfo getSession() {
+    return session;
+  }
+
   public long getStartTime() {
     return startTime;
   }

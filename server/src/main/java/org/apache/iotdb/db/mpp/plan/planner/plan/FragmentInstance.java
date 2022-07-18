@@ -97,6 +97,12 @@ public class FragmentInstance implements IConsensusRequest {
     }
   }
 
+  // Although the HostDataNode is set in method setDataRegionAndHost(),
+  // we still keep another method for customized needs
+  public void setHostDataNode(TDataNodeLocation hostDataNode) {
+    this.hostDataNode = hostDataNode;
+  }
+
   public TRegionReplicaSet getRegionReplicaSet() {
     return regionReplicaSet;
   }

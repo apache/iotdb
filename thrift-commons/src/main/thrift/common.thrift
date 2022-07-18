@@ -58,6 +58,11 @@ struct TRegionReplicaSet {
   2: required list<TDataNodeLocation> dataNodeLocations
 }
 
+struct TNodeResource {
+  1: required i32 cpuCoreNum
+  2: required i64 maxMemory
+}
+
 struct TConfigNodeLocation {
   1: required i32 configNodeId
   2: required TEndPoint internalEndPoint
@@ -78,10 +83,9 @@ struct TDataNodeLocation {
   6: required TEndPoint schemaRegionConsensusEndPoint
 }
 
-struct TDataNodeInfo {
+struct TDataNodeConfiguration {
   1: required TDataNodeLocation location
-  2: required i32 cpuCoreNum
-  3: required i64 maxMemory
+  2: required TNodeResource resource
 }
 
 // For show regions
@@ -122,4 +126,10 @@ struct TDataNodesInfo {
 struct TSetTTLReq {
   1: required string storageGroup
   2: required i64 TTL
+}
+
+// for node management
+struct TSchemaNode {
+  1: required string nodeName
+  2: required byte nodeType
 }
