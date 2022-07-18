@@ -50,6 +50,11 @@ public class StandaloneEnvConfig implements BaseConfig {
   }
 
   @Override
+  public int getDataRegionNum() {
+    return IoTDBDescriptor.getInstance().getConfig().getDataRegionNum();
+  }
+
+  @Override
   public BaseConfig setDataRegionNum(int dataRegionNum) {
     IoTDBDescriptor.getInstance().getConfig().setDataRegionNum(dataRegionNum);
     return this;
@@ -224,6 +229,17 @@ public class StandaloneEnvConfig implements BaseConfig {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
+    return this;
+  }
+
+  @Override
+  public int getMaxTsBlockLineNumber() {
+    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+  }
+
+  @Override
+  public BaseConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
     return this;
   }
 }

@@ -65,7 +65,6 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
         requestSets.add(
             new IndexedConsensusRequest(
                 ((IndexedConsensusRequest) request).getSearchIndex(),
-                -1,
                 new TestEntry(buffer.getInt(), Peer.deserialize(buffer))),
             false);
       } else {

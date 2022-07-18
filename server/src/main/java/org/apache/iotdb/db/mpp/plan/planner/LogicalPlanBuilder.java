@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.planner;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -634,12 +635,14 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planFill(FillDescriptor fillDescriptor) {
+  public LogicalPlanBuilder planFill(FillDescriptor fillDescriptor, OrderBy scanOrder) {
     if (fillDescriptor == null) {
       return this;
     }
 
-    this.root = new FillNode(context.getQueryId().genPlanNodeId(), this.getRoot(), fillDescriptor);
+    this.root =
+        new FillNode(
+            context.getQueryId().genPlanNodeId(), this.getRoot(), fillDescriptor, scanOrder);
     return this;
   }
 
@@ -788,7 +791,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planNodeManagementMemoryMerge(Set<String> data) {
+  public LogicalPlanBuilder planNodeManagementMemoryMerge(Set<TSchemaNode> data) {
     NodeManagementMemoryMergeNode memorySourceNode =
         new NodeManagementMemoryMergeNode(context.getQueryId().genPlanNodeId(), data);
     memorySourceNode.addChild(this.getRoot());

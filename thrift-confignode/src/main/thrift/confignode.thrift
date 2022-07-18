@@ -29,8 +29,14 @@ struct TDataNodeRegisterReq {
   2: optional map<string, TStorageGroupSchema> statusMap
 }
 
-struct TDataNodeActiveReq {
-  1: required common.TDataNodeInfo dataNodeInfo
+struct TDataNodeRemoveReq {
+  1: required list<common.TDataNodeLocation> dataNodeLocations
+}
+
+struct TRegionMigrateResultReportReq {
+  1: required common.TConsensusGroupId regionId
+  2: required common.TSStatus migrateResult
+  3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
 }
 
 struct TGlobalConfig {
@@ -39,6 +45,7 @@ struct TGlobalConfig {
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
+  6: required string readConsistencyLevel
 }
 
 struct TDataNodeRegisterResp {
@@ -48,6 +55,10 @@ struct TDataNodeRegisterResp {
   4: optional TGlobalConfig globalConfig
 }
 
+struct TDataNodeRemoveResp {
+  1: required common.TSStatus status
+  2: optional map<common.TDataNodeLocation, common.TSStatus> nodeToStatus
+}
 struct TDataNodeInfoResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeLocation>
@@ -108,10 +119,17 @@ struct TSchemaPartitionReq {
   1: required binary pathPatternTree
 }
 
+// TODO: Replace this by TSchemaPartitionTableResp
 struct TSchemaPartitionResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
+}
+
+struct TSchemaPartitionTableResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, TConsensusGroupId>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, common.TConsensusGroupId>> schemaPartitionTable
 }
 
 // Node Management
@@ -125,7 +143,7 @@ struct TSchemaNodeManagementResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
-  3: optional set<string> matchedNode
+  3: optional set<common.TSchemaNode> matchedNode
 }
 
 // Data
@@ -134,10 +152,17 @@ struct TDataPartitionReq {
   1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
 }
 
+// TODO: Replace this by TDataPartitionTableResp
 struct TDataPartitionResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
+}
+
+struct TDataPartitionTableResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TConsensusGroupId>>>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
 // Authorize
@@ -198,6 +223,7 @@ struct TConfigNodeRegisterReq {
   9: required double schemaRegionPerDataNode
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
+  12: required string readConsistencyLevel
 }
 
 struct TConfigNodeRegisterResp {
@@ -228,6 +254,7 @@ struct TDropFunctionReq {
 // show regions
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
+  2: optional list<string> storageGroups
 }
 
 struct TShowRegionResp {
@@ -250,15 +277,43 @@ struct TRegionRouteMapResp {
   3: optional map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
 }
 
+
+// Template
+struct TCreateSchemaTemplateReq {
+  1: required string name
+  2: required binary serializedTemplate
+}
+
+struct TGetAllTemplatesResp {
+  1: required common.TSStatus status
+  2: optional list<binary> templateList
+}
+
+struct TGetTemplateResp {
+  1: required common.TSStatus status
+  2: optional binary template
+}
+
+struct TSetSchemaTemplateReq {
+  1: required string name
+  2: required string path
+}
+struct TGetPathsSetTemplatesResp {
+  1: required common.TSStatus status
+  2: optional list<string> pathList
+}
+
 service IConfigNodeRPCService {
 
   /* DataNode */
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  common.TSStatus activeDataNode(TDataNodeActiveReq req)
+  TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
 
   TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
+
+  common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
   /* Show Cluster */
   TClusterNodeInfos getAllClusterNodeInfos()
@@ -285,9 +340,15 @@ service IConfigNodeRPCService {
 
   /* Schema */
 
+  // TODO: Replace this by getSchemaPartitionTable
   TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
 
+  TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
+
+  // TODO: Replace this by getOrCreateSchemaPartitionTable
   TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
+
+  TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
   /* Node Management */
 
@@ -295,9 +356,15 @@ service IConfigNodeRPCService {
 
   /* Data */
 
+  // TODO: Replace this by getDataPartitionTable
   TDataPartitionResp getDataPartition(TDataPartitionReq req)
 
+  TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req)
+
   TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
+
+  // TODO: Replace this by getOrCreateDataPartitionTable
+  TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
   /* Authorize */
 
@@ -346,6 +413,18 @@ service IConfigNodeRPCService {
   /* Show DataNodes */
 
   TShowDataNodesResp showDataNodes()
+
+   /* Template */
+
+    common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
+
+    TGetAllTemplatesResp getAllTemplates()
+
+    TGetTemplateResp getTemplate(string req)
+
+    common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
+
+    TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
 }
 

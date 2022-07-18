@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -40,12 +41,17 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.CountStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowClusterTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowDataNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowNodesInSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowPathSetTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowRegionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
@@ -56,6 +62,11 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -69,6 +80,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
 
@@ -330,6 +342,14 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     TShowRegionResp showRegionResp = new TShowRegionResp();
     TShowRegionReq showRegionReq = new TShowRegionReq();
     showRegionReq.setConsensusGroupType(showRegionStatement.getRegionType());
+    if (showRegionStatement.getStorageGroups() == null) {
+      showRegionReq.setStorageGroups(null);
+    } else {
+      showRegionReq.setStorageGroups(
+          showRegionStatement.getStorageGroups().stream()
+              .map(PartialPath::getFullPath)
+              .collect(Collectors.toList()));
+    }
     try (ConfigNodeClient client =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       showRegionResp = client.showRegion(showRegionReq);
@@ -362,6 +382,101 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
     // build TSBlock
     ShowDataNodesTask.buildTSBlock(showDataNodesResp, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> createSchemaTemplate(
+      CreateSchemaTemplateStatement createSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    // Construct request using statement
+    try {
+      // Send request to some API server
+      TSStatus tsStatus =
+          ClusterTemplateManager.getInstance().createSchemaTemplate(createSchemaTemplateStatement);
+      // Get response or throw exception
+      if (TSStatusCode.SUCCESS_STATUS.getStatusCode() != tsStatus.getCode()) {
+        LOGGER.error(
+            "Failed to execute create schema template {} in config node, status is {}.",
+            createSchemaTemplateStatement.getName(),
+            tsStatus);
+        future.setException(new StatementExecutionException(tsStatus));
+      } else {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      }
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showSchemaTemplate(
+      ShowSchemaTemplateStatement showSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      List<Template> templateList = ClusterTemplateManager.getInstance().getAllTemplates();
+      // build TSBlock
+      ShowSchemaTemplateTask.buildTSBlock(templateList, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showNodesInSchemaTemplate(
+      ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    String req = showNodesInSchemaTemplateStatement.getTemplateName();
+    TGetTemplateResp tGetTemplateResp = new TGetTemplateResp();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      Template template = ClusterTemplateManager.getInstance().getTemplate(req);
+      // build TSBlock
+      ShowNodesInSchemaTemplateTask.buildTSBlock(template, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> setSchemaTemplate(
+      SetSchemaTemplateStatement setSchemaTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    String templateName = setSchemaTemplateStatement.getTemplateName();
+    PartialPath path = setSchemaTemplateStatement.getPath();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      ClusterTemplateManager.getInstance().setSchemaTemplate(templateName, path);
+      // build TSBlock
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } catch (Exception e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showPathSetTemplate(
+      ShowPathSetTemplateStatement showPathSetTemplateStatement) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    String templateName = showPathSetTemplateStatement.getTemplateName();
+    try (ConfigNodeClient configNodeClient =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      List<PartialPath> listPath =
+          ClusterTemplateManager.getInstance().getPathsSetTemplate(templateName);
+      // build TSBlock
+      ShowPathSetTemplateTask.buildTSBlock(listPath, future);
+    } catch (Exception e) {
+      future.setException(e);
+    }
     return future;
   }
 }

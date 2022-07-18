@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -210,6 +211,11 @@ public class ExchangeNodeAdder extends PlanVisitor<PlanNode, NodeGroupContext> {
   @Override
   public PlanNode visitGroupByLevel(GroupByLevelNode node, NodeGroupContext context) {
     return processMultiChildNode(node, context);
+  }
+
+  @Override
+  public PlanNode visitTransform(TransformNode node, NodeGroupContext context) {
+    return processOneChildNode(node, context);
   }
 
   private PlanNode processMultiChildNode(MultiChildNode node, NodeGroupContext context) {

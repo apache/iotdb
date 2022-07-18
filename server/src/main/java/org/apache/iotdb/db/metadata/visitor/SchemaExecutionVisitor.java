@@ -65,7 +65,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       schemaRegion.createTimeseries((CreateTimeSeriesPlan) plan, -1);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
@@ -78,7 +78,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       schemaRegion.createAlignedTimeSeries((CreateAlignedTimeSeriesPlan) plan);
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully");
   }
@@ -275,7 +275,7 @@ public class SchemaExecutionVisitor extends PlanVisitor<TSStatus, ISchemaRegion>
       }
     } catch (MetadataException e) {
       logger.error("{}: MetaData error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return RpcUtils.getStatus(TSStatusCode.METADATA_ERROR, e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
     } catch (IOException e) {
       logger.error("{}: IO error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());

@@ -96,6 +96,14 @@ struct TRegionInfo {
   8: optional string status
 }
 
+enum TRegionMigrateFailedType {
+  AddPeerFailed,
+  RemovePeerFailed,
+  RemoveConsensusGroupFailed,
+  DeleteRegionFailed,
+  CreateRegionFailed
+}
+
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups
@@ -114,4 +122,10 @@ struct TDataNodesInfo {
 struct TSetTTLReq {
   1: required string storageGroup
   2: required i64 TTL
+}
+
+// for node management
+struct TSchemaNode {
+  1: required string nodeName
+  2: required byte nodeType
 }

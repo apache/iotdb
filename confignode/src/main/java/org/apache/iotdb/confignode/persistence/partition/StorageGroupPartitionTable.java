@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.cluster.RegionStatus;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -39,6 +40,8 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,10 +55,10 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class StorageGroupPartitionTable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(StorageGroupPartitionTable.class);
 
   private volatile boolean isPredeleted = false;
   // The name of storage group
@@ -64,10 +67,6 @@ public class StorageGroupPartitionTable {
   // Total number of SeriesPartitionSlots occupied by schema,
   // determines whether a new Region needs to be created
   private final AtomicInteger seriesPartitionSlotsCount;
-
-  // Region allocation particle
-  private final AtomicBoolean schemaRegionParticle;
-  private final AtomicBoolean dataRegionParticle;
 
   // Region
   private final Map<TConsensusGroupId, RegionGroup> regionGroupMap;
@@ -80,8 +79,6 @@ public class StorageGroupPartitionTable {
     this.storageGroupName = storageGroupName;
     this.seriesPartitionSlotsCount = new AtomicInteger(0);
 
-    this.schemaRegionParticle = new AtomicBoolean(true);
-    this.dataRegionParticle = new AtomicBoolean(true);
     this.regionGroupMap = new ConcurrentHashMap<>();
 
     this.schemaPartitionTable = new SchemaPartitionTable();
@@ -204,53 +201,6 @@ public class StorageGroupPartitionTable {
               }
             });
     return result.getAndIncrement();
-  }
-
-  /**
-   * Only leader use this interface. Contending the Region allocation particle.
-   *
-   * @param type SchemaRegion or DataRegion
-   * @return True when successfully get the allocation particle, false otherwise
-   */
-  public boolean contendRegionAllocationParticle(TConsensusGroupType type) {
-    switch (type) {
-      case SchemaRegion:
-        return schemaRegionParticle.getAndSet(false);
-      case DataRegion:
-        return dataRegionParticle.getAndSet(false);
-      default:
-        return false;
-    }
-  }
-
-  /**
-   * Only leader use this interface. Put back the Region allocation particle.
-   *
-   * @param type SchemaRegion or DataRegion
-   */
-  public void putBackRegionAllocationParticle(TConsensusGroupType type) {
-    switch (type) {
-      case SchemaRegion:
-        schemaRegionParticle.set(true);
-      case DataRegion:
-        dataRegionParticle.set(true);
-    }
-  }
-
-  /**
-   * Only leader use this interface. Get the Region allocation particle.
-   *
-   * @param type SchemaRegion or DataRegion
-   */
-  public boolean getRegionAllocationParticle(TConsensusGroupType type) {
-    switch (type) {
-      case SchemaRegion:
-        return schemaRegionParticle.get();
-      case DataRegion:
-        return dataRegionParticle.get();
-      default:
-        return false;
-    }
   }
 
   public int getSlotsCount() {
@@ -385,12 +335,13 @@ public class StorageGroupPartitionTable {
 
   public void getRegionInfoList(
       GetRegionInfoListPlan regionsInfoPlan, List<TRegionInfo> regionInfoList) {
+    final TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
     regionGroupMap.forEach(
         (consensusGroupId, regionGroup) -> {
           TRegionReplicaSet replicaSet = regionGroup.getReplicaSet();
-          if (regionsInfoPlan.getRegionType() == null) {
+          if (showRegionReq == null || showRegionReq.getConsensusGroupType() == null) {
             buildTRegionsInfo(regionInfoList, replicaSet, regionGroup);
-          } else if (regionsInfoPlan.getRegionType().ordinal()
+          } else if (regionsInfoPlan.getShowRegionReq().getConsensusGroupType().ordinal()
               == replicaSet.getRegionId().getType().ordinal()) {
             buildTRegionsInfo(regionInfoList, replicaSet, regionGroup);
           }
@@ -455,6 +406,62 @@ public class StorageGroupPartitionTable {
 
     schemaPartitionTable.deserialize(inputStream, protocol);
     dataPartitionTable.deserialize(inputStream, protocol);
+  }
+
+  /**
+   * update region location
+   *
+   * @param regionId regionId
+   * @param oldNode old location, will remove it
+   * @param newNode new location, will add it
+   */
+  public void updateRegionLocation(
+      TConsensusGroupId regionId, TDataNodeLocation oldNode, TDataNodeLocation newNode) {
+    addRegionNewLocation(regionId, newNode);
+    removeRegionOldLocation(regionId, oldNode);
+  }
+
+  private boolean addRegionNewLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
+    RegionGroup regionGroup = regionGroupMap.get(regionId);
+    if (regionGroup == null) {
+      LOGGER.warn("not find Region Group for region {}", regionId);
+      return false;
+    }
+    if (regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
+      LOGGER.info("Node is already in region locations, node: {}, region: {}", node, regionId);
+      return true;
+    }
+    return regionGroup.getReplicaSet().getDataNodeLocations().add(node);
+  }
+
+  private boolean removeRegionOldLocation(TConsensusGroupId regionId, TDataNodeLocation node) {
+    RegionGroup regionGroup = regionGroupMap.get(regionId);
+    if (regionGroup == null) {
+      LOGGER.warn("not find Region Group for region {}", regionId);
+      return false;
+    }
+    if (!regionGroup.getReplicaSet().getDataNodeLocations().contains(node)) {
+      LOGGER.info(
+          "Node is Not in region locations, no need to remove it, node: {}, region: {}",
+          node,
+          regionId);
+      return true;
+    }
+    return regionGroup.getReplicaSet().getDataNodeLocations().remove(node);
+  }
+
+  /**
+   * if the region contained?
+   *
+   * @param regionId TConsensusGroupId
+   * @return true if contain
+   */
+  public boolean containRegion(TConsensusGroupId regionId) {
+    return regionGroupMap.containsKey(regionId);
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
   }
 
   @Override

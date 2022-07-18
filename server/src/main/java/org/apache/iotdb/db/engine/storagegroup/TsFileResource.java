@@ -572,7 +572,7 @@ public class TsFileResource {
   }
 
   public boolean isDeleted() {
-    return this.status == TsFileResourceStatus.DELETED;
+    return !this.file.exists();
   }
 
   public boolean isCompacting() {
@@ -586,21 +586,10 @@ public class TsFileResource {
   public void setStatus(TsFileResourceStatus status) {
     switch (status) {
       case CLOSED:
-        if (this.status != TsFileResourceStatus.DELETED) {
-          this.status = TsFileResourceStatus.CLOSED;
-        }
+        this.status = TsFileResourceStatus.CLOSED;
         break;
       case UNCLOSED:
         this.status = TsFileResourceStatus.UNCLOSED;
-        break;
-      case DELETED:
-        if (this.status != TsFileResourceStatus.UNCLOSED) {
-          this.status = TsFileResourceStatus.DELETED;
-        } else {
-          throw new RuntimeException(
-              this.file.getAbsolutePath()
-                  + " Cannot set the status of an unclosed TsFileResource to DELETED");
-        }
         break;
       case COMPACTING:
         if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {

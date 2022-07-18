@@ -174,21 +174,12 @@ public class DeleteDataNode extends WritePlanNode {
     Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap = new HashMap<>();
 
     for (PartialPath pathPattern : pathList) {
-      PartialPath devicePattern = pathPattern;
-      if (!pathPattern.getTailNode().equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        devicePattern = pathPattern.getDevicePath();
+      if (pathPattern.getTailNode().equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        splitPathPatternByDevice(
+            pathPattern, pathPattern, schemaTree, dataPartition, regionToPatternMap);
       }
-      for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getMatchedDevices(devicePattern)) {
-        PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-        // todo implement time slot
-        for (TRegionReplicaSet regionReplicaSet :
-            dataPartition.getDataRegionReplicaSet(
-                devicePath.getFullPath(), Collections.emptyList())) {
-          regionToPatternMap
-              .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
-              .addAll(pathPattern.alterPrefixPath(devicePath));
-        }
-      }
+      splitPathPatternByDevice(
+          pathPattern.getDevicePath(), pathPattern, schemaTree, dataPartition, regionToPatternMap);
     }
 
     return regionToPatternMap.keySet().stream()
@@ -197,5 +188,24 @@ public class DeleteDataNode extends WritePlanNode {
                 new DeleteDataNode(
                     getPlanNodeId(), regionToPatternMap.get(o), deleteStartTime, deleteEndTime, o))
         .collect(Collectors.toList());
+  }
+
+  private void splitPathPatternByDevice(
+      PartialPath devicePattern,
+      PartialPath pathPattern,
+      SchemaTree schemaTree,
+      DataPartition dataPartition,
+      Map<TRegionReplicaSet, List<PartialPath>> regionToPatternMap) {
+    for (DeviceSchemaInfo deviceSchemaInfo : schemaTree.getMatchedDevices(devicePattern)) {
+      PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+      // todo implement time slot
+      for (TRegionReplicaSet regionReplicaSet :
+          dataPartition.getDataRegionReplicaSet(
+              devicePath.getFullPath(), Collections.emptyList())) {
+        regionToPatternMap
+            .computeIfAbsent(regionReplicaSet, o -> new ArrayList<>())
+            .addAll(pathPattern.alterPrefixPath(devicePath));
+      }
+    }
   }
 }

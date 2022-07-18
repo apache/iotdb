@@ -58,29 +58,29 @@
             <td><a href="https://downloads.apache.org/iotdb/0.13.0/apache-iotdb-0.13.0-grafana-connector-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
-            <td rowspan="4">0.12.5</td>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.5/apache-iotdb-0.12.5-all-bin.zip">All-in-one</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-all-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-all-bin.zip.asc">ASC</a></td>
-            <td rowspan="4"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.5/apache-iotdb-0.12.5-source-release.zip">源代码</a></td>
-            <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-source-release.zip.sha512">SHA512</a></td>
-            <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-source-release.zip.asc">ASC</a></td>
-            <td rowspan="4"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.12.5/RELEASE_NOTES.md">release notes</a></td>
+            <td rowspan="4">0.12.6</td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.6/apache-iotdb-0.12.6-all-bin.zip">All-in-one</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-all-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-all-bin.zip.asc">ASC</a></td>
+            <td rowspan="4"><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.6/apache-iotdb-0.12.6-source-release.zip">源代码</a></td>
+            <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-source-release.zip.sha512">SHA512</a></td>
+            <td rowspan="4"><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-source-release.zip.asc">ASC</a></td>
+            <td rowspan="4"><a href="https://raw.githubusercontent.com/apache/iotdb/v0.12.6/RELEASE_NOTES.md">release notes</a></td>
       </tr>
       <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.5/apache-iotdb-0.12.5-server-bin.zip">单机版</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-server-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-server-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.6/apache-iotdb-0.12.6-server-bin.zip">单机版</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-server-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-server-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.5/apache-iotdb-0.12.5-cluster-bin.zip">集群版</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-cluster-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-cluster-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.6/apache-iotdb-0.12.6-cluster-bin.zip">集群版</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-cluster-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-cluster-bin.zip.asc">ASC</a></td>
       </tr>
       <tr>
-            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.5/apache-iotdb-0.12.5-grafana-bin.zip">Grafana 连接器</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-grafana-bin.zip.sha512">SHA512</a></td>
-            <td><a href="https://downloads.apache.org/iotdb/0.12.5/apache-iotdb-0.12.5-grafana-bin.zip.asc">ASC</a></td>
+            <td><a href="https://www.apache.org/dyn/closer.cgi/iotdb/0.12.6/apache-iotdb-0.12.6-grafana-bin.zip">Grafana 连接器</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-grafana-bin.zip.sha512">SHA512</a></td>
+            <td><a href="https://downloads.apache.org/iotdb/0.12.6/apache-iotdb-0.12.6-grafana-bin.zip.asc">ASC</a></td>
       </tr>
 </table>
 
@@ -103,6 +103,9 @@
 - 0.14.0-preview1 仅包括分布式预览版，供测试及试用，不推荐从 0.13 升级到预览版。
   
 - 0.14.0-preview1 的用户手册在 latest 栏目，未单独新建栏目，正式版会新建栏目。
+
+**<font color=red>注意: 不要使用 stop-confignode.bat/sh 脚本，会误杀其他进程</font>**:
+
 
 - 如何从 v0.13.x 升级到 v0.14.x?
   

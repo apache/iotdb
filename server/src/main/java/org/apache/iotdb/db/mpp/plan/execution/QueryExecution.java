@@ -401,6 +401,10 @@ public class QueryExecution implements IQueryExecution {
 
     TSStatus tsstatus = RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage());
 
+    if (stateMachine.getFailureStatus() != null) {
+      tsstatus = stateMachine.getFailureStatus();
+    }
+
     // collect redirect info to client for writing
     if (analysis.getStatement() instanceof InsertBaseStatement) {
       InsertBaseStatement insertStatement = (InsertBaseStatement) analysis.getStatement();
