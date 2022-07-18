@@ -62,7 +62,6 @@ public class Coordinator {
   private static final int COORDINATOR_SCHEDULED_EXECUTOR_SIZE = 10;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-
   private static final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       INTERNAL_SERVICE_CLIENT_MANAGER =
           new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
@@ -113,7 +112,8 @@ public class Coordinator {
       MPPQueryContext queryContext,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
-      long timeOut,long startTime) {
+      long timeOut,
+      long startTime) {
     queryContext.setTimeOut(timeOut);
     queryContext.setStartTime(startTime);
     if (statement instanceof IConfigStatement) {
@@ -156,7 +156,8 @@ public class Coordinator {
                   DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
               partitionFetcher,
               schemaFetcher,
-              timeOut,startTime);
+              timeOut,
+              startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
       }
@@ -190,8 +191,7 @@ public class Coordinator {
                   DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold()
-              );
+              config.getQueryTimeoutThreshold());
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
       }

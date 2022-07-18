@@ -183,8 +183,7 @@ public class FragmentInstance implements IConsensusRequest {
         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
       id.serialize(outputStream);
       fragment.serialize(outputStream);
-      ReadWriteIOUtils.write(
-          timeOut, outputStream);
+      ReadWriteIOUtils.write(timeOut, outputStream);
       ReadWriteIOUtils.write(timeFilter != null, outputStream);
       if (timeFilter != null) {
         timeFilter.serialize(outputStream);
@@ -226,5 +225,4 @@ public class FragmentInstance implements IConsensusRequest {
   public long getTimeOut() {
     return timeOut;
   }
-
 }

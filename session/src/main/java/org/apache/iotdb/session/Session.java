@@ -2560,7 +2560,7 @@ public class Session {
       return this;
     }
 
-    public Builder timeOut(long timeOut){
+    public Builder timeOut(long timeOut) {
       this.timeOut = timeOut;
       return this;
     }

@@ -61,7 +61,8 @@ public class MPPQueryContext {
       SessionInfo session,
       TEndPoint localDataBlockEndpoint,
       TEndPoint localInternalEndpoint,
-      long timeOut,long startTime) {
+      long timeOut,
+      long startTime) {
     this.sql = sql;
     this.queryId = queryId;
     this.session = session;
