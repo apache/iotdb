@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.metadata.cache;
 
-import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -139,19 +138,16 @@ public class DataNodeSchemaCache {
         entry, timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
-  /** get or create SchemaCacheEntry and update last cache */
+  /**
+   * get or create SchemaCacheEntry and update last cache, only support non-aligned sensor or
+   * aligned sensor without only one sub sensor
+   */
   public void updateLastCache(
       MeasurementPath measurementPath,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
       Long latestFlushedTime) {
-    PartialPath seriesPath;
-    try {
-      seriesPath = new PartialPath(measurementPath.getFullPath());
-    } catch (MetadataException e) {
-      logger.error("Failed to update LastCache when get seriesPath", e);
-      return;
-    }
+    PartialPath seriesPath = measurementPath.transformToPartialPath();
     SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
     if (null == entry) {
       entry =
