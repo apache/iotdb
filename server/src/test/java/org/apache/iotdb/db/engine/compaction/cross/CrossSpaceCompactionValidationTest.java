@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpac
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
-import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -1580,12 +1579,11 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
   /**
    * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400<br>
    * 1 Unseq files: 2500 ~ 3500<br>
-   * Selected seq file index: none<br>
-   * Selected unseq file index: none
+   * Selected seq file index: 3, 4<br>
+   * Selected unseq file index: 1
    */
   @Test
-  public void testWithUnclosedSeqFileAndNewSensorInUnseqFile()
-      throws MergeException, IOException, MetadataException, WriteProcessException {
+  public void testWithUnclosedSeqFileAndNewSensorInUnseqFile() throws Exception {
     registerTimeseriesInMManger(5, 10, true);
     createFiles(3, 10, 10, 1000, 0, 0, 100, 100, false, true);
     createFiles(1, 5, 5, 1000, 3300, 3300, 100, 100, false, true);
@@ -1609,7 +1607,17 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     ICrossSpaceMergeFileSelector mergeFileSelector =
         new RewriteCompactionFileSelector(resource, Long.MAX_VALUE);
     List[] result = mergeFileSelector.select();
-    Assert.assertEquals(0, result.length);
+    Assert.assertEquals(2, result.length);
+    Assert.assertEquals(2, result[0].size());
+    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(result[0].get(0), seqResources.get(2));
+    Assert.assertEquals(result[0].get(1), seqResources.get(3));
+    Assert.assertEquals(result[1].get(0), unseqResources.get(0));
+    new RewriteCrossSpaceCompactionTask(
+            "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
+        .call();
+
+    validateSeqFiles();
   }
 
   /**
@@ -1658,9 +1666,9 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
 
   /**
    * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 2200 ~ 3200, 3300 ~ 4300, 4400 ~ 5400<br>
-   * 2 Unseq files: 2500 ~ 3500, 1500 ~ 4500<br>
+   * 2 Unseq files: 2500 ~ 3500, 4310 ~ 4360<br>
    * Selected seq file index: 3, 4<br>
-   * Selected unseq file index: 1
+   * Selected unseq file index: 1, 2
    */
   @Test
   public void testUnseqFileOverlapWithUnclosedSeqFile2() throws Exception {
@@ -1688,11 +1696,11 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     List[] result = mergeFileSelector.select();
     Assert.assertEquals(2, result.length);
     Assert.assertEquals(2, result[0].size());
-    Assert.assertEquals(1, result[1].size());
+    Assert.assertEquals(2, result[1].size());
     Assert.assertEquals(result[0].get(0), seqResources.get(2));
     Assert.assertEquals(result[0].get(1), seqResources.get(3));
     Assert.assertEquals(result[1].get(0), unseqResources.get(0));
-
+    Assert.assertEquals(result[1].get(1), unseqResources.get(1));
     new RewriteCrossSpaceCompactionTask(
             "0", COMPACTION_TEST_SG, 0, tsFileManager, result[0], result[1], new AtomicInteger(0))
         .call();
