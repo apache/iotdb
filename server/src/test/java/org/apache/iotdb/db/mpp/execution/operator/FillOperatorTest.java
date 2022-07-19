@@ -220,7 +220,9 @@ public class FillOperatorTest {
           1, planNodeId1, FillOperator.class.getSimpleName());
 
       IFill[] fillArray =
-          new IFill[] {new IntPreviousFill(), new IntPreviousFill(), new IntPreviousFill()};
+          new IFill[] {
+            new IntPreviousFill(false), new IntPreviousFill(false), new IntPreviousFill(false)
+          };
       FillOperator fillOperator =
           new FillOperator(
               fragmentInstanceContext.getOperatorContexts().get(0),

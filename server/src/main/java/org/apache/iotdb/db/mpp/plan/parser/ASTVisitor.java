@@ -1034,7 +1034,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         throw new SemanticException("fill value cannot be null");
       }
     } else if (ctx.previousUntilLastClause() != null) {
-      throw new SemanticException("PREVIOUSUNTILLAST fill is not supported yet.");
+      fillComponent.setFillPolicy(FillPolicy.PREVIOUS_UNTIL_LAST);
     } else if (ctx.oldTypeClause() != null) {
       throw new SemanticException("The specified fill datatype is not supported.");
     }

@@ -32,6 +32,12 @@ public class DoublePreviousFill implements IFill {
   private double value;
   // whether previous value is null
   private boolean previousIsNull = true;
+  // PREVIOUS is false
+  private boolean isPreviousUntilLast = false;
+
+  public DoublePreviousFill(boolean isPreviousUntilLast) {
+    this.isPreviousUntilLast = isPreviousUntilLast;
+  }
 
   @Override
   public Column fill(Column valueColumn) {
@@ -57,22 +63,36 @@ public class DoublePreviousFill implements IFill {
             new DoubleColumn(1, Optional.empty(), new double[] {value}), size);
       }
     } else {
+      int index = valueColumn.getPositionCount();
+      if (isPreviousUntilLast) {
+        for (int count = index - 1; count >= 0; count--) {
+          if (!valueColumn.isNull(count)) {
+            index = count;
+            break;
+          }
+        }
+      }
       double[] array = new double[size];
       boolean[] isNull = new boolean[size];
       // have null value
       boolean hasNullValue = false;
       for (int i = 0; i < size; i++) {
-        if (valueColumn.isNull(i)) {
-          if (previousIsNull) {
-            isNull[i] = true;
-            hasNullValue = true;
+        if (i <= index) {
+          if (valueColumn.isNull(i)) {
+            if (previousIsNull) {
+              isNull[i] = true;
+              hasNullValue = true;
+            } else {
+              array[i] = value;
+            }
           } else {
-            array[i] = value;
+            array[i] = valueColumn.getDouble(i);
+            value = array[i];
+            previousIsNull = false;
           }
         } else {
-          array[i] = valueColumn.getDouble(i);
-          value = array[i];
-          previousIsNull = false;
+          isNull[i] = true;
+          hasNullValue = true;
         }
       }
       if (hasNullValue) {
