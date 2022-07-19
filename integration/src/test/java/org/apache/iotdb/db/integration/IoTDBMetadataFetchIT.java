@@ -661,4 +661,53 @@ public class IoTDBMetadataFetchIT {
       }
     }
   }
+
+  @Test
+  @Category({LocalStandaloneTest.class})
+  public void showChildWithLimitOffset() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String[] sqls =
+          new String[] {
+            "show child paths root limit 1 offset 0",
+            "show child paths root limit 1 offset 1",
+            "show child paths root limit 1 offset 2",
+            "show child paths root limit 2 offset 0",
+            "show child paths root limit 2 offset 1",
+            "show child paths root limit 3 offset 0"
+          };
+      String[] standards =
+          new String[] {
+            "root.ln2,\n",
+            "root.ln,\n",
+            "root.ln1,\n",
+            "root.ln,\nroot.ln2,\n", // the result of show query will be sorted
+            "root.ln,\nroot.ln1,\n",
+            "root.ln,\nroot.ln1,\nroot.ln2,\n"
+          };
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
+              }
+            }
+          }
+          Assert.assertEquals(standard, builder.toString());
+        } catch (SQLException e) {
+          logger.error("showChildPaths() failed", e);
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
 }

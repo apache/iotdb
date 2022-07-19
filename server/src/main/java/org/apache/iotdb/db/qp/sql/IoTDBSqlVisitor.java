@@ -2775,6 +2775,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       ((ShowTimeSeriesOperator) operator).setOffset(offset);
     } else if (operator instanceof ShowDevicesOperator) {
       ((ShowDevicesOperator) operator).setOffset(offset);
+    } else if (operator instanceof ShowChildNodesOperator) {
+      ((ShowChildNodesOperator) operator).setOffset(offset);
+    } else if (operator instanceof ShowChildPathsOperator) {
+      ((ShowChildPathsOperator) operator).setOffset(offset);
     } else {
       SpecialClauseComponent specialClauseComponent = queryOp.getSpecialClauseComponent();
       if (specialClauseComponent == null) {
