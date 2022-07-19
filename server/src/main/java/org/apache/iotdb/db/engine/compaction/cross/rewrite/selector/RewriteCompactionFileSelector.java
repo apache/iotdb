@@ -41,7 +41,7 @@ import java.util.List;
  * merged without exceeding given memory budget. It always assume the number of timeseries being
  * queried at the same time is 1 to maximize the number of file merged.
  */
-public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelector {
+public class RewriteCompactionFileSelector implements ICrossSpaceCompactionFileSelector {
   private static final Logger logger =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
 
@@ -167,6 +167,13 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
         break;
       }
 
+      // Filter out the selected seq files
+      for (int i = 0; i < seqSelected.length; i++) {
+        if (seqSelected[i]) {
+          tmpSelectedSeqFiles.remove(i);
+        }
+      }
+
       List<TsFileResource> tmpSelectedSeqFileResources = new ArrayList<>();
       for (int seqIndex : tmpSelectedSeqFiles) {
         tmpSelectedSeqFileResources.add(resource.getSeqFiles().get(seqIndex));
@@ -250,25 +257,20 @@ public class RewriteCompactionFileSelector implements ICrossSpaceMergeFileSelect
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        if (tmpSelectedSeqFiles.contains(i) || !seqFile.mayContainsDevice(deviceId)) {
+        if (!seqFile.mayContainsDevice(deviceId)) {
           continue;
         }
 
         long seqEndTime = seqFile.getEndTime(deviceId);
         long seqStartTime = seqFile.getStartTime(deviceId);
-        if (unseqEndTime < seqStartTime) {
-          // Suppose the time range in unseq file is 10-20, seq file is 30-40. If this unseq file
-          // has no overlapped seq files, then select this seq file. Otherwise, skip this seq file.
-          // There is no more overlap later.
-          if (tmpSelectedSeqFiles.size() == 0) {
+        if (!seqFile.isClosed()) {
+          // for unclosed file, only select those that overlap with the unseq file
+          if (unseqEndTime >= seqStartTime) {
             tmpSelectedSeqFiles.add(i);
           }
-          noMoreOverlap = true;
-        } else if (!seqFile.isClosed()) {
-          // we cannot make sure whether unclosed file has overlap or not, so we just add it.
-          tmpSelectedSeqFiles.add(i);
         } else if (unseqEndTime <= seqEndTime) {
-          // if time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
+          // if time range in unseq file is 10-20, seq file is 30-40, or
+          // time range in unseq file is 10-20, seq file is 15-25, then select this seq file and
           // there is no more overlap later.
           tmpSelectedSeqFiles.add(i);
           noMoreOverlap = true;

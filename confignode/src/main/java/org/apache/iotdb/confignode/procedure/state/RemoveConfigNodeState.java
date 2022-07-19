@@ -17,33 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution;
+package org.apache.iotdb.confignode.procedure.state;
 
-import org.apache.iotdb.commons.exception.IoTDBException;
-import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-
-import java.util.Optional;
-
-public interface IQueryExecution {
-
-  void start();
-
-  void stop();
-
-  void stopAndCleanup();
-
-  ExecutionResult getStatus();
-
-  Optional<TsBlock> getBatchResult() throws IoTDBException;
-
-  boolean hasNextResult();
-
-  int getOutputValueColumnCount();
-
-  DatasetHeader getDatasetHeader();
-
-  boolean isQuery();
-
-  String getQueryId();
+public enum RemoveConfigNodeState {
+  REMOVE_CONFIG_NODE_PREPARE,
+  REMOVE_CONSENSUS_GROUP,
+  REMOVE_PEER,
+  STOP_CONFIG_NODE
 }
