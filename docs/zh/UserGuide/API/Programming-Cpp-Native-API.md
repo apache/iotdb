@@ -299,8 +299,11 @@ void insertTablets(std::unordered_map<std::string, Tablet *> &tablets);
 
 - 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
 ```cpp
-void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
-                  const std::vector<std::string> &values);
+void insertRecord(const std::string &deviceId, 
+                  int64_t time, 
+                  const std::vector<std::string> &measurements,
+                  const std::vector<TSDataType::TSDataType> &types, 
+				  const std::vector<char *> &values);
 ```
 
 - 插入多个 Record
@@ -308,7 +311,8 @@ void insertRecord(const std::string &deviceId, int64_t time, const std::vector<s
 void insertRecords(const std::vector<std::string> &deviceIds,
                    const std::vector<int64_t> &times,
                    const std::vector<std::vector<std::string>> &measurementsList,
-                   const std::vector<std::vector<std::string>> &valuesList);
+                   const std::vector<std::vector<TSDataType::TSDataType>> &typesList,
+                   const std::vector<std::vector<char *>> &valuesList);
 ```
 
 - 插入同属于一个 device 的多个 Record
@@ -316,6 +320,7 @@ void insertRecords(const std::vector<std::string> &deviceIds,
 void insertRecordsOfOneDevice(const std::string &deviceId,
                               std::vector<int64_t> &times,
                               std::vector<std::vector<std::string>> &measurementsList,
+                              std::vector<std::vector<TSDataType::TSDataType>> &typesList,
                               std::vector<std::vector<char *>> &valuesList);
 ```
 
@@ -324,21 +329,21 @@ void insertRecordsOfOneDevice(const std::string &deviceId,
 服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢。
 
 ```cpp
-void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
-                  const std::vector<TSDataType::TSDataType> &types, const std::vector<char *> &values);
+void insertRecord(const std::string &deviceId, 
+                  int64_t time, 
+				  const std::vector<std::string> &measurements,
+                  const std::vector<std::string> &values);
 
 
 void insertRecords(const std::vector<std::string> &deviceIds,
                    const std::vector<int64_t> &times,
                    const std::vector<std::vector<std::string>> &measurementsList,
-                   const std::vector<std::vector<TSDataType::TSDataType>> &typesList,
-                   const std::vector<std::vector<char *>> &valuesList);
+                   const std::vector<std::vector<std::string>> &valuesList);
 
 
 void insertRecordsOfOneDevice(const std::string &deviceId,
                               std::vector<int64_t> &times,
                               std::vector<std::vector<std::string>> &measurementsList,
-                              std::vector<std::vector<TSDataType::TSDataType>> &typesList,
                               std::vector<std::vector<char *>> &valuesList);
 ```
 
