@@ -215,6 +215,18 @@ public class QueryStatement extends Statement {
     return resultSetFormat == ResultSetFormat.DISABLE_ALIGN;
   }
 
+  public boolean isOrderByTime() {
+    return orderByComponent != null && orderByComponent.isOrderByTime();
+  }
+
+  public boolean isOrderByTimeseries() {
+    return orderByComponent != null && orderByComponent.isOrderByTimeseries();
+  }
+
+  public boolean isOrderByDevice() {
+    return orderByComponent != null && orderByComponent.isOrderByDevice();
+  }
+
   public void semanticCheck() {
     if (isAggregationQuery()) {
       if (disableAlign()) {
@@ -243,6 +255,13 @@ public class QueryStatement extends Statement {
       if (getWhereCondition() != null) {
         ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
       }
+      if (isOrderByTimeseries()) {
+        throw new SemanticException("Sorting by timeseries is only supported in last queries.");
+      }
+      if (isOrderByDevice()) {
+        // TODO support sort by device
+        throw new SemanticException("Sorting by device is not yet supported.");
+      }
     }
 
     if (isLastQuery()) {
@@ -257,6 +276,20 @@ public class QueryStatement extends Statement {
         if (!(expression instanceof TimeSeriesOperand)) {
           throw new SemanticException("Last queries can only be applied on raw time series.");
         }
+      }
+      if (isOrderByDevice()) {
+        throw new SemanticException(
+            "Sorting by device is only supported in ALIGN BY DEVICE queries.");
+      }
+    }
+
+    if (!isAlignByDevice() && !isLastQuery()) {
+      if (isOrderByTimeseries()) {
+        throw new SemanticException("Sorting by timeseries is only supported in last queries.");
+      }
+      if (isOrderByDevice()) {
+        throw new SemanticException(
+            "Sorting by device is only supported in ALIGN BY DEVICE queries.");
       }
     }
   }

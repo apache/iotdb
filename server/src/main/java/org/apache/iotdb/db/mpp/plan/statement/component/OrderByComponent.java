@@ -27,15 +27,39 @@ public class OrderByComponent {
 
   private final List<SortItem> sortItemList;
 
+  private boolean orderByTime = false;
+  private boolean orderByTimeseries = false;
+  private boolean orderByDevice = false;
+
   public OrderByComponent() {
     this.sortItemList = new ArrayList<>();
   }
 
   public void addSortItem(SortItem sortItem) {
     this.sortItemList.add(sortItem);
+
+    if (sortItem.getSortKey() == SortItem.SortKey.TIME) {
+      orderByTime = true;
+    } else if (sortItem.getSortKey() == SortItem.SortKey.TIMESERIES) {
+      orderByTimeseries = true;
+    } else {
+      orderByDevice = true;
+    }
   }
 
   public List<SortItem> getSortItemList() {
     return sortItemList;
+  }
+
+  public boolean isOrderByTime() {
+    return orderByTime;
+  }
+
+  public boolean isOrderByTimeseries() {
+    return orderByTimeseries;
+  }
+
+  public boolean isOrderByDevice() {
+    return orderByDevice;
   }
 }
