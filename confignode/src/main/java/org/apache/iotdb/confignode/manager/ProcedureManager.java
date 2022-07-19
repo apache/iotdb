@@ -123,14 +123,14 @@ public class ProcedureManager {
   }
 
   /**
-   * generate a procedure, and execute remove confignodeby one by one
+   * generate a procedure, and execute remove confignode one by one
    *
    * @param removeConfigNodePlan remove config node plan
    */
   public void removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
-    RemoveConfigNodeProcedure addConfigNodeProcedure =
+    RemoveConfigNodeProcedure removeConfigNodeProcedure =
         new RemoveConfigNodeProcedure(removeConfigNodePlan.getConfigNodeLocation());
-    this.executor.submitProcedure(addConfigNodeProcedure);
+    this.executor.submitProcedure(removeConfigNodeProcedure);
     LOGGER.info("Submit to remove ConfigNode, {}", removeConfigNodePlan);
   }
 
