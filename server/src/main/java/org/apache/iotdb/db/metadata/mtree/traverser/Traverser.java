@@ -51,8 +51,8 @@ public abstract class Traverser {
   // to construct full path or find mounted node on MTree when traverse into template
   protected Deque<IMNode> traverseContext;
 
-  // if isMeasurementTraverser, measurement in template should be processed
-  protected boolean isMeasurementTraverser = false;
+  // if true, measurement in template should be processed
+  protected boolean shouldTraverseTemplate = false;
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
@@ -159,6 +159,10 @@ public abstract class Traverser {
     }
     traverseContext.pop();
 
+    if (!shouldTraverseTemplate) {
+      return;
+    }
+
     if (!node.isUseTemplate()) {
       return;
     }
@@ -197,6 +201,10 @@ public abstract class Traverser {
         traverse(child, idx, level + 1);
       }
       traverseContext.pop();
+    }
+
+    if (!shouldTraverseTemplate) {
+      return;
     }
 
     if (!node.isUseTemplate()) {
@@ -239,6 +247,10 @@ public abstract class Traverser {
         traverse(child, idx, level + 1);
       }
       traverseContext.pop();
+    }
+
+    if (!shouldTraverseTemplate) {
+      return;
     }
 
     if (!node.isUseTemplate()) {
