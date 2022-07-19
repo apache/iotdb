@@ -460,6 +460,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category(ClusterIT.class)
   public void selectDifferentSeriesWithValueFilterWithoutCacheTest() {
     String[] retArray =
         new String[] {
