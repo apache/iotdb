@@ -20,7 +20,7 @@ package org.apache.iotdb.db.it.aligned;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -45,10 +45,12 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletion2IT
     enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
     numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
+    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(3);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
 
     EnvFactory.getEnv().initBeforeClass();
 
@@ -70,6 +72,7 @@ public class IoTDBGroupByQueryWithValueFilterWithDeletion2IT
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
     EnvFactory.getEnv().cleanAfterClass();
   }
 }

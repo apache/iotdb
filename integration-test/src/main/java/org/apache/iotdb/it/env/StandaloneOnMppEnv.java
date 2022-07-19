@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
+
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 
 public class StandaloneOnMppEnv extends AbstractEnv {
 
-  private static final Logger logger = LoggerFactory.getLogger(StandaloneOnMppEnv.class);
+  private static final Logger logger = IoTDBTestLogger.logger;
 
   private void initEnvironment() {
     DataNodeWrapper dataNodeWrapper =

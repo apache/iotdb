@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.it.schema;
 
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
@@ -278,7 +278,7 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] sqls = new String[] {"show child paths root.ln"};
-      String[] standards = new String[] {"root.ln.wf01,\n"};
+      String[] standards = new String[] {"root.ln.wf01,SG INTERNAL,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];

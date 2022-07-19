@@ -90,6 +90,9 @@ public class TsFilePlanRedoer {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   void redoInsert(InsertPlan plan) throws WriteProcessException, QueryProcessException {
+    if (!plan.hasValidMeasurements()) {
+      return;
+    }
     if (tsFileResource != null) {
       String deviceId =
           plan.isAligned()
@@ -136,6 +139,9 @@ public class TsFilePlanRedoer {
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   void redoInsert(InsertNode node) throws WriteProcessException, QueryProcessException {
+    if (!node.hasValidMeasurements()) {
+      return;
+    }
     if (tsFileResource != null) {
       String deviceId =
           node.isAligned()

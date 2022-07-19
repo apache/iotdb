@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -42,9 +43,13 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -59,7 +64,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class Template {
+public class Template implements Serializable {
+
+  private int id;
   private String name;
   private Map<String, IMNode> directNodes;
   private boolean isDirectAligned;
@@ -135,6 +142,29 @@ public class Template {
         constructTemplateTree(plan.getMeasurements().get(i).get(0), curSchema);
       }
     }
+  }
+
+  /**
+   * build a template from a CreateSchemaTemplateStatement
+   *
+   * @param statement CreateSchemaTemplateStatement
+   */
+  public Template(CreateSchemaTemplateStatement statement) throws IllegalPathException {
+    this(
+        new CreateTemplatePlan(
+            statement.getName(),
+            statement.getMeasurements(),
+            statement.getDataTypes(),
+            statement.getEncodings(),
+            statement.getCompressors()));
+  }
+
+  public int getId() {
+    return id;
+  }
+
+  public void setId(int id) {
+    this.id = id;
   }
 
   public String getName() {
@@ -655,8 +685,9 @@ public class Template {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-    SerializeUtils.serialize(name, dataOutputStream);
     try {
+      dataOutputStream.writeInt(id);
+      SerializeUtils.serialize(name, dataOutputStream);
       dataOutputStream.writeInt(schemaMap.size());
       for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
@@ -669,6 +700,7 @@ public class Template {
   }
 
   public void deserialize(ByteBuffer buffer) {
+    id = buffer.getInt();
     name = SerializeUtils.deserializeString(buffer);
     int schemaSize = buffer.getInt();
     schemaMap = new HashMap<>(schemaSize);
@@ -712,5 +744,20 @@ public class Template {
    */
   public void setRehash(int code) {
     rehashCode = code;
+  }
+
+  public static ByteBuffer template2ByteBuffer(Template template) throws IOException {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    ObjectOutputStream dataOutputStream = new ObjectOutputStream(byteArrayOutputStream);
+    dataOutputStream.writeObject(template);
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public static Template byteBuffer2Template(ByteBuffer byteBuffer)
+      throws IOException, ClassNotFoundException {
+    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteBuffer.array());
+    ObjectInputStream ois = new ObjectInputStream(byteArrayInputStream);
+    Template template = (Template) ois.readObject();
+    return template;
   }
 }

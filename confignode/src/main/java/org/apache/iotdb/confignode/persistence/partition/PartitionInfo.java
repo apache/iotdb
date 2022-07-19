@@ -39,11 +39,13 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartition
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
@@ -74,6 +76,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Vector;
@@ -426,8 +429,14 @@ public class PartitionInfo implements SnapshotProcessor {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
       return regionResp;
     }
+    TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
+    final List<String> storageGroups =
+        showRegionReq != null ? showRegionReq.getStorageGroups() : null;
     storageGroupPartitionTables.forEach(
         (storageGroup, storageGroupPartitionTable) -> {
+          if (storageGroups != null && !storageGroups.contains(storageGroup)) {
+            return;
+          }
           storageGroupPartitionTable.getRegionInfoList(regionsInfoPlan, regionInfoList);
         });
     regionInfoList.sort(
@@ -435,6 +444,40 @@ public class PartitionInfo implements SnapshotProcessor {
     regionResp.setRegionInfoList(regionInfoList);
     regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     return regionResp;
+  }
+
+  /**
+   * update a region location
+   *
+   * @param req UpdateRegionLocationReq
+   * @return TSStatus
+   */
+  public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    TConsensusGroupId regionId = req.getRegionId();
+    TDataNodeLocation oldNode = req.getOldNode();
+    TDataNodeLocation newNode = req.getNewNode();
+    storageGroupPartitionTables
+        .values()
+        .forEach(s -> s.updateRegionLocation(regionId, oldNode, newNode));
+
+    return status;
+  }
+
+  /**
+   * get storage group for region
+   *
+   * @param regionId regionId
+   * @return storage group name
+   */
+  public String getRegionStorageGroup(TConsensusGroupId regionId) {
+    Optional<StorageGroupPartitionTable> sgPartitionTableOptional =
+        storageGroupPartitionTables.values().stream()
+            .filter(s -> s.containRegion(regionId))
+            .findFirst();
+    return sgPartitionTableOptional
+        .map(StorageGroupPartitionTable::getStorageGroupName)
+        .orElse(null);
   }
 
   // ======================================================

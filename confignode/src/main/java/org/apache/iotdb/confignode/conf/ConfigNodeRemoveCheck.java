@@ -23,8 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.BadNodeUrlException;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -72,17 +72,28 @@ public class ConfigNodeRemoveCheck {
 
   public void removeConfigNode(TConfigNodeLocation nodeLocation)
       throws BadNodeUrlException, IOException {
-    TSStatus status =
-        SyncConfigNodeClientPool.getInstance().removeConfigNode(getConfigNodeList(), nodeLocation);
+    TSStatus status = new TSStatus();
+    for (TConfigNodeLocation configNodeLocation : getConfigNodeList()) {
+      status =
+          (TSStatus)
+              SyncConfigNodeClientPool.getInstance()
+                  .sendSyncRequestToConfigNodeWithRetry(
+                      configNodeLocation.getInternalEndPoint(),
+                      nodeLocation,
+                      ConfigNodeRequestType.REMOVE_CONFIG_NODE);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        break;
+      }
+    }
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(status.getMessage());
       throw new IOException("Remove ConfigNode failed:");
     }
   }
 
-  public List<TConfigNodeLocation> getConfigNodeList() throws BadNodeUrlException {
-    return NodeUrlUtils.parseTConfigNodeUrls(
-        systemProperties.getProperty(IoTDBConstant.TARGET_CONFIG_NODES));
+  /** config_node_list of confignode-system.properties */
+  public List<TConfigNodeLocation> getConfigNodeList() throws BadNodeUrlException, IOException {
+    return SystemPropertiesUtils.loadConfigNodeList();
   }
 
   public int getConsensusPort() {

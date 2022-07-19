@@ -84,12 +84,8 @@ public class FragmentInstanceExecution {
   }
 
   public FragmentInstanceInfo getInstanceInfo() {
-    return new FragmentInstanceInfo(stateMachine.getState(), context.getEndTime());
-  }
-
-  public void failed(Throwable cause) {
-    requireNonNull(cause, "cause is null");
-    stateMachine.failed(cause);
+    return new FragmentInstanceInfo(
+        stateMachine.getState(), context.getEndTime(), context.getFailedCause());
   }
 
   public void cancel() {
@@ -118,10 +114,16 @@ public class FragmentInstanceExecution {
             driver.close();
             // help for gc
             driver = null;
-            sinkHandle.abort();
+            if (newState.isFailed()) {
+              sinkHandle.abort();
+            } else {
+              sinkHandle.close();
+            }
             // help for gc
             sinkHandle = null;
-            scheduler.abortFragmentInstance(instanceId);
+            if (newState.isFailed()) {
+              scheduler.abortFragmentInstance(instanceId);
+            }
           }
         });
   }

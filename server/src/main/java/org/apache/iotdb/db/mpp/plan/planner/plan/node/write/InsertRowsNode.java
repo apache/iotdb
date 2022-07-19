@@ -103,12 +103,6 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
     insertRowNodeList.forEach(plan -> plan.setSearchIndex(index));
   }
 
-  @Override
-  public void setSafelyDeletedSearchIndex(long index) {
-    safelyDeletedSearchIndex = index;
-    insertRowNodeList.forEach(plan -> plan.setSafelyDeletedSearchIndex(index));
-  }
-
   public Map<Integer, TSStatus> getResults() {
     return results;
   }

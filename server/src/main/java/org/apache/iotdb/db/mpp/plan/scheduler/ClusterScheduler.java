@@ -99,10 +99,10 @@ public class ClusterScheduler implements IScheduler {
     try {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
-        logger.error("dispatch failed.");
         if (result.getFailureStatus() != null) {
           stateMachine.transitionToFailed(result.getFailureStatus());
         } else {
+          // won't get into here
           stateMachine.transitionToFailed(
               new IllegalStateException("Fragment cannot be dispatched"));
         }

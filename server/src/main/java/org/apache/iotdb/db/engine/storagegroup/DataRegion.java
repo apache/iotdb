@@ -896,6 +896,9 @@ public class DataRegion {
     if (!isAlive(insertRowNode.getTime())) {
       throw new OutOfTTLException(insertRowNode.getTime(), (System.currentTimeMillis() - dataTTL));
     }
+    if (enableMemControl) {
+      StorageEngineV2.blockInsertionIfReject(null);
+    }
     writeLock("InsertRow");
     try {
       // init map
@@ -1054,7 +1057,9 @@ public class DataRegion {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletNode insertTabletNode)
       throws TriggerExecutionException, BatchProcessException, WriteProcessException {
-
+    if (enableMemControl) {
+      StorageEngineV2.blockInsertionIfReject(null);
+    }
     writeLock("insertTablet");
     try {
       TSStatus[] results = new TSStatus[insertTabletNode.getRowCount()];
@@ -1755,9 +1760,6 @@ public class DataRegion {
     if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
       return;
     }
-
-    // prevent new merges and queries from choosing this file
-    resource.setStatus(TsFileResourceStatus.DELETED);
 
     // ensure that the file is not used by any queries
     if (resource.tryWriteLock()) {
@@ -3434,6 +3436,9 @@ public class DataRegion {
    */
   public void insert(InsertRowsOfOneDeviceNode insertRowsOfOneDeviceNode)
       throws WriteProcessException, TriggerExecutionException, BatchProcessException {
+    if (enableMemControl) {
+      StorageEngineV2.blockInsertionIfReject(null);
+    }
     writeLock("InsertRowsOfOneDevice");
     try {
       boolean isSequence = false;

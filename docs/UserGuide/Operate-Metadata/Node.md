@@ -26,19 +26,22 @@
 SHOW CHILD PATHS pathPattern
 ```
 
-Return all child paths of all the paths matching pathPattern.
+Return all child paths and their node types of all the paths matching pathPattern.
+
+node types: ROOT -> SG INTERNAL -> STORAGE GROUP -> INTERNAL -> DEVICE -> TIMESERIES
+
 
 Example：
 
 * return the child paths of root.ln：show child paths root.ln
 
 ```
-+------------+
-| child paths|
-+------------+
-|root.ln.wf01|
-|root.ln.wf02|
-+------------+
++------------+----------+
+| child paths|node types|
++------------+----------+
+|root.ln.wf01|  INTERNAL|
+|root.ln.wf02|  INTERNAL|
++------------+----------+
 Total line number = 2
 It costs 0.002s
 ```

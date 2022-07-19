@@ -210,6 +210,13 @@ public class LogDispatcher {
       logger.info("{}: Dispatcher for {} exits", impl.getThisNode(), peer);
     }
 
+    public void updateSafelyDeletedSearchIndex() {
+      // update safely deleted search index to delete outdated info,
+      // indicating that insert nodes whose search index are before this value can be deleted
+      // safely
+      reader.setSafelyDeletedSearchIndex(impl.getCurrentSafelyDeletedSearchIndex());
+    }
+
     public PendingBatch getBatch() {
       PendingBatch batch;
       List<TLogBatch> logBatches = new ArrayList<>();

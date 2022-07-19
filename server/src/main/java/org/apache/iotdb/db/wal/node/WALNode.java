@@ -77,8 +77,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode.DEFAULT_SAFELY_DELETED_SEARCH_INDEX;
-
 /**
  * This class encapsulates {@link IWALBuffer} and {@link CheckpointManager}. If search is enabled,
  * the order of search index should be protected by the upper layer, and the value should start from
@@ -87,6 +85,8 @@ import static org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode.DE
 public class WALNode implements IWALNode {
   private static final Logger logger = LoggerFactory.getLogger(WALNode.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  /** no multi-leader consensus, all insert nodes can be safely deleted */
+  public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
 
   /** unique identifier of this WALNode */
   private final String identifier;
@@ -135,9 +135,6 @@ public class WALNode implements IWALNode {
 
   @Override
   public WALFlushListener log(long memTableId, InsertRowNode insertRowNode) {
-    if (insertRowNode.getSafelyDeletedSearchIndex() != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
-      safelyDeletedSearchIndex = insertRowNode.getSafelyDeletedSearchIndex();
-    }
     WALEntry walEntry = new WALEntry(memTableId, insertRowNode);
     return log(walEntry);
   }
@@ -152,9 +149,6 @@ public class WALNode implements IWALNode {
   @Override
   public WALFlushListener log(
       long memTableId, InsertTabletNode insertTabletNode, int start, int end) {
-    if (insertTabletNode.getSafelyDeletedSearchIndex() != DEFAULT_SAFELY_DELETED_SEARCH_INDEX) {
-      safelyDeletedSearchIndex = insertTabletNode.getSafelyDeletedSearchIndex();
-    }
     WALEntry walEntry = new WALEntry(memTableId, insertTabletNode, start, end);
     return log(walEntry);
   }
@@ -235,7 +229,7 @@ public class WALNode implements IWALNode {
         }
       }
 
-      logger.info(
+      logger.debug(
           "Start deleting outdated wal files for wal node-{}, the first valid version id is {}, and the safely deleted search index is {}.",
           identifier,
           firstValidVersionId,
@@ -464,6 +458,7 @@ public class WALNode implements IWALNode {
   // endregion
 
   // region Search interfaces for consensus group
+  @Override
   public void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex) {
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
   }
@@ -692,7 +687,8 @@ public class WALNode implements IWALNode {
       if (needUpdatingFilesToSearch || filesToSearch == null) {
         updateFilesToSearch();
         if (needUpdatingFilesToSearch) {
-          logger.warn("update file to search failed");
+          logger.debug(
+              "update file to search failed, the next search index is {}", nextSearchIndex);
           return false;
         }
       }
