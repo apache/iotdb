@@ -341,7 +341,7 @@ public class AggregationExecutor {
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
-    if (!isAggregateResultEmpty(ascAggregateResultList)) {
+    if (ascAggregateResultList != null && !isAggregateResultEmpty(ascAggregateResultList)) {
       AlignedSeriesAggregateReader seriesReader =
           new AlignedSeriesAggregateReader(
               alignedPath,
@@ -355,7 +355,7 @@ public class AggregationExecutor {
               true);
       aggregateFromAlignedReader(seriesReader, ascAggregateResultList);
     }
-    if (!isAggregateResultEmpty(descAggregateResultList)) {
+    if (descAggregateResultList != null && !isAggregateResultEmpty(descAggregateResultList)) {
       AlignedSeriesAggregateReader seriesReader =
           new AlignedSeriesAggregateReader(
               alignedPath,

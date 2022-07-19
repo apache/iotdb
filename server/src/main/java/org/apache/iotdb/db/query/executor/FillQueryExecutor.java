@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,7 +144,12 @@ public class FillQueryExecutor {
       if (timeValuePair == null || timeValuePair.getValue() == null) {
         record.addField(null);
       } else {
-        record.addField(timeValuePair.getValue().getValue(), dataType);
+        if (timeValuePair.getValue().getDataType() == TSDataType.VECTOR) {
+          record.addField(
+              (((TsPrimitiveType[]) timeValuePair.getValue().getValue())[0]).getValue(), dataType);
+        } else {
+          record.addField(timeValuePair.getValue().getValue(), dataType);
+        }
       }
     }
 
