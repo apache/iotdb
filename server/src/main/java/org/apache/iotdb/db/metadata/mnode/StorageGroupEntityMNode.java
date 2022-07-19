@@ -82,6 +82,11 @@ public class StorageGroupEntityMNode extends EntityMNode implements IStorageGrou
   }
 
   @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.STORAGE_GROUP;
+  }
+
+  @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     serializeChildren(logWriter);
 

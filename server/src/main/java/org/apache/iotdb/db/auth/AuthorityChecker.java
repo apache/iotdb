@@ -215,6 +215,8 @@ public class AuthorityChecker {
       case DELETE:
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
+      case ALTER_TIMESERIES:
+        return PrivilegeType.ALTER_TIMESERIES.ordinal();
       case SHOW:
       case QUERY:
       case GROUP_BY_TIME:
@@ -300,6 +302,8 @@ public class AuthorityChecker {
       case DELETE:
       case DROP_INDEX:
         return PrivilegeType.DELETE_TIMESERIES.ordinal();
+      case ALTER_TIMESERIES:
+        return PrivilegeType.ALTER_TIMESERIES.ordinal();
       case SHOW:
       case QUERY:
       case GROUP_BY_TIME:

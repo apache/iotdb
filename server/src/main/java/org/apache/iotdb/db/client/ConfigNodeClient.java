@@ -41,8 +41,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
@@ -294,26 +293,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TSStatus activeDataNode(TDataNodeActiveReq req) throws TException {
+  public TDataNodeConfigurationResp getDataNodeConfiguration(int dataNodeId) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.activeDataNode(req);
-        if (!updateConfigNodeLeader(status)) {
-          return status;
-        }
-      } catch (TException e) {
-        configLeader = null;
-      }
-      reconnect();
-    }
-    throw new TException(MSG_RECONNECTION_FAIL);
-  }
-
-  @Override
-  public TDataNodeInfoResp getDataNodeInfo(int dataNodeId) throws TException {
-    for (int i = 0; i < RETRY_NUM; i++) {
-      try {
-        TDataNodeInfoResp resp = client.getDataNodeInfo(dataNodeId);
+        TDataNodeConfigurationResp resp = client.getDataNodeConfiguration(dataNodeId);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }

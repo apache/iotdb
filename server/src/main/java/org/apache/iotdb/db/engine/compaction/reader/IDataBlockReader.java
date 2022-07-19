@@ -16,18 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.engine.compaction.reader;
 
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
-import org.apache.iotdb.db.exception.MergeException;
+import java.io.IOException;
 
-import java.util.List;
+public interface IDataBlockReader {
+  boolean hasNextBatch() throws IOException;
 
-/**
- * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be merged
- * without exceeding given memory budget.
- */
-public interface ICrossSpaceMergeFileSelector {
+  TsBlock nextBatch() throws IOException;
 
-  List[] select() throws MergeException;
+  void close() throws IOException;
 }
