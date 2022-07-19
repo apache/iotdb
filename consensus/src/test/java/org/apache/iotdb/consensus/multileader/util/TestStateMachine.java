@@ -25,7 +25,6 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -72,10 +71,8 @@ public class TestStateMachine implements IStateMachine, IStateMachine.EventApi {
       IndexedConsensusRequest indexedConsensusRequest = (IndexedConsensusRequest) request;
       List<IConsensusRequest> transformedRequest = new ArrayList<>();
       for (IConsensusRequest innerRequest : indexedConsensusRequest.getRequests()) {
-        if (innerRequest instanceof MultiLeaderConsensusRequest) {
-          ByteBuffer buffer = innerRequest.serializeToByteBuffer();
-          transformedRequest.add(new TestEntry(buffer.getInt(), Peer.deserialize(buffer)));
-        }
+        ByteBuffer buffer = innerRequest.serializeToByteBuffer();
+        transformedRequest.add(new TestEntry(buffer.getInt(), Peer.deserialize(buffer)));
       }
       requestSets.add(
           new IndexedConsensusRequest(indexedConsensusRequest.getSearchIndex(), transformedRequest),
