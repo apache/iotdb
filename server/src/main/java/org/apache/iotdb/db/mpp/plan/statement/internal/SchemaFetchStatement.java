@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.internal;
 
-import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
@@ -30,9 +29,7 @@ import java.util.List;
 
 public class SchemaFetchStatement extends Statement {
 
-  private PathPatternTree patternTree;
-
-  private SchemaPartition schemaPartition;
+  private final PathPatternTree patternTree;
 
   public SchemaFetchStatement(PathPatternTree patternTree) {
     super();
@@ -42,14 +39,6 @@ public class SchemaFetchStatement extends Statement {
 
   public PathPatternTree getPatternTree() {
     return patternTree;
-  }
-
-  public SchemaPartition getSchemaPartition() {
-    return schemaPartition;
-  }
-
-  public void setSchemaPartition(SchemaPartition schemaPartition) {
-    this.schemaPartition = schemaPartition;
   }
 
   @Override

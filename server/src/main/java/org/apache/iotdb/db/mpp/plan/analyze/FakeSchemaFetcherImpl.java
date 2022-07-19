@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -41,11 +40,6 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
     schemaTree.setStorageGroups(Collections.singletonList("root.sg"));
     return schemaTree;
-  }
-
-  @Override
-  public SchemaTree fetchSchema(PathPatternTree patternTree, SchemaPartition schemaPartition) {
-    return null;
   }
 
   @Override
