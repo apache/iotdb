@@ -306,9 +306,9 @@ void insertTablets(std::unordered_map<std::string, Tablet *> &tablets);
 ```cpp
 void insertRecord(const std::string &deviceId, 
                   int64_t time, 
-				  const std::vector<std::string> &measurements,
+                  const std::vector<std::string> &measurements,
                   const std::vector<TSDataType::TSDataType> &types, 
-				  const std::vector<char *> &values);
+                  const std::vector<char *> &values);
 ```
 
 - Insert multiple Records
@@ -336,7 +336,7 @@ Without type information, server has to do type inference, which may cost some t
 ```cpp
 void insertRecord(const std::string &deviceId, 
                   int64_t time, 
-				  const std::vector<std::string> &measurements,
+                  const std::vector<std::string> &measurements,
                   const std::vector<std::string> &values);
 
 
