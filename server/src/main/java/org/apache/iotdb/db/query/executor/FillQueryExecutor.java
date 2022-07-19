@@ -28,7 +28,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -95,7 +94,15 @@ public class FillQueryExecutor {
 
     Filter timeFilter = initFillExecutorsAndContructTimeFilter(context);
 
-    List<PartialPath> groupedSeries = MetaUtils.groupAlignedPaths(selectedSeries);
+    List<PartialPath> groupedSeries = new ArrayList<>();
+    for (PartialPath series : selectedSeries) {
+      MeasurementPath measurementPath = (MeasurementPath) series;
+      if (measurementPath.isUnderAlignedEntity()) {
+        groupedSeries.add(new AlignedPath(measurementPath));
+      } else {
+        groupedSeries.add(measurementPath);
+      }
+    }
 
     Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
         lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(groupedSeries);
