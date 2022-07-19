@@ -19,21 +19,23 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
-/** The order of query result set by timestamp */
-public enum OrderBy {
-  TIMESTAMP_ASC,
-  TIMESTAMP_DESC,
-  DEVICE_ASC,
-  DEVICE_DESC;
+import java.util.ArrayList;
+import java.util.List;
 
-  public OrderBy reverse() {
-    switch (this) {
-      case TIMESTAMP_ASC:
-        return TIMESTAMP_DESC;
-      case TIMESTAMP_DESC:
-        return TIMESTAMP_ASC;
-      default:
-        throw new UnsupportedOperationException();
-    }
+/** The order of query result set */
+public class OrderByComponent {
+
+  private final List<SortItem> sortItemList;
+
+  public OrderByComponent() {
+    this.sortItemList = new ArrayList<>();
+  }
+
+  public void addSortItem(SortItem sortItem) {
+    this.sortItemList.add(sortItem);
+  }
+
+  public List<SortItem> getSortItemList() {
+    return sortItemList;
   }
 }

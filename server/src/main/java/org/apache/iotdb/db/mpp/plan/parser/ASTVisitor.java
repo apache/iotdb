@@ -64,10 +64,11 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
@@ -142,9 +143,11 @@ import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /** Parse AST to Statement. */
@@ -790,8 +793,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     parseGroupByTimeClause(ctx.groupByTimeClause());
 
     // parse order by time
-    if (ctx.orderByTimeClause() != null) {
-      parseOrderByTimeClause(ctx.orderByTimeClause());
+    if (ctx.orderByClause() != null) {
+      parseOrderByClause(ctx.orderByClause());
     }
 
     // parse limit & offset
@@ -808,8 +811,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     parseGroupByTimeClause(ctx.groupByFillClause());
 
     // parse order by time
-    if (ctx.orderByTimeClause() != null) {
-      parseOrderByTimeClause(ctx.orderByTimeClause());
+    if (ctx.orderByClause() != null) {
+      parseOrderByClause(ctx.orderByClause());
     }
 
     // parse limit & offset
@@ -938,8 +941,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     parseGroupByLevelClause(ctx.groupByLevelClause());
 
     // parse order by time
-    if (ctx.orderByTimeClause() != null) {
-      parseOrderByTimeClause(ctx.orderByTimeClause());
+    if (ctx.orderByClause() != null) {
+      parseOrderByClause(ctx.orderByClause());
     }
 
     // parse limit & offset
@@ -972,8 +975,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     parseFillClause(ctx.fillClause());
 
     // parse order by time
-    if (ctx.orderByTimeClause() != null) {
-      parseOrderByTimeClause(ctx.orderByTimeClause());
+    if (ctx.orderByClause() != null) {
+      parseOrderByClause(ctx.orderByClause());
     }
 
     // parse limit & offset
@@ -1182,7 +1185,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitOrderByTimeStatement(IoTDBSqlParser.OrderByTimeStatementContext ctx) {
     // parse ORDER BY TIME
-    parseOrderByTimeClause(ctx.orderByTimeClause());
+    parseOrderByClause(ctx.orderByClause());
 
     // parse others
     if (ctx.specialLimit() != null) {
@@ -1192,10 +1195,28 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // parse ORDER BY TIME
-  private void parseOrderByTimeClause(IoTDBSqlParser.OrderByTimeClauseContext ctx) {
-    if (ctx.DESC() != null) {
-      queryStatement.setResultOrder(OrderBy.TIMESTAMP_DESC);
+  private void parseOrderByClause(IoTDBSqlParser.OrderByClauseContext ctx) {
+    OrderByComponent orderByComponent = new OrderByComponent();
+    Set<SortItem.SortKey> sortKeySet = new HashSet<>();
+    for (IoTDBSqlParser.OrderByAttributeClauseContext orderByAttributeClauseContext :
+        ctx.orderByAttributeClause()) {
+      SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext);
+
+      SortItem.SortKey sortKey = sortItem.getSortKey();
+      if (sortKeySet.contains(sortKey)) {
+        throw new SemanticException(String.format("ORDER BY: duplicate sort key '%s'", sortKey));
+      } else {
+        sortKeySet.add(sortKey);
+        orderByComponent.addSortItem(sortItem);
+      }
     }
+    queryStatement.setOrderByComponent(orderByComponent);
+  }
+
+  private SortItem parseOrderByAttributeClause(IoTDBSqlParser.OrderByAttributeClauseContext ctx) {
+    return new SortItem(
+        SortItem.SortKey.valueOf(ctx.sortKey().getText().toUpperCase()),
+        ctx.DESC() != null ? SortItem.Ordering.DESC : SortItem.Ordering.ASC);
   }
 
   // ResultSetFormat Clause

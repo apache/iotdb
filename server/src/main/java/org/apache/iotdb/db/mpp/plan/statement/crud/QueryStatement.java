@@ -31,7 +31,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
@@ -76,7 +76,7 @@ public class QueryStatement extends Statement {
 
   protected FillComponent fillComponent;
 
-  protected OrderBy resultOrder = OrderBy.TIMESTAMP_ASC;
+  protected OrderByComponent orderByComponent;
 
   protected ResultSetFormat resultSetFormat = ResultSetFormat.ALIGN_BY_TIME;
 
@@ -159,12 +159,12 @@ public class QueryStatement extends Statement {
     this.fillComponent = fillComponent;
   }
 
-  public OrderBy getResultOrder() {
-    return resultOrder;
+  public OrderByComponent getOrderByComponent() {
+    return orderByComponent;
   }
 
-  public void setResultOrder(OrderBy resultOrder) {
-    this.resultOrder = resultOrder;
+  public void setOrderByComponent(OrderByComponent orderByComponent) {
+    this.orderByComponent = orderByComponent;
   }
 
   public ResultSetFormat getResultSetFormat() {
