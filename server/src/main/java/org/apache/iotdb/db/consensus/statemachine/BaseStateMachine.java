@@ -22,9 +22,11 @@ package org.apache.iotdb.db.consensus.statemachine;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
+import org.apache.iotdb.db.wal.buffer.WALEntry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +52,8 @@ public abstract class BaseStateMachine implements IStateMachine, IStateMachine.E
     PlanNode node;
     if (request instanceof ByteBufferConsensusRequest) {
       node = PlanNodeType.deserialize(request.serializeToByteBuffer());
+    } else if (request instanceof MultiLeaderConsensusRequest) {
+      node = WALEntry.deserializeInsertNode(request.serializeToByteBuffer());
     } else if (request instanceof PlanNode) {
       node = (PlanNode) request;
     } else {

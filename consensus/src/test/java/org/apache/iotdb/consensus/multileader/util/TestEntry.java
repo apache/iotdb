@@ -20,7 +20,7 @@
 package org.apache.iotdb.consensus.multileader.util;
 
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.DataOutputStream;
@@ -28,14 +28,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class TestEntry implements IConsensusRequest {
+public class TestEntry extends MultiLeaderConsensusRequest {
 
   private final int num;
   private final Peer peer;
 
   public TestEntry(int num, Peer peer) {
+    super(ByteBuffer.allocate(Integer.BYTES));
     this.num = num;
     this.peer = peer;
+    ByteBuffer buffer = super.serializeToByteBuffer();
+    buffer.putInt(num);
+    buffer.clear();
   }
 
   @Override

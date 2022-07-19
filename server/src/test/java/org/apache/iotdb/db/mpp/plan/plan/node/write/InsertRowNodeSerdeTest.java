@@ -85,7 +85,7 @@ public class InsertRowNodeSerdeTest {
 
     Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), dataInputStream.readShort());
 
-    InsertRowNode tmpNode = InsertRowNode.deserialize(dataInputStream);
+    InsertRowNode tmpNode = InsertRowNode.deserializeFromWAL(dataInputStream);
     tmpNode.setPlanNodeId(insertRowNode.getPlanNodeId());
 
     Assert.assertEquals(insertRowNode, tmpNode);
