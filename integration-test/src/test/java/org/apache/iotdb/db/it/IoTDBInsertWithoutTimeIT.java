@@ -17,66 +17,58 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
+import org.apache.iotdb.itbase.category.ClusterIT;
+import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
-@Category({LocalStandaloneTest.class})
-public class IoTDBInsertWithoutTimeStartWithIntIT {
+import static org.junit.Assert.assertEquals;
+
+@RunWith(IoTDBTestRunner.class)
+@Category({LocalStandaloneIT.class, ClusterIT.class})
+public class IoTDBInsertWithoutTimeIT {
   private static List<String> sqls = new ArrayList<>();
   private static Connection connection;
+  private static Statement statement;
 
   @BeforeClass
   public static void setUp() throws Exception {
-    initCreateSQLStatement();
-    EnvironmentUtils.envSetUp();
+    EnvFactory.getEnv().initBeforeTest();
+    connection = EnvFactory.getEnv().getConnection();
+    statement = connection.createStatement();
+
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    close();
-    EnvironmentUtils.cleanEnv();
-  }
-
-  private static void close() {
-    if (Objects.nonNull(connection)) {
-      try {
-        connection.close();
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
-  }
-
-  private static void initCreateSQLStatement() {
-    sqls.add("SET STORAGE GROUP TO root.t1");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.s1 WITH DATATYPE=FLOAT, ENCODING=PLAIN");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
+    statement.close();
+    connection.close();
+    EnvFactory.getEnv().cleanAfterTest();
   }
 
   private static void insertData() throws ClassNotFoundException, SQLException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    connection =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
     Statement statement = connection.createStatement();
+
+    sqls.add("SET STORAGE GROUP TO root.t1");
+    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.s1 WITH DATATYPE=FLOAT, ENCODING=RLE");
+    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.s2 WITH DATATYPE=TEXT, ENCODING=PLAIN");
 
     for (String sql : sqls) {
       statement.execute(sql);
@@ -87,13 +79,12 @@ public class IoTDBInsertWithoutTimeStartWithIntIT {
 
   @Test
   public void testInsertWithoutTime() throws SQLException, InterruptedException {
-    Statement st0 = connection.createStatement();
-    st0.execute("insert into root.t1.wf01.wt01(time, s1, temperature) values (1, 1.1, 11)");
-    st0.execute(
+    statement.execute("insert into root.t1.wf01.wt01(time, s1, temperature) values (1, 1.1, 11)");
+    statement.execute(
         "insert into root.t1.wf01.wt01(time, s1, temperature) values (2, 2.2, 22),(3, 3.3, 33)");
-    st0.execute("insert into root.t1.wf01.wt01(s1, temperature) values (2, 10)");
+    statement.execute("insert into root.t1.wf01.wt01(s1, temperature) values (2, 10)");
     Thread.sleep(3);
-    st0.execute("insert into root.t1.wf01.wt01(s1) values (6.6)");
+    statement.execute("insert into root.t1.wf01.wt01(s1) values (6.6)");
 
     Statement st1 = connection.createStatement();
     ResultSet rs1 = st1.executeQuery("select count(s1) from root.t1.wf01.wt01");
@@ -105,8 +96,20 @@ public class IoTDBInsertWithoutTimeStartWithIntIT {
   }
 
   @Test
-  public void testInsertIntColumn() throws SQLException {
-    Statement st1 = connection.createStatement();
-    st1.execute("insert into root.t1.wf01.wt01(s1, temperature) values (2, 10)");
+  public void testInsertWithoutTimestamp() throws SQLException {
+
+    statement.execute("insert into root.sg.d1(s1,s2) values(25,'test')");
+
+    ResultSet resultSet = statement.executeQuery("select * from root.**");
+
+    Float values = 25.0F;
+    String values2 = "test";
+
+    while (resultSet.next()) {
+      if (values == resultSet.getFloat("root.sg.d1.s1")) {
+        assertEquals(values2, resultSet.getString("root.sg.d1.s2"));
+      }
+      ;
+    }
   }
 }
