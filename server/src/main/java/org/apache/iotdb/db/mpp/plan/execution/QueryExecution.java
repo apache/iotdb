@@ -183,6 +183,10 @@ public class QueryExecution implements IQueryExecution {
       stateMachine.transitionToFailed();
       return;
     }
+    logger.warn("error when executing query. {}", stateMachine.getFailureMessage());
+    // stop and clean up resources the QueryExecution used
+    this.stopAndCleanup();
+    logger.info("wait {}ms before retry...", RETRY_INTERVAL_IN_MS);
     try {
       Thread.sleep(RETRY_INTERVAL_IN_MS);
     } catch (InterruptedException e) {
@@ -190,10 +194,8 @@ public class QueryExecution implements IQueryExecution {
       Thread.currentThread().interrupt();
     }
     retryCount++;
-    logger.error("error when executing query. {}", stateMachine.getFailureMessage());
-    logger.warn("start to retry. Retry count is: {}", retryCount);
-    // stop and clean up resources the QueryExecution used
-    this.stopAndCleanup();
+    logger.info("start to retry. Retry count is: {}", retryCount);
+
     // force invalid PartitionCache
     partitionFetcher.invalidAllCache();
     // re-analyze the query

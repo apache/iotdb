@@ -155,7 +155,6 @@ public class PartitionCache {
           }
         };
     getStorageGroupCacheResult(result, devicePaths, isAutoCreate);
-    logger.info("result.getMap: {}", result.getMap());
     return result.getMap();
   }
 
@@ -382,7 +381,6 @@ public class PartitionCache {
   // endregion
 
   // region replicaSet cache
-
   /**
    * get regionReplicaSet from local and confignode
    *
@@ -568,7 +566,6 @@ public class PartitionCache {
     try {
       if (storageGroupToQueryParamsMap.size() == 0) {
         CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
-        logger.info("storageGroupToQueryParamsMap is empty");
         return null;
       }
       Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
@@ -578,8 +575,6 @@ public class PartitionCache {
           storageGroupToQueryParamsMap.entrySet()) {
         if (!getStorageGroupDataPartition(dataPartitionMap, entry.getKey(), entry.getValue())) {
           CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
-          logger.info(
-              "getStorageGroupDataPartition. Key: {}, value: {}", entry.getKey(), entry.getValue());
           return null;
         }
       }
