@@ -304,11 +304,8 @@ void insertTablets(std::unordered_map<std::string, Tablet *> &tablets);
 
 - Insert a Record, which contains multiple measurement value of a device at a timestamp
 ```cpp
-void insertRecord(const std::string &deviceId, 
-                  int64_t time, 
-                  const std::vector<std::string> &measurements,
-                  const std::vector<TSDataType::TSDataType> &types, 
-                  const std::vector<char *> &values);
+void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
+                  const std::vector<TSDataType::TSDataType> &types, const std::vector<char *> &values);
 ```
 
 - Insert multiple Records
@@ -334,9 +331,7 @@ void insertRecordsOfOneDevice(const std::string &deviceId,
 Without type information, server has to do type inference, which may cost some time.
 
 ```cpp
-void insertRecord(const std::string &deviceId, 
-                  int64_t time, 
-                  const std::vector<std::string> &measurements,
+void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
                   const std::vector<std::string> &values);
 
 
@@ -349,7 +344,7 @@ void insertRecords(const std::vector<std::string> &deviceIds,
 void insertRecordsOfOneDevice(const std::string &deviceId,
                               std::vector<int64_t> &times,
                               std::vector<std::vector<std::string>> &measurementsList,
-                              std::vector<std::vector<char *>> &valuesList);
+                              const std::vector<std::vector<std::string>> &valuesList);
 ```
 
 #### Insert data into Aligned Timeseries

@@ -299,11 +299,8 @@ void insertTablets(std::unordered_map<std::string, Tablet *> &tablets);
 
 - 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
 ```cpp
-void insertRecord(const std::string &deviceId, 
-                  int64_t time, 
-                  const std::vector<std::string> &measurements,
-                  const std::vector<TSDataType::TSDataType> &types, 
-                  const std::vector<char *> &values);
+void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
+                  const std::vector<TSDataType::TSDataType> &types, const std::vector<char *> &values);
 ```
 
 - 插入多个 Record
@@ -329,9 +326,7 @@ void insertRecordsOfOneDevice(const std::string &deviceId,
 服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢。
 
 ```cpp
-void insertRecord(const std::string &deviceId, 
-                  int64_t time, 
-                  const std::vector<std::string> &measurements,
+void insertRecord(const std::string &deviceId, int64_t time, const std::vector<std::string> &measurements,
                   const std::vector<std::string> &values);
 
 
@@ -344,7 +339,7 @@ void insertRecords(const std::vector<std::string> &deviceIds,
 void insertRecordsOfOneDevice(const std::string &deviceId,
                               std::vector<int64_t> &times,
                               std::vector<std::vector<std::string>> &measurementsList,
-                              std::vector<std::vector<char *>> &valuesList);
+                              const std::vector<std::vector<std::string>> &valuesList);
 ```
 
 #### 对齐时间序列写入
