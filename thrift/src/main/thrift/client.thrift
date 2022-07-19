@@ -256,7 +256,6 @@ struct TSInsertRecordsOfOneDeviceReq {
     4: required list<binary> valuesList
     5: required list<i64> timestamps
     6: optional bool isAligned
-    7: optional i64 timeout
 }
 
 struct TSInsertStringRecordsOfOneDeviceReq {
