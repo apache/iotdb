@@ -2540,4 +2540,46 @@ public class MManagerBasicTest {
 
     assertEquals(0, manager.getMeasurementMNode(path).getOffset());
   }
+
+  @Test
+  public void testShowChildWithLimitAndOffset() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    PartialPath path = new PartialPath("root.sg.d1.s");
+    CreateTimeSeriesPlan plan =
+        new CreateTimeSeriesPlan(
+            path,
+            TSDataType.valueOf("INT32"),
+            TSEncoding.valueOf("RLE"),
+            compressionType,
+            null,
+            null,
+            null,
+            null);
+    manager.createTimeseries(plan);
+
+    plan.setPath(new PartialPath("root.sg.d2.s"));
+    manager.createTimeseries(plan);
+
+    plan.setPath(new PartialPath("root.sg.d3.s"));
+    manager.createTimeseries(plan);
+
+    Set<String> result = manager.getChildNodePathInNextLevel(new PartialPath("root.**"), 1, 1);
+    Assert.assertEquals(1, result.size());
+    Assert.assertTrue(result.contains("root.sg.d2"));
+
+    result = manager.getChildNodePathInNextLevel(new PartialPath("root.**"), 3, 3);
+    Assert.assertEquals(3, result.size());
+    Assert.assertTrue(result.contains("root.sg.d1.s"));
+    Assert.assertTrue(result.contains("root.sg.d2.s"));
+    Assert.assertTrue(result.contains("root.sg.d3.s"));
+
+    result = manager.getChildNodePathInNextLevel(new PartialPath("root.sg"), 1, 1);
+    Assert.assertEquals(1, result.size());
+    Assert.assertTrue(result.contains("root.sg.d2"));
+
+    result = manager.getChildNodeNameInNextLevel(new PartialPath("root.sg"), 1, 0);
+    Assert.assertEquals(1, result.size());
+    Assert.assertTrue(result.contains("d1"));
+  }
 }
