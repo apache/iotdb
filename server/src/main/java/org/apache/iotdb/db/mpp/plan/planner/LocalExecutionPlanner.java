@@ -1184,7 +1184,7 @@ public class LocalExecutionPlanner {
       PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
       TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
       if (timeValuePair == null) { // last value is not cached
-        return createUpdateLastCacheOperator(node, context, seriesPath);
+        return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
       } else if (!satisfyFilter(
           context.lastQueryTimeFilter, timeValuePair)) { // cached last value is not satisfied
 
@@ -1193,7 +1193,7 @@ public class LocalExecutionPlanner {
                 || context.lastQueryTimeFilter instanceof GtEq);
         // time filter is not > or >=, we still need to read from disk
         if (!isFilterGtOrGe) {
-          return createUpdateLastCacheOperator(node, context, seriesPath);
+          return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
         } else { // otherwise, we just ignore it and return null
           return null;
         }
@@ -1204,7 +1204,7 @@ public class LocalExecutionPlanner {
     }
 
     private UpdateLastCacheOperator createUpdateLastCacheOperator(
-        LastQueryScanNode node, LocalExecutionPlanContext context, PartialPath fullPath) {
+        LastQueryScanNode node, LocalExecutionPlanContext context, MeasurementPath fullPath) {
       SeriesAggregationScanOperator lastQueryScan = createLastQueryScanOperator(node, context);
 
       OperatorContext operatorContext =
@@ -1256,7 +1256,8 @@ public class LocalExecutionPlanner {
       PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
       TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
       if (timeValuePair == null) { // last value is not cached
-        return createUpdateLastCacheOperator(node, context, seriesPath);
+        return createUpdateLastCacheOperator(
+            node, context, node.getSeriesPath().getMeasurementPath());
       } else if (!satisfyFilter(
           context.lastQueryTimeFilter, timeValuePair)) { // cached last value is not satisfied
 
@@ -1265,7 +1266,8 @@ public class LocalExecutionPlanner {
                 || context.lastQueryTimeFilter instanceof GtEq);
         // time filter is not > or >=, we still need to read from disk
         if (!isFilterGtOrGe) {
-          return createUpdateLastCacheOperator(node, context, seriesPath);
+          return createUpdateLastCacheOperator(
+              node, context, node.getSeriesPath().getMeasurementPath());
         } else { // otherwise, we just ignore it and return null
           return null;
         }
@@ -1276,7 +1278,9 @@ public class LocalExecutionPlanner {
     }
 
     private UpdateLastCacheOperator createUpdateLastCacheOperator(
-        AlignedLastQueryScanNode node, LocalExecutionPlanContext context, PartialPath fullPath) {
+        AlignedLastQueryScanNode node,
+        LocalExecutionPlanContext context,
+        MeasurementPath fullPath) {
       AlignedSeriesAggregationScanOperator lastQueryScan =
           createLastQueryScanOperator(node, context);
 
