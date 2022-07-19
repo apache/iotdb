@@ -50,7 +50,8 @@ public enum PrivilegeType {
   CREATE_CONTINUOUS_QUERY,
   DROP_CONTINUOUS_QUERY,
   ALL,
-  DELETE_STORAGE_GROUP(true);
+  DELETE_STORAGE_GROUP(true),
+  ALTER_TIMESERIES(true);
 
   private static final int PRIVILEGE_COUNT = values().length;
 

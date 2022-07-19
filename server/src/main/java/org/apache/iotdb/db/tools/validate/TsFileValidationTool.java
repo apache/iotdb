@@ -50,6 +50,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -82,7 +84,7 @@ public class TsFileValidationTool {
   private static final Logger logger = LoggerFactory.getLogger(TsFileValidationTool.class);
   private static final List<File> seqDataDirList = new ArrayList<>();
   private static final List<File> fileList = new ArrayList<>();
-  private static int badFileNum = 0;
+  public static int badFileNum = 0;
 
   /**
    * The form of param is: [path of data dir or tsfile] [-pd = print details or not] [-f = path of
@@ -129,7 +131,9 @@ public class TsFileValidationTool {
           }
           // get time partition dirs and sort them
           List<File> timePartitionDirs =
-              Arrays.asList(Objects.requireNonNull(dataRegionDir.listFiles()));
+              Arrays.asList(Objects.requireNonNull(dataRegionDir.listFiles())).stream()
+                  .filter(file -> Pattern.compile("[0-9]*").matcher(file.getName()).matches())
+                  .collect(Collectors.toList());
           timePartitionDirs.sort(
               (f1, f2) ->
                   Long.compareUnsigned(Long.parseLong(f1.getName()), Long.parseLong(f2.getName())));
@@ -162,7 +166,7 @@ public class TsFileValidationTool {
     }
   }
 
-  private static void findUncorrectFiles(List<File> tsFiles) {
+  public static void findUncorrectFiles(List<File> tsFiles) {
     // measurementID -> <fileName, [lastTime, endTimeInLastFile]>
     Map<String, Pair<String, long[]>> measurementLastTime = new HashMap<>();
     // deviceID -> <fileName, endTime>, the endTime of device in the last seq file
@@ -497,12 +501,19 @@ public class TsFileValidationTool {
         }
       } catch (Throwable e) {
         logger.error("Meet errors in reading file {} , skip it.", tsFile.getAbsolutePath(), e);
-        if (printDetails) {
-          printBoth(
-              "-- Meet errors in reading file "
-                  + tsFile.getAbsolutePath()
-                  + ", tsfile may be corrupted.");
+        if (!isBadFileMap.get(tsFile.getName())) {
+          if (printDetails) {
+            printBoth(
+                "-- Meet errors in reading file "
+                    + tsFile.getAbsolutePath()
+                    + ", tsfile may be corrupted.");
+          } else {
+            printBoth(tsFile.getAbsolutePath());
+          }
+          isBadFileMap.put(tsFile.getName(), true);
+          badFileNum++;
         }
+
       } finally {
         for (String msg : previousBadFileMsgs) {
           printBoth(msg);
