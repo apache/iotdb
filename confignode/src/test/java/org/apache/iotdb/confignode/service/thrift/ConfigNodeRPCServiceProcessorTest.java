@@ -231,10 +231,10 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void getAllClusterNodeInfosTest() throws TException {
+  public void showClusterTest() throws TException {
     registerDataNodes();
 
-    TShowClusterResp clusterNodes = processor.getAllClusterNodeInfos();
+    TShowClusterResp clusterNodes = processor.showCluster();
 
     List<TDataNodeLocation> dataNodeInfos = clusterNodes.getDataNodeList();
     Assert.assertEquals(3, dataNodeInfos.size());

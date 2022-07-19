@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -43,6 +42,7 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -205,24 +205,22 @@ public class NodeManager {
     return nodeInfo.getRegisteredDataNodes(dataNodeId);
   }
 
-  public List<TDataNodesInfo> getRegisteredDataNodesInfoList() {
-    List<TDataNodesInfo> dataNodesLocations = new ArrayList<>();
+  public List<TDataNodeInfo> getRegisteredDataNodesInfoList() {
+    List<TDataNodeInfo> dataNodesLocations = new ArrayList<>();
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes(-1);
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
           (dataNodeInfo) -> {
-            TDataNodesInfo tDataNodesLocation = new TDataNodesInfo();
+            TDataNodeInfo info = new TDataNodeInfo();
             int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
-            tDataNodesLocation.setDataNodeId(dataNodeId);
-            tDataNodesLocation.setStatus(
+            info.setDataNodeId(dataNodeId);
+            info.setStatus(
                 getLoadManager().getNodeCacheMap().get(dataNodeId).getNodeStatus().getStatus());
-            tDataNodesLocation.setRpcAddresss(
-                dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
-            tDataNodesLocation.setRpcPort(
-                dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
-            tDataNodesLocation.setDataRegionNum(0);
-            tDataNodesLocation.setSchemaRegionNum(0);
-            dataNodesLocations.add(tDataNodesLocation);
+            info.setRpcAddresss(dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
+            info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
+            info.setDataRegionNum(0);
+            info.setSchemaRegionNum(0);
+            dataNodesLocations.add(info);
           });
     }
     return dataNodesLocations;
