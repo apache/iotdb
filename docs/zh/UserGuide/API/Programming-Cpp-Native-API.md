@@ -303,7 +303,7 @@ void insertRecord(const std::string &deviceId,
                   int64_t time, 
                   const std::vector<std::string> &measurements,
                   const std::vector<TSDataType::TSDataType> &types, 
-				  const std::vector<char *> &values);
+                  const std::vector<char *> &values);
 ```
 
 - 插入多个 Record
@@ -331,7 +331,7 @@ void insertRecordsOfOneDevice(const std::string &deviceId,
 ```cpp
 void insertRecord(const std::string &deviceId, 
                   int64_t time, 
-				  const std::vector<std::string> &measurements,
+                  const std::vector<std::string> &measurements,
                   const std::vector<std::string> &values);
 
 
