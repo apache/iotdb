@@ -356,8 +356,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -418,8 +417,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -467,8 +465,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -518,8 +515,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (Exception e) {
@@ -742,8 +738,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -794,8 +789,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -846,8 +840,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -896,8 +889,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -939,8 +931,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -982,8 +973,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -1031,8 +1021,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -1110,8 +1099,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
@@ -1150,7 +1138,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException("error code: " + result.status);
@@ -1211,7 +1199,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               "",
               PARTITION_FETCHER,
               SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException("error code: " + result.status);
@@ -1321,8 +1309,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER,
-              config.getQueryTimeoutThreshold());
+              SCHEMA_FETCHER);
 
       return result.status;
     } catch (IoTDBException e) {
