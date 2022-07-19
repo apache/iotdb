@@ -20,7 +20,7 @@
 package org.apache.iotdb.confignode.procedure.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -108,21 +108,22 @@ public class ConfigNodeProcedureEnv {
     if (skipForTest) {
       return invalidCacheResult;
     }
-    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getRegisteredDataNodes(-1);
+    List<TDataNodeConfiguration> allDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes(-1);
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(storageGroupName);
-    for (TDataNodeInfo dataNodeInfo : allDataNodes) {
+    for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
       final TSStatus invalidateSchemaStatus =
           SyncDataNodeClientPool.getInstance()
               .sendSyncRequestToDataNodeWithRetry(
-                  dataNodeInfo.getLocation().getInternalEndPoint(),
+                  dataNodeConfiguration.getLocation().getInternalEndPoint(),
                   invalidateCacheReq,
                   DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
       final TSStatus invalidatePartitionStatus =
           SyncDataNodeClientPool.getInstance()
               .sendSyncRequestToDataNodeWithRetry(
-                  dataNodeInfo.getLocation().getInternalEndPoint(),
+                  dataNodeConfiguration.getLocation().getInternalEndPoint(),
                   invalidateCacheReq,
                   DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {

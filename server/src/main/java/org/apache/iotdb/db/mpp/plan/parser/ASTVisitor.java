@@ -61,8 +61,6 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
-import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
@@ -1176,24 +1174,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   // parse WITHOUT NULL
   private void parseWithoutNullClause(IoTDBSqlParser.WithoutNullClauseContext ctx) {
-    FilterNullComponent filterNullComponent = new FilterNullComponent();
-
-    // add without null columns
-    List<IoTDBSqlParser.ExpressionContext> expressionContexts = ctx.expression();
-    for (IoTDBSqlParser.ExpressionContext expressionContext : expressionContexts) {
-      filterNullComponent.addWithoutNullColumn(parseExpression(expressionContext, true));
-    }
-
-    // set without null policy
-    if (ctx.ANY() != null) {
-      filterNullComponent.setWithoutPolicyType(FilterNullPolicy.CONTAINS_NULL);
-    } else if (ctx.ALL() != null) {
-      filterNullComponent.setWithoutPolicyType(FilterNullPolicy.ALL_NULL);
-    } else {
-      filterNullComponent.setWithoutPolicyType(FilterNullPolicy.NO_FILTER);
-    }
-
-    queryStatement.setFilterNullComponent(filterNullComponent);
+    throw new SemanticException("WITHOUT NULL clause is not supported yet.");
   }
 
   // ORDER BY TIME Clause

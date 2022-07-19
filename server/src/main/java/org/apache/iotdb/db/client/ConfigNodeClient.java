@@ -41,7 +41,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
@@ -293,10 +293,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TDataNodeInfoResp getDataNodeInfo(int dataNodeId) throws TException {
+  public TDataNodeConfigurationResp getDataNodeConfiguration(int dataNodeId) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TDataNodeInfoResp resp = client.getDataNodeInfo(dataNodeId);
+        TDataNodeConfigurationResp resp = client.getDataNodeConfiguration(dataNodeId);
         if (!updateConfigNodeLeader(resp.status)) {
           return resp;
         }
