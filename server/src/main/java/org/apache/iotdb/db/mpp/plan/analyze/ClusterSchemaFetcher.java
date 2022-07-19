@@ -91,15 +91,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     try {
       ExecutionResult executionResult =
           coordinator.execute(
-              schemaFetchStatement, queryId, null, "", ClusterPartitionFetcher.getInstance(), this);
-      coordinator.execute(
-          schemaFetchStatement,
-          queryId,
-          null,
-          "",
-          partitionFetcher,
-          this,
-          config.getQueryTimeoutThreshold());
+              schemaFetchStatement,
+              queryId,
+              null,
+              "",
+              ClusterPartitionFetcher.getInstance(),
+              this,
+              config.getQueryTimeoutThreshold());
       // TODO: (xingtanzjr) throw exception
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
@@ -336,10 +334,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
             queryId,
             null,
             "",
-            partitionFetcher,
+            ClusterPartitionFetcher.getInstance(),
             this,
             config.getQueryTimeoutThreshold());
-    coordinator.execute(statement, queryId, null, "", ClusterPartitionFetcher.getInstance(), this);
     // TODO: throw exception
     int statusCode = executionResult.status.getCode();
     if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
