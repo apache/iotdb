@@ -307,8 +307,8 @@ public class UnsealedTsFileRecoverPerformerTest {
     insertTabletNode.markFailedMeasurement(0, new Exception());
 
     int fakeMemTableId = 1;
-    WALEntry walEntry1 = new WALEntry(fakeMemTableId++, insertRowNode);
-    WALEntry walEntry2 = new WALEntry(fakeMemTableId, insertTabletNode);
+    WALEntry walEntry1 = new WALInfoEntry(fakeMemTableId++, insertRowNode);
+    WALEntry walEntry2 = new WALInfoEntry(fakeMemTableId, insertTabletNode);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here
