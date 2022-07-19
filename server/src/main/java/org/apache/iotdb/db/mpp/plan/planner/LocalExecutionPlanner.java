@@ -852,26 +852,21 @@ public class LocalExecutionPlanner {
 
       context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
-      Operator filter;
       boolean hasNonMappableUDF =
           hasNonMappableUDF(subExpressionsOfTransform, context.getTypeProvider());
-      try {
-        filter =
-            new FilterAndProjectOperator(
-                operatorContext,
-                inputOperator,
-                inputDataTypes,
-                predicate,
-                outputExpressions,
-                commonSubexpressions,
-                context.getTypeProvider(),
-                inputLocations,
-                node.getZoneId(),
-                hasNonMappableUDF,
-                node.getScanOrder().equals(OrderBy.TIMESTAMP_ASC));
-      } catch (QueryProcessException e) {
-        throw new RuntimeException(e);
-      }
+
+      Operator filter =
+          new FilterAndProjectOperator(
+              operatorContext,
+              inputOperator,
+              inputDataTypes,
+              predicate,
+              outputExpressions,
+              commonSubexpressions,
+              context.getTypeProvider(),
+              inputLocations,
+              node.getZoneId(),
+              hasNonMappableUDF);
 
       // Output expressions don't contain Non-Mappable UDF, TransformOperator is not needed
       if (!hasNonMappableUDF) {

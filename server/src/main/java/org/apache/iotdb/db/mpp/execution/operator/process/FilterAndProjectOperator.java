@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
@@ -63,8 +62,6 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   private final boolean hasNonMappableUDF;
 
-  private final boolean isAscending;
-
   private final OperatorContext operatorContext;
 
   private final Map<String, List<InputLocation>> predicateInputLocations;
@@ -103,9 +100,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
       TypeProvider typeProvider,
       Map<String, List<InputLocation>> predicateInputLocations,
       ZoneId zoneId,
-      boolean hasNonMappableUDF,
-      boolean isAscending)
-      throws QueryProcessException {
+      boolean hasNonMappableUDF) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.predicateOutputDataTypes = inputDataTypes;
@@ -114,7 +109,6 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.commonSubexpressions = commonSubexpressions;
     this.predicateInputLocations = predicateInputLocations;
     this.hasNonMappableUDF = hasNonMappableUDF;
-    this.isAscending = isAscending;
 
     initFilter(zoneId, typeProvider);
 
@@ -124,7 +118,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     }
   }
 
-  private void initFilter(ZoneId zoneId, TypeProvider typeProvider) throws QueryProcessException {
+  private void initFilter(ZoneId zoneId, TypeProvider typeProvider) {
     this.predicateUDTFContext = new UDTFContext(zoneId);
     predicateUDTFContext.constructUdfExecutors(new Expression[] {predicate});
     // init ColumnTransformer of predicate
