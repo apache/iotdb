@@ -49,6 +49,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -280,8 +281,8 @@ public interface IManager {
   /** Show (data/schema) regions */
   DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan);
 
-  /** Show datanodes */
-  DataSet showDataNodes();
+  /** Show DataNodes */
+  TShowDataNodesResp showDataNodes();
 
   /**
    * create schema template

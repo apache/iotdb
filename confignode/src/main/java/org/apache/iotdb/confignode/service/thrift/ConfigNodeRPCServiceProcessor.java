@@ -550,11 +550,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TShowDataNodesResp showDataNodes() throws TException {
-    DataNodeConfigurationResp dataSet = (DataNodeConfigurationResp) configManager.showDataNodes();
-    TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
-    showDataNodesResp.setStatus(dataSet.getStatus());
-    showDataNodesResp.setDataNodesInfoList(dataSet.getDataNodesInfoList());
-    return showDataNodesResp;
+    return configManager.showDataNodes();
   }
 
   public void handleClientExit() {}

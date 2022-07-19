@@ -21,18 +21,15 @@ package org.apache.iotdb.confignode.consensus.response;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.List;
 import java.util.Map;
 
 public class DataNodeConfigurationResp implements DataSet {
 
   private TSStatus status;
-  private Map<Integer, TDataNodeConfiguration> dataNodeInfoMap;
-  private List<TDataNodeInfo> dataNodesInfoList;
+  private Map<Integer, TDataNodeConfiguration> dataNodeConfigurationMap;
 
   public DataNodeConfigurationResp() {
     // empty constructor
@@ -46,22 +43,15 @@ public class DataNodeConfigurationResp implements DataSet {
     return status;
   }
 
-  public void setDataNodeInfoMap(Map<Integer, TDataNodeConfiguration> dataNodeInfoMap) {
-    this.dataNodeInfoMap = dataNodeInfoMap;
-  }
-
-  public List<TDataNodeInfo> getDataNodesInfoList() {
-    return dataNodesInfoList;
-  }
-
-  public void setDataNodesInfoList(List<TDataNodeInfo> dataNodesInfoList) {
-    this.dataNodesInfoList = dataNodesInfoList;
+  public void setDataNodeConfigurationMap(
+      Map<Integer, TDataNodeConfiguration> dataNodeConfigurationMap) {
+    this.dataNodeConfigurationMap = dataNodeConfigurationMap;
   }
 
   public void convertToRpcDataNodeLocationResp(TDataNodeConfigurationResp resp) {
     resp.setStatus(status);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      resp.setDataNodeConfigurationMap(dataNodeInfoMap);
+      resp.setDataNodeConfigurationMap(dataNodeConfigurationMap);
     }
   }
 }
