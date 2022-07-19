@@ -185,4 +185,12 @@ public interface BaseConfig {
   default BaseConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
     return this;
   }
+
+  default int getMaxTsBlockLineNumber() {
+    return 1000;
+  }
+
+  default BaseConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    return this;
+  }
 }

@@ -65,6 +65,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class Template implements Serializable {
+
+  private int id;
   private String name;
   private Map<String, IMNode> directNodes;
   private boolean isDirectAligned;
@@ -155,6 +157,14 @@ public class Template implements Serializable {
             statement.getDataTypes(),
             statement.getEncodings(),
             statement.getCompressors()));
+  }
+
+  public int getId() {
+    return id;
+  }
+
+  public void setId(int id) {
+    this.id = id;
   }
 
   public String getName() {
@@ -675,8 +685,9 @@ public class Template implements Serializable {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-    SerializeUtils.serialize(name, dataOutputStream);
     try {
+      dataOutputStream.writeInt(id);
+      SerializeUtils.serialize(name, dataOutputStream);
       dataOutputStream.writeInt(schemaMap.size());
       for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
@@ -689,6 +700,7 @@ public class Template implements Serializable {
   }
 
   public void deserialize(ByteBuffer buffer) {
+    id = buffer.getInt();
     name = SerializeUtils.deserializeString(buffer);
     int schemaSize = buffer.getInt();
     schemaMap = new HashMap<>(schemaSize);

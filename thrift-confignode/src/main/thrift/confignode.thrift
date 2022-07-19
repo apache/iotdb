@@ -23,14 +23,20 @@ namespace py iotdb.thrift.confignode
 
 // DataNode
 struct TDataNodeRegisterReq {
-  1: required common.TDataNodeInfo dataNodeInfo
+  1: required common.TDataNodeConfiguration dataNodeConfiguration
   // Map<StorageGroupName, TStorageGroupSchema>
   // DataNode can use statusMap to report its status to the ConfigNode when restart
   2: optional map<string, TStorageGroupSchema> statusMap
 }
 
-struct TDataNodeActiveReq {
-  1: required common.TDataNodeInfo dataNodeInfo
+struct TDataNodeRemoveReq {
+  1: required list<common.TDataNodeLocation> dataNodeLocations
+}
+
+struct TRegionMigrateResultReportReq {
+  1: required common.TConsensusGroupId regionId
+  2: required common.TSStatus migrateResult
+  3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
 }
 
 struct TGlobalConfig {
@@ -39,6 +45,7 @@ struct TGlobalConfig {
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
+  6: required string readConsistencyLevel
 }
 
 struct TDataNodeRegisterResp {
@@ -48,10 +55,14 @@ struct TDataNodeRegisterResp {
   4: optional TGlobalConfig globalConfig
 }
 
-struct TDataNodeInfoResp {
+struct TDataNodeRemoveResp {
+  1: required common.TSStatus status
+  2: optional map<common.TDataNodeLocation, common.TSStatus> nodeToStatus
+}
+struct TDataNodeConfigurationResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeLocation>
-  2: optional map<i32, common.TDataNodeInfo> dataNodeInfoMap
+  2: optional map<i32, common.TDataNodeConfiguration> dataNodeConfigurationMap
 }
 
 // StorageGroup
@@ -132,7 +143,7 @@ struct TSchemaNodeManagementResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
-  3: optional set<string> matchedNode
+  3: optional set<common.TSchemaNode> matchedNode
 }
 
 // Data
@@ -212,6 +223,7 @@ struct TConfigNodeRegisterReq {
   9: required double schemaRegionPerDataNode
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
+  12: required string readConsistencyLevel
 }
 
 struct TConfigNodeRegisterResp {
@@ -282,15 +294,26 @@ struct TGetTemplateResp {
   2: optional binary template
 }
 
+struct TSetSchemaTemplateReq {
+  1: required string name
+  2: required string path
+}
+struct TGetPathsSetTemplatesResp {
+  1: required common.TSStatus status
+  2: optional list<string> pathList
+}
+
 service IConfigNodeRPCService {
 
   /* DataNode */
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  common.TSStatus activeDataNode(TDataNodeActiveReq req)
+  TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
 
-  TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
+  TDataNodeConfigurationResp getDataNodeConfiguration(i32 dataNodeId)
+
+  common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
   /* Show Cluster */
   TClusterNodeInfos getAllClusterNodeInfos()
@@ -338,9 +361,9 @@ service IConfigNodeRPCService {
 
   TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req)
 
+  // TODO: Replace this by getOrCreateDataPartitionTable
   TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
 
-  // TODO: Replace this by getOrCreateDataPartitionTable
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
   /* Authorize */
@@ -391,13 +414,17 @@ service IConfigNodeRPCService {
 
   TShowDataNodesResp showDataNodes()
 
-   /* Template */
+  /* Template */
 
-    common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
+  common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
 
-    TGetAllTemplatesResp getAllTemplates()
+  TGetAllTemplatesResp getAllTemplates()
 
-    TGetTemplateResp getTemplate(string req)
+  TGetTemplateResp getTemplate(string req)
+
+  common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
+
+  TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
 }
 

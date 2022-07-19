@@ -45,7 +45,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNullNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
@@ -106,10 +105,6 @@ public abstract class PlanVisitor<R, C> {
   }
 
   public R visitFilter(FilterNode node, C context) {
-    return visitPlan(node, context);
-  }
-
-  public R visitFilterNull(FilterNullNode node, C context) {
     return visitPlan(node, context);
   }
 

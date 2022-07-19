@@ -29,21 +29,21 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
@@ -51,7 +51,8 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.confignode.consensus.response.DataNodeInfosResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
+import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
 import org.apache.iotdb.confignode.consensus.response.RegionInfoListResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
@@ -67,10 +68,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeActiveReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
@@ -78,9 +80,11 @@ import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TLoginReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
@@ -89,6 +93,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
@@ -136,8 +141,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req) throws TException {
     TDataNodeRegisterResp resp =
-        ((DataNodeConfigurationResp)
-                configManager.registerDataNode(new RegisterDataNodePlan(req.getDataNodeInfo())))
+        ((DataNodeRegisterResp)
+                configManager.registerDataNode(
+                    new RegisterDataNodePlan(req.getDataNodeConfiguration())))
             .convertToRpcDataNodeRegisterResp();
 
     // Print log to record the ConfigNode that performs the RegisterDatanodeRequest
@@ -147,18 +153,33 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TSStatus activeDataNode(TDataNodeActiveReq req) throws TException {
-    return configManager.activateDataNode(new ActivateDataNodePlan(req.getDataNodeInfo()));
+  public TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req) throws TException {
+    // TODO without reqId and respId, how to trace a request exec state?
+    LOGGER.info("ConfigNode RPC Service start to remove DataNode, req: {}", req);
+    RemoveDataNodePlan removeDataNodePlan = new RemoveDataNodePlan(req.getDataNodeLocations());
+    DataNodeToStatusResp removeResp =
+        (DataNodeToStatusResp) configManager.removeDataNode(removeDataNodePlan);
+    TDataNodeRemoveResp resp = removeResp.convertToRpCDataNodeRemoveResp();
+    LOGGER.info(
+        "ConfigNode RPC Service finished to remove DataNode, req: {}, result: {}", req, resp);
+    return resp;
   }
 
   @Override
-  public TDataNodeInfoResp getDataNodeInfo(int dataNodeID) throws TException {
-    GetDataNodeInfoPlan queryReq = new GetDataNodeInfoPlan(dataNodeID);
-    DataNodeInfosResp queryResp = (DataNodeInfosResp) configManager.getDataNodeInfo(queryReq);
+  public TDataNodeConfigurationResp getDataNodeConfiguration(int dataNodeID) throws TException {
+    GetDataNodeConfigurationPlan queryReq = new GetDataNodeConfigurationPlan(dataNodeID);
+    DataNodeConfigurationResp queryResp =
+        (DataNodeConfigurationResp) configManager.getDataNodeConfiguration(queryReq);
 
-    TDataNodeInfoResp resp = new TDataNodeInfoResp();
+    TDataNodeConfigurationResp resp = new TDataNodeConfigurationResp();
     queryResp.convertToRpcDataNodeLocationResp(resp);
     return resp;
+  }
+
+  @Override
+  public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) throws TException {
+    configManager.getDataNodeRemoveManager().reportRegionMigrateResult(req);
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   @Override
@@ -435,10 +456,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       status =
           (TSStatus)
               SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNode(
+                  .sendSyncRequestToConfigNodeWithRetry(
                       configNodeLocation.getInternalEndPoint(),
                       configNodeLocation,
-                      ConfigNodeRequestType.stopConfigNode);
+                      ConfigNodeRequestType.STOP_CONFIG_NODE);
     }
 
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
@@ -467,9 +488,10 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
             () -> {
               try {
                 ConfigNode.getInstance().stop();
-                System.exit(0);
               } catch (IOException e) {
                 LOGGER.error("Meet error when stop ConfigNode!", e);
+              } finally {
+                System.exit(0);
               }
             })
         .start();
@@ -516,7 +538,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
-    return configManager.getLatestRegionRouteMap();
+    TRegionRouteMapResp resp = configManager.getLatestRegionRouteMap();
+    LOGGER.info("Generate a latest RegionRouteMap: {}", resp);
+    return resp;
   }
 
   @Override
@@ -526,7 +550,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TShowDataNodesResp showDataNodes() throws TException {
-    DataNodeInfosResp dataSet = (DataNodeInfosResp) configManager.showDataNodes();
+    DataNodeConfigurationResp dataSet = (DataNodeConfigurationResp) configManager.showDataNodes();
     TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
     showDataNodesResp.setStatus(dataSet.getStatus());
     showDataNodesResp.setDataNodesInfoList(dataSet.getDataNodesInfoList());
@@ -550,5 +574,15 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TGetTemplateResp getTemplate(String req) throws TException {
     return configManager.getTemplate(req);
+  }
+
+  @Override
+  public TSStatus setSchemaTemplate(TSetSchemaTemplateReq req) throws TException {
+    return configManager.setSchemaTemplate(req);
+  }
+
+  @Override
+  public TGetPathsSetTemplatesResp getPathsSetTemplate(String req) throws TException {
+    return configManager.getPathsSetTemplate(req);
   }
 }

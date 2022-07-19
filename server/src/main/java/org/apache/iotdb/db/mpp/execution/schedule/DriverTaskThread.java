@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.driver.IDriver;
 import org.apache.iotdb.db.mpp.execution.schedule.queue.IndexedBlockingQueue;
 import org.apache.iotdb.db.mpp.execution.schedule.task.DriverTask;
@@ -34,7 +35,10 @@ import java.util.concurrent.TimeUnit;
 /** the worker thread of {@link DriverTask} */
 public class DriverTaskThread extends AbstractDriverThread {
 
-  public static final Duration EXECUTION_TIME_SLICE = new Duration(100, TimeUnit.MILLISECONDS);
+  public static final Duration EXECUTION_TIME_SLICE =
+      new Duration(
+          IoTDBDescriptor.getInstance().getConfig().getDriverTaskExecutionTimeSliceInMs(),
+          TimeUnit.MILLISECONDS);
 
   // As the callback is lightweight enough, there's no need to use another one thread to execute.
   private static final Executor listeningExecutor = MoreExecutors.directExecutor();

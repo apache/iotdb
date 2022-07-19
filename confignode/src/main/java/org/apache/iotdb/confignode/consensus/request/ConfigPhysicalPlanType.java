@@ -20,8 +20,7 @@ package org.apache.iotdb.confignode.consensus.request;
 
 public enum ConfigPhysicalPlanType {
   RegisterDataNode,
-  ActivateDataNode,
-  GetDataNodeInfo,
+  GetDataNodeConfiguration,
   SetStorageGroup,
   SetTTL,
   SetSchemaReplicationFactor,
@@ -61,6 +60,7 @@ public enum ConfigPhysicalPlanType {
   ListUserRoles,
   ListRoleUsers,
   ApplyConfigNode,
+  RemoveDataNode,
   RemoveConfigNode,
   CreateFunction,
   DropFunction,
@@ -69,5 +69,8 @@ public enum ConfigPhysicalPlanType {
   GetNodePathsPartition,
   CreateSchemaTemplate,
   ShowSchemaTemplate,
-  ShowNodesInSchemaTemplate;
+  ShowNodesInSchemaTemplate,
+  UpdateRegionLocation,
+  SetSchemaTemplate,
+  GetPathsSetTemplate;
 }

@@ -20,7 +20,6 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -81,11 +80,6 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     }
     schemaTree.setStorageGroups(new ArrayList<>(storageGroupSet));
     return schemaTree;
-  }
-
-  @Override
-  public SchemaTree fetchSchema(PathPatternTree patternTree, SchemaPartition schemaPartition) {
-    return fetchSchema(patternTree);
   }
 
   @Override

@@ -45,9 +45,9 @@ public class RouteBalancer {
     this.configManager = configManager;
   }
 
-  public Map<TConsensusGroupId, TRegionReplicaSet> genRealTimeRoutingPolicy(
+  public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
       List<TRegionReplicaSet> regionReplicaSets) {
-    return genRouter().genRealTimeRoutingPolicy(regionReplicaSets);
+    return genRouter().genLatestRegionRouteMap(regionReplicaSets);
   }
 
   private IRouter genRouter() {

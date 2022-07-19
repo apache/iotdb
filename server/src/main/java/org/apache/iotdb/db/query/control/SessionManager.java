@@ -229,6 +229,7 @@ public class SessionManager {
     sessionIdToUsername.put(sessionId, username);
     sessionIdToZoneId.put(sessionId, ZoneId.of(zoneId));
     sessionIdToClientVersion.put(sessionId, clientVersion);
+    sessionIdToSessionInfo.put(sessionId, new SessionInfo(sessionId, username, zoneId));
 
     return sessionId;
   }

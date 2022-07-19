@@ -68,6 +68,7 @@ public class RegionGroupCache implements IRegionGroupCache {
   public boolean updateLoadStatistic() {
     long updateVersion = Long.MIN_VALUE;
     int updateLeaderDataNodeId = -1;
+    int originLeaderDataNodeId = leaderDataNodeId.get();
 
     synchronized (slidingWindow) {
       for (LinkedList<RegionHeartbeatSample> samples : slidingWindow.values()) {
@@ -82,11 +83,12 @@ public class RegionGroupCache implements IRegionGroupCache {
     }
 
     if (updateVersion > versionTimestamp.get()) {
+      // Only update when the leadership information is latest
       versionTimestamp.set(updateVersion);
       leaderDataNodeId.set(updateLeaderDataNodeId);
-      return true;
     }
-    return false;
+
+    return !(originLeaderDataNodeId == leaderDataNodeId.get());
   }
 
   @Override

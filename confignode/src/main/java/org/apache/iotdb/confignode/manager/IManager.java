@@ -24,14 +24,14 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.ActivateDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
@@ -43,10 +43,12 @@ import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
+import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 
@@ -108,6 +110,13 @@ public interface IManager {
   UDFManager getUDFManager();
 
   /**
+   * Get DataNodeRemoveManager
+   *
+   * @return DataNodeRemoveManager instance
+   */
+  DataNodeRemoveManager getDataNodeRemoveManager();
+
+  /**
    * Register DataNode
    *
    * @return DataNodeConfigurationDataSet
@@ -115,19 +124,19 @@ public interface IManager {
   DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan);
 
   /**
-   * activate DataNode
+   * Remove DataNode
    *
-   * @param activateDataNodePlan ActivateDataNodePlan
-   * @return TSStatus
+   * @param removeDataNodePlan
+   * @return DataNodeToStatusResp
    */
-  TSStatus activateDataNode(ActivateDataNodePlan activateDataNodePlan);
+  DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan);
 
   /**
    * Get DataNode info
    *
-   * @return DataNodesInfoDataSet
+   * @return DataNodesConfigurationDataSet
    */
-  DataSet getDataNodeInfo(GetDataNodeInfoPlan getDataNodeInfoPlan);
+  DataSet getDataNodeConfiguration(GetDataNodeConfigurationPlan getDataNodeConfigurationPlan);
 
   TClusterNodeInfos getAllClusterNodeInfos();
 
@@ -296,4 +305,20 @@ public interface IManager {
    * @return
    */
   TGetTemplateResp getTemplate(String req);
+
+  /**
+   * set schema template xx to xx-path
+   *
+   * @param req TSetSchemaTemplateReq
+   * @return TSStatus
+   */
+  TSStatus setSchemaTemplate(TSetSchemaTemplateReq req);
+
+  /**
+   * show paths set schema template xx
+   *
+   * @param req String
+   * @return TGetPathsSetTemplatesResp
+   */
+  TGetPathsSetTemplatesResp getPathsSetTemplate(String req);
 }

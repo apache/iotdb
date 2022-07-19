@@ -18,15 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -42,7 +39,6 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
@@ -79,7 +75,9 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
@@ -379,24 +377,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           throw new SemanticException("Group by month doesn't support order by time desc now.");
         }
         analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
-      }
-
-      if (queryStatement.getFilterNullComponent() != null) {
-        FilterNullParameter filterNullParameter = new FilterNullParameter();
-        filterNullParameter.setFilterNullPolicy(
-            queryStatement.getFilterNullComponent().getWithoutPolicyType());
-        List<Expression> resultFilterNullColumns;
-        if (queryStatement.isAlignByDevice()) {
-          resultFilterNullColumns =
-              analyzeWithoutNullAlignByDevice(
-                  queryStatement,
-                  outputExpressions.stream().map(Pair::getLeft).collect(Collectors.toSet()));
-        } else {
-          resultFilterNullColumns =
-              analyzeWithoutNull(queryStatement, schemaTree, analysis.getTransformExpressions());
-        }
-        filterNullParameter.setFilterNullColumns(resultFilterNullColumns);
-        analysis.setFilterNullParameter(filterNullParameter);
       }
 
       if (queryStatement.getFillComponent() != null) {
@@ -716,59 +696,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     transformExpressions.addAll(
         groupByLevelExpressions.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
     return groupByLevelExpressions;
-  }
-
-  private List<Expression> analyzeWithoutNullAlignByDevice(
-      QueryStatement queryStatement, Set<Expression> outputExpressions) {
-    List<Expression> resultFilterNullColumns = new ArrayList<>();
-    List<Expression> rawFilterNullColumns =
-        queryStatement.getFilterNullComponent().getWithoutNullColumns();
-
-    // don't specify columns, by default, it is effective for all columns
-    if (rawFilterNullColumns.isEmpty()) {
-      resultFilterNullColumns.addAll(outputExpressions);
-      return resultFilterNullColumns;
-    }
-
-    for (Expression filterNullColumn : rawFilterNullColumns) {
-      if (!outputExpressions.contains(filterNullColumn)) {
-        throw new SemanticException(
-            String.format(
-                "The without null column '%s' don't match the columns queried.", filterNullColumn));
-      }
-      resultFilterNullColumns.add(filterNullColumn);
-    }
-    return resultFilterNullColumns;
-  }
-
-  private List<Expression> analyzeWithoutNull(
-      QueryStatement queryStatement, SchemaTree schemaTree, Set<Expression> transformExpressions) {
-    List<Expression> resultFilterNullColumns = new ArrayList<>();
-    List<Expression> rawFilterNullColumns =
-        queryStatement.getFilterNullComponent().getWithoutNullColumns();
-
-    // don't specify columns, by default, it is effective for all columns
-    if (rawFilterNullColumns.isEmpty()) {
-      resultFilterNullColumns.addAll(transformExpressions);
-      return resultFilterNullColumns;
-    }
-
-    for (Expression filterNullColumn : rawFilterNullColumns) {
-      List<Expression> resultExpressions =
-          ExpressionAnalyzer.removeWildcardInExpression(filterNullColumn, schemaTree);
-      for (Expression expression : resultExpressions) {
-        Expression expressionWithoutAlias =
-            ExpressionAnalyzer.removeAliasFromExpression(expression);
-        if (!transformExpressions.contains(expressionWithoutAlias)) {
-          throw new SemanticException(
-              String.format(
-                  "The without null column '%s' don't match the columns queried.",
-                  filterNullColumn));
-        }
-        resultFilterNullColumns.add(expressionWithoutAlias);
-      }
-    }
-    return resultFilterNullColumns;
   }
 
   private DatasetHeader analyzeOutput(
@@ -1221,7 +1148,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setStatement(schemaFetchStatement);
-    analysis.setSchemaPartitionInfo(schemaFetchStatement.getSchemaPartition());
+
+    SchemaPartition schemaPartition =
+        partitionFetcher.getSchemaPartition(schemaFetchStatement.getPatternTree());
+    analysis.setSchemaPartitionInfo(schemaPartition);
+
+    if (schemaPartition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+    }
+
     return analysis;
   }
 
@@ -1358,43 +1293,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.appendPathPattern(pathPattern);
     }
 
-    SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
-
-    SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, schemaPartition);
+    SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
     analysis.setSchemaTree(schemaTree);
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
 
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
-        schemaPartition.getSchemaPartitionMap();
-
-    // todo keep the behaviour consistency of cluster and standalone,
-    // the behaviour of standalone fetcher and LocalConfigNode is not consistent with that of
-    // cluster mode's
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      for (String storageGroup : schemaPartitionMap.keySet()) {
-        sgNameToQueryParamsMap.put(
-            storageGroup,
-            schemaPartitionMap.get(storageGroup).keySet().stream()
-                .map(DataPartitionQueryParam::new)
-                .collect(Collectors.toList()));
-      }
-    } else {
-      // the StandalonePartitionFetcher and LocalConfigNode now doesn't support partition fetch
-      // via slotId
-      schemaTree
-          .getMatchedDevices(new PartialPath(ALL_RESULT_NODES))
-          .forEach(
-              deviceSchemaInfo -> {
-                PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-                DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-                queryParam.setDevicePath(devicePath.getFullPath());
-                sgNameToQueryParamsMap
-                    .computeIfAbsent(
-                        schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
-                    .add(queryParam);
-              });
-    }
+    schemaTree
+        .getMatchedDevices(new PartialPath(ALL_RESULT_NODES))
+        .forEach(
+            deviceSchemaInfo -> {
+              PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+              DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+              queryParam.setDevicePath(devicePath.getFullPath());
+              sgNameToQueryParamsMap
+                  .computeIfAbsent(
+                      schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+                  .add(queryParam);
+            });
 
     DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
     analysis.setDataPartitionInfo(dataPartition);
@@ -1460,5 +1375,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           groupByTimeComponent.getStartTime(),
           groupByTimeComponent.getEndTime());
     }
+  }
+
+  @Override
+  public Analysis visitSetSchemaTemplate(
+      SetSchemaTemplateStatement setSchemaTemplateStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+    Analysis analysis = new Analysis();
+    analysis.setStatement(setSchemaTemplateStatement);
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitShowPathSetTemplate(
+      ShowPathSetTemplateStatement showPathSetTemplateStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+    analysis.setStatement(showPathSetTemplateStatement);
+    analysis.setRespDatasetHeader(HeaderConstant.showPathSetTemplate);
+    return analysis;
   }
 }
