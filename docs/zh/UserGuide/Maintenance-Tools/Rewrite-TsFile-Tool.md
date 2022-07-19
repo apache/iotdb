@@ -19,18 +19,18 @@
 
 -->
 
-# IoTDB Load-TsFile Tool
+# IoTDB Rewrite-TsFile Tool
 
 ## 工具介绍
 
-Load-TsFile工具用于将TsFile中的数据写入正在运行的IoTDB中。
+Rewrite-TsFile工具用于将TsFile中的数据写入正在运行的IoTDB中。
 
 ## 使用方法
 
-若您在Windows环境中，请运行load-tsfile.bat，若为Linux或Unix，请运行load-tsfile.sh
+若您在Windows环境中，请运行rewrite-tsfile.bat，若为Linux或Unix，请运行rewrite-tsfile.sh
 
 ```bash
-./load-tsfile.bat -f filePath [-h host] [-help] [-p port] [-pw password] -u user
+./rewrite-tsfile.bat -f filePath [-h host] [-help] [-p port] [-pw password] -u user
 -f 待加载的文件或文件夹路径，必要字段
 -h IoTDB的Host地址，可选，默认127.0.0.1
 -help 输出帮助菜单，可选
@@ -43,17 +43,17 @@ Load-TsFile工具用于将TsFile中的数据写入正在运行的IoTDB中。
 
 假定服务器192.168.0.101:6667上运行一个IoTDB实例，想从将本地保存的TsFile备份文件夹D:\IoTDB\data中的所有的TsFile文件都加载进此IoTDB实例。
 
-首先移动到load-tsfile.bat所在文件夹中，打开命令行，然后执行
+首先移动到rewrite-tsfile.bat所在文件夹中，打开命令行，然后执行
 
 ```bash
-./load-tsfile.bat -f "D:\IoTDB\data" -h 192.168.0.101 -p 6667 -u root -pw root
+./rewrite-tsfile.bat -f "D:\IoTDB\data" -h 192.168.0.101 -p 6667 -u root -pw root
 ```
 
 等待脚本执行完成之后，可以检查IoTDB实例中数据已经被正确加载
 
 ## 常见问题
 
-- 找不到或无法加载主类TsFileLoaderTool
+- 找不到或无法加载主类RewriteTsFileTool
   - 可能是由于未设置环境变量$IOTDB_HOME，请设置环境变量之后重试
 - Missing require argument: f或Missing require argument: u
   - 输入命令缺少待-f字段（加载文件或文件夹路径），或者缺少-u字段（用户名），请添加之后重新执行
