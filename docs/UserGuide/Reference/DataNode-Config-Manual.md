@@ -199,7 +199,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 5 |
 |Effective|After restarting system|
 
-* mpp\_data\_exchange\_core\_pool\_size=1
+* mpp\_data\_exchange\_keep\_alive\_time\_in\_ms
 
 |Name| mpp\_data\_exchange\_keep\_alive\_time\_in\_ms |
 |:---:|:---|
@@ -208,6 +208,32 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1000 |
 |Effective|After restarting system|
 
+* driver\_task\_execution\_time\_slice\_in\_ms
+
+|Name| driver\_task\_execution\_time\_slice\_in\_ms |
+|:---:|:---|
+|Description| Maximum execution time of a DriverTask |
+|Type| int |
+|Default| 100 |
+|Effective|After restarting system|
+
+* max\_tsblock\_size\_in\_bytes
+
+|Name| max\_tsblock\_size\_in\_bytes |
+|:---:|:---|
+|Description| Maximum capacity of a TsBlock |
+|Type| int |
+|Default| 1024 * 1024 (1 MB) |
+|Effective|After restarting system|
+
+* max\_tsblock\_line\_numbers
+
+|Name| max\_tsblock\_line\_numbers |
+|:---:|:---|
+|Description| Maximum number of lines in a single TsBlock |
+|Type| int |
+|Default| 1000 |
+|Effective|After restarting system|
 
 ### DataNode Internal Service
 

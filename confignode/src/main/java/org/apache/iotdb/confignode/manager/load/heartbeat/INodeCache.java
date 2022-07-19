@@ -37,8 +37,12 @@ public interface INodeCache {
    */
   boolean updateLoadStatistic();
 
-  /** @return The latest load score of a node, the higher the score the higher the load */
-  float getLoadScore();
+  /**
+   * TODO: The loadScore of each Node will be changed to Double
+   *
+   * @return The latest load score of a node, the higher the score the higher the load
+   */
+  long getLoadScore();
 
   /** @return The latest status of a node for showing cluster */
   NodeStatus getNodeStatus();

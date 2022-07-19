@@ -53,7 +53,6 @@ public class NormalQueueSlidingWindowAggregator extends SlidingWindowAggregator 
     if (!partialResult.isNull()) {
       deque.addLast(partialResult);
     }
-    this.accumulator.reset();
     if (!deque.isEmpty()) {
       this.accumulator.addIntermediate(deque.getFirst().getPartialResult());
     }

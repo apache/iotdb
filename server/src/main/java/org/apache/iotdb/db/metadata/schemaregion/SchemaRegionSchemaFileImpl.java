@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -921,7 +922,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
+  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
     return mtree.getChildNodePathInNextLevel(pathPattern);
   }
 

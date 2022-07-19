@@ -151,6 +151,7 @@ public class AuthUtils {
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
+        case ALTER_TIMESERIES:
         case CREATE_TRIGGER:
         case DROP_TRIGGER:
         case START_TRIGGER:
@@ -168,6 +169,7 @@ public class AuthUtils {
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
+        case ALTER_TIMESERIES:
           validatePath(path);
           return;
         default:

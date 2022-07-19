@@ -96,13 +96,19 @@ public class MemTableFlushTask {
         "The memTable size of SG {} is {}, the avg series points num in chunk is {}, total timeseries number is {}",
         storageGroup,
         memTable.memSize(),
-        memTable.getTotalPointsNum() / memTable.getSeriesNumber(),
+        memTable.getSeriesNumber() == 0
+            ? 0
+            : memTable.getTotalPointsNum() / memTable.getSeriesNumber(),
         memTable.getSeriesNumber());
 
     long estimatedTemporaryMemSize = 0L;
     if (config.isEnableMemControl() && SystemInfo.getInstance().isEncodingFasterThanIo()) {
       estimatedTemporaryMemSize =
-          memTable.memSize() / memTable.getSeriesNumber() * config.getIoTaskQueueSizeForFlushing();
+          memTable.getSeriesNumber() == 0
+              ? 0
+              : memTable.memSize()
+                  / memTable.getSeriesNumber()
+                  * config.getIoTaskQueueSizeForFlushing();
       SystemInfo.getInstance().applyTemporaryMemoryForFlushing(estimatedTemporaryMemSize);
     }
     long start = System.currentTimeMillis();

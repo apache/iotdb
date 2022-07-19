@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -117,6 +118,13 @@ public class LastQueryMergeOperatorTest {
       PlanNodeId planNodeId5 = new PlanNodeId("5");
       fragmentInstanceContext.addOperatorContext(
           5, planNodeId5, LastQueryMergeOperator.class.getSimpleName());
+
+      fragmentInstanceContext
+          .getOperatorContexts()
+          .forEach(
+              operatorContext -> {
+                operatorContext.setMaxRunTime(TEST_TIME_SLICE);
+              });
 
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(
@@ -232,6 +240,13 @@ public class LastQueryMergeOperatorTest {
       PlanNodeId planNodeId6 = new PlanNodeId("6");
       fragmentInstanceContext.addOperatorContext(
           6, planNodeId6, LastQueryMergeOperator.class.getSimpleName());
+
+      fragmentInstanceContext
+          .getOperatorContexts()
+          .forEach(
+              operatorContext -> {
+                operatorContext.setMaxRunTime(TEST_TIME_SLICE);
+              });
 
       SeriesAggregationScanOperator seriesAggregationScanOperator1 =
           new SeriesAggregationScanOperator(

@@ -70,15 +70,18 @@ public class IoTDBAlignedSeriesQueryIT {
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
+  protected static int maxTsBlockLineNumber;
 
   @BeforeClass
   public static void setUp() throws Exception {
     enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
+    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
     EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
   }
@@ -89,9 +92,12 @@ public class IoTDBAlignedSeriesQueryIT {
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
   }
 
+  // TODO add them back while implementing order by timeseries
   // ----------------------------------------Last Query-----------------------------------------
+  @Ignore
   @Test
   public void selectAllAlignedLastTest() {
     Set<String> retSet =
@@ -129,6 +135,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void selectAllAlignedAndNonAlignedLastTest() {
 
@@ -172,6 +179,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void selectAllAlignedLastWithTimeFilterTest() {
 
@@ -206,6 +214,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void selectSomeAlignedLastTest1() {
     Set<String> retSet =
@@ -242,6 +251,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void selectSomeAlignedLastTest2() {
     Set<String> retSet =
@@ -274,6 +284,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void selectSomeAlignedLastWithTimeFilterTest() {
 
@@ -307,6 +318,7 @@ public class IoTDBAlignedSeriesQueryIT {
     }
   }
 
+  @Ignore
   @Test
   public void selectSomeAlignedAndNonAlignedLastWithTimeFilterTest() {
 

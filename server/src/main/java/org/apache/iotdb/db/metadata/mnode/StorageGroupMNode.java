@@ -95,6 +95,11 @@ public class StorageGroupMNode extends InternalMNode implements IStorageGroupMNo
   }
 
   @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return MNodeType.STORAGE_GROUP;
+  }
+
+  @Override
   public void serializeTo(MLogWriter logWriter) throws IOException {
     serializeChildren(logWriter);
 

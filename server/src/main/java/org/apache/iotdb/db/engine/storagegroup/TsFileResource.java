@@ -572,7 +572,7 @@ public class TsFileResource {
   }
 
   public boolean isDeleted() {
-    return this.status == TsFileResourceStatus.DELETED;
+    return !this.file.exists();
   }
 
   public boolean isCompacting() {
@@ -586,21 +586,10 @@ public class TsFileResource {
   public void setStatus(TsFileResourceStatus status) {
     switch (status) {
       case CLOSED:
-        if (this.status != TsFileResourceStatus.DELETED) {
-          this.status = TsFileResourceStatus.CLOSED;
-        }
+        this.status = TsFileResourceStatus.CLOSED;
         break;
       case UNCLOSED:
         this.status = TsFileResourceStatus.UNCLOSED;
-        break;
-      case DELETED:
-        if (this.status != TsFileResourceStatus.UNCLOSED) {
-          this.status = TsFileResourceStatus.DELETED;
-        } else {
-          throw new RuntimeException(
-              this.file.getAbsolutePath()
-                  + " Cannot set the status of an unclosed TsFileResource to DELETED");
-        }
         break;
       case COMPACTING:
         if (this.status == TsFileResourceStatus.COMPACTION_CANDIDATE) {
@@ -879,17 +868,19 @@ public class TsFileResource {
     if (planIndex == Long.MIN_VALUE || planIndex == Long.MAX_VALUE) {
       return;
     }
-    maxPlanIndex = Math.max(maxPlanIndex, planIndex);
-    minPlanIndex = Math.min(minPlanIndex, planIndex);
-    if (isClosed()) {
-      try {
-        serialize();
-      } catch (IOException e) {
-        LOGGER.error(
-            "Cannot serialize TsFileResource {} when updating plan index {}-{}",
-            this,
-            maxPlanIndex,
-            planIndex);
+    if (planIndex < minPlanIndex || planIndex > maxPlanIndex) {
+      maxPlanIndex = Math.max(maxPlanIndex, planIndex);
+      minPlanIndex = Math.min(minPlanIndex, planIndex);
+      if (isClosed()) {
+        try {
+          serialize();
+        } catch (IOException e) {
+          LOGGER.error(
+              "Cannot serialize TsFileResource {} when updating plan index {}-{}",
+              this,
+              maxPlanIndex,
+              planIndex);
+        }
       }
     }
   }

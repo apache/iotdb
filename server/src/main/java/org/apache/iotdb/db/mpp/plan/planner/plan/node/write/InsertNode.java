@@ -258,6 +258,15 @@ public abstract class InsertNode extends WritePlanNode {
     throw new UnsupportedOperationException();
   }
 
+  public boolean hasValidMeasurements() {
+    for (Object o : measurements) {
+      if (o != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public boolean hasFailedMeasurements() {
     return failedMeasurementIndex2Info != null && !failedMeasurementIndex2Info.isEmpty();
   }
