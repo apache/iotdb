@@ -175,7 +175,7 @@ public class SharedTsBlockQueue {
 
   // TODO add Throwable t as a parameter of this method, and then call blocked.setException(t);
   // instead of blocked.cancel(true);
-  /** Destroy the queue and cancel the future. Should only be called in normal case */
+  /** Destroy the queue and cancel the future. Should only be called in abnormal case */
   public void abort() {
     if (closed) {
       return;
