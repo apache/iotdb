@@ -240,12 +240,14 @@ public class LinearFill extends IFill {
       throws UnSupportedFillTypeException {
     double totalTimeLength = (double) afterPair.getTimestamp() - beforePair.getTimestamp();
     double beforeTimeLength = (double) (queryStartTime - beforePair.getTimestamp());
+
+    TsPrimitiveType beforeValue = beforePair.getValue();
+    boolean isAlignedValue = beforeValue.getDataType() == TSDataType.VECTOR;
+
     switch (dataType) {
       case INT32:
         int startIntValue =
-            isAligned
-                ? (((TsPrimitiveType[]) beforePair.getValue().getValue())[0]).getInt()
-                : beforePair.getValue().getInt();
+            isAlignedValue ? beforeValue.getVector()[0].getInt() : beforeValue.getInt();
         int endIntValue = afterPair.getValue().getInt();
         int fillIntValue =
             startIntValue
@@ -255,9 +257,7 @@ public class LinearFill extends IFill {
         break;
       case INT64:
         long startLongValue =
-            isAligned
-                ? (((TsPrimitiveType[]) beforePair.getValue().getValue())[0]).getLong()
-                : beforePair.getValue().getLong();
+            isAlignedValue ? beforeValue.getVector()[0].getLong() : beforeValue.getLong();
         long endLongValue = afterPair.getValue().getLong();
         long fillLongValue =
             startLongValue
@@ -267,9 +267,7 @@ public class LinearFill extends IFill {
         break;
       case FLOAT:
         float startFloatValue =
-            isAligned
-                ? (((TsPrimitiveType[]) beforePair.getValue().getValue())[0]).getFloat()
-                : beforePair.getValue().getFloat();
+            isAlignedValue ? beforeValue.getVector()[0].getFloat() : beforeValue.getFloat();
         float endFloatValue = afterPair.getValue().getFloat();
         float fillFloatValue =
             startFloatValue
@@ -278,9 +276,7 @@ public class LinearFill extends IFill {
         break;
       case DOUBLE:
         double startDoubleValue =
-            isAligned
-                ? (((TsPrimitiveType[]) beforePair.getValue().getValue())[0]).getDouble()
-                : beforePair.getValue().getDouble();
+            isAlignedValue ? beforeValue.getVector()[0].getDouble() : beforeValue.getDouble();
         double endDoubleValue = afterPair.getValue().getDouble();
         double fillDoubleValue =
             startDoubleValue
