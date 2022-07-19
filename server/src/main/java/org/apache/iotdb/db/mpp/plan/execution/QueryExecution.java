@@ -401,27 +401,25 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void initResultHandle() {
-    if (this.resultHandle == null) {
-      TEndPoint upstreamEndPoint = context.getResultNodeContext().getUpStreamEndpoint();
+    TEndPoint upstreamEndPoint = context.getResultNodeContext().getUpStreamEndpoint();
 
-      this.resultHandle =
-          isSameNode(upstreamEndPoint)
-              ? MPPDataExchangeService.getInstance()
-                  .getMPPDataExchangeManager()
-                  .createLocalSourceHandle(
-                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                      stateMachine::transitionToFailed)
-              : MPPDataExchangeService.getInstance()
-                  .getMPPDataExchangeManager()
-                  .createSourceHandle(
-                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                      upstreamEndPoint,
-                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                      stateMachine::transitionToFailed);
-    }
+    this.resultHandle =
+        isSameNode(upstreamEndPoint)
+            ? MPPDataExchangeService.getInstance()
+                .getMPPDataExchangeManager()
+                .createLocalSourceHandle(
+                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                    context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                    context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                    stateMachine::transitionToFailed)
+            : MPPDataExchangeService.getInstance()
+                .getMPPDataExchangeManager()
+                .createSourceHandle(
+                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                    context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                    upstreamEndPoint,
+                    context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                    stateMachine::transitionToFailed);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
