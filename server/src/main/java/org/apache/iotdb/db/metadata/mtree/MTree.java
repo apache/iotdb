@@ -340,55 +340,23 @@ public class MTree implements Serializable {
       Map<String, String> props,
       String alias)
       throws MetadataException {
-    String[] nodeNames = path.getNodes();
-    if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
-      throw new IllegalPathException(path.getFullPath());
-    }
     MetaFormatUtils.checkTimeseries(path);
-    IMNode cur = root;
-    boolean hasSetStorageGroup = false;
-    Template upperTemplate = cur.getSchemaTemplate();
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
-    for (int i = 1; i < nodeNames.length - 1; i++) {
-      if (cur.isMeasurement()) {
-        throw new PathAlreadyExistException(cur.getFullPath());
-      }
-      if (cur.isStorageGroup()) {
-        hasSetStorageGroup = true;
-      }
-      String childName = nodeNames[i];
-
-      // even template not in use, measurement path shall not be conflict with MTree
-      if (upperTemplate != null && upperTemplate.getDirectNode(childName) != null) {
-        throw new TemplateImcompatibeException(
-            path.getFullPath(), upperTemplate.getName(), childName);
-      }
-
-      if (!cur.hasChild(childName)) {
-        if (!hasSetStorageGroup) {
-          throw new StorageGroupNotSetException("Storage group should be created first");
-        }
-
-        cur.addChild(childName, new InternalMNode(cur, childName));
-      }
-      cur = cur.getChild(childName);
-
-      if (cur.getSchemaTemplate() != null) {
-        upperTemplate = cur.getSchemaTemplate();
-      }
-    }
-
-    if (cur.isMeasurement()) {
-      throw new PathAlreadyExistException(cur.getFullPath());
-    }
-
-    MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
-
-    String leafName = path.getMeasurement();
+    PartialPath devicePath = path.getDevicePath();
+    Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
+    IMNode cur = pair.left;
+    Template upperTemplate = pair.right;
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
+      pair = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), cur, upperTemplate);
+      cur = pair.left;
+      upperTemplate = pair.right;
+
+      MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
+
+      String leafName = path.getMeasurement();
+
       if (cur.hasChild(leafName)) {
         throw new PathAlreadyExistException(path.getFullPath());
       }
@@ -451,6 +419,10 @@ public class MTree implements Serializable {
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
+      pair = checkAndAutoCreateDeviceNode(devicePath.getTailNode(), cur, upperTemplate);
+      cur = pair.left;
+      upperTemplate = pair.right;
+
       for (String measurement : measurements) {
         if (cur.hasChild(measurement)) {
           throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurement);
@@ -499,7 +471,7 @@ public class MTree implements Serializable {
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getSchemaTemplate();
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
-    for (int i = 1; i < nodeNames.length; i++) {
+    for (int i = 1; i < nodeNames.length - 1; i++) {
       String childName = nodeNames[i];
       if (!cur.hasChild(childName)) {
         if (!hasSetStorageGroup) {
@@ -526,6 +498,31 @@ public class MTree implements Serializable {
       }
     }
     return new Pair<>(cur, upperTemplate);
+  }
+
+  private Pair<IMNode, Template> checkAndAutoCreateDeviceNode(
+      String deviceName, IMNode deviceParent, Template upperTemplate)
+      throws PathAlreadyExistException, TemplateImcompatibeException {
+    if (!deviceParent.hasChild(deviceName)) {
+      if (upperTemplate != null && upperTemplate.getDirectNode(deviceName) != null) {
+        throw new TemplateImcompatibeException(
+            deviceParent.getPartialPath().concatNode(deviceName).getFullPath(),
+            upperTemplate.getName(),
+            deviceName);
+      }
+      deviceParent.addChild(deviceName, new InternalMNode(deviceParent, deviceName));
+    }
+    IMNode device = deviceParent.getChild(deviceName);
+
+    if (device.isMeasurement()) {
+      throw new PathAlreadyExistException(device.getFullPath());
+    }
+
+    if (device.getSchemaTemplate() != null) {
+      upperTemplate = device.getSchemaTemplate();
+    }
+
+    return new Pair<>(device, upperTemplate);
   }
 
   /**
