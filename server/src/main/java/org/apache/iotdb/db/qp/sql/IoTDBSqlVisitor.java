@@ -885,26 +885,34 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitShowChildPaths(IoTDBSqlParser.ShowChildPathsContext ctx) {
+    PartialPath path;
     if (ctx.prefixPath() != null) {
-      return new ShowChildPathsOperator(
-          SQLConstant.TOK_CHILD_PATHS, parsePrefixPath(ctx.prefixPath()));
+      path = parsePrefixPath(ctx.prefixPath());
     } else {
-      return new ShowChildPathsOperator(
-          SQLConstant.TOK_CHILD_PATHS, new PartialPath(SQLConstant.getSingleRootArray()));
+      path = new PartialPath(SQLConstant.getSingleRootArray());
     }
+    ShowChildPathsOperator operator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS, path);
+    if (ctx.limitClause() != null) {
+      parseLimitClause(ctx.limitClause(), operator);
+    }
+    return operator;
   }
 
   // Show Child Nodes
 
   @Override
   public Operator visitShowChildNodes(IoTDBSqlParser.ShowChildNodesContext ctx) {
+    PartialPath path;
     if (ctx.prefixPath() != null) {
-      return new ShowChildNodesOperator(
-          SQLConstant.TOK_CHILD_NODES, parsePrefixPath(ctx.prefixPath()));
+      path = parsePrefixPath(ctx.prefixPath());
     } else {
-      return new ShowChildNodesOperator(
-          SQLConstant.TOK_CHILD_NODES, new PartialPath(SQLConstant.getSingleRootArray()));
+      path = new PartialPath(SQLConstant.getSingleRootArray());
     }
+    ShowChildNodesOperator operator = new ShowChildNodesOperator(SQLConstant.TOK_CHILD_NODES, path);
+    if (ctx.limitClause() != null) {
+      parseLimitClause(ctx.limitClause(), operator);
+    }
+    return operator;
   }
 
   // Show Functions
@@ -2735,6 +2743,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       ((ShowTimeSeriesOperator) operator).setLimit(limit);
     } else if (operator instanceof ShowDevicesOperator) {
       ((ShowDevicesOperator) operator).setLimit(limit);
+    } else if (operator instanceof ShowChildPathsOperator) {
+      ((ShowChildPathsOperator) operator).setLimit(limit);
+    } else if (operator instanceof ShowChildNodesOperator) {
+      ((ShowChildNodesOperator) operator).setLimit(limit);
     } else {
       SpecialClauseComponent specialClauseComponent = queryOp.getSpecialClauseComponent();
       if (specialClauseComponent == null) {
