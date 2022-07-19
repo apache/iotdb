@@ -66,7 +66,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -96,14 +95,15 @@ public class PartitionCache {
   /** the latest time when groupIdToReplicaSetMap updated. */
   private final AtomicLong latestUpdateTime = new AtomicLong(0);
   /** TConsensusGroupId -> TRegionReplicaSet */
-  private final Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSetMap =
-      new ConcurrentHashMap<>();
+  private final Map<TConsensusGroupId, TRegionReplicaSet> groupIdToReplicaSetMap = new HashMap<>();
 
   /** The lock of cache */
   private final ReentrantReadWriteLock storageGroupCacheLock = new ReentrantReadWriteLock();
 
   private final ReentrantReadWriteLock schemaPartitionCacheLock = new ReentrantReadWriteLock();
   private final ReentrantReadWriteLock dataPartitionCacheLock = new ReentrantReadWriteLock();
+
+  private final ReentrantReadWriteLock regionReplicaSetLock = new ReentrantReadWriteLock();
 
   private final IClientManager<PartitionRegionId, ConfigNodeClient> configNodeClientManager =
       new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
@@ -390,28 +390,46 @@ public class PartitionCache {
    * @throws StatementAnalyzeException if there are exception when try to get latestRegionRouteMap
    */
   public TRegionReplicaSet getRegionReplicaSet(TConsensusGroupId consensusGroupId) {
-    if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
-      // try to update latestRegionRegionRouteMap when miss
-      synchronized (groupIdToReplicaSetMap) {
-        try (ConfigNodeClient client =
-            configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-          TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
-          if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
-            updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
+    boolean hit;
+    TRegionReplicaSet result;
+    // try to get regionReplicaSet from cache
+    try {
+      regionReplicaSetLock.readLock().lock();
+      hit = groupIdToReplicaSetMap.containsKey(consensusGroupId);
+      result = groupIdToReplicaSetMap.get(consensusGroupId);
+    } finally {
+      regionReplicaSetLock.readLock().unlock();
+    }
+    if (!hit) {
+      // if not hit then try to get regionReplicaSet from confignode
+      try {
+        regionReplicaSetLock.writeLock().lock();
+        // verify that there are not hit in cache
+        if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
+          try (ConfigNodeClient client =
+              configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+            TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
+            if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
+              updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
+            }
+            // if confignode don't have then will throw RuntimeException
+            if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
+              // failed to get RegionReplicaSet from confignode
+              throw new RuntimeException(
+                  "Failed to get replicaSet of consensus group[id= " + consensusGroupId + "]");
+            }
+          } catch (IOException | TException e) {
+            throw new StatementAnalyzeException(
+                "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
           }
-          if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
-            // failed to get RegionReplicaSet from confignode
-            throw new RuntimeException(
-                "Failed to get replicaSet of consensus group[id= " + consensusGroupId + "]");
-          }
-        } catch (IOException | TException e) {
-          throw new StatementAnalyzeException(
-              "An error occurred when executing getRegionReplicaSet():" + e.getMessage());
         }
+        result = groupIdToReplicaSetMap.get(consensusGroupId);
+      } finally {
+        regionReplicaSetLock.writeLock().unlock();
       }
     }
     // try to get regionReplicaSet by consensusGroupId
-    return groupIdToReplicaSetMap.get(consensusGroupId);
+    return result;
   }
 
   /**
@@ -423,18 +441,28 @@ public class PartitionCache {
    */
   public boolean updateGroupIdToReplicaSetMap(
       long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> map) {
-    boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
-    // if timestamp is greater than latestUpdateTime, then update
-    if (result) {
-      groupIdToReplicaSetMap.clear();
-      groupIdToReplicaSetMap.putAll(map);
+    try {
+      regionReplicaSetLock.writeLock().lock();
+      boolean result = (timestamp == latestUpdateTime.accumulateAndGet(timestamp, Math::max));
+      // if timestamp is greater than latestUpdateTime, then update
+      if (result) {
+        groupIdToReplicaSetMap.clear();
+        groupIdToReplicaSetMap.putAll(map);
+      }
+      return result;
+    } finally {
+      regionReplicaSetLock.writeLock().unlock();
     }
-    return result;
   }
 
   /** invalid replicaSetCache */
   public void invalidReplicaSetCache() {
-    groupIdToReplicaSetMap.clear();
+    try {
+      regionReplicaSetLock.writeLock().lock();
+      groupIdToReplicaSetMap.clear();
+    } finally {
+      regionReplicaSetLock.writeLock().unlock();
+    }
   }
 
   // endregion
