@@ -28,7 +28,6 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.FilterNullComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
@@ -55,7 +54,6 @@ import java.util.List;
  *   <li>[FILL ({PREVIOUS | LINEAR | constant})]
  *   <li>[LIMIT rowLimit] [OFFSET rowOffset]
  *   <li>[SLIMIT seriesLimit] [SOFFSET seriesOffset]
- *   <li>[WITHOUT NULL {ANY | ALL} [resultColumn [, resultColumn] ...]]
  *   <li>[ORDER BY TIME {ASC | DESC}]
  *   <li>[{ALIGN BY DEVICE | DISABLE ALIGN}]
  * </ul>
@@ -77,8 +75,6 @@ public class QueryStatement extends Statement {
   protected int seriesOffset = 0;
 
   protected FillComponent fillComponent;
-
-  protected FilterNullComponent filterNullComponent;
 
   protected OrderBy resultOrder = OrderBy.TIMESTAMP_ASC;
 
@@ -161,14 +157,6 @@ public class QueryStatement extends Statement {
 
   public void setFillComponent(FillComponent fillComponent) {
     this.fillComponent = fillComponent;
-  }
-
-  public FilterNullComponent getFilterNullComponent() {
-    return filterNullComponent;
-  }
-
-  public void setFilterNullComponent(FilterNullComponent filterNullComponent) {
-    this.filterNullComponent = filterNullComponent;
   }
 
   public OrderBy getResultOrder() {

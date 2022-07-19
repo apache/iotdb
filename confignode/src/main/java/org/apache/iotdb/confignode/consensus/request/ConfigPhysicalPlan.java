@@ -20,7 +20,7 @@ package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
@@ -110,8 +110,8 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case RemoveDataNode:
           req = new RemoveDataNodePlan();
           break;
-        case GetDataNodeInfo:
-          req = new GetDataNodeInfoPlan();
+        case GetDataNodeConfiguration:
+          req = new GetDataNodeConfigurationPlan();
           break;
         case SetStorageGroup:
           req = new SetStorageGroupPlan();

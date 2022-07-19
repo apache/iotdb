@@ -82,6 +82,9 @@ public class SinkHandle implements ISinkHandle {
   private long bufferRetainedSizeInBytes = 0;
 
   private boolean aborted = false;
+
+  private boolean closed = false;
+
   private boolean noMoreTsBlocks = false;
 
   public SinkHandle(
@@ -110,9 +113,7 @@ public class SinkHandle implements ISinkHandle {
 
   @Override
   public synchronized ListenableFuture<?> isFull() {
-    if (aborted) {
-      throw new IllegalStateException("Sink handle is aborted.");
-    }
+    checkState();
     return nonCancellationPropagating(blocked);
   }
 
@@ -123,9 +124,7 @@ public class SinkHandle implements ISinkHandle {
   @Override
   public synchronized void send(List<TsBlock> tsBlocks) {
     Validate.notNull(tsBlocks, "tsBlocks is null");
-    if (aborted) {
-      throw new IllegalStateException("Sink handle is aborted.");
-    }
+    checkState();
     if (!blocked.isDone()) {
       throw new IllegalStateException("Sink handle is blocked.");
     }
@@ -224,6 +223,22 @@ public class SinkHandle implements ISinkHandle {
   }
 
   @Override
+  public void close() {
+    logger.info("SinkHandle is being closed.");
+    sequenceIdToTsBlock.clear();
+    closed = true;
+    bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryComplete(blocked);
+    if (bufferRetainedSizeInBytes > 0) {
+      localMemoryManager
+          .getQueryPool()
+          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+      bufferRetainedSizeInBytes = 0;
+    }
+    sinkHandleListener.onFinish(this);
+    logger.info("SinkHandle is closed");
+  }
+
+  @Override
   public boolean isAborted() {
     return aborted;
   }
@@ -304,6 +319,14 @@ public class SinkHandle implements ISinkHandle {
         localFragmentInstanceId.queryId,
         localFragmentInstanceId.fragmentId,
         localFragmentInstanceId.instanceId);
+  }
+
+  private void checkState() {
+    if (aborted) {
+      throw new IllegalStateException("Sink handle is aborted.");
+    } else if (closed) {
+      throw new IllegalStateException("SinkHandle is closed.");
+    }
   }
 
   @TestOnly

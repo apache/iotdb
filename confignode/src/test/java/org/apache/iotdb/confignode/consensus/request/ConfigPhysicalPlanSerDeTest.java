@@ -21,9 +21,10 @@ package org.apache.iotdb.confignode.consensus.request;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
@@ -35,7 +36,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
@@ -99,12 +100,11 @@ public class ConfigPhysicalPlanSerDeTest {
     dataNodeLocation.setDataRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 40010));
     dataNodeLocation.setSchemaRegionConsensusEndPoint(new TEndPoint("0.0.0.0", 50010));
 
-    TDataNodeInfo dataNodeInfo = new TDataNodeInfo();
-    dataNodeInfo.setLocation(dataNodeLocation);
-    dataNodeInfo.setCpuCoreNum(16);
-    dataNodeInfo.setMaxMemory(34359738368L);
+    TDataNodeConfiguration dataNodeConfiguration = new TDataNodeConfiguration();
+    dataNodeConfiguration.setLocation(dataNodeLocation);
+    dataNodeConfiguration.setResource(new TNodeResource(16, 34359738368L));
 
-    RegisterDataNodePlan plan0 = new RegisterDataNodePlan(dataNodeInfo);
+    RegisterDataNodePlan plan0 = new RegisterDataNodePlan(dataNodeConfiguration);
     RegisterDataNodePlan plan1 =
         (RegisterDataNodePlan) ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
     Assert.assertEquals(plan0, plan1);
@@ -112,9 +112,10 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void QueryDataNodeInfoPlanTest() throws IOException {
-    GetDataNodeInfoPlan plan0 = new GetDataNodeInfoPlan(-1);
-    GetDataNodeInfoPlan plan1 =
-        (GetDataNodeInfoPlan) ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
+    GetDataNodeConfigurationPlan plan0 = new GetDataNodeConfigurationPlan(-1);
+    GetDataNodeConfigurationPlan plan1 =
+        (GetDataNodeConfigurationPlan)
+            ConfigPhysicalPlan.Factory.create(plan0.serializeToByteBuffer());
     Assert.assertEquals(plan0, plan1);
   }
 

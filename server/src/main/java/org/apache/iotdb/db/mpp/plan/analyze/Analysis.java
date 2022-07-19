@@ -28,7 +28,6 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -124,9 +123,6 @@ public class Analysis {
 
   // a global time filter used in `initQueryDataSource` and filter push down
   private Filter globalTimeFilter;
-
-  // parameter of `WITHOUT NULL` clause
-  private FilterNullParameter filterNullParameter;
 
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
@@ -247,14 +243,6 @@ public class Analysis {
     }
     throw new IllegalArgumentException(
         String.format("GROUP BY LEVEL: Unknown input expression '%s'", expression));
-  }
-
-  public FilterNullParameter getFilterNullParameter() {
-    return filterNullParameter;
-  }
-
-  public void setFilterNullParameter(FilterNullParameter filterNullParameter) {
-    this.filterNullParameter = filterNullParameter;
   }
 
   public FillDescriptor getFillDescriptor() {

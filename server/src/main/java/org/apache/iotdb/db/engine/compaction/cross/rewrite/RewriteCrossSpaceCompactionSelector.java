@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.ICrossSpaceSelector;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceCompactionFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
@@ -91,7 +91,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     CrossSpaceCompactionResource compactionResource =
         new CrossSpaceCompactionResource(seqFileList, unSeqFileList, timeLowerBound);
 
-    ICrossSpaceMergeFileSelector fileSelector =
+    ICrossSpaceCompactionFileSelector fileSelector =
         CompactionUtils.getCrossSpaceFileSelector(budget, compactionResource);
     try {
       List[] mergeFiles = fileSelector.select();

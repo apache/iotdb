@@ -73,7 +73,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class TsFileLoaderTool {
+public class RewriteTsFileTool {
   private static final int MAX_TABLET_LENGTH = 1024 * 64;
 
   private static String host = "localhost";
@@ -126,7 +126,8 @@ public class TsFileLoaderTool {
   }
 
   private static void priHelp(Options options) {
-    new HelpFormatter().printHelp("./load-tsfile.sh(load-tsfile.bat if Windows)", options, true);
+    new HelpFormatter()
+        .printHelp("./rewrite-tsfile.sh(rewrite-tsfile.bat if Windows)", options, true);
   }
 
   private static String getArgOrDefault(
