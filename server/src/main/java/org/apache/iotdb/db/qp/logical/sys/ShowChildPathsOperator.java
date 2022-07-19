@@ -30,6 +30,9 @@ public class ShowChildPathsOperator extends ShowOperator {
 
   private PartialPath path;
 
+  private int limit = 1000;
+  private int offset = 0;
+
   public ShowChildPathsOperator(int tokenIntType, PartialPath path) {
     super(tokenIntType);
     this.path = path;
@@ -39,9 +42,28 @@ public class ShowChildPathsOperator extends ShowOperator {
     return path;
   }
 
+  public int getLimit() {
+    return limit;
+  }
+
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
+
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new ShowChildPathsPlan(ShowContentType.CHILD_PATH, path);
+    ShowChildPathsPlan plan = new ShowChildPathsPlan(ShowContentType.CHILD_PATH, path);
+    plan.setLimit(limit);
+    plan.setOffset(offset);
+    return plan;
   }
 }

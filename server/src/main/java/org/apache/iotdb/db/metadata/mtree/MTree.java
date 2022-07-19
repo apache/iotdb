@@ -1186,7 +1186,8 @@ public class MTree implements Serializable {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
+  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern, int limit, int offset)
+      throws MetadataException {
     try {
       MNodeCollector<Set<String>> collector =
           new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
@@ -1200,6 +1201,8 @@ public class MTree implements Serializable {
             }
           };
       collector.setResultSet(new TreeSet<>());
+      collector.setLimit(limit);
+      collector.setOffset(offset);
       collector.traverse();
       return collector.getResult();
     } catch (IllegalPathException e) {
@@ -1219,7 +1222,8 @@ public class MTree implements Serializable {
    * @param pathPattern Path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
+  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern, int limit, int offset)
+      throws MetadataException {
     try {
       MNodeCollector<Set<String>> collector =
           new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
@@ -1229,6 +1233,8 @@ public class MTree implements Serializable {
             }
           };
       collector.setResultSet(new TreeSet<>());
+      collector.setLimit(limit);
+      collector.setOffset(offset);
       collector.traverse();
       return collector.getResult();
     } catch (IllegalPathException e) {

@@ -28,7 +28,7 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 public class ShowDevicesOperator extends ShowOperator {
 
   private PartialPath path;
-  private int limit = 0;
+  private int limit = 1000;
   private int offset = 0;
   private boolean hasSgCol;
 

@@ -878,7 +878,11 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
       throws MetadataException {
-    Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath());
+    Set<String> childPathsList =
+        getPathNextChildren(
+            showChildPathsPlan.getPath(),
+            showChildPathsPlan.getLimit(),
+            showChildPathsPlan.getOffset());
     ListDataSet listDataSet =
         new ListDataSet(
             Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
@@ -893,14 +897,19 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected Set<String> getPathNextChildren(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getChildNodePathInNextLevel(path);
+  protected Set<String> getPathNextChildren(PartialPath path, int limit, int offset)
+      throws MetadataException {
+    return IoTDB.metaManager.getChildNodePathInNextLevel(path, limit, offset);
   }
 
   private QueryDataSet processShowChildNodes(ShowChildNodesPlan showChildNodesPlan)
       throws MetadataException {
     // getNodeNextChildren
-    Set<String> childNodesList = getNodeNextChildren(showChildNodesPlan.getPath());
+    Set<String> childNodesList =
+        getNodeNextChildren(
+            showChildNodesPlan.getPath(),
+            showChildNodesPlan.getLimit(),
+            showChildNodesPlan.getOffset());
     ListDataSet listDataSet =
         new ListDataSet(
             Collections.singletonList(new PartialPath(COLUMN_CHILD_NODES, false)),
@@ -915,8 +924,9 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected Set<String> getNodeNextChildren(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getChildNodeNameInNextLevel(path);
+  protected Set<String> getNodeNextChildren(PartialPath path, int limit, int offset)
+      throws MetadataException {
+    return IoTDB.metaManager.getChildNodeNameInNextLevel(path, limit, offset);
   }
 
   protected List<PartialPath> getStorageGroupNames(PartialPath path, boolean isPrefixMatch)

@@ -75,13 +75,26 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
       // record processed node so they will not be processed twice
       if (!processedNodes.contains(node)) {
         processedNodes.add(node);
-        transferToResult(node);
+        processResult(node);
       }
       return true;
     } else {
-      transferToResult(node);
+      processResult(node);
+      return false;
     }
-    return false;
+  }
+
+  private void processResult(IMNode node) {
+    if (hasLimit) {
+      curOffset += 1;
+      if (curOffset < offset) {
+        return;
+      }
+
+      count++;
+    }
+
+    transferToResult(node);
   }
 
   protected abstract void transferToResult(IMNode node);

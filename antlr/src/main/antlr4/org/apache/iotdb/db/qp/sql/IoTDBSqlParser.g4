@@ -257,12 +257,12 @@ showWhereClause
 
 // Show Child Paths
 showChildPaths
-    : SHOW CHILD PATHS prefixPath?
+    : SHOW CHILD PATHS prefixPath? limitClause?
     ;
 
 // Show Child Nodes
 showChildNodes
-    : SHOW CHILD NODES prefixPath?
+    : SHOW CHILD NODES prefixPath? limitClause?
     ;
 
 // Show Functions

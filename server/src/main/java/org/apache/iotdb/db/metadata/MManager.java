@@ -1110,7 +1110,12 @@ public class MManager {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
-    return mtree.getChildNodePathInNextLevel(pathPattern);
+    return mtree.getChildNodePathInNextLevel(pathPattern, 0, 0);
+  }
+
+  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern, int limit, int offset)
+      throws MetadataException {
+    return mtree.getChildNodePathInNextLevel(pathPattern, limit, offset);
   }
 
   /**
@@ -1124,7 +1129,12 @@ public class MManager {
    * @return All child nodes of given seriesPath.
    */
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    return mtree.getChildNodeNameInNextLevel(pathPattern);
+    return mtree.getChildNodeNameInNextLevel(pathPattern, 0, 0);
+  }
+
+  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern, int limit, int offset)
+      throws MetadataException {
+    return mtree.getChildNodeNameInNextLevel(pathPattern, limit, offset);
   }
   // endregion
 

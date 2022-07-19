@@ -24,10 +24,12 @@
 ## 查看子路径
 
 ```
-SHOW CHILD PATHS pathPattern
+SHOW CHILD PATHS pathPattern ? limitClause
 ```
 
 可以查看此路径模式所匹配的所有路径的下一层的所有路径，即pathPattern.*所匹配的路径。
+
+查询结果集的大小默认为1000，如需查询更多信息，请使用```limit```和```offset```。
 
 示例：
 
@@ -56,10 +58,12 @@ SHOW CHILD PATHS pathPattern
 ## 查看子节点
 
 ```
-SHOW CHILD NODES pathPattern
+SHOW CHILD NODES pathPattern ? limitClause
 ```
 
 可以查看此路径模式所匹配的节点的下一层的所有节点。
+
+查询结果集的大小默认为1000，如需查询更多信息，请使用```limit```和```offset```。
 
 示例：
 
@@ -137,6 +141,8 @@ It costs 0.002s
 ## 查看设备
 
 * SHOW DEVICES pathPattern? (WITH STORAGE GROUP)? limitClause? #showDevices
+
+查询结果集的大小默认为1000，如需查询更多信息，请使用```limit```和```offset```。
 
 与 `Show Timeseries` 相似，IoTDB 目前也支持两种方式查看设备。
 
