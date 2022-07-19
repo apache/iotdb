@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.storagegroup;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -189,7 +190,7 @@ public interface IStorageGroupSchemaManager {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath pathPattern)
+  Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath pathPattern)
       throws MetadataException;
 
   /**

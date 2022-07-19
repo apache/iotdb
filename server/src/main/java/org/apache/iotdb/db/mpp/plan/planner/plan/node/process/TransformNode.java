@@ -168,6 +168,11 @@ public class TransformNode extends ProcessNode {
   }
 
   @Override
+  public String toString() {
+    return "TransformNode-" + this.getPlanNodeId();
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

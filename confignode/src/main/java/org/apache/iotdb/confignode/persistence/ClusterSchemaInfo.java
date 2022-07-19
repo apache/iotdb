@@ -20,21 +20,26 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
+import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
+import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
@@ -42,8 +47,9 @@ import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
+import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -76,7 +82,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   // StorageGroup read write lock
   private final ReentrantReadWriteLock storageGroupReadWriteLock;
-  private final MTreeAboveSG mTree;
+  private final ConfigMTree mTree;
 
   private final String snapshotFileName = "cluster_schema.bin";
 
@@ -86,7 +92,7 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     storageGroupReadWriteLock = new ReentrantReadWriteLock();
 
     try {
-      mTree = new MTreeAboveSG();
+      mTree = new ConfigMTree();
       templateTable = new TemplateTable();
     } catch (MetadataException e) {
       LOGGER.error("Can't construct StorageGroupInfo", e);
@@ -524,8 +530,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return matchedPathsInNextLevel;
   }
 
-  public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath partialPath) {
-    Pair<Set<String>, Set<PartialPath>> matchedPathsInNextLevel =
+  public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
+      PartialPath partialPath) {
+    Pair<Set<TSchemaNode>, Set<PartialPath>> matchedPathsInNextLevel =
         new Pair<>(new HashSet<>(), new HashSet<>());
     storageGroupReadWriteLock.readLock().lock();
     try {
@@ -595,6 +602,39 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
       }
     }
     return result;
+  }
+
+  public synchronized TSStatus setSchemaTemplate(SetSchemaTemplatePlan setSchemaTemplatePlan) {
+    PartialPath path;
+    try {
+      path = new PartialPath(setSchemaTemplatePlan.getPath());
+    } catch (IllegalPathException e) {
+      LOGGER.error(e.getMessage());
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+
+    try {
+      int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
+      mTree.checkTemplateOnPath(path);
+      mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+  }
+
+  public PathInfoResp getPathsSetTemplate(GetPathsSetTemplatePlan getPathsSetTemplatePlan) {
+    PathInfoResp pathInfoResp = new PathInfoResp();
+    TSStatus status;
+    try {
+      int templateId = templateTable.getTemplate(getPathsSetTemplatePlan.getName()).getId();
+      pathInfoResp.setPathList(mTree.getPathsSetOnTemplate(templateId));
+      status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      status = RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
+    pathInfoResp.setStatus(status);
+    return pathInfoResp;
   }
 
   @TestOnly

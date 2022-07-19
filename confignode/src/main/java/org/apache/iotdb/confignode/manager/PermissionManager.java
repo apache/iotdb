@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.response.PermissionInfoResp;
@@ -99,18 +99,19 @@ public class PermissionManager {
    * permissions related to the user or role
    */
   public TSStatus invalidateCache(String username, String roleName) {
-    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getRegisteredDataNodes(-1);
+    List<TDataNodeConfiguration> allDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes(-1);
     TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
     TSStatus status;
     req.setUsername(username);
     req.setRoleName(roleName);
-    for (TDataNodeInfo dataNodeInfo : allDataNodes) {
+    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
       status =
           SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNode(
+              .sendSyncRequestToDataNodeWithRetry(
                   dataNodeInfo.getLocation().getInternalEndPoint(),
                   req,
-                  DataNodeRequestType.invalidatePermissionCache);
+                  DataNodeRequestType.INVALIDATE_PERMISSION_CACHE);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return status;
       }

@@ -35,15 +35,15 @@ public class LeaderRouter implements IRouter {
   // Map<RegionGroupId, leader location>
   private final Map<TConsensusGroupId, Integer> leaderMap;
   // Map<DataNodeId, loadScore>
-  private final Map<Integer, Float> loadScoreMap;
+  private final Map<Integer, Long> loadScoreMap;
 
-  public LeaderRouter(Map<TConsensusGroupId, Integer> leaderMap, Map<Integer, Float> loadScoreMap) {
+  public LeaderRouter(Map<TConsensusGroupId, Integer> leaderMap, Map<Integer, Long> loadScoreMap) {
     this.leaderMap = leaderMap;
     this.loadScoreMap = loadScoreMap;
   }
 
   @Override
-  public Map<TConsensusGroupId, TRegionReplicaSet> genRealTimeRoutingPolicy(
+  public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
       List<TRegionReplicaSet> replicaSets) {
     Map<TConsensusGroupId, TRegionReplicaSet> result = new ConcurrentHashMap<>();
 
@@ -76,7 +76,7 @@ public class LeaderRouter implements IRouter {
                         new Pair<>(
                             (double)
                                 loadScoreMap.computeIfAbsent(
-                                    dataNodeLocation.getDataNodeId(), empty -> Float.MAX_VALUE),
+                                    dataNodeLocation.getDataNodeId(), empty -> Long.MAX_VALUE),
                             dataNodeLocation));
                   });
           sortList.sort(Comparator.comparingDouble(Pair::getLeft));

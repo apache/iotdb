@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -124,9 +124,6 @@ public class Analysis {
   // a global time filter used in `initQueryDataSource` and filter push down
   private Filter globalTimeFilter;
 
-  // parameter of `WITHOUT NULL` clause
-  private FilterNullParameter filterNullParameter;
-
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
 
@@ -141,7 +138,7 @@ public class Analysis {
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   // extra mesaage from config node, used for node management
-  private Set<String> matchedNodes;
+  private Set<TSchemaNode> matchedNodes;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -246,14 +243,6 @@ public class Analysis {
     }
     throw new IllegalArgumentException(
         String.format("GROUP BY LEVEL: Unknown input expression '%s'", expression));
-  }
-
-  public FilterNullParameter getFilterNullParameter() {
-    return filterNullParameter;
-  }
-
-  public void setFilterNullParameter(FilterNullParameter filterNullParameter) {
-    this.filterNullParameter = filterNullParameter;
   }
 
   public FillDescriptor getFillDescriptor() {
@@ -396,11 +385,11 @@ public class Analysis {
     this.deviceToIsRawDataSource = deviceToIsRawDataSource;
   }
 
-  public Set<String> getMatchedNodes() {
+  public Set<TSchemaNode> getMatchedNodes() {
     return matchedNodes;
   }
 
-  public void setMatchedNodes(Set<String> matchedNodes) {
+  public void setMatchedNodes(Set<TSchemaNode> matchedNodes) {
     this.matchedNodes = matchedNodes;
   }
 }

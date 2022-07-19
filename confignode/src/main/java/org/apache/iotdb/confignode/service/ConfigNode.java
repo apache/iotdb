@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -162,6 +162,7 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup MetricsService
     registerManager.register(MetricsService.getInstance());
     MetricsService.getInstance().startAllReporter();
+    configManager.getDataNodeRemoveManager().start();
 
     LOGGER.info("Successfully setup internal services.");
   }
@@ -183,15 +184,16 @@ public class ConfigNode implements ConfigNodeMBean {
             conf.getSchemaReplicationFactor(),
             conf.getSchemaRegionPerDataNode(),
             conf.getDataReplicationFactor(),
-            conf.getDataRegionPerProcessor());
+            conf.getDataRegionPerProcessor(),
+            conf.getReadConsistencyLevel());
 
     TEndPoint targetConfigNode = conf.getTargetConfigNode();
     while (true) {
       TConfigNodeRegisterResp resp =
           (TConfigNodeRegisterResp)
               SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNode(
-                      targetConfigNode, req, ConfigNodeRequestType.registerConfigNode);
+                  .sendSyncRequestToConfigNodeWithRetry(
+                      targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
         break;

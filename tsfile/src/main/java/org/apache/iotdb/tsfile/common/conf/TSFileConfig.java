@@ -150,6 +150,12 @@ public class TSFileConfig implements Serializable {
   /** The amount of data iterate each time */
   private int batchSize = 1000;
 
+  /** Maximum capacity of a TsBlock */
+  private int maxTsBlockSizeInBytes = 1024 * 1024;
+
+  /** Maximum number of lines in a single TsBlock */
+  private int maxTsBlockLineNumber = 1000;
+
   public TSFileConfig() {}
 
   public int getGroupSizeInByte() {
@@ -430,5 +436,21 @@ public class TSFileConfig implements Serializable {
 
   public void setFreqEncodingBlockSize(int freqEncodingBlockSize) {
     this.freqEncodingBlockSize = freqEncodingBlockSize;
+  }
+
+  public int getMaxTsBlockSizeInBytes() {
+    return maxTsBlockSizeInBytes;
+  }
+
+  public void setMaxTsBlockSizeInBytes(int maxTsBlockSizeInBytes) {
+    this.maxTsBlockSizeInBytes = maxTsBlockSizeInBytes;
+  }
+
+  public int getMaxTsBlockLineNumber() {
+    return maxTsBlockLineNumber;
+  }
+
+  public void setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    this.maxTsBlockLineNumber = maxTsBlockLineNumber;
   }
 }
