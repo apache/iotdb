@@ -24,92 +24,96 @@ import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import static org.apache.iotdb.db.it.utils.TestUtils.assertNonQueryTestFail;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBInsertWithoutTimeIT {
-  private static List<String> sqls = new ArrayList<>();
-  private static Connection connection;
-  private static Statement statement;
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  private static final List<String> sqls =
+      Arrays.asList(
+          "SET STORAGE GROUP TO root.sg1",
+          "CREATE TIMESERIES root.sg1.d1.s1 INT64",
+          "CREATE TIMESERIES root.sg1.d1.s2 FLOAT",
+          "CREATE TIMESERIES root.sg1.d1.s3 TEXT");
+
+  @Before
+  public void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
-    connection = EnvFactory.getEnv().getConnection();
-    statement = connection.createStatement();
-
-    insertData();
+    createTimeseries();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
-    statement.close();
-    connection.close();
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
-    Statement statement = connection.createStatement();
-
-    sqls.add("SET STORAGE GROUP TO root.t1");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.s1 WITH DATATYPE=FLOAT, ENCODING=RLE");
-    sqls.add("CREATE TIMESERIES root.t1.wf01.wt01.s2 WITH DATATYPE=TEXT, ENCODING=PLAIN");
-
-    for (String sql : sqls) {
-      statement.execute(sql);
-    }
-
-    statement.close();
-  }
-
-  @Test
-  public void testInsertWithoutTime() throws SQLException, InterruptedException {
-    statement.execute("insert into root.t1.wf01.wt01(time, s1, temperature) values (1, 1.1, 11)");
-    statement.execute(
-        "insert into root.t1.wf01.wt01(time, s1, temperature) values (2, 2.2, 22),(3, 3.3, 33)");
-    statement.execute("insert into root.t1.wf01.wt01(s1, temperature) values (2, 10)");
-    Thread.sleep(3);
-    statement.execute("insert into root.t1.wf01.wt01(s1) values (6.6)");
-
-    Statement st1 = connection.createStatement();
-    ResultSet rs1 = st1.executeQuery("select count(s1) from root.t1.wf01.wt01");
-    rs1.next();
-    long countStatus = rs1.getLong(1);
-    Assert.assertEquals(countStatus, 5L);
-
-    st1.close();
-  }
-
-  @Test
-  public void testInsertWithoutTimestamp() throws SQLException {
-
-    statement.execute("insert into root.sg.d1(s1,s2) values(25,'test')");
-
-    ResultSet resultSet = statement.executeQuery("select * from root.**");
-
-    Float values = 25.0F;
-    String values2 = "test";
-
-    while (resultSet.next()) {
-      if (values == resultSet.getFloat("root.sg.d1.s1")) {
-        assertEquals(values2, resultSet.getString("root.sg.d1.s2"));
+  private void createTimeseries() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String sql : sqls) {
+        statement.execute(sql);
       }
-      ;
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
+  }
+
+  @Test
+  public void testInsertWithoutTime() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("insert into root.sg1.d1(s1, s2, s3) values (1, 1, '1')");
+      statement.execute("insert into root.sg1.d1(s2, s1, s3) values (2, 2, '2')");
+      statement.execute("insert into root.sg1.d1(s3, s2, s1) values ('3', 3, 3)");
+      statement.execute("insert into root.sg1.d1(s1) values (1)");
+      statement.execute("insert into root.sg1.d1(s2) values (2)");
+      statement.execute("insert into root.sg1.d1(s3) values ('3')");
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+    String expectedHeader = "count(root.sg1.d1.s1),count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
+    String[] retArray = new String[] {"6,", "6,", "6,"};
+    resultSetEqualTest(
+        "select count(s1), count(s2), count(s3) from root.sg1.d1", expectedHeader, retArray);
+  }
+
+  public void testInsertWithoutValueColumns() {
+    assertNonQueryTestFail(
+        "insert into root.sg1.d1(time) values (1)", "Error occurred while parsing SQL");
+  }
+
+  public void testInsertMultiRow() {
+    assertNonQueryTestFail(
+        "insert into root.sg1.d1(s3) values ('1'), ('2')",
+        "need timestamps when insert multi rows");
+    assertNonQueryTestFail(
+        "insert into root.sg1.d1(s1, s2) values (1, 1), (2, 2)",
+        "need timestamps when insert multi rows");
+  }
+
+  public void testInsertWithMultiTimesColumns() {
+    assertNonQueryTestFail(
+        "insert into root.sg1.d1(time, time) values (1, 1)", "Error occurred while parsing SQL");
+    assertNonQueryTestFail(
+        "insert into root.sg1.d1(time, s1, time) values (1, 1, 1)",
+        "Error occurred while parsing SQL");
   }
 }
