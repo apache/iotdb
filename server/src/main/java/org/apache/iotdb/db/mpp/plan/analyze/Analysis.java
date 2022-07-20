@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
@@ -139,6 +141,9 @@ public class Analysis {
 
   // extra mesaage from config node, used for node management
   private Set<TSchemaNode> matchedNodes;
+
+  // template and template set path
+  private Pair<PartialPath, Template> templateSetInfo;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -391,5 +396,13 @@ public class Analysis {
 
   public void setMatchedNodes(Set<TSchemaNode> matchedNodes) {
     this.matchedNodes = matchedNodes;
+  }
+
+  public Pair<PartialPath, Template> getTemplateSetInfo() {
+    return templateSetInfo;
+  }
+
+  public void setTemplateSetInfo(Pair<PartialPath, Template> templateSetInfo) {
+    this.templateSetInfo = templateSetInfo;
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
@@ -1400,8 +1402,25 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitActivateTemplate(
       ActivateTemplateStatement activateTemplateStatement, MPPQueryContext context) {
 
+    Analysis analysis = new Analysis();
 
+    PartialPath activatePath = activateTemplateStatement.getPath();
 
-    return super.visitActivateTemplate(activateTemplateStatement, context);
+    Pair<PartialPath, Template> templateSetInfo = schemaFetcher.checkTemplateSetInfo(activatePath);
+    if (templateSetInfo == null) {
+      throw new StatementAnalyzeException(
+          new MetadataException(
+              String.format(
+                  "Path [%s] has not been set any template.", activatePath.getFullPath())));
+    }
+    analysis.setTemplateSetInfo(templateSetInfo);
+
+    PathPatternTree patternTree = new PathPatternTree();
+    patternTree.appendPathPattern(activatePath.concatNode("*"));
+    SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
+
+    analysis.setSchemaPartitionInfo(partition);
+
+    return analysis;
   }
 }

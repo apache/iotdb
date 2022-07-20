@@ -61,6 +61,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
@@ -156,6 +157,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private String storageGroupFullPath;
   private SchemaRegionId schemaRegionId;
 
+  private int templateId = -1;
+
   // the log file writer
   private boolean usingMLog = true;
   private MLogWriter logWriter;
@@ -214,6 +217,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (initialized) {
       return;
     }
+
+    templateId = -1;
 
     initDir();
 
@@ -356,6 +361,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public synchronized void clear() {
     try {
+
+      templateId = -1;
+
       if (this.mNodeCache != null) {
         this.mNodeCache.invalidateAll();
       }
@@ -415,6 +423,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       case UNSET_TEMPLATE:
         UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
         unsetSchemaTemplate(unsetTemplatePlan);
+        break;
+      case ACTIVATE_TEMPLATE_IN_CLUSTER:
+        ActivateTemplateInClusterPlan activateTemplateInClusterPlan =
+            (ActivateTemplateInClusterPlan) plan;
+        recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -1789,6 +1802,32 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     node = setUsingSchemaTemplate(node);
   }
 
+  @Override
+  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+      throws MetadataException {
+    try {
+      getDeviceNodeWithAutoCreate(plan.getActivatePath());
+
+      if (plan.getActivatePath().getFullPath().length() < storageGroupFullPath.length()) {
+        templateId = plan.getTemplateId();
+      }
+
+      mtree.activateTemplate(plan.getActivatePath(), plan.getTemplateSetLevel(), template);
+      writeToMLog(plan);
+    } catch (IOException e) {
+      logger.error(e.getMessage(), e);
+      throw new MetadataException(e);
+    }
+  }
+
+  public void recoverActivatingSchemaTemplate(ActivateTemplateInClusterPlan plan) {
+    if (plan.getActivatePath().getFullPath().length() < storageGroupFullPath.length()) {
+      templateId = plan.getTemplateId();
+    }
+    mtree.activateTemplateWithoutCheck(
+        plan.getActivatePath(), plan.getTemplateSetLevel(), plan.getTemplateId(), plan.isAligned());
+  }
+
   public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     // check whether any template has been set on designated path
     if (node.getUpperTemplate() == null) {
@@ -1826,6 +1865,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     return mountedMNode;
   }
+
   // endregion
 
   // region Interfaces for Trigger

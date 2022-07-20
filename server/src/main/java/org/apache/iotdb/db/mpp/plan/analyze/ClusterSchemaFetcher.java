@@ -244,7 +244,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public Pair<PartialPath, Template> checkTemplateSetInfo(PartialPath path) {
-    return null;
+    return templateManager.checkTemplateSetInfo(path);
   }
 
   @Override

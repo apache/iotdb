@@ -35,6 +35,7 @@ import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
@@ -56,7 +57,7 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   private Map<Integer, Template> templateMap = new ConcurrentHashMap<>();
 
-  private Map<String, Integer> templateSetPathMap = new ConcurrentHashMap<>();
+  private Map<PartialPath, Integer> templateSetPathMap = new ConcurrentHashMap<>();
 
   private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -173,6 +174,11 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   @Override
+  public Template getTemplate(int id) {
+    return templateMap.get(id);
+  }
+
+  @Override
   public void setSchemaTemplate(String name, PartialPath path) {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
@@ -220,6 +226,17 @@ public class ClusterTemplateManager implements ITemplateManager {
     return listPath;
   }
 
+  @Override
+  public Pair<PartialPath, Template> checkTemplateSetInfo(PartialPath path) {
+    for (PartialPath templateSetPath : templateSetPathMap.keySet()) {
+      if (path.startsWith(templateSetPath.getNodes())) {
+        return new Pair<>(
+            templateSetPath, templateMap.get(templateSetPathMap.get(templateSetPath)));
+      }
+    }
+    return null;
+  }
+
   public void updateTemplateSetInfo(byte[] templateSetInfo) {
     readWriteLock.writeLock().lock();
     try {
@@ -237,7 +254,11 @@ public class ClusterTemplateManager implements ITemplateManager {
         pathNum = ReadWriteIOUtils.readInt(buffer);
         for (int j = 0; j < pathNum; j++) {
           pathSetTemplate = ReadWriteIOUtils.readString(buffer);
-          templateSetPathMap.put(pathSetTemplate, template.getId());
+          try {
+            templateSetPathMap.put(new PartialPath(pathSetTemplate), template.getId());
+          } catch (IllegalPathException ignored) {
+
+          }
         }
       }
 

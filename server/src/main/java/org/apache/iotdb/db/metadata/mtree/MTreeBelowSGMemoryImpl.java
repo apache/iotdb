@@ -39,6 +39,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.iterator.IMNodeIterator;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
@@ -1391,6 +1392,63 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     }
 
     return null;
+  }
+
+  public void activateTemplate(PartialPath activatePath, int templateSetLevel, Template template)
+      throws MetadataException {
+    String[] nodes = activatePath.getNodes();
+    IMNode cur = storageGroupMNode;
+    for (int i = levelOfSG + 1; i < nodes.length; i++) {
+      cur = cur.getChild(nodes[i]);
+      if (i == templateSetLevel) {
+        cur.setSchemaTemplateId(template.getId());
+      }
+    }
+
+    IEntityMNode entityMNode;
+
+    synchronized (this) {
+      for (String measurement : template.getSchemaMap().keySet()) {
+        if (cur.hasChild(measurement)) {
+          throw new TemplateImcompatibeException(
+              activatePath.concatNode(measurement).getFullPath(), template.getName());
+        }
+      }
+      if (cur.isEntity()) {
+        entityMNode = cur.getAsEntityMNode();
+      } else {
+        entityMNode = MNodeUtils.setToEntity(cur);
+      }
+    }
+
+    if (!entityMNode.isAligned()) {
+      entityMNode.setAligned(template.isDirectAligned());
+    }
+    entityMNode.setUseTemplate(true);
+  }
+
+  public void activateTemplateWithoutCheck(
+      PartialPath activatePath, int templateSetLevel, int templateId, boolean isAligned) {
+    String[] nodes = activatePath.getNodes();
+    IMNode cur = storageGroupMNode;
+    for (int i = levelOfSG + 1; i < nodes.length; i++) {
+      cur = cur.getChild(nodes[i]);
+      if (i == templateSetLevel) {
+        cur.setSchemaTemplateId(templateId);
+      }
+    }
+
+    IEntityMNode entityMNode;
+    if (cur.isEntity()) {
+      entityMNode = cur.getAsEntityMNode();
+    } else {
+      entityMNode = MNodeUtils.setToEntity(cur);
+    }
+
+    if (!entityMNode.isAligned()) {
+      entityMNode.setAligned(isAligned);
+    }
+    entityMNode.setUseTemplate(true);
   }
 
   // endregion

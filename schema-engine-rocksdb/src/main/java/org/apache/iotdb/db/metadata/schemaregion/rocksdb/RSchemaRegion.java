@@ -58,6 +58,7 @@ import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -1895,6 +1896,12 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+      throws MetadataException {
     throw new UnsupportedOperationException();
   }
 

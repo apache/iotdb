@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryM
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
@@ -124,7 +125,8 @@ public enum PlanNodeType {
   ALIGNED_LAST_QUERY_SCAN((short) 47),
   LAST_QUERY_MERGE((short) 48),
   NODE_PATHS_COUNT((short) 49),
-  INTERNAL_CREATE_TIMESERIES((short) 50);
+  INTERNAL_CREATE_TIMESERIES((short) 50),
+  ACTIVATE_TEMPLATE((short) 51);
 
   public static final int BYTES = Short.BYTES;
 
@@ -267,6 +269,8 @@ public enum PlanNodeType {
         return NodePathsCountNode.deserialize(buffer);
       case 50:
         return InternalCreateTimeSeriesNode.deserialize(buffer);
+      case 51:
+        return ActivateTemplateNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

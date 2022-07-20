@@ -59,6 +59,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
@@ -1798,6 +1799,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     } finally {
       mtree.unPinMNode(node);
     }
+  }
+
+  @Override
+  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {

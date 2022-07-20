@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.analyze.ExpressionAnalyzer;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -673,5 +675,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         deleteDataStatement.getPathList(),
         deleteDataStatement.getDeleteStartTime(),
         deleteDataStatement.getDeleteEndTime());
+  }
+
+  @Override
+  public PlanNode visitActivateTemplate(
+      ActivateTemplateStatement activateTemplateStatement, MPPQueryContext context) {
+    return new ActivateTemplateNode(
+        context.getQueryId().genPlanNodeId(),
+        activateTemplateStatement.getPath(),
+        analysis.getTemplateSetInfo().left.getNodeLength(),
+        analysis.getTemplateSetInfo().right.getId());
   }
 }

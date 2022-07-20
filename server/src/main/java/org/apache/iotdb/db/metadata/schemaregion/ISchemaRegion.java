@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -358,6 +359,9 @@ public interface ISchemaRegion {
   void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException;
 
   void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException;
+
+  void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+      throws MetadataException;
   // endregion
 
   // region Interfaces for Trigger
