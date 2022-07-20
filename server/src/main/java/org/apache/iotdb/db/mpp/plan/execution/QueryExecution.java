@@ -454,8 +454,8 @@ public class QueryExecution implements IQueryExecution {
 
     TSStatus tsstatus = RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage());
 
-    // If RETRYING is triggered by this QueryExecution, the stateMachine.getFailureStatus()
-    // is also not null. And in this situation, we should return the failure status.
+    // If RETRYING is triggered by this QueryExecution, the stateMachine.getFailureStatus() is also
+    // not null. We should only return the failure status when QueryExecution is in Done state.
     if (state.isDone() && stateMachine.getFailureStatus() != null) {
       tsstatus = stateMachine.getFailureStatus();
     }
