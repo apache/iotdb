@@ -1484,7 +1484,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private void parseOrderByClause(IoTDBSqlParser.OrderByClauseContext ctx) {
-    if (ctx.orderByAttributeClause().size() > 0) {
+    if (ctx.orderByAttributeClause().size() > 1) {
       throw new SQLParserException("Sorting by multiple fields is not supported.");
     }
     SortItem sortItem = parseOrderByAttributeClause(ctx.orderByAttributeClause(0));
