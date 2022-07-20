@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class FlushHandler extends AbstractRetryHandler implements AsyncMethodCallback<TSStatus> {
@@ -39,13 +38,12 @@ public class FlushHandler extends AbstractRetryHandler implements AsyncMethodCal
   private final List<TSStatus> dataNodeResponseStatus;
 
   public FlushHandler(
-      TDataNodeLocation targetDataNode,
       CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
-      List<TSStatus> dataNodeResponseStatus,
-      Map<Integer, TDataNodeLocation> dataNodeLocations,
-      int index) {
-    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
+      TDataNodeLocation targetDataNode,
+      List<TDataNodeLocation> dataNodeLocations,
+      List<TSStatus> dataNodeResponseStatus) {
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocations);
     this.dataNodeResponseStatus = dataNodeResponseStatus;
   }
 
@@ -53,7 +51,7 @@ public class FlushHandler extends AbstractRetryHandler implements AsyncMethodCal
   public void onComplete(TSStatus response) {
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeResponseStatus.add(response);
-      dataNodeLocations.remove(index);
+      dataNodeLocations.remove(targetDataNode);
       LOGGER.info("Successfully Flush on DataNode: {}", targetDataNode);
     } else {
       LOGGER.error("Failed to Flush on DataNode {}, {}", dataNodeLocations, response);

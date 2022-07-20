@@ -22,19 +22,15 @@ package org.apache.iotdb.confignode.client.async.handlers;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 
-import java.util.Map;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 public abstract class AbstractRetryHandler {
 
-  protected final int index;
-
   protected CountDownLatch countDownLatch;
-  /**
-   * Map<Index, TDataNodeLocation> The DataNode that successfully execute the request will be
-   * removed from this map
-   */
-  protected Map<Integer, TDataNodeLocation> dataNodeLocations;
+
+  /** The DataNode that successfully execute the request will be removed from this list */
+  protected List<TDataNodeLocation> dataNodeLocations;
 
   protected DataNodeRequestType dataNodeRequestType;
   /** Target DataNode */
@@ -44,32 +40,22 @@ public abstract class AbstractRetryHandler {
       CountDownLatch countDownLatch,
       DataNodeRequestType dataNodeRequestType,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocations,
-      int index) {
+      List<TDataNodeLocation> dataNodeLocations) {
     this.countDownLatch = countDownLatch;
     this.dataNodeLocations = dataNodeLocations;
     this.dataNodeRequestType = dataNodeRequestType;
     this.targetDataNode = targetDataNode;
-    this.index = index;
   }
 
   public void setCountDownLatch(CountDownLatch countDownLatch) {
     this.countDownLatch = countDownLatch;
   }
 
-  public CountDownLatch getCountDownLatch() {
-    return countDownLatch;
-  }
-
-  public Map<Integer, TDataNodeLocation> getDataNodeLocations() {
+  public List<TDataNodeLocation> getDataNodeLocations() {
     return dataNodeLocations;
   }
 
   public DataNodeRequestType getDataNodeRequestType() {
     return dataNodeRequestType;
-  }
-
-  public int getIndex() {
-    return index;
   }
 }

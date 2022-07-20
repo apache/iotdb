@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class FunctionManagementHandler extends AbstractRetryHandler
@@ -41,12 +40,11 @@ public class FunctionManagementHandler extends AbstractRetryHandler
 
   public FunctionManagementHandler(
       CountDownLatch countDownLatch,
-      TDataNodeLocation targetDataNode,
-      List<TSStatus> dataNodeResponseStatus,
       DataNodeRequestType requestType,
-      Map<Integer, TDataNodeLocation> dataNodeLocations,
-      int index) {
-    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
+      TDataNodeLocation targetDataNode,
+      List<TDataNodeLocation> dataNodeLocations,
+      List<TSStatus> dataNodeResponseStatus) {
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocations);
     this.dataNodeResponseStatus = dataNodeResponseStatus;
   }
 
@@ -54,7 +52,7 @@ public class FunctionManagementHandler extends AbstractRetryHandler
   public void onComplete(TSStatus response) {
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeResponseStatus.add(response);
-      dataNodeLocations.remove(index);
+      dataNodeLocations.remove(targetDataNode);
       LOGGER.info("Successfully {} on DataNode: {}", dataNodeRequestType, targetDataNode);
     } else {
       LOGGER.info("Failed to {} on DataNode: {}", dataNodeRequestType, targetDataNode);

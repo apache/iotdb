@@ -29,7 +29,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Map;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 /** Only use CreateRegionHandler when the LoadManager wants to create Regions */
@@ -38,23 +38,26 @@ public class CreateRegionHandler extends AbstractRetryHandler
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateRegionHandler.class);
 
+  private int index;
   // Used for Logger
   private final TConsensusGroupId consensusGroupId;
 
   public CreateRegionHandler(
-      int index,
       CountDownLatch latch,
+      DataNodeRequestType requestType,
       TConsensusGroupId consensusGroupId,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocations) {
-    super(latch, DataNodeRequestType.CREATE_REGIONS, targetDataNode, dataNodeLocations, index);
+      List<TDataNodeLocation> dataNodeLocations,
+      int index) {
+    super(latch, requestType, targetDataNode, dataNodeLocations);
+    this.index = index;
     this.consensusGroupId = consensusGroupId;
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      getDataNodeLocations().remove(index);
+      dataNodeLocations.remove(index);
       LOGGER.info(
           String.format(
               "Successfully create %s on DataNode: %s",
