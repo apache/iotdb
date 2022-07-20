@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -28,10 +29,11 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
+import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetAllTemplateSetInfoPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
@@ -55,13 +57,16 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -338,9 +343,9 @@ public class ClusterSchemaManager {
    * @return TGetAllTemplatesResp
    */
   public TGetAllTemplatesResp getAllTemplates() {
-    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan();
+    GetAllSchemaTemplatePlan getAllSchemaTemplatePlan = new GetAllSchemaTemplatePlan();
     TemplateInfoResp templateResp =
-        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+        (TemplateInfoResp) getConsensusManager().read(getAllSchemaTemplatePlan).getDataset();
     TGetAllTemplatesResp resp = new TGetAllTemplatesResp();
     resp.setStatus(templateResp.getStatus());
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -369,10 +374,9 @@ public class ClusterSchemaManager {
    * @return
    */
   public TGetTemplateResp getTemplate(String req) {
-    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan =
-        new GetNodesInSchemaTemplatePlan(req);
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(req);
     TemplateInfoResp templateResp =
-        (TemplateInfoResp) getConsensusManager().read(getNodesInSchemaTemplatePlan).getDataset();
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
     TGetTemplateResp resp = new TGetTemplateResp();
     try {
       if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -397,8 +401,45 @@ public class ClusterSchemaManager {
    * @return
    */
   public TSStatus setSchemaTemplate(String templateName, String path) {
+    // execute set operation on configNode
     SetSchemaTemplatePlan setSchemaTemplatePlan = new SetSchemaTemplatePlan(templateName, path);
-    return getConsensusManager().write(setSchemaTemplatePlan).getStatus();
+    TSStatus status = getConsensusManager().write(setSchemaTemplatePlan).getStatus();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    }
+
+    // get template
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
+    TemplateInfoResp templateResp =
+        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
+    Template template = templateResp.getTemplateList().get(0);
+
+    // prepare template data and req
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(1, outputStream);
+      ReadWriteIOUtils.write(template.serialize(), outputStream);
+      ReadWriteIOUtils.write(path, outputStream);
+    } catch (IOException ignored) {
+    }
+    TUpdateTemplateReq req = new TUpdateTemplateReq();
+    req.setTemplateInfo(outputStream.toByteArray());
+
+    // sync template set info to all dataNodes
+    List<TDataNodeConfiguration> allDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes(-1);
+    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
+      status =
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeInfo.getLocation().getInternalEndPoint(),
+                  req,
+                  DataNodeRequestType.UPDATE_TEMPLATE);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+    }
+    return status;
   }
 
   /**

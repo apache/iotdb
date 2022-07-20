@@ -17,23 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client;
+package org.apache.iotdb.confignode.consensus.request.read;
 
-public enum DataNodeRequestType {
-  DELETE_REGIONS,
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
-  MIGRATE_REGION,
-  DISABLE_DATA_NODE,
-  STOP_DATA_NODE,
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
+import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 
-  SET_TTL,
-  CREATE_REGIONS,
-  CREATE_FUNCTION,
-  DROP_FUNCTION,
-  FLUSH,
-  UPDATE_REGION_ROUTE_MAP,
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 
-  UPDATE_TEMPLATE
+public class GetAllSchemaTemplatePlan extends ConfigPhysicalPlan {
+
+  public GetAllSchemaTemplatePlan() {
+    super(ConfigPhysicalPlanType.GetAllSchemaTemplate);
+  }
+
+  @Override
+  protected void serializeImpl(DataOutputStream stream) throws IOException {
+    stream.writeInt(ConfigPhysicalPlanType.GetAllSchemaTemplate.ordinal());
+  }
+
+  @Override
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
 }

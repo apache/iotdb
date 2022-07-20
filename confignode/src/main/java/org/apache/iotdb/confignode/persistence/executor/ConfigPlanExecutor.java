@@ -29,10 +29,10 @@ import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
@@ -145,10 +145,10 @@ public class ConfigPlanExecutor {
         return getSchemaNodeManagementPartition(req);
       case GetRegionInfoList:
         return getRegionInfoList(req);
-      case ShowSchemaTemplate:
+      case GetAllSchemaTemplate:
         return clusterSchemaInfo.getAllTemplates();
-      case ShowNodesInSchemaTemplate:
-        GetNodesInSchemaTemplatePlan plan = (GetNodesInSchemaTemplatePlan) req;
+      case GetSchemaTemplate:
+        GetSchemaTemplatePlan plan = (GetSchemaTemplatePlan) req;
         return clusterSchemaInfo.getTemplate(plan.getTemplateName());
       case GetPathsSetTemplate:
         return clusterSchemaInfo.getPathsSetTemplate((GetPathsSetTemplatePlan) req);

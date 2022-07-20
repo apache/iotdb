@@ -36,9 +36,9 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
@@ -621,22 +621,20 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetSchemaTemplatePlanTest() throws IOException {
-    GetSchemaTemplatePlan getSchemaTemplatePlan0 = new GetSchemaTemplatePlan();
-    GetSchemaTemplatePlan getSchemaTemplatePlan1 =
-        (GetSchemaTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan0.serializeToByteBuffer());
-    Assert.assertEquals(getSchemaTemplatePlan0, getSchemaTemplatePlan1);
+    GetAllSchemaTemplatePlan getAllSchemaTemplatePlan0 = new GetAllSchemaTemplatePlan();
+    GetAllSchemaTemplatePlan getAllSchemaTemplatePlan1 =
+        (GetAllSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(getAllSchemaTemplatePlan0.serializeToByteBuffer());
+    Assert.assertEquals(getAllSchemaTemplatePlan0, getAllSchemaTemplatePlan1);
   }
 
   @Test
   public void GetNodesInSchemaTemplatePlanTest() throws IOException {
-    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan0 =
-        new GetNodesInSchemaTemplatePlan("template_name_test");
-    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan1 =
-        (GetNodesInSchemaTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(
-                getNodesInSchemaTemplatePlan0.serializeToByteBuffer());
-    Assert.assertEquals(getNodesInSchemaTemplatePlan0, getNodesInSchemaTemplatePlan1);
+    GetSchemaTemplatePlan getSchemaTemplatePlan0 = new GetSchemaTemplatePlan("template_name_test");
+    GetSchemaTemplatePlan getSchemaTemplatePlan1 =
+        (GetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan0.serializeToByteBuffer());
+    Assert.assertEquals(getSchemaTemplatePlan0, getSchemaTemplatePlan1);
   }
 
   @Test

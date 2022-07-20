@@ -48,6 +48,7 @@ import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
@@ -92,6 +93,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -481,6 +483,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
     return StorageEngineV2.getInstance().setTTL(req);
+  }
+
+  @Override
+  public TSStatus updateTemplate(TUpdateTemplateReq req) throws TException {
+    ClusterTemplateManager.getInstance().updateTemplateSetInfo(req.getTemplateInfo());
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override

@@ -21,22 +21,57 @@ package org.apache.iotdb.confignode.consensus.request.read;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class GetSchemaTemplatePlan extends ConfigPhysicalPlan {
 
+  private String templateName;
+
   public GetSchemaTemplatePlan() {
-    super(ConfigPhysicalPlanType.ShowSchemaTemplate);
+    super(ConfigPhysicalPlanType.GetSchemaTemplate);
+  }
+
+  public GetSchemaTemplatePlan(String templateName) {
+    this();
+    this.templateName = templateName;
+  }
+
+  public String getTemplateName() {
+    return templateName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.ShowSchemaTemplate.ordinal());
+    stream.writeInt(ConfigPhysicalPlanType.GetSchemaTemplate.ordinal());
+    byte[] bytes = this.getTemplateName().getBytes();
+    int length = bytes.length;
+    stream.writeInt(length);
+    stream.write(bytes);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
+  protected void deserializeImpl(ByteBuffer buffer) throws IOException {
+    int length = ReadWriteIOUtils.readInt(buffer);
+    byte[] dataBytes = ReadWriteIOUtils.readBytes(buffer, length);
+    this.templateName = new String(dataBytes, TSFileConfig.STRING_CHARSET);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    GetSchemaTemplatePlan that = (GetSchemaTemplatePlan) o;
+    return this.templateName.equalsIgnoreCase(this.templateName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(templateName);
+  }
 }

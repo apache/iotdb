@@ -194,6 +194,10 @@ struct TRegionRouteReq {
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
 }
 
+struct TUpdateTemplateReq{
+    1: required binary templateInfo
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -324,6 +328,8 @@ service IDataNodeRPCService {
   common.TSStatus flush(common.TFlushReq req)
 
   common.TSStatus setTTL(common.TSetTTLReq req)
+
+  common.TSStatus updateTemplate(TUpdateTemplateReq req)
 }
 
 service MPPDataExchangeService {

@@ -20,10 +20,10 @@ package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodePathsPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
@@ -207,11 +207,11 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
         case CreateSchemaTemplate:
           req = new CreateSchemaTemplatePlan();
           break;
-        case ShowSchemaTemplate:
-          req = new GetSchemaTemplatePlan();
+        case GetAllSchemaTemplate:
+          req = new GetAllSchemaTemplatePlan();
           break;
-        case ShowNodesInSchemaTemplate:
-          req = new GetNodesInSchemaTemplatePlan();
+        case GetSchemaTemplate:
+          req = new GetSchemaTemplatePlan();
           break;
         case GetPathsSetTemplate:
           req = new GetPathsSetTemplatePlan();

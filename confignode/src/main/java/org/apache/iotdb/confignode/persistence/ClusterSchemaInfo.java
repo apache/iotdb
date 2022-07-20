@@ -45,7 +45,6 @@ import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -64,7 +63,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -575,19 +573,13 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public TemplateInfoResp getTemplate(String req) {
     TemplateInfoResp result = new TemplateInfoResp();
-    TGetTemplateResp resp = templateTable.getMatchedTemplateByName(req);
-    result.setStatus(resp.getStatus());
-    if (resp.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (resp.getTemplate() != null) {
-        List<Template> list = new ArrayList<Template>();
-        try {
-          Template template = Template.byteBuffer2Template(ByteBuffer.wrap(resp.getTemplate()));
-          list.add(template);
-          result.setTemplateList(list);
-        } catch (IOException | ClassNotFoundException e) {
-          throw new RuntimeException("template deserialization error.", e);
-        }
-      }
+    List<Template> list = new ArrayList<>();
+    try {
+      list.add(templateTable.getTemplate(req));
+      result.setTemplateList(list);
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
     return result;
   }
