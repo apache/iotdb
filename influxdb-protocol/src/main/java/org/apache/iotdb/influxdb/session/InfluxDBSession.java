@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.influxdb.session;
 
-import static org.apache.iotdb.session.SessionConnection.MSG_RECONNECTION_FAIL;
-
-import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
-
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.protocol.influxdb.util.JacksonUtils;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxCloseSessionReq;
@@ -42,6 +35,7 @@ import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Config;
+
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -51,6 +45,13 @@ import org.influxdb.InfluxDBException;
 import org.influxdb.dto.QueryResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
+import static org.apache.iotdb.session.SessionConnection.MSG_RECONNECTION_FAIL;
 
 public class InfluxDBSession {
   private static final Logger logger = LoggerFactory.getLogger(InfluxDBSession.class);

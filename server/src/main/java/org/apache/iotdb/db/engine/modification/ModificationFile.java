@@ -19,6 +19,16 @@
 
 package org.apache.iotdb.db.engine.modification;
 
+import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
+import org.apache.iotdb.db.engine.modification.io.ModificationReader;
+import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -28,15 +38,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-
-import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
-import org.apache.iotdb.db.engine.modification.io.ModificationReader;
-import org.apache.iotdb.db.engine.modification.io.ModificationWriter;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same

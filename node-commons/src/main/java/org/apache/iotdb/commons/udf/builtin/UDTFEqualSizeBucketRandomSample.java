@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.commons.udf.builtin;
 
-import java.io.IOException;
-import java.util.concurrent.ThreadLocalRandom;
-
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -31,6 +28,9 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.udf.api.type.Type;
+
+import java.io.IOException;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class UDTFEqualSizeBucketRandomSample extends UDTFEqualSizeBucketSample {
 

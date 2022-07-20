@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.library.dprofile;
 
-import java.util.Arrays;
-import java.util.concurrent.ThreadLocalRandom;
-
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.iotdb.commons.udf.utils.UDFDataTypeTransformer;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -36,6 +32,11 @@ import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
+
+import org.apache.commons.lang3.tuple.Pair;
+
+import java.util.Arrays;
+import java.util.concurrent.ThreadLocalRandom;
 
 /** This function samples data by pool sampling. */
 public class UDTFSample implements UDTF {
