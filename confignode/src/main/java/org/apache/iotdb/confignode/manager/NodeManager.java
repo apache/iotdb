@@ -281,56 +281,64 @@ public class NodeManager {
     nodeInfo.addMetrics();
   }
 
-  public TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
-    if (removeConfigNodeLock.tryLock()) {
-      try {
-        // Check OnlineConfigNodes number
-        if (getLoadManager().getOnlineConfigNodes().size() <= 1) {
-          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-              .setMessage(
-                  "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
-        }
-
-        // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
-        if (!getRegisteredConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
-          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-              .setMessage(
-                  "Remove ConfigNode failed because the ConfigNode not in current Cluster.");
-        }
-
-        // Check whether the remove ConfigNode is leader
-        TConfigNodeLocation leader = getConsensusManager().getLeader();
-        if (leader == null) {
-          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-              .setMessage(
-                  "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.");
-        }
-        if (leader
-            .getInternalEndPoint()
-            .equals(removeConfigNodePlan.getConfigNodeLocation().getInternalEndPoint())) {
-          // transfer leader
-          return transferLeader(removeConfigNodePlan, getConsensusManager().getConsensusGroupId());
-        }
-
-        // Execute removePeer
-        if (getConsensusManager().removeConfigNodePeer(removeConfigNodePlan)) {
-          configManager
-              .getLoadManager()
-              .removeNodeHeartbeatHandCache(
-                  removeConfigNodePlan.getConfigNodeLocation().getConfigNodeId());
-          return getConsensusManager().write(removeConfigNodePlan).getStatus();
-        } else {
-          return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-              .setMessage(
-                  "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
-        }
-      } finally {
-        removeConfigNodeLock.unlock();
+  public TSStatus removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation) {
+    removeConfigNodeLock.tryLock();
+    try {
+      // Execute removePeer
+      if (getConsensusManager().removeConfigNodePeer(tConfigNodeLocation)) {
+        configManager
+            .getLoadManager()
+            .removeNodeHeartbeatHandCache(tConfigNodeLocation.getConfigNodeId());
+        return getConsensusManager()
+            .write(new RemoveConfigNodePlan(tConfigNodeLocation))
+            .getStatus();
+      } else {
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+            .setMessage(
+                "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
       }
-    } else {
-      return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("A ConfigNode is removing. Please wait or try again.");
+    } finally {
+      removeConfigNodeLock.unlock();
     }
+  }
+
+  public TSStatus checkConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
+    removeConfigNodeLock.tryLock();
+    try {
+      // Check OnlineConfigNodes number
+      if (getLoadManager().getOnlineConfigNodes().size() <= 1) {
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+            .setMessage(
+                "Remove ConfigNode failed because there is only one ConfigNode in current Cluster.");
+      }
+
+      // Check whether the registeredConfigNodes contain the ConfigNode to be removed.
+      if (!getRegisteredConfigNodes().contains(removeConfigNodePlan.getConfigNodeLocation())) {
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+            .setMessage("Remove ConfigNode failed because the ConfigNode not in current Cluster.");
+      }
+
+      // Check whether the remove ConfigNode is leader
+      TConfigNodeLocation leader = getConsensusManager().getLeader();
+      if (leader == null) {
+        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+            .setMessage(
+                "Remove ConfigNode failed because the ConfigNodeGroup is on leader election, please retry.");
+      }
+
+      if (leader
+          .getInternalEndPoint()
+          .equals(removeConfigNodePlan.getConfigNodeLocation().getInternalEndPoint())) {
+        // transfer leader
+        return transferLeader(removeConfigNodePlan, getConsensusManager().getConsensusGroupId());
+      }
+
+    } finally {
+      removeConfigNodeLock.unlock();
+    }
+
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .setMessage("Success remove confignode.");
   }
 
   private TSStatus transferLeader(

@@ -99,21 +99,21 @@ public class ClusterScheduler implements IScheduler {
     try {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
-        logger.error("dispatch failed.");
         if (result.getFailureStatus() != null) {
           stateMachine.transitionToFailed(result.getFailureStatus());
         } else {
+          // won't get into here
           stateMachine.transitionToFailed(
               new IllegalStateException("Fragment cannot be dispatched"));
         }
         return;
       }
     } catch (InterruptedException | ExecutionException e) {
-      // If the dispatch failed, we make the QueryState as failed, and return.
+      // If the dispatch request cannot be sent or TException is caught, we will retry this query.
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      stateMachine.transitionToFailed(e);
+      stateMachine.transitionToRetrying(e);
       return;
     }
 

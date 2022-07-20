@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process;
 
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -47,7 +47,7 @@ public class UpdateLastCacheOperator implements ProcessOperator {
   // fullPath for queried time series
   // It should be exact PartialPath, neither MeasurementPath nor AlignedPath, because lastCache only
   // accept PartialPath
-  private final PartialPath fullPath;
+  private final MeasurementPath fullPath;
 
   // dataType for queried time series;
   private final String dataType;
@@ -61,7 +61,7 @@ public class UpdateLastCacheOperator implements ProcessOperator {
   public UpdateLastCacheOperator(
       OperatorContext operatorContext,
       Operator child,
-      PartialPath fullPath,
+      MeasurementPath fullPath,
       TSDataType dataType,
       DataNodeSchemaCache dataNodeSchemaCache,
       boolean needUpdateCache) {

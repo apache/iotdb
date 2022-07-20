@@ -19,11 +19,9 @@
 
 package org.apache.iotdb.consensus.multileader.wal;
 
-import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -37,24 +35,6 @@ public interface ConsensusReqReader {
   long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MIN_VALUE;
 
   void setSafelyDeletedSearchIndex(long safelyDeletedSearchIndex);
-
-  /**
-   * Gets the consensus request at the specified position.
-   *
-   * @param index index of the consensus request to return
-   * @return the consensus request at the specified position, null if the request doesn't exist
-   */
-  IConsensusRequest getReq(long index);
-
-  /**
-   * Gets the consensus requests from the specified start position.
-   *
-   * @param startIndex index of the start consensus request
-   * @param num number of consensus requests to return, the number of actual returned consensus
-   *     requests may less than this value
-   * @return the consensus requests from the specified start position
-   */
-  List<IConsensusRequest> getReqs(long startIndex, int num);
 
   /**
    * Gets the consensus requests iterator from the specified start position.

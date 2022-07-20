@@ -86,6 +86,8 @@ public class SourceHandle implements ISourceHandle {
   private int lastSequenceId = Integer.MAX_VALUE;
   private boolean aborted = false;
 
+  private boolean closed = false;
+
   public SourceHandle(
       TEndPoint remoteEndpoint,
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -116,9 +118,8 @@ public class SourceHandle implements ISourceHandle {
   public synchronized TsBlock receive() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
 
-      if (aborted) {
-        throw new IllegalStateException("Source handle is aborted.");
-      }
+      checkState();
+
       if (!blocked.isDone()) {
         throw new IllegalStateException("Source handle is blocked.");
       }
@@ -149,7 +150,7 @@ public class SourceHandle implements ISourceHandle {
 
   private synchronized void trySubmitGetDataBlocksTask() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      if (aborted) {
+      if (aborted || closed) {
         return;
       }
       if (blockedOnMemory != null && !blockedOnMemory.isDone()) {
@@ -202,9 +203,7 @@ public class SourceHandle implements ISourceHandle {
 
   @Override
   public synchronized ListenableFuture<?> isBlocked() {
-    if (aborted) {
-      throw new IllegalStateException("Source handle is aborted.");
-    }
+    checkState();
     return nonCancellationPropagating(blocked);
   }
 
@@ -234,7 +233,7 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public synchronized void abort() {
     try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
-      if (aborted) {
+      if (aborted || closed) {
         return;
       }
       if (blocked != null && !blocked.isDone()) {
@@ -252,6 +251,31 @@ public class SourceHandle implements ISourceHandle {
       }
       aborted = true;
       sourceHandleListener.onAborted(this);
+    }
+  }
+
+  @Override
+  public synchronized void close() {
+    try (SetThreadName sourceHandleName = new SetThreadName(threadName)) {
+      if (aborted || closed) {
+        return;
+      }
+      if (blocked != null && !blocked.isDone()) {
+        blocked.set(null);
+      }
+      if (blockedOnMemory != null) {
+        bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
+      }
+      sequenceIdToDataBlockSize.clear();
+      if (bufferRetainedSizeInBytes > 0) {
+        localMemoryManager
+            .getQueryPool()
+            .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+        bufferRetainedSizeInBytes = 0;
+      }
+      closed = true;
+      currSequenceId = lastSequenceId + 1;
+      sourceHandleListener.onFinished(this);
     }
   }
 
@@ -291,6 +315,14 @@ public class SourceHandle implements ISourceHandle {
   @Override
   public boolean isAborted() {
     return aborted;
+  }
+
+  private void checkState() {
+    if (aborted) {
+      throw new IllegalStateException("Source handle is aborted.");
+    } else if (closed) {
+      throw new IllegalStateException("SourceHandle is closed.");
+    }
   }
 
   @Override
