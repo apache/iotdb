@@ -182,6 +182,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         if (dataPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
+          partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
           throw new StatementAnalyzeException(
               "An error occurred when executing getDataPartition():"
@@ -239,6 +240,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
         if (dataPartitionTableResp.getStatus().getCode()
             == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           dataPartition = parseDataPartitionResp(dataPartitionTableResp);
+          partitionCache.updateDataPartitionCache(dataPartitionTableResp.getDataPartitionTable());
         } else {
           throw new StatementAnalyzeException(
               "An error occurred when executing getOrCreateDataPartition():"
