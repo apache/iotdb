@@ -316,7 +316,7 @@ public interface IUnCompressor {
   }
 
   class ZSTDUnCompressor implements IUnCompressor {
-    private static final int MAX_COMPRESS_RATIO = 255;
+    private static final int MAX_COMPRESS_RATIO = 25;
 
     @Override
     public int getUncompressedLength(byte[] array, int offset, int length) {
