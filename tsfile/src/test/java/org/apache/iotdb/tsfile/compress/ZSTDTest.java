@@ -54,6 +54,7 @@ public class ZSTDTest {
     ICompressor compressor = new ZSTDCompressor();
 
     byte[] compressed = compressor.compress(uncom);
+    System.out.println(compressed.length);
     System.out.println("compression time cost:" + (System.currentTimeMillis() - time));
     time = System.currentTimeMillis();
     System.out.println("ratio: " + (double) compressed.length / uncom.length);
@@ -61,8 +62,10 @@ public class ZSTDTest {
     IUnCompressor unCompressor = new ZSTDUnCompressor();
     byte[] uncompressed = new byte[uncom.length];
     unCompressor.uncompress(compressed, 0, compressed.length, uncompressed, 0);
+    System.out.println(uncompressed.length);
+    System.out.println(uncom.length);
     System.out.println("decompression time cost:" + (System.currentTimeMillis() - time));
-
+    System.out.println(uncompressed == uncom);
     Assert.assertArrayEquals(uncom, uncompressed);
   }
 

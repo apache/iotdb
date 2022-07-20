@@ -316,6 +316,7 @@ public interface IUnCompressor {
   }
 
   class ZSTDUnCompressor implements IUnCompressor {
+    private static final int MAX_COMPRESS_RATIO = 255;
 
     @Override
     public int getUncompressedLength(byte[] array, int offset, int length) {
@@ -333,17 +334,21 @@ public interface IUnCompressor {
         return new byte[0];
       }
 
-      return ICompressor.ZSTDCompress.uncompress(byteArray);
+      return ICompressor.ZSTDCompress.uncompress(byteArray, MAX_COMPRESS_RATIO * byteArray.length);
     }
 
     @Override
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
         throws IOException {
-      byte[] dataBefore = new byte[length];
-      System.arraycopy(byteArray, offset, dataBefore, 0, length);
-      byte[] res = ICompressor.ZSTDCompress.uncompress(dataBefore);
+      byte[] res =
+          ICompressor.ZSTDCompress.uncompress(byteArray, MAX_COMPRESS_RATIO * byteArray.length);
       System.arraycopy(res, 0, output, outOffset, res.length);
-      return res.length;
+
+      try {
+        return res.length;
+      } catch (RuntimeException e) {
+        throw new IOException(e);
+      }
     }
 
     @Override
@@ -352,7 +357,7 @@ public interface IUnCompressor {
       byte[] dataBefore = new byte[length];
       compressed.get(dataBefore, 0, length);
 
-      byte[] res = ICompressor.ZSTDCompress.uncompress(dataBefore);
+      byte[] res = ICompressor.ZSTDCompress.uncompress(compressed, uncompressed);
       uncompressed.put(res);
 
       return res.length;

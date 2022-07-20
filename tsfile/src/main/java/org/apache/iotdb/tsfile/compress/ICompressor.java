@@ -24,9 +24,10 @@ import org.apache.iotdb.tsfile.exception.compress.GZIPCompressOverflowException;
 import org.apache.iotdb.tsfile.exception.compress.ZSTDCompressOverflowException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 
-import com.github.luben.zstd.Zstd;
-import com.github.luben.zstd.ZstdInputStream;
-import com.github.luben.zstd.ZstdOutputStream;
+import io.airlift.compress.Compressor;
+import io.airlift.compress.Decompressor;
+import io.airlift.compress.zstd.ZstdCompressor;
+import io.airlift.compress.zstd.ZstdDecompressor;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import org.xerial.snappy.Snappy;
@@ -34,8 +35,6 @@ import org.xerial.snappy.Snappy;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.zip.GZIPInputStream;
@@ -322,37 +321,54 @@ public interface ICompressor extends Serializable {
   }
 
   class ZSTDCompress {
-    private static byte[] readAll(InputStream inputStream) throws IOException {
-      final int bufferSize = Math.max(Math.min(inputStream.available(), 10240), 2048);
-      final byte[] buf = new byte[bufferSize];
-      final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(bufferSize);
+    public static ByteBuffer byte2Byffer(byte[] byteArray) {
+      ByteBuffer buffer = ByteBuffer.allocate(byteArray.length);
+      buffer.put(byteArray);
+      buffer.flip();
 
-      int len;
-      while ((len = inputStream.read(buf)) >= 0) {
-        outputStream.write(buf, 0, len);
+      return buffer;
+    }
+
+    public static byte[] bytebuffer2ByteArray(ByteBuffer buffer) {
+      buffer.flip();
+      int len = buffer.limit() - buffer.position();
+      byte[] bytes = new byte[len];
+
+      for (int i = 0; i < bytes.length; i++) {
+        bytes[i] = buffer.get();
       }
-
-      return outputStream.toByteArray();
+      return bytes;
     }
 
     public static byte[] compress(byte[] bytes) throws IOException {
-      int level = 3;
-      return compress(bytes, new ByteArrayOutputStream(Math.max(bytes.length / 2, 64)), level);
+      Compressor compressor = new ZstdCompressor();
+      int maxCompressLength = compressor.maxCompressedLength(bytes.length);
+
+      byte[] compressed = new byte[maxCompressLength];
+
+      ByteBuffer input = byte2Byffer(bytes);
+      ByteBuffer output = byte2Byffer(compressed);
+      compressor.compress(input, output);
+
+      return bytebuffer2ByteArray(output);
     }
 
-    public static byte[] compress(byte[] bytes, ByteArrayOutputStream outputStream, int level)
-        throws IOException {
-      try (OutputStream compressedStream = new ZstdOutputStream(outputStream, level)) {
-        compressedStream.write(bytes);
-        compressedStream.flush();
-      }
-      return outputStream.toByteArray();
+    public static byte[] uncompress(byte[] bytes, int deCompressSize) throws IOException {
+      Decompressor decompressor = new ZstdDecompressor();
+      byte[] decompressed = new byte[deCompressSize];
+
+      ByteBuffer input = byte2Byffer(bytes);
+      ByteBuffer output = byte2Byffer(decompressed);
+      decompressor.decompress(input, output);
+
+      return bytebuffer2ByteArray(output);
     }
 
-    public static byte[] uncompress(byte[] bytes) throws IOException {
-      try (InputStream compressedStream = new ZstdInputStream(new ByteArrayInputStream(bytes))) {
-        return readAll(compressedStream);
-      }
+    public static byte[] uncompress(ByteBuffer input, ByteBuffer output) throws IOException {
+      Decompressor decompressor = new ZstdDecompressor();
+      decompressor.decompress(input, output);
+
+      return bytebuffer2ByteArray(output);
     }
   }
 
@@ -402,7 +418,9 @@ public interface ICompressor extends Serializable {
 
     @Override
     public int getMaxBytesForCompression(int uncompressedDataSize) {
-      return (int) Zstd.compressBound(uncompressedDataSize);
+      // return (int) Zstd.compressBound(uncompressedDataSize);
+      Compressor compressor = new ZstdCompressor();
+      return compressor.maxCompressedLength(uncompressedDataSize);
     }
 
     @Override
