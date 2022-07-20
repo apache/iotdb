@@ -374,7 +374,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
         if ((groupByTimeComponent.isIntervalByMonth()
                 || groupByTimeComponent.isSlidingStepByMonth())
-            && queryStatement.getResultTimeOrder() == Ordering.ASC) {
+            && queryStatement.getResultTimeOrder() == Ordering.DESC) {
           throw new SemanticException("Group by month doesn't support order by time desc now.");
         }
         analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
