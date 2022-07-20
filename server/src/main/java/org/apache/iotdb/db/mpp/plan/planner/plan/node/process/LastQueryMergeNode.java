@@ -22,6 +22,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -39,21 +40,23 @@ import static org.apache.iotdb.db.mpp.plan.planner.plan.node.source.LastQuerySca
 
 public class LastQueryMergeNode extends MultiChildNode {
 
-  // make sure child in list has been ordered by their sensor name
-  private List<PlanNode> children;
-
   private final Filter timeFilter;
 
-  public LastQueryMergeNode(PlanNodeId id, Filter timeFilter) {
+  // The result output order, which could sort by sensor and time.
+  // The size of this list is 2 and the first SortItem in this list has higher priority.
+  private final List<SortItem> mergeOrders;
+
+  public LastQueryMergeNode(PlanNodeId id, Filter timeFilter, List<SortItem> mergeOrders) {
     super(id);
-    this.children = new ArrayList<>();
     this.timeFilter = timeFilter;
+    this.mergeOrders = mergeOrders;
   }
 
-  public LastQueryMergeNode(PlanNodeId id, List<PlanNode> children, Filter timeFilter) {
-    super(id);
-    this.children = children;
+  public LastQueryMergeNode(
+      PlanNodeId id, List<PlanNode> children, Filter timeFilter, List<SortItem> mergeOrders) {
+    super(id, children);
     this.timeFilter = timeFilter;
+    this.mergeOrders = mergeOrders;
   }
 
   @Override
@@ -68,7 +71,7 @@ public class LastQueryMergeNode extends MultiChildNode {
 
   @Override
   public PlanNode clone() {
-    return new LastQueryMergeNode(getPlanNodeId(), timeFilter);
+    return new LastQueryMergeNode(getPlanNodeId(), timeFilter, mergeOrders);
   }
 
   @Override
@@ -89,16 +92,22 @@ public class LastQueryMergeNode extends MultiChildNode {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     LastQueryMergeNode that = (LastQueryMergeNode) o;
-    return Objects.equals(children, that.children);
+    return Objects.equals(timeFilter, that.timeFilter) && mergeOrders.equals(that.mergeOrders);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), children);
+    return Objects.hash(super.hashCode(), timeFilter, mergeOrders);
   }
 
   @Override
@@ -115,6 +124,10 @@ public class LastQueryMergeNode extends MultiChildNode {
       ReadWriteIOUtils.write((byte) 1, byteBuffer);
       timeFilter.serialize(byteBuffer);
     }
+    ReadWriteIOUtils.write(mergeOrders.size(), byteBuffer);
+    for (SortItem mergeOrder : mergeOrders) {
+      mergeOrder.serialize(byteBuffer);
+    }
   }
 
   @Override
@@ -126,6 +139,10 @@ public class LastQueryMergeNode extends MultiChildNode {
       ReadWriteIOUtils.write((byte) 1, stream);
       timeFilter.serialize(stream);
     }
+    ReadWriteIOUtils.write(mergeOrders.size(), stream);
+    for (SortItem mergeOrder : mergeOrders) {
+      mergeOrder.serialize(stream);
+    }
   }
 
   public static LastQueryMergeNode deserialize(ByteBuffer byteBuffer) {
@@ -133,8 +150,14 @@ public class LastQueryMergeNode extends MultiChildNode {
     if (ReadWriteIOUtils.readByte(byteBuffer) == 1) {
       timeFilter = FilterFactory.deserialize(byteBuffer);
     }
+    int mergeOrdersSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<SortItem> mergeOrders = new ArrayList<>(mergeOrdersSize);
+    while (mergeOrdersSize > 0) {
+      mergeOrders.add(SortItem.deserialize(byteBuffer));
+      mergeOrdersSize--;
+    }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new LastQueryMergeNode(planNodeId, timeFilter);
+    return new LastQueryMergeNode(planNodeId, timeFilter, mergeOrders);
   }
 
   public void setChildren(List<PlanNode> children) {

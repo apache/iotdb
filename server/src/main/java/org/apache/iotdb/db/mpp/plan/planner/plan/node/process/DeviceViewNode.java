@@ -45,7 +45,7 @@ import java.util.Objects;
 public class DeviceViewNode extends MultiChildNode {
 
   // The result output order, which could sort by device and time.
-  // The size of this list is 2 and the first OrderBy in this list has higher priority.
+  // The size of this list is 2 and the first SortItem in this list has higher priority.
   private final List<SortItem> mergeOrders;
 
   // The size devices and children should be the same.

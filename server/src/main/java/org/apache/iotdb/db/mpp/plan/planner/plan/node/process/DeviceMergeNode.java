@@ -37,7 +37,7 @@ import java.util.stream.Collectors;
 public class DeviceMergeNode extends MultiChildNode {
 
   // The result output order, which could sort by device and time.
-  // The size of this list is 2 and the first OrderBy in this list has higher priority.
+  // The size of this list is 2 and the first SortItem in this list has higher priority.
   private final List<SortItem> mergeOrders;
 
   // the list of selected devices
@@ -45,15 +45,13 @@ public class DeviceMergeNode extends MultiChildNode {
 
   public DeviceMergeNode(
       PlanNodeId id, List<PlanNode> children, List<SortItem> mergeOrders, List<String> devices) {
-    super(id);
-    this.children = children;
+    super(id, children);
     this.mergeOrders = mergeOrders;
     this.devices = devices;
   }
 
   public DeviceMergeNode(PlanNodeId id, List<SortItem> mergeOrders, List<String> devices) {
     super(id);
-    this.children = new ArrayList<>();
     this.mergeOrders = mergeOrders;
     this.devices = devices;
   }

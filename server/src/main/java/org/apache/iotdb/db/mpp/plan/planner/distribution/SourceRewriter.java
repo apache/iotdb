@@ -231,7 +231,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   public PlanNode visitLastQueryScan(LastQueryScanNode node, DistributionPlanContext context) {
     LastQueryMergeNode mergeNode =
         new LastQueryMergeNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getPartitionTimeFilter());
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getPartitionTimeFilter(),
+            Collections.emptyList());
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -240,7 +242,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       AlignedLastQueryScanNode node, DistributionPlanContext context) {
     LastQueryMergeNode mergeNode =
         new LastQueryMergeNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getPartitionTimeFilter());
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getPartitionTimeFilter(),
+            Collections.emptyList());
     return processRawSeriesScan(node, context, mergeNode);
   }
 

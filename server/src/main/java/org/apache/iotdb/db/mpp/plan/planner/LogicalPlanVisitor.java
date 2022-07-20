@@ -62,6 +62,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -92,7 +93,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
 
     if (queryStatement.isLastQuery()) {
       return planBuilder
-          .planLast(analysis.getSourceExpressions(), analysis.getGlobalTimeFilter())
+          .planLast(
+              analysis.getSourceExpressions(),
+              analysis.getGlobalTimeFilter(),
+              queryStatement.getSortItemList())
           .getRoot();
     }
 
@@ -304,7 +308,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
   public PlanNode visitLastPointFetch(
       LastPointFetchStatement lastPointFetchStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-    return planBuilder.planLast(analysis.getSourceExpressions(), null).getRoot();
+    return planBuilder
+        .planLast(analysis.getSourceExpressions(), null, Collections.emptyList())
+        .getRoot();
   }
 
   @Override
@@ -456,7 +462,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         && 0 != analysis.getDataPartitionInfo().getDataPartitionMap().size()) {
       PlanNode lastPlanNode =
           new LogicalPlanBuilder(context)
-              .planLast(analysis.getSourceExpressions(), analysis.getGlobalTimeFilter())
+              .planLast(
+                  analysis.getSourceExpressions(),
+                  analysis.getGlobalTimeFilter(),
+                  Collections.emptyList())
               .getRoot();
       planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
     }

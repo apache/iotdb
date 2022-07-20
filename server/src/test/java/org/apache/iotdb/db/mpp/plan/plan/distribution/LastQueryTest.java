@@ -112,7 +112,7 @@ public class LastQueryTest {
     for (String path : paths) {
       expressions.add(new TimeSeriesOperand(new MeasurementPath(path)));
     }
-    PlanNode root = builder.planLast(expressions, null).getRoot();
+    PlanNode root = builder.planLast(expressions, null, Collections.emptyList()).getRoot();
     return new LogicalQueryPlan(context, root);
   }
 }

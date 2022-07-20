@@ -141,7 +141,8 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planLast(Set<Expression> sourceExpressions, Filter globalTimeFilter) {
+  public LogicalPlanBuilder planLast(
+      Set<Expression> sourceExpressions, Filter globalTimeFilter, List<SortItem> mergeOrders) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     for (Expression sourceExpression : sourceExpressions) {
       MeasurementPath selectPath =
@@ -157,7 +158,7 @@ public class LogicalPlanBuilder {
 
     this.root =
         new LastQueryMergeNode(
-            context.getQueryId().genPlanNodeId(), sourceNodeList, globalTimeFilter);
+            context.getQueryId().genPlanNodeId(), sourceNodeList, globalTimeFilter, mergeOrders);
     return this;
   }
 

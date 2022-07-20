@@ -36,8 +36,10 @@ import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -233,6 +235,13 @@ public class QueryStatement extends Statement {
       return Ordering.ASC;
     }
     return orderByComponent.getTimeOrder();
+  }
+
+  public List<SortItem> getSortItemList() {
+    if (orderByComponent == null) {
+      return Collections.emptyList();
+    }
+    return orderByComponent.getSortItemList();
   }
 
   public void semanticCheck() {

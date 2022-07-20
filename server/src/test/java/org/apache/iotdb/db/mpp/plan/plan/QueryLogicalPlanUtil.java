@@ -108,7 +108,7 @@ public class QueryLogicalPlanUtil {
 
   /* Last Query */
   static {
-    String sql = "SELECT last * FROM root.sg.** WHERE time > 100";
+    String sql = "SELECT last * FROM root.sg.** WHERE time > 100 ORDER BY timeseries ASC";
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList = new ArrayList<>();
@@ -140,7 +140,11 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2")));
 
     LastQueryMergeNode lastQueryMergeNode =
-        new LastQueryMergeNode(queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100));
+        new LastQueryMergeNode(
+            queryId.genPlanNodeId(),
+            sourceNodeList,
+            TimeFilter.gt(100),
+            Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC)));
 
     querySQLs.add(sql);
     sqlToPlanMap.put(sql, lastQueryMergeNode);
