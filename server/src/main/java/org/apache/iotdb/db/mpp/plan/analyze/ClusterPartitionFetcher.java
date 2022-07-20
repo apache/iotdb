@@ -97,7 +97,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(devicePaths, false);
+          partitionCache.getStorageGroupToDevice(devicePaths, true, false);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
@@ -128,7 +128,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       patternTree.constructTree();
       List<String> devicePaths = patternTree.getAllDevicePatterns();
       Map<String, List<String>> storageGroupToDeviceMap =
-          partitionCache.getStorageGroupToDevice(devicePaths, true);
+          partitionCache.getStorageGroupToDevice(devicePaths, true, true);
       SchemaPartition schemaPartition = partitionCache.getSchemaPartition(storageGroupToDeviceMap);
       if (null == schemaPartition) {
         TSchemaPartitionTableResp schemaPartitionTableResp =
@@ -304,7 +304,7 @@ public class ClusterPartitionFetcher implements IPartitionFetcher {
       devicePaths.add(dataPartitionQueryParam.getDevicePath());
     }
     Map<String, String> deviceToStorageGroupMap =
-        partitionCache.getDeviceToStorageGroup(devicePaths, isAutoCreate);
+        partitionCache.getDeviceToStorageGroup(devicePaths, true, isAutoCreate);
     Map<String, List<DataPartitionQueryParam>> result = new HashMap<>();
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       String devicePath = dataPartitionQueryParam.getDevicePath();
