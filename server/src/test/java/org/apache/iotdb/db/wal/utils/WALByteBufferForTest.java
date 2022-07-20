@@ -69,6 +69,11 @@ public class WALByteBufferForTest implements IWALByteBufferView {
     buffer.putDouble(value);
   }
 
+  @Override
+  public int position() {
+    return buffer.position();
+  }
+
   public ByteBuffer getBuffer() {
     return buffer;
   }

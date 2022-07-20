@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
+import org.apache.iotdb.db.wal.buffer.WALInfoEntry;
 import org.apache.iotdb.db.wal.utils.TsFileUtilsForRecoverTest;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -126,7 +127,7 @@ public class UnsealedTsFileRecoverPerformerTest {
         new InsertRowPlan(
             new PartialPath(DEVICE2_NAME), time, new String[] {"s1", "s2"}, dataTypes, columns);
     int fakeMemTableId = 1;
-    WALEntry walEntry = new WALEntry(fakeMemTableId, insertRowPlan);
+    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, insertRowPlan);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here
@@ -181,7 +182,7 @@ public class UnsealedTsFileRecoverPerformerTest {
     DeletePlan deletePlan =
         new DeletePlan(Long.MIN_VALUE, Long.MAX_VALUE, new PartialPath(DEVICE2_NAME));
     int fakeMemTableId = 1;
-    WALEntry walEntry = new WALEntry(fakeMemTableId, deletePlan);
+    WALEntry walEntry = new WALInfoEntry(fakeMemTableId, deletePlan);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here
@@ -306,8 +307,8 @@ public class UnsealedTsFileRecoverPerformerTest {
     insertTabletNode.markFailedMeasurement(0, new Exception());
 
     int fakeMemTableId = 1;
-    WALEntry walEntry1 = new WALEntry(fakeMemTableId++, insertRowNode);
-    WALEntry walEntry2 = new WALEntry(fakeMemTableId, insertTabletNode);
+    WALEntry walEntry1 = new WALInfoEntry(fakeMemTableId++, insertRowNode);
+    WALEntry walEntry2 = new WALInfoEntry(fakeMemTableId, insertTabletNode);
     // recover
     tsFileResource = new TsFileResource(file);
     // vsg processor is used to test IdTable, don't test IdTable here

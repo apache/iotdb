@@ -109,11 +109,11 @@ public class ClusterScheduler implements IScheduler {
         return;
       }
     } catch (InterruptedException | ExecutionException e) {
-      // If the dispatch failed, we make the QueryState as failed, and return.
+      // If the dispatch request cannot be sent or TException is caught, we will retry this query.
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      stateMachine.transitionToFailed(e);
+      stateMachine.transitionToRetrying(e);
       return;
     }
 

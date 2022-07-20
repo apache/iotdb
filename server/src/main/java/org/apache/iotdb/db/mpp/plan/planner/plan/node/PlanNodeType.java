@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.plan.node;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.DevicesSchemaScanNode;
@@ -127,6 +126,8 @@ public enum PlanNodeType {
   NODE_PATHS_COUNT((short) 49),
   INTERNAL_CREATE_TIMESERIES((short) 50);
 
+  public static final int BYTES = Short.BYTES;
+
   private final short nodeType;
 
   PlanNodeType(short nodeType) {
@@ -141,14 +142,25 @@ public enum PlanNodeType {
     ReadWriteIOUtils.write(nodeType, stream);
   }
 
-  public static PlanNode deserialize(DataInputStream stream)
-      throws IOException, IllegalPathException {
+  public static PlanNode deserializeFromWAL(DataInputStream stream) throws IOException {
     short nodeType = stream.readShort();
     switch (nodeType) {
       case 13:
-        return InsertTabletNode.deserialize(stream);
+        return InsertTabletNode.deserializeFromWAL(stream);
       case 14:
-        return InsertRowNode.deserialize(stream);
+        return InsertRowNode.deserializeFromWAL(stream);
+      default:
+        throw new IllegalArgumentException("Invalid node type: " + nodeType);
+    }
+  }
+
+  public static PlanNode deserializeFromWAL(ByteBuffer buffer) {
+    short nodeType = buffer.getShort();
+    switch (nodeType) {
+      case 13:
+        return InsertTabletNode.deserializeFromWAL(buffer);
+      case 14:
+        return InsertRowNode.deserializeFromWAL(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

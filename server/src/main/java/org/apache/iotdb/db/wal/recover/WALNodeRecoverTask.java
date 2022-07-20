@@ -29,6 +29,7 @@ import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
 import org.apache.iotdb.db.wal.buffer.WALEntryType;
 import org.apache.iotdb.db.wal.checkpoint.MemTableInfo;
+import org.apache.iotdb.db.wal.io.WALMetaData;
 import org.apache.iotdb.db.wal.io.WALReader;
 import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.CheckpointFileUtils;
@@ -39,10 +40,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader.DEFAULT_SEARCH_INDEX;
 
 /** This task is responsible for the recovery of one wal node. */
 public class WALNodeRecoverTask implements Runnable {
@@ -103,7 +107,7 @@ public class WALNodeRecoverTask implements Runnable {
         checkpointFile.delete();
       }
       // recover version id and search index
-      long[] indexInfo = recoverLastSearchIndex();
+      long[] indexInfo = recoverLastFile();
       long lastVersionId = indexInfo[0];
       long lastSearchIndex = indexInfo[1];
       WALManager.getInstance()
@@ -118,7 +122,7 @@ public class WALNodeRecoverTask implements Runnable {
     }
   }
 
-  private long[] recoverLastSearchIndex() {
+  private long[] recoverLastFile() {
     File[] walFiles = WALFileUtils.listAllWALFiles(logDirectory);
     if (walFiles == null || walFiles.length == 0) {
       return new long[] {0L, 0L};
@@ -128,21 +132,32 @@ public class WALNodeRecoverTask implements Runnable {
     File lastWALFile = walFiles[walFiles.length - 1];
     long lastVersionId = WALFileUtils.parseVersionId(lastWALFile.getName());
     long lastSearchIndex = WALFileUtils.parseStartSearchIndex(lastWALFile.getName());
+    WALMetaData metaData = new WALMetaData();
     WALFileStatus fileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
     try (WALReader walReader = new WALReader(lastWALFile)) {
       while (walReader.hasNext()) {
         WALEntry walEntry = walReader.next();
+        long searchIndex = DEFAULT_SEARCH_INDEX;
         if (walEntry.getType() == WALEntryType.INSERT_TABLET_NODE
             || walEntry.getType() == WALEntryType.INSERT_ROW_NODE) {
           InsertNode insertNode = (InsertNode) walEntry.getValue();
           if (insertNode.getSearchIndex() != InsertNode.NO_CONSENSUS_INDEX) {
+            searchIndex = insertNode.getSearchIndex();
             lastSearchIndex = Math.max(lastSearchIndex, insertNode.getSearchIndex());
             fileStatus = WALFileStatus.CONTAINS_SEARCH_INDEX;
           }
         }
+        metaData.add(walEntry.serializedSize(), searchIndex);
       }
     } catch (Exception e) {
       logger.warn("Fail to read wal logs from {}, skip them", lastWALFile, e);
+    }
+    // make sure last wal file is correct
+    WALRecoverWriter walRecoverWriter = new WALRecoverWriter(lastWALFile);
+    try {
+      walRecoverWriter.recover(metaData);
+    } catch (IOException e) {
+      logger.error("Fail to recover metadata of wal file {}", lastWALFile);
     }
     // rename last wal file when file status are inconsistent
     if (WALFileUtils.parseStatusCode(lastWALFile.getName()) != fileStatus) {

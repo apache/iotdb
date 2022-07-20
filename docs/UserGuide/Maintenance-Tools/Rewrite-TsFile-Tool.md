@@ -19,18 +19,18 @@
 
 -->
 
-# IoTDB Load-TsFile Tool
+# IoTDB Rewrite-TsFile Tool
 
 ## Introduction
 
-The Load-TsFile tool is used to write the data in TsFile to the running IoTDB.
+The Rewrite-TsFile tool is used to write the data in TsFile to the running IoTDB.
 
 ## How to use
 
-Run load-tsfile.bat if you are in a Windows environment, or load-tsfile.sh if you are on Linux or Unix.
+Run rewrite-tsfile.bat if you are in a Windows environment, or rewrite-tsfile.sh if you are on Linux or Unix.
 
 ```bash
-./load-tsfile.bat -f filePath [-h host] [-help] [-p port] [-pw password] -u user
+./rewrite-tsfile.bat -f filePath [-h host] [-help] [-p port] [-pw password] -u user
 -f File or Dictionary to be loaded.
 -h Host Name (optional, default 127.0.0.1)
 -help Display help information(optional)
@@ -43,17 +43,17 @@ Run load-tsfile.bat if you are in a Windows environment, or load-tsfile.sh if yo
 
 Assuming that an IoTDB instance is running on server 192.168.0.101:6667, you want to load all TsFile files from the locally saved TsFile backup folder D:\IoTDB\data into this IoTDB instance.
 
-First move to the folder where load-tsfile.bat is located, open the command line, and execute
+First move to the folder where rewrite-tsfile.bat is located, open the command line, and execute
 
 ```bash
-./load-tsfile.bat -f "D:\IoTDB\data" -h 192.168.0.101 -p 6667 -u root -pw root
+./load-rewrite.bat -f "D:\IoTDB\data" -h 192.168.0.101 -p 6667 -u root -pw root
 ```
 
 After waiting for the script execution to complete, you can check that the data in the IoTDB instance has been loaded correctly.
 
 ## Q&A
 
-- Cannot find or load the main class TsFileLoaderTool
+- Cannot find or load the main class RewriteTsFileTool
   - It may be because the environment variable $IOTDB_HOME is not set, please set the environment variable and try again
 - Missing require argument: f or Missing require argument: u
   - The input command is missing the -f field (file or folder path to be loaded) or the -u field (user name), please add it and re-execute

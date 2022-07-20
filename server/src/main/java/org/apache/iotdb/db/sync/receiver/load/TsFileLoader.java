@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadUnbearableException;
-import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 
 import java.io.File;
@@ -47,7 +47,7 @@ public class TsFileLoader implements ILoader {
       FileLoaderUtils.loadOrGenerateResource(tsFileResource);
       List<TsFileResource> splitResources = new ArrayList();
       if (tsFileResource.isSpanMultiTimePartitions()) {
-        TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
+        TsFileSplitByPartitionTool.rewriteTsFile(tsFileResource, splitResources);
         tsFileResource.writeLock();
         tsFileResource.removeModFile();
         tsFileResource.writeUnlock();
