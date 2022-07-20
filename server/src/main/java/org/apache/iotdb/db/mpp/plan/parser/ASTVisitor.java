@@ -65,10 +65,12 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
@@ -1197,12 +1199,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // parse ORDER BY TIME
   private void parseOrderByClause(IoTDBSqlParser.OrderByClauseContext ctx) {
     OrderByComponent orderByComponent = new OrderByComponent();
-    Set<SortItem.SortKey> sortKeySet = new HashSet<>();
+    Set<SortKey> sortKeySet = new HashSet<>();
     for (IoTDBSqlParser.OrderByAttributeClauseContext orderByAttributeClauseContext :
         ctx.orderByAttributeClause()) {
       SortItem sortItem = parseOrderByAttributeClause(orderByAttributeClauseContext);
 
-      SortItem.SortKey sortKey = sortItem.getSortKey();
+      SortKey sortKey = sortItem.getSortKey();
       if (sortKeySet.contains(sortKey)) {
         throw new SemanticException(String.format("ORDER BY: duplicate sort key '%s'", sortKey));
       } else {
@@ -1215,8 +1217,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private SortItem parseOrderByAttributeClause(IoTDBSqlParser.OrderByAttributeClauseContext ctx) {
     return new SortItem(
-        SortItem.SortKey.valueOf(ctx.sortKey().getText().toUpperCase()),
-        ctx.DESC() != null ? SortItem.Ordering.DESC : SortItem.Ordering.ASC);
+        SortKey.valueOf(ctx.sortKey().getText().toUpperCase()),
+        ctx.DESC() != null ? Ordering.DESC : Ordering.ASC);
   }
 
   // ResultSetFormat Clause

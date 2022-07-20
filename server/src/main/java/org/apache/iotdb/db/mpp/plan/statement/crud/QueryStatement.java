@@ -32,6 +32,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
@@ -225,6 +226,13 @@ public class QueryStatement extends Statement {
 
   public boolean isOrderByDevice() {
     return orderByComponent != null && orderByComponent.isOrderByDevice();
+  }
+
+  public Ordering getResultTimeOrder() {
+    if (orderByComponent == null || !orderByComponent.isOrderByTime()) {
+      return Ordering.ASC;
+    }
+    return orderByComponent.getTimeOrder();
   }
 
   public void semanticCheck() {

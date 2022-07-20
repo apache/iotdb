@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -43,7 +43,7 @@ public class FilterNode extends TransformNode {
       Expression predicate,
       boolean keepNull,
       ZoneId zoneId,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id, childPlanNode, outputExpressions, keepNull, zoneId, scanOrder);
     this.predicate = predicate;
   }
@@ -54,7 +54,7 @@ public class FilterNode extends TransformNode {
       Expression predicate,
       boolean keepNull,
       ZoneId zoneId,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id, outputExpressions, keepNull, zoneId, scanOrder);
     this.predicate = predicate;
   }
@@ -105,7 +105,7 @@ public class FilterNode extends TransformNode {
     Expression predicate = Expression.deserialize(byteBuffer);
     boolean keepNull = ReadWriteIOUtils.readBool(byteBuffer);
     ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
-    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new FilterNode(planNodeId, outputExpressions, predicate, keepNull, zoneId, scanOrder);
   }

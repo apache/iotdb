@@ -19,30 +19,14 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
-import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class SortItem extends StatementNode {
-
-  public enum SortKey {
-    TIME,
-    TIMESERIES,
-    DEVICE
-  }
-
-  public enum Ordering {
-    ASC,
-    DESC;
-
-    public Ordering reverse() {
-      if (this == ASC) {
-        return DESC;
-      } else {
-        return ASC;
-      }
-    }
-  }
+public class SortItem {
 
   private final SortKey sortKey;
   private final Ordering ordering;
@@ -62,6 +46,22 @@ public class SortItem extends StatementNode {
 
   public SortItem reverse() {
     return new SortItem(getSortKey(), getOrdering().reverse());
+  }
+
+  public void serialize(ByteBuffer byteBuffer) {
+    ReadWriteIOUtils.write(sortKey.ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(ordering.ordinal(), byteBuffer);
+  }
+
+  public void serialize(DataOutputStream stream) throws IOException {
+    ReadWriteIOUtils.write(sortKey.ordinal(), stream);
+    ReadWriteIOUtils.write(ordering.ordinal(), stream);
+  }
+
+  public static SortItem deserialize(ByteBuffer byteBuffer) {
+    SortKey sortKey = SortKey.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering ordering = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    return new SortItem(sortKey, ordering);
   }
 
   @Override

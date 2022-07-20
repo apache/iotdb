@@ -31,7 +31,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.junit.Test;
@@ -47,28 +47,20 @@ public class NoDataRegionPlanningTest {
     String d5s1 = "root.sg.d55555.s1";
 
     QueryId queryId = new QueryId("test_query");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
 
     timeJoinNode.addChild(
         new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath(d1s1, TSDataType.INT32),
-            OrderBy.TIMESTAMP_ASC));
+            queryId.genPlanNodeId(), new MeasurementPath(d1s1, TSDataType.INT32), Ordering.ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath(d1s2, TSDataType.INT32),
-            OrderBy.TIMESTAMP_ASC));
+            queryId.genPlanNodeId(), new MeasurementPath(d1s2, TSDataType.INT32), Ordering.ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath(d3s1, TSDataType.INT32),
-            OrderBy.TIMESTAMP_ASC));
+            queryId.genPlanNodeId(), new MeasurementPath(d3s1, TSDataType.INT32), Ordering.ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
-            queryId.genPlanNodeId(),
-            new MeasurementPath(d5s1, TSDataType.INT32),
-            OrderBy.TIMESTAMP_ASC));
+            queryId.genPlanNodeId(), new MeasurementPath(d5s1, TSDataType.INT32), Ordering.ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
 

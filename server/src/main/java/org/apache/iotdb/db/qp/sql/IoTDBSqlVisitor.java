@@ -53,7 +53,9 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -1486,10 +1488,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       throw new SQLParserException("Sorting by multiple fields is not supported.");
     }
     SortItem sortItem = parseOrderByAttributeClause(ctx.orderByAttributeClause(0));
-    if (sortItem.getSortKey() != SortItem.SortKey.TIME) {
+    if (sortItem.getSortKey() != SortKey.TIME) {
       throw new SQLParserException("It only supports sorting by time.");
     }
-    if (sortItem.getOrdering() == SortItem.Ordering.DESC) {
+    if (sortItem.getOrdering() == Ordering.DESC) {
       SpecialClauseComponent specialClauseComponent = queryOp.getSpecialClauseComponent();
       if (specialClauseComponent == null) {
         specialClauseComponent = new SpecialClauseComponent();
@@ -1501,8 +1503,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private SortItem parseOrderByAttributeClause(IoTDBSqlParser.OrderByAttributeClauseContext ctx) {
     return new SortItem(
-        SortItem.SortKey.valueOf(ctx.sortKey().getText().toUpperCase()),
-        ctx.DESC() != null ? SortItem.Ordering.DESC : SortItem.Ordering.ASC);
+        SortKey.valueOf(ctx.sortKey().getText().toUpperCase()),
+        ctx.DESC() != null ? Ordering.DESC : Ordering.ASC);
   }
 
   private void parseGroupByTimeClause(IoTDBSqlParser.GroupByTimeClauseContext ctx) {

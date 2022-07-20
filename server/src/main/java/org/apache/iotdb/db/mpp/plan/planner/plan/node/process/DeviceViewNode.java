@@ -22,7 +22,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -46,7 +46,7 @@ public class DeviceViewNode extends MultiChildNode {
 
   // The result output order, which could sort by device and time.
   // The size of this list is 2 and the first OrderBy in this list has higher priority.
-  private final List<OrderBy> mergeOrders;
+  private final List<SortItem> mergeOrders;
 
   // The size devices and children should be the same.
   private final List<String> devices = new ArrayList<>();
@@ -56,11 +56,11 @@ public class DeviceViewNode extends MultiChildNode {
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
-  private Map<String, List<Integer>> deviceToMeasurementIndexesMap;
+  private final Map<String, List<Integer>> deviceToMeasurementIndexesMap;
 
   public DeviceViewNode(
       PlanNodeId id,
-      List<OrderBy> mergeOrders,
+      List<SortItem> mergeOrders,
       List<String> outputColumnNames,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
     super(id);
@@ -71,7 +71,7 @@ public class DeviceViewNode extends MultiChildNode {
 
   public DeviceViewNode(
       PlanNodeId id,
-      List<OrderBy> mergeOrders,
+      List<SortItem> mergeOrders,
       List<String> outputColumnNames,
       List<String> devices,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap) {
@@ -116,7 +116,7 @@ public class DeviceViewNode extends MultiChildNode {
         getPlanNodeId(), mergeOrders, outputColumnNames, devices, deviceToMeasurementIndexesMap);
   }
 
-  public List<OrderBy> getMergeOrders() {
+  public List<SortItem> getMergeOrders() {
     return mergeOrders;
   }
 
@@ -133,8 +133,10 @@ public class DeviceViewNode extends MultiChildNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICE_VIEW.serialize(byteBuffer);
-    ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), byteBuffer);
+    ReadWriteIOUtils.write(mergeOrders.size(), byteBuffer);
+    for (SortItem mergeOrder : mergeOrders) {
+      mergeOrder.serialize(byteBuffer);
+    }
     ReadWriteIOUtils.write(outputColumnNames.size(), byteBuffer);
     for (String column : outputColumnNames) {
       ReadWriteIOUtils.write(column, byteBuffer);
@@ -156,8 +158,10 @@ public class DeviceViewNode extends MultiChildNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.DEVICE_VIEW.serialize(stream);
-    ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), stream);
-    ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), stream);
+    ReadWriteIOUtils.write(mergeOrders.size(), stream);
+    for (SortItem mergeOrder : mergeOrders) {
+      mergeOrder.serialize(stream);
+    }
     ReadWriteIOUtils.write(outputColumnNames.size(), stream);
     for (String column : outputColumnNames) {
       ReadWriteIOUtils.write(column, stream);
@@ -177,9 +181,12 @@ public class DeviceViewNode extends MultiChildNode {
   }
 
   public static DeviceViewNode deserialize(ByteBuffer byteBuffer) {
-    List<OrderBy> mergeOrders = new ArrayList<>();
-    mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
-    mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
+    int mergeOrdersSize = ReadWriteIOUtils.readInt(byteBuffer);
+    List<SortItem> mergeOrders = new ArrayList<>(mergeOrdersSize);
+    while (mergeOrdersSize > 0) {
+      mergeOrders.add(SortItem.deserialize(byteBuffer));
+      mergeOrdersSize--;
+    }
     int columnSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> outputColumnNames = new ArrayList<>();
     while (columnSize > 0) {
