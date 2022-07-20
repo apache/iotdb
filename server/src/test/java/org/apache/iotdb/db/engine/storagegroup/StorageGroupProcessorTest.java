@@ -871,6 +871,82 @@ public class StorageGroupProcessorTest {
     config.setCloseTsFileIntervalAfterFlushing(prevCloseTsFileInterval);
   }
 
+  /**
+   * Totally 5 tsfiles<br>
+   * file 0, file 2 and file 4 has d0 ~ d1, time range is 0 ~ 99, 200 ~ 299, 400 ~ 499<br>
+   * file 1, file 3 has d0 ~ d2, time range is 100 ~ 199, 300 ~ 399<br>
+   * delete d2 in time range 50 ~ 150 and 150 ~ 450. Therefore, only file 1 and file 3 has mods.
+   */
+  @Test
+  public void testDeleteDataNotInFile()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException,
+          InterruptedException, IOException {
+    for (int i = 0; i < 5; i++) {
+      if (i % 2 == 0) {
+        for (int d = 0; d < 2; d++) {
+          for (int count = i * 100; count < i * 100 + 100; count++) {
+            TSRecord record = new TSRecord(count, "root.vehicle.d" + d);
+            record.addTuple(
+                DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(count)));
+            processor.insert(new InsertRowPlan(record));
+          }
+        }
+      } else {
+        for (int d = 0; d < 3; d++) {
+          for (int count = i * 100; count < i * 100 + 100; count++) {
+            TSRecord record = new TSRecord(count, "root.vehicle.d" + d);
+            record.addTuple(
+                DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(count)));
+            processor.insert(new InsertRowPlan(record));
+          }
+        }
+      }
+      processor.syncCloseAllWorkingTsFileProcessors();
+    }
+
+    // delete root.vehicle.d2.s0 data in the second file
+    processor.delete(new PartialPath("root.vehicle.d2.s0"), 50, 150, 0, null);
+
+    // delete root.vehicle.d2.s0 data in the third file
+    processor.delete(new PartialPath("root.vehicle.d2.s0"), 150, 450, 0, null);
+
+    for (int i = 0; i < processor.getTsFileResourceManager().getTsFileList(true).size(); i++) {
+      TsFileResource resource = processor.getTsFileResourceManager().getTsFileList(true).get(i);
+      if (i == 1) {
+        Assert.assertTrue(resource.getModFile().exists());
+        Assert.assertEquals(2, resource.getModFile().getModifications().size());
+      } else if (i == 3) {
+        Assert.assertTrue(resource.getModFile().exists());
+        Assert.assertEquals(1, resource.getModFile().getModifications().size());
+      } else {
+        Assert.assertFalse(resource.getModFile().exists());
+      }
+    }
+  }
+
+  @Test
+  public void testDeleteDataInFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+    for (int j = 0; j < 100; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      processor.insert(new InsertRowPlan(record));
+    }
+    TsFileResource tsFileResource = processor.getTsFileResourceManager().getTsFileList(true).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is in memtable
+    processor.delete(new PartialPath("root.vehicle.d2.s0"), 50, 70, 0, null);
+
+    // delete data which is not in memtable
+    processor.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    processor.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertTrue(tsFileResource.getModFile().exists());
+    Assert.assertEquals(2, tsFileResource.getModFile().getModifications().size());
+  }
+
   class DummySGP extends VirtualStorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {

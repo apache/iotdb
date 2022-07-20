@@ -1932,15 +1932,20 @@ public class VirtualStorageGroupProcessor {
             logicalStorageGroupName, tsFileResource.getTimePartition())) {
       return true;
     }
+    if (!tsFileResource.isClosed()) {
+      // tsfile is not closed
+      return false;
+    }
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
-      long endTime = tsFileResource.getEndTime(deviceId);
-      if (endTime == Long.MIN_VALUE) {
-        return false;
+      if (!tsFileResource.mayContainsDevice(deviceId)) {
+        // resource does not contain this device
+        continue;
       }
 
-      if (tsFileResource.isDeviceIdExist(deviceId)
-          && (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= endTime)) {
+      if (deleteEnd >= tsFileResource.getStartTime(deviceId)
+          && deleteStart <= tsFileResource.getEndTime(deviceId)) {
+        // time range of device has overlap with the deletion
         return false;
       }
     }
@@ -1976,7 +1981,7 @@ public class VirtualStorageGroupProcessor {
         // remember to close mod file
         tsFileResource.getCompactionModFile().close();
         tsFileResource.getModFile().close();
-      } else {
+      } else if (tsFileResource.isClosed()) {
         deletion.setFileOffset(tsFileResource.getTsFileSize());
         // write deletion into modification file
         tsFileResource.getModFile().write(deletion);
@@ -1989,8 +1994,6 @@ public class VirtualStorageGroupProcessor {
           deletion.getStartTime(),
           deletion.getEndTime(),
           tsFileResource.getModFile().getFilePath());
-
-      tsFileResource.updatePlanIndexes(planIndex);
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
