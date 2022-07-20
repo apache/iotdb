@@ -38,13 +38,13 @@ import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
@@ -52,12 +52,14 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -565,23 +567,9 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
   public TemplateInfoResp getAllTemplates() {
     TemplateInfoResp result = new TemplateInfoResp();
-    TGetAllTemplatesResp resp = templateTable.getAllTemplate();
-    result.setStatus(resp.getStatus());
-    if (resp.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (resp.getTemplateList() != null) {
-        List<Template> list = new ArrayList<Template>();
-        resp.getTemplateList().stream()
-            .forEach(
-                item -> {
-                  try {
-                    list.add(Template.byteBuffer2Template(item));
-                  } catch (IOException | ClassNotFoundException e) {
-                    throw new RuntimeException("template deserialization error.", e);
-                  }
-                });
-        result.setTemplateList(list);
-      }
-    }
+    List<Template> resp = templateTable.getAllTemplate();
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    result.setTemplateList(resp);
     return result;
   }
 
@@ -635,6 +623,44 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
     pathInfoResp.setStatus(status);
     return pathInfoResp;
+  }
+
+  public AllTemplateSetInfoResp getAllTemplateSetInfo() {
+    List<Template> templateList = templateTable.getAllTemplate();
+    Map<Integer, List<String>> templateSetInfo = new HashMap<>();
+    int id;
+    for (Template template : templateList) {
+      id = template.getId();
+      try {
+        List<String> pathList = mTree.getPathsSetOnTemplate(id);
+        if (!pathList.isEmpty()) {
+          templateSetInfo.put(id, pathList);
+        }
+      } catch (MetadataException e) {
+        LOGGER.error("Error occurred when get paths set on template {}", id, e);
+      }
+    }
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(templateSetInfo.size(), outputStream);
+
+      for (Template template : templateList) {
+        if (templateSetInfo.containsKey(template.getId())) {
+          ReadWriteIOUtils.write(template.serialize(), outputStream);
+
+          List<String> pathsSetTemplate = templateSetInfo.get(template.getId());
+          ReadWriteIOUtils.write(pathsSetTemplate.size(), outputStream);
+          for (String path : pathsSetTemplate) {
+            ReadWriteIOUtils.write(path, outputStream);
+          }
+        }
+      }
+    } catch (IOException ignored) {
+
+    }
+
+    return new AllTemplateSetInfoResp(outputStream.toByteArray());
   }
 
   @TestOnly

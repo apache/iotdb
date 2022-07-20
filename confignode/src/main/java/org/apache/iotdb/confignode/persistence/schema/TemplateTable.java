@@ -23,7 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -97,30 +96,13 @@ public class TemplateTable {
     }
   }
 
-  public TGetAllTemplatesResp getAllTemplate() {
-    TGetAllTemplatesResp resp = new TGetAllTemplatesResp();
+  public List<Template> getAllTemplate() {
     try {
       templateReadWriteLock.readLock().lock();
-      List<ByteBuffer> templates = new ArrayList<>();
-      this.templateMap.values().stream()
-          .forEach(
-              item -> {
-                try {
-                  templates.add(Template.template2ByteBuffer(item));
-                } catch (IOException e) {
-                  resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
-                  throw new RuntimeException(e);
-                }
-              });
-      resp.setTemplateList(templates);
-      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (RuntimeException e) {
-      LOGGER.warn("Error TemplateInfo name", e);
-      resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
+      return new ArrayList<>(templateMap.values());
     } finally {
       templateReadWriteLock.readLock().unlock();
     }
-    return resp;
   }
 
   public TSStatus createTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {

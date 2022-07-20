@@ -26,15 +26,15 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class GetSchemaTemplatePlan extends ConfigPhysicalPlan {
+public class GetAllTemplateSetInfoPlan extends ConfigPhysicalPlan {
 
-  public GetSchemaTemplatePlan() {
-    super(ConfigPhysicalPlanType.ShowSchemaTemplate);
+  public GetAllTemplateSetInfoPlan() {
+    super(ConfigPhysicalPlanType.GetAllTemplateSetInfo);
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.ShowSchemaTemplate.ordinal());
+    stream.writeInt(ConfigPhysicalPlanType.GetAllTemplateSetInfo.ordinal());
   }
 
   @Override

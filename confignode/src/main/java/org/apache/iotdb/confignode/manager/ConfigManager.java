@@ -193,6 +193,7 @@ public class ConfigManager implements IManager {
       DataNodeRegisterResp dataSet = new DataNodeRegisterResp();
       dataSet.setStatus(status);
       dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
+      dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
       return dataSet;
     }
   }

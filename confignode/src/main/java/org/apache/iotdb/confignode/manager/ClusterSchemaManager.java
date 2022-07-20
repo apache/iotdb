@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetAllTemplateSetInfoPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
@@ -43,6 +44,7 @@ import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
@@ -344,7 +346,8 @@ public class ClusterSchemaManager {
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (templateResp.getTemplateList() != null) {
         List<ByteBuffer> list = new ArrayList<ByteBuffer>();
-        templateResp.getTemplateList().stream()
+        templateResp
+            .getTemplateList()
             .forEach(
                 item -> {
                   try {
@@ -416,6 +419,13 @@ public class ClusterSchemaManager {
     } else {
       return new TGetPathsSetTemplatesResp(pathInfoResp.getStatus());
     }
+  }
+
+  public byte[] getAllTemplateSetInfo() {
+    AllTemplateSetInfoResp resp =
+        (AllTemplateSetInfoResp)
+            getConsensusManager().read(new GetAllTemplateSetInfoPlan()).getDataset();
+    return resp.getTemplateInfo();
   }
 
   private NodeManager getNodeManager() {
