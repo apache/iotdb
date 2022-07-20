@@ -44,9 +44,11 @@ public interface ISchemaFetcher {
       List<TSDataType[]> tsDataTypes,
       List<Boolean> aligned);
 
-  Pair<PartialPath, Template> checkTemplateSetInfo(PartialPath path);
+  Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path);
 
   List<Integer> checkAllRelatedTemplate(PartialPath pathPattern);
+
+  Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);
 
   void invalidAllCache();
 }

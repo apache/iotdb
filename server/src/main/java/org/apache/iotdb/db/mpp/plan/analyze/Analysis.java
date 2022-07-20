@@ -142,8 +142,8 @@ public class Analysis {
   // extra mesaage from config node, used for node management
   private Set<TSchemaNode> matchedNodes;
 
-  // template and template set path
-  private Pair<PartialPath, Template> templateSetInfo;
+  // template and paths set template
+  private Pair<Template, List<PartialPath>> templateSetInfo;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -398,11 +398,11 @@ public class Analysis {
     this.matchedNodes = matchedNodes;
   }
 
-  public Pair<PartialPath, Template> getTemplateSetInfo() {
+  public Pair<Template, List<PartialPath>> getTemplateSetInfo() {
     return templateSetInfo;
   }
 
-  public void setTemplateSetInfo(Pair<PartialPath, Template> templateSetInfo) {
+  public void setTemplateSetInfo(Pair<Template, List<PartialPath>> templateSetInfo) {
     this.templateSetInfo = templateSetInfo;
   }
 }

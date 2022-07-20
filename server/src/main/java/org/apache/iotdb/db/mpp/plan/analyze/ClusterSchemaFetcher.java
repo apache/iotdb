@@ -243,13 +243,18 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public Pair<PartialPath, Template> checkTemplateSetInfo(PartialPath path) {
+  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
     return templateManager.checkTemplateSetInfo(path);
   }
 
   @Override
   public List<Integer> checkAllRelatedTemplate(PartialPath pathPattern) {
     return null;
+  }
+
+  @Override
+  public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
+    return templateManager.getAllPathsSetTemplate(templateName);
   }
 
   private SchemaTree checkAndAutoCreateMissingMeasurements(

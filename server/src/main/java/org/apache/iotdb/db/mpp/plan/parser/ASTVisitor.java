@@ -107,6 +107,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -2496,6 +2497,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     ActivateTemplateStatement statement = new ActivateTemplateStatement();
     statement.setPath(parsePrefixPath(ctx.prefixPath()));
     return statement;
+  }
+
+  @Override
+  public Statement visitShowPathsUsingSchemaTemplate(
+      IoTDBSqlParser.ShowPathsUsingSchemaTemplateContext ctx) {
+    return new ShowPathsUsingTemplateStatement(ctx.templateName.children.get(0).getText());
   }
 
   // schema template

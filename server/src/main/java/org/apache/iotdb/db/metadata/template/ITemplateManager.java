@@ -67,5 +67,7 @@ public interface ITemplateManager {
    */
   List<PartialPath> getPathsSetTemplate(String name);
 
-  Pair<PartialPath, Template> checkTemplateSetInfo(PartialPath path);
+  Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path);
+
+  Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);
 }

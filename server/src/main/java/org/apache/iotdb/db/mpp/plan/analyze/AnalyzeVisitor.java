@@ -81,6 +81,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
@@ -108,6 +109,8 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
 
 /** This visitor is used to analyze each type of Statement and returns the {@link Analysis}. */
@@ -1406,20 +1409,53 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     PartialPath activatePath = activateTemplateStatement.getPath();
 
-    Pair<PartialPath, Template> templateSetInfo = schemaFetcher.checkTemplateSetInfo(activatePath);
+    Pair<Template, PartialPath> templateSetInfo = schemaFetcher.checkTemplateSetInfo(activatePath);
     if (templateSetInfo == null) {
       throw new StatementAnalyzeException(
           new MetadataException(
               String.format(
                   "Path [%s] has not been set any template.", activatePath.getFullPath())));
     }
-    analysis.setTemplateSetInfo(templateSetInfo);
+    analysis.setTemplateSetInfo(
+        new Pair<>(templateSetInfo.left, Collections.singletonList(templateSetInfo.right)));
 
     PathPatternTree patternTree = new PathPatternTree();
-    patternTree.appendPathPattern(activatePath.concatNode("*"));
+    patternTree.appendPathPattern(activatePath.concatNode(ONE_LEVEL_PATH_WILDCARD));
     SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
 
     analysis.setSchemaPartitionInfo(partition);
+
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitShowPathsUsingTemplate(
+      ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, MPPQueryContext context) {
+    Analysis analysis = new Analysis();
+
+    Pair<Template, List<PartialPath>> templateSetInfo =
+        schemaFetcher.getAllPathsSetTemplate(showPathsUsingTemplateStatement.getTemplateName());
+    analysis.setTemplateSetInfo(templateSetInfo);
+    if (templateSetInfo == null
+        || templateSetInfo.right == null
+        || templateSetInfo.right.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
+    }
+
+    PathPatternTree patternTree = new PathPatternTree();
+    templateSetInfo.right.forEach(
+        path -> {
+          patternTree.appendPathPattern(path);
+          patternTree.appendPathPattern(path.concatNode(MULTI_LEVEL_PATH_WILDCARD));
+        });
+
+    SchemaPartition partition = partitionFetcher.getOrCreateSchemaPartition(patternTree);
+    analysis.setSchemaPartitionInfo(partition);
+    if (partition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+      return analysis;
+    }
 
     return analysis;
   }

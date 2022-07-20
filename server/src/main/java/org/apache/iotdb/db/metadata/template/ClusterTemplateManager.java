@@ -55,9 +55,11 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTemplateManager.class);
 
-  private Map<Integer, Template> templateMap = new ConcurrentHashMap<>();
+  private Map<Integer, Template> templateIdMap = new ConcurrentHashMap<>();
+  private Map<String, Integer> templateNameMap = new ConcurrentHashMap<>();
 
-  private Map<PartialPath, Integer> templateSetPathMap = new ConcurrentHashMap<>();
+  private Map<PartialPath, Integer> pathSetTemplateMap = new ConcurrentHashMap<>();
+  private Map<Integer, List<PartialPath>> templateSetOnPathsMap = new ConcurrentHashMap<>();
 
   private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
@@ -175,7 +177,7 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   @Override
   public Template getTemplate(int id) {
-    return templateMap.get(id);
+    return templateIdMap.get(id);
   }
 
   @Override
@@ -227,14 +229,23 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   @Override
-  public Pair<PartialPath, Template> checkTemplateSetInfo(PartialPath path) {
-    for (PartialPath templateSetPath : templateSetPathMap.keySet()) {
+  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
+    for (PartialPath templateSetPath : pathSetTemplateMap.keySet()) {
       if (path.startsWith(templateSetPath.getNodes())) {
         return new Pair<>(
-            templateSetPath, templateMap.get(templateSetPathMap.get(templateSetPath)));
+            templateIdMap.get(pathSetTemplateMap.get(templateSetPath)), templateSetPath);
       }
     }
     return null;
+  }
+
+  @Override
+  public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
+    if (!templateNameMap.containsKey(templateName)) {
+      return null;
+    }
+    Template template = templateIdMap.get(templateNameMap.get(templateName));
+    return new Pair<>(template, templateSetOnPathsMap.get(template.getId()));
   }
 
   public void updateTemplateSetInfo(byte[] templateSetInfo) {
@@ -249,13 +260,19 @@ public class ClusterTemplateManager implements ITemplateManager {
       for (int i = 0; i < templateNum; i++) {
         Template template = new Template();
         template.deserialize(buffer);
-        templateMap.put(template.getId(), template);
+        templateIdMap.put(template.getId(), template);
+        templateNameMap.put(template.getName(), template.getId());
 
         pathNum = ReadWriteIOUtils.readInt(buffer);
         for (int j = 0; j < pathNum; j++) {
           pathSetTemplate = ReadWriteIOUtils.readString(buffer);
           try {
-            templateSetPathMap.put(new PartialPath(pathSetTemplate), template.getId());
+            PartialPath path = new PartialPath(pathSetTemplate);
+            pathSetTemplateMap.put(path, template.getId());
+            List<PartialPath> pathList =
+                templateSetOnPathsMap.computeIfAbsent(
+                    template.getId(), integer -> new ArrayList<>());
+            pathList.add(path);
           } catch (IllegalPathException ignored) {
 
           }
