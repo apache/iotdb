@@ -63,4 +63,6 @@ public interface ITemplateManager {
    * @return
    */
   List<PartialPath> getPathsSetTemplate(String name);
+
+
 }

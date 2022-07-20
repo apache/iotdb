@@ -1399,6 +1399,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitActivateTemplate(
       ActivateTemplateStatement activateTemplateStatement, MPPQueryContext context) {
+
+
+
     return super.visitActivateTemplate(activateTemplateStatement, context);
   }
 }

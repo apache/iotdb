@@ -27,6 +27,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
+import org.apache.iotdb.db.metadata.template.ITemplateManager;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -69,6 +72,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private final Coordinator coordinator = Coordinator.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
+  private final ITemplateManager templateManager = ClusterTemplateManager.getInstance();
 
   private static final class ClusterSchemaFetcherHolder {
     private static final ClusterSchemaFetcher INSTANCE = new ClusterSchemaFetcher();
@@ -236,6 +240,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       schemaCache.put(missingSchemaTree);
     }
     return schemaTree;
+  }
+
+  @Override
+  public Pair<PartialPath, Template> checkTemplateSetInfo(PartialPath path) {
+    return null;
+  }
+
+  @Override
+  public List<Integer> checkAllRelatedTemplate(PartialPath pathPattern) {
+    return null;
   }
 
   private SchemaTree checkAndAutoCreateMissingMeasurements(

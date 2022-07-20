@@ -20,9 +20,11 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 
@@ -41,6 +43,10 @@ public interface ISchemaFetcher {
       List<String[]> measurements,
       List<TSDataType[]> tsDataTypes,
       List<Boolean> aligned);
+
+  Pair<PartialPath, Template> checkTemplateSetInfo(PartialPath path);
+
+  List<Integer> checkAllRelatedTemplate(PartialPath pathPattern);
 
   void invalidAllCache();
 }

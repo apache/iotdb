@@ -26,6 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -157,6 +158,16 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       schemaTree.mergeSchemaTree(missingSchemaTree);
     }
     return schemaTree;
+  }
+
+  @Override
+  public Pair<PartialPath, Template> checkTemplateSetInfo(PartialPath path) {
+    return null;
+  }
+
+  @Override
+  public List<Integer> checkAllRelatedTemplate(PartialPath pathPattern) {
+    return null;
   }
 
   @Override
