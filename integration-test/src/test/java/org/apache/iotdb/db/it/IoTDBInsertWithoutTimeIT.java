@@ -90,16 +90,18 @@ public class IoTDBInsertWithoutTimeIT {
     }
 
     String expectedHeader = "count(root.sg1.d1.s1),count(root.sg1.d1.s2),count(root.sg1.d1.s3),";
-    String[] retArray = new String[] {"6,", "6,", "6,"};
+    String[] retArray = new String[] {"4,4,4,"};
     resultSetEqualTest(
         "select count(s1), count(s2), count(s3) from root.sg1.d1", expectedHeader, retArray);
   }
 
+  @Test
   public void testInsertWithoutValueColumns() {
     assertNonQueryTestFail(
         "insert into root.sg1.d1(time) values (1)", "Error occurred while parsing SQL");
   }
 
+  @Test
   public void testInsertMultiRow() {
     assertNonQueryTestFail(
         "insert into root.sg1.d1(s3) values ('1'), ('2')",
@@ -109,6 +111,7 @@ public class IoTDBInsertWithoutTimeIT {
         "need timestamps when insert multi rows");
   }
 
+  @Test
   public void testInsertWithMultiTimesColumns() {
     assertNonQueryTestFail(
         "insert into root.sg1.d1(time, time) values (1, 1)", "Error occurred while parsing SQL");
