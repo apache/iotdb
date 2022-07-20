@@ -169,6 +169,7 @@ public class NodeManager {
   public DataNodeConfigurationResp getDataNodeConfiguration(GetDataNodeConfigurationPlan req) {
     return (DataNodeConfigurationResp) getConsensusManager().read(req).getDataset();
   }
+
   /**
    * Only leader use this interface
    *
@@ -196,6 +197,15 @@ public class NodeManager {
    */
   public List<TDataNodeConfiguration> getRegisteredDataNodes(int dataNodeId) {
     return nodeInfo.getRegisteredDataNodes(dataNodeId);
+  }
+
+  public List<TDataNodeLocation> getRegisteredDataNodeLocations(int dataNodeId) {
+    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
+    nodeInfo
+        .getRegisteredDataNodes(dataNodeId)
+        .forEach(
+            dataNodeConfiguration -> dataNodeLocations.add(dataNodeConfiguration.getLocation()));
+    return dataNodeLocations;
   }
 
   public List<TDataNodesInfo> getRegisteredDataNodesInfoList() {
@@ -434,11 +444,8 @@ public class NodeManager {
   }
 
   public List<TSStatus> flush(TFlushReq req) {
-    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
-    configManager
-        .getNodeManager()
-        .getRegisteredDataNodes(req.dataNodeId)
-        .forEach(registerDataNode -> dataNodeLocations.add(registerDataNode.getLocation()));
+    List<TDataNodeLocation> dataNodeLocations =
+        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocations.size()));
     AsyncDataNodeClientPool.getInstance()
