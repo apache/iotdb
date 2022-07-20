@@ -1823,6 +1823,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
       if (insertMultiValues.get(i).timeValue() != null) {
         if (isTimeDefault) {
+          if (insertMultiValues.size() != 1) {
+            throw new SQLParserException("need timestamps when insert multi rows");
+          }
           valueList.add(insertMultiValues.get(i).timeValue().getText());
           timestamp = DatetimeUtils.currentTime();
         } else {

@@ -1270,6 +1270,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
       if (insertMultiValues.get(i).timeValue() != null) {
         if (isTimeDefault) {
+          if (insertMultiValues.size() != 1) {
+            throw new SemanticException("need timestamps when insert multi rows");
+          }
           valueList.add(insertMultiValues.get(i).timeValue().getText());
           timestamp = DatetimeUtils.currentTime();
         } else {
