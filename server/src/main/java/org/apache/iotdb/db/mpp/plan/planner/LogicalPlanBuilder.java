@@ -70,6 +70,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
@@ -142,7 +143,9 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planLast(
-      Set<Expression> sourceExpressions, Filter globalTimeFilter, List<SortItem> mergeOrders) {
+      Set<Expression> sourceExpressions,
+      Filter globalTimeFilter,
+      OrderByParameter mergeOrderParameter) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     for (Expression sourceExpression : sourceExpressions) {
       MeasurementPath selectPath =
@@ -158,7 +161,10 @@ public class LogicalPlanBuilder {
 
     this.root =
         new LastQueryMergeNode(
-            context.getQueryId().genPlanNodeId(), sourceNodeList, globalTimeFilter, mergeOrders);
+            context.getQueryId().genPlanNodeId(),
+            sourceNodeList,
+            globalTimeFilter,
+            mergeOrderParameter);
     return this;
   }
 
@@ -414,8 +420,10 @@ public class LogicalPlanBuilder {
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             context.getQueryId().genPlanNodeId(),
-            Arrays.asList(
-                new SortItem(SortKey.DEVICE, Ordering.ASC), new SortItem(SortKey.TIME, mergeOrder)),
+            new OrderByParameter(
+                Arrays.asList(
+                    new SortItem(SortKey.DEVICE, Ordering.ASC),
+                    new SortItem(SortKey.TIME, mergeOrder))),
             outputColumnNames,
             deviceToMeasurementIndexesMap);
     for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {

@@ -52,6 +52,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -96,7 +97,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     DeviceMergeNode deviceMergeNode =
         new DeviceMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrders(),
+            node.getMergeOrderParameter(),
             node.getDevices());
 
     // Step 2: Iterate all partition and create DeviceViewNode for each region
@@ -112,7 +113,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       DeviceViewNode regionDeviceViewNode =
           new DeviceViewNode(
               context.queryContext.getQueryId().genPlanNodeId(),
-              node.getMergeOrders(),
+              node.getMergeOrderParameter(),
               node.getOutputColumnNames(),
               node.getDeviceToMeasurementIndexesMap());
       for (int i = 0; i < devices.size(); i++) {
@@ -233,7 +234,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         new LastQueryMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.getPartitionTimeFilter(),
-            Collections.emptyList());
+            new OrderByParameter());
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -244,7 +245,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         new LastQueryMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.getPartitionTimeFilter(),
-            Collections.emptyList());
+            new OrderByParameter());
     return processRawSeriesScan(node, context, mergeNode);
   }
 

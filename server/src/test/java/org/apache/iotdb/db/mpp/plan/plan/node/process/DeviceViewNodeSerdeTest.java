@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.plan.plan.node.PlanNodeDeserializeHelper;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
@@ -43,9 +44,10 @@ public class DeviceViewNodeSerdeTest {
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             new PlanNodeId("TestDeviceMergeNode"),
-            Arrays.asList(
-                new SortItem(SortKey.DEVICE, Ordering.ASC),
-                new SortItem(SortKey.TIME, Ordering.DESC)),
+            new OrderByParameter(
+                Arrays.asList(
+                    new SortItem(SortKey.DEVICE, Ordering.ASC),
+                    new SortItem(SortKey.TIME, Ordering.DESC))),
             Arrays.asList("s1", "s2"),
             new HashMap<>());
     deviceViewNode.addChildDeviceNode("root.sg.d1", timeJoinNode1);

@@ -649,7 +649,7 @@ public class LocalExecutionPlanner {
       List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
       TimeSelector selector = null;
       TimeComparator timeComparator = null;
-      for (SortItem sortItem : node.getMergeOrders()) {
+      for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
         if (sortItem.getSortKey() == SortKey.TIME) {
           Ordering ordering = sortItem.getOrdering();
           if (ordering == Ordering.ASC) {

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
@@ -62,7 +63,6 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -96,7 +96,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
           .planLast(
               analysis.getSourceExpressions(),
               analysis.getGlobalTimeFilter(),
-              queryStatement.getSortItemList())
+              analysis.getMergeOrderParameter())
           .getRoot();
     }
 
@@ -309,7 +309,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       LastPointFetchStatement lastPointFetchStatement, MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
     return planBuilder
-        .planLast(analysis.getSourceExpressions(), null, Collections.emptyList())
+        .planLast(analysis.getSourceExpressions(), null, new OrderByParameter())
         .getRoot();
   }
 
@@ -465,7 +465,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
               .planLast(
                   analysis.getSourceExpressions(),
                   analysis.getGlobalTimeFilter(),
-                  Collections.emptyList())
+                  new OrderByParameter())
               .getRoot();
       planBuilder = planBuilder.planSchemaQueryOrderByHeat(lastPlanNode);
     }

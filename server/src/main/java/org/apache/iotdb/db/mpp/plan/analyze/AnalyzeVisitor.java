@@ -40,6 +40,7 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
@@ -180,7 +181,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (hasValueFilter) {
           throw new SemanticException("Only time filters are supported in LAST query");
         }
-
+        analysis.setMergeOrderParameter(analyzeOrderBy(queryStatement));
         return analyzeLast(analysis, schemaTree.getAllMeasurement(), schemaTree);
       }
 
@@ -760,6 +761,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           .add(queryParam);
     }
     return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+  }
+
+  private OrderByParameter analyzeOrderBy(QueryStatement queryStatement) {
+    return new OrderByParameter(queryStatement.getSortItemList());
   }
 
   /**
