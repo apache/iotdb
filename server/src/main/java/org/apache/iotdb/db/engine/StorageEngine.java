@@ -198,6 +198,8 @@ public class StorageEngine implements IService {
                 blockingQueue, operationSyncsessionPool, operationSyncDMLLogService);
         new Thread(consumer).start();
       }
+
+      logger.info("Successfully initialize OperationSync!");
     } else {
       operationSyncsessionPool = null;
       operationSyncProducer = null;
