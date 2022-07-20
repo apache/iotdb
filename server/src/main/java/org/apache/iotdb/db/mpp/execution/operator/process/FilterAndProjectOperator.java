@@ -27,13 +27,14 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ConstantColumn;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
+import org.apache.iotdb.db.mpp.transformation.dag.util.TransformUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
@@ -209,6 +210,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
    */
   private TsBlock getFilterTsBlock(TsBlock input) {
     final TimeColumn originTimeColumn = input.getTimeColumn();
+    final int positionCount = originTimeColumn.getPositionCount();
     // feed Predicate ColumnTransformer, including TimeStampColumnTransformer and constant
     for (Expression expression : predicateMap.keySet()) {
       if (predicateInputLocations.containsKey(expression.getExpressionString())) {
@@ -225,7 +227,10 @@ public class FilterAndProjectOperator implements ProcessOperator {
       } else if (expression.getExpressionType().equals(ExpressionType.CONSTANT)) {
         predicateMap
             .get(expression)
-            .initializeColumnCache(new ConstantColumn((ConstantOperand) expression));
+            .initializeColumnCache(
+                new RunLengthEncodedColumn(
+                    TransformUtils.transformConstantOperandToColumn((ConstantOperand) expression),
+                    positionCount));
       }
     }
 
@@ -253,15 +258,18 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
     // construct result TsBlock of filter
     int rowCount = 0;
-    for (int i = 0, n = filterColumn.getPositionCount(), m = resultColumns.size(); i < n; i++) {
-      if (filterColumn.getBoolean(i)) {
-        rowCount++;
-        timeBuilder.writeLong(originTimeColumn.getLong(i));
-        for (int j = 0; j < m; j++) {
-          if (resultColumns.get(j).isNull(i)) {
-            columnBuilders[j].appendNull();
+    for (int i = 0, n = resultColumns.size(); i < n; i++) {
+      for (int j = 0; j < positionCount; j++) {
+        if (!filterColumn.isNull(j) && filterColumn.getBoolean(j)) {
+          if (i == 0) {
+            rowCount++;
+            timeBuilder.writeLong(originTimeColumn.getLong(j));
+          }
+          Column curColumn = resultColumns.get(i);
+          if (curColumn.isNull(j)) {
+            columnBuilders[i].appendNull();
           } else {
-            columnBuilders[j].write(resultColumns.get(j), i);
+            columnBuilders[i].write(curColumn, j);
           }
         }
       }
@@ -273,6 +281,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   private TsBlock getTransformedTsBlock(TsBlock input) {
     final TimeColumn originTimeColumn = input.getTimeColumn();
+    final int positionCount = originTimeColumn.getPositionCount();
     // feed pre calculated data
     for (Expression expression : outputMap.keySet()) {
       if (predicateInputLocations.containsKey(expression.getExpressionString())) {
@@ -289,7 +298,10 @@ public class FilterAndProjectOperator implements ProcessOperator {
       } else if (expression.getExpressionType().equals(ExpressionType.CONSTANT)) {
         outputMap
             .get(expression)
-            .initializeColumnCache(new ConstantColumn((ConstantOperand) expression));
+            .initializeColumnCache(
+                new RunLengthEncodedColumn(
+                    TransformUtils.transformConstantOperandToColumn((ConstantOperand) expression),
+                    positionCount));
       } else if (commonSubexpressions.contains(expression)) {
         outputMap
             .get(expression)
@@ -308,15 +320,17 @@ public class FilterAndProjectOperator implements ProcessOperator {
     final TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
     final ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
 
-    // construct result TsBlock
-    int positionCount = input.getPositionCount();
-    for (int i = 0; i < positionCount; i++) {
-      timeBuilder.writeLong(originTimeColumn.getLong(i));
-      for (int j = 0, m = resultColumns.size(); j < m; j++) {
-        if (resultColumns.get(j).isNull(i)) {
-          columnBuilders[j].appendNull();
+    // construct result TsBlock, column by column
+    for (int i = 0, n = resultColumns.size(); i < n; i++) {
+      for (int j = 0; j < positionCount; j++) {
+        if (i == 0) {
+          timeBuilder.writeLong(originTimeColumn.getLong(j));
+        }
+        Column curColumn = resultColumns.get(i);
+        if (curColumn.isNull(j)) {
+          columnBuilders[i].appendNull();
         } else {
-          columnBuilders[j].write(resultColumns.get(j), i);
+          columnBuilders[i].write(curColumn, j);
         }
       }
     }

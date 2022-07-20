@@ -65,6 +65,10 @@ public abstract class ColumnTransformer {
     columnCache.cacheColumn(column, referenceCount);
   }
 
+  public int getColumnCachePositionCount() {
+    return columnCache.getPositionCount();
+  }
+
   public Type getType() {
     return returnType;
   }

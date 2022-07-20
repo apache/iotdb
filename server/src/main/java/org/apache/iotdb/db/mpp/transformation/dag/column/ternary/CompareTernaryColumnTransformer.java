@@ -47,16 +47,11 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
     firstColumnTransformer.tryEvaluate();
     secondColumnTransformer.tryEvaluate();
     thirdColumnTransformer.tryEvaluate();
+    // attention: get positionCount before calling getColumn
+    int positionCount = firstColumnTransformer.getColumnCachePositionCount();
     Column firstColumn = firstColumnTransformer.getColumn();
     Column secondColumn = secondColumnTransformer.getColumn();
     Column thirdColumn = thirdColumnTransformer.getColumn();
-    int positionCount = firstColumn.getPositionCount();
-    if (positionCount < 0) {
-      positionCount =
-          secondColumn.getPositionCount() >= 0
-              ? secondColumn.getPositionCount()
-              : thirdColumn.getPositionCount();
-    }
     ColumnBuilder columnBuilder = returnType.createColumnBuilder(positionCount);
     doTransform(firstColumn, secondColumn, thirdColumn, columnBuilder, positionCount);
     initializeColumnCache(columnBuilder.build());

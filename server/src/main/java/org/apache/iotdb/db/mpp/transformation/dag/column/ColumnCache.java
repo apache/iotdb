@@ -41,6 +41,10 @@ public class ColumnCache {
     return res;
   }
 
+  public int getPositionCount() {
+    return column != null ? column.getPositionCount() : 0;
+  }
+
   public void cacheColumn(Column column, int referenceCount) {
     this.referenceCount = referenceCount;
     this.column = column;
