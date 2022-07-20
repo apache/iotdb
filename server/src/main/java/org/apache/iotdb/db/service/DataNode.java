@@ -58,6 +58,7 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.mpp.execution.exchange.MPPDataExchangeService;
 import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
@@ -279,6 +280,8 @@ public class DataNode implements DataNodeMBean {
           configNodeList.add(configNodeLocation.getInternalEndPoint());
         }
         ConfigNodeInfo.getInstance().updateConfigNodeList(configNodeList);
+        ClusterTemplateManager.getInstance()
+            .updateTemplateSetInfo(dataNodeRegisterResp.getTemplateInfo());
 
         if (dataNodeRegisterResp.getStatus().getCode()
                 == TSStatusCode.SUCCESS_STATUS.getStatusCode()

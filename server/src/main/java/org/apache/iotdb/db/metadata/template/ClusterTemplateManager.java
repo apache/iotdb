@@ -35,6 +35,7 @@ import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -44,11 +45,20 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ClusterTemplateManager implements ITemplateManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ClusterTemplateManager.class);
+
+  private Map<Integer, Template> templateMap = new ConcurrentHashMap<>();
+
+  private Map<String, Integer> templateSetPathMap = new ConcurrentHashMap<>();
+
+  private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
   private static final class ClusterTemplateManagerHolder {
     private static final ClusterTemplateManager INSTANCE = new ClusterTemplateManager();
@@ -208,5 +218,31 @@ public class ClusterTemplateManager implements ITemplateManager {
               "get path set template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
     }
     return listPath;
+  }
+
+  public void updateTemplateSetInfo(byte[] templateSetInfo) {
+    readWriteLock.writeLock().lock();
+    try {
+      ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
+
+      int templateNum = ReadWriteIOUtils.readInt(buffer);
+
+      int pathNum;
+      String pathSetTemplate;
+      for (int i = 0; i < templateNum; i++) {
+        Template template = new Template();
+        template.deserialize(buffer);
+        templateMap.put(template.getId(), template);
+
+        pathNum = ReadWriteIOUtils.readInt(buffer);
+        for (int j = 0; j < pathNum; j++) {
+          pathSetTemplate = ReadWriteIOUtils.readString(buffer);
+          templateSetPathMap.put(pathSetTemplate, template.getId());
+        }
+      }
+
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
   }
 }
