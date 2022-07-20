@@ -723,17 +723,18 @@ public class Session {
    * @throws StatementExecutionException statement is not right
    * @throws IoTDBConnectionException the network is not good
    */
-  public SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+  public SessionDataSet executeRawDataQuery(
+      List<String> paths, long startTime, long endTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime);
+      return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime, timeOut);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
         logger.debug("redirect query {} to {}", paths, e.getEndPoint());
         // retry
         try {
-          return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime);
+          return defaultSessionConnection.executeRawDataQuery(paths, startTime, endTime, timeOut);
         } catch (RedirectException redirectException) {
           logger.error("Redirect twice", redirectException);
           throw new StatementExecutionException("Redirect twice, please try again.");
@@ -751,16 +752,16 @@ public class Session {
    * @param LastTime get the last data, whose timestamp is greater than or equal LastTime e.g.
    *     1621326244168
    */
-  public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime)
+  public SessionDataSet executeLastDataQuery(List<String> paths, long LastTime, long timeOut)
       throws StatementExecutionException, IoTDBConnectionException {
     try {
-      return defaultSessionConnection.executeLastDataQuery(paths, LastTime);
+      return defaultSessionConnection.executeLastDataQuery(paths, LastTime, timeOut);
     } catch (RedirectException e) {
       handleQueryRedirection(e.getEndPoint());
       if (enableQueryRedirection) {
         // retry
         try {
-          return defaultSessionConnection.executeLastDataQuery(paths, LastTime);
+          return defaultSessionConnection.executeLastDataQuery(paths, LastTime, timeOut);
         } catch (RedirectException redirectException) {
           logger.error("redirect twice", redirectException);
           throw new StatementExecutionException("redirect twice, please try again.");
@@ -779,7 +780,7 @@ public class Session {
   public SessionDataSet executeLastDataQuery(List<String> paths)
       throws StatementExecutionException, IoTDBConnectionException {
     long time = 0L;
-    return executeLastDataQuery(paths, time);
+    return executeLastDataQuery(paths, time, 60000);
   }
 
   /**
@@ -2501,6 +2502,7 @@ public class Session {
     private int thriftMaxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
     private Version version = Config.DEFAULT_VERSION;
+    private long timeOut = Config.DEFAULT_QUERY_TIME_OUT;
 
     private List<String> nodeUrls = null;
 
@@ -2556,6 +2558,11 @@ public class Session {
 
     public Builder version(Version version) {
       this.version = version;
+      return this;
+    }
+
+    public Builder timeOut(long timeOut) {
+      this.timeOut = timeOut;
       return this;
     }
 

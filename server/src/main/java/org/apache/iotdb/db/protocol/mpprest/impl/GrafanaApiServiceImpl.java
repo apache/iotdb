@@ -117,7 +117,13 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
-              statement, queryId, null, sql.getSql(), PARTITION_FETCHER, SCHEMA_FETCHER);
+              statement,
+              queryId,
+              null,
+              sql.getSql(),
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              config.getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return Response.ok()
             .entity(
@@ -172,7 +178,14 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       final long queryId = SESSION_MANAGER.requestQueryId(true);
       // create and cache dataset
       ExecutionResult result =
-          COORDINATOR.execute(statement, queryId, null, sql, PARTITION_FETCHER, SCHEMA_FETCHER);
+          COORDINATOR.execute(
+              statement,
+              queryId,
+              null,
+              sql,
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              config.getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return Response.ok()
             .entity(
@@ -221,7 +234,14 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         final long queryId = SESSION_MANAGER.requestQueryId(true);
         // create and cache dataset
         ExecutionResult result =
-            COORDINATOR.execute(statement, queryId, null, sql, PARTITION_FETCHER, SCHEMA_FETCHER);
+            COORDINATOR.execute(
+                statement,
+                queryId,
+                null,
+                sql,
+                PARTITION_FETCHER,
+                SCHEMA_FETCHER,
+                config.getQueryTimeoutThreshold());
         if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           return Response.ok()
               .entity(
