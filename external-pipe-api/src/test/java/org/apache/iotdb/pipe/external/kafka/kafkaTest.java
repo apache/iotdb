@@ -123,9 +123,9 @@ public class kafkaTest {
 
     try {
       kf.validateSinkParams(sinkParams);
-      System.out.println("Correct!\nbrokers/localhost:9092, topic/IoTDB");
+      System.out.println("Correct!\nbrokers/localhost:9092, topic/IoTDB, means/serial");
     } catch (Exception e) {
-      System.out.println(e.getMessage() + "\nbrokers/localhost:9092, topic/IoTDB");
+      System.out.println(e.getMessage() + "\nbrokers/localhost:9092, topic/IoTDB, means/serial");
     }
 
     try {
@@ -161,7 +161,7 @@ public class kafkaTest {
       System.out.println("Pipe writing failed!");
     }
 
-    sinkParams.put("means", "non-serial");
+    sinkParams.put("means", "type");
     sinkParams.put("key", "test");
 
     try {

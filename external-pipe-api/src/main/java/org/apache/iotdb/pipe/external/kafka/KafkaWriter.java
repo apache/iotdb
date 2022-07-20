@@ -78,11 +78,10 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
       throws IOException {
     String data;
     String Timeseries = String.join(".", path);
-    if (this.kafkaParams.containsKey("means")
-        && this.kafkaParams.get("means").equals("non-serial")) {
+    if (this.kafkaParams.containsKey("means") && this.kafkaParams.get("means").equals("type")) {
       data = Timeseries + ':' + time + ':' + type + ':' + value;
     } else {
-      data = "insert:" + Timeseries + ':' + time + ':' + value;
+      data = Timeseries + ':' + time + ':' + value;
     }
     kafka_send(data);
   }
@@ -113,29 +112,29 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
 
   public void insertVector(String[] path, DataType[] dataTypes, long time, Object[] values)
       throws IOException {
-    if (this.kafkaParams.containsKey("means")
-        && this.kafkaParams.get("means").equals("non-serial")) {
-      String Timeseries = String.join(".", path);
+    String Timeseries = String.join(".", path);
+    String data;
+    if (this.kafkaParams.containsKey("means") && this.kafkaParams.get("means").equals("type")) {
       String[] pairs = new String[values.length];
       for (int i = 0; i < values.length; ++i) {
         pairs[i] = dataTypes[i].toString() + ':' + values[i].toString();
       }
       String Values = String.join(":", pairs);
-      String data = Timeseries + ':' + time + ':' + DataType.VECTOR + ':' + Values;
-      kafka_send(data);
+      data = Timeseries + ':' + time + ':' + DataType.VECTOR + ':' + Values;
+
     } else {
+      String[] no_type_values = new String[values.length];
       for (int i = 0; i < values.length; ++i) {
-        insertData(path, time, values[i], dataTypes[i]);
+        no_type_values[i] = values[i].toString();
       }
+      String Values = String.join(":", no_type_values);
+      data = Timeseries + ':' + time + ':' + Values;
     }
+    kafka_send(data);
   }
 
   public void delete(String[] path, long time) throws IOException {
     try {
-      if (this.kafkaParams.containsKey("means")
-          && this.kafkaParams.get("means").equals("non-serial")) {
-        return;
-      }
       String Timeseries = String.join(".", path);
       String data = "delete:" + Timeseries + ':' + time;
       this.producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
@@ -145,26 +144,11 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
   }
 
   // The "vector" TimeSeries does not contain its dataTypes currently.
-  public void createTimeSeries(String[] path, DataType dataType) throws IOException {
-    try {
-      if (this.kafkaParams.containsKey("means")
-          && this.kafkaParams.get("means").equals("non-serial")) {
-        return;
-      }
-      String Timeseries = String.join(".", path);
-      String data = "create:" + Timeseries + ':' + dataType;
-      producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
-    } catch (Exception e) {
-      throw new IOException();
-    }
-  }
+  // This function will be fixed when ultimate version is specified.
+  public void createTimeSeries(String[] path, DataType dataType) throws IOException {}
 
   public void deleteTimeSeries(String[] path) throws IOException {
     try {
-      if (this.kafkaParams.containsKey("means")
-          && this.kafkaParams.get("means").equals("non-serial")) {
-        return;
-      }
       String Timeseries = String.join(".", path);
       String data = "del_time:" + Timeseries;
       producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
