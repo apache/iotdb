@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
@@ -123,29 +122,33 @@ public class AddConfigNodeProcedure
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    if (configNodeProcedureEnv.getConfigNodeLock().tryLock()) {
-      LOG.info("{} acquire lock.", getProcId());
-      return ProcedureLockState.LOCK_ACQUIRED;
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      if (configNodeProcedureEnv.getNodeLock().tryLock(this)) {
+        LOG.info("{} acquire lock.", getProcId());
+        return ProcedureLockState.LOCK_ACQUIRED;
+      }
+      configNodeProcedureEnv.getNodeLock().waitProcedure(this);
+      LOG.info("{} wait for lock.", getProcId());
+      return ProcedureLockState.LOCK_EVENT_WAIT;
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
     }
-    SimpleProcedureScheduler simpleProcedureScheduler =
-        (SimpleProcedureScheduler) configNodeProcedureEnv.getScheduler();
-    simpleProcedureScheduler.addWaiting(this);
-    LOG.info("{} wait for lock.", getProcId());
-    return ProcedureLockState.LOCK_EVENT_WAIT;
   }
 
   @Override
   protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    LOG.info("{} release lock.", getProcId());
-    configNodeProcedureEnv.getConfigNodeLock().unlock();
-    SimpleProcedureScheduler simpleProcedureScheduler =
-        (SimpleProcedureScheduler) configNodeProcedureEnv.getScheduler();
-    simpleProcedureScheduler.releaseWaiting();
-  }
-
-  @Override
-  protected boolean holdLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    return configNodeProcedureEnv.getConfigNodeLock().isHeldByCurrentThread();
+    configNodeProcedureEnv.getSchedulerLock().lock();
+    try {
+      LOG.info("{} release lock.", getProcId());
+      if (configNodeProcedureEnv.getNodeLock().releaseLock(this)) {
+        configNodeProcedureEnv
+            .getNodeLock()
+            .wakeWaitingProcedures(configNodeProcedureEnv.getScheduler());
+      }
+    } finally {
+      configNodeProcedureEnv.getSchedulerLock().unlock();
+    }
   }
 
   @Override

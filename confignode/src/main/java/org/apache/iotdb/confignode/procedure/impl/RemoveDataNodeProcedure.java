@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.confignode.procedure.impl;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
-import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
+import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
-import org.apache.iotdb.confignode.procedure.state.RemoveConfigNodeState;
+import org.apache.iotdb.confignode.procedure.state.RemoveDataNodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.slf4j.Logger;
@@ -35,47 +36,52 @@ import org.slf4j.LoggerFactory;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
 /** remove config node procedure */
-public class RemoveConfigNodeProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, RemoveConfigNodeState> {
-  private static final Logger LOG = LoggerFactory.getLogger(RemoveConfigNodeProcedure.class);
+public class RemoveDataNodeProcedure
+    extends StateMachineProcedure<ConfigNodeProcedureEnv, RemoveDataNodeState> {
+  private static final Logger LOG = LoggerFactory.getLogger(RemoveDataNodeProcedure.class);
   private static final int retryThreshold = 5;
 
-  private TConfigNodeLocation tConfigNodeLocation;
+  private TDataNodeLocation tDataNodeLocation;
 
-  public RemoveConfigNodeProcedure() {
+  private List<TConsensusGroupId> execDataNodeRegionIds = new ArrayList<>();
+
+  public RemoveDataNodeProcedure() {
     super();
   }
 
-  public RemoveConfigNodeProcedure(TConfigNodeLocation tConfigNodeLocation) {
+  public RemoveDataNodeProcedure(TDataNodeLocation tDataNodeLocation) {
     super();
-    this.tConfigNodeLocation = tConfigNodeLocation;
+    this.tDataNodeLocation = tDataNodeLocation;
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, RemoveConfigNodeState state) {
-    if (tConfigNodeLocation == null) {
+  protected Flow executeFromState(ConfigNodeProcedureEnv env, RemoveDataNodeState state) {
+    if (tDataNodeLocation == null) {
       return Flow.NO_MORE_STATE;
     }
     try {
       switch (state) {
-        case REMOVE_CONFIG_NODE_PREPARE:
-          setNextState(RemoveConfigNodeState.REMOVE_PEER);
+        case REMOVE_DATA_NODE_PREPARE:
+          execDataNodeRegionIds =
+              env.getDataNodeRemoveManager().getDataNodeRegionIds(tDataNodeLocation);
+          LOG.info("DataNode region id is {}", execDataNodeRegionIds);
+          setNextState(RemoveDataNodeState.BROADCAST_DISABLE_DATA_NODE);
           break;
-        case REMOVE_PEER:
-          env.removeConfigNodePeer(tConfigNodeLocation);
-          setNextState(RemoveConfigNodeState.REMOVE_CONSENSUS_GROUP);
-          LOG.info("Remove peer {}", tConfigNodeLocation);
+        case BROADCAST_DISABLE_DATA_NODE:
+          env.getDataNodeRemoveManager().broadcastDisableDataNode(tDataNodeLocation);
+          setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           break;
-        case REMOVE_CONSENSUS_GROUP:
-          env.removeConsensusGroup(tConfigNodeLocation);
-          setNextState(RemoveConfigNodeState.STOP_CONFIG_NODE);
-          LOG.info("Remove Consensus Group {}", tConfigNodeLocation);
+        case SUBMIT_REGION_MIGRATE:
+          submitChildRegionMigrate(env);
+          setNextState(RemoveDataNodeState.STOP_DATA_NODE);
           break;
-        case STOP_CONFIG_NODE:
-          env.stopConfigNode(tConfigNodeLocation);
-          LOG.info("Stop Config Node {}", tConfigNodeLocation);
+        case STOP_DATA_NODE:
+          env.getDataNodeRemoveManager().stopDataNode(tDataNodeLocation);
+          env.getDataNodeRemoveManager().removeDataNodePersistence(tDataNodeLocation);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -84,7 +90,7 @@ public class RemoveConfigNodeProcedure
       } else {
         LOG.error(
             "Retrievable error trying to remove config node {}, state {}",
-            tConfigNodeLocation,
+            tDataNodeLocation,
             state,
             e);
         if (getCycles() > retryThreshold) {
@@ -96,12 +102,12 @@ public class RemoveConfigNodeProcedure
   }
 
   @Override
-  protected void rollbackState(ConfigNodeProcedureEnv env, RemoveConfigNodeState state)
+  protected void rollbackState(ConfigNodeProcedureEnv env, RemoveDataNodeState state)
       throws IOException, InterruptedException, ProcedureException {}
 
   @Override
-  protected boolean isRollbackSupported(RemoveConfigNodeState state) {
-    return true;
+  protected boolean isRollbackSupported(RemoveDataNodeState state) {
+    return false;
   }
 
   @Override
@@ -135,33 +141,51 @@ public class RemoveConfigNodeProcedure
     }
   }
 
-  @Override
-  protected RemoveConfigNodeState getState(int stateId) {
-    return RemoveConfigNodeState.values()[stateId];
+  /**
+   * Used to keep procedure lock even when the procedure is yielded or suspended.
+   *
+   * @param env env
+   * @return true if hold the lock
+   */
+  protected boolean holdLock(ConfigNodeProcedureEnv env) {
+    return true;
   }
 
   @Override
-  protected int getStateId(RemoveConfigNodeState deleteStorageGroupState) {
+  protected RemoveDataNodeState getState(int stateId) {
+    return RemoveDataNodeState.values()[stateId];
+  }
+
+  @Override
+  protected int getStateId(RemoveDataNodeState deleteStorageGroupState) {
     return deleteStorageGroupState.ordinal();
   }
 
   @Override
-  protected RemoveConfigNodeState getInitialState() {
-    return RemoveConfigNodeState.REMOVE_CONFIG_NODE_PREPARE;
+  protected RemoveDataNodeState getInitialState() {
+    return RemoveDataNodeState.REMOVE_DATA_NODE_PREPARE;
   }
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeInt(ProcedureFactory.ProcedureType.REMOVE_CONFIG_NODE_PROCEDURE.ordinal());
+    stream.writeInt(ProcedureFactory.ProcedureType.REMOVE_DATA_NODE_PROCEDURE.ordinal());
     super.serialize(stream);
-    ThriftConfigNodeSerDeUtils.serializeTConfigNodeLocation(tConfigNodeLocation, stream);
+    ThriftCommonsSerDeUtils.serializeTDataNodeLocation(tDataNodeLocation, stream);
+    stream.writeInt(execDataNodeRegionIds.size());
+    execDataNodeRegionIds.forEach(
+        tid -> ThriftCommonsSerDeUtils.serializeTConsensusGroupId(tid, stream));
   }
 
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
     super.deserialize(byteBuffer);
     try {
-      tConfigNodeLocation = ThriftConfigNodeSerDeUtils.deserializeTConfigNodeLocation(byteBuffer);
+      tDataNodeLocation = ThriftCommonsSerDeUtils.deserializeTDataNodeLocation(byteBuffer);
+      int regionSize = byteBuffer.getInt();
+      execDataNodeRegionIds = new ArrayList<>(regionSize);
+      for (int i = 0; i < regionSize; i++) {
+        execDataNodeRegionIds.add(ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(byteBuffer));
+      }
     } catch (ThriftSerDeException e) {
       LOG.error("Error in deserialize RemoveConfigNodeProcedure", e);
     }
@@ -169,12 +193,26 @@ public class RemoveConfigNodeProcedure
 
   @Override
   public boolean equals(Object that) {
-    if (that instanceof RemoveConfigNodeProcedure) {
-      RemoveConfigNodeProcedure thatProc = (RemoveConfigNodeProcedure) that;
+    if (that instanceof RemoveDataNodeProcedure) {
+      RemoveDataNodeProcedure thatProc = (RemoveDataNodeProcedure) that;
       return thatProc.getProcId() == this.getProcId()
           && thatProc.getState() == this.getState()
-          && thatProc.tConfigNodeLocation.equals(this.tConfigNodeLocation);
+          && thatProc.tDataNodeLocation.equals(this.tDataNodeLocation);
     }
     return false;
+  }
+
+  private void submitChildRegionMigrate(ConfigNodeProcedureEnv env) {
+    execDataNodeRegionIds.forEach(
+        regionId -> {
+          TDataNodeLocation destDataNode =
+              env.getDataNodeRemoveManager().findDestDataNode(tDataNodeLocation, regionId);
+          if (destDataNode != null) {
+            RegionMigrateProcedure regionMigrateProcedure =
+                new RegionMigrateProcedure(regionId, tDataNodeLocation, destDataNode);
+            addChildProcedure(regionMigrateProcedure);
+            LOG.info("Submit child procedure, {}", regionMigrateProcedure);
+          }
+        });
   }
 }

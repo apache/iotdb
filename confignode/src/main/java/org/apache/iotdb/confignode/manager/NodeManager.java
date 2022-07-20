@@ -41,6 +41,7 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
+import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
@@ -60,7 +61,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -139,8 +139,11 @@ public class NodeManager {
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     LOGGER.info("Node manager start to remove DataNode {}", removeDataNodePlan);
+
+    DataNodeRemoveManager dataNodeRemoveManager =
+        new DataNodeRemoveManager((ConfigManager) configManager);
     DataNodeToStatusResp preCheckStatus =
-        configManager.getDataNodeRemoveManager().checkRemoveDataNodeRequest(removeDataNodePlan);
+        dataNodeRemoveManager.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
           "the remove Data Node request check failed.  req: {}, check result: {}",
@@ -151,7 +154,7 @@ public class NodeManager {
     // if add request to queue, then return to client
     DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
     boolean registerSucceed =
-        configManager.getDataNodeRemoveManager().registerRequest(removeDataNodePlan);
+        configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
     TSStatus status;
     if (registerSucceed) {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -227,25 +230,6 @@ public class NodeManager {
     }
     return dataNodesLocations;
   }
-
-  /**
-   * get data node remove request queue
-   *
-   * @return LinkedBlockingQueue
-   */
-  public LinkedBlockingQueue<RemoveDataNodePlan> getDataNodeRemoveRequestQueue() {
-    return nodeInfo.getDataNodeRemoveRequestQueue();
-  }
-
-  /**
-   * get head data node remove request
-   *
-   * @return RemoveDataNodeReq
-   */
-  public RemoveDataNodePlan getHeadRequestForDataNodeRemove() {
-    return nodeInfo.getHeadRequestForDataNodeRemove();
-  }
-
   /**
    * Provides ConfigNodeGroup information for the newly registered ConfigNode
    *

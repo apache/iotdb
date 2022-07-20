@@ -197,30 +197,38 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   /**
-   * Persist Infomation about remove dataNode
+   * Persist Information about remove dataNode
    *
    * @param req RemoveDataNodeReq
    * @return TSStatus
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
-    TSStatus result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    removeNodeInfo.removeDataNode(req);
-    return result;
+    try {
+      dataNodeInfoReadWriteLock.writeLock().lock();
+      req.getDataNodeLocations()
+          .forEach(
+              drainingDataNodes -> {
+                registeredDataNodes.remove(drainingDataNodes.getDataNodeId());
+              });
+    } finally {
+      dataNodeInfoReadWriteLock.writeLock().unlock();
+    }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
   /**
    * Get DataNode info
    *
-   * @param getDataNodeConfigurationPlan QueryDataNodeInfoPlan
+   * @param getDataNodeInfoPlan QueryDataNodeInfoPlan
    * @return The specific DataNode's info or all DataNode info if dataNodeId in
    *     QueryDataNodeInfoPlan is -1
    */
   public DataNodeConfigurationResp getDataNodeInfo(
-      GetDataNodeConfigurationPlan getDataNodeConfigurationPlan) {
+      GetDataNodeConfigurationPlan getDataNodeInfoPlan) {
     DataNodeConfigurationResp result = new DataNodeConfigurationResp();
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
-    int dataNodeId = getDataNodeConfigurationPlan.getDataNodeId();
+    int dataNodeId = getDataNodeInfoPlan.getDataNodeId();
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {

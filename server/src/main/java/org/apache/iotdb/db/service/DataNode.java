@@ -35,6 +35,7 @@ import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -46,7 +47,6 @@ import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
-import org.apache.iotdb.db.conf.IoTDBStopCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -78,7 +78,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -164,28 +163,30 @@ public class DataNode implements DataNodeMBean {
         .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getTargetConfigNodeList());
     try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
       TDataNodeConfigurationResp resp = configNodeClient.getDataNodeConfiguration(-1);
-      // 1. online Data Node size - removed Data Node size < replication，NOT ALLOW remove
+      // 1. online Data Node size - removed Data Node size < replication,NOT ALLOW remove
       //   But replication size is set in Config Node's configuration, so check it in remote Config
       // Node
 
       // 2. removed Data Node IP not contained in below map, CAN NOT remove.
-      Map<Integer, TDataNodeConfiguration> nodeIdToNodeConfiguration =
-          resp.getDataNodeConfigurationMap();
-      List<String> removedDataNodeIps = Arrays.asList(args[1].split(","));
+      Map<Integer, TDataNodeConfiguration> nodeIdToNodeInfo = resp.getDataNodeConfigurationMap();
+      List<TEndPoint> endPoints = NodeUrlUtils.parseTEndPointUrls(args[1]);
+      List<String> removedDataNodeIps =
+          endPoints.stream().map(TEndPoint::getIp).collect(Collectors.toList());
+
       List<String> onlineDataNodeIps =
-          nodeIdToNodeConfiguration.values().stream()
+          nodeIdToNodeInfo.values().stream()
               .map(TDataNodeConfiguration::getLocation)
               .map(TDataNodeLocation::getInternalEndPoint)
               .map(TEndPoint::getIp)
               .collect(Collectors.toList());
-      IoTDBStopCheck.getInstance().checkDuplicateIp(removedDataNodeIps);
-      IoTDBStopCheck.getInstance().checkIpInCluster(removedDataNodeIps, onlineDataNodeIps);
+      // IoTDBStopCheck.getInstance().checkDuplicateIp(removedDataNodeIps);
+      // IoTDBStopCheck.getInstance().checkIpInCluster(removedDataNodeIps, onlineDataNodeIps);
     } catch (TException e) {
       logger.error("remove Data Nodes check failed", e);
     }
   }
 
-  private void removeNodesFromCluster(String[] args) {
+  private void removeNodesFromCluster(String[] args) throws BadNodeUrlException {
     logger.info("start to remove DataNode from cluster");
     List<TDataNodeLocation> dataNodeLocations = buildDataNodeLocations(args[1]);
     if (dataNodeLocations.isEmpty()) {
@@ -209,27 +210,29 @@ public class DataNode implements DataNodeMBean {
   /**
    * fetch all datanode info from ConfigNode, then compare with input 'ips'
    *
-   * @param ips data node ip, split with ','
+   * @param endPorts data node ip:port, split with ','
    * @return TDataNodeLocation list
    */
-  private List<TDataNodeLocation> buildDataNodeLocations(String ips) {
+  private List<TDataNodeLocation> buildDataNodeLocations(String endPorts)
+      throws BadNodeUrlException {
     List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
-    if (ips == null || ips.trim().isEmpty()) {
+    if (endPorts == null || endPorts.trim().isEmpty()) {
       return dataNodeLocations;
     }
 
-    List<String> dataNodeIps = Arrays.asList(ips.split(","));
+    List<TEndPoint> endPoints = NodeUrlUtils.parseTEndPointUrls(endPorts);
+
     try (ConfigNodeClient client = new ConfigNodeClient()) {
       dataNodeLocations =
           client.getDataNodeConfiguration(-1).getDataNodeConfigurationMap().values().stream()
               .map(TDataNodeConfiguration::getLocation)
-              .filter(location -> dataNodeIps.contains(location.getInternalEndPoint().getIp()))
+              .filter(location -> endPoints.contains(location.getClientRpcEndPoint()))
               .collect(Collectors.toList());
     } catch (TException e) {
       logger.error("get data node locations failed", e);
     }
 
-    if (dataNodeIps.size() != dataNodeLocations.size()) {
+    if (endPoints.size() != dataNodeLocations.size()) {
       logger.error(
           "build DataNode locations error, "
               + "because number of input ip NOT EQUALS the number of fetched DataNodeLocations, will return empty locations");
