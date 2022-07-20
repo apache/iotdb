@@ -22,7 +22,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -90,28 +89,6 @@ public class Coordinator {
       MPPQueryContext queryContext,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
-      long timeOut) {
-    queryContext.setTimeOut(timeOut);
-    if (statement instanceof IConfigStatement) {
-      queryContext.setQueryType(((IConfigStatement) statement).getQueryType());
-      return new ConfigExecution(queryContext, statement, executor);
-    }
-    return new QueryExecution(
-        statement,
-        queryContext,
-        executor,
-        writeOperationExecutor,
-        scheduledExecutor,
-        partitionFetcher,
-        schemaFetcher,
-        INTERNAL_SERVICE_CLIENT_MANAGER);
-  }
-
-  private IQueryExecution createQueryExecution(
-      Statement statement,
-      MPPQueryContext queryContext,
-      IPartitionFetcher partitionFetcher,
-      ISchemaFetcher schemaFetcher,
       long timeOut,
       long startTime) {
     queryContext.setTimeOut(timeOut);
@@ -167,7 +144,7 @@ public class Coordinator {
     }
   }
 
-  @TestOnly
+  /** This method is called by the write method. So it does not set the timeout parameter. */
   public ExecutionResult execute(
       Statement statement,
       long queryId,
@@ -175,6 +152,7 @@ public class Coordinator {
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
+    long startTime = System.currentTimeMillis();
     QueryId globalQueryId = queryIdGenerator.createNextQueryId();
     try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
       if (sql != null && sql.length() > 0) {
@@ -191,7 +169,8 @@ public class Coordinator {
                   DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
               partitionFetcher,
               schemaFetcher,
-              config.getQueryTimeoutThreshold());
+              Long.MAX_VALUE,
+              startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
       }
