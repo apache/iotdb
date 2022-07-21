@@ -168,13 +168,14 @@ public class DataNode implements DataNodeMBean {
       // Node
 
       // 2. removed Data Node IP not contained in below map, CAN NOT remove.
-      Map<Integer, TDataNodeConfiguration> nodeIdToNodeInfo = resp.getDataNodeConfigurationMap();
+      Map<Integer, TDataNodeConfiguration> nodeIdToNodeConfiguration =
+          resp.getDataNodeConfigurationMap();
       List<TEndPoint> endPoints = NodeUrlUtils.parseTEndPointUrls(args[1]);
       List<String> removedDataNodeIps =
           endPoints.stream().map(TEndPoint::getIp).collect(Collectors.toList());
 
       List<String> onlineDataNodeIps =
-          nodeIdToNodeInfo.values().stream()
+          nodeIdToNodeConfiguration.values().stream()
               .map(TDataNodeConfiguration::getLocation)
               .map(TDataNodeLocation::getInternalEndPoint)
               .map(TEndPoint::getIp)
