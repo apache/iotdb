@@ -47,6 +47,7 @@ import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
+import org.apache.iotdb.db.conf.IoTDBStopCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -180,8 +181,7 @@ public class DataNode implements DataNodeMBean {
               .map(TDataNodeLocation::getInternalEndPoint)
               .map(TEndPoint::getIp)
               .collect(Collectors.toList());
-      // IoTDBStopCheck.getInstance().checkDuplicateIp(removedDataNodeIps);
-      // IoTDBStopCheck.getInstance().checkIpInCluster(removedDataNodeIps, onlineDataNodeIps);
+      IoTDBStopCheck.getInstance().checkIpInCluster(removedDataNodeIps, onlineDataNodeIps);
     } catch (TException e) {
       logger.error("remove Data Nodes check failed", e);
     }

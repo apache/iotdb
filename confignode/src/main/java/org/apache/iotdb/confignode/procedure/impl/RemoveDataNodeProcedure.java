@@ -23,10 +23,8 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftCommonsSerDeUtils;
-import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RemoveDataNodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
@@ -40,8 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** remove config node procedure */
-public class RemoveDataNodeProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, RemoveDataNodeState> {
+public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNodeState> {
   private static final Logger LOG = LoggerFactory.getLogger(RemoveDataNodeProcedure.class);
   private static final int retryThreshold = 5;
 
@@ -86,10 +83,10 @@ public class RemoveDataNodeProcedure
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Remove Config Node failed " + state));
+        setFailure(new ProcedureException("Remove Data Node failed " + state));
       } else {
         LOG.error(
-            "Retrievable error trying to remove config node {}, state {}",
+            "Retrievable error trying to remove data node {}, state {}",
             tDataNodeLocation,
             state,
             e);
@@ -108,37 +105,6 @@ public class RemoveDataNodeProcedure
   @Override
   protected boolean isRollbackSupported(RemoveDataNodeState state) {
     return false;
-  }
-
-  @Override
-  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    configNodeProcedureEnv.getSchedulerLock().lock();
-    try {
-      if (configNodeProcedureEnv.getNodeLock().tryLock(this)) {
-        LOG.info("{} acquire lock.", getProcId());
-        return ProcedureLockState.LOCK_ACQUIRED;
-      }
-      configNodeProcedureEnv.getNodeLock().waitProcedure(this);
-      LOG.info("{} wait for lock.", getProcId());
-      return ProcedureLockState.LOCK_EVENT_WAIT;
-    } finally {
-      configNodeProcedureEnv.getSchedulerLock().unlock();
-    }
-  }
-
-  @Override
-  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    configNodeProcedureEnv.getSchedulerLock().lock();
-    try {
-      LOG.info("{} release lock.", getProcId());
-      if (configNodeProcedureEnv.getNodeLock().releaseLock(this)) {
-        configNodeProcedureEnv
-            .getNodeLock()
-            .wakeWaitingProcedures(configNodeProcedureEnv.getScheduler());
-      }
-    } finally {
-      configNodeProcedureEnv.getSchedulerLock().unlock();
-    }
   }
 
   /**

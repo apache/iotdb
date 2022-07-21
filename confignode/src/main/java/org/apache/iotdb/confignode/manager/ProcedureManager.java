@@ -150,6 +150,7 @@ public class ProcedureManager {
         .forEach(
             tDataNodeLocation -> {
               this.executor.submitProcedure(new RemoveDataNodeProcedure(tDataNodeLocation));
+              LOGGER.info("Submit to remove data node procedure, {}", tDataNodeLocation);
             });
     return true;
   }

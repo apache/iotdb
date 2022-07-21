@@ -23,6 +23,7 @@ import org.apache.iotdb.confignode.procedure.Procedure;
 
 import java.util.ArrayDeque;
 
+/** Lock Queue for procedure of the same type */
 public class LockQueue {
   private final ArrayDeque<Procedure> deque = new ArrayDeque<>();
 

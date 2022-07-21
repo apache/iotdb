@@ -99,13 +99,10 @@ public class RegionMigrateProcedure
       }
     } catch (Exception e) {
       if (isRollbackSupported(state)) {
-        setFailure(new ProcedureException("Remove Config Node failed " + state));
+        setFailure(new ProcedureException("Region migrate failed " + state));
       } else {
         LOG.error(
-            "Retrievable error trying to remove config node {}, state {}",
-            originalDataNode,
-            state,
-            e);
+            "Retrievable error trying to region migrate {}, state {}", originalDataNode, state, e);
         if (getCycles() > retryThreshold) {
           setFailure(new ProcedureException("State stuck at " + state));
         }
