@@ -59,7 +59,7 @@ public class ConfigNodeProcedureEnv {
 
   private final ProcedureScheduler scheduler;
 
-  private final DataNodeRemoveManager dataNodeRemoveManager;
+  private final DataNodeRemoveHandler dataNodeRemoveHandler;
 
   private static boolean skipForTest = false;
 
@@ -76,7 +76,7 @@ public class ConfigNodeProcedureEnv {
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
     this.scheduler = scheduler;
-    this.dataNodeRemoveManager = new DataNodeRemoveManager(configManager);
+    this.dataNodeRemoveHandler = new DataNodeRemoveHandler(configManager);
   }
 
   public ConfigManager getConfigManager() {
@@ -260,14 +260,14 @@ public class ConfigNodeProcedureEnv {
   }
 
   public LockQueue getRegionMigrateLock() {
-    return dataNodeRemoveManager.getRegionMigrateLock();
+    return dataNodeRemoveHandler.getRegionMigrateLock();
   }
 
   public ReentrantLock getSchedulerLock() {
     return schedulerLock;
   }
 
-  public DataNodeRemoveManager getDataNodeRemoveManager() {
-    return dataNodeRemoveManager;
+  public DataNodeRemoveHandler getDataNodeRemoveHandler() {
+    return dataNodeRemoveHandler;
   }
 }

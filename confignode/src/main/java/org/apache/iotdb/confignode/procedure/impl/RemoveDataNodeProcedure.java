@@ -67,12 +67,12 @@ public class RemoveDataNodeProcedure
       switch (state) {
         case REMOVE_DATA_NODE_PREPARE:
           execDataNodeRegionIds =
-              env.getDataNodeRemoveManager().getDataNodeRegionIds(tDataNodeLocation);
+              env.getDataNodeRemoveHandler().getDataNodeRegionIds(tDataNodeLocation);
           LOG.info("DataNode region id is {}", execDataNodeRegionIds);
           setNextState(RemoveDataNodeState.BROADCAST_DISABLE_DATA_NODE);
           break;
         case BROADCAST_DISABLE_DATA_NODE:
-          env.getDataNodeRemoveManager().broadcastDisableDataNode(tDataNodeLocation);
+          env.getDataNodeRemoveHandler().broadcastDisableDataNode(tDataNodeLocation);
           setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           break;
         case SUBMIT_REGION_MIGRATE:
@@ -80,8 +80,8 @@ public class RemoveDataNodeProcedure
           setNextState(RemoveDataNodeState.STOP_DATA_NODE);
           break;
         case STOP_DATA_NODE:
-          env.getDataNodeRemoveManager().stopDataNode(tDataNodeLocation);
-          env.getDataNodeRemoveManager().removeDataNodePersistence(tDataNodeLocation);
+          env.getDataNodeRemoveHandler().stopDataNode(tDataNodeLocation);
+          env.getDataNodeRemoveHandler().removeDataNodePersistence(tDataNodeLocation);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -206,7 +206,7 @@ public class RemoveDataNodeProcedure
     execDataNodeRegionIds.forEach(
         regionId -> {
           TDataNodeLocation destDataNode =
-              env.getDataNodeRemoveManager().findDestDataNode(tDataNodeLocation, regionId);
+              env.getDataNodeRemoveHandler().findDestDataNode(tDataNodeLocation, regionId);
           if (destDataNode != null) {
             RegionMigrateProcedure regionMigrateProcedure =
                 new RegionMigrateProcedure(regionId, tDataNodeLocation, destDataNode);

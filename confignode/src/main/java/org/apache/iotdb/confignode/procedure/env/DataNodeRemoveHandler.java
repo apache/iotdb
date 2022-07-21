@@ -48,15 +48,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class DataNodeRemoveManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRemoveManager.class);
+public class DataNodeRemoveHandler {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRemoveHandler.class);
 
   private ConfigManager configManager;
 
   /** region migrate lock */
   private final LockQueue regionMigrateLock = new LockQueue();
 
-  public DataNodeRemoveManager(ConfigManager configManager) {
+  public DataNodeRemoveHandler(ConfigManager configManager) {
     this.configManager = configManager;
   }
 

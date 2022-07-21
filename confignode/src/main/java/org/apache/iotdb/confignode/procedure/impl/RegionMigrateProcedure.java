@@ -78,12 +78,12 @@ public class RegionMigrateProcedure
           setNextState(RegionTransitionState.ADD_NEW_NODE_TO_REGION_CONSENSUS_GROUP);
           break;
         case ADD_NEW_NODE_TO_REGION_CONSENSUS_GROUP:
-          env.getDataNodeRemoveManager()
+          env.getDataNodeRemoveHandler()
               .addNewNodeToRegionConsensusGroup(consensusGroupId, destDataNode);
           setNextState(RegionTransitionState.MIGRATE_REGION);
           break;
         case MIGRATE_REGION:
-          env.getDataNodeRemoveManager()
+          env.getDataNodeRemoveHandler()
               .migrateRegion(originalDataNode, destDataNode, consensusGroupId);
           setNextState(RegionTransitionState.WAIT_FOR_REGION_MIGRATE_FINISHED);
           break;
@@ -93,7 +93,7 @@ public class RegionMigrateProcedure
           LOG.info("Wait for region migrate finished");
           break;
         case UPDATE_REGION_LOCATION_CACHE:
-          env.getDataNodeRemoveManager()
+          env.getDataNodeRemoveHandler()
               .updateRegionLocationCache(consensusGroupId, originalDataNode, destDataNode);
           return Flow.NO_MORE_STATE;
       }
