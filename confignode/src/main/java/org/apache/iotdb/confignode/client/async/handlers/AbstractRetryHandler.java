@@ -47,14 +47,6 @@ public abstract class AbstractRetryHandler {
     this.targetDataNode = targetDataNode;
   }
 
-  public void setCountDownLatch(CountDownLatch countDownLatch) {
-    this.countDownLatch = countDownLatch;
-  }
-
-  public List<TDataNodeLocation> getDataNodeLocations() {
-    return dataNodeLocations;
-  }
-
   public DataNodeRequestType getDataNodeRequestType() {
     return dataNodeRequestType;
   }

@@ -83,9 +83,9 @@ public class AsyncDataNodeClientPool {
     if (dataNodeLocations.isEmpty()) {
       return;
     }
-    CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
-    AbstractRetryHandler handler = null;
     for (int retry = 0; retry < retryNum; retry++) {
+      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
+      AbstractRetryHandler handler;
       for (TDataNodeLocation targetDataNode : dataNodeLocations) {
         switch (requestType) {
           case SET_TTL:
@@ -119,22 +119,15 @@ public class AsyncDataNodeClientPool {
           default:
             return;
         }
-        // If it is not the first request, then prove that this operation is a retry.
-        // The count of countDownLatch needs to be updated
-        if (retry != 0) {
-          handler.setCountDownLatch(countDownLatch);
-        }
         sendAsyncRequestToDataNode(targetDataNode, req, handler, retry);
       }
       try {
         countDownLatch.await();
       } catch (InterruptedException e) {
-        LOGGER.error("Interrupted during {} on ConfigNode", handler.getDataNodeRequestType());
+        LOGGER.error("Interrupted during {} on ConfigNode", requestType);
       }
       // Check if there is a node that fails to send the request, and retry if there is one
-      if (!handler.getDataNodeLocations().isEmpty()) {
-        countDownLatch = new CountDownLatch(handler.getDataNodeLocations().size());
-      } else {
+      if (dataNodeLocations.isEmpty()) {
         break;
       }
     }
@@ -168,7 +161,6 @@ public class AsyncDataNodeClientPool {
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
           break;
         default:
-          return;
       }
     } catch (Exception e) {
       LOGGER.warn(
@@ -188,7 +180,6 @@ public class AsyncDataNodeClientPool {
    */
   public void createRegions(
       CreateRegionGroupsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
-
     List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
     // Count the datanodes to be sent
     for (List<TRegionReplicaSet> regionReplicaSets :
@@ -200,21 +191,15 @@ public class AsyncDataNodeClientPool {
     if (dataNodeLocations.isEmpty()) {
       return;
     }
-    CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
-    AbstractRetryHandler handler = null;
     for (int retry = 0; retry < retryNum; retry++) {
+      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
+      AbstractRetryHandler handler;
       for (Map.Entry<String, List<TRegionReplicaSet>> entry :
           createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
         // Enumerate each RegionReplicaSet
         for (TRegionReplicaSet regionReplicaSet : entry.getValue()) {
           // Enumerate each Region
           for (TDataNodeLocation targetDataNode : regionReplicaSet.getDataNodeLocations()) {
-            // If it is not the first request, then prove that this operation is
-            // a retry.
-            // The count of countDownLatch needs to be updated
-            if (retry != 0) {
-              handler.setCountDownLatch(countDownLatch);
-            }
             switch (regionReplicaSet.getRegionId().getType()) {
               case SchemaRegion:
                 handler =
@@ -254,13 +239,11 @@ public class AsyncDataNodeClientPool {
       try {
         countDownLatch.await();
       } catch (InterruptedException e) {
-        LOGGER.error("Interrupted during {} on ConfigNode", handler.getDataNodeRequestType());
+        LOGGER.error("Interrupted during createRegions on ConfigNode");
       }
       // Check if there is a node that fails to send the request, and
       // retry if there is one
-      if (!handler.getDataNodeLocations().isEmpty()) {
-        countDownLatch = new CountDownLatch(handler.getDataNodeLocations().size());
-      } else {
+      if (dataNodeLocations.isEmpty()) {
         break;
       }
     }
@@ -286,7 +269,7 @@ public class AsyncDataNodeClientPool {
   /**
    * Only used in LoadManager
    *
-   * @param endPoint
+   * @param endPoint The specific DataNode
    */
   public void getDataNodeHeartBeat(
       TEndPoint endPoint, THeartbeatReq req, DataNodeHeartbeatHandler handler) {
