@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.confignode.client.async.datanode;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -27,12 +29,14 @@ import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.ConfigNodeClientPoolFactory;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
 import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
+import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -41,10 +45,12 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -146,6 +152,10 @@ public class AsyncDataNodeClientPool {
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
           break;
+        case BROADCAST_LATEST_CONFIG_NODE_GROUP:
+          client.updateConfigNodeGroup(
+              (TUpdateConfigNodeGroupReq) req, (UpdateConfigNodeGroupHandler) handler);
+          break;
         default:
           return;
       }
@@ -222,6 +232,39 @@ public class AsyncDataNodeClientPool {
                   });
             });
     sendAsyncRequestToDataNodeWithRetry(req, handlerMap, dataNodeLocations);
+  }
+
+  /**
+   * notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
+   *
+   * @param registeredDataNodes List<TDataNodeConfiguration>
+   * @param registeredConfigNodes List<TConfigNodeLocation>
+   */
+  public void broadCastTheLatestConfigNodeGroup(
+      List<TDataNodeConfiguration> registeredDataNodes,
+      List<TConfigNodeLocation> registeredConfigNodes) {
+    if (registeredDataNodes != null) {
+      TUpdateConfigNodeGroupReq updateConfigNodeGroupReq =
+          new TUpdateConfigNodeGroupReq(registeredConfigNodes);
+      CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
+      Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
+      Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+      AtomicInteger index = new AtomicInteger();
+      for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
+        handlerMap.put(
+            index.get(),
+            new UpdateConfigNodeGroupHandler(
+                dataNodeInfo.getLocation(),
+                countDownLatch,
+                DataNodeRequestType.BROADCAST_LATEST_CONFIG_NODE_GROUP,
+                dataNodeLocations,
+                index.get()));
+        dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
+      }
+      LOGGER.info("Begin to broadcast the latest configNodeGroup: {}", registeredConfigNodes);
+      sendAsyncRequestToDataNodeWithRetry(updateConfigNodeGroupReq, handlerMap, dataNodeLocations);
+      LOGGER.info("Broadcast the latest configNodeGroup finished.");
+    }
   }
 
   private TCreateSchemaRegionReq genCreateSchemaRegionReq(

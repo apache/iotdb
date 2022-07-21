@@ -80,6 +80,7 @@ public class AddConfigNodeProcedure
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
           env.applyConfigNode(tConfigNodeLocation);
+          env.broadCastTheLatest();
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {

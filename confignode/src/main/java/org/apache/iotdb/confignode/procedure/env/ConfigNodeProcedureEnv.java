@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
@@ -188,6 +189,14 @@ public class ConfigNodeProcedureEnv {
             configNodeLocation.getInternalEndPoint(),
             null,
             ConfigNodeRequestType.NOTIFY_REGISTER_SUCCESS);
+  }
+
+  /** notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced */
+  public void broadCastTheLatest() {
+    AsyncDataNodeClientPool.getInstance()
+        .broadCastTheLatestConfigNodeGroup(
+            configManager.getNodeManager().getRegisteredDataNodes(-1),
+            configManager.getNodeManager().getRegisteredConfigNodes());
   }
 
   public ReentrantLock getAddConfigNodeLock() {
