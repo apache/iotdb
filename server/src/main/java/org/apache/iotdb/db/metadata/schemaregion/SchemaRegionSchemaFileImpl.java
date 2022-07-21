@@ -1807,6 +1807,11 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     // check whether any template has been set on designated path
     if (node.getUpperTemplate() == null) {

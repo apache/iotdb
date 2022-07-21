@@ -362,6 +362,8 @@ public interface ISchemaRegion {
 
   void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException;
+
+  List<String> getPathsUsingTemplate(int templateId) throws MetadataException;
   // endregion
 
   // region Interfaces for Trigger

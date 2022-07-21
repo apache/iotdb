@@ -1906,6 +1906,11 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public IMNode getMNodeForTrigger(PartialPath fullPath) throws MetadataException {
     throw new UnsupportedOperationException();
   }

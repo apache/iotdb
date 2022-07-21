@@ -87,6 +87,8 @@ import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_TEMPLATE;
+import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 /**
@@ -1449,6 +1451,36 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
       entityMNode.setAligned(isAligned);
     }
     entityMNode.setUseTemplate(true);
+  }
+
+  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+    List<String> result = new ArrayList<>();
+
+    CollectorTraverser<Set<String>> usingTemplatePaths =
+        new CollectorTraverser<Set<String>>(
+            storageGroupMNode, new PartialPath(ALL_RESULT_NODES), store) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+            if (node.getSchemaTemplateId() != NON_TEMPLATE
+                && templateId != ALL_TEMPLATE
+                && node.getSchemaTemplateId() != templateId) {
+              // skip subTree
+              return true;
+            }
+            if (node.isUseTemplate()) {
+              result.add(node.getFullPath());
+            }
+            return false;
+          }
+        };
+
+    usingTemplatePaths.traverse();
+    return result;
   }
 
   // endregion

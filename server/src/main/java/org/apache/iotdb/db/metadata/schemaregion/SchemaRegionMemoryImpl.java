@@ -107,6 +107,8 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_TEMPLATE;
+import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -157,7 +159,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private String storageGroupFullPath;
   private SchemaRegionId schemaRegionId;
 
-  private int templateId = -1;
+  private int templateId = NON_TEMPLATE;
 
   // the log file writer
   private boolean usingMLog = true;
@@ -218,7 +220,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       return;
     }
 
-    templateId = -1;
+    templateId = NON_TEMPLATE;
 
     initDir();
 
@@ -362,7 +364,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public synchronized void clear() {
     try {
 
-      templateId = -1;
+      templateId = NON_TEMPLATE;
 
       if (this.mNodeCache != null) {
         this.mNodeCache.invalidateAll();
@@ -1802,32 +1804,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     node = setUsingSchemaTemplate(node);
   }
 
-  @Override
-  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
-      throws MetadataException {
-    try {
-      getDeviceNodeWithAutoCreate(plan.getActivatePath());
-
-      if (plan.getActivatePath().getFullPath().length() < storageGroupFullPath.length()) {
-        templateId = plan.getTemplateId();
-      }
-
-      mtree.activateTemplate(plan.getActivatePath(), plan.getTemplateSetLevel(), template);
-      writeToMLog(plan);
-    } catch (IOException e) {
-      logger.error(e.getMessage(), e);
-      throw new MetadataException(e);
-    }
-  }
-
-  public void recoverActivatingSchemaTemplate(ActivateTemplateInClusterPlan plan) {
-    if (plan.getActivatePath().getFullPath().length() < storageGroupFullPath.length()) {
-      templateId = plan.getTemplateId();
-    }
-    mtree.activateTemplateWithoutCheck(
-        plan.getActivatePath(), plan.getTemplateSetLevel(), plan.getTemplateId(), plan.isAligned());
-  }
-
   public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     // check whether any template has been set on designated path
     if (node.getUpperTemplate() == null) {
@@ -1864,6 +1840,42 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new MetadataException(e);
     }
     return mountedMNode;
+  }
+
+  @Override
+  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+      throws MetadataException {
+    try {
+      getDeviceNodeWithAutoCreate(plan.getActivatePath());
+
+      if (plan.getActivatePath().getFullPath().length() <= storageGroupFullPath.length()) {
+        templateId = plan.getTemplateId();
+      }
+
+      mtree.activateTemplate(plan.getActivatePath(), plan.getTemplateSetLevel(), template);
+      writeToMLog(plan);
+    } catch (IOException e) {
+      logger.error(e.getMessage(), e);
+      throw new MetadataException(e);
+    }
+  }
+
+  private void recoverActivatingSchemaTemplate(ActivateTemplateInClusterPlan plan) {
+    if (plan.getActivatePath().getFullPath().length() <= storageGroupFullPath.length()) {
+      templateId = plan.getTemplateId();
+    }
+    mtree.activateTemplateWithoutCheck(
+        plan.getActivatePath(), plan.getTemplateSetLevel(), plan.getTemplateId(), plan.isAligned());
+  }
+
+  @Override
+  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+    if (this.templateId != NON_TEMPLATE
+        && templateId != ALL_TEMPLATE
+        && this.templateId != templateId) {
+      return Collections.emptyList();
+    }
+    return mtree.getPathsUsingTemplate(templateId);
   }
 
   // endregion

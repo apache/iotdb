@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManageme
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -783,6 +784,11 @@ public class LogicalPlanBuilder {
         new NodeManagementMemoryMergeNode(context.getQueryId().genPlanNodeId(), data);
     memorySourceNode.addChild(this.getRoot());
     this.root = memorySourceNode;
+    return this;
+  }
+
+  public LogicalPlanBuilder planPathsUsingTemplateSource(int templateId) {
+    this.root = new PathsUsingTemplateScanNode(context.getQueryId().genPlanNodeId(), templateId);
     return this;
   }
 }

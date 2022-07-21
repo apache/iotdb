@@ -92,6 +92,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOp
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
@@ -120,6 +121,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManageme
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -1412,6 +1414,18 @@ public class LocalExecutionPlanner {
               .collect(Collectors.toList());
       Validate.isTrue(children.size() == 1);
       return children.get(0);
+    }
+
+    @Override
+    public Operator visitPathsUsingTemplateScan(
+        PathsUsingTemplateScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              PathsUsingTemplateScanNode.class.getSimpleName());
+      return new PathsUsingTemplateScanOperator(
+          node.getPlanNodeId(), operatorContext, node.getTemplateId());
     }
   }
 
