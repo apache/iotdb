@@ -1245,8 +1245,8 @@ public class MTree implements Serializable {
   /** Get all paths from root to the given level */
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
-    MNodeCollector<List<PartialPath>> collector =
-        new MNodeCollector<List<PartialPath>>(root, pathPattern) {
+    MNodeCollector<Set<PartialPath>> collector =
+        new MNodeCollector<Set<PartialPath>>(root, pathPattern) {
           @Override
           protected void transferToResult(IMNode node) {
             try {
@@ -1256,11 +1256,11 @@ public class MTree implements Serializable {
             }
           }
         };
-    collector.setResultSet(new LinkedList<>());
+    collector.setResultSet(new TreeSet<>());
     collector.setTargetLevel(nodeLevel);
     collector.setStorageGroupFilter(filter);
     collector.traverse();
-    return collector.getResult();
+    return new ArrayList<>(collector.getResult());
   }
   // endregion
 

@@ -906,11 +906,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
                                        vector<vector<char *>> &valuesList,
                                        bool sorted) {
 
-    if (sorted) {
-        if (!checkSorted(times)) {
-            throw BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
             index[i] = i;
@@ -962,11 +958,7 @@ void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
                                               vector<vector<char *>> &valuesList,
                                               bool sorted) {
 
-    if (sorted) {
-        if (!checkSorted(times)) {
-            throw BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
             index[i] = i;
