@@ -189,7 +189,17 @@ public class TestUtils {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.executeQuery(sql);
-      fail();
+      fail("No exception!");
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
+    }
+  }
+
+  public static void assertNonQueryTestFail(String sql, String errMsg) {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      fail("No exception!");
     } catch (SQLException e) {
       Assert.assertTrue(e.getMessage(), e.getMessage().contains(errMsg));
     }

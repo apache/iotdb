@@ -20,15 +20,16 @@
 package org.apache.iotdb.db.it.aggregation;
 
 import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -50,6 +51,7 @@ import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
+@RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAggregationIT {
 
@@ -120,7 +122,6 @@ public class IoTDBAggregationIT {
   // add test for part of points in page don't satisfy filter
   // details in: https://issues.apache.org/jira/projects/IOTDB/issues/IOTDB-54
   // TODO: remove ignore after supporting value filter
-  @Ignore
   @Test
   public void test() {
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
@@ -698,7 +699,6 @@ public class IoTDBAggregationIT {
     }
   }
 
-  @Ignore
   @Test
   public void avgSumErrorTest() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -981,6 +981,7 @@ public class IoTDBAggregationIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 

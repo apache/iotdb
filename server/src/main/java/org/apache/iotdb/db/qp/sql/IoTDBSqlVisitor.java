@@ -53,6 +53,9 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -1341,7 +1344,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   @Override
   public Operator visitOrderByTimeStatement(IoTDBSqlParser.OrderByTimeStatementContext ctx) {
     queryOp = new QueryOperator();
-    parseOrderByTimeClause(ctx.orderByTimeClause());
+    parseOrderByClause(ctx.orderByClause());
     if (ctx.specialLimit() != null) {
       return visit(ctx.specialLimit());
     }
@@ -1352,8 +1355,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitGroupByTimeStatement(IoTDBSqlParser.GroupByTimeStatementContext ctx) {
     queryOp = new GroupByQueryOperator();
     parseGroupByTimeClause(ctx.groupByTimeClause());
-    if (ctx.orderByTimeClause() != null) {
-      parseOrderByTimeClause(ctx.orderByTimeClause());
+    if (ctx.orderByClause() != null) {
+      parseOrderByClause(ctx.orderByClause());
     }
     if (ctx.specialLimit() != null) {
       return visit(ctx.specialLimit());
@@ -1365,8 +1368,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitGroupByFillStatement(IoTDBSqlParser.GroupByFillStatementContext ctx) {
     queryOp = new GroupByFillQueryOperator();
     parseGroupByFillClause(ctx.groupByFillClause());
-    if (ctx.orderByTimeClause() != null) {
-      parseOrderByTimeClause(ctx.orderByTimeClause());
+    if (ctx.orderByClause() != null) {
+      parseOrderByClause(ctx.orderByClause());
     }
     if (ctx.specialLimit() != null) {
       return visit(ctx.specialLimit());
@@ -1378,8 +1381,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitGroupByLevelStatement(IoTDBSqlParser.GroupByLevelStatementContext ctx) {
     queryOp = new AggregationQueryOperator();
     parseGroupByLevelClause(ctx.groupByLevelClause());
-    if (ctx.orderByTimeClause() != null) {
-      parseOrderByTimeClause(ctx.orderByTimeClause());
+    if (ctx.orderByClause() != null) {
+      parseOrderByClause(ctx.orderByClause());
     }
     if (ctx.specialLimit() != null) {
       return visit(ctx.specialLimit());
@@ -1391,8 +1394,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitFillStatement(IoTDBSqlParser.FillStatementContext ctx) {
     queryOp = new FillQueryOperator();
     parseFillClause(ctx.fillClause());
-    if (ctx.orderByTimeClause() != null) {
-      parseOrderByTimeClause(ctx.orderByTimeClause());
+    if (ctx.orderByClause() != null) {
+      parseOrderByClause(ctx.orderByClause());
     }
     if (ctx.specialLimit() != null) {
       return visit(ctx.specialLimit());
@@ -1480,8 +1483,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     specialClauseComponent.setAlignByTime(false);
   }
 
-  private void parseOrderByTimeClause(IoTDBSqlParser.OrderByTimeClauseContext ctx) {
-    if (ctx.DESC() != null) {
+  private void parseOrderByClause(IoTDBSqlParser.OrderByClauseContext ctx) {
+    if (ctx.orderByAttributeClause().size() > 1) {
+      throw new SQLParserException("Sorting by multiple fields is not supported.");
+    }
+    SortItem sortItem = parseOrderByAttributeClause(ctx.orderByAttributeClause(0));
+    if (sortItem.getSortKey() != SortKey.TIME) {
+      throw new SQLParserException("It only supports sorting by time.");
+    }
+    if (sortItem.getOrdering() == Ordering.DESC) {
       SpecialClauseComponent specialClauseComponent = queryOp.getSpecialClauseComponent();
       if (specialClauseComponent == null) {
         specialClauseComponent = new SpecialClauseComponent();
@@ -1489,6 +1499,12 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       specialClauseComponent.setAscending(false);
       queryOp.setSpecialClauseComponent(specialClauseComponent);
     }
+  }
+
+  private SortItem parseOrderByAttributeClause(IoTDBSqlParser.OrderByAttributeClauseContext ctx) {
+    return new SortItem(
+        SortKey.valueOf(ctx.sortKey().getText().toUpperCase()),
+        ctx.DESC() != null ? Ordering.DESC : Ordering.ASC);
   }
 
   private void parseGroupByTimeClause(IoTDBSqlParser.GroupByTimeClauseContext ctx) {
@@ -1819,13 +1835,19 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     for (int i = 0; i < insertMultiValues.size(); i++) {
       // parse timestamp
       long timestamp;
+      List<String> valueList = new ArrayList<>();
+
       if (insertMultiValues.get(i).timeValue() != null) {
         if (isTimeDefault) {
-          throw new SQLParserException(
-              "the measurementList's size is not consistent with the valueList's size");
+          if (insertMultiValues.size() != 1) {
+            throw new SQLParserException("need timestamps when insert multi rows");
+          }
+          valueList.add(insertMultiValues.get(i).timeValue().getText());
+          timestamp = DatetimeUtils.currentTime();
+        } else {
+          timestamp =
+              parseTimeValue(insertMultiValues.get(i).timeValue(), DatetimeUtils.currentTime());
         }
-        timestamp =
-            parseTimeValue(insertMultiValues.get(i).timeValue(), DatetimeUtils.currentTime());
       } else {
         if (!isTimeDefault) {
           throw new SQLParserException(
@@ -1839,7 +1861,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       timeArray[i] = timestamp;
 
       // parse values
-      List<String> valueList = new ArrayList<>();
       List<IoTDBSqlParser.MeasurementValueContext> values =
           insertMultiValues.get(i).measurementValue();
       for (IoTDBSqlParser.MeasurementValueContext value : values) {

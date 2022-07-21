@@ -108,7 +108,13 @@ public class FragmentInstanceManager {
                           instance.getTimeFilter(),
                           dataRegion);
                   return createFragmentInstanceExecution(
-                      scheduler, instanceId, context, driver, stateMachine, failedInstances);
+                      scheduler,
+                      instanceId,
+                      context,
+                      driver,
+                      stateMachine,
+                      failedInstances,
+                      instance.getTimeOut());
                 } catch (Throwable t) {
                   logger.error("error when create FragmentInstanceExecution.", t);
                   stateMachine.failed(t);
@@ -140,7 +146,13 @@ public class FragmentInstanceManager {
                 SchemaDriver driver =
                     planner.plan(instance.getFragment().getRoot(), context, schemaRegion);
                 return createFragmentInstanceExecution(
-                    scheduler, instanceId, context, driver, stateMachine, failedInstances);
+                    scheduler,
+                    instanceId,
+                    context,
+                    driver,
+                    stateMachine,
+                    failedInstances,
+                    instance.getTimeOut());
               } catch (Throwable t) {
                 logger.error("Execute error caused by ", t);
                 stateMachine.failed(t);
@@ -194,8 +206,9 @@ public class FragmentInstanceManager {
   }
 
   private FragmentInstanceInfo createFailedInstanceInfo(FragmentInstanceId instanceId) {
+    FragmentInstanceContext context = instanceContext.get(instanceId);
     return new FragmentInstanceInfo(
-        FragmentInstanceState.FAILED, instanceContext.get(instanceId).getEndTime());
+        FragmentInstanceState.FAILED, context.getEndTime(), context.getFailedCause());
   }
 
   private void removeOldInstances() {

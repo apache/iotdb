@@ -337,6 +337,13 @@ public class AlignedPath extends PartialPath {
     return getDevicePath().concatNode(measurementList.get(0));
   }
 
+  public MeasurementPath getMeasurementPath() {
+    if (schemaList.size() != 1) {
+      throw new UnsupportedOperationException();
+    }
+    return new MeasurementPath(transformToPartialPath(), schemaList.get(0), true);
+  }
+
   public String getFormattedString() {
     return getDevicePath().toString() + "[" + String.join(",", measurementList) + "]";
   }

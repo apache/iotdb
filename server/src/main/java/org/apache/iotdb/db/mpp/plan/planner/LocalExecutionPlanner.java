@@ -154,7 +154,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescripto
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -267,7 +269,7 @@ public class LocalExecutionPlanner {
     @Override
     public Operator visitSeriesScan(SeriesScanNode node, LocalExecutionPlanContext context) {
       PartialPath seriesPath = node.getSeriesPath();
-      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      boolean ascending = node.getScanOrder() == Ordering.ASC;
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
@@ -295,7 +297,7 @@ public class LocalExecutionPlanner {
     public Operator visitAlignedSeriesScan(
         AlignedSeriesScanNode node, LocalExecutionPlanContext context) {
       AlignedPath seriesPath = node.getAlignedPath();
-      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      boolean ascending = node.getScanOrder() == Ordering.ASC;
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
@@ -323,7 +325,7 @@ public class LocalExecutionPlanner {
     public Operator visitAlignedSeriesAggregationScan(
         AlignedSeriesAggregationScanNode node, LocalExecutionPlanContext context) {
       AlignedPath seriesPath = node.getAlignedPath();
-      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      boolean ascending = node.getScanOrder() == Ordering.ASC;
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
@@ -576,7 +578,7 @@ public class LocalExecutionPlanner {
     public Operator visitSeriesAggregationScan(
         SeriesAggregationScanNode node, LocalExecutionPlanContext context) {
       PartialPath seriesPath = node.getSeriesPath();
-      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      boolean ascending = node.getScanOrder() == Ordering.ASC;
       OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
@@ -647,16 +649,17 @@ public class LocalExecutionPlanner {
       List<TSDataType> dataTypes = getOutputColumnTypes(node, context.getTypeProvider());
       TimeSelector selector = null;
       TimeComparator timeComparator = null;
-      for (OrderBy orderBy : node.getMergeOrders()) {
-        switch (orderBy) {
-          case TIMESTAMP_ASC:
+      for (SortItem sortItem : node.getMergeOrderParameter().getSortItemList()) {
+        if (sortItem.getSortKey() == SortKey.TIME) {
+          Ordering ordering = sortItem.getOrdering();
+          if (ordering == Ordering.ASC) {
             selector = new TimeSelector(node.getChildren().size() << 1, true);
             timeComparator = ASC_TIME_COMPARATOR;
-            break;
-          case TIMESTAMP_DESC:
+          } else {
             selector = new TimeSelector(node.getChildren().size() << 1, false);
             timeComparator = DESC_TIME_COMPARATOR;
-            break;
+          }
+          break;
         }
       }
 
@@ -814,7 +817,7 @@ public class LocalExecutionPlanner {
             node.isKeepNull(),
             node.getZoneId(),
             context.getTypeProvider(),
-            node.getScanOrder() == OrderBy.TIMESTAMP_ASC);
+            node.getScanOrder() == Ordering.ASC);
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
@@ -844,7 +847,7 @@ public class LocalExecutionPlanner {
             node.isKeepNull(),
             node.getZoneId(),
             context.getTypeProvider(),
-            node.getScanOrder() == OrderBy.TIMESTAMP_ASC);
+            node.getScanOrder() == Ordering.ASC);
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
@@ -859,7 +862,7 @@ public class LocalExecutionPlanner {
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
               .collect(Collectors.toList());
-      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      boolean ascending = node.getScanOrder() == Ordering.ASC;
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (GroupByLevelDescriptor descriptor : node.getGroupByLevelDescriptors()) {
@@ -899,7 +902,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               SlidingWindowAggregationOperator.class.getSimpleName());
       Operator child = node.getChild().accept(this, context);
-      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      boolean ascending = node.getScanOrder() == Ordering.ASC;
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
@@ -956,7 +959,7 @@ public class LocalExecutionPlanner {
           node.getChildren().stream()
               .map(child -> child.accept(this, context))
               .collect(Collectors.toList());
-      boolean ascending = node.getScanOrder() == OrderBy.TIMESTAMP_ASC;
+      boolean ascending = node.getScanOrder() == Ordering.ASC;
       List<Aggregator> aggregators = new ArrayList<>();
       Map<String, List<InputLocation>> layout = makeLayout(node);
       for (AggregationDescriptor descriptor : node.getAggregationDescriptorList()) {
@@ -1045,9 +1048,7 @@ public class LocalExecutionPlanner {
               node.getPlanNodeId(),
               TimeJoinOperator.class.getSimpleName());
       TimeComparator timeComparator =
-          node.getMergeOrder() == OrderBy.TIMESTAMP_ASC
-              ? ASC_TIME_COMPARATOR
-              : DESC_TIME_COMPARATOR;
+          node.getMergeOrder() == Ordering.ASC ? ASC_TIME_COMPARATOR : DESC_TIME_COMPARATOR;
       List<OutputColumn> outputColumns = generateOutputColumns(node);
       List<ColumnMerger> mergers = createColumnMergers(outputColumns, timeComparator);
       List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
@@ -1184,7 +1185,7 @@ public class LocalExecutionPlanner {
       PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
       TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
       if (timeValuePair == null) { // last value is not cached
-        return createUpdateLastCacheOperator(node, context, seriesPath);
+        return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
       } else if (!satisfyFilter(
           context.lastQueryTimeFilter, timeValuePair)) { // cached last value is not satisfied
 
@@ -1193,7 +1194,7 @@ public class LocalExecutionPlanner {
                 || context.lastQueryTimeFilter instanceof GtEq);
         // time filter is not > or >=, we still need to read from disk
         if (!isFilterGtOrGe) {
-          return createUpdateLastCacheOperator(node, context, seriesPath);
+          return createUpdateLastCacheOperator(node, context, node.getSeriesPath());
         } else { // otherwise, we just ignore it and return null
           return null;
         }
@@ -1204,7 +1205,7 @@ public class LocalExecutionPlanner {
     }
 
     private UpdateLastCacheOperator createUpdateLastCacheOperator(
-        LastQueryScanNode node, LocalExecutionPlanContext context, PartialPath fullPath) {
+        LastQueryScanNode node, LocalExecutionPlanContext context, MeasurementPath fullPath) {
       SeriesAggregationScanOperator lastQueryScan = createLastQueryScanOperator(node, context);
 
       OperatorContext operatorContext =
@@ -1256,7 +1257,8 @@ public class LocalExecutionPlanner {
       PartialPath seriesPath = node.getSeriesPath().transformToPartialPath();
       TimeValuePair timeValuePair = DATA_NODE_SCHEMA_CACHE.getLastCache(seriesPath);
       if (timeValuePair == null) { // last value is not cached
-        return createUpdateLastCacheOperator(node, context, seriesPath);
+        return createUpdateLastCacheOperator(
+            node, context, node.getSeriesPath().getMeasurementPath());
       } else if (!satisfyFilter(
           context.lastQueryTimeFilter, timeValuePair)) { // cached last value is not satisfied
 
@@ -1265,7 +1267,8 @@ public class LocalExecutionPlanner {
                 || context.lastQueryTimeFilter instanceof GtEq);
         // time filter is not > or >=, we still need to read from disk
         if (!isFilterGtOrGe) {
-          return createUpdateLastCacheOperator(node, context, seriesPath);
+          return createUpdateLastCacheOperator(
+              node, context, node.getSeriesPath().getMeasurementPath());
         } else { // otherwise, we just ignore it and return null
           return null;
         }
@@ -1276,7 +1279,9 @@ public class LocalExecutionPlanner {
     }
 
     private UpdateLastCacheOperator createUpdateLastCacheOperator(
-        AlignedLastQueryScanNode node, LocalExecutionPlanContext context, PartialPath fullPath) {
+        AlignedLastQueryScanNode node,
+        LocalExecutionPlanContext context,
+        MeasurementPath fullPath) {
       AlignedSeriesAggregationScanOperator lastQueryScan =
           createLastQueryScanOperator(node, context);
 

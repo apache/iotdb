@@ -100,6 +100,14 @@ public class QueryStateMachine {
     queryState.set(QueryState.DISPATCHING);
   }
 
+  public void transitionToRetrying(TSStatus failureStatus) {
+    if (queryState.get().isDone()) {
+      return;
+    }
+    this.failureStatus = failureStatus;
+    queryState.set(QueryState.RETRYING);
+  }
+
   public void transitionToRunning() {
     queryState.set(QueryState.RUNNING);
   }
@@ -123,6 +131,13 @@ public class QueryStateMachine {
       return;
     }
     queryState.set(QueryState.ABORTED);
+  }
+
+  public void transitionToFailed() {
+    if (queryState.get().isDone()) {
+      return;
+    }
+    queryState.set(QueryState.FAILED);
   }
 
   public void transitionToFailed(Throwable throwable) {

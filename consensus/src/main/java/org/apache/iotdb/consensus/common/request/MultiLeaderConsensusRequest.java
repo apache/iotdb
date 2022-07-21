@@ -16,36 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.wal.buffer;
 
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+package org.apache.iotdb.consensus.common.request;
 
-/** This class provides a signal to help wal buffer dealing with some special cases */
-public class SignalWALEntry extends WALEntry {
-  private final SignalType signalType;
+import java.nio.ByteBuffer;
 
-  public SignalWALEntry(SignalType signalType) {
-    this(signalType, false);
-  }
+/**
+ * This class is used to represent the sync log request from MultiLeaderConsensus. That we use this
+ * class rather than ByteBufferConsensusRequest is because the serialization method is different
+ * between these two classes. And we need to separate them in DataRegionStateMachine when
+ * deserialize the PlanNode from ByteBuffer
+ */
+public class MultiLeaderConsensusRequest implements IConsensusRequest {
 
-  public SignalWALEntry(SignalType signalType, boolean wait) {
-    super(Long.MIN_VALUE, new DeletePlan(), wait);
-    this.signalType = signalType;
+  private final ByteBuffer byteBuffer;
+
+  public MultiLeaderConsensusRequest(ByteBuffer byteBuffer) {
+    this.byteBuffer = byteBuffer;
   }
 
   @Override
-  public boolean isSignal() {
-    return true;
-  }
-
-  public SignalType getSignalType() {
-    return signalType;
-  }
-
-  public enum SignalType {
-    /** signal wal buffer has been closed */
-    CLOSE_SIGNAL,
-    /** signal wal buffer to roll wal log writer */
-    ROLL_WAL_LOG_WRITER_SIGNAL,
+  public ByteBuffer serializeToByteBuffer() {
+    return byteBuffer;
   }
 }

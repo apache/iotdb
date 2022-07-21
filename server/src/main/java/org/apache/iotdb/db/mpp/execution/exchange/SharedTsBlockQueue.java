@@ -53,7 +53,7 @@ public class SharedTsBlockQueue {
 
   private ListenableFuture<Void> blockedOnMemory;
 
-  private boolean destroyed = false;
+  private boolean closed = false;
 
   private LocalSourceHandle sourceHandle;
   private LocalSinkHandle sinkHandle;
@@ -93,7 +93,7 @@ public class SharedTsBlockQueue {
   /** Notify no more tsblocks will be added to the queue. */
   public void setNoMoreTsBlocks(boolean noMoreTsBlocks) {
     logger.info("SharedTsBlockQueue receive no more TsBlocks signal.");
-    if (destroyed) {
+    if (closed) {
       throw new IllegalStateException("queue has been destroyed");
     }
     this.noMoreTsBlocks = noMoreTsBlocks;
@@ -110,7 +110,7 @@ public class SharedTsBlockQueue {
    * returned by {@link #isBlocked()} completes.
    */
   public TsBlock remove() {
-    if (destroyed) {
+    if (closed) {
       throw new IllegalStateException("queue has been destroyed");
     }
     TsBlock tsBlock = queue.remove();
@@ -134,7 +134,7 @@ public class SharedTsBlockQueue {
    * the returned future of last invocation completes.
    */
   public ListenableFuture<Void> add(TsBlock tsBlock) {
-    if (destroyed) {
+    if (closed) {
       throw new IllegalStateException("queue has been destroyed");
     }
 
@@ -152,14 +152,37 @@ public class SharedTsBlockQueue {
     return blockedOnMemory;
   }
 
-  /** Destroy the queue and cancel the future. */
-  public void destroy() {
-    if (destroyed) {
+  /** Destroy the queue and complete the future. Should only be called in normal case */
+  public void close() {
+    if (closed) {
       return;
     }
-    destroyed = true;
+    closed = true;
     if (!blocked.isDone()) {
       blocked.set(null);
+    }
+    if (blockedOnMemory != null) {
+      bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);
+    }
+    queue.clear();
+    if (bufferRetainedSizeInBytes > 0L) {
+      localMemoryManager
+          .getQueryPool()
+          .free(localFragmentInstanceId.getQueryId(), bufferRetainedSizeInBytes);
+      bufferRetainedSizeInBytes = 0;
+    }
+  }
+
+  // TODO add Throwable t as a parameter of this method, and then call blocked.setException(t);
+  // instead of blocked.cancel(true);
+  /** Destroy the queue and cancel the future. Should only be called in abnormal case */
+  public void abort() {
+    if (closed) {
+      return;
+    }
+    closed = true;
+    if (!blocked.isDone()) {
+      blocked.cancel(true);
     }
     if (blockedOnMemory != null) {
       bufferRetainedSizeInBytes -= localMemoryManager.getQueryPool().tryCancel(blockedOnMemory);

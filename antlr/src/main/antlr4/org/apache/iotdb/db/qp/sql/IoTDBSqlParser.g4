@@ -379,11 +379,11 @@ intoPath
 
 specialClause
     : specialLimit #specialLimitStatement
-    | orderByTimeClause specialLimit? #orderByTimeStatement
-    | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
-    | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
-    | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
-    | fillClause orderByTimeClause? specialLimit? #fillStatement
+    | orderByClause specialLimit? #orderByTimeStatement
+    | groupByTimeClause orderByClause? specialLimit? #groupByTimeStatement
+    | groupByFillClause orderByClause? specialLimit? #groupByFillStatement
+    | groupByLevelClause orderByClause? specialLimit? #groupByLevelStatement
+    | fillClause orderByClause? specialLimit? #fillStatement
     ;
 
 specialLimit
@@ -407,8 +407,18 @@ disableAlign
     : DISABLE ALIGN
     ;
 
-orderByTimeClause
-    : ORDER BY TIME (DESC | ASC)?
+orderByClause
+    : ORDER BY orderByAttributeClause (COMMA orderByAttributeClause)*
+    ;
+
+orderByAttributeClause
+    : sortKey (DESC | ASC)
+    ;
+
+sortKey
+    : TIME
+    | TIMESERIES
+    | DEVICE
     ;
 
 groupByTimeClause

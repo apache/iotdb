@@ -93,6 +93,12 @@ public class StubSinkHandle implements ISinkHandle {
     tsBlocks.clear();
   }
 
+  @Override
+  public void close() {
+    closed = true;
+    tsBlocks.clear();
+  }
+
   public List<TsBlock> getTsBlocks() {
     return tsBlocks;
   }

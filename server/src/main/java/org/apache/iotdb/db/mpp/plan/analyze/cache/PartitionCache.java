@@ -123,10 +123,11 @@ public class PartitionCache {
    * get storage group to device map
    *
    * @param devicePaths the devices that need to hit
+   * @param secondTry whether try to get all storage group from confignode
    * @param isAutoCreate whether auto create storage group when cache miss
    */
   public Map<String, List<String>> getStorageGroupToDevice(
-      List<String> devicePaths, boolean isAutoCreate) {
+      List<String> devicePaths, boolean secondTry, boolean isAutoCreate) {
     StorageGroupCacheResult<List<String>> result =
         new StorageGroupCacheResult<List<String>>() {
           @Override
@@ -135,7 +136,7 @@ public class PartitionCache {
             map.get(storageGroupName).add(device);
           }
         };
-    getStorageGroupCacheResult(result, devicePaths, isAutoCreate);
+    getStorageGroupCacheResult(result, devicePaths, secondTry, isAutoCreate);
     return result.getMap();
   }
 
@@ -143,10 +144,11 @@ public class PartitionCache {
    * get device to storage group map
    *
    * @param devicePaths the devices that need to hit
+   * @param secondTry whether try to get all storage group from confignode
    * @param isAutoCreate whether auto create storage group when cache miss
    */
   public Map<String, String> getDeviceToStorageGroup(
-      List<String> devicePaths, boolean isAutoCreate) {
+      List<String> devicePaths, boolean secondTry, boolean isAutoCreate) {
     StorageGroupCacheResult<String> result =
         new StorageGroupCacheResult<String>() {
           @Override
@@ -154,7 +156,7 @@ public class PartitionCache {
             map.put(device, storageGroupName);
           }
         };
-    getStorageGroupCacheResult(result, devicePaths, isAutoCreate);
+    getStorageGroupCacheResult(result, devicePaths, secondTry, isAutoCreate);
     return result.getMap();
   }
 
@@ -303,10 +305,14 @@ public class PartitionCache {
    *
    * @param result contains result, failed devices and map
    * @param devicePaths the devices that need to hit
+   * @param secondTry whether try to get all storage group from confignode
    * @param isAutoCreate whether auto create storage group when device miss
    */
   private void getStorageGroupCacheResult(
-      StorageGroupCacheResult<?> result, List<String> devicePaths, boolean isAutoCreate) {
+      StorageGroupCacheResult<?> result,
+      List<String> devicePaths,
+      boolean secondTry,
+      boolean isAutoCreate) {
     Map<String, String> deviceToStorageGroupMap = new HashMap<>();
     // miss when devicePath contains *
     for (String devicePath : devicePaths) {
@@ -316,7 +322,7 @@ public class PartitionCache {
     }
     // first try to hit storage group in fast-fail way
     getStorageGroupMap(result, devicePaths, true);
-    if (!result.isSuccess()) {
+    if (!result.isSuccess() && secondTry) {
       try {
         // try to fetch storage group from config node when miss
         fetchStorageGroupAndUpdateCache(result, devicePaths);
@@ -601,7 +607,9 @@ public class PartitionCache {
       // check cache for each storage group
       for (Map.Entry<String, List<DataPartitionQueryParam>> entry :
           storageGroupToQueryParamsMap.entrySet()) {
-        if (!getStorageGroupDataPartition(dataPartitionMap, entry.getKey(), entry.getValue())) {
+        if (null == entry.getValue()
+            || 0 == entry.getValue().size()
+            || !getStorageGroupDataPartition(dataPartitionMap, entry.getKey(), entry.getValue())) {
           CacheMetricsRecorder.record(false, DATA_PARTITION_CACHE_NAME);
           return null;
         }
@@ -664,8 +672,13 @@ public class PartitionCache {
           seriesSlotToTimePartitionMap,
       DataPartitionQueryParam dataPartitionQueryParam,
       Map<TSeriesPartitionSlot, SeriesPartitionTable> cachedStorageGroupPartitionMap) {
-    TSeriesPartitionSlot seriesPartitionSlot =
-        partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath());
+    TSeriesPartitionSlot seriesPartitionSlot;
+    if (null != dataPartitionQueryParam.getDevicePath()) {
+      seriesPartitionSlot =
+          partitionExecutor.getSeriesPartitionSlot(dataPartitionQueryParam.getDevicePath());
+    } else {
+      return false;
+    }
     SeriesPartitionTable cachedSeriesPartitionTable =
         cachedStorageGroupPartitionMap.get(seriesPartitionSlot);
     if (null == cachedSeriesPartitionTable) {
@@ -679,6 +692,10 @@ public class PartitionCache {
         cachedSeriesPartitionTable.getSeriesPartitionMap();
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> timePartitionSlotListMap =
         seriesSlotToTimePartitionMap.computeIfAbsent(seriesPartitionSlot, k -> new HashMap<>());
+    // Notice: when query all time partition, then miss
+    if (0 == dataPartitionQueryParam.getTimePartitionSlotList().size()) {
+      return false;
+    }
     // check cache for each time partition
     for (TTimePartitionSlot timePartitionSlot :
         dataPartitionQueryParam.getTimePartitionSlotList()) {
@@ -703,7 +720,9 @@ public class PartitionCache {
       TTimePartitionSlot timePartitionSlot,
       Map<TTimePartitionSlot, List<TConsensusGroupId>> cachedTimePartitionSlot) {
     List<TConsensusGroupId> cacheConsensusGroupId = cachedTimePartitionSlot.get(timePartitionSlot);
-    if (null == cacheConsensusGroupId || 0 == cacheConsensusGroupId.size()) {
+    if (null == cacheConsensusGroupId
+        || 0 == cacheConsensusGroupId.size()
+        || null == timePartitionSlot) {
       logger.debug(
           "[{} Cache] miss when search time partition {}",
           DATA_PARTITION_CACHE_NAME,
@@ -733,26 +752,33 @@ public class PartitionCache {
               String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
           entry1 : dataPartitionTable.entrySet()) {
         String storageGroupName = entry1.getKey();
-        DataPartitionTable result = dataPartitionCache.getIfPresent(storageGroupName);
-        if (null == result) {
-          result = new DataPartitionTable();
-          dataPartitionCache.put(storageGroupName, result);
-        }
-        Map<TSeriesPartitionSlot, SeriesPartitionTable> result2 = result.getDataPartitionMap();
-        for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
-            entry2 : entry1.getValue().entrySet()) {
-          TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
-          SeriesPartitionTable seriesPartitionTable;
-          if (!result2.containsKey(seriesPartitionSlot)) {
-            // if device not exists, then add new seriesPartitionTable
-            seriesPartitionTable = new SeriesPartitionTable(entry2.getValue());
-            result2.put(seriesPartitionSlot, seriesPartitionTable);
-          } else {
-            // if device exists, then merge
-            seriesPartitionTable = result2.get(seriesPartitionSlot);
-            Map<TTimePartitionSlot, List<TConsensusGroupId>> result3 =
-                seriesPartitionTable.getSeriesPartitionMap();
-            result3.putAll(entry2.getValue());
+        if (null != storageGroupName) {
+          DataPartitionTable result = dataPartitionCache.getIfPresent(storageGroupName);
+          if (null == result) {
+            result = new DataPartitionTable();
+            dataPartitionCache.put(storageGroupName, result);
+          }
+          Map<TSeriesPartitionSlot, SeriesPartitionTable>
+              seriesPartitionSlotSeriesPartitionTableMap = result.getDataPartitionMap();
+          for (Map.Entry<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+              entry2 : entry1.getValue().entrySet()) {
+            TSeriesPartitionSlot seriesPartitionSlot = entry2.getKey();
+            if (null != seriesPartitionSlot) {
+              SeriesPartitionTable seriesPartitionTable;
+              if (!seriesPartitionSlotSeriesPartitionTableMap.containsKey(seriesPartitionSlot)) {
+                // if device not exists, then add new seriesPartitionTable
+                seriesPartitionTable = new SeriesPartitionTable(entry2.getValue());
+                seriesPartitionSlotSeriesPartitionTableMap.put(
+                    seriesPartitionSlot, seriesPartitionTable);
+              } else {
+                // if device exists, then merge
+                seriesPartitionTable =
+                    seriesPartitionSlotSeriesPartitionTableMap.get(seriesPartitionSlot);
+                Map<TTimePartitionSlot, List<TConsensusGroupId>> result3 =
+                    seriesPartitionTable.getSeriesPartitionMap();
+                result3.putAll(entry2.getValue());
+              }
+            }
           }
         }
       }
