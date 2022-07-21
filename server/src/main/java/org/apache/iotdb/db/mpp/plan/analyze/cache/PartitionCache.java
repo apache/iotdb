@@ -186,7 +186,7 @@ public class PartitionCache {
   private void fetchStorageGroupAndUpdateCache(
       StorageGroupCacheResult<?> result, List<String> devicePaths) throws IOException, TException {
     try (ConfigNodeClient client =
-             configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       storageGroupCacheLock.writeLock().lock();
       result.reset();
       getStorageGroupMap(result, devicePaths, true);
@@ -217,7 +217,7 @@ public class PartitionCache {
       StorageGroupCacheResult<?> result, List<String> devicePaths)
       throws IOException, MetadataException, TException {
     try (ConfigNodeClient client =
-             configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       storageGroupCacheLock.writeLock().lock();
       // try to check whether storage group need to be created
       result.reset();
@@ -411,7 +411,7 @@ public class PartitionCache {
         // verify that there are not hit in cache
         if (!groupIdToReplicaSetMap.containsKey(consensusGroupId)) {
           try (ConfigNodeClient client =
-                   configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+              configNodeClientManager.borrowClient(ConfigNodeInfo.partitionRegionId)) {
             TRegionRouteMapResp resp = client.getLatestRegionRouteMap();
             if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == resp.getStatus().getCode()) {
               updateGroupIdToReplicaSetMap(resp.getTimestamp(), resp.getRegionRouteMap());
@@ -646,7 +646,7 @@ public class PartitionCache {
         dataPartitionTable.getDataPartitionMap();
     Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>
         seriesSlotToTimePartitionMap =
-        dataPartitionMap.computeIfAbsent(storageGroupName, k -> new HashMap<>());
+            dataPartitionMap.computeIfAbsent(storageGroupName, k -> new HashMap<>());
     // check cache for each device
     for (DataPartitionQueryParam dataPartitionQueryParam : dataPartitionQueryParams) {
       if (!getDeviceDataPartition(
@@ -747,7 +747,7 @@ public class PartitionCache {
     dataPartitionCacheLock.writeLock().lock();
     try {
       for (Map.Entry<
-          String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+              String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
           entry1 : dataPartitionTable.entrySet()) {
         String storageGroupName = entry1.getKey();
         if (null != storageGroupName) {
