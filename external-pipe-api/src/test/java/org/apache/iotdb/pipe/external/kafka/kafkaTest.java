@@ -77,7 +77,7 @@ public class kafkaTest {
     }
 
     sinkParams.put("brokers", "1.1.1.1:8000,localhost:65535");
-    sinkParams.put("means", "non-serial");
+    sinkParams.put("means", "no-type");
     sinkParams.put("partition", "0");
     try {
       kf.validateSinkParams(sinkParams);
@@ -100,7 +100,7 @@ public class kafkaTest {
               + "\nbrokers/1.1.1.1:8000,localhost:65535, topic/IoTDB, means/non-serial, partition/x");
     }
 
-    sinkParams.put("means", "serial");
+    sinkParams.put("means", "with-type");
     try {
       kf.validateSinkParams(sinkParams);
       System.out.println(
@@ -119,7 +119,6 @@ public class kafkaTest {
 
     sinkParams.put("brokers", "localhost:9092");
     sinkParams.put("topic", "IoTDB");
-    sinkParams.put("means", "serial");
 
     try {
       kf.validateSinkParams(sinkParams);
@@ -161,7 +160,7 @@ public class kafkaTest {
       System.out.println("Pipe writing failed!");
     }
 
-    sinkParams.put("means", "type");
+    sinkParams.put("means", "with-type");
     sinkParams.put("key", "test");
 
     try {

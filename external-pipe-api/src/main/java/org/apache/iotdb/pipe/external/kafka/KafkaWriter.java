@@ -50,24 +50,18 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
   private void kafka_send(String data) throws IOException {
     status_update(data);
     try {
-      if (this.kafkaParams.containsKey("means")
-          && this.kafkaParams.get("means").equals("non-serial")) {
-        if (this.kafkaParams.containsKey("partition")) {
-          this.producer.send(
-              new ProducerRecord<>(
-                  this.kafkaParams.get("topic"),
-                  Integer.parseInt(this.kafkaParams.get("partition")),
-                  "IoTDB",
-                  data));
-        } else if (this.kafkaParams.containsKey("key")) {
-          this.producer.send(
-              new ProducerRecord<>(
-                  this.kafkaParams.get("topic"), this.kafkaParams.get("key"), data));
-        } else {
-          this.producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), data));
-        }
+      if (this.kafkaParams.containsKey("partition")) {
+        this.producer.send(
+            new ProducerRecord<>(
+                this.kafkaParams.get("topic"),
+                Integer.parseInt(this.kafkaParams.get("partition")),
+                "IoTDB",
+                data));
+      } else if (this.kafkaParams.containsKey("key")) {
+        this.producer.send(
+            new ProducerRecord<>(this.kafkaParams.get("topic"), this.kafkaParams.get("key"), data));
       } else {
-        this.producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), 0, "IoTDB", data));
+        this.producer.send(new ProducerRecord<>(this.kafkaParams.get("topic"), data));
       }
     } catch (Exception e) {
       throw new IOException("insertion failed, data=" + data);
@@ -78,7 +72,8 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
       throws IOException {
     String data;
     String Timeseries = String.join(".", path);
-    if (this.kafkaParams.containsKey("means") && this.kafkaParams.get("means").equals("type")) {
+    if (this.kafkaParams.containsKey("means")
+        && this.kafkaParams.get("means").equals("with-type")) {
       data = Timeseries + ':' + time + ':' + type + ':' + value;
     } else {
       data = Timeseries + ':' + time + ':' + value;
@@ -114,7 +109,8 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
       throws IOException {
     String Timeseries = String.join(".", path);
     String data;
-    if (this.kafkaParams.containsKey("means") && this.kafkaParams.get("means").equals("type")) {
+    if (this.kafkaParams.containsKey("means")
+        && this.kafkaParams.get("means").equals("with-type")) {
       String[] pairs = new String[values.length];
       for (int i = 0; i < values.length; ++i) {
         pairs[i] = dataTypes[i].toString() + ':' + values[i].toString();
