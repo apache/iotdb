@@ -68,8 +68,10 @@ public class DataNodeRemoveHandler {
    */
   public List<TConsensusGroupId> getDataNodeRegionIds(TDataNodeLocation dataNodeLocation) {
     return configManager.getPartitionManager().getAllReplicaSets().stream()
-        .filter(rg -> rg.getDataNodeLocations().contains(dataNodeLocation))
-        .filter(rg -> rg.regionId.getType() != TConsensusGroupType.PartitionRegion)
+        .filter(
+            rg ->
+                rg.getDataNodeLocations().contains(dataNodeLocation)
+                    && rg.regionId.getType() != TConsensusGroupType.PartitionRegion)
         .map(TRegionReplicaSet::getRegionId)
         .collect(Collectors.toList());
   }

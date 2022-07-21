@@ -199,8 +199,8 @@ public class NodeInfo implements SnapshotProcessor {
       dataNodeInfoReadWriteLock.writeLock().lock();
       req.getDataNodeLocations()
           .forEach(
-              drainingDataNodes -> {
-                registeredDataNodes.remove(drainingDataNodes.getDataNodeId());
+              removeDataNodes -> {
+                registeredDataNodes.remove(removeDataNodes.getDataNodeId());
               });
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
