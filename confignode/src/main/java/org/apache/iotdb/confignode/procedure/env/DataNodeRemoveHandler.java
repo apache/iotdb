@@ -60,6 +60,12 @@ public class DataNodeRemoveHandler {
     this.configManager = configManager;
   }
 
+  /**
+   * Get all consensus group id in this node
+   *
+   * @param dataNodeLocation data node location
+   * @return group id list
+   */
   public List<TConsensusGroupId> getDataNodeRegionIds(TDataNodeLocation dataNodeLocation) {
     return configManager.getPartitionManager().getAllReplicaSets().stream()
         .filter(rg -> rg.getDataNodeLocations().contains(dataNodeLocation))
@@ -102,7 +108,13 @@ public class DataNodeRemoveHandler {
     return status;
   }
 
-  public TDataNodeLocation findDestDataNode(TDataNodeLocation node, TConsensusGroupId regionId) {
+  /**
+   * Find dest data node
+   *
+   * @param regionId region id
+   * @return dest data node location
+   */
+  public TDataNodeLocation findDestDataNode(TConsensusGroupId regionId) {
     TSStatus status;
     List<TDataNodeLocation> regionReplicaNodes = findRegionReplicaNodes(regionId);
     if (regionReplicaNodes.isEmpty()) {
@@ -120,6 +132,14 @@ public class DataNodeRemoveHandler {
     return newNode.get();
   }
 
+  /**
+   * Send to DataNode, migrate region from originalDataNode to destDataNode
+   *
+   * @param originalDataNode old location data node
+   * @param destDataNode dest data node
+   * @param regionId region id
+   * @return migrate status
+   */
   public TSStatus migrateRegion(
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
@@ -158,23 +178,39 @@ public class DataNodeRemoveHandler {
     return status;
   }
 
+  /**
+   * Update region location cache
+   *
+   * @param regionId region id
+   * @param originalDataNode old location data node
+   * @param destDataNode dest data node
+   */
   public void updateRegionLocationCache(
-      TConsensusGroupId regionId, TDataNodeLocation oldNode, TDataNodeLocation newNode) {
+      TConsensusGroupId regionId,
+      TDataNodeLocation originalDataNode,
+      TDataNodeLocation destDataNode) {
     LOGGER.debug(
         "start to update region {} location from {} to {} when it migrate succeed",
         regionId,
-        oldNode.getInternalEndPoint().getIp(),
-        newNode.getInternalEndPoint().getIp());
-    UpdateRegionLocationPlan req = new UpdateRegionLocationPlan(regionId, oldNode, newNode);
+        originalDataNode.getInternalEndPoint().getIp(),
+        destDataNode.getInternalEndPoint().getIp());
+    UpdateRegionLocationPlan req =
+        new UpdateRegionLocationPlan(regionId, originalDataNode, destDataNode);
     TSStatus status = configManager.getPartitionManager().updateRegionLocation(req);
     LOGGER.info(
         "update region {} location finished, result:{}, old:{}, new:{}",
         regionId,
         status,
-        oldNode.getInternalEndPoint().getIp(),
-        newNode.getInternalEndPoint().getIp());
+        originalDataNode.getInternalEndPoint().getIp(),
+        destDataNode.getInternalEndPoint().getIp());
   }
 
+  /**
+   * Find region replication Nodes
+   *
+   * @param regionId region id
+   * @return data node location
+   */
   public List<TDataNodeLocation> findRegionReplicaNodes(TConsensusGroupId regionId) {
     List<TRegionReplicaSet> regionReplicaSets =
         configManager.getPartitionManager().getAllReplicaSets().stream()
@@ -196,8 +232,15 @@ public class DataNodeRemoveHandler {
         .findAny();
   }
 
+  /**
+   * add region Consensus group in new node
+   *
+   * @param regionId region id
+   * @param destDataNode dest data node
+   * @return status
+   */
   public TSStatus addNewNodeToRegionConsensusGroup(
-      TConsensusGroupId regionId, TDataNodeLocation newNode) {
+      TConsensusGroupId regionId, TDataNodeLocation destDataNode) {
     TSStatus status;
     List<TDataNodeLocation> regionReplicaNodes = findRegionReplicaNodes(regionId);
     if (regionReplicaNodes.isEmpty()) {
@@ -212,12 +255,12 @@ public class DataNodeRemoveHandler {
         SyncDataNodeClientPool.getInstance()
             .addToRegionConsensusGroup(
                 // TODO replace with real ttl
-                regionReplicaNodes, regionId, newNode, storageGroup, Long.MAX_VALUE);
-    LOGGER.debug("send add region {} consensus group to {}", regionId, newNode);
+                regionReplicaNodes, regionId, destDataNode, storageGroup, Long.MAX_VALUE);
+    LOGGER.debug("send add region {} consensus group to {}", regionId, destDataNode);
     if (isFailed(status)) {
       LOGGER.error(
           "add new node {} to region {} consensus group failed,  result: {}",
-          newNode,
+          destDataNode,
           regionId,
           status);
     }
@@ -232,6 +275,13 @@ public class DataNodeRemoveHandler {
     return !isSucceed(status);
   }
 
+  /**
+   * Stop old data node
+   *
+   * @param dataNode old data node
+   * @return status
+   * @throws ProcedureException procedure exception
+   */
   public TSStatus stopDataNode(TDataNodeLocation dataNode) throws ProcedureException {
     LOGGER.info("begin to stop Data Node {}", dataNode);
     AsyncDataNodeClientPool.getInstance().resetClient(dataNode.getInternalEndPoint());
@@ -244,10 +294,6 @@ public class DataNodeRemoveHandler {
       throw new ProcedureException("Failed to stop data node");
     }
     return status;
-  }
-
-  public void setConfigManager(ConfigManager configManager) {
-    this.configManager = configManager;
   }
 
   /**
@@ -320,6 +366,11 @@ public class DataNodeRemoveHandler {
     return regionMigrateLock;
   }
 
+  /**
+   * Remove data node in node info
+   *
+   * @param tDataNodeLocation data node location
+   */
   public void removeDataNodePersistence(TDataNodeLocation tDataNodeLocation) {
     List<TDataNodeLocation> removeDataNodes = new ArrayList<>();
     removeDataNodes.add(tDataNodeLocation);

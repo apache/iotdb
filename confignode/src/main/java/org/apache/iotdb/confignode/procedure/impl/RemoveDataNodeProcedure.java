@@ -206,7 +206,7 @@ public class RemoveDataNodeProcedure
     execDataNodeRegionIds.forEach(
         regionId -> {
           TDataNodeLocation destDataNode =
-              env.getDataNodeRemoveHandler().findDestDataNode(tDataNodeLocation, regionId);
+              env.getDataNodeRemoveHandler().findDestDataNode(regionId);
           if (destDataNode != null) {
             RegionMigrateProcedure regionMigrateProcedure =
                 new RegionMigrateProcedure(regionId, tDataNodeLocation, destDataNode);
