@@ -45,9 +45,9 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
@@ -71,13 +71,13 @@ public class AsyncDataNodeClientPool {
    * receive the requests
    *
    * @param req request
-   * @param dataNodeLocations The specific DataNodes
+   * @param dataNodeLocations Map<DataNodeId, TDataNodeLocation>
    * @param requestType DataNodeRequestType
    * @param dataNodeResponseStatus response list.Used by CREATE_FUNCTION,DROP_FUNCTION and FLUSH
    */
   public void sendAsyncRequestToDataNodeWithRetry(
       Object req,
-      List<TDataNodeLocation> dataNodeLocations,
+      Map<Integer, TDataNodeLocation> dataNodeLocations,
       DataNodeRequestType requestType,
       List<TSStatus> dataNodeResponseStatus) {
     if (dataNodeLocations.isEmpty()) {
@@ -86,7 +86,7 @@ public class AsyncDataNodeClientPool {
     for (int retry = 0; retry < retryNum; retry++) {
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
       AbstractRetryHandler handler;
-      for (TDataNodeLocation targetDataNode : dataNodeLocations) {
+      for (TDataNodeLocation targetDataNode : dataNodeLocations.values()) {
         switch (requestType) {
           case SET_TTL:
             handler =
@@ -180,18 +180,23 @@ public class AsyncDataNodeClientPool {
    */
   public void createRegions(
       CreateRegionGroupsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
-    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
+    // Map<index, TDataNodeLocation>
+    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    int index = 0;
     // Count the datanodes to be sent
     for (List<TRegionReplicaSet> regionReplicaSets :
         createRegionGroupsPlan.getRegionGroupMap().values()) {
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
-        dataNodeLocations.addAll(regionReplicaSet.getDataNodeLocations());
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+          dataNodeLocations.put(index++, dataNodeLocation);
+        }
       }
     }
     if (dataNodeLocations.isEmpty()) {
       return;
     }
     for (int retry = 0; retry < retryNum; retry++) {
+      index = 0;
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
       AbstractRetryHandler handler;
       for (Map.Entry<String, List<TRegionReplicaSet>> entry :
@@ -200,38 +205,44 @@ public class AsyncDataNodeClientPool {
         for (TRegionReplicaSet regionReplicaSet : entry.getValue()) {
           // Enumerate each Region
           for (TDataNodeLocation targetDataNode : regionReplicaSet.getDataNodeLocations()) {
-            switch (regionReplicaSet.getRegionId().getType()) {
-              case SchemaRegion:
-                handler =
-                    new CreateRegionHandler(
-                        countDownLatch,
-                        DataNodeRequestType.CREATE_SCHEMA_REGIONS,
-                        regionReplicaSet.regionId,
-                        targetDataNode,
-                        dataNodeLocations);
-                sendAsyncRequestToDataNode(
-                    targetDataNode,
-                    genCreateSchemaRegionReq(entry.getKey(), regionReplicaSet),
-                    handler,
-                    retry);
-                break;
-              case DataRegion:
-                handler =
-                    new CreateRegionHandler(
-                        countDownLatch,
-                        DataNodeRequestType.CREATE_DATA_REGIONS,
-                        regionReplicaSet.regionId,
-                        targetDataNode,
-                        dataNodeLocations);
-                sendAsyncRequestToDataNode(
-                    targetDataNode,
-                    genCreateDataRegionReq(
-                        entry.getKey(), regionReplicaSet, ttlMap.get(entry.getKey())),
-                    handler,
-                    retry);
-                break;
-              default:
-                return;
+            if (dataNodeLocations.containsKey(index)) {
+              switch (regionReplicaSet.getRegionId().getType()) {
+                case SchemaRegion:
+                  handler =
+                      new CreateRegionHandler(
+                          countDownLatch,
+                          DataNodeRequestType.CREATE_SCHEMA_REGIONS,
+                          regionReplicaSet.regionId,
+                          targetDataNode,
+                          dataNodeLocations,
+                          index++);
+                  sendAsyncRequestToDataNode(
+                      targetDataNode,
+                      genCreateSchemaRegionReq(entry.getKey(), regionReplicaSet),
+                      handler,
+                      retry);
+                  break;
+                case DataRegion:
+                  handler =
+                      new CreateRegionHandler(
+                          countDownLatch,
+                          DataNodeRequestType.CREATE_DATA_REGIONS,
+                          regionReplicaSet.regionId,
+                          targetDataNode,
+                          dataNodeLocations,
+                          index++);
+                  sendAsyncRequestToDataNode(
+                      targetDataNode,
+                      genCreateDataRegionReq(
+                          entry.getKey(), regionReplicaSet, ttlMap.get(entry.getKey())),
+                      handler,
+                      retry);
+                  break;
+                default:
+                  return;
+              }
+            } else {
+              index++;
             }
           }
         }

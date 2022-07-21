@@ -53,6 +53,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.locks.ReentrantLock;
@@ -199,12 +201,15 @@ public class NodeManager {
     return nodeInfo.getRegisteredDataNodes(dataNodeId);
   }
 
-  public List<TDataNodeLocation> getRegisteredDataNodeLocations(int dataNodeId) {
-    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
+  public Map<Integer, TDataNodeLocation> getRegisteredDataNodeLocations(int dataNodeId) {
+    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
     nodeInfo
         .getRegisteredDataNodes(dataNodeId)
         .forEach(
-            dataNodeConfiguration -> dataNodeLocations.add(dataNodeConfiguration.getLocation()));
+            dataNodeConfiguration ->
+                dataNodeLocations.put(
+                    dataNodeConfiguration.getLocation().getDataNodeId(),
+                    dataNodeConfiguration.getLocation()));
     return dataNodeLocations;
   }
 
@@ -444,7 +449,7 @@ public class NodeManager {
   }
 
   public List<TSStatus> flush(TFlushReq req) {
-    List<TDataNodeLocation> dataNodeLocations =
+    Map<Integer, TDataNodeLocation> dataNodeLocations =
         configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocations.size()));

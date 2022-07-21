@@ -22,15 +22,19 @@ package org.apache.iotdb.confignode.client.async.handlers;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 
-import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public abstract class AbstractRetryHandler {
 
   protected CountDownLatch countDownLatch;
 
-  /** The DataNode that successfully execute the request will be removed from this list */
-  protected List<TDataNodeLocation> dataNodeLocations;
+  /**
+   * The DataNode that successfully execute the request will be removed from this list Because
+   * different requests will be sent to the same node when createRegions,so for CreateRegions ->
+   * Map<index, TDataNodeLocation> for others -> Map<dataNodeId, TDataNodeLocation>
+   */
+  protected Map<Integer, TDataNodeLocation> dataNodeLocations;
   /** Request type to DataNode */
   protected DataNodeRequestType dataNodeRequestType;
   /** Target DataNode */
@@ -40,7 +44,7 @@ public abstract class AbstractRetryHandler {
       CountDownLatch countDownLatch,
       DataNodeRequestType dataNodeRequestType,
       TDataNodeLocation targetDataNode,
-      List<TDataNodeLocation> dataNodeLocations) {
+      Map<Integer, TDataNodeLocation> dataNodeLocations) {
     this.countDownLatch = countDownLatch;
     this.dataNodeLocations = dataNodeLocations;
     this.dataNodeRequestType = dataNodeRequestType;

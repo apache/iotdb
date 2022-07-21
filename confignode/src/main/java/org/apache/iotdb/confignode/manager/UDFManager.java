@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class UDFManager {
 
@@ -78,7 +79,7 @@ public class UDFManager {
 
   private List<TSStatus> createFunctionOnDataNodes(
       String functionName, String className, List<String> uris) {
-    final List<TDataNodeLocation> dataNodeLocations =
+    final Map<Integer, TDataNodeLocation> dataNodeLocations =
         configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocations.size()));
@@ -110,7 +111,7 @@ public class UDFManager {
   }
 
   private List<TSStatus> dropFunctionOnDataNodes(String functionName) {
-    final List<TDataNodeLocation> dataNodeLocations =
+    final Map<Integer, TDataNodeLocation> dataNodeLocations =
         configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocations.size()));

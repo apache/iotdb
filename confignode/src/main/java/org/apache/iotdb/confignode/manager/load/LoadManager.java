@@ -60,7 +60,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -297,9 +296,12 @@ public class LoadManager {
 
   private void broadcastLatestRegionRouteMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genLatestRegionRouteMap();
-    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
+    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
     getOnlineDataNodes(-1)
-        .forEach(onlineDataNode -> dataNodeLocations.add(onlineDataNode.getLocation()));
+        .forEach(
+            onlineDataNode ->
+                dataNodeLocations.put(
+                    onlineDataNode.getLocation().getDataNodeId(), onlineDataNode.getLocation()));
 
     LOGGER.info("Begin to broadcast RegionRouteMap: {}", latestRegionRouteMap);
     AsyncDataNodeClientPool.getInstance()

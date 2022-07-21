@@ -64,6 +64,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
@@ -156,17 +157,20 @@ public class ClusterSchemaManager {
           TSStatusCode.STORAGE_GROUP_NOT_EXIST,
           "storageGroup " + setTTLPlan.getStorageGroup() + " does not exist");
     }
-
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     Set<TDataNodeLocation> dataNodeLocations =
         getPartitionManager()
             .getStorageGroupRelatedDataNodes(
                 setTTLPlan.getStorageGroup(), TConsensusGroupType.DataRegion);
+    dataNodeLocations.forEach(
+        dataNodeLocation ->
+            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation));
     if (dataNodeLocations.size() > 0) {
       // TODO: Use procedure to protect SetTTL on DataNodes
       AsyncDataNodeClientPool.getInstance()
           .sendAsyncRequestToDataNodeWithRetry(
               new TSetTTLReq(setTTLPlan.getStorageGroup(), setTTLPlan.getTTL()),
-              new ArrayList<>(dataNodeLocations),
+              dataNodeLocationMap,
               DataNodeRequestType.SET_TTL,
               null);
     }

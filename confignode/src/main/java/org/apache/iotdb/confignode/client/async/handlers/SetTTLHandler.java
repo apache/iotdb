@@ -27,7 +27,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class SetTTLHandler extends AbstractRetryHandler implements AsyncMethodCallback<TSStatus> {
@@ -38,14 +38,14 @@ public class SetTTLHandler extends AbstractRetryHandler implements AsyncMethodCa
       CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
-      List<TDataNodeLocation> dataNodeLocations) {
+      Map<Integer, TDataNodeLocation> dataNodeLocations) {
     super(countDownLatch, requestType, targetDataNode, dataNodeLocations);
   }
 
   @Override
   public void onComplete(TSStatus response) {
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocations.remove(targetDataNode);
+      dataNodeLocations.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully SetTTL on DataNode: {}", targetDataNode);
     } else {
       LOGGER.error("Failed to SetTTL on DataNode: {}, {}", targetDataNode, response);

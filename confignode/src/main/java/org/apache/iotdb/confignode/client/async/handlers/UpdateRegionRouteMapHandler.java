@@ -27,7 +27,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 
 public class UpdateRegionRouteMapHandler extends AbstractRetryHandler
@@ -39,14 +39,14 @@ public class UpdateRegionRouteMapHandler extends AbstractRetryHandler
       CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
       TDataNodeLocation targetDataNode,
-      List<TDataNodeLocation> dataNodeLocations) {
+      Map<Integer, TDataNodeLocation> dataNodeLocations) {
     super(countDownLatch, requestType, targetDataNode, dataNodeLocations);
   }
 
   @Override
   public void onComplete(TSStatus status) {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocations.remove(targetDataNode);
+      dataNodeLocations.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully update the RegionRouteMap on DataNode: {}", targetDataNode);
     } else {
       LOGGER.error("Update RegionRouteMap on DataNode: {} failed", targetDataNode);
