@@ -45,6 +45,7 @@ public class RegionMigrateProcedure
   private static final Logger LOG = LoggerFactory.getLogger(RegionMigrateProcedure.class);
   private static final int retryThreshold = 5;
 
+  /** Wait region migrate finished */
   private final Object regionMigrateLock = new Object();
 
   private TConsensusGroupId consensusGroupId;

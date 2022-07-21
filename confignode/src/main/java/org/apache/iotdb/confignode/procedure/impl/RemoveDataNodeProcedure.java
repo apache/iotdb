@@ -123,8 +123,8 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
   }
 
   @Override
-  protected int getStateId(RemoveDataNodeState deleteStorageGroupState) {
-    return deleteStorageGroupState.ordinal();
+  protected int getStateId(RemoveDataNodeState removeDataNodeState) {
+    return removeDataNodeState.ordinal();
   }
 
   @Override
