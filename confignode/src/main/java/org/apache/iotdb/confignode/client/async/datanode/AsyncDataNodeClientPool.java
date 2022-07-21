@@ -49,7 +49,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class AsyncDataNodeClientPool {
@@ -74,7 +73,7 @@ public class AsyncDataNodeClientPool {
    * @param req request
    * @param dataNodeLocations The specific DataNodes
    * @param requestType DataNodeRequestType
-   * @param dataNodeResponseStatus request response list
+   * @param dataNodeResponseStatus response list.Used by CREATE_FUNCTION,DROP_FUNCTION and FLUSH
    */
   public void sendAsyncRequestToDataNodeWithRetry(
       Object req,
@@ -192,18 +191,15 @@ public class AsyncDataNodeClientPool {
 
     List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
     // Count the datanodes to be sent
-    for (Map.Entry<String, List<TRegionReplicaSet>> entry :
-        createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
-      for (TRegionReplicaSet regionReplicaSet : entry.getValue()) {
-        regionReplicaSet
-            .getDataNodeLocations()
-            .forEach(dataNodeLocation -> dataNodeLocations.add(dataNodeLocation));
+    for (List<TRegionReplicaSet> regionReplicaSets :
+        createRegionGroupsPlan.getRegionGroupMap().values()) {
+      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        dataNodeLocations.addAll(regionReplicaSet.getDataNodeLocations());
       }
     }
     if (dataNodeLocations.isEmpty()) {
       return;
     }
-    AtomicInteger index = new AtomicInteger();
     CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
     AbstractRetryHandler handler = null;
     for (int retry = 0; retry < retryNum; retry++) {
@@ -227,8 +223,7 @@ public class AsyncDataNodeClientPool {
                         DataNodeRequestType.CREATE_SCHEMA_REGIONS,
                         regionReplicaSet.regionId,
                         targetDataNode,
-                        dataNodeLocations,
-                        index.getAndIncrement());
+                        dataNodeLocations);
                 sendAsyncRequestToDataNode(
                     targetDataNode,
                     genCreateSchemaRegionReq(entry.getKey(), regionReplicaSet),
@@ -242,8 +237,7 @@ public class AsyncDataNodeClientPool {
                         DataNodeRequestType.CREATE_DATA_REGIONS,
                         regionReplicaSet.regionId,
                         targetDataNode,
-                        dataNodeLocations,
-                        index.getAndIncrement());
+                        dataNodeLocations);
                 sendAsyncRequestToDataNode(
                     targetDataNode,
                     genCreateDataRegionReq(

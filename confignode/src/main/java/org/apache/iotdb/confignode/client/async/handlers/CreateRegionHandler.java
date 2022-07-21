@@ -37,8 +37,6 @@ public class CreateRegionHandler extends AbstractRetryHandler
     implements AsyncMethodCallback<TSStatus> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateRegionHandler.class);
-
-  private int index;
   // Used for Logger
   private final TConsensusGroupId consensusGroupId;
 
@@ -47,17 +45,15 @@ public class CreateRegionHandler extends AbstractRetryHandler
       DataNodeRequestType requestType,
       TConsensusGroupId consensusGroupId,
       TDataNodeLocation targetDataNode,
-      List<TDataNodeLocation> dataNodeLocations,
-      int index) {
+      List<TDataNodeLocation> dataNodeLocations) {
     super(latch, requestType, targetDataNode, dataNodeLocations);
-    this.index = index;
     this.consensusGroupId = consensusGroupId;
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocations.remove(index);
+      dataNodeLocations.remove(targetDataNode);
       LOGGER.info(
           String.format(
               "Successfully create %s on DataNode: %s",

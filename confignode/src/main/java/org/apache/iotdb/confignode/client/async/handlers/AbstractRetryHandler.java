@@ -31,7 +31,7 @@ public abstract class AbstractRetryHandler {
 
   /** The DataNode that successfully execute the request will be removed from this list */
   protected List<TDataNodeLocation> dataNodeLocations;
-
+  /** Request type to DataNode */
   protected DataNodeRequestType dataNodeRequestType;
   /** Target DataNode */
   protected TDataNodeLocation targetDataNode;
