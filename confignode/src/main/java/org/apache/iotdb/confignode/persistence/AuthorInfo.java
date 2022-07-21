@@ -294,7 +294,7 @@ public class AuthorInfo implements SnapshotProcessor {
     List<String> rolePrivilegesList = new ArrayList<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
       if (plan.getNodeName().equals("")
-          || AuthUtils.pathBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
+          || AuthUtils.pathOrBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
         rolePrivilegesList.add(pathPrivilege.toString());
       }
     }
@@ -331,7 +331,7 @@ public class AuthorInfo implements SnapshotProcessor {
       List<String> rolePrivileges = new ArrayList<>();
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
         if (plan.getNodeName().equals("")
-            || AuthUtils.pathBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
+            || AuthUtils.pathOrBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
           rolePrivileges.add("");
           userPrivilegesList.add(pathPrivilege.toString());
         }
@@ -343,7 +343,7 @@ public class AuthorInfo implements SnapshotProcessor {
         }
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
           if (plan.getNodeName().equals("")
-              || AuthUtils.pathBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
+              || AuthUtils.pathOrBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
             rolePrivileges.add(roleN);
             userPrivilegesList.add(pathPrivilege.toString());
           }

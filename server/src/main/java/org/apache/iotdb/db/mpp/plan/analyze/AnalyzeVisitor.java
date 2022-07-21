@@ -18,15 +18,12 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -43,12 +40,13 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -183,7 +181,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (hasValueFilter) {
           throw new SemanticException("Only time filters are supported in LAST query");
         }
-
+        analysis.setMergeOrderParameter(analyzeOrderBy(queryStatement));
         return analyzeLast(analysis, schemaTree.getAllMeasurement(), schemaTree);
       }
 
@@ -376,7 +374,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
         if ((groupByTimeComponent.isIntervalByMonth()
                 || groupByTimeComponent.isSlidingStepByMonth())
-            && queryStatement.getResultOrder() == OrderBy.TIMESTAMP_DESC) {
+            && queryStatement.getResultTimeOrder() == Ordering.DESC) {
           throw new SemanticException("Group by month doesn't support order by time desc now.");
         }
         analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
@@ -765,6 +763,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
   }
 
+  private OrderByParameter analyzeOrderBy(QueryStatement queryStatement) {
+    return new OrderByParameter(queryStatement.getSortItemList());
+  }
+
   /**
    * Check datatype consistency in ALIGN BY DEVICE.
    *
@@ -1151,7 +1153,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       SchemaFetchStatement schemaFetchStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
     analysis.setStatement(schemaFetchStatement);
-    analysis.setSchemaPartitionInfo(schemaFetchStatement.getSchemaPartition());
+
+    SchemaPartition schemaPartition =
+        partitionFetcher.getSchemaPartition(schemaFetchStatement.getPatternTree());
+    analysis.setSchemaPartitionInfo(schemaPartition);
+
+    if (schemaPartition.isEmpty()) {
+      analysis.setFinishQueryAfterAnalyze(true);
+    }
+
     return analysis;
   }
 
@@ -1288,43 +1298,23 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.appendPathPattern(pathPattern);
     }
 
-    SchemaPartition schemaPartition = partitionFetcher.getSchemaPartition(patternTree);
-
-    SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree, schemaPartition);
+    SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
     analysis.setSchemaTree(schemaTree);
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
 
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
-        schemaPartition.getSchemaPartitionMap();
-
-    // todo keep the behaviour consistency of cluster and standalone,
-    // the behaviour of standalone fetcher and LocalConfigNode is not consistent with that of
-    // cluster mode's
-    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      for (String storageGroup : schemaPartitionMap.keySet()) {
-        sgNameToQueryParamsMap.put(
-            storageGroup,
-            schemaPartitionMap.get(storageGroup).keySet().stream()
-                .map(DataPartitionQueryParam::new)
-                .collect(Collectors.toList()));
-      }
-    } else {
-      // the StandalonePartitionFetcher and LocalConfigNode now doesn't support partition fetch
-      // via slotId
-      schemaTree
-          .getMatchedDevices(new PartialPath(ALL_RESULT_NODES))
-          .forEach(
-              deviceSchemaInfo -> {
-                PartialPath devicePath = deviceSchemaInfo.getDevicePath();
-                DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
-                queryParam.setDevicePath(devicePath.getFullPath());
-                sgNameToQueryParamsMap
-                    .computeIfAbsent(
-                        schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
-                    .add(queryParam);
-              });
-    }
+    schemaTree
+        .getMatchedDevices(new PartialPath(ALL_RESULT_NODES))
+        .forEach(
+            deviceSchemaInfo -> {
+              PartialPath devicePath = deviceSchemaInfo.getDevicePath();
+              DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
+              queryParam.setDevicePath(devicePath.getFullPath());
+              sgNameToQueryParamsMap
+                  .computeIfAbsent(
+                      schemaTree.getBelongedStorageGroup(devicePath), key -> new ArrayList<>())
+                  .add(queryParam);
+            });
 
     DataPartition dataPartition = partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
     analysis.setDataPartitionInfo(dataPartition);

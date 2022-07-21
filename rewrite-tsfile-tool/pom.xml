@@ -27,7 +27,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>load-tsfile-tool</artifactId>
+    <artifactId>rewrite-tsfile-tool</artifactId>
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
@@ -61,7 +61,7 @@
                         </goals>
                         <configuration>
                             <descriptors>
-                                <descriptor>src/assembly/loadTsFileTool.xml</descriptor>
+                                <descriptor>src/assembly/rewriteTsFile.xml</descriptor>
                             </descriptors>
                             <appendAssemblyId>false</appendAssemblyId>
                             <archive>

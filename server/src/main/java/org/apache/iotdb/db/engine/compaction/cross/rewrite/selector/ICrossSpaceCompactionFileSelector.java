@@ -17,23 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.component;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
-/** The order of query result set by timestamp */
-public enum OrderBy {
-  TIMESTAMP_ASC,
-  TIMESTAMP_DESC,
-  DEVICE_ASC,
-  DEVICE_DESC;
+import org.apache.iotdb.db.exception.MergeException;
 
-  public OrderBy reverse() {
-    switch (this) {
-      case TIMESTAMP_ASC:
-        return TIMESTAMP_DESC;
-      case TIMESTAMP_DESC:
-        return TIMESTAMP_ASC;
-      default:
-        throw new UnsupportedOperationException();
-    }
-  }
+import java.util.List;
+
+/**
+ * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be merged
+ * without exceeding given memory budget.
+ */
+public interface ICrossSpaceCompactionFileSelector {
+
+  List[] select() throws MergeException;
 }

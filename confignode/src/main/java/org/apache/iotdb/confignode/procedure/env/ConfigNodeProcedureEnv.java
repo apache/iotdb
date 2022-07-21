@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPla
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -48,7 +49,8 @@ public class ConfigNodeProcedureEnv {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConfigNodeProcedureEnv.class);
 
-  private final ReentrantLock addConfigNodeLock = new ReentrantLock();
+  /** add and remove config node lock */
+  private final ReentrantLock configNodeLock = new ReentrantLock();
 
   private final ConfigManager configManager;
 
@@ -147,7 +149,7 @@ public class ConfigNodeProcedureEnv {
    *
    * @param tConfigNodeLocation New ConfigNode's location
    */
-  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation) throws Exception {
+  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation) {
     List<TConfigNodeLocation> configNodeLocations =
         new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
     configNodeLocations.add(tConfigNodeLocation);
@@ -166,6 +168,59 @@ public class ConfigNodeProcedureEnv {
    */
   public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
     configManager.getConsensusManager().addConfigNodePeer(configNodeLocation);
+  }
+
+  /**
+   * Remove peer in Leader node
+   *
+   * @param tConfigNodeLocation node is removed
+   * @throws ProcedureException if failed status
+   */
+  public void removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation)
+      throws ProcedureException {
+    TSStatus tsStatus = configManager.getNodeManager().removeConfigNodePeer(tConfigNodeLocation);
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ProcedureException(tsStatus.getMessage());
+    }
+  }
+
+  /**
+   * Remove Consensus Group in removed node
+   *
+   * @param tConfigNodeLocation config node location
+   * @throws ProcedureException if failed status
+   */
+  public void removeConsensusGroup(TConfigNodeLocation tConfigNodeLocation)
+      throws ProcedureException {
+    TSStatus tsStatus =
+        (TSStatus)
+            SyncConfigNodeClientPool.getInstance()
+                .sendSyncRequestToConfigNodeWithRetry(
+                    tConfigNodeLocation.getInternalEndPoint(),
+                    tConfigNodeLocation,
+                    ConfigNodeRequestType.REMOVE_CONSENSUS_GROUP);
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ProcedureException(tsStatus.getMessage());
+    }
+  }
+
+  /**
+   * Stop Config Node
+   *
+   * @param tConfigNodeLocation config node location
+   * @throws ProcedureException if failed status
+   */
+  public void stopConfigNode(TConfigNodeLocation tConfigNodeLocation) throws ProcedureException {
+    TSStatus tsStatus =
+        (TSStatus)
+            SyncConfigNodeClientPool.getInstance()
+                .sendSyncRequestToConfigNodeWithRetry(
+                    tConfigNodeLocation.getInternalEndPoint(),
+                    tConfigNodeLocation,
+                    ConfigNodeRequestType.STOP_CONFIG_NODE);
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ProcedureException(tsStatus.getMessage());
+    }
   }
 
   /**
@@ -190,8 +245,8 @@ public class ConfigNodeProcedureEnv {
             ConfigNodeRequestType.NOTIFY_REGISTER_SUCCESS);
   }
 
-  public ReentrantLock getAddConfigNodeLock() {
-    return addConfigNodeLock;
+  public ReentrantLock getConfigNodeLock() {
+    return configNodeLock;
   }
 
   public ProcedureScheduler getScheduler() {

@@ -31,12 +31,15 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultSetFormat;
 import org.apache.iotdb.db.mpp.plan.statement.component.SelectComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -76,7 +79,7 @@ public class QueryStatement extends Statement {
 
   protected FillComponent fillComponent;
 
-  protected OrderBy resultOrder = OrderBy.TIMESTAMP_ASC;
+  protected OrderByComponent orderByComponent;
 
   protected ResultSetFormat resultSetFormat = ResultSetFormat.ALIGN_BY_TIME;
 
@@ -159,12 +162,12 @@ public class QueryStatement extends Statement {
     this.fillComponent = fillComponent;
   }
 
-  public OrderBy getResultOrder() {
-    return resultOrder;
+  public OrderByComponent getOrderByComponent() {
+    return orderByComponent;
   }
 
-  public void setResultOrder(OrderBy resultOrder) {
-    this.resultOrder = resultOrder;
+  public void setOrderByComponent(OrderByComponent orderByComponent) {
+    this.orderByComponent = orderByComponent;
   }
 
   public ResultSetFormat getResultSetFormat() {
@@ -215,6 +218,32 @@ public class QueryStatement extends Statement {
     return resultSetFormat == ResultSetFormat.DISABLE_ALIGN;
   }
 
+  public boolean isOrderByTime() {
+    return orderByComponent != null && orderByComponent.isOrderByTime();
+  }
+
+  public boolean isOrderByTimeseries() {
+    return orderByComponent != null && orderByComponent.isOrderByTimeseries();
+  }
+
+  public boolean isOrderByDevice() {
+    return orderByComponent != null && orderByComponent.isOrderByDevice();
+  }
+
+  public Ordering getResultTimeOrder() {
+    if (orderByComponent == null || !orderByComponent.isOrderByTime()) {
+      return Ordering.ASC;
+    }
+    return orderByComponent.getTimeOrder();
+  }
+
+  public List<SortItem> getSortItemList() {
+    if (orderByComponent == null) {
+      return Collections.emptyList();
+    }
+    return orderByComponent.getSortItemList();
+  }
+
   public void semanticCheck() {
     if (isAggregationQuery()) {
       if (disableAlign()) {
@@ -243,6 +272,13 @@ public class QueryStatement extends Statement {
       if (getWhereCondition() != null) {
         ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
       }
+      if (isOrderByTimeseries()) {
+        throw new SemanticException("Sorting by timeseries is only supported in last queries.");
+      }
+      if (isOrderByDevice()) {
+        // TODO support sort by device
+        throw new SemanticException("Sorting by device is not yet supported.");
+      }
     }
 
     if (isLastQuery()) {
@@ -257,6 +293,20 @@ public class QueryStatement extends Statement {
         if (!(expression instanceof TimeSeriesOperand)) {
           throw new SemanticException("Last queries can only be applied on raw time series.");
         }
+      }
+      if (isOrderByDevice()) {
+        throw new SemanticException(
+            "Sorting by device is only supported in ALIGN BY DEVICE queries.");
+      }
+    }
+
+    if (!isAlignByDevice() && !isLastQuery()) {
+      if (isOrderByTimeseries()) {
+        throw new SemanticException("Sorting by timeseries is only supported in last queries.");
+      }
+      if (isOrderByDevice()) {
+        throw new SemanticException(
+            "Sorting by device is only supported in ALIGN BY DEVICE queries.");
       }
     }
   }

@@ -119,7 +119,7 @@
         <module>library-udf</module>
         <module>schema-engine-rocksdb</module>
         <module>udf-api</module>
-        <module>load-tsfile-tool</module>
+        <module>rewrite-tsfile-tool</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -152,10 +152,10 @@
         <org.slf4j.version>1.7.36</org.slf4j.version>
         <guava.version>24.1.1</guava.version>
         <jline.version>3.21.0</jline.version>
-        <jetty.version>9.4.35.v20201120</jetty.version>
+        <jetty.version>9.4.48.v20220622</jetty.version>
         <metrics.version>4.2.7</metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
-        <felix.version>5.1.4</felix.version>
+        <felix.version>5.1.7</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
         <netty.version>4.1.53.Final</netty.version>
         <!-- URL of the ASF SonarQube server -->
@@ -206,7 +206,7 @@
         <mqtt-client.version>1.12</mqtt-client.version>
         <google.code.findbugs.jsr305.version>3.0.2</google.code.findbugs.jsr305.version>
         <jna.version>5.8.0</jna.version>
-        <zookeeper.version>3.4.9</zookeeper.version>
+        <zookeeper.version>3.4.14</zookeeper.version>
         <commons-beanutils.version>1.9.4</commons-beanutils.version>
         <commons-compress.version>1.21</commons-compress.version>
         <error_prone_annotations.version>2.7.1</error_prone_annotations.version>

@@ -262,11 +262,28 @@ LIST ROLE
 Eg: IoTDB > LIST ROLE
 ```
 
-* 列出权限
+* 列出用户在具体路径上相关联的权限
 
-```
-LIST PRIVILEGES USER  <username> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES USER `sgcc_write_user` ON root.sgcc.**;
+```    
+LIST PRIVILEGES USER <username> ON <path>;
+Eg: IoTDB> LIST PRIVILEGES USER `tempuser` ON root.ln.**;
++--------+-----------------------------------+
+|    role|                          privilege|
++--------+-----------------------------------+
+|        |      root.ln.** : ALTER_TIMESERIES|
+|temprole|root.ln.wf01.** : CREATE_TIMESERIES|
++--------+-----------------------------------+
+Total line number = 2
+It costs 0.005s
+IoTDB> LIST PRIVILEGES USER `tempuser` ON root.ln.wf01.wt01.**;
++--------+-----------------------------------+
+|    role|                          privilege|
++--------+-----------------------------------+
+|        |      root.ln.** : ALTER_TIMESERIES|
+|temprole|root.ln.wf01.** : CREATE_TIMESERIES|
++--------+-----------------------------------+
+Total line number = 2
+It costs 0.005s
 ```
 
 * 列出角色权限
@@ -276,11 +293,26 @@ LIST ROLE PRIVILEGES <roleName>
 Eg: IoTDB > LIST ROLE PRIVILEGES `actor`;
 ```
 
-* 列出角色在具体路径上的权限
+* 列出角色在具体路径上相关联的权限
 
 ```
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES ROLE `write_role` ON root.sgcc.**;
+Eg: IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.**;
++-----------------------------------+
+|                          privilege|
++-----------------------------------+
+|root.ln.wf01.** : CREATE_TIMESERIES|
++-----------------------------------+
+Total line number = 1
+It costs 0.005s
+IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.wf01.wt01.**;
++-----------------------------------+
+|                          privilege|
++-----------------------------------+
+|root.ln.wf01.** : CREATE_TIMESERIES|
++-----------------------------------+
+Total line number = 1
+It costs 0.005s
 ```
 
 * 列出用户权限
@@ -436,44 +468,6 @@ Eg: IoTDB > unset schema template t1 from root.sg1.d1
 
 ```
 Eg: IoTDB > drop schema template t1
-```
-
-###### 标签点管理
-
-- 重命名标签或属性
-
-```text
-ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
-```
-
-- 重新设置标签或属性的值
-
-```text
-ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
-```
-
-- 删除已经存在的标签或属性
-
-```text
-ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
-```
-
-- 添加新的标签
-
-```text
-ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
-```
-
-- 添加新的属性
-
-```text
-ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
-```
-
-- 更新插入别名，标签和属性
-
-```text
-ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
 
 ###### TsFile管理

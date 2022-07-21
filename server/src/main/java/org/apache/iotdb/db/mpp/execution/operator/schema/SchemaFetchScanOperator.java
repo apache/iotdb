@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -108,6 +109,9 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
+      // to indicate this binary data is storage group info
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+
       schemaTree.serialize(outputStream);
     } catch (IOException e) {
       // Totally memory operation. This case won't happen.

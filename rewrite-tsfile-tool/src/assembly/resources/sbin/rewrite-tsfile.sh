@@ -42,7 +42,7 @@ for f in ${IOTDB_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
 
-MAIN_CLASS=org.apache.iotdb.TsFileLoaderTool
+MAIN_CLASS=org.apache.iotdb.RewriteTsFileTool
 
 "$JAVA" -cp "$CLASSPATH" "$MAIN_CLASS" "$@"
 exit $?

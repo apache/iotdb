@@ -18,10 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
-import org.apache.iotdb.commons.partition.SchemaPartition;
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,18 +44,19 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import io.airlift.concurrent.SetThreadName;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -68,7 +68,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private final Coordinator coordinator = Coordinator.getInstance();
-  private final IPartitionFetcher partitionFetcher = ClusterPartitionFetcher.getInstance();
   private final DataNodeSchemaCache schemaCache = DataNodeSchemaCache.getInstance();
 
   private static final class ClusterSchemaFetcherHolder {
@@ -85,28 +84,21 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
-    return fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
-  }
-
-  @Override
-  public SchemaTree fetchSchema(PathPatternTree patternTree, SchemaPartition schemaPartition) {
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap =
-        schemaPartition.getSchemaPartitionMap();
-    List<String> storageGroups = new ArrayList<>(schemaPartitionMap.keySet());
-
-    SchemaFetchStatement schemaFetchStatement = new SchemaFetchStatement(patternTree);
-    schemaFetchStatement.setSchemaPartition(schemaPartition);
-
-    SchemaTree result = executeSchemaFetchQuery(schemaFetchStatement);
-    result.setStorageGroups(storageGroups);
-    return result;
+    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree));
   }
 
   private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {
     long queryId = SessionManager.getInstance().requestQueryId(false);
     try {
       ExecutionResult executionResult =
-          coordinator.execute(schemaFetchStatement, queryId, null, "", partitionFetcher, this);
+          coordinator.execute(
+              schemaFetchStatement,
+              queryId,
+              null,
+              "",
+              ClusterPartitionFetcher.getInstance(),
+              this,
+              config.getQueryTimeoutThreshold());
       // TODO: (xingtanzjr) throw exception
       if (executionResult.status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException(
@@ -116,31 +108,50 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       }
       try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
         SchemaTree result = new SchemaTree();
+        List<String> storageGroupList = new ArrayList<>();
         while (coordinator.getQueryExecution(queryId).hasNextResult()) {
           // The query will be transited to FINISHED when invoking getBatchResult() at the last time
           // So we don't need to clean up it manually
-          Optional<TsBlock> tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+          Optional<TsBlock> tsBlock;
+          try {
+            tsBlock = coordinator.getQueryExecution(queryId).getBatchResult();
+          } catch (IoTDBException e) {
+            throw new RuntimeException("Fetch Schema failed. ", e);
+          }
           if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
             break;
           }
-          Binary binary;
-          SchemaTree fetchedSchemaTree;
           Column column = tsBlock.get().getColumn(0);
           for (int i = 0; i < column.getPositionCount(); i++) {
-            binary = column.getBinary(i);
-            try {
-              fetchedSchemaTree =
-                  SchemaTree.deserialize(new ByteArrayInputStream(binary.getValues()));
-              result.mergeSchemaTree(fetchedSchemaTree);
-            } catch (IOException e) {
-              // Totally memory operation. This case won't happen.
-            }
+            parseFetchedData(column.getBinary(i), result, storageGroupList);
           }
         }
+        result.setStorageGroups(storageGroupList);
         return result;
       }
     } finally {
       coordinator.removeQueryExecution(queryId);
+    }
+  }
+
+  private void parseFetchedData(
+      Binary data, SchemaTree resultSchemaTree, List<String> storageGroupList) {
+    InputStream inputStream = new ByteArrayInputStream(data.getValues());
+    try {
+      byte type = ReadWriteIOUtils.readByte(inputStream);
+      if (type == 0) {
+        int size = ReadWriteIOUtils.readInt(inputStream);
+        for (int i = 0; i < size; i++) {
+          storageGroupList.add(ReadWriteIOUtils.readString(inputStream));
+        }
+      } else if (type == 1) {
+        resultSchemaTree.mergeSchemaTree(SchemaTree.deserialize(inputStream));
+      } else {
+        throw new RuntimeException(
+            new MetadataException("Failed to fetch schema because of unrecognized data"));
+      }
+    } catch (IOException e) {
+      // Totally memory operation. This case won't happen.
     }
   }
 
@@ -161,19 +172,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       return schemaTree;
     }
 
-    SchemaTree remoteSchemaTree;
-
-    if (!config.isAutoCreateSchemaEnabled()) {
-      remoteSchemaTree = fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
-      schemaTree.mergeSchemaTree(remoteSchemaTree);
-      schemaCache.put(remoteSchemaTree);
-      return schemaTree;
-    }
-
-    remoteSchemaTree =
-        fetchSchema(patternTree, partitionFetcher.getOrCreateSchemaPartition(patternTree));
+    SchemaTree remoteSchemaTree = fetchSchema(patternTree);
     schemaTree.mergeSchemaTree(remoteSchemaTree);
     schemaCache.put(remoteSchemaTree);
+
+    if (!config.isAutoCreateSchemaEnabled()) {
+      return schemaTree;
+    }
 
     SchemaTree missingSchemaTree =
         checkAndAutoCreateMissingMeasurements(
@@ -216,19 +221,13 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       return schemaTree;
     }
 
-    SchemaTree remoteSchemaTree;
-
-    if (!config.isAutoCreateSchemaEnabled()) {
-      remoteSchemaTree = fetchSchema(patternTree, partitionFetcher.getSchemaPartition(patternTree));
-      schemaTree.mergeSchemaTree(remoteSchemaTree);
-      schemaCache.put(remoteSchemaTree);
-      return schemaTree;
-    }
-
-    remoteSchemaTree =
-        fetchSchema(patternTree, partitionFetcher.getOrCreateSchemaPartition(patternTree));
+    SchemaTree remoteSchemaTree = fetchSchema(patternTree);
     schemaTree.mergeSchemaTree(remoteSchemaTree);
     schemaCache.put(remoteSchemaTree);
+
+    if (!config.isAutoCreateSchemaEnabled()) {
+      return schemaTree;
+    }
 
     SchemaTree missingSchemaTree;
     for (int i = 0; i < devicePathList.size(); i++) {
@@ -336,7 +335,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       InternalCreateTimeSeriesStatement statement) {
     long queryId = SessionManager.getInstance().requestQueryId(false);
     ExecutionResult executionResult =
-        coordinator.execute(statement, queryId, null, "", partitionFetcher, this);
+        coordinator.execute(
+            statement,
+            queryId,
+            null,
+            "",
+            ClusterPartitionFetcher.getInstance(),
+            this,
+            config.getQueryTimeoutThreshold());
     // TODO: throw exception
     int statusCode = executionResult.status.getCode();
     if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {

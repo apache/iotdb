@@ -17,17 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
+package org.apache.iotdb.consensus.common.request;
 
-import org.apache.iotdb.db.exception.MergeException;
-
-import java.util.List;
+import java.nio.ByteBuffer;
 
 /**
- * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be merged
- * without exceeding given memory budget.
+ * This class is used to represent the sync log request from MultiLeaderConsensus. That we use this
+ * class rather than ByteBufferConsensusRequest is because the serialization method is different
+ * between these two classes. And we need to separate them in DataRegionStateMachine when
+ * deserialize the PlanNode from ByteBuffer
  */
-public interface ICrossSpaceMergeFileSelector {
+public class MultiLeaderConsensusRequest implements IConsensusRequest {
 
-  List[] select() throws MergeException;
+  private final ByteBuffer byteBuffer;
+
+  public MultiLeaderConsensusRequest(ByteBuffer byteBuffer) {
+    this.byteBuffer = byteBuffer;
+  }
+
+  @Override
+  public ByteBuffer serializeToByteBuffer() {
+    return byteBuffer;
+  }
 }

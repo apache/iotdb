@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.commons.partition;
 
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 
 import java.util.ArrayList;
@@ -27,14 +26,9 @@ import java.util.List;
 public class DataPartitionQueryParam {
 
   private String devicePath;
-  private TSeriesPartitionSlot seriesPartitionSlot;
   private List<TTimePartitionSlot> timePartitionSlotList = new ArrayList<>();
 
   public DataPartitionQueryParam() {}
-
-  public DataPartitionQueryParam(TSeriesPartitionSlot seriesPartitionSlot) {
-    this.seriesPartitionSlot = seriesPartitionSlot;
-  }
 
   public String getDevicePath() {
     return devicePath;
@@ -42,14 +36,6 @@ public class DataPartitionQueryParam {
 
   public void setDevicePath(String devicePath) {
     this.devicePath = devicePath;
-  }
-
-  public TSeriesPartitionSlot getSeriesPartitionSlot() {
-    return seriesPartitionSlot;
-  }
-
-  public void setSeriesPartitionSlot(TSeriesPartitionSlot seriesPartitionSlot) {
-    this.seriesPartitionSlot = seriesPartitionSlot;
   }
 
   public List<TTimePartitionSlot> getTimePartitionSlotList() {

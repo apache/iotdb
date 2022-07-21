@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.multileader.service;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
+import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.consensus.multileader.MultiLeaderConsensus;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
 import org.apache.iotdb.consensus.multileader.thrift.MultiLeaderConsensusIService;
@@ -30,7 +31,6 @@ import org.apache.iotdb.consensus.multileader.thrift.TSyncLogReq;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,8 +50,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
   }
 
   @Override
-  public void syncLog(TSyncLogReq req, AsyncMethodCallback<TSyncLogRes> resultHandler)
-      throws TException {
+  public void syncLog(TSyncLogReq req, AsyncMethodCallback<TSyncLogRes> resultHandler) {
     try {
       ConsensusGroupId groupId =
           ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
@@ -75,7 +74,9 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
               impl.getStateMachine()
                   .write(
                       impl.buildIndexedConsensusRequestForRemoteRequest(
-                          new ByteBufferConsensusRequest(batch.data))));
+                          batch.isFromWAL()
+                              ? new MultiLeaderConsensusRequest(batch.data)
+                              : new ByteBufferConsensusRequest(batch.data))));
         }
       }
       logger.debug("Execute TSyncLogReq for {} with result {}", req.consensusGroupId, statuses);

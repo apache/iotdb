@@ -45,6 +45,7 @@ public class LocalSinkHandle implements ISinkHandle {
   private final SharedTsBlockQueue queue;
   private volatile ListenableFuture<Void> blocked = immediateFuture(null);
   private boolean aborted = false;
+  private boolean closed = false;
 
   public LocalSinkHandle(
       TFragmentInstanceId remoteFragmentInstanceId,
@@ -72,9 +73,7 @@ public class LocalSinkHandle implements ISinkHandle {
 
   @Override
   public synchronized ListenableFuture<?> isFull() {
-    if (aborted) {
-      throw new IllegalStateException("Sink handle is closed.");
-    }
+    checkState();
     return nonCancellationPropagating(blocked);
   }
 
@@ -104,9 +103,7 @@ public class LocalSinkHandle implements ISinkHandle {
   public void send(List<TsBlock> tsBlocks) {
     Validate.notNull(tsBlocks, "tsBlocks is null");
     synchronized (this) {
-      if (aborted) {
-        throw new IllegalStateException("Sink handle is aborted.");
-      }
+      checkState();
       if (!blocked.isDone()) {
         throw new IllegalStateException("Sink handle is blocked.");
       }
@@ -135,7 +132,8 @@ public class LocalSinkHandle implements ISinkHandle {
     synchronized (queue) {
       synchronized (this) {
         logger.info("set noMoreTsBlocks.");
-        if (aborted) {
+        if (aborted || closed) {
+          logger.info("SinkHandle has been aborted={} or closed={}.", aborted, closed);
           return;
         }
         queue.setNoMoreTsBlocks(true);
@@ -151,15 +149,31 @@ public class LocalSinkHandle implements ISinkHandle {
     logger.info("Sink handle is being aborted.");
     synchronized (queue) {
       synchronized (this) {
-        if (aborted) {
+        if (aborted || closed) {
           return;
         }
         aborted = true;
-        queue.destroy();
+        queue.abort();
         sinkHandleListener.onAborted(this);
       }
     }
     logger.info("Sink handle is aborted");
+  }
+
+  @Override
+  public void close() {
+    logger.info("Sink handle is being closed.");
+    synchronized (queue) {
+      synchronized (this) {
+        if (aborted || closed) {
+          return;
+        }
+        closed = true;
+        queue.close();
+        sinkHandleListener.onFinish(this);
+      }
+    }
+    logger.info("Sink handle is closed");
   }
 
   public TFragmentInstanceId getRemoteFragmentInstanceId() {
@@ -172,5 +186,13 @@ public class LocalSinkHandle implements ISinkHandle {
 
   SharedTsBlockQueue getSharedTsBlockQueue() {
     return queue;
+  }
+
+  private void checkState() {
+    if (aborted) {
+      throw new IllegalStateException("Sink handle is aborted.");
+    } else if (closed) {
+      throw new IllegalStateException("Sink Handle is closed.");
+    }
   }
 }
