@@ -114,7 +114,6 @@ public class RegionMigrateService implements IService {
   public void stop() {
     if (regionMigratePool != null) {
       regionMigratePool.stop();
-      ;
     }
     LOGGER.info("Region migrate service stop");
   }
@@ -263,7 +262,7 @@ public class RegionMigrateService implements IService {
         return status;
       }
       status.setMessage("delete region " + regionId + " succeed");
-      taskLogger.debug("start to delete region {}", regionId);
+      taskLogger.debug("finished to delete region {}", regionId);
       return status;
     }
 
@@ -346,11 +345,15 @@ public class RegionMigrateService implements IService {
         }
       }
       if (!addPeerSucceed || resp == null || !resp.isSuccess()) {
-        taskLogger.error("add new peer {} for region {} failed", newPeerNode, regionId);
+        taskLogger.error(
+            "add new peer {} for region {} failed, resp: {}", newPeerNode, regionId, resp);
+        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+        status.setMessage("add new peer " + newPeerNode + " for region " + regionId + "failed");
         return status;
       }
 
       taskLogger.debug("succeed to add peer {} for region {}", newPeerNode, regionId);
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("add peer " + newPeerNode + " for region " + regionId + " succeed");
       return status;
     }
@@ -407,11 +410,15 @@ public class RegionMigrateService implements IService {
       }
 
       if (!removePeerSucceed || resp == null || !resp.isSuccess()) {
-        taskLogger.error("remove old peer {} for region {} failed", oldPeerNode, regionId);
+        taskLogger.error(
+            "remove old peer {} for region {} failed, resp: {}", oldPeerNode, regionId, resp);
+        status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+        status.setMessage("remove old peer " + oldPeerNode + " for region " + regionId + " failed");
         return status;
       }
 
       taskLogger.debug("succeed to remove peer {} for region {}", oldPeerNode, regionId);
+      status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("remove peer " + oldPeerNode + " for region " + regionId + " succeed");
       return status;
     }
