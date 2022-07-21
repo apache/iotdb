@@ -40,8 +40,12 @@ public class ClusterTestStatement implements Statement {
   private int maxRows = Integer.MAX_VALUE;
   private int queryTimeout = DEFAULT_QUERY_TIMEOUT;
   private int fetchSize = Config.DEFAULT_FETCH_SIZE;
+  private boolean isResultSetDisorder;
 
-  public ClusterTestStatement(NodeConnection writeConnection, List<NodeConnection> readConnections)
+  public ClusterTestStatement(
+      NodeConnection writeConnection,
+      List<NodeConnection> readConnections,
+      boolean isResultSetDisorder)
       throws SQLException {
     this.writeStatement = writeConnection.getUnderlyingConnecton().createStatement();
     updateConfig(writeStatement);
@@ -52,6 +56,7 @@ public class ClusterTestStatement implements Statement {
       this.readEndpoints.add(readConnection.toString());
       updateConfig(readStatement);
     }
+    this.isResultSetDisorder = isResultSetDisorder;
   }
 
   private void updateConfig(Statement statement) throws SQLException {
@@ -61,7 +66,11 @@ public class ClusterTestStatement implements Statement {
 
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
-    return new ClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
+    if (!isResultSetDisorder) {
+      return new ClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
+    } else {
+      return new SortedClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
+    }
   }
 
   @Override
