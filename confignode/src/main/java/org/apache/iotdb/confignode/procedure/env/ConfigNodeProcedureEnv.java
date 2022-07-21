@@ -247,12 +247,13 @@ public class ConfigNodeProcedureEnv {
   }
 
   /** notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced */
-  public void broadCastTheLatest() {
+  public void broadCastTheLatestConfigNodeGroup() {
     AsyncDataNodeClientPool.getInstance()
         .broadCastTheLatestConfigNodeGroup(
             configManager.getNodeManager().getRegisteredDataNodes(-1),
             configManager.getNodeManager().getRegisteredConfigNodes());
   }
+
   public ReentrantLock getConfigNodeLock() {
     return configNodeLock;
   }

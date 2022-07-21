@@ -76,6 +76,7 @@ public class RemoveConfigNodeProcedure
           break;
         case STOP_CONFIG_NODE:
           env.stopConfigNode(tConfigNodeLocation);
+          env.broadCastTheLatestConfigNodeGroup();
           LOG.info("Stop Config Node {}", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
       }

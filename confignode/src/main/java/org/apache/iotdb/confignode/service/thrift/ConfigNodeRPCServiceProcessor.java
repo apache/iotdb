@@ -28,8 +28,6 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -451,13 +449,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     RemoveConfigNodePlan removeConfigNodePlan = new RemoveConfigNodePlan(configNodeLocation);
     TSStatus status = configManager.removeConfigNode(removeConfigNodePlan);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      AsyncDataNodeClientPool.getInstance()
-          .broadCastTheLatestConfigNodeGroup(
-              configManager.getNodeManager().getRegisteredDataNodes(-1),
-              configManager.getNodeManager().getRegisteredConfigNodes());
-    }
-
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
     LOGGER.info("Execute RemoveConfigNodeRequest {} with result {}", configNodeLocation, status);
 
