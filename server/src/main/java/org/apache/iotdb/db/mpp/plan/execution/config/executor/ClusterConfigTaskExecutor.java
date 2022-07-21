@@ -400,12 +400,12 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             "Failed to execute create schema template {} in config node, status is {}.",
             createSchemaTemplateStatement.getName(),
             tsStatus);
-        future.setException(new StatementExecutionException(tsStatus));
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (Exception e) {
-      future.setException(e);
+      future.setException(e.getCause());
     }
     return future;
   }

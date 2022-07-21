@@ -249,6 +249,9 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   public void updateTemplateSetInfo(byte[] templateSetInfo) {
+    if (templateSetInfo == null) {
+      return;
+    }
     readWriteLock.writeLock().lock();
     try {
       ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);

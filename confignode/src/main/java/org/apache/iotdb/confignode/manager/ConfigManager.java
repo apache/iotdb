@@ -187,15 +187,16 @@ public class ConfigManager implements IManager {
   @Override
   public DataSet registerDataNode(RegisterDataNodePlan registerDataNodePlan) {
     TSStatus status = confirmLeader();
+    DataNodeRegisterResp dataSet;
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return nodeManager.registerDataNode(registerDataNodePlan);
+      dataSet = (DataNodeRegisterResp) nodeManager.registerDataNode(registerDataNodePlan);
     } else {
-      DataNodeRegisterResp dataSet = new DataNodeRegisterResp();
+      dataSet = new DataNodeRegisterResp();
       dataSet.setStatus(status);
       dataSet.setConfigNodeList(nodeManager.getRegisteredConfigNodes());
-      dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
-      return dataSet;
     }
+    dataSet.setTemplateInfo(clusterSchemaManager.getAllTemplateSetInfo());
+    return dataSet;
   }
 
   @Override

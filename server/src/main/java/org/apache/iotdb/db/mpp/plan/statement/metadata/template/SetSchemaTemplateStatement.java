@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata.template;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
@@ -37,13 +36,6 @@ public class SetSchemaTemplateStatement extends ShowStatement implements IConfig
     statementType = StatementType.SET_SCHEMA_TEMPLATE;
     this.templateName = templateName;
     this.path = path;
-  }
-
-  public SetSchemaTemplateStatement(String templateName, String path) throws IllegalPathException {
-    super();
-    statementType = StatementType.SET_SCHEMA_TEMPLATE;
-    this.templateName = templateName;
-    this.path = new PartialPath(path);
   }
 
   public String getTemplateName() {

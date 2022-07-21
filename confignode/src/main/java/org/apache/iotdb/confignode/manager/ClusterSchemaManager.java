@@ -400,7 +400,7 @@ public class ClusterSchemaManager {
    * @param path
    * @return
    */
-  public TSStatus setSchemaTemplate(String templateName, String path) {
+  public synchronized TSStatus setSchemaTemplate(String templateName, String path) {
     // execute set operation on configNode
     SetSchemaTemplatePlan setSchemaTemplatePlan = new SetSchemaTemplatePlan(templateName, path);
     TSStatus status = getConsensusManager().write(setSchemaTemplatePlan).getStatus();
@@ -418,7 +418,8 @@ public class ClusterSchemaManager {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
       ReadWriteIOUtils.write(1, outputStream);
-      ReadWriteIOUtils.write(template.serialize(), outputStream);
+      template.serialize(outputStream);
+      ReadWriteIOUtils.write(1, outputStream);
       ReadWriteIOUtils.write(path, outputStream);
     } catch (IOException ignored) {
     }

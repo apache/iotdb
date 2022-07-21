@@ -2472,21 +2472,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitSetSchemaTemplate(IoTDBSqlParser.SetSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.children.get(0).getText();
-    String path = ctx.getText();
-    SetSchemaTemplateStatement statement = null;
-    try {
-      statement = new SetSchemaTemplateStatement(templateName, path);
-    } catch (IllegalPathException e) {
-      throw new SQLParserException("set template: path error.");
-    }
-    return statement;
+    String templateName = ctx.templateName.getText();
+    return new SetSchemaTemplateStatement(templateName, parsePrefixPath(ctx.prefixPath()));
   }
 
   @Override
   public Statement visitShowPathsSetSchemaTemplate(
       IoTDBSqlParser.ShowPathsSetSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.children.get(0).getText();
+    String templateName = ctx.templateName.getText();
     ShowPathSetTemplateStatement statement = new ShowPathSetTemplateStatement(templateName);
     return statement;
   }

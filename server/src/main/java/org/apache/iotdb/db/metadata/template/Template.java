@@ -49,6 +49,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -681,22 +682,15 @@ public class Template implements Serializable {
   }
   // endregion
 
-  public ByteBuffer serialize() {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-
-    try {
-      dataOutputStream.writeInt(id);
-      SerializeUtils.serialize(name, dataOutputStream);
-      dataOutputStream.writeInt(schemaMap.size());
-      for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
-        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        entry.getValue().partialSerializeTo(dataOutputStream);
-      }
-    } catch (IOException e) {
-      // unreachable
+  public void serialize(OutputStream outputStream) throws IOException {
+    DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
+    dataOutputStream.writeInt(id);
+    SerializeUtils.serialize(name, dataOutputStream);
+    dataOutputStream.writeInt(schemaMap.size());
+    for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
+      SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+      entry.getValue().partialSerializeTo(dataOutputStream);
     }
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   public void deserialize(ByteBuffer buffer) {

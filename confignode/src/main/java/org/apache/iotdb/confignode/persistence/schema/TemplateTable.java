@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -96,7 +97,11 @@ public class TemplateTable {
       if (temp != null && template.getName().equalsIgnoreCase(temp.getName())) {
         LOGGER.error(
             "Failed to create template, because template name {} is exists", template.getName());
-        return new TSStatus(TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode());
+        return RpcUtils.getStatus(
+            TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode(),
+            String.format(
+                "Failed to create template, because template name %s is exists",
+                template.getName()));
       }
       template.setId(templateIdGenerator.getAndIncrement());
       this.templateMap.put(template.getName(), template);
@@ -119,8 +124,7 @@ public class TemplateTable {
 
   private void serializeTemplate(Template template, OutputStream outputStream) {
     try {
-      ByteBuffer dataBuffer = template.serialize();
-      ReadWriteIOUtils.write(dataBuffer, outputStream);
+      template.serialize(outputStream);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -139,9 +143,7 @@ public class TemplateTable {
 
   private Template deserializeTemplate(ByteBuffer byteBuffer) {
     Template template = new Template();
-    int length = ReadWriteIOUtils.readInt(byteBuffer);
-    byte[] data = ReadWriteIOUtils.readBytes(byteBuffer, length);
-    template.deserialize(ByteBuffer.wrap(data));
+    template.deserialize(byteBuffer);
     return template;
   }
 
