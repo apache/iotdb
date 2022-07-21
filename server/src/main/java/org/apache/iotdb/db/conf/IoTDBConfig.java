@@ -942,6 +942,9 @@ public class IoTDBConfig {
   /** Memory allocated for LastCache */
   private long allocateMemoryForLastCache = allocateMemoryForSchema / 10;
 
+  /** TsFileManager Rewrite lock timeout */
+  private long rewriteLockWaitTimeoutInMS = (int) TimeUnit.MINUTES.toMillis(1);
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -2986,5 +2989,13 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForLastCache(long allocateMemoryForLastCache) {
     this.allocateMemoryForLastCache = allocateMemoryForLastCache;
+  }
+
+  public long getRewriteLockWaitTimeoutInMS() {
+    return rewriteLockWaitTimeoutInMS;
+  }
+
+  public void setRewriteLockWaitTimeoutInMS(long rewriteLockWaitTimeoutInMS) {
+    this.rewriteLockWaitTimeoutInMS = rewriteLockWaitTimeoutInMS;
   }
 }

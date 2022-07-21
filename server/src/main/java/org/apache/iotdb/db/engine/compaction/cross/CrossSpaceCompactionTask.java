@@ -300,6 +300,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       return false;
     }
     try {
+      // Merge is not allowed when rewrite operation is running
+      if(tsFileManager.isRewriteLocked()) {
+        releaseAllLock();
+        return false;
+      }
       for (TsFileResource tsFileResource : tsFileResourceList) {
         tsFileResource.readLock();
         holdReadLockList.add(tsFileResource);

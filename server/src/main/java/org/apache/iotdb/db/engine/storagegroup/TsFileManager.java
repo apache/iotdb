@@ -38,6 +38,7 @@ import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
@@ -62,6 +63,9 @@ public class TsFileManager {
 
   private boolean allowCompaction = true;
   private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
+
+  /** TsFile rewrite lock: controls operations that need to rewrite TsFiles, such as merging, altering encoding and compression methods */
+  private final ReentrantLock rewriteLock = new ReentrantLock(true);
 
   public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -325,6 +329,28 @@ public class TsFileManager {
   public void writeUnlock() {
     resourceListLock.writeLock().unlock();
     writeLockHolder = "";
+  }
+
+  public boolean isRewriteLocked() {
+    return rewriteLock.isLocked();
+  }
+
+  public boolean rewriteLockWithTimeout(long timeout) {
+    try {
+      return rewriteLock.tryLock(timeout, TimeUnit.MILLISECONDS);
+    } catch (InterruptedException e) {
+      LOGGER.warn(e.getMessage(), e);
+      Thread.interrupted();
+      throw new WriteLockFailedException("thread is interrupted");
+    }
+  }
+
+  public void rewriteLock() {
+    rewriteLock.lock();
+  }
+
+  public void rewriteUnlock() {
+    rewriteLock.unlock();
   }
 
   public String getStorageGroupName() {
