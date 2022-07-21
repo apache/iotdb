@@ -2101,7 +2101,7 @@ public class DataRegion {
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
-
+    boolean hasReleasedLock = false;
     try {
       Set<PartialPath> devicePaths = IoTDB.schemaProcessor.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
@@ -2122,18 +2122,18 @@ public class DataRegion {
 
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
 
+      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
+      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
+      separateTsFile(sealedTsFileResource, unsealedTsFileResource);
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(true),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter);
+          unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+
+      writeUnlock();
+      hasReleasedLock = true;
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(false),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter);
+          sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
 
     } catch (Exception e) {
       // roll back
@@ -2144,8 +2144,35 @@ public class DataRegion {
       }
       throw new IOException(e);
     } finally {
-      writeUnlock();
+      if (!hasReleasedLock) {
+        writeUnlock();
+      }
     }
+  }
+
+  /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
+  private void separateTsFile(
+      List<TsFileResource> sealedResource, List<TsFileResource> unsealedResource) {
+    tsFileManager
+        .getTsFileList(true)
+        .forEach(
+            tsFileResource -> {
+              if (tsFileResource.isClosed()) {
+                sealedResource.add(tsFileResource);
+              } else {
+                unsealedResource.add(tsFileResource);
+              }
+            });
+    tsFileManager
+        .getTsFileList(false)
+        .forEach(
+            tsFileResource -> {
+              if (tsFileResource.isClosed()) {
+                sealedResource.add(tsFileResource);
+              } else {
+                unsealedResource.add(tsFileResource);
+              }
+            });
   }
 
   /**
@@ -2179,6 +2206,7 @@ public class DataRegion {
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
+    boolean hasReleasedLock = false;
 
     try {
 
@@ -2202,18 +2230,17 @@ public class DataRegion {
 
       Deletion deletion = new Deletion(pattern, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
 
+      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
+      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
+      separateTsFile(sealedTsFileResource, unsealedTsFileResource);
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(true),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter);
+          unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+      writeUnlock();
+      hasReleasedLock = true;
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(false),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter);
+          sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
 
     } catch (Exception e) {
       // roll back
@@ -2224,7 +2251,9 @@ public class DataRegion {
       }
       throw new IOException(e);
     } finally {
-      writeUnlock();
+      if (!hasReleasedLock) {
+        writeUnlock();
+      }
     }
   }
 
@@ -2269,10 +2298,7 @@ public class DataRegion {
             logicalStorageGroupName, tsFileResource.getTimePartition())) {
       return true;
     }
-    if (!tsFileResource.isClosed()) {
-      // tsfile is not closed
-      return false;
-    }
+
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
       if (!tsFileResource.mayContainsDevice(deviceId)) {
@@ -2280,10 +2306,18 @@ public class DataRegion {
         continue;
       }
 
-      if (deleteEnd >= tsFileResource.getStartTime(deviceId)
-          && deleteStart <= tsFileResource.getEndTime(deviceId)) {
-        // time range of device has overlap with the deletion
-        return false;
+      long deviceEndTime = tsFileResource.getEndTime(deviceId);
+      if (!tsFileResource.isClosed() && deviceEndTime == Long.MIN_VALUE) {
+        // unsealed seq file
+        if (deleteEnd >= tsFileResource.getStartTime(deviceId)) {
+          return false;
+        }
+      } else {
+        // sealed file or unsealed unseq file
+        if (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= deviceEndTime) {
+          // time range of device has overlap with the deletion
+          return false;
+        }
       }
     }
     return true;
