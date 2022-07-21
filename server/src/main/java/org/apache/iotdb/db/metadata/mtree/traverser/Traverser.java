@@ -63,8 +63,8 @@ public abstract class Traverser {
 
   protected boolean isInTemplate = false;
 
-  // if isMeasurementTraverser, measurement in template should be processed
-  protected boolean isMeasurementTraverser = false;
+  // if true, measurement in template should be processed
+  protected boolean shouldTraverseTemplate = false;
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
@@ -238,6 +238,10 @@ public abstract class Traverser {
 
     traverseContext.pop();
 
+    if (!shouldTraverseTemplate) {
+      return;
+    }
+
     if (!node.isUseTemplate()) {
       return;
     }
@@ -323,6 +327,10 @@ public abstract class Traverser {
       traverseContext.pop();
     }
 
+    if (!shouldTraverseTemplate) {
+      return;
+    }
+
     if (!node.isUseTemplate()) {
       return;
     }
@@ -400,6 +408,10 @@ public abstract class Traverser {
         iterator.close();
       }
       traverseContext.pop();
+    }
+
+    if (!shouldTraverseTemplate) {
+      return;
     }
 
     if (!node.isUseTemplate()) {

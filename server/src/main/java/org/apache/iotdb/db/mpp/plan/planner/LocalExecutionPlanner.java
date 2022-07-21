@@ -404,6 +404,8 @@ public class LocalExecutionPlanner {
         return visitLevelTimeSeriesCount((LevelTimeSeriesCountNode) node, context);
       } else if (node instanceof NodePathsSchemaScanNode) {
         return visitNodePathsSchemaScan((NodePathsSchemaScanNode) node, context);
+      } else if (node instanceof PathsUsingTemplateScanNode) {
+        return visitPathsUsingTemplateScan((PathsUsingTemplateScanNode) node, context);
       }
       return visitPlan(node, context);
     }
@@ -1416,7 +1418,6 @@ public class LocalExecutionPlanner {
       return children.get(0);
     }
 
-    @Override
     public Operator visitPathsUsingTemplateScan(
         PathsUsingTemplateScanNode node, LocalExecutionPlanContext context) {
       OperatorContext operatorContext =
@@ -1424,6 +1425,7 @@ public class LocalExecutionPlanner {
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               PathsUsingTemplateScanNode.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
       return new PathsUsingTemplateScanOperator(
           node.getPlanNodeId(), operatorContext, node.getTemplateId());
     }

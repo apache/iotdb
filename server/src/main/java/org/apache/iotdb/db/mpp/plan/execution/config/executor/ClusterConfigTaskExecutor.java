@@ -450,14 +450,13 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     String templateName = setSchemaTemplateStatement.getTemplateName();
     PartialPath path = setSchemaTemplateStatement.getPath();
-    try (ConfigNodeClient configNodeClient =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+    try {
       // Send request to some API server
       ClusterTemplateManager.getInstance().setSchemaTemplate(templateName, path);
       // build TSBlock
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } catch (Exception e) {
-      future.setException(e);
+      future.setException(e.getCause());
     }
     return future;
   }

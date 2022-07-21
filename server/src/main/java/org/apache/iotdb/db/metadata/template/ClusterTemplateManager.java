@@ -189,12 +189,10 @@ public class ClusterTemplateManager implements ITemplateManager {
       req.setPath(path.getFullPath());
       TSStatus tsStatus = configNodeClient.setSchemaTemplate(req);
       if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new RuntimeException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
+        throw new IoTDBException(tsStatus.getMessage(), tsStatus.getCode());
       }
     } catch (Exception e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              "get schema template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+      throw new RuntimeException(e);
     }
   }
 

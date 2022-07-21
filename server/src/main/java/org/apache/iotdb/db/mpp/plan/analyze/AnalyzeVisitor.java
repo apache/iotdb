@@ -1404,8 +1404,9 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   @Override
   public Analysis visitActivateTemplate(
       ActivateTemplateStatement activateTemplateStatement, MPPQueryContext context) {
-
+    context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
+    analysis.setStatement(activateTemplateStatement);
 
     PartialPath activatePath = activateTemplateStatement.getPath();
 
@@ -1432,6 +1433,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   public Analysis visitShowPathsUsingTemplate(
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, MPPQueryContext context) {
     Analysis analysis = new Analysis();
+    analysis.setStatement(showPathsUsingTemplateStatement);
     analysis.setRespDatasetHeader(HeaderConstant.showPathsUsingTemplate);
 
     Pair<Template, List<PartialPath>> templateSetInfo =

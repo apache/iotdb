@@ -131,8 +131,8 @@ public class ActivateTemplateNode extends WritePlanNode {
   public static ActivateTemplateNode deserialize(ByteBuffer buffer) {
 
     PartialPath activatePath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
-    int templateSetLevel = ReadWriteIOUtils.read(buffer);
-    int templateId = ReadWriteIOUtils.read(buffer);
+    int templateSetLevel = ReadWriteIOUtils.readInt(buffer);
+    int templateId = ReadWriteIOUtils.readInt(buffer);
 
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
 

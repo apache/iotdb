@@ -876,11 +876,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     try {
       return mNodeCache.get(path);
     } catch (Exception e) {
-      if (e.getCause() instanceof MetadataException) {
-        if (!config.isAutoCreateSchemaEnabled()) {
-          throw new PathNotExistException(path.getFullPath());
-        }
-      } else {
+      if (!(e.getCause() instanceof MetadataException)) {
         throw e;
       }
     }

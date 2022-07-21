@@ -23,7 +23,6 @@ import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -69,13 +68,8 @@ public class PathsUsingTemplateScanNode extends SchemaQueryScanNode {
   }
 
   public static PathsUsingTemplateScanNode deserialize(ByteBuffer buffer) {
-    int templateId = ReadWriteIOUtils.read(buffer);
+    int templateId = ReadWriteIOUtils.readInt(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     return new PathsUsingTemplateScanNode(planNodeId, templateId);
-  }
-
-  @Override
-  public <R, C> R accept(PlanVisitor<R, C> visitor, C context) {
-    return visitor.visitPathsUsingTemplateScan(this, context);
   }
 }

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.PathDeserializeUtil;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -78,7 +77,7 @@ public class ActivateTemplateInClusterPlan extends PhysicalPlan {
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
     stream.writeByte((byte) PhysicalPlanType.ACTIVATE_TEMPLATE_IN_CLUSTER.ordinal());
-    activatePath.serialize(stream);
+    ReadWriteIOUtils.write(activatePath.getFullPath(), stream);
     ReadWriteIOUtils.write(templateSetLevel, stream);
     ReadWriteIOUtils.write(templateId, stream);
     ReadWriteIOUtils.write(isAligned, stream);
@@ -88,7 +87,7 @@ public class ActivateTemplateInClusterPlan extends PhysicalPlan {
   @Override
   protected void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.ACTIVATE_TEMPLATE_IN_CLUSTER.ordinal());
-    activatePath.serialize(buffer);
+    ReadWriteIOUtils.write(activatePath.getFullPath(), buffer);
     ReadWriteIOUtils.write(templateSetLevel, buffer);
     ReadWriteIOUtils.write(templateId, buffer);
     ReadWriteIOUtils.write(isAligned, buffer);
@@ -97,9 +96,9 @@ public class ActivateTemplateInClusterPlan extends PhysicalPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException, IOException {
-    activatePath = (PartialPath) PathDeserializeUtil.deserialize(buffer);
-    templateSetLevel = ReadWriteIOUtils.read(buffer);
-    templateId = ReadWriteIOUtils.read(buffer);
+    activatePath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+    templateSetLevel = ReadWriteIOUtils.readInt(buffer);
+    templateId = ReadWriteIOUtils.readInt(buffer);
     isAligned = ReadWriteIOUtils.readBool(buffer);
     index = buffer.getLong();
   }

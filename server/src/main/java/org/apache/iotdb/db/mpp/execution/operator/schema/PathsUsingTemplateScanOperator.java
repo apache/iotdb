@@ -54,6 +54,7 @@ public class PathsUsingTemplateScanOperator extends SchemaQueryScanOperator {
   }
 
   private void setColumns(String path, TsBlockBuilder builder) {
+    builder.getTimeColumnBuilder().writeLong(0L);
     builder.getColumnBuilder(0).writeBinary(new Binary(path));
     builder.declarePosition();
   }

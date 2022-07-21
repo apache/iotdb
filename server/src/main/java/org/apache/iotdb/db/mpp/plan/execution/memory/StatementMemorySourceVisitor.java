@@ -203,6 +203,9 @@ public class StatementMemorySourceVisitor
   public StatementMemorySource visitShowPathsUsingTemplate(
       ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement,
       StatementMemorySourceContext context) {
-    return new StatementMemorySource(new TsBlock(0), context.getAnalysis().getRespDatasetHeader());
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.showPathsUsingTemplate.getRespDataTypes());
+    return new StatementMemorySource(
+        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
   }
 }

@@ -467,7 +467,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     for (int i = levelOfSG + 1; i < nodeNames.length; i++) {
       child = cur.getChild(nodeNames[i]);
       if (child == null) {
-        if (cur.isUseTemplate() && upperTemplate.getDirectNode(nodeNames[i]) != null) {
+        if (cur.isUseTemplate()
+            && upperTemplate != null
+            && upperTemplate.getDirectNode(nodeNames[i]) != null) {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
