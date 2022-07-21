@@ -16,17 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process;
+package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.List;
 
+// merge all last query result from different data regions, it will select max time for the same time-series
 public class LastQueryMergeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
@@ -37,11 +39,14 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   private int currentIndex;
 
+  private TsBlockBuilder tsBlockBuilder;
+
   public LastQueryMergeOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.inputOperatorsCount = children.size();
     this.currentIndex = 0;
+    this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder();
   }
 
   @Override
@@ -51,37 +56,26 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    if (currentIndex < inputOperatorsCount) {
-      return children.get(currentIndex).isBlocked();
-    } else {
-      return Futures.immediateVoidFuture();
-    }
+    return ProcessOperator.super.isBlocked();
   }
 
   @Override
   public TsBlock next() {
-    if (children.get(currentIndex).hasNext()) {
-      return children.get(currentIndex).next();
-    } else {
-      currentIndex++;
-      return null;
-    }
+    return null;
   }
 
   @Override
   public boolean hasNext() {
-    return currentIndex < inputOperatorsCount;
-  }
-
-  @Override
-  public boolean isFinished() {
-    return !hasNext();
+    return false;
   }
 
   @Override
   public void close() throws Exception {
-    for (Operator child : children) {
-      child.close();
-    }
+    ProcessOperator.super.close();
+  }
+
+  @Override
+  public boolean isFinished() {
+    return false;
   }
 }

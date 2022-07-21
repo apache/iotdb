@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
@@ -36,6 +37,7 @@ import com.google.common.collect.ImmutableList;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class LastQueryUtil {
@@ -64,6 +66,41 @@ public class LastQueryUtil {
     // dataType
     builder.getColumnBuilder(2).writeBinary(new Binary(dataType));
     builder.declarePosition();
+  }
+
+
+  public static void appendLastValue(TsBlockBuilder builder, TsBlock tsBlock) {
+    if (tsBlock.isEmpty()) {
+      return;
+    }
+    int size = tsBlock.getPositionCount();
+    for (int i = 0; i < size; i++) {
+      // Time
+      builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(i));
+      // timeseries
+      builder.getColumnBuilder(0).writeBinary(tsBlock.getColumn(0).getBinary(i));
+      // value
+      builder.getColumnBuilder(1).writeBinary(tsBlock.getColumn(1).getBinary(i));
+      // dataType
+      builder.getColumnBuilder(2).writeBinary(tsBlock.getColumn(2).getBinary(i));
+      builder.declarePosition();
+    }
+  }
+
+  public static void appendLastValue(TsBlockBuilder builder, TsBlock tsBlock, int index) {
+    // Time
+    builder.getTimeColumnBuilder().writeLong(tsBlock.getTimeByIndex(index));
+    // timeseries
+    builder.getColumnBuilder(0).writeBinary(tsBlock.getColumn(0).getBinary(index));
+    // value
+    builder.getColumnBuilder(1).writeBinary(tsBlock.getColumn(1).getBinary(index));
+    // dataType
+    builder.getColumnBuilder(2).writeBinary(tsBlock.getColumn(2).getBinary(index));
+    builder.declarePosition();
+  }
+
+  public static int compareTimeSeries(TsBlock a, int indexA, TsBlock b, int indexB, Comparator<Binary> comparator) {
+    return comparator.compare(a.getColumn(0).getBinary(indexA), b.getColumn(0).getBinary(indexB));
   }
 
   public static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {

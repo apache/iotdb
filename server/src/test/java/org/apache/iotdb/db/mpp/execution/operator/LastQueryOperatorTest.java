@@ -30,8 +30,8 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.mpp.execution.operator.process.LastQueryMergeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.UpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -60,7 +60,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class LastQueryMergeOperatorTest {
+public class LastQueryOperatorTest {
 
   private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.LastQueryMergeOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
@@ -117,7 +117,7 @@ public class LastQueryMergeOperatorTest {
 
       PlanNodeId planNodeId5 = new PlanNodeId("5");
       fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, LastQueryMergeOperator.class.getSimpleName());
+          5, planNodeId5, LastQueryOperator.class.getSimpleName());
 
       fragmentInstanceContext
           .getOperatorContexts()
@@ -170,16 +170,16 @@ public class LastQueryMergeOperatorTest {
               null,
               false);
 
-      LastQueryMergeOperator lastQueryMergeOperator =
-          new LastQueryMergeOperator(
+      LastQueryOperator lastQueryOperator =
+          new LastQueryOperator(
               fragmentInstanceContext.getOperatorContexts().get(4),
               ImmutableList.of(updateLastCacheOperator1, updateLastCacheOperator2));
 
       int count = 0;
-      while (!lastQueryMergeOperator.isFinished()) {
-        assertTrue(lastQueryMergeOperator.isBlocked().isDone());
-        assertTrue(lastQueryMergeOperator.hasNext());
-        TsBlock result = lastQueryMergeOperator.next();
+      while (!lastQueryOperator.isFinished()) {
+        assertTrue(lastQueryOperator.isBlocked().isDone());
+        assertTrue(lastQueryOperator.hasNext());
+        TsBlock result = lastQueryOperator.next();
         if (result == null) {
           continue;
         }
@@ -239,7 +239,7 @@ public class LastQueryMergeOperatorTest {
 
       PlanNodeId planNodeId6 = new PlanNodeId("6");
       fragmentInstanceContext.addOperatorContext(
-          6, planNodeId6, LastQueryMergeOperator.class.getSimpleName());
+          6, planNodeId6, LastQueryOperator.class.getSimpleName());
 
       fragmentInstanceContext
           .getOperatorContexts()
@@ -307,17 +307,17 @@ public class LastQueryMergeOperatorTest {
           new LastCacheScanOperator(
               fragmentInstanceContext.getOperatorContexts().get(4), planNodeId5, tsBlock);
 
-      LastQueryMergeOperator lastQueryMergeOperator =
-          new LastQueryMergeOperator(
+      LastQueryOperator lastQueryOperator =
+          new LastQueryOperator(
               fragmentInstanceContext.getOperatorContexts().get(5),
               ImmutableList.of(
                   updateLastCacheOperator1, updateLastCacheOperator2, lastCacheScanOperator));
 
       int count = 0;
-      while (!lastQueryMergeOperator.isFinished()) {
-        assertTrue(lastQueryMergeOperator.isBlocked().isDone());
-        assertTrue(lastQueryMergeOperator.hasNext());
-        TsBlock result = lastQueryMergeOperator.next();
+      while (!lastQueryOperator.isFinished()) {
+        assertTrue(lastQueryOperator.isBlocked().isDone());
+        assertTrue(lastQueryOperator.hasNext());
+        TsBlock result = lastQueryOperator.next();
         if (result == null) {
           continue;
         }
