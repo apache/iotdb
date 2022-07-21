@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -47,7 +47,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
   // The parameter of `group by time`.
   private final GroupByTimeParameter groupByTimeParameter;
 
-  protected OrderBy scanOrder = OrderBy.TIMESTAMP_ASC;
+  protected Ordering scanOrder;
 
   private PlanNode child;
 
@@ -55,7 +55,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
       GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id);
     this.aggregationDescriptorList = aggregationDescriptorList;
     this.groupByTimeParameter = groupByTimeParameter;
@@ -67,7 +67,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
       PlanNode child,
       List<AggregationDescriptor> aggregationDescriptorList,
       GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     this(id, aggregationDescriptorList, groupByTimeParameter, scanOrder);
     this.child = child;
   }
@@ -84,7 +84,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
     return groupByTimeParameter;
   }
 
-  public OrderBy getScanOrder() {
+  public Ordering getScanOrder() {
     return scanOrder;
   }
 
@@ -170,7 +170,7 @@ public class SlidingWindowAggregationNode extends ProcessNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new SlidingWindowAggregationNode(
         planNodeId, aggregationDescriptorList, groupByTimeParameter, scanOrder);

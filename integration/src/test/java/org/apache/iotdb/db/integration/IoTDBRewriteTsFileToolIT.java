@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.TsFileLoaderTool;
+import org.apache.iotdb.RewriteTsFileTool;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -38,7 +38,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-public class IoTDBTsFileLoaderToolIT {
+public class IoTDBRewriteTsFileToolIT {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private String tmpDir;
@@ -137,7 +137,7 @@ public class IoTDBTsFileLoaderToolIT {
       prepareTsFiles();
 
       String[] args = {"-h", "127.0.0.1", "-p", "6667", "-u", "root", "-pw", "root", "-f", tmpDir};
-      TsFileLoaderTool.main(args);
+      RewriteTsFileTool.main(args);
       try (Connection connection =
               DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667", "root", "root");
           Statement statement = connection.createStatement()) {

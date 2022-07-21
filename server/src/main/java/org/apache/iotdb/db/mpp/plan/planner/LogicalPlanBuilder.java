@@ -70,7 +70,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -110,7 +113,7 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planRawDataSource(
-      Set<Expression> sourceExpressions, OrderBy scanOrder, Filter timeFilter) {
+      Set<Expression> sourceExpressions, Ordering scanOrder, Filter timeFilter) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     List<PartialPath> selectedPaths =
         sourceExpressions.stream()
@@ -139,7 +142,10 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planLast(Set<Expression> sourceExpressions, Filter globalTimeFilter) {
+  public LogicalPlanBuilder planLast(
+      Set<Expression> sourceExpressions,
+      Filter globalTimeFilter,
+      OrderByParameter mergeOrderParameter) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     for (Expression sourceExpression : sourceExpressions) {
       MeasurementPath selectPath =
@@ -155,14 +161,17 @@ public class LogicalPlanBuilder {
 
     this.root =
         new LastQueryMergeNode(
-            context.getQueryId().genPlanNodeId(), sourceNodeList, globalTimeFilter);
+            context.getQueryId().genPlanNodeId(),
+            sourceNodeList,
+            globalTimeFilter,
+            mergeOrderParameter);
     return this;
   }
 
   public LogicalPlanBuilder planAggregationSource(
       Set<Expression> sourceExpressions,
       AggregationStep curStep,
-      OrderBy scanOrder,
+      Ordering scanOrder,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
@@ -203,7 +212,7 @@ public class LogicalPlanBuilder {
   public LogicalPlanBuilder planAggregationSourceWithIndexAdjust(
       Set<Expression> sourceExpressions,
       AggregationStep curStep,
-      OrderBy scanOrder,
+      Ordering scanOrder,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
@@ -267,7 +276,7 @@ public class LogicalPlanBuilder {
   private AggregationDescriptor createAggregationDescriptor(
       FunctionExpression sourceExpression,
       AggregationStep curStep,
-      OrderBy scanOrder,
+      Ordering scanOrder,
       boolean needCheckAscending,
       TypeProvider typeProvider,
       Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
@@ -297,7 +306,7 @@ public class LogicalPlanBuilder {
   private List<PlanNode> constructSourceNodeFromAggregationDescriptors(
       Map<PartialPath, List<AggregationDescriptor>> ascendingAggregations,
       Map<PartialPath, List<AggregationDescriptor>> descendingAggregations,
-      OrderBy scanOrder,
+      Ordering scanOrder,
       Filter timeFilter,
       GroupByTimeParameter groupByTimeParameter) {
     List<PlanNode> sourceNodeList = new ArrayList<>();
@@ -335,7 +344,7 @@ public class LogicalPlanBuilder {
   private LogicalPlanBuilder convergeAggregationSource(
       List<PlanNode> sourceNodeList,
       AggregationStep curStep,
-      OrderBy scanOrder,
+      Ordering scanOrder,
       GroupByTimeParameter groupByTimeParameter,
       Set<Expression> aggregationExpressions,
       Map<Expression, Set<Expression>> groupByLevelExpressions) {
@@ -393,7 +402,7 @@ public class LogicalPlanBuilder {
     }
   }
 
-  private PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, OrderBy mergeOrder) {
+  private PlanNode convergeWithTimeJoin(List<PlanNode> sourceNodes, Ordering mergeOrder) {
     PlanNode tmpNode;
     if (sourceNodes.size() == 1) {
       tmpNode = sourceNodes.get(0);
@@ -407,11 +416,14 @@ public class LogicalPlanBuilder {
       Map<String, PlanNode> deviceNameToSourceNodesMap,
       List<String> outputColumnNames,
       Map<String, List<Integer>> deviceToMeasurementIndexesMap,
-      OrderBy mergeOrder) {
+      Ordering mergeOrder) {
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             context.getQueryId().genPlanNodeId(),
-            Arrays.asList(OrderBy.DEVICE_ASC, mergeOrder),
+            new OrderByParameter(
+                Arrays.asList(
+                    new SortItem(SortKey.DEVICE, Ordering.ASC),
+                    new SortItem(SortKey.TIME, mergeOrder))),
             outputColumnNames,
             deviceToMeasurementIndexesMap);
     for (Map.Entry<String, PlanNode> entry : deviceNameToSourceNodesMap.entrySet()) {
@@ -428,7 +440,7 @@ public class LogicalPlanBuilder {
       Map<Expression, Set<Expression>> groupByLevelExpressions,
       AggregationStep curStep,
       GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     if (groupByLevelExpressions == null) {
       return this;
     }
@@ -448,7 +460,7 @@ public class LogicalPlanBuilder {
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep,
       TypeProvider typeProvider,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     if (aggregationExpressions == null) {
       return this;
     }
@@ -475,7 +487,7 @@ public class LogicalPlanBuilder {
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     if (aggregationExpressions == null) {
       return this;
     }
@@ -491,7 +503,7 @@ public class LogicalPlanBuilder {
       Set<Expression> aggregationExpressions,
       GroupByTimeParameter groupByTimeParameter,
       AggregationStep curStep,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     List<AggregationDescriptor> aggregationDescriptorList =
         constructAggregationDescriptorList(aggregationExpressions, curStep);
     return new SlidingWindowAggregationNode(
@@ -507,7 +519,7 @@ public class LogicalPlanBuilder {
       Map<Expression, Set<Expression>> groupByLevelExpressions,
       AggregationStep curStep,
       GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     List<GroupByLevelDescriptor> groupByLevelDescriptors = new ArrayList<>();
     for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
       groupByLevelDescriptors.add(
@@ -531,7 +543,7 @@ public class LogicalPlanBuilder {
   private SeriesAggregationSourceNode createAggregationScanNode(
       PartialPath selectPath,
       List<AggregationDescriptor> aggregationDescriptorList,
-      OrderBy scanOrder,
+      Ordering scanOrder,
       GroupByTimeParameter groupByTimeParameter,
       Filter timeFilter) {
     if (selectPath instanceof MeasurementPath) { // non-aligned series
@@ -578,7 +590,7 @@ public class LogicalPlanBuilder {
       Set<Expression> selectExpressions,
       boolean isGroupByTime,
       ZoneId zoneId,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     if (queryFilter == null) {
       return this;
     }
@@ -599,7 +611,7 @@ public class LogicalPlanBuilder {
       Set<Expression> transformExpressions,
       boolean isGroupByTime,
       ZoneId zoneId,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     boolean needTransform = false;
     for (Expression expression : transformExpressions) {
       if (ExpressionAnalyzer.checkIsNeedTransform(expression)) {
@@ -622,7 +634,7 @@ public class LogicalPlanBuilder {
     return this;
   }
 
-  public LogicalPlanBuilder planFill(FillDescriptor fillDescriptor, OrderBy scanOrder) {
+  public LogicalPlanBuilder planFill(FillDescriptor fillDescriptor, Ordering scanOrder) {
     if (fillDescriptor == null) {
       return this;
     }

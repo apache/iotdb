@@ -25,8 +25,6 @@ import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
 import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
@@ -57,8 +55,7 @@ public class AddConfigNodeProcedure
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, AddConfigNodeState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+  protected Flow executeFromState(ConfigNodeProcedureEnv env, AddConfigNodeState state) {
     if (tConfigNodeLocation == null) {
       return Flow.NO_MORE_STATE;
     }
@@ -102,12 +99,15 @@ public class AddConfigNodeProcedure
 
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, AddConfigNodeState state)
-      throws IOException, InterruptedException {
+      throws ProcedureException {
     switch (state) {
       case ADD_CONSENSUS_GROUP:
+        env.removeConsensusGroup(tConfigNodeLocation);
+        LOG.info("Rollback add consensus group:{}", tConfigNodeLocation);
+        break;
       case ADD_PEER:
+        env.removeConfigNodePeer(tConfigNodeLocation);
         LOG.info("Rollback remove peer:{}", tConfigNodeLocation);
-        // TODO: if remove consensus group and remove peer
         break;
     }
   }
@@ -124,7 +124,7 @@ public class AddConfigNodeProcedure
 
   @Override
   protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    if (configNodeProcedureEnv.getAddConfigNodeLock().tryLock()) {
+    if (configNodeProcedureEnv.getConfigNodeLock().tryLock()) {
       LOG.info("{} acquire lock.", getProcId());
       return ProcedureLockState.LOCK_ACQUIRED;
     }
@@ -138,7 +138,7 @@ public class AddConfigNodeProcedure
   @Override
   protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
     LOG.info("{} release lock.", getProcId());
-    configNodeProcedureEnv.getAddConfigNodeLock().unlock();
+    configNodeProcedureEnv.getConfigNodeLock().unlock();
     SimpleProcedureScheduler simpleProcedureScheduler =
         (SimpleProcedureScheduler) configNodeProcedureEnv.getScheduler();
     simpleProcedureScheduler.releaseWaiting();
@@ -146,7 +146,7 @@ public class AddConfigNodeProcedure
 
   @Override
   protected boolean holdLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    return configNodeProcedureEnv.getAddConfigNodeLock().isHeldByCurrentThread();
+    return configNodeProcedureEnv.getConfigNodeLock().isHeldByCurrentThread();
   }
 
   @Override

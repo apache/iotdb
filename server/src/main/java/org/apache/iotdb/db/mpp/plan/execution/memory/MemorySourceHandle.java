@@ -77,4 +77,7 @@ public class MemorySourceHandle implements ISourceHandle {
 
   @Override
   public void abort() {}
+
+  @Override
+  public void close() {}
 }

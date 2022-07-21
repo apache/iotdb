@@ -127,6 +127,7 @@ struct TFetchFragmentInstanceStateReq {
 // TODO: need to supply more fields according to implementation
 struct TFragmentInstanceStateResp {
   1: required string state
+  2: optional list<string> failedMessages
 }
 
 struct TCancelQueryReq {

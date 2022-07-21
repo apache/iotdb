@@ -23,12 +23,14 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
@@ -118,6 +120,18 @@ public class ProcedureManager {
     AddConfigNodeProcedure addConfigNodeProcedure =
         new AddConfigNodeProcedure(req.getConfigNodeLocation());
     this.executor.submitProcedure(addConfigNodeProcedure);
+  }
+
+  /**
+   * generate a procedure, and execute remove confignode one by one
+   *
+   * @param removeConfigNodePlan remove config node plan
+   */
+  public void removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
+    RemoveConfigNodeProcedure removeConfigNodeProcedure =
+        new RemoveConfigNodeProcedure(removeConfigNodePlan.getConfigNodeLocation());
+    this.executor.submitProcedure(removeConfigNodeProcedure);
+    LOGGER.info("Submit to remove ConfigNode, {}", removeConfigNodePlan);
   }
 
   private static boolean getProcedureStatus(
