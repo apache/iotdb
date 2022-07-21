@@ -1842,11 +1842,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
       throws MetadataException {
     try {
-      getDeviceNodeWithAutoCreate(plan.getActivatePath());
-
-      if (plan.getActivatePath().getFullPath().length() <= storageGroupFullPath.length()) {
+      if (plan.getPathSetTemplate().getFullPath().length() <= storageGroupFullPath.length()) {
         templateId = plan.getTemplateId();
       }
+
+      getDeviceNodeWithAutoCreate(plan.getActivatePath());
 
       mtree.activateTemplate(plan.getActivatePath(), plan.getTemplateSetLevel(), template);
       writeToMLog(plan);
@@ -1857,7 +1857,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   private void recoverActivatingSchemaTemplate(ActivateTemplateInClusterPlan plan) {
-    if (plan.getActivatePath().getFullPath().length() <= storageGroupFullPath.length()) {
+    if (plan.getPathSetTemplate().getFullPath().length() <= storageGroupFullPath.length()) {
       templateId = plan.getTemplateId();
     }
     mtree.activateTemplateWithoutCheck(

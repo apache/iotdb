@@ -1418,6 +1418,11 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
               activatePath.concatNode(measurement).getFullPath(), template.getName());
         }
       }
+
+      if (cur.isUseTemplate()) {
+        throw new TemplateIsInUseException(cur.getFullPath());
+      }
+
       if (cur.isEntity()) {
         entityMNode = cur.getAsEntityMNode();
       } else {

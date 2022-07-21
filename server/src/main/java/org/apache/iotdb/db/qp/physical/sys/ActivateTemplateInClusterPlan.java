@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -51,6 +52,10 @@ public class ActivateTemplateInClusterPlan extends PhysicalPlan {
 
   public PartialPath getActivatePath() {
     return activatePath;
+  }
+
+  public PartialPath getPathSetTemplate() {
+    return new PartialPath(Arrays.copyOf(activatePath.getNodes(), templateSetLevel));
   }
 
   public int getTemplateId() {
