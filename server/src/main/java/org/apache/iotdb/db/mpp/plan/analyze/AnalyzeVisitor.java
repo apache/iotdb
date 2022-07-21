@@ -40,12 +40,13 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -180,7 +181,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (hasValueFilter) {
           throw new SemanticException("Only time filters are supported in LAST query");
         }
-
+        analysis.setMergeOrderParameter(analyzeOrderBy(queryStatement));
         return analyzeLast(analysis, schemaTree.getAllMeasurement(), schemaTree);
       }
 
@@ -373,7 +374,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         GroupByTimeComponent groupByTimeComponent = queryStatement.getGroupByTimeComponent();
         if ((groupByTimeComponent.isIntervalByMonth()
                 || groupByTimeComponent.isSlidingStepByMonth())
-            && queryStatement.getResultOrder() == OrderBy.TIMESTAMP_DESC) {
+            && queryStatement.getResultTimeOrder() == Ordering.DESC) {
           throw new SemanticException("Group by month doesn't support order by time desc now.");
         }
         analysis.setGroupByTimeParameter(new GroupByTimeParameter(groupByTimeComponent));
@@ -760,6 +761,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           .add(queryParam);
     }
     return partitionFetcher.getDataPartition(sgNameToQueryParamsMap);
+  }
+
+  private OrderByParameter analyzeOrderBy(QueryStatement queryStatement) {
+    return new OrderByParameter(queryStatement.getSortItemList());
   }
 
   /**

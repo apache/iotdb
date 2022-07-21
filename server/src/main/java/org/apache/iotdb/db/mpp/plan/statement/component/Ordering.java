@@ -19,21 +19,15 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.component;
 
-/** The order of query result set by timestamp */
-public enum OrderBy {
-  TIMESTAMP_ASC,
-  TIMESTAMP_DESC,
-  DEVICE_ASC,
-  DEVICE_DESC;
+public enum Ordering {
+  ASC,
+  DESC;
 
-  public OrderBy reverse() {
-    switch (this) {
-      case TIMESTAMP_ASC:
-        return TIMESTAMP_DESC;
-      case TIMESTAMP_DESC:
-        return TIMESTAMP_ASC;
-      default:
-        throw new UnsupportedOperationException();
+  public Ordering reverse() {
+    if (this == ASC) {
+      return DESC;
+    } else {
+      return ASC;
     }
   }
 }

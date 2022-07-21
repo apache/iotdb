@@ -23,7 +23,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -37,29 +37,31 @@ import java.util.stream.Collectors;
 public class DeviceMergeNode extends MultiChildNode {
 
   // The result output order, which could sort by device and time.
-  // The size of this list is 2 and the first OrderBy in this list has higher priority.
-  private final List<OrderBy> mergeOrders;
+  // The size of this list is 2 and the first SortItem in this list has higher priority.
+  private final OrderByParameter mergeOrderParameter;
 
   // the list of selected devices
   private final List<String> devices;
 
   public DeviceMergeNode(
-      PlanNodeId id, List<PlanNode> children, List<OrderBy> mergeOrders, List<String> devices) {
-    super(id);
-    this.children = children;
-    this.mergeOrders = mergeOrders;
+      PlanNodeId id,
+      List<PlanNode> children,
+      OrderByParameter mergeOrderParameter,
+      List<String> devices) {
+    super(id, children);
+    this.mergeOrderParameter = mergeOrderParameter;
     this.devices = devices;
   }
 
-  public DeviceMergeNode(PlanNodeId id, List<OrderBy> mergeOrders, List<String> devices) {
+  public DeviceMergeNode(
+      PlanNodeId id, OrderByParameter mergeOrderParameter, List<String> devices) {
     super(id);
-    this.children = new ArrayList<>();
-    this.mergeOrders = mergeOrders;
+    this.mergeOrderParameter = mergeOrderParameter;
     this.devices = devices;
   }
 
-  public List<OrderBy> getMergeOrders() {
-    return mergeOrders;
+  public OrderByParameter getMergeOrderParameter() {
+    return mergeOrderParameter;
   }
 
   public List<String> getDevices() {
@@ -83,7 +85,7 @@ public class DeviceMergeNode extends MultiChildNode {
 
   @Override
   public PlanNode clone() {
-    return new DeviceMergeNode(getPlanNodeId(), getMergeOrders(), getDevices());
+    return new DeviceMergeNode(getPlanNodeId(), getMergeOrderParameter(), getDevices());
   }
 
   @Override
@@ -103,8 +105,7 @@ public class DeviceMergeNode extends MultiChildNode {
   @Override
   protected void serializeAttributes(ByteBuffer byteBuffer) {
     PlanNodeType.DEVICE_MERGE.serialize(byteBuffer);
-    ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), byteBuffer);
-    ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), byteBuffer);
+    mergeOrderParameter.serializeAttributes(byteBuffer);
     ReadWriteIOUtils.write(devices.size(), byteBuffer);
     for (String deviceName : devices) {
       ReadWriteIOUtils.write(deviceName, byteBuffer);
@@ -114,8 +115,7 @@ public class DeviceMergeNode extends MultiChildNode {
   @Override
   protected void serializeAttributes(DataOutputStream stream) throws IOException {
     PlanNodeType.DEVICE_MERGE.serialize(stream);
-    ReadWriteIOUtils.write(mergeOrders.get(0).ordinal(), stream);
-    ReadWriteIOUtils.write(mergeOrders.get(1).ordinal(), stream);
+    mergeOrderParameter.serializeAttributes(stream);
     ReadWriteIOUtils.write(devices.size(), stream);
     for (String deviceName : devices) {
       ReadWriteIOUtils.write(deviceName, stream);
@@ -123,9 +123,7 @@ public class DeviceMergeNode extends MultiChildNode {
   }
 
   public static DeviceMergeNode deserialize(ByteBuffer byteBuffer) {
-    List<OrderBy> mergeOrders = new ArrayList<>();
-    mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
-    mergeOrders.add(OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)]);
+    OrderByParameter mergeOrderParameter = OrderByParameter.deserialize(byteBuffer);
     int devicesSize = ReadWriteIOUtils.readInt(byteBuffer);
     List<String> devices = new ArrayList<>();
     while (devicesSize > 0) {
@@ -133,7 +131,7 @@ public class DeviceMergeNode extends MultiChildNode {
       devicesSize--;
     }
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
-    return new DeviceMergeNode(planNodeId, mergeOrders, devices);
+    return new DeviceMergeNode(planNodeId, mergeOrderParameter, devices);
   }
 
   @Override
@@ -148,14 +146,14 @@ public class DeviceMergeNode extends MultiChildNode {
       return false;
     }
     DeviceMergeNode that = (DeviceMergeNode) o;
-    return Objects.equals(mergeOrders, that.mergeOrders)
+    return Objects.equals(mergeOrderParameter, that.mergeOrderParameter)
         && Objects.equals(devices, that.devices)
         && Objects.equals(children, that.children);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), mergeOrders, devices, children);
+    return Objects.hash(super.hashCode(), mergeOrderParameter, devices, children);
   }
 
   @Override
