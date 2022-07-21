@@ -85,8 +85,8 @@ public class AsyncDataNodeClientPool {
       return;
     }
     CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
+    AbstractRetryHandler handler = null;
     for (int retry = 0; retry < retryNum; retry++) {
-      AbstractRetryHandler handler = null;
       for (TDataNodeLocation targetDataNode : dataNodeLocations) {
         switch (requestType) {
           case SET_TTL:
@@ -205,8 +205,8 @@ public class AsyncDataNodeClientPool {
     }
     AtomicInteger index = new AtomicInteger();
     CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
+    AbstractRetryHandler handler = null;
     for (int retry = 0; retry < retryNum; retry++) {
-      AbstractRetryHandler handler = null;
       for (Map.Entry<String, List<TRegionReplicaSet>> entry :
           createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
         // Enumerate each RegionReplicaSet

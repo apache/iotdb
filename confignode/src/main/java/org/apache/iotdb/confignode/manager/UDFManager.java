@@ -78,7 +78,7 @@ public class UDFManager {
 
   private List<TSStatus> createFunctionOnDataNodes(
       String functionName, String className, List<String> uris) {
-    List<TDataNodeLocation> dataNodeLocations =
+    final List<TDataNodeLocation> dataNodeLocations =
         configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocations.size()));
@@ -110,17 +110,14 @@ public class UDFManager {
   }
 
   private List<TSStatus> dropFunctionOnDataNodes(String functionName) {
-    List<TDataNodeLocation> dataNodeLocations =
+    final List<TDataNodeLocation> dataNodeLocations =
         configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocations.size()));
     final TDropFunctionRequest request = new TDropFunctionRequest(functionName);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            request,
-            dataNodeLocations,
-            DataNodeRequestType.CREATE_FUNCTION,
-            dataNodeResponseStatus);
+            request, dataNodeLocations, DataNodeRequestType.DROP_FUNCTION, dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 }

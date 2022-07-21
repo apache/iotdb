@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
@@ -59,6 +60,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -295,12 +297,15 @@ public class LoadManager {
 
   private void broadcastLatestRegionRouteMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genLatestRegionRouteMap();
+    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
+    getOnlineDataNodes(-1)
+        .forEach(onlineDataNode -> dataNodeLocations.add(onlineDataNode.getLocation()));
 
     LOGGER.info("Begin to broadcast RegionRouteMap: {}", latestRegionRouteMap);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
             new TRegionRouteReq(System.currentTimeMillis(), latestRegionRouteMap),
-            configManager.getNodeManager().getRegisteredDataNodeLocations(-1),
+            dataNodeLocations,
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
             null);
     LOGGER.info("Broadcast the latest RegionRouteMap finished.");
