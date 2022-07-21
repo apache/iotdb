@@ -64,6 +64,7 @@ public class SnapshotTaker {
       throw new DirectoryNotLegalException(
           String.format("%s already exists and is not empty", snapshotDirPath));
     }
+    boolean inSameDisk = isSnapshotDirAndDataDirOnSameDisk(snapshotDir);
     seqBaseDir =
         new File(
             snapshotDir,
@@ -195,5 +196,31 @@ public class SnapshotTaker {
         }
       }
     }
+  }
+
+  private void createSnapshotInLocalDisk(File snapshotDir) {}
+
+  private void createSnapshotInAnotherDisk(File snapshotDir) {}
+
+  private boolean isSnapshotDirAndDataDirOnSameDisk(File snapshotDir) throws IOException {
+    String testFileName = "test";
+    File testFile = new File(snapshotDir, testFileName);
+    if (!testFile.createNewFile()) {
+      throw new IOException(
+          "Failed to test whether the data dir and snapshot dir is on the same disk");
+    }
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    for (String dataDir : dataDirs) {
+      File dirFile = new File(dataDir);
+      File testSnapshotFile = new File(dirFile, testFileName);
+      try {
+        Files.createLink(testFile.toPath(), testSnapshotFile.toPath());
+      } catch (IOException e) {
+        return false;
+      }
+      testSnapshotFile.delete();
+    }
+    testFile.delete();
+    return true;
   }
 }
