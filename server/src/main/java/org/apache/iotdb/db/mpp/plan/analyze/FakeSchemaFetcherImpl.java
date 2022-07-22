@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
@@ -111,7 +112,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
-  public List<Integer> checkAllRelatedTemplate(PartialPath pathPattern) {
+  public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
     return null;
   }
 

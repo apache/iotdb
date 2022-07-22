@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * This interface is used to fetch the metadata information required in execution plan generating.
@@ -46,7 +47,7 @@ public interface ISchemaFetcher {
 
   Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path);
 
-  List<Integer> checkAllRelatedTemplate(PartialPath pathPattern);
+  Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern);
 
   Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);
 

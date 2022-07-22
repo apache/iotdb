@@ -60,6 +60,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -248,8 +249,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public List<Integer> checkAllRelatedTemplate(PartialPath pathPattern) {
-    return null;
+  public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
+    return templateManager.checkAllRelatedTemplate(pathPattern);
   }
 
   @Override

@@ -710,6 +710,7 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
           }
         };
     collector.setPrefixMatch(plan.isPrefixMatch());
+    collector.setTemplateMap(plan.getRelatedTemplate());
     collector.setResultSet(new LinkedList<>());
     collector.traverse();
 
@@ -1400,6 +1401,14 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   public void activateTemplate(PartialPath activatePath, int templateSetLevel, Template template)
       throws MetadataException {
+    if (templateSetLevel <= levelOfSG) {
+      IMNode ancestor = storageGroupMNode;
+      for (int i = levelOfSG; i > templateSetLevel; i--) {
+        ancestor = ancestor.getParent();
+      }
+      ancestor.setSchemaTemplateId(template.getId());
+    }
+
     String[] nodes = activatePath.getNodes();
     IMNode cur = storageGroupMNode;
     for (int i = levelOfSG + 1; i < nodes.length; i++) {

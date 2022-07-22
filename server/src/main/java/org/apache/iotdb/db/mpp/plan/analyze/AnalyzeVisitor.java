@@ -1062,6 +1062,10 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     SchemaPartition schemaPartitionInfo = partitionFetcher.getSchemaPartition(patternTree);
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
 
+    Map<Integer, Template> templateMap =
+        schemaFetcher.checkAllRelatedTemplate(showTimeSeriesStatement.getPathPattern());
+    analysis.setRelatedTemplateInfo(templateMap);
+
     if (showTimeSeriesStatement.isOrderByHeat()) {
       patternTree.constructTree();
       // request schema fetch API

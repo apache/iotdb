@@ -429,7 +429,8 @@ public class LocalExecutionPlanner {
           node.getValue(),
           node.isContains(),
           node.isOrderByHeat(),
-          node.isPrefixPath());
+          node.isPrefixPath(),
+          node.getTemplateMap());
     }
 
     @Override

@@ -55,7 +55,7 @@ public class ActivateTemplateInClusterPlan extends PhysicalPlan {
   }
 
   public PartialPath getPathSetTemplate() {
-    return new PartialPath(Arrays.copyOf(activatePath.getNodes(), templateSetLevel));
+    return new PartialPath(Arrays.copyOf(activatePath.getNodes(), templateSetLevel + 1));
   }
 
   public int getTemplateId() {

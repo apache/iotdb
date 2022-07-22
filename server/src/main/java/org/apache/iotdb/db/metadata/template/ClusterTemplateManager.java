@@ -45,11 +45,14 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
 public class ClusterTemplateManager implements ITemplateManager {
 
@@ -124,7 +127,8 @@ public class ClusterTemplateManager implements ITemplateManager {
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         List<ByteBuffer> list = tGetAllTemplatesResp.getTemplateList();
         Optional<List<ByteBuffer>> optional = Optional.ofNullable(list);
-        optional.orElse(new ArrayList<>()).stream()
+        optional
+            .orElse(new ArrayList<>())
             .forEach(
                 item -> {
                   try {
@@ -176,11 +180,6 @@ public class ClusterTemplateManager implements ITemplateManager {
   }
 
   @Override
-  public Template getTemplate(int id) {
-    return templateIdMap.get(id);
-  }
-
-  @Override
   public void setSchemaTemplate(String name, PartialPath path) {
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
@@ -204,7 +203,7 @@ public class ClusterTemplateManager implements ITemplateManager {
       TGetPathsSetTemplatesResp resp = configNodeClient.getPathsSetTemplate(name);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         if (resp.getPathList() != null) {
-          resp.getPathList().stream()
+          resp.getPathList()
               .forEach(
                   item -> {
                     try {
@@ -215,35 +214,71 @@ public class ClusterTemplateManager implements ITemplateManager {
                   });
         }
       } else {
-        throw new RuntimeException(
-            new IoTDBException(resp.status.getMessage(), resp.status.getCode()));
+        throw new IoTDBException(resp.status.getMessage(), resp.status.getCode());
       }
     } catch (Exception e) {
-      throw new RuntimeException(
-          new IoTDBException(
-              "get path set template error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
+      throw new RuntimeException(e);
     }
     return listPath;
   }
 
   @Override
-  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
-    for (PartialPath templateSetPath : pathSetTemplateMap.keySet()) {
-      if (path.startsWith(templateSetPath.getNodes())) {
-        return new Pair<>(
-            templateIdMap.get(pathSetTemplateMap.get(templateSetPath)), templateSetPath);
-      }
+  public Template getTemplate(int id) {
+    readWriteLock.readLock().lock();
+    try {
+      return templateIdMap.get(id);
+    } finally {
+      readWriteLock.readLock().unlock();
     }
-    return null;
+  }
+
+  @Override
+  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
+    readWriteLock.readLock().lock();
+    try {
+      for (PartialPath templateSetPath : pathSetTemplateMap.keySet()) {
+        if (path.startsWith(templateSetPath.getNodes())) {
+          return new Pair<>(
+              templateIdMap.get(pathSetTemplateMap.get(templateSetPath)), templateSetPath);
+        }
+      }
+      return null;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
   }
 
   @Override
   public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
-    if (!templateNameMap.containsKey(templateName)) {
-      return null;
+    readWriteLock.readLock().lock();
+    try {
+      if (!templateNameMap.containsKey(templateName)) {
+        return null;
+      }
+      Template template = templateIdMap.get(templateNameMap.get(templateName));
+      return new Pair<>(template, templateSetOnPathsMap.get(template.getId()));
+    } finally {
+      readWriteLock.readLock().unlock();
     }
-    Template template = templateIdMap.get(templateNameMap.get(templateName));
-    return new Pair<>(template, templateSetOnPathsMap.get(template.getId()));
+  }
+
+  @Override
+  public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
+    readWriteLock.readLock().lock();
+    try {
+      Map<Integer, Template> result = new HashMap<>();
+      int templateId;
+      for (PartialPath path : pathSetTemplateMap.keySet()) {
+        if (pathPattern.overlapWith(path)
+            || pathPattern.overlapWith(path.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
+          templateId = pathSetTemplateMap.get(path);
+          result.put(templateId, templateIdMap.get(templateId));
+        }
+      }
+      return result;
+    } finally {
+      readWriteLock.readLock().unlock();
+    }
   }
 
   public void updateTemplateSetInfo(byte[] templateSetInfo) {

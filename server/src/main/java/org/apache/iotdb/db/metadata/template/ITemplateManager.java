@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
+import java.util.Map;
 
 public interface ITemplateManager {
 
@@ -70,4 +71,6 @@ public interface ITemplateManager {
   Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path);
 
   Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName);
+
+  Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern);
 }

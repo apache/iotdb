@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
@@ -166,7 +167,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public List<Integer> checkAllRelatedTemplate(PartialPath pathPattern) {
+  public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
     return null;
   }
 

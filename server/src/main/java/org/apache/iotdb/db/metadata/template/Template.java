@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.commons.utils.SerializeUtils;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -45,7 +44,6 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -682,24 +680,37 @@ public class Template implements Serializable {
   }
   // endregion
 
-  public void serialize(OutputStream outputStream) throws IOException {
-    DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
-    dataOutputStream.writeInt(id);
-    SerializeUtils.serialize(name, dataOutputStream);
-    dataOutputStream.writeInt(schemaMap.size());
+  public void serialize(ByteBuffer buffer) {
+    ReadWriteIOUtils.write(id, buffer);
+    ReadWriteIOUtils.write(name, buffer);
+    ReadWriteIOUtils.write(isDirectAligned, buffer);
+    ReadWriteIOUtils.write(schemaMap.size(), buffer);
     for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
-      SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-      entry.getValue().partialSerializeTo(dataOutputStream);
+      ReadWriteIOUtils.write(entry.getKey(), buffer);
+      entry.getValue().partialSerializeTo(buffer);
+    }
+  }
+
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(id, outputStream);
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(isDirectAligned, outputStream);
+    ReadWriteIOUtils.write(schemaMap.size(), outputStream);
+    for (Map.Entry<String, IMeasurementSchema> entry : schemaMap.entrySet()) {
+      ReadWriteIOUtils.write(entry.getKey(), outputStream);
+      entry.getValue().partialSerializeTo(outputStream);
     }
   }
 
   public void deserialize(ByteBuffer buffer) {
-    id = buffer.getInt();
-    name = SerializeUtils.deserializeString(buffer);
-    int schemaSize = buffer.getInt();
+    id = ReadWriteIOUtils.readInt(buffer);
+    name = ReadWriteIOUtils.readString(buffer);
+    isDirectAligned = ReadWriteIOUtils.readBool(buffer);
+    int schemaSize = ReadWriteIOUtils.readInt(buffer);
     schemaMap = new HashMap<>(schemaSize);
+    directNodes = new HashMap<>(schemaSize);
     for (int i = 0; i < schemaSize; i++) {
-      String schemaName = SerializeUtils.deserializeString(buffer);
+      String schemaName = ReadWriteIOUtils.readString(buffer);
       byte flag = ReadWriteIOUtils.readByte(buffer);
       IMeasurementSchema measurementSchema = null;
       if (flag == (byte) 0) {
@@ -708,6 +719,7 @@ public class Template implements Serializable {
         measurementSchema = VectorMeasurementSchema.partialDeserializeFrom(buffer);
       }
       schemaMap.put(schemaName, measurementSchema);
+      directNodes.put(schemaName, new MeasurementMNode(null, schemaName, measurementSchema, null));
     }
   }
 

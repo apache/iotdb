@@ -449,7 +449,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 offset,
                 showTimeSeriesStatement.isOrderByHeat(),
                 showTimeSeriesStatement.isContains(),
-                showTimeSeriesStatement.isPrefixPath())
+                showTimeSeriesStatement.isPrefixPath(),
+                analysis.getRelatedTemplateInfo())
             .planSchemaQueryMerge(showTimeSeriesStatement.isOrderByHeat());
     // show latest timeseries
     if (showTimeSeriesStatement.isOrderByHeat()
@@ -684,7 +685,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     return new ActivateTemplateNode(
         context.getQueryId().genPlanNodeId(),
         activateTemplateStatement.getPath(),
-        analysis.getTemplateSetInfo().right.get(0).getNodeLength(),
+        analysis.getTemplateSetInfo().right.get(0).getNodeLength() - 1,
         analysis.getTemplateSetInfo().left.getId());
   }
 

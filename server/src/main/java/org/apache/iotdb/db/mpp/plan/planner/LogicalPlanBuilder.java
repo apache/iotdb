@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -661,8 +662,9 @@ public class LogicalPlanBuilder {
       int offset,
       boolean orderByHeat,
       boolean contains,
-      boolean prefixPath) {
-    TimeSeriesSchemaScanNode timeSeriesMetaScanNode =
+      boolean prefixPath,
+      Map<Integer, Template> templateMap) {
+    this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
             pathPattern,
@@ -672,8 +674,8 @@ public class LogicalPlanBuilder {
             offset,
             orderByHeat,
             contains,
-            prefixPath);
-    this.root = timeSeriesMetaScanNode;
+            prefixPath,
+            templateMap);
     return this;
   }
 

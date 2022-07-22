@@ -145,6 +145,9 @@ public class Analysis {
   // template and paths set template
   private Pair<Template, List<PartialPath>> templateSetInfo;
 
+  // potential template used in timeseries query or fetch
+  private Map<Integer, Template> relatedTemplateInfo;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
@@ -404,5 +407,13 @@ public class Analysis {
 
   public void setTemplateSetInfo(Pair<Template, List<PartialPath>> templateSetInfo) {
     this.templateSetInfo = templateSetInfo;
+  }
+
+  public Map<Integer, Template> getRelatedTemplateInfo() {
+    return relatedTemplateInfo;
+  }
+
+  public void setRelatedTemplateInfo(Map<Integer, Template> relatedTemplateInfo) {
+    this.relatedTemplateInfo = relatedTemplateInfo;
   }
 }
