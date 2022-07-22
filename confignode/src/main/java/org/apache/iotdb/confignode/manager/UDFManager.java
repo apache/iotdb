@@ -79,16 +79,16 @@ public class UDFManager {
 
   private List<TSStatus> createFunctionOnDataNodes(
       String functionName, String className, List<String> uris) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocations =
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
     final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocations.size()));
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TCreateFunctionRequest request =
         new TCreateFunctionRequest(functionName, className, uris);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
             request,
-            dataNodeLocations,
+            dataNodeLocationMap,
             DataNodeRequestType.CREATE_FUNCTION,
             dataNodeResponseStatus);
     return dataNodeResponseStatus;
@@ -111,14 +111,14 @@ public class UDFManager {
   }
 
   private List<TSStatus> dropFunctionOnDataNodes(String functionName) {
-    final Map<Integer, TDataNodeLocation> dataNodeLocations =
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
     final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocations.size()));
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TDropFunctionRequest request = new TDropFunctionRequest(functionName);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            request, dataNodeLocations, DataNodeRequestType.DROP_FUNCTION, dataNodeResponseStatus);
+            request, dataNodeLocationMap, DataNodeRequestType.DROP_FUNCTION, dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 }

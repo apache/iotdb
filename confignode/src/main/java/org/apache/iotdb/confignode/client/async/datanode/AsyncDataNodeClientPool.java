@@ -71,26 +71,26 @@ public class AsyncDataNodeClientPool {
    * receive the requests
    *
    * @param req request
-   * @param dataNodeLocations Map<DataNodeId, TDataNodeLocation>
+   * @param dataNodeLocationMap Map<DataNodeId, TDataNodeLocation>
    * @param requestType DataNodeRequestType
    * @param dataNodeResponseStatus response list.Used by CREATE_FUNCTION,DROP_FUNCTION and FLUSH
    */
   public void sendAsyncRequestToDataNodeWithRetry(
       Object req,
-      Map<Integer, TDataNodeLocation> dataNodeLocations,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
       DataNodeRequestType requestType,
       List<TSStatus> dataNodeResponseStatus) {
-    if (dataNodeLocations.isEmpty()) {
+    if (dataNodeLocationMap.isEmpty()) {
       return;
     }
     for (int retry = 0; retry < retryNum; retry++) {
-      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
+      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
       AbstractRetryHandler handler;
-      for (TDataNodeLocation targetDataNode : dataNodeLocations.values()) {
+      for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
         switch (requestType) {
           case SET_TTL:
             handler =
-                new SetTTLHandler(countDownLatch, requestType, targetDataNode, dataNodeLocations);
+                new SetTTLHandler(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
             break;
           case CREATE_FUNCTION:
           case DROP_FUNCTION:
@@ -99,7 +99,7 @@ public class AsyncDataNodeClientPool {
                     countDownLatch,
                     requestType,
                     targetDataNode,
-                    dataNodeLocations,
+                    dataNodeLocationMap,
                     dataNodeResponseStatus);
             break;
           case FLUSH:
@@ -108,13 +108,13 @@ public class AsyncDataNodeClientPool {
                     countDownLatch,
                     requestType,
                     targetDataNode,
-                    dataNodeLocations,
+                    dataNodeLocationMap,
                     dataNodeResponseStatus);
             break;
           case UPDATE_REGION_ROUTE_MAP:
             handler =
                 new UpdateRegionRouteMapHandler(
-                    countDownLatch, requestType, targetDataNode, dataNodeLocations);
+                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
             break;
           default:
             return;
@@ -127,7 +127,7 @@ public class AsyncDataNodeClientPool {
         LOGGER.error("Interrupted during {} on ConfigNode", requestType);
       }
       // Check if there is a node that fails to send the request, and retry if there is one
-      if (dataNodeLocations.isEmpty()) {
+      if (dataNodeLocationMap.isEmpty()) {
         break;
       }
     }

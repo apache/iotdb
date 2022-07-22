@@ -296,18 +296,18 @@ public class LoadManager {
 
   private void broadcastLatestRegionRouteMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genLatestRegionRouteMap();
-    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     getOnlineDataNodes(-1)
         .forEach(
             onlineDataNode ->
-                dataNodeLocations.put(
+                dataNodeLocationMap.put(
                     onlineDataNode.getLocation().getDataNodeId(), onlineDataNode.getLocation()));
 
     LOGGER.info("Begin to broadcast RegionRouteMap: {}", latestRegionRouteMap);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
             new TRegionRouteReq(System.currentTimeMillis(), latestRegionRouteMap),
-            dataNodeLocations,
+            dataNodeLocationMap,
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
             null);
     LOGGER.info("Broadcast the latest RegionRouteMap finished.");

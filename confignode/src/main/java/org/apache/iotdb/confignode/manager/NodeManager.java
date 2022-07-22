@@ -449,13 +449,13 @@ public class NodeManager {
   }
 
   public List<TSStatus> flush(TFlushReq req) {
-    Map<Integer, TDataNodeLocation> dataNodeLocations =
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
     List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(dataNodeLocations.size()));
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            req, dataNodeLocations, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
+            req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 
