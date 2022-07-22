@@ -85,8 +85,8 @@ public class AsyncDataNodeClientPool {
     }
     for (int retry = 0; retry < retryNum; retry++) {
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
-      AbstractRetryHandler handler;
       for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
+        AbstractRetryHandler handler;
         switch (requestType) {
           case SET_TTL:
             handler =
@@ -180,7 +180,8 @@ public class AsyncDataNodeClientPool {
    */
   public void createRegions(
       CreateRegionGroupsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
-    // Map<index, TDataNodeLocation>
+    // Because different requests will be sent to the same node when createRegions,
+    // so for CreateRegions use Map<index, TDataNodeLocation>
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     int index = 0;
     // Count the datanodes to be sent
@@ -198,7 +199,6 @@ public class AsyncDataNodeClientPool {
     for (int retry = 0; retry < retryNum; retry++) {
       index = 0;
       CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
-      AbstractRetryHandler handler;
       for (Map.Entry<String, List<TRegionReplicaSet>> entry :
           createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
         // Enumerate each RegionReplicaSet
@@ -206,6 +206,7 @@ public class AsyncDataNodeClientPool {
           // Enumerate each Region
           for (TDataNodeLocation targetDataNode : regionReplicaSet.getDataNodeLocations()) {
             if (dataNodeLocationMap.containsKey(index)) {
+              AbstractRetryHandler handler;
               switch (regionReplicaSet.getRegionId().getType()) {
                 case SchemaRegion:
                   handler =
