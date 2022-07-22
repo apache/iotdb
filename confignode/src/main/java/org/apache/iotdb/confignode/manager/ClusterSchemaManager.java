@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
-import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
@@ -63,13 +61,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /** The ClusterSchemaManager Manages cluster schema read and write requests. */
 public class ClusterSchemaManager {
@@ -162,33 +157,22 @@ public class ClusterSchemaManager {
           TSStatusCode.STORAGE_GROUP_NOT_EXIST,
           "storageGroup " + setTTLPlan.getStorageGroup() + " does not exist");
     }
-
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     Set<TDataNodeLocation> dataNodeLocations =
         getPartitionManager()
             .getStorageGroupRelatedDataNodes(
                 setTTLPlan.getStorageGroup(), TConsensusGroupType.DataRegion);
+    dataNodeLocations.forEach(
+        dataNodeLocation ->
+            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation));
     if (dataNodeLocations.size() > 0) {
-      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
-      Map<Integer, AbstractRetryHandler> handler = new HashMap<>();
-      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-      AtomicInteger index = new AtomicInteger();
       // TODO: Use procedure to protect SetTTL on DataNodes
-      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
-        handler.put(
-            index.get(),
-            new SetTTLHandler(
-                countDownLatch,
-                DataNodeRequestType.SET_TTL,
-                dataNodeLocation,
-                dataNodeLocationMap,
-                index.get()));
-        dataNodeLocationMap.put(index.getAndIncrement(), dataNodeLocation);
-      }
       AsyncDataNodeClientPool.getInstance()
           .sendAsyncRequestToDataNodeWithRetry(
               new TSetTTLReq(setTTLPlan.getStorageGroup(), setTTLPlan.getTTL()),
-              handler,
-              dataNodeLocationMap);
+              dataNodeLocationMap,
+              DataNodeRequestType.SET_TTL,
+              null);
     }
 
     return getConsensusManager().write(setTTLPlan).getStatus();

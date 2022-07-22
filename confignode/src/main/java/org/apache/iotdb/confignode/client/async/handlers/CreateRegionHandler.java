@@ -38,23 +38,29 @@ public class CreateRegionHandler extends AbstractRetryHandler
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateRegionHandler.class);
 
+  // The index of dataNodeLocations
+  // We use Index instead of DataNodeId because it is possible to send multiple createRegion
+  // requests to the same DataNode
+  private final int index;
   // Used for Logger
   private final TConsensusGroupId consensusGroupId;
 
   public CreateRegionHandler(
-      int index,
       CountDownLatch latch,
+      DataNodeRequestType requestType,
       TConsensusGroupId consensusGroupId,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocations) {
-    super(latch, DataNodeRequestType.CREATE_REGIONS, targetDataNode, dataNodeLocations, index);
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      int index) {
+    super(latch, requestType, targetDataNode, dataNodeLocationMap);
     this.consensusGroupId = consensusGroupId;
+    this.index = index;
   }
 
   @Override
   public void onComplete(TSStatus tsStatus) {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      getDataNodeLocations().remove(index);
+      dataNodeLocationMap.remove(index);
       LOGGER.info(
           String.format(
               "Successfully create %s on DataNode: %s",
