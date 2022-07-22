@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -112,7 +113,7 @@ public class LastQueryTest {
     for (String path : paths) {
       expressions.add(new TimeSeriesOperand(new MeasurementPath(path)));
     }
-    PlanNode root = builder.planLast(expressions, null).getRoot();
+    PlanNode root = builder.planLast(expressions, null, new OrderByParameter()).getRoot();
     return new LogicalQueryPlan(context, root);
   }
 }

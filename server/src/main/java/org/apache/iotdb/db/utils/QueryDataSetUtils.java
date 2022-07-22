@@ -203,6 +203,10 @@ public class QueryDataSetUtils {
         break;
       }
       TsBlock tsBlock = optionalTsBlock.get();
+      if (tsBlock.isEmpty()) {
+        continue;
+      }
+
       int currentCount = tsBlock.getPositionCount();
       // serialize time column
       for (int i = 0; i < currentCount; i++) {

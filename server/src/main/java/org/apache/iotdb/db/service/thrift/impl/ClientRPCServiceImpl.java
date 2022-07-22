@@ -565,7 +565,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               statement,
               PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              SCHEMA_FETCHER,
+              req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
@@ -638,7 +639,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
                 SESSION_MANAGER.getSessionInfo(req.sessionId),
                 statement,
                 PARTITION_FETCHER,
-                SCHEMA_FETCHER);
+                SCHEMA_FETCHER,
+                config.getQueryTimeoutThreshold());
         addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
         results.add(result.status);
       } catch (Exception e) {
@@ -1135,7 +1137,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              SCHEMA_FETCHER,
+              req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException("error code: " + result.status);
@@ -1195,7 +1198,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              SCHEMA_FETCHER,
+              req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException("error code: " + result.status);

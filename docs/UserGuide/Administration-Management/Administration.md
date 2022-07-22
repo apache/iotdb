@@ -263,11 +263,28 @@ LIST ROLE
 Eg: IoTDB > LIST ROLE
 ```
 
-* List Privileges
+* List Related Privileges of Users(On Specific Path)
 
 ```
-LIST PRIVILEGES USER  <username> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES USER `sgcc_write_user` ON root.sgcc.**;
+LIST PRIVILEGES USER <username> ON <path>;
+Eg: IoTDB> LIST PRIVILEGES USER `tempuser` ON root.ln.**;
++--------+-----------------------------------+
+|    role|                          privilege|
++--------+-----------------------------------+
+|        |      root.ln.** : ALTER_TIMESERIES|
+|temprole|root.ln.wf01.** : CREATE_TIMESERIES|
++--------+-----------------------------------+
+Total line number = 2
+It costs 0.005s
+IoTDB> LIST PRIVILEGES USER `tempuser` ON root.ln.wf01.wt01.**;
++--------+-----------------------------------+
+|    role|                          privilege|
++--------+-----------------------------------+
+|        |      root.ln.** : ALTER_TIMESERIES|
+|temprole|root.ln.wf01.** : CREATE_TIMESERIES|
++--------+-----------------------------------+
+Total line number = 2
+It costs 0.005s
 ```
 
 * List Privileges of Roles
@@ -277,11 +294,26 @@ LIST ROLE PRIVILEGES <roleName>
 Eg: IoTDB > LIST ROLE PRIVILEGES `actor`;
 ```
 
-* List Privileges of Roles(On Specific Path)
+* List Related Privileges of Roles(On Specific Path)
 
 ```
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES ROLE `write_role` ON root.sgcc.**;
+Eg: IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.**;
++-----------------------------------+
+|                          privilege|
++-----------------------------------+
+|root.ln.wf01.** : CREATE_TIMESERIES|
++-----------------------------------+
+Total line number = 1
+It costs 0.005s
+IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.wf01.wt01.**;
++-----------------------------------+
+|                          privilege|
++-----------------------------------+
+|root.ln.wf01.** : CREATE_TIMESERIES|
++-----------------------------------+
+Total line number = 1
+It costs 0.005s
 ```
 
 * List Privileges of Users
@@ -440,44 +472,6 @@ Eg: IoTDB > unset schema template t1 from root.sg1.d1
 
 ```
 Eg: IoTDB > drop schema template t1
-```
-
-###### Tag and Attribute Management
-
-- Rename the tag/attribute key
-
-```text
-ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
-```
-
-- reset the tag/attribute value
-
-```text
-ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
-```
-
-- delete the existing tag/attribute
-
-```text
-ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
-```
-
-- add new tags
-
-```text
-ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
-```
-
-- add new attributes
-
-```text
-ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
-```
-
-- upsert alias, tags and attributes
-
-```text
-ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
 
 ###### TsFile Management

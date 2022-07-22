@@ -29,7 +29,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesAggregationSc
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.operator.In;
@@ -61,7 +61,7 @@ public class AggregationNodeSerdeTest {
                     AggregationStep.INTERMEDIATE,
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
-            OrderBy.TIMESTAMP_ASC,
+            Ordering.ASC,
             new In<>(Sets.newHashSet("s1", "s2"), VALUE_FILTER, true),
             groupByTimeParameter,
             null);
@@ -76,7 +76,7 @@ public class AggregationNodeSerdeTest {
                     Collections.singletonList(
                         new TimeSeriesOperand(new PartialPath("root.sg.d1.s1"))))),
             groupByTimeParameter,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
 
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     aggregationNode.serialize(byteBuffer);

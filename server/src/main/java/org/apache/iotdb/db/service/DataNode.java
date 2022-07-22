@@ -26,7 +26,6 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.commons.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -35,18 +34,14 @@ import org.apache.iotdb.commons.service.StartupChecks;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.IoTDBStartCheck;
-import org.apache.iotdb.db.conf.IoTDBStopCheck;
 import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
@@ -79,10 +74,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 public class DataNode implements DataNodeMBean {
   private static final Logger logger = LoggerFactory.getLogger(DataNode.class);
@@ -144,103 +136,6 @@ public class DataNode implements DataNodeMBean {
       stop();
     }
   }
-
-  /**
-   * remove datanodes from cluster
-   *
-   * @param args IPs for removed datanodes, split with ','
-   */
-  protected void doRemoveNode(String[] args) {
-    try {
-      removePrepare(args);
-      removeNodesFromCluster(args);
-      removeTail();
-    } catch (Exception e) {
-      logger.error("remove Data Nodes error", e);
-    }
-  }
-
-  private void removePrepare(String[] args) throws BadNodeUrlException {
-    ConfigNodeInfo.getInstance()
-        .updateConfigNodeList(IoTDBDescriptor.getInstance().getConfig().getTargetConfigNodeList());
-    try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-      TDataNodeConfigurationResp resp = configNodeClient.getDataNodeConfiguration(-1);
-      // 1. online Data Node size - removed Data Node size < replication，NOT ALLOW remove
-      //   But replication size is set in Config Node's configuration, so check it in remote Config
-      // Node
-
-      // 2. removed Data Node IP not contained in below map, CAN NOT remove.
-      Map<Integer, TDataNodeConfiguration> nodeIdToNodeConfiguration =
-          resp.getDataNodeConfigurationMap();
-      List<String> removedDataNodeIps = Arrays.asList(args[1].split(","));
-      List<String> onlineDataNodeIps =
-          nodeIdToNodeConfiguration.values().stream()
-              .map(TDataNodeConfiguration::getLocation)
-              .map(TDataNodeLocation::getInternalEndPoint)
-              .map(TEndPoint::getIp)
-              .collect(Collectors.toList());
-      IoTDBStopCheck.getInstance().checkDuplicateIp(removedDataNodeIps);
-      IoTDBStopCheck.getInstance().checkIpInCluster(removedDataNodeIps, onlineDataNodeIps);
-    } catch (TException e) {
-      logger.error("remove Data Nodes check failed", e);
-    }
-  }
-
-  private void removeNodesFromCluster(String[] args) {
-    logger.info("start to remove DataNode from cluster");
-    List<TDataNodeLocation> dataNodeLocations = buildDataNodeLocations(args[1]);
-    if (dataNodeLocations.isEmpty()) {
-      logger.error("data nodes location is empty");
-      // throw Exception OR return?
-      return;
-    }
-    logger.info(
-        "there has data nodes location will be removed. size is: {}, detail: {}",
-        dataNodeLocations.size(),
-        dataNodeLocations);
-    TDataNodeRemoveReq removeReq = new TDataNodeRemoveReq(dataNodeLocations);
-    try (ConfigNodeClient configNodeClient = new ConfigNodeClient()) {
-      TDataNodeRemoveResp removeResp = configNodeClient.removeDataNode(removeReq);
-      logger.info("Remove result {} ", removeResp.toString());
-    } catch (TException e) {
-      logger.error("send remove Data Node request failed!", e);
-    }
-  }
-
-  /**
-   * fetch all datanode info from ConfigNode, then compare with input 'ips'
-   *
-   * @param ips data node ip, split with ','
-   * @return TDataNodeLocation list
-   */
-  private List<TDataNodeLocation> buildDataNodeLocations(String ips) {
-    List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
-    if (ips == null || ips.trim().isEmpty()) {
-      return dataNodeLocations;
-    }
-
-    List<String> dataNodeIps = Arrays.asList(ips.split(","));
-    try (ConfigNodeClient client = new ConfigNodeClient()) {
-      dataNodeLocations =
-          client.getDataNodeConfiguration(-1).getDataNodeConfigurationMap().values().stream()
-              .map(TDataNodeConfiguration::getLocation)
-              .filter(location -> dataNodeIps.contains(location.getInternalEndPoint().getIp()))
-              .collect(Collectors.toList());
-    } catch (TException e) {
-      logger.error("get data node locations failed", e);
-    }
-
-    if (dataNodeIps.size() != dataNodeLocations.size()) {
-      logger.error(
-          "build DataNode locations error, "
-              + "because number of input ip NOT EQUALS the number of fetched DataNodeLocations, will return empty locations");
-      return dataNodeLocations;
-    }
-
-    return dataNodeLocations;
-  }
-
-  private void removeTail() {}
 
   /** initialize the current node and its services */
   public boolean initLocalEngines() {

@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.QueryState;
@@ -88,14 +89,17 @@ public class QueryExecution implements IQueryExecution {
   private static final Logger logger = LoggerFactory.getLogger(QueryExecution.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-
+  private static final int MAX_RETRY_COUNT = 3;
+  private static final long RETRY_INTERVAL_IN_MS = 2000;
+  private int retryCount = 0;
   private final MPPQueryContext context;
   private IScheduler scheduler;
   private final QueryStateMachine stateMachine;
 
   private final List<PlanOptimizer> planOptimizers;
 
-  private final Analysis analysis;
+  private Statement rawStatement;
+  private Analysis analysis;
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
 
@@ -123,6 +127,7 @@ public class QueryExecution implements IQueryExecution {
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
+    this.rawStatement = statement;
     this.executor = executor;
     this.writeOperationExecutor = writeOperationExecutor;
     this.scheduledExecutor = scheduledExecutor;
@@ -139,6 +144,10 @@ public class QueryExecution implements IQueryExecution {
     stateMachine.addStateChangeListener(
         state -> {
           try (SetThreadName queryName = new SetThreadName(context.getQueryId().getId())) {
+            if (state == QueryState.RETRYING) {
+              retry();
+              return;
+            }
             if (!state.isDone()) {
               return;
             }
@@ -162,12 +171,45 @@ public class QueryExecution implements IQueryExecution {
       stateMachine.transitionToRunning();
       return;
     }
+    long remainTime = context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime());
+    if (remainTime <= 0) {
+      throw new QueryTimeoutRuntimeException();
+    }
+    context.setTimeOut(remainTime);
+
     doLogicalPlan();
     doDistributedPlan();
     if (context.getQueryType() == QueryType.READ) {
       initResultHandle();
     }
     schedule();
+  }
+
+  private void retry() {
+    if (retryCount >= MAX_RETRY_COUNT) {
+      logger.error("reach max retry count. transit query to failed");
+      stateMachine.transitionToFailed();
+      return;
+    }
+    logger.warn("error when executing query. {}", stateMachine.getFailureMessage());
+    // stop and clean up resources the QueryExecution used
+    this.stopAndCleanup();
+    logger.info("wait {}ms before retry...", RETRY_INTERVAL_IN_MS);
+    try {
+      Thread.sleep(RETRY_INTERVAL_IN_MS);
+    } catch (InterruptedException e) {
+      logger.error("interrupted when waiting retry");
+      Thread.currentThread().interrupt();
+    }
+    retryCount++;
+    logger.info("start to retry. Retry count is: {}", retryCount);
+
+    // force invalid PartitionCache
+    partitionFetcher.invalidAllCache();
+    // re-analyze the query
+    this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
+    // re-start the QueryExecution
+    this.start();
   }
 
   private boolean skipExecute() {
@@ -388,27 +430,25 @@ public class QueryExecution implements IQueryExecution {
   }
 
   private void initResultHandle() {
-    if (this.resultHandle == null) {
-      TEndPoint upstreamEndPoint = context.getResultNodeContext().getUpStreamEndpoint();
+    TEndPoint upstreamEndPoint = context.getResultNodeContext().getUpStreamEndpoint();
 
-      this.resultHandle =
-          isSameNode(upstreamEndPoint)
-              ? MPPDataExchangeService.getInstance()
-                  .getMPPDataExchangeManager()
-                  .createLocalSourceHandle(
-                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                      stateMachine::transitionToFailed)
-              : MPPDataExchangeService.getInstance()
-                  .getMPPDataExchangeManager()
-                  .createSourceHandle(
-                      context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
-                      context.getResultNodeContext().getVirtualResultNodeId().getId(),
-                      upstreamEndPoint,
-                      context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
-                      stateMachine::transitionToFailed);
-    }
+    this.resultHandle =
+        isSameNode(upstreamEndPoint)
+            ? MPPDataExchangeService.getInstance()
+                .getMPPDataExchangeManager()
+                .createLocalSourceHandle(
+                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                    context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                    context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                    stateMachine::transitionToFailed)
+            : MPPDataExchangeService.getInstance()
+                .getMPPDataExchangeManager()
+                .createSourceHandle(
+                    context.getResultNodeContext().getVirtualFragmentInstanceId().toThrift(),
+                    context.getResultNodeContext().getVirtualResultNodeId().getId(),
+                    upstreamEndPoint,
+                    context.getResultNodeContext().getUpStreamFragmentInstanceId().toThrift(),
+                    stateMachine::transitionToFailed);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -421,7 +461,9 @@ public class QueryExecution implements IQueryExecution {
 
     TSStatus tsstatus = RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage());
 
-    if (stateMachine.getFailureStatus() != null) {
+    // If RETRYING is triggered by this QueryExecution, the stateMachine.getFailureStatus() is also
+    // not null. We should only return the failure status when QueryExecution is in Done state.
+    if (state.isDone() && stateMachine.getFailureStatus() != null) {
       tsstatus = stateMachine.getFailureStatus();
     }
 
