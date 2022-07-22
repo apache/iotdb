@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.exception.metadata.template.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -863,11 +864,64 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(createTimeSeriesStatement);
 
+    checkIsTemplateCompatible(
+        createTimeSeriesStatement.getPath(), createTimeSeriesStatement.getAlias());
+
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(createTimeSeriesStatement.getPath());
     SchemaPartition schemaPartitionInfo = partitionFetcher.getOrCreateSchemaPartition(patternTree);
     analysis.setSchemaPartitionInfo(schemaPartitionInfo);
     return analysis;
+  }
+
+  private void checkIsTemplateCompatible(PartialPath timeseriesPath, String alias) {
+    Pair<Template, PartialPath> templateInfo = schemaFetcher.checkTemplateSetInfo(timeseriesPath);
+    if (templateInfo != null) {
+      if (templateInfo.left.hasSchema(timeseriesPath.getMeasurement())) {
+        throw new RuntimeException(
+            new TemplateImcompatibeException(
+                timeseriesPath.getFullPath(),
+                templateInfo.left.getName(),
+                timeseriesPath.getMeasurement()));
+      }
+
+      if (alias != null && templateInfo.left.hasSchema(alias)) {
+        throw new RuntimeException(
+            new TemplateImcompatibeException(
+                timeseriesPath.getDevicePath().concatNode(alias).getFullPath(),
+                templateInfo.left.getName(),
+                alias));
+      }
+    }
+  }
+
+  private void checkIsTemplateCompatible(
+      PartialPath devicePath, List<String> measurements, List<String> aliasList) {
+    Pair<Template, PartialPath> templateInfo = schemaFetcher.checkTemplateSetInfo(devicePath);
+    if (templateInfo != null) {
+      Template template = templateInfo.left;
+      for (String measurement : measurements) {
+        if (template.hasSchema(measurement)) {
+          throw new RuntimeException(
+              new TemplateImcompatibeException(
+                  devicePath.concatNode(measurement).getFullPath(),
+                  templateInfo.left.getName(),
+                  measurement));
+        }
+      }
+
+      if (aliasList == null) {
+        return;
+      }
+
+      for (String alias : aliasList) {
+        if (template.hasSchema(alias)) {
+          throw new RuntimeException(
+              new TemplateImcompatibeException(
+                  devicePath.concatNode(alias).getFullPath(), templateInfo.left.getName(), alias));
+        }
+      }
+    }
   }
 
   @Override
@@ -883,6 +937,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Analysis analysis = new Analysis();
     analysis.setStatement(createAlignedTimeSeriesStatement);
+
+    checkIsTemplateCompatible(
+        createAlignedTimeSeriesStatement.getDevicePath(),
+        createAlignedTimeSeriesStatement.getMeasurements(),
+        createAlignedTimeSeriesStatement.getAliasList());
 
     PathPatternTree pathPatternTree = new PathPatternTree();
     for (String measurement : createAlignedTimeSeriesStatement.getMeasurements()) {
@@ -904,6 +963,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(internalCreateTimeSeriesStatement);
 
+    checkIsTemplateCompatible(
+        internalCreateTimeSeriesStatement.getDevicePath(),
+        internalCreateTimeSeriesStatement.getMeasurements(),
+        null);
+
     PathPatternTree pathPatternTree = new PathPatternTree();
     for (String measurement : internalCreateTimeSeriesStatement.getMeasurements()) {
       pathPatternTree.appendFullPath(
@@ -923,6 +987,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(createMultiTimeSeriesStatement);
 
+    List<PartialPath> timeseriesPathList = createMultiTimeSeriesStatement.getPaths();
+    List<String> aliasList = createMultiTimeSeriesStatement.getAliasList();
+    for (int i = 0; i < timeseriesPathList.size(); i++) {
+      checkIsTemplateCompatible(
+          timeseriesPathList.get(i), aliasList == null ? null : aliasList.get(i));
+    }
+
     PathPatternTree patternTree = new PathPatternTree();
     for (PartialPath path : createMultiTimeSeriesStatement.getPaths()) {
       patternTree.appendFullPath(path);
@@ -938,6 +1009,11 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     context.setQueryType(QueryType.WRITE);
     Analysis analysis = new Analysis();
     analysis.setStatement(alterTimeSeriesStatement);
+
+    if (alterTimeSeriesStatement.getAlias() != null) {
+      checkIsTemplateCompatible(
+          alterTimeSeriesStatement.getPath(), alterTimeSeriesStatement.getAlias());
+    }
 
     PathPatternTree patternTree = new PathPatternTree();
     patternTree.appendFullPath(alterTimeSeriesStatement.getPath());
