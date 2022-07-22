@@ -115,16 +115,13 @@ public class QueryLogicalPlanUtil {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3")));
-    sourceNodeList.add(
-        new LastQueryScanNode(
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1")));
     sourceNodeList.add(
         new LastQueryScanNode(
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2")));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4")));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3")));
     sourceNodeList.add(
         new AlignedLastQueryScanNode(
             queryId.genPlanNodeId(),
@@ -139,6 +136,9 @@ public class QueryLogicalPlanUtil {
     sourceNodeList.add(
         new LastQueryScanNode(
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4")));
 
     LastQueryNode lastQueryNode =
         new LastQueryNode(
