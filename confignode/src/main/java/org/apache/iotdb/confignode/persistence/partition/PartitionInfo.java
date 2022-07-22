@@ -120,7 +120,7 @@ public class PartitionInfo implements SnapshotProcessor {
               Metric.STORAGE_GROUP.toString(),
               MetricLevel.CORE,
               storageGroupPartitionTables,
-              o -> o.size() / 2,
+              o -> o.size(),
               Tag.NAME.toString(),
               "number");
       MetricsService.getInstance()
