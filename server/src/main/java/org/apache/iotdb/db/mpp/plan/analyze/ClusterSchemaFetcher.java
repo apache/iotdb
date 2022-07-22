@@ -35,8 +35,10 @@ import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.execution.ExecutionResult;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -48,6 +50,7 @@ import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import io.airlift.concurrent.SetThreadName;
@@ -283,12 +286,45 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     List<String> missingMeasurements = checkResult.left;
     List<TSDataType> dataTypesOfMissingMeasurement = checkResult.right;
 
+    SchemaTree reFetchedSchemaTree = new SchemaTree();
+
     if (missingMeasurements.isEmpty()) {
-      return new SchemaTree();
+      return reFetchedSchemaTree;
     }
 
-    return internalCreateTimeseries(
-        devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned);
+    Pair<Template, PartialPath> templateInfo = templateManager.checkTemplateSetInfo(devicePath);
+    if (templateInfo != null) {
+      Template template = templateInfo.left;
+      boolean shouldActivateTemplate = false;
+      for (String missingMeasurement : missingMeasurements) {
+        if (template.hasSchema(missingMeasurement)) {
+          shouldActivateTemplate = true;
+          break;
+        }
+      }
+
+      if (shouldActivateTemplate) {
+        internalActivateTemplate(devicePath);
+        missingMeasurements.removeAll(template.getSchemaMap().keySet());
+        for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
+          schemaTree.appendSingleMeasurement(
+              devicePath.concatNode(entry.getKey()),
+              (MeasurementSchema) entry.getValue(),
+              null,
+              template.isDirectAligned());
+        }
+
+        if (missingMeasurements.isEmpty()) {
+          return schemaTree;
+        }
+      }
+    }
+
+    schemaTree.mergeSchemaTree(
+        internalCreateTimeseries(
+            devicePath, missingMeasurements, dataTypesOfMissingMeasurement, isAligned));
+
+    return schemaTree;
   }
 
   private Pair<List<String>, List<TSDataType>> checkMissingMeasurements(
@@ -359,16 +395,9 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   private List<MeasurementPath> executeInternalCreateTimeseriesStatement(
       InternalCreateTimeSeriesStatement statement) {
-    long queryId = SessionManager.getInstance().requestQueryId(false);
-    ExecutionResult executionResult =
-        coordinator.execute(
-            statement,
-            queryId,
-            null,
-            "",
-            ClusterPartitionFetcher.getInstance(),
-            this,
-            config.getQueryTimeoutThreshold());
+
+    ExecutionResult executionResult = executeStatement(statement);
+
     // TODO: throw exception
     int statusCode = executionResult.status.getCode();
     if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -397,6 +426,27 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     return alreadyExistingMeasurements;
+  }
+
+  public void internalActivateTemplate(PartialPath devicePath) {
+    ExecutionResult executionResult = executeStatement(new ActivateTemplateStatement(devicePath));
+    TSStatus status = executionResult.status;
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && status.getCode() != TSStatusCode.TEMPLATE_IS_IN_USE.getStatusCode()) {
+      throw new RuntimeException(new IoTDBException(status.getMessage(), status.getCode()));
+    }
+  }
+
+  private ExecutionResult executeStatement(Statement statement) {
+    long queryId = SessionManager.getInstance().requestQueryId(false);
+    return coordinator.execute(
+        statement,
+        queryId,
+        null,
+        "",
+        ClusterPartitionFetcher.getInstance(),
+        this,
+        config.getQueryTimeoutThreshold());
   }
 
   @Override

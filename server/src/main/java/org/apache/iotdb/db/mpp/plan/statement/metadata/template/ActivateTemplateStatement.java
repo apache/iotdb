@@ -36,6 +36,12 @@ public class ActivateTemplateStatement extends Statement {
     statementType = StatementType.ACTIVATE_TEMPLATE;
   }
 
+  public ActivateTemplateStatement(PartialPath path) {
+    super();
+    this.path = path;
+    statementType = StatementType.ACTIVATE_TEMPLATE;
+  }
+
   @Override
   public List<? extends PartialPath> getPaths() {
     return Collections.singletonList(path);
