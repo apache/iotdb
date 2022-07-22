@@ -48,9 +48,9 @@ public class CreateRegionHandler extends AbstractRetryHandler
       DataNodeRequestType requestType,
       TConsensusGroupId consensusGroupId,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocations,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
       int index) {
-    super(latch, requestType, targetDataNode, dataNodeLocations);
+    super(latch, requestType, targetDataNode, dataNodeLocationMap);
     this.consensusGroupId = consensusGroupId;
     this.index = index;
   }
@@ -58,7 +58,7 @@ public class CreateRegionHandler extends AbstractRetryHandler
   @Override
   public void onComplete(TSStatus tsStatus) {
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      dataNodeLocations.remove(index);
+      dataNodeLocationMap.remove(index);
       LOGGER.info(
           String.format(
               "Successfully create %s on DataNode: %s",
