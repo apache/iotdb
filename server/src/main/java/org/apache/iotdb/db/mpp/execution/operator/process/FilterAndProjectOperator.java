@@ -117,7 +117,9 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
     Column filterColumn = filterOutputTransformer.getColumn();
 
+    // reuse this builder
     filterTsBlockBuilder.reset();
+
     final TimeColumnBuilder timeBuilder = filterTsBlockBuilder.getTimeColumnBuilder();
     final ColumnBuilder[] columnBuilders = filterTsBlockBuilder.getValueColumnBuilders();
 

@@ -48,7 +48,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -70,7 +70,7 @@ public class AggregationDistributionTest {
   @Test
   public void testTimeJoinAggregationSinglePerRegion() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     String d1s1Path = "root.sg.d1.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT));
 
@@ -109,7 +109,7 @@ public class AggregationDistributionTest {
   @Test
   public void testTimeJoinAggregationWithSlidingWindow() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_time_join_agg_with_sliding");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     String d1s1Path = "root.sg.d1.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT));
 
@@ -157,7 +157,7 @@ public class AggregationDistributionTest {
   @Test
   public void testTimeJoinAggregationMultiPerRegion() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     String d1s1Path = "root.sg.d1.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT));
 
@@ -181,7 +181,7 @@ public class AggregationDistributionTest {
   @Test
   public void testTimeJoinAggregationMultiPerRegion2() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_time_join_aggregation");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     String d3s1Path = "root.sg.d333.s1";
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT));
 
@@ -223,7 +223,7 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d2s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -260,7 +260,7 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d4s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -301,7 +301,7 @@ public class AggregationDistributionTest {
             AggregationType.COUNT,
             AggregationStep.PARTIAL,
             null);
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d3s1Path, AggregationType.COUNT));
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d4s1Path, AggregationType.COUNT));
     slidingWindowAggregationNode.addChild(timeJoinNode);
@@ -319,7 +319,7 @@ public class AggregationDistributionTest {
                         new TimeSeriesOperand(new PartialPath(d4s1Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPath)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
 
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
@@ -396,7 +396,7 @@ public class AggregationDistributionTest {
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -455,7 +455,7 @@ public class AggregationDistributionTest {
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -494,7 +494,7 @@ public class AggregationDistributionTest {
     String groupedPathS1 = "root.sg.*.s1";
     String groupedPathS2 = "root.sg.*.s2";
 
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s1Path, AggregationType.COUNT));
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d1s2Path, AggregationType.COUNT));
     timeJoinNode.addChild(genAggregationSourceNode(queryId, d2s1Path, AggregationType.COUNT));
@@ -527,7 +527,7 @@ public class AggregationDistributionTest {
                     Collections.singletonList(new TimeSeriesOperand(new PartialPath(d1s2Path))),
                     new TimeSeriesOperand(new PartialPath(groupedPathS2)))),
             null,
-            OrderBy.TIMESTAMP_ASC);
+            Ordering.ASC);
     Analysis analysis = Util.constructAnalysis();
     MPPQueryContext context =
         new MPPQueryContext("", queryId, null, new TEndPoint(), new TEndPoint());
@@ -654,7 +654,7 @@ public class AggregationDistributionTest {
                         Collections.singletonList(new TimeSeriesOperand(path))))
             .collect(Collectors.toList()),
         groupByTimeParameter,
-        OrderBy.TIMESTAMP_ASC);
+        Ordering.ASC);
   }
 
   private SeriesAggregationSourceNode genAggregationSourceNode(
@@ -673,18 +673,18 @@ public class AggregationDistributionTest {
   @Test
   public void testParallelPlanWithAlignedSeries() throws IllegalPathException {
     QueryId queryId = new QueryId("test_query_aligned");
-    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC);
+    TimeJoinNode timeJoinNode = new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC);
 
     timeJoinNode.addChild(
         new AlignedSeriesScanNode(
             queryId.genPlanNodeId(),
             new AlignedPath("root.sg.d1", Arrays.asList("s1", "s2")),
-            OrderBy.TIMESTAMP_ASC));
+            Ordering.ASC));
     timeJoinNode.addChild(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             new MeasurementPath("root.sg.d333.s1", TSDataType.INT32),
-            OrderBy.TIMESTAMP_ASC));
+            Ordering.ASC));
 
     LimitNode root = new LimitNode(queryId.genPlanNodeId(), timeJoinNode, 10);
     Analysis analysis = Util.constructAnalysis();

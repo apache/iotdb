@@ -18,10 +18,16 @@
  */
 package org.apache.iotdb.confignode.service;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.ServerCommandLine;
+import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.StartupChecks;
+import org.apache.iotdb.commons.utils.NodeUrlUtils;
+import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
+import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 
 import org.slf4j.Logger;
@@ -76,7 +82,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
     } else if (MODE_REMOVE.equals(mode)) {
       // remove node
       try {
-        ConfigNode.getInstance().doRemoveNode(args);
+        doRemoveNode(args);
       } catch (IOException e) {
         LOGGER.error("Meet error when doing remove", e);
         return -1;
@@ -84,5 +90,28 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
     }
 
     return 0;
+  }
+
+  private void doRemoveNode(String[] args) throws IOException {
+    LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
+    if (args.length != 3) {
+      LOGGER.info("Usage: -r <ip>:<rpcPort>");
+      return;
+    }
+
+    try {
+      TEndPoint endPoint = NodeUrlUtils.parseTEndPointUrl(args[2]);
+      TConfigNodeLocation removeConfigNodeLocation =
+          ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint);
+      if (removeConfigNodeLocation == null) {
+        LOGGER.error("The ConfigNode not in the Cluster.");
+        return;
+      }
+
+      ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
+    } catch (BadNodeUrlException e) {
+      LOGGER.warn("No ConfigNodes need to be removed.", e);
+    }
+    LOGGER.info("{} is removed.", ConfigNodeConstant.GLOBAL_NAME);
   }
 }

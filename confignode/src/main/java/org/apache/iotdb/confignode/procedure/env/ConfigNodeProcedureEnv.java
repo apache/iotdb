@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroup
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -49,12 +50,16 @@ public class ConfigNodeProcedureEnv {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConfigNodeProcedureEnv.class);
 
-  /** add and remove config node lock */
-  private final ReentrantLock configNodeLock = new ReentrantLock();
+  /** add or remove node lock */
+  private final LockQueue nodeLock = new LockQueue();
+
+  private final ReentrantLock schedulerLock = new ReentrantLock();
 
   private final ConfigManager configManager;
 
   private final ProcedureScheduler scheduler;
+
+  private final DataNodeRemoveHandler dataNodeRemoveHandler;
 
   private static boolean skipForTest = false;
 
@@ -71,6 +76,7 @@ public class ConfigNodeProcedureEnv {
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
     this.scheduler = scheduler;
+    this.dataNodeRemoveHandler = new DataNodeRemoveHandler(configManager);
   }
 
   public ConfigManager getConfigManager() {
@@ -245,11 +251,23 @@ public class ConfigNodeProcedureEnv {
             ConfigNodeRequestType.NOTIFY_REGISTER_SUCCESS);
   }
 
-  public ReentrantLock getConfigNodeLock() {
-    return configNodeLock;
+  public LockQueue getNodeLock() {
+    return nodeLock;
   }
 
   public ProcedureScheduler getScheduler() {
     return scheduler;
+  }
+
+  public LockQueue getRegionMigrateLock() {
+    return dataNodeRemoveHandler.getRegionMigrateLock();
+  }
+
+  public ReentrantLock getSchedulerLock() {
+    return schedulerLock;
+  }
+
+  public DataNodeRemoveHandler getDataNodeRemoveHandler() {
+    return dataNodeRemoveHandler;
   }
 }

@@ -110,11 +110,11 @@ public interface IManager {
   UDFManager getUDFManager();
 
   /**
-   * Get DataNodeRemoveManager
+   * Get ProcedureManager
    *
-   * @return DataNodeRemoveManager instance
+   * @return ProcedureManager instance
    */
-  DataNodeRemoveManager getDataNodeRemoveManager();
+  ProcedureManager getProcedureManager();
 
   /**
    * Register DataNode
