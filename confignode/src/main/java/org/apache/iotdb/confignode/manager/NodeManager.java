@@ -437,6 +437,7 @@ public class NodeManager {
         configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
             req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
