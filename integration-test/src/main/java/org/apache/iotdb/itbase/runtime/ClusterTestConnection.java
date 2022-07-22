@@ -46,7 +46,7 @@ public class ClusterTestConnection implements Connection {
   private final NodeConnection writeConnection;
   private final List<NodeConnection> readConnections;
   private boolean isClosed;
-  private boolean isResultSetDisorder;
+  private boolean resultSetDisordered;
 
   public ClusterTestConnection(
       NodeConnection writeConnection, List<NodeConnection> readConnections) {
@@ -57,7 +57,7 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public Statement createStatement() throws SQLException {
-    return new ClusterTestStatement(writeConnection, readConnections, isResultSetDisorder);
+    return new ClusterTestStatement(writeConnection, readConnections, resultSetDisordered);
   }
 
   @Override
@@ -270,8 +270,8 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public void setClientInfo(String name, String value) throws SQLClientInfoException {
-    if (name.equalsIgnoreCase("is_result_set_disorder")) {
-      this.isResultSetDisorder = Boolean.parseBoolean(value);
+    if (name.equalsIgnoreCase("result_set_disordered")) {
+      this.resultSetDisordered = Boolean.parseBoolean(value);
     } else {
       writeConnection.getUnderlyingConnecton().setClientInfo(name, value);
       for (NodeConnection conn : readConnections) {

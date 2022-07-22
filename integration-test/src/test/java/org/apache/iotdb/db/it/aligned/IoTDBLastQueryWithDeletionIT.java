@@ -96,7 +96,7 @@ public class IoTDBLastQueryWithDeletionIT {
                 "40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
-      connection.setClientInfo("is_result_set_disorder", "true");
+      connection.setClientInfo("result_set_disordered", "true");
       try (Statement statement = connection.createStatement();
           ResultSet resultSet = statement.executeQuery("select last * from root.sg1.d1")) {
 
@@ -138,7 +138,7 @@ public class IoTDBLastQueryWithDeletionIT {
                 "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
-      connection.setClientInfo("is_result_set_disorder", "true");
+      connection.setClientInfo("result_set_disordered", "true");
       try (Statement statement = connection.createStatement();
           ResultSet resultSet = statement.executeQuery("select last * from root.sg1.*")) {
 
@@ -170,7 +170,7 @@ public class IoTDBLastQueryWithDeletionIT {
         new HashSet<>(Collections.singletonList("40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
-      connection.setClientInfo("is_result_set_disorder", "true");
+      connection.setClientInfo("result_set_disordered", "true");
       try (Statement statement = connection.createStatement();
           ResultSet resultSet =
               statement.executeQuery("select last * from root.sg1.d1 where time > 30")) {
@@ -203,7 +203,7 @@ public class IoTDBLastQueryWithDeletionIT {
                 "30,root.sg1.d1.s4,false,BOOLEAN", "40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
-      connection.setClientInfo("is_result_set_disorder", "true");
+      connection.setClientInfo("result_set_disordered", "true");
       try (Statement statement = connection.createStatement();
           ResultSet resultSet = statement.executeQuery("select last s1, s4, s5 from root.sg1.d1")) {
 
@@ -234,7 +234,7 @@ public class IoTDBLastQueryWithDeletionIT {
         new HashSet<>(Collections.singletonList("30,root.sg1.d1.s4,false,BOOLEAN"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
-      connection.setClientInfo("is_result_set_disorder", "true");
+      connection.setClientInfo("result_set_disordered", "true");
       try (Statement statement = connection.createStatement();
           ResultSet resultSet = statement.executeQuery("select last s1, s4 from root.sg1.d1")) {
 
@@ -266,7 +266,7 @@ public class IoTDBLastQueryWithDeletionIT {
         new HashSet<>(Collections.singletonList("40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
-      connection.setClientInfo("is_result_set_disorder", "true");
+      connection.setClientInfo("result_set_disordered", "true");
       try (Statement statement = connection.createStatement();
           ResultSet resultSet =
               statement.executeQuery("select last s1, s4, s5 from root.sg1.d1 where time > 30")) {
@@ -302,7 +302,7 @@ public class IoTDBLastQueryWithDeletionIT {
                 "40,root.sg1.d2.s5,non_aligned_test40,TEXT"));
 
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
-      connection.setClientInfo("is_result_set_disorder", "true");
+      connection.setClientInfo("result_set_disordered", "true");
       try (Statement statement = connection.createStatement();
           ResultSet resultSet =
               statement.executeQuery(

@@ -45,14 +45,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-public class SortedClusterTestResultSet implements ResultSet {
+public class DisorderedClusterTestResultSet implements ResultSet {
 
   private final List<ResultSet> resultSets;
   private final List<String> endpoints;
   private final int queryTimeoutSeconds;
   private final List<List<StringBuilder>> cachedResult = new ArrayList<>();
 
-  public SortedClusterTestResultSet(
+  public DisorderedClusterTestResultSet(
       List<Statement> statements, List<String> endpoints, String sql, int queryTimeoutSeconds)
       throws SQLException {
     this.queryTimeoutSeconds = queryTimeoutSeconds;

@@ -69,7 +69,7 @@ public class ClusterTestStatement implements Statement {
     if (!isResultSetDisorder) {
       return new ClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
     } else {
-      return new SortedClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
+      return new DisorderedClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
     }
   }
 
