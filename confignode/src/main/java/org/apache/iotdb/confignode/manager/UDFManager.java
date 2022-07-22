@@ -118,7 +118,10 @@ public class UDFManager {
     final TDropFunctionRequest request = new TDropFunctionRequest(functionName);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            request, dataNodeLocationMap, DataNodeRequestType.DROP_FUNCTION, dataNodeResponseStatus);
+            request,
+            dataNodeLocationMap,
+            DataNodeRequestType.DROP_FUNCTION,
+            dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 }
