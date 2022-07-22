@@ -36,18 +36,17 @@ public class UpdateConfigNodeGroupHandler extends AbstractRetryHandler
   private static final Logger LOGGER = LoggerFactory.getLogger(UpdateConfigNodeGroupHandler.class);
 
   public UpdateConfigNodeGroupHandler(
-      TDataNodeLocation targetDataNode,
       CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
-      Map<Integer, TDataNodeLocation> dataNodeLocations,
-      int index) {
-    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
+      TDataNodeLocation targetDataNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
   }
 
   @Override
   public void onComplete(TSStatus status) {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      getDataNodeLocations().remove(index);
+      dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info(
           "Successfully broadCast the latest configNodeGroup on DataNode: {}", targetDataNode);
     } else {

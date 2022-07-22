@@ -256,7 +256,7 @@ public class ConfigNodeProcedureEnv {
   public void broadCastTheLatestConfigNodeGroup() {
     AsyncDataNodeClientPool.getInstance()
         .broadCastTheLatestConfigNodeGroup(
-            configManager.getNodeManager().getRegisteredDataNodes(-1),
+            configManager.getNodeManager().getRegisteredDataNodeLocations(-1),
             configManager.getNodeManager().getRegisteredConfigNodes());
   }
 
