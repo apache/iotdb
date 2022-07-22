@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemp
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -114,6 +115,11 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitFlush(FlushStatement flushStatement, TaskContext context) {
     return new FlushTask(flushStatement);
+  }
+
+  @Override
+  public IConfigTask visitClearCache(ClearCacheStatement clearCacheStatement, TaskContext context) {
+    return new ClearCacheTask(clearCacheStatement);
   }
 
   @Override

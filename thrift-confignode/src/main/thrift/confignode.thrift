@@ -374,6 +374,10 @@ service IConfigNodeRPCService {
 
   common.TSStatus flush(common.TFlushReq req)
 
+  /* ClearCache */
+
+  common.TSStatus clearCache()
+
   /* Show Region */
 
   TShowRegionResp showRegion(TShowRegionReq req)

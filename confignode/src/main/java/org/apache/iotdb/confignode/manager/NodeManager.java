@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.handlers.ClearCacheHandler;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeInfoPlan;
@@ -408,6 +409,28 @@ public class NodeManager {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOGGER.error("NodeManager was interrupted during flushing on data nodes", e);
+    }
+    return dataNodeResponseStatus;
+  }
+
+  public List<TSStatus> clearCache() {
+    List<TDataNodeInfo> registeredDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes(-1);
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
+    CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
+    for (TDataNodeInfo dataNodeInfo : registeredDataNodes) {
+      AsyncDataNodeClientPool.getInstance()
+          .clearCache(
+              dataNodeInfo.getLocation().getInternalEndPoint(),
+              new ClearCacheHandler(
+                  dataNodeInfo.getLocation(), countDownLatch, dataNodeResponseStatus));
+    }
+    try {
+      countDownLatch.await();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOGGER.error("NodeManager was interrupted during clearing Cache on data nodes", e);
     }
     return dataNodeResponseStatus;
   }

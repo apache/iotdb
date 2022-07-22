@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
+import org.apache.iotdb.confignode.client.handlers.ClearCacheHandler;
 import org.apache.iotdb.confignode.client.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.handlers.FlushHandler;
@@ -292,6 +293,19 @@ public class AsyncDataNodeClientPool {
       clientManager.borrowClient(endPoint).flush(flushReq, handler);
     } catch (Exception e) {
       LOGGER.error("Failed to asking DataNode to flush: {}", endPoint, e);
+    }
+  }
+
+  /**
+   * Clear DataNode Cache
+   *
+   * @param endPoint The specific DataNode
+   */
+  public void clearCache(TEndPoint endPoint, ClearCacheHandler handler) {
+    try {
+      clientManager.borrowClient(endPoint).clearCache(handler);
+    } catch (Exception e) {
+      LOGGER.error("Failed to asking DataNode to clearCache: {}", e);
     }
   }
 

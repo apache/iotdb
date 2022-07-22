@@ -112,6 +112,7 @@ public enum StatementType {
   TTL,
   KILL,
   FLUSH,
+  ClearCache,
   TRACING,
   CLEAR_CACHE,
   DELETE_PARTITION,
