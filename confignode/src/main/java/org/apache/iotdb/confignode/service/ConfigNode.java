@@ -21,20 +21,17 @@ package org.apache.iotdb.confignode.service;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.exception.BadNodeUrlException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
 import org.apache.iotdb.commons.service.RegisterManager;
 import org.apache.iotdb.commons.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
-import org.apache.iotdb.confignode.conf.ConfigNodeRemoveCheck;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
@@ -161,7 +158,6 @@ public class ConfigNode implements ConfigNodeMBean {
     // Setup MetricsService
     registerManager.register(MetricsService.getInstance());
     MetricsService.getInstance().startAllReporter();
-    configManager.getDataNodeRemoveManager().start();
 
     LOGGER.info("Successfully setup internal services.");
   }
@@ -229,29 +225,6 @@ public class ConfigNode implements ConfigNodeMBean {
       configManager.close();
     }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
-  }
-
-  public void doRemoveNode(String[] args) throws IOException {
-    LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
-    if (args.length != 3) {
-      LOGGER.info("Usage: -r <ip>:<rpcPort>");
-      return;
-    }
-
-    try {
-      TEndPoint endPoint = NodeUrlUtils.parseTEndPointUrl(args[2]);
-      TConfigNodeLocation removeConfigNodeLocation =
-          ConfigNodeRemoveCheck.getInstance().removeCheck(endPoint);
-      if (removeConfigNodeLocation == null) {
-        LOGGER.error("The ConfigNode not in the Cluster.");
-        return;
-      }
-
-      ConfigNodeRemoveCheck.getInstance().removeConfigNode(removeConfigNodeLocation);
-    } catch (BadNodeUrlException e) {
-      LOGGER.warn("No ConfigNodes need to be removed.", e);
-    }
-    LOGGER.info("{} is removed.", ConfigNodeConstant.GLOBAL_NAME);
   }
 
   private static class ConfigNodeHolder {
