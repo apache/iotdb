@@ -19,14 +19,11 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 public abstract class ColumnTransformer {
-
-  protected final Expression expression;
 
   protected final Type returnType;
 
@@ -34,21 +31,15 @@ public abstract class ColumnTransformer {
 
   protected int referenceCount;
 
-  protected boolean hasEvaluated;
-
-  public ColumnTransformer(Expression expression, Type returnType) {
-    this.expression = expression;
+  public ColumnTransformer(Type returnType) {
     this.returnType = returnType;
     this.columnCache = new ColumnCache();
-    referenceCount = 1;
-    hasEvaluated = false;
-    checkType();
+    referenceCount = 0;
   }
 
   public void tryEvaluate() {
-    if (!hasEvaluated) {
+    if (!columnCache.hasCached()) {
       evaluate();
-      hasEvaluated = true;
     }
   }
 
@@ -61,7 +52,6 @@ public abstract class ColumnTransformer {
   }
 
   public void initializeColumnCache(Column column) {
-    hasEvaluated = true;
     columnCache.cacheColumn(column, referenceCount);
   }
 
@@ -73,14 +63,16 @@ public abstract class ColumnTransformer {
     return returnType;
   }
 
-  public TSDataType getTsDataType() {
-    return returnType.getTsDataType();
+  public boolean isReturnTypeNumeric() {
+    TypeEnum typeEnum = returnType.getTypeEnum();
+    return typeEnum.equals(TypeEnum.INT32)
+        || typeEnum.equals(TypeEnum.INT64)
+        || typeEnum.equals(TypeEnum.FLOAT)
+        || typeEnum.equals(TypeEnum.DOUBLE);
   }
 
   /** Responsible for the calculation */
   protected abstract void evaluate();
-
-  public abstract void reset();
 
   protected abstract void checkType();
 }

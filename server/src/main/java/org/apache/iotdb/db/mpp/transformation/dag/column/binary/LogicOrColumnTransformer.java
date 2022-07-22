@@ -19,17 +19,13 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public class LogicOrColumnTransformer extends LogicBinaryColumnTransformer {
   public LogicOrColumnTransformer(
-      Expression expression,
-      Type returnType,
-      ColumnTransformer leftTransformer,
-      ColumnTransformer rightTransformer) {
-    super(expression, returnType, leftTransformer, rightTransformer);
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
   }
 
   @Override

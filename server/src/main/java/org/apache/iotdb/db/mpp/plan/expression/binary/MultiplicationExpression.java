@@ -46,7 +46,7 @@ public class MultiplicationExpression extends ArithmeticBinaryExpression {
       ColumnTransformer rightColumnTransformer,
       Type type) {
     return new ArithmeticMultiplicationColumnTransformer(
-        this, type, leftColumnTransformer, rightColumnTransformer);
+        type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

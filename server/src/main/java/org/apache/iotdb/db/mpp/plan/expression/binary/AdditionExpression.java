@@ -46,7 +46,7 @@ public class AdditionExpression extends ArithmeticBinaryExpression {
       ColumnTransformer rightColumnTransformer,
       Type type) {
     return new ArithmeticAdditionColumnTransformer(
-        this, type, leftColumnTransformer, rightColumnTransformer);
+        type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

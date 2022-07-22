@@ -19,35 +19,24 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public class CompareNonEqualColumnTransformer extends CompareBinaryColumnTransformer {
   public CompareNonEqualColumnTransformer(
-      Expression expression,
-      Type returnType,
-      ColumnTransformer leftTransformer,
-      ColumnTransformer rightTransformer) {
-    super(expression, returnType, leftTransformer, rightTransformer);
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
   }
 
   @Override
   protected final void checkType() {
-    if (leftTransformer == null || rightTransformer == null) {
+    if (leftTransformer.getType().getTypeEnum().equals(rightTransformer.getType().getTypeEnum())) {
       return;
     }
 
-    if (leftTransformer.getTsDataType().equals(rightTransformer.getTsDataType())) {
-      return;
-    }
-
-    // Boolean type can not be compared with other types
-    if (leftTransformer.getTsDataType().equals(TSDataType.BOOLEAN)
-        || rightTransformer.getTsDataType().equals(TSDataType.BOOLEAN)) {
-      throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.toString());
+    // Boolean type and Binary Type can not be compared with other types
+    if (!leftTransformer.isReturnTypeNumeric() || !rightTransformer.isReturnTypeNumeric()) {
+      throw new UnsupportedOperationException("Unsupported Type");
     }
   }
 

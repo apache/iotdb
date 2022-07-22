@@ -52,7 +52,7 @@ public class LessEqualExpression extends CompareBinaryExpression {
       ColumnTransformer rightColumnTransformer,
       Type type) {
     return new CompareLessEqualColumnTransformer(
-        this, type, leftColumnTransformer, rightColumnTransformer);
+        type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

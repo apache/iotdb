@@ -51,8 +51,7 @@ public class EqualToExpression extends CompareBinaryExpression {
       ColumnTransformer leftColumnTransformer,
       ColumnTransformer rightColumnTransformer,
       Type type) {
-    return new CompareEqualToColumnTransformer(
-        this, type, leftColumnTransformer, rightColumnTransformer);
+    return new CompareEqualToColumnTransformer(type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.FloatColumnBuilder;
 
 public class FloatType implements Type {
+
+  private static final FloatType INSTANCE = new FloatType();
+
+  private FloatType() {}
 
   @Override
   public int getInt(Column c, int position) {
@@ -72,7 +75,11 @@ public class FloatType implements Type {
   }
 
   @Override
-  public TSDataType getTsDataType() {
-    return TSDataType.FLOAT;
+  public TypeEnum getTypeEnum() {
+    return TypeEnum.FLOAT;
+  }
+
+  public static FloatType getInstance() {
+    return INSTANCE;
   }
 }

@@ -46,7 +46,7 @@ public class ModuloExpression extends ArithmeticBinaryExpression {
       ColumnTransformer rightColumnTransformer,
       Type type) {
     return new ArithmeticModuloColumnTransformer(
-        this, type, leftColumnTransformer, rightColumnTransformer);
+        type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

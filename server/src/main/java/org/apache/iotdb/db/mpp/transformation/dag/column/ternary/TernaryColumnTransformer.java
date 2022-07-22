@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.ternary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
@@ -32,28 +31,14 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
   protected ColumnTransformer thirdColumnTransformer;
 
   public TernaryColumnTransformer(
-      Expression expression,
       Type returnType,
       ColumnTransformer firstColumnTransformer,
       ColumnTransformer secondColumnTransformer,
       ColumnTransformer thirdColumnTransformer) {
-    super(expression, returnType);
+    super(returnType);
     this.firstColumnTransformer = firstColumnTransformer;
     this.secondColumnTransformer = secondColumnTransformer;
     this.thirdColumnTransformer = thirdColumnTransformer;
-  }
-
-  @Override
-  public void reset() {
-    hasEvaluated = false;
-    if (firstColumnTransformer != null) {
-      firstColumnTransformer.reset();
-    }
-    if (secondColumnTransformer != null) {
-      secondColumnTransformer.reset();
-    }
-    if (thirdColumnTransformer != null) {
-      thirdColumnTransformer.reset();
-    }
+    checkType();
   }
 }

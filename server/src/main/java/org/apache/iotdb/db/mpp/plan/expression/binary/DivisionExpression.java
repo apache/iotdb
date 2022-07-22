@@ -46,7 +46,7 @@ public class DivisionExpression extends ArithmeticBinaryExpression {
       ColumnTransformer rightColumnTransformer,
       Type type) {
     return new ArithmeticDivisionColumnTransformer(
-        this, type, leftColumnTransformer, rightColumnTransformer);
+        type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

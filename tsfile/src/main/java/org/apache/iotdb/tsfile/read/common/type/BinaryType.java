@@ -19,13 +19,15 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class BinaryType implements Type {
+  private static final BinaryType INSTANCE = new BinaryType();
+
+  private BinaryType() {}
 
   @Override
   public Binary getBinary(Column c, int position) {
@@ -43,7 +45,11 @@ public class BinaryType implements Type {
   }
 
   @Override
-  public TSDataType getTsDataType() {
-    return TSDataType.TEXT;
+  public TypeEnum getTypeEnum() {
+    return TypeEnum.BINARY;
+  }
+
+  public static BinaryType getInstance() {
+    return INSTANCE;
   }
 }

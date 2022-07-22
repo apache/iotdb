@@ -53,7 +53,7 @@ public class GreaterThanExpression extends CompareBinaryExpression {
       ColumnTransformer rightColumnTransformer,
       Type type) {
     return new CompareGreaterThanColumnTransformer(
-        this, type, leftColumnTransformer, rightColumnTransformer);
+        type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

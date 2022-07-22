@@ -28,7 +28,8 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TransparentColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
@@ -158,20 +159,27 @@ public class TimestampOperand extends LeafOperand {
 
   @Override
   public ColumnTransformer constructColumnTransformer(
-      long queryId,
       UDTFContext udtfContext,
-      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
       TypeProvider typeProvider,
-      Set<Expression> calculatedExpressions) {
-    if (expressionColumnTransformerMap.containsKey(this)) {
-      expressionColumnTransformerMap.get(this).addReferenceCount();
-    } else {
-      expressionColumnTransformerMap.put(
-          this,
-          new TransparentColumnTransformer(
-              this, TypeFactory.getType(typeProvider.getType(getExpressionString()))));
-    }
-    return expressionColumnTransformerMap.get(this);
+      List<LeafColumnTransformer> leafList,
+      Map<String, List<InputLocation>> inputLocations,
+      Map<Expression, ColumnTransformer> cache,
+      Map<Expression, ColumnTransformer> hasSeen,
+      List<ColumnTransformer> commonTransformerList,
+      List<TSDataType> inputDataTypes,
+      int originSize) {
+    ColumnTransformer res =
+        cache.computeIfAbsent(
+            this,
+            e -> {
+              TimeColumnTransformer timeColumnTransformer =
+                  new TimeColumnTransformer(
+                      TypeFactory.getType(typeProvider.getType(getExpressionString())));
+              leafList.add(timeColumnTransformer);
+              return timeColumnTransformer;
+            });
+    res.addReferenceCount();
+    return res;
   }
 
   @Override

@@ -27,6 +27,8 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
@@ -190,23 +192,6 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public void collectSubexpressions(Set<Expression> expressions) {
-    expressions.add(this);
-    leftExpression.collectSubexpressions(expressions);
-    rightExpression.collectSubexpressions(expressions);
-  }
-
-  @Override
-  public void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res) {
-    if (expressions.contains(this)) {
-      res.add(this);
-    } else {
-      leftExpression.findCommonSubexpressions(expressions, res);
-      rightExpression.findCommonSubexpressions(expressions, res);
-    }
-  }
-
-  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     leftExpression.constructUdfExecutors(expressionName2Executor, zoneId);
@@ -337,39 +322,57 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public ColumnTransformer constructColumnTransformer(
-      long queryId,
-      UDTFContext udtfContext,
-      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
-      TypeProvider typeProvider,
-      Set<Expression> calculatedExpressions) {
+  public boolean isMappable(TypeProvider typeProvider) {
+    return leftExpression.isMappable(typeProvider) && rightExpression.isMappable(typeProvider);
+  }
 
-    if (expressionColumnTransformerMap.containsKey(this)) {
-      expressionColumnTransformerMap.get(this).addReferenceCount();
-    } else {
-      if (calculatedExpressions.contains(this)) {
-        // if calculated, further calculation is no longer needed, we construct a fake transformer
-        // and feed it with calculated data
-        expressionColumnTransformerMap.put(
-            this,
-            getConcreteBinaryColumnTransformer(
-                null, null, TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+  @Override
+  public ColumnTransformer constructColumnTransformer(
+      UDTFContext udtfContext,
+      TypeProvider typeProvider,
+      List<LeafColumnTransformer> leafList,
+      Map<String, List<InputLocation>> inputLocations,
+      Map<Expression, ColumnTransformer> cache,
+      Map<Expression, ColumnTransformer> hasSeen,
+      List<ColumnTransformer> commonTransformerList,
+      List<TSDataType> inputDataTypes,
+      int originSize) {
+    if (!cache.containsKey(this)) {
+      if (hasSeen.containsKey(this)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                TypeFactory.getType(typeProvider.getType(getExpressionString())),
+                originSize + commonTransformerList.size());
+        ColumnTransformer columnTransformer = hasSeen.get(this);
+        columnTransformer.addReferenceCount();
+        commonTransformerList.add(columnTransformer);
+        leafList.add(identity);
+        inputDataTypes.add(typeProvider.getType(getExpressionString()));
+        cache.put(this, identity);
       } else {
         ColumnTransformer leftColumnTransformer =
             leftExpression.constructColumnTransformer(
-                queryId,
                 udtfContext,
-                expressionColumnTransformerMap,
                 typeProvider,
-                calculatedExpressions);
+                leafList,
+                inputLocations,
+                cache,
+                hasSeen,
+                commonTransformerList,
+                inputDataTypes,
+                originSize);
         ColumnTransformer rightColumnTransformer =
             rightExpression.constructColumnTransformer(
-                queryId,
                 udtfContext,
-                expressionColumnTransformerMap,
                 typeProvider,
-                calculatedExpressions);
-        expressionColumnTransformerMap.put(
+                leafList,
+                inputLocations,
+                cache,
+                hasSeen,
+                commonTransformerList,
+                inputDataTypes,
+                originSize);
+        cache.put(
             this,
             getConcreteBinaryColumnTransformer(
                 leftColumnTransformer,
@@ -377,7 +380,10 @@ public abstract class BinaryExpression extends Expression {
                 TypeFactory.getType(typeProvider.getType(getExpressionString()))));
       }
     }
-    return expressionColumnTransformerMap.get(this);
+
+    ColumnTransformer res = cache.get(this);
+    res.addReferenceCount();
+    return res;
   }
 
   protected abstract ColumnTransformer getConcreteBinaryColumnTransformer(

@@ -84,7 +84,6 @@ public class BetweenExpression extends TernaryExpression {
       ColumnTransformer thirdColumnTransformer,
       Type returnType) {
     return new BetweenColumnTransformer(
-        this,
         returnType,
         firstColumnTransformer,
         secondColumnTransformer,

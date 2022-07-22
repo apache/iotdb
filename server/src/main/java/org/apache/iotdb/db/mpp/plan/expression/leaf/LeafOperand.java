@@ -21,15 +21,12 @@ package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public abstract class LeafOperand extends Expression {
 
@@ -45,22 +42,7 @@ public abstract class LeafOperand extends Expression {
   }
 
   @Override
-  public ColumnTransformer constructColumnTransformer(
-      long queryId,
-      UDTFContext udtfContext,
-      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
-      TypeProvider typeProvider,
-      Set<Expression> calculatedExpressions) {
-    return null;
-  }
-
-  @Override
-  public void collectSubexpressions(Set<Expression> expressions) {
-    expressions.add(this);
-  }
-
-  @Override
-  public void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res) {
-    // do nothing, LeafOperand is not needed
+  public boolean isMappable(TypeProvider typeProvider) {
+    return true;
   }
 }

@@ -152,7 +152,7 @@ public class LikeExpression extends UnaryExpression {
   @Override
   protected ColumnTransformer getConcreteUnaryColumnTransformer(
       ColumnTransformer childColumnTransformer, Type returnType) {
-    return new RegularColumnTransformer(this, returnType, childColumnTransformer, pattern);
+    return new RegularColumnTransformer(returnType, childColumnTransformer, pattern);
   }
 
   @Override

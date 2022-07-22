@@ -51,7 +51,7 @@ public class LogicAndExpression extends LogicBinaryExpression {
       ColumnTransformer leftColumnTransformer,
       ColumnTransformer rightColumnTransformer,
       Type type) {
-    return new LogicAndColumnTransformer(this, type, leftColumnTransformer, rightColumnTransformer);
+    return new LogicAndColumnTransformer(type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

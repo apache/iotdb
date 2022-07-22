@@ -27,6 +27,8 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
@@ -194,57 +196,59 @@ public abstract class UnaryExpression extends Expression {
   }
 
   @Override
+  public boolean isMappable(TypeProvider typeProvider) {
+    return expression.isMappable(typeProvider);
+  }
+
+  @Override
   public ColumnTransformer constructColumnTransformer(
-      long queryId,
       UDTFContext udtfContext,
-      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
       TypeProvider typeProvider,
-      Set<Expression> calculatedExpressions) {
-    if (expressionColumnTransformerMap.containsKey(this)) {
-      expressionColumnTransformerMap.get(this).addReferenceCount();
-    } else {
-      if (calculatedExpressions.contains(this)) {
-        // if calculated, further calculation is no longer needed, we construct a fake transformer
-        // and feed it with calculated data
-        expressionColumnTransformerMap.put(
-            this,
-            getConcreteUnaryColumnTransformer(
-                null, TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+      List<LeafColumnTransformer> leafList,
+      Map<String, List<InputLocation>> inputLocations,
+      Map<Expression, ColumnTransformer> cache,
+      Map<Expression, ColumnTransformer> hasSeen,
+      List<ColumnTransformer> commonTransformerList,
+      List<TSDataType> inputDataTypes,
+      int originSize) {
+    if (!cache.containsKey(this)) {
+      if (hasSeen.containsKey(this)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                TypeFactory.getType(typeProvider.getType(getExpressionString())),
+                originSize + commonTransformerList.size());
+        ColumnTransformer columnTransformer = hasSeen.get(this);
+        columnTransformer.addReferenceCount();
+        commonTransformerList.add(columnTransformer);
+        leafList.add(identity);
+        inputDataTypes.add(typeProvider.getType(getExpressionString()));
+        cache.put(this, identity);
       } else {
         ColumnTransformer childColumnTransformer =
             expression.constructColumnTransformer(
-                queryId,
                 udtfContext,
-                expressionColumnTransformerMap,
                 typeProvider,
-                calculatedExpressions);
-        expressionColumnTransformerMap.put(
+                leafList,
+                inputLocations,
+                cache,
+                hasSeen,
+                commonTransformerList,
+                inputDataTypes,
+                originSize);
+        cache.put(
             this,
             getConcreteUnaryColumnTransformer(
                 childColumnTransformer,
                 TypeFactory.getType(typeProvider.getType(getExpressionString()))));
       }
     }
-    return expressionColumnTransformerMap.get(this);
+    ColumnTransformer res = cache.get(this);
+    res.addReferenceCount();
+    return res;
   }
 
   protected abstract ColumnTransformer getConcreteUnaryColumnTransformer(
       ColumnTransformer childColumnTransformer, Type returnType);
-
-  @Override
-  public void collectSubexpressions(Set<Expression> expressions) {
-    expressions.add(this);
-    expression.collectSubexpressions(expressions);
-  }
-
-  @Override
-  public void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res) {
-    if (expressions.contains(this)) {
-      res.add(this);
-    } else {
-      expression.findCommonSubexpressions(expressions, res);
-    }
-  }
 
   protected abstract Transformer constructTransformer(LayerPointReader pointReader);
 

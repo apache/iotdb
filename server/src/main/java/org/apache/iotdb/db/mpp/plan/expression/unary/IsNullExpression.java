@@ -80,7 +80,7 @@ public class IsNullExpression extends UnaryExpression {
   @Override
   protected ColumnTransformer getConcreteUnaryColumnTransformer(
       ColumnTransformer childColumnTransformer, Type returnType) {
-    return new IsNullColumnTransformer(this, returnType, childColumnTransformer, isNot);
+    return new IsNullColumnTransformer(returnType, childColumnTransformer, isNot);
   }
 
   @Override

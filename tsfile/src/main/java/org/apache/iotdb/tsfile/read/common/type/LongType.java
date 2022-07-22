@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.LongColumnBuilder;
 
 public class LongType implements Type {
+
+  private static final LongType INSTANCE = new LongType();
+
+  private LongType() {}
 
   @Override
   public int getInt(Column c, int position) {
@@ -72,7 +75,11 @@ public class LongType implements Type {
   }
 
   @Override
-  public TSDataType getTsDataType() {
-    return TSDataType.INT64;
+  public TypeEnum getTypeEnum() {
+    return TypeEnum.INT64;
+  }
+
+  public static LongType getInstance() {
+    return INSTANCE;
   }
 }

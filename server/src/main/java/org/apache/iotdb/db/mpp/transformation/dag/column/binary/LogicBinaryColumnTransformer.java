@@ -19,21 +19,16 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 public abstract class LogicBinaryColumnTransformer extends BinaryColumnTransformer {
   public LogicBinaryColumnTransformer(
-      Expression expression,
-      Type returnType,
-      ColumnTransformer leftTransformer,
-      ColumnTransformer rightTransformer) {
-    super(expression, returnType, leftTransformer, rightTransformer);
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
   }
 
   @Override
@@ -60,12 +55,9 @@ public abstract class LogicBinaryColumnTransformer extends BinaryColumnTransform
 
   @Override
   protected void checkType() {
-    if (leftTransformer == null || rightTransformer == null) {
-      return;
-    }
-    if (leftTransformer.getTsDataType() != TSDataType.BOOLEAN
-        || rightTransformer.getTsDataType() != TSDataType.BOOLEAN) {
-      throw new UnSupportedDataTypeException("Unsupported data type: " + TSDataType.BOOLEAN);
+    if (!leftTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)
+        || !rightTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)) {
+      throw new UnsupportedOperationException("Unsupported Type");
     }
   }
 

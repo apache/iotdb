@@ -52,7 +52,7 @@ public class NonEqualExpression extends CompareBinaryExpression {
       ColumnTransformer rightColumnTransformer,
       Type type) {
     return new CompareNonEqualColumnTransformer(
-        this, type, leftColumnTransformer, rightColumnTransformer);
+        type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

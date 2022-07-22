@@ -31,7 +31,8 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TransparentColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
@@ -322,52 +323,63 @@ public class FunctionExpression extends Expression {
 
   @Override
   public ColumnTransformer constructColumnTransformer(
-      long queryId,
       UDTFContext udtfContext,
-      Map<Expression, ColumnTransformer> expressionColumnTransformerMap,
       TypeProvider typeProvider,
-      Set<Expression> calculatedExpressions) {
-    if (expressionColumnTransformerMap.containsKey(this)) {
-      expressionColumnTransformerMap.get(this).addReferenceCount();
-    } else {
-      if (isBuiltInAggregationFunctionExpression) {
-        expressionColumnTransformerMap.put(
-            this,
-            new TransparentColumnTransformer(
-                this, TypeFactory.getType(typeProvider.getType(getExpressionString()))));
+      List<LeafColumnTransformer> leafList,
+      Map<String, List<InputLocation>> inputLocations,
+      Map<Expression, ColumnTransformer> cache,
+      Map<Expression, ColumnTransformer> hasSeen,
+      List<ColumnTransformer> commonTransformerList,
+      List<TSDataType> inputDataTypes,
+      int originSize) {
+    if (!cache.containsKey(this)) {
+      if (hasSeen.containsKey(this)) {
+        IdentityColumnTransformer identity =
+            new IdentityColumnTransformer(
+                TypeFactory.getType(typeProvider.getType(getExpressionString())),
+                originSize + commonTransformerList.size());
+        ColumnTransformer columnTransformer = hasSeen.get(this);
+        columnTransformer.addReferenceCount();
+        commonTransformerList.add(columnTransformer);
+        inputDataTypes.add(typeProvider.getType(getExpressionString()));
+        leafList.add(identity);
+        cache.put(this, identity);
       } else {
-        if (calculatedExpressions.contains(this)) {
-          expressionColumnTransformerMap.put(
-              this,
-              new MappableUDFColumnTransformer(
-                  this,
+        if (isBuiltInAggregationFunctionExpression) {
+          IdentityColumnTransformer identity =
+              new IdentityColumnTransformer(
                   TypeFactory.getType(typeProvider.getType(getExpressionString())),
-                  null,
-                  null,
-                  null));
+                  inputLocations.get(getExpressionString()).get(0).getValueColumnIndex());
+          leafList.add(identity);
+          cache.put(this, identity);
         } else {
           ColumnTransformer[] inputColumnTransformers =
               expressions.stream()
                   .map(
                       expression ->
                           expression.constructColumnTransformer(
-                              queryId,
                               udtfContext,
-                              expressionColumnTransformerMap,
                               typeProvider,
-                              calculatedExpressions))
+                              leafList,
+                              inputLocations,
+                              cache,
+                              hasSeen,
+                              commonTransformerList,
+                              inputDataTypes,
+                              originSize))
                   .toArray(ColumnTransformer[]::new);
 
-          TSDataType[] inputDataTypes =
+          TSDataType[] inputTransformerDataTypes =
               expressions.stream()
                   .map(expression -> expression.inferTypes(typeProvider))
                   .toArray(TSDataType[]::new);
 
           UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
 
-          // Mappable UDF does not need PointCollector, so memoryBudget is not needed.
+          // Mappable UDF does not need PointCollector, so memoryBudget and queryId is not
+          // needed.
           executor.beforeStart(
-              queryId,
+              0,
               0,
               expressions.stream().map(Expression::toString).collect(Collectors.toList()),
               expressions.stream()
@@ -375,18 +387,20 @@ public class FunctionExpression extends Expression {
                   .collect(Collectors.toList()),
               functionAttributes);
 
-          expressionColumnTransformerMap.put(
+          cache.put(
               this,
               new MappableUDFColumnTransformer(
-                  this,
                   TypeFactory.getType(typeProvider.getType(getExpressionString())),
                   inputColumnTransformers,
-                  inputDataTypes,
+                  inputTransformerDataTypes,
                   udtfContext.getExecutorByFunctionExpression(this)));
         }
       }
     }
-    return expressionColumnTransformerMap.get(this);
+
+    ColumnTransformer res = cache.get(this);
+    res.addReferenceCount();
+    return res;
   }
 
   @Override
@@ -497,33 +511,16 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public AccessStrategy getUDFAccessStrategy(TypeProvider typeProvider) {
+  public boolean isMappable(TypeProvider typeProvider) {
     return new UDTFInformationInferrer(functionName)
         .getAccessStrategy(
             expressions.stream().map(Expression::toString).collect(Collectors.toList()),
             expressions.stream()
                 .map(f -> typeProvider.getType(f.toString()))
                 .collect(Collectors.toList()),
-            functionAttributes);
-  }
-
-  @Override
-  public void collectSubexpressions(Set<Expression> expressions) {
-    expressions.add(this);
-    for (Expression expression : this.expressions) {
-      expression.collectSubexpressions(expressions);
-    }
-  }
-
-  @Override
-  public void findCommonSubexpressions(Set<Expression> expressions, Set<Expression> res) {
-    if (expressions.contains(this)) {
-      res.add(this);
-    } else {
-      for (Expression expression : this.expressions) {
-        expression.findCommonSubexpressions(expressions, res);
-      }
-    }
+            functionAttributes)
+        .getAccessStrategyType()
+        .equals(AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW);
   }
 
   @Override

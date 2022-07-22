@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
@@ -32,13 +31,11 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
   protected final ColumnTransformer rightTransformer;
 
   public BinaryColumnTransformer(
-      Expression expression,
-      Type returnType,
-      ColumnTransformer leftTransformer,
-      ColumnTransformer rightTransformer) {
-    super(expression, returnType);
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType);
     this.leftTransformer = leftTransformer;
     this.rightTransformer = rightTransformer;
+    checkType();
   }
 
   @Override
@@ -53,17 +50,6 @@ public abstract class BinaryColumnTransformer extends ColumnTransformer {
     ColumnBuilder builder = returnType.createColumnBuilder(positionCount);
     doTransform(leftColumn, rightColumn, builder, positionCount);
     initializeColumnCache(builder.build());
-  }
-
-  @Override
-  public void reset() {
-    hasEvaluated = false;
-    if (leftTransformer != null) {
-      leftTransformer.reset();
-    }
-    if (rightTransformer != null) {
-      rightTransformer.reset();
-    }
   }
 
   protected abstract void doTransform(

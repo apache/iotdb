@@ -20,21 +20,24 @@
 package org.apache.iotdb.db.mpp.transformation.dag.column.leaf;
 
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-public class ConstantColumnTransformer extends LeafColumnTransformer {
+/**
+ * this is a special transformer which outputs data just as input without any modification.
+ *
+ * <p>i.e. it's just the function f(x) = x.
+ */
+public class IdentityColumnTransformer extends LeafColumnTransformer {
+  // the index of value column
+  private final int inputIndex;
 
-  private final Column value;
-
-  public ConstantColumnTransformer(Type returnType, Column value) {
+  public IdentityColumnTransformer(Type returnType, int inputIndex) {
     super(returnType);
-    this.value = value;
+    this.inputIndex = inputIndex;
   }
 
   @Override
   public void initFromTsBlock(TsBlock input) {
-    initializeColumnCache(new RunLengthEncodedColumn(value, input.getPositionCount()));
+    initializeColumnCache(input.getColumn(inputIndex));
   }
 }

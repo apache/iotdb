@@ -157,6 +157,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OutputColumn;
 import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -164,8 +167,9 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
-import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
@@ -824,51 +828,100 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
+      final Expression filterExpression = node.getPredicate();
+      final TypeProvider typeProvider = context.getTypeProvider();
+
+      // check whether predicate contains Non-Mappable UDF
+      if (!filterExpression.isMappable(typeProvider)) {
+        throw new UnsupportedOperationException("Filter can not contain Non-Mappable UDF");
+      }
+
+      final Expression[] projectExpressions = node.getOutputExpressions();
+      final Operator inputOperator = generateOnlyChildOperator(node, context);
+      final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
+      final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
+      final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
       final OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
               FilterAndProjectOperator.class.getSimpleName());
-      final Expression[] outputExpressions = node.getOutputExpressions();
-      final Expression predicate = node.getPredicate();
-
-      // check whether predicate contains Non-Mappable UDF
-      if (hasNonMappableUDF(
-          collectSubexpressions(new Expression[] {predicate}), context.getTypeProvider())) {
-        throw new UnsupportedOperationException("Filter can not contain Non-Mappable UDF");
-      }
-
-      // collect all subExpressions of outputExpressions
-      Set<Expression> subExpressionsOfTransform = collectSubexpressions(outputExpressions);
-
-      // collect all common subExpressions between outputExpressions and predicate
-      // excluding LeafOperand
-      Set<Expression> commonSubexpressions = new HashSet<>();
-      predicate.findCommonSubexpressions(subExpressionsOfTransform, commonSubexpressions);
-
-      final Operator inputOperator = generateOnlyChildOperator(node, context);
-      final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
-      final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
-
       context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
-      boolean hasNonMappableUDF =
-          hasNonMappableUDF(subExpressionsOfTransform, context.getTypeProvider());
+      boolean hasNonMappableUDF = false;
+      for (Expression expression : projectExpressions) {
+        if (!expression.isMappable(typeProvider)) {
+          hasNonMappableUDF = true;
+          break;
+        }
+      }
+
+      // init UDTFContext;
+      UDTFContext filterContext = new UDTFContext(node.getZoneId());
+      filterContext.constructUdfExecutors(new Expression[] {filterExpression});
+
+      // records LeafColumnTransformer of filter
+      List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+
+      // records common ColumnTransformer between filter and project expressions
+      List<ColumnTransformer> commonTransformerList = new ArrayList<>();
+
+      // records LeafColumnTransformer of project expressions
+      List<LeafColumnTransformer> projectLeafColumnTransformerList = new ArrayList<>();
+
+      // records subexpression -> ColumnTransformer for filter
+      Map<Expression, ColumnTransformer> filterExpressionColumnTransformerMap = new HashMap<>();
+
+      ColumnTransformer filterOutputTransformer =
+          filterExpression.constructColumnTransformer(
+              filterContext,
+              typeProvider,
+              filterLeafColumnTransformerList,
+              inputLocations,
+              filterExpressionColumnTransformerMap,
+              ImmutableMap.of(),
+              ImmutableList.of(),
+              ImmutableList.of(),
+              0);
+
+      List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
+
+      Map<Expression, ColumnTransformer> projectExpressionColumnTransformerMap = new HashMap<>();
+
+      // init project transformer when project expressions are all mappable
+      if (!hasNonMappableUDF) {
+        // init project UDTFContext
+        UDTFContext projectContext = new UDTFContext(node.getZoneId());
+        projectContext.constructUdfExecutors(projectExpressions);
+
+        for (Expression expression : projectExpressions) {
+          projectOutputTransformerList.add(
+              expression.constructColumnTransformer(
+                  projectContext,
+                  typeProvider,
+                  projectLeafColumnTransformerList,
+                  inputLocations,
+                  projectExpressionColumnTransformerMap,
+                  filterExpressionColumnTransformerMap,
+                  commonTransformerList,
+                  filterOutputDataTypes,
+                  inputLocations.size()));
+        }
+      }
 
       Operator filter =
           new FilterAndProjectOperator(
               operatorContext,
               inputOperator,
-              inputDataTypes,
-              predicate,
-              outputExpressions,
-              commonSubexpressions,
-              context.getTypeProvider(),
-              inputLocations,
-              node.getZoneId(),
+              filterOutputDataTypes,
+              filterLeafColumnTransformerList,
+              filterOutputTransformer,
+              commonTransformerList,
+              projectLeafColumnTransformerList,
+              projectOutputTransformerList,
               hasNonMappableUDF);
 
-      // Output expressions don't contain Non-Mappable UDF, TransformOperator is not needed
+      // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
       if (!hasNonMappableUDF) {
         return filter;
       }
@@ -886,7 +939,7 @@ public class LocalExecutionPlanner {
             filter,
             inputDataTypes,
             inputLocations,
-            outputExpressions,
+            projectExpressions,
             node.isKeepNull(),
             node.getZoneId(),
             context.getTypeProvider(),
@@ -894,28 +947,6 @@ public class LocalExecutionPlanner {
       } catch (QueryProcessException | IOException e) {
         throw new RuntimeException(e);
       }
-    }
-
-    private boolean hasNonMappableUDF(
-        Set<Expression> allSubexpressions, TypeProvider typeProvider) {
-      for (Expression expression : allSubexpressions) {
-        AccessStrategy accessStrategy = expression.getUDFAccessStrategy(typeProvider);
-        if (accessStrategy != null
-            && !accessStrategy
-                .getAccessStrategyType()
-                .equals(AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW)) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    private Set<Expression> collectSubexpressions(Expression[] expressions) {
-      Set<Expression> allSubexpressions = new HashSet<>();
-      for (Expression expression : expressions) {
-        expression.collectSubexpressions(allSubexpressions);
-      }
-      return allSubexpressions;
     }
 
     @Override

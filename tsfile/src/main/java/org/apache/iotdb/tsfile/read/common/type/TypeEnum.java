@@ -17,24 +17,18 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.transformation.dag.column.leaf;
+package org.apache.iotdb.tsfile.read.common.type;
 
-import org.apache.iotdb.tsfile.read.common.block.TsBlock;
-import org.apache.iotdb.tsfile.read.common.block.column.Column;
-import org.apache.iotdb.tsfile.read.common.block.column.RunLengthEncodedColumn;
-import org.apache.iotdb.tsfile.read.common.type.Type;
+public enum TypeEnum {
+  INT32,
 
-public class ConstantColumnTransformer extends LeafColumnTransformer {
+  INT64,
 
-  private final Column value;
+  FLOAT,
 
-  public ConstantColumnTransformer(Type returnType, Column value) {
-    super(returnType);
-    this.value = value;
-  }
+  DOUBLE,
 
-  @Override
-  public void initFromTsBlock(TsBlock input) {
-    initializeColumnCache(new RunLengthEncodedColumn(value, input.getPositionCount()));
-  }
+  BOOLEAN,
+
+  BINARY
 }

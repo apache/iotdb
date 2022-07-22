@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
 public class BooleanType implements Type {
+
+  private static final BooleanType INSTANCE = new BooleanType();
+
+  private BooleanType() {}
+
   @Override
   public boolean getBoolean(Column c, int position) {
     return c.getBoolean(position);
@@ -41,7 +45,11 @@ public class BooleanType implements Type {
   }
 
   @Override
-  public TSDataType getTsDataType() {
-    return TSDataType.BOOLEAN;
+  public TypeEnum getTypeEnum() {
+    return TypeEnum.BOOLEAN;
+  }
+
+  public static BooleanType getInstance() {
+    return INSTANCE;
   }
 }

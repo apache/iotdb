@@ -19,18 +19,15 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.unary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public class ArithmeticNegationColumnTransformer extends UnaryColumnTransformer {
   public ArithmeticNegationColumnTransformer(
-      Expression expression, Type returnType, ColumnTransformer childColumnTransformer) {
-    super(expression, returnType, childColumnTransformer);
+      Type returnType, ColumnTransformer childColumnTransformer) {
+    super(returnType, childColumnTransformer);
   }
 
   @Override
@@ -47,15 +44,8 @@ public class ArithmeticNegationColumnTransformer extends UnaryColumnTransformer 
 
   @Override
   protected final void checkType() {
-    if (childColumnTransformer == null) {
-      return;
-    }
-    TSDataType childType = childColumnTransformer.getTsDataType();
-    if (!(childType.equals(TSDataType.INT32)
-        || childType.equals(TSDataType.INT64)
-        || childType.equals(TSDataType.FLOAT)
-        || childType.equals(TSDataType.DOUBLE))) {
-      throw new UnSupportedDataTypeException(childType.toString());
+    if (!childColumnTransformer.isReturnTypeNumeric()) {
+      throw new UnsupportedOperationException("Unsupported Type: " + returnType.toString());
     }
   }
 }

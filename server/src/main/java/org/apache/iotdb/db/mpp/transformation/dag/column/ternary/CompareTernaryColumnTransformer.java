@@ -19,27 +19,19 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.ternary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 public abstract class CompareTernaryColumnTransformer extends TernaryColumnTransformer {
   public CompareTernaryColumnTransformer(
-      Expression expression,
       Type returnType,
       ColumnTransformer firstColumnTransformer,
       ColumnTransformer secondColumnTransformer,
       ColumnTransformer thirdColumnTransformer) {
-    super(
-        expression,
-        returnType,
-        firstColumnTransformer,
-        secondColumnTransformer,
-        thirdColumnTransformer);
+    super(returnType, firstColumnTransformer, secondColumnTransformer, thirdColumnTransformer);
   }
 
   @Override
@@ -59,21 +51,17 @@ public abstract class CompareTernaryColumnTransformer extends TernaryColumnTrans
 
   @Override
   protected final void checkType() {
-    if (firstColumnTransformer == null
-        || secondColumnTransformer == null
-        || thirdColumnTransformer == null) {
-      return;
-    }
-    if ((firstColumnTransformer.getTsDataType()).equals(secondColumnTransformer.getTsDataType())
-        && (firstColumnTransformer.getTsDataType())
-            .equals(thirdColumnTransformer.getTsDataType())) {
+    if ((firstColumnTransformer.getType().getTypeEnum())
+            .equals(secondColumnTransformer.getType().getTypeEnum())
+        && (firstColumnTransformer.getType().getTypeEnum())
+            .equals(thirdColumnTransformer.getType().getTypeEnum())) {
       return;
     }
 
-    if (firstColumnTransformer.getTsDataType().equals(TSDataType.BOOLEAN)
-        || secondColumnTransformer.getTsDataType().equals(TSDataType.BOOLEAN)
-        || thirdColumnTransformer.getTsDataType().equals(TSDataType.BOOLEAN)) {
-      throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.toString());
+    if (firstColumnTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)
+        || secondColumnTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)
+        || thirdColumnTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)) {
+      throw new UnsupportedOperationException("Unsupported Type");
     }
   }
 

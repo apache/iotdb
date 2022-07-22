@@ -83,53 +83,6 @@ public class TsBlockBuilder {
     return res;
   }
 
-  public static TsBlockBuilder createWithOnlyValueColumn(TSDataType dataType) {
-    TsBlockBuilder res = new TsBlockBuilder();
-    res.tsBlockBuilderStatus = new TsBlockBuilderStatus(DEFAULT_INITIAL_EXPECTED_ENTRIES);
-    res.valueColumnBuilders = new ColumnBuilder[1];
-    switch (dataType) {
-      case BOOLEAN:
-        res.valueColumnBuilders[0] =
-            new BooleanColumnBuilder(
-                res.tsBlockBuilderStatus.createColumnBuilderStatus(),
-                DEFAULT_INITIAL_EXPECTED_ENTRIES);
-        break;
-      case INT32:
-        res.valueColumnBuilders[0] =
-            new IntColumnBuilder(
-                res.tsBlockBuilderStatus.createColumnBuilderStatus(),
-                DEFAULT_INITIAL_EXPECTED_ENTRIES);
-        break;
-      case INT64:
-        res.valueColumnBuilders[0] =
-            new LongColumnBuilder(
-                res.tsBlockBuilderStatus.createColumnBuilderStatus(),
-                DEFAULT_INITIAL_EXPECTED_ENTRIES);
-        break;
-      case FLOAT:
-        res.valueColumnBuilders[0] =
-            new FloatColumnBuilder(
-                res.tsBlockBuilderStatus.createColumnBuilderStatus(),
-                DEFAULT_INITIAL_EXPECTED_ENTRIES);
-        break;
-      case DOUBLE:
-        res.valueColumnBuilders[0] =
-            new DoubleColumnBuilder(
-                res.tsBlockBuilderStatus.createColumnBuilderStatus(),
-                DEFAULT_INITIAL_EXPECTED_ENTRIES);
-        break;
-      case TEXT:
-        res.valueColumnBuilders[0] =
-            new BinaryColumnBuilder(
-                res.tsBlockBuilderStatus.createColumnBuilderStatus(),
-                DEFAULT_INITIAL_EXPECTED_ENTRIES);
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown data type: " + dataType);
-    }
-    return res;
-  }
-
   public static TsBlockBuilder withMaxTsBlockSize(int maxTsBlockBytes, List<TSDataType> types) {
     return new TsBlockBuilder(DEFAULT_INITIAL_EXPECTED_ENTRIES, maxTsBlockBytes, types);
   }

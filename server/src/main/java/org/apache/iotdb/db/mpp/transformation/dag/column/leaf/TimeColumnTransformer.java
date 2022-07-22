@@ -19,16 +19,16 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.leaf;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
-/**
- * this is a special transformer which outputs data just as input without any modification.
- *
- * <p>i.e. it's just the function f(x) = x.
- */
-public class TransparentColumnTransformer extends LeafColumnTransformer {
-  public TransparentColumnTransformer(Expression expression, Type returnType) {
-    super(expression, returnType);
+public class TimeColumnTransformer extends LeafColumnTransformer {
+  public TimeColumnTransformer(Type returnType) {
+    super(returnType);
+  }
+
+  @Override
+  public void initFromTsBlock(TsBlock input) {
+    initializeColumnCache(input.getTimeColumn());
   }
 }

@@ -113,7 +113,7 @@ public class InExpression extends UnaryExpression {
   @Override
   protected ColumnTransformer getConcreteUnaryColumnTransformer(
       ColumnTransformer childColumnTransformer, Type returnType) {
-    return new InColumnTransformer(this, returnType, childColumnTransformer, isNotIn, values);
+    return new InColumnTransformer(returnType, childColumnTransformer, isNotIn, values);
   }
 
   @Override

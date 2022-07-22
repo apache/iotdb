@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.multi;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.adapter.ElasticSerializableRowRecordListBackedMultiColumnRow;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
@@ -37,12 +36,11 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   private final TSDataType[] inputDataTypes;
 
   public MappableUDFColumnTransformer(
-      Expression expression,
       Type returnType,
       ColumnTransformer[] inputColumnTransformers,
       TSDataType[] inputDataTypes,
       UDTFExecutor executor) {
-    super(expression, returnType);
+    super(returnType);
     this.inputColumnTransformers = inputColumnTransformers;
     this.executor = executor;
     this.inputDataTypes = inputDataTypes;
@@ -84,16 +82,6 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
       }
     }
     initializeColumnCache(columnBuilder.build());
-  }
-
-  @Override
-  public void reset() {
-    hasEvaluated = false;
-    if (inputColumnTransformers != null) {
-      for (ColumnTransformer inputColumnTransformer : inputColumnTransformers) {
-        inputColumnTransformer.reset();
-      }
-    }
   }
 
   @Override

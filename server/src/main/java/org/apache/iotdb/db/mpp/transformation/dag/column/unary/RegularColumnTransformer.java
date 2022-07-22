@@ -19,13 +19,11 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.unary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 import java.util.regex.Pattern;
 
@@ -33,11 +31,8 @@ public class RegularColumnTransformer extends UnaryColumnTransformer {
   private final Pattern pattern;
 
   public RegularColumnTransformer(
-      Expression expression,
-      Type returnType,
-      ColumnTransformer childColumnTransformer,
-      Pattern pattern) {
-    super(expression, returnType, childColumnTransformer);
+      Type returnType, ColumnTransformer childColumnTransformer, Pattern pattern) {
+    super(returnType, childColumnTransformer);
     this.pattern = pattern;
   }
 
@@ -58,11 +53,9 @@ public class RegularColumnTransformer extends UnaryColumnTransformer {
 
   @Override
   protected void checkType() {
-    if (childColumnTransformer == null) {
-      return;
-    }
-    if (!childColumnTransformer.getTsDataType().equals(TSDataType.TEXT)) {
-      throw new UnSupportedDataTypeException(childColumnTransformer.getTsDataType().toString());
+    if (!(childColumnTransformer.getType().getTypeEnum().equals(TypeEnum.BINARY))) {
+      throw new UnsupportedOperationException(
+          "Unsupported Type: " + childColumnTransformer.getType().getTypeEnum());
     }
   }
 }

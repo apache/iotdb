@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.leaf;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public abstract class LeafColumnTransformer extends ColumnTransformer {
-  public LeafColumnTransformer(Expression expression, Type returnType) {
-    super(expression, returnType);
+  public LeafColumnTransformer(Type returnType) {
+    super(returnType);
   }
 
   @Override
@@ -34,12 +34,9 @@ public abstract class LeafColumnTransformer extends ColumnTransformer {
   }
 
   @Override
-  public void reset() {
-    // do nothing
-  }
-
-  @Override
   public void checkType() {
     // do nothing
   }
+
+  public abstract void initFromTsBlock(TsBlock input);
 }

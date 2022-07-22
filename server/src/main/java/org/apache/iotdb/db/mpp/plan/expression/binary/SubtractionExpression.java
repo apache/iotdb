@@ -46,7 +46,7 @@ public class SubtractionExpression extends ArithmeticBinaryExpression {
       ColumnTransformer rightColumnTransformer,
       Type type) {
     return new ArithmeticSubtractionColumnTransformer(
-        this, type, leftColumnTransformer, rightColumnTransformer);
+        type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

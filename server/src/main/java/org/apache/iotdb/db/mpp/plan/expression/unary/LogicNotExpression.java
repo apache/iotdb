@@ -54,7 +54,7 @@ public class LogicNotExpression extends UnaryExpression {
   @Override
   protected ColumnTransformer getConcreteUnaryColumnTransformer(
       ColumnTransformer childColumnTransformer, Type returnType) {
-    return new LogicNotColumnTransformer(this, returnType, childColumnTransformer);
+    return new LogicNotColumnTransformer(returnType, childColumnTransformer);
   }
 
   @Override

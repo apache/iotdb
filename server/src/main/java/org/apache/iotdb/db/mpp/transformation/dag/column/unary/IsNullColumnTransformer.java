@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.unary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
@@ -30,11 +29,8 @@ public class IsNullColumnTransformer extends UnaryColumnTransformer {
   private final boolean isNot;
 
   public IsNullColumnTransformer(
-      Expression expression,
-      Type returnType,
-      ColumnTransformer childColumnTransformer,
-      boolean isNot) {
-    super(expression, returnType, childColumnTransformer);
+      Type returnType, ColumnTransformer childColumnTransformer, boolean isNot) {
+    super(returnType, childColumnTransformer);
     this.isNot = isNot;
   }
 

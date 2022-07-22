@@ -19,12 +19,11 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.unary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -32,7 +31,7 @@ import java.util.Set;
 public class InColumnTransformer extends UnaryColumnTransformer {
   private final Satisfy satisfy;
 
-  private final TSDataType childType;
+  private final TypeEnum childType;
 
   private Set<Integer> intSet;
   private Set<Long> longSet;
@@ -42,14 +41,13 @@ public class InColumnTransformer extends UnaryColumnTransformer {
   private Set<String> stringSet;
 
   public InColumnTransformer(
-      Expression expression,
       Type returnType,
       ColumnTransformer childColumnTransformer,
       boolean isNotIn,
       Set<String> values) {
-    super(expression, returnType, childColumnTransformer);
+    super(returnType, childColumnTransformer);
     satisfy = isNotIn ? new NotInSatisfy() : new InSatisfy();
-    this.childType = childColumnTransformer.getTsDataType();
+    this.childType = childColumnTransformer.getType().getTypeEnum();
     initTypedSet(values);
   }
 
@@ -73,13 +71,12 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           case BOOLEAN:
             returnType.writeBoolean(columnBuilder, satisfy.of(column.getBoolean(i)));
             break;
-          case TEXT:
+          case BINARY:
             returnType.writeBoolean(
                 columnBuilder, satisfy.of(column.getBinary(i).getStringValue()));
             break;
           default:
-            throw new UnsupportedOperationException(
-                "unsupported data type: " + returnType.getTsDataType());
+            throw new UnsupportedOperationException("unsupported data type: " + childType);
         }
       } else {
         columnBuilder.appendNull();
@@ -119,12 +116,11 @@ public class InColumnTransformer extends UnaryColumnTransformer {
           booleanSet.add(Boolean.valueOf(value));
         }
         break;
-      case TEXT:
+      case BINARY:
         stringSet = values;
         break;
       default:
-        throw new UnsupportedOperationException(
-            "unsupported data type: " + returnType.getTsDataType());
+        throw new UnsupportedOperationException("unsupported data type: " + childType);
     }
   }
 

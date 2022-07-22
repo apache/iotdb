@@ -19,12 +19,15 @@
 
 package org.apache.iotdb.tsfile.read.common.type;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumnBuilder;
 
 public class DoubleType implements Type {
+
+  private static final DoubleType INSTANCE = new DoubleType();
+
+  private DoubleType() {}
 
   @Override
   public int getInt(Column c, int position) {
@@ -72,7 +75,11 @@ public class DoubleType implements Type {
   }
 
   @Override
-  public TSDataType getTsDataType() {
-    return TSDataType.DOUBLE;
+  public TypeEnum getTypeEnum() {
+    return TypeEnum.DOUBLE;
+  }
+
+  public static DoubleType getInstance() {
+    return INSTANCE;
   }
 }

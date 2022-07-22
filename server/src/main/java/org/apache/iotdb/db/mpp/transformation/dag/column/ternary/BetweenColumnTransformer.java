@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.ternary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.util.TransformUtils;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
@@ -28,21 +27,15 @@ import org.apache.iotdb.tsfile.read.common.type.BinaryType;
 import org.apache.iotdb.tsfile.read.common.type.Type;
 
 public class BetweenColumnTransformer extends CompareTernaryColumnTransformer {
-  private boolean isNotBetween;
+  private final boolean isNotBetween;
 
   public BetweenColumnTransformer(
-      Expression expression,
       Type returnType,
       ColumnTransformer firstColumnTransformer,
       ColumnTransformer secondColumnTransformer,
       ColumnTransformer thirdColumnTransformer,
       boolean isNotBetween) {
-    super(
-        expression,
-        returnType,
-        firstColumnTransformer,
-        secondColumnTransformer,
-        thirdColumnTransformer);
+    super(returnType, firstColumnTransformer, secondColumnTransformer, thirdColumnTransformer);
     this.isNotBetween = isNotBetween;
   }
 

@@ -54,7 +54,7 @@ public class NegationExpression extends UnaryExpression {
   @Override
   protected ColumnTransformer getConcreteUnaryColumnTransformer(
       ColumnTransformer childColumnTransformer, Type returnType) {
-    return new ArithmeticNegationColumnTransformer(this, returnType, childColumnTransformer);
+    return new ArithmeticNegationColumnTransformer(returnType, childColumnTransformer);
   }
 
   @Override

@@ -49,4 +49,8 @@ public class ColumnCache {
     this.referenceCount = referenceCount;
     this.column = column;
   }
+
+  public boolean hasCached() {
+    return column != null;
+  }
 }

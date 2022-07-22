@@ -19,23 +19,18 @@
 
 package org.apache.iotdb.db.mpp.transformation.dag.column.binary;
 
-import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.util.TransformUtils;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.column.Column;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.type.Type;
+import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransformer {
 
   public CompareBinaryColumnTransformer(
-      Expression expression,
-      Type returnType,
-      ColumnTransformer leftTransformer,
-      ColumnTransformer rightTransformer) {
-    super(expression, returnType, leftTransformer, rightTransformer);
+      Type returnType, ColumnTransformer leftTransformer, ColumnTransformer rightTransformer) {
+    super(returnType, leftTransformer, rightTransformer);
   }
 
   @Override
@@ -45,13 +40,13 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
       if (!leftColumn.isNull(i) && !rightColumn.isNull(i)) {
         boolean flag;
         // compare binary type
-        if (leftTransformer.getTsDataType().equals(TSDataType.TEXT)) {
+        if (leftTransformer.getType().getTypeEnum().equals(TypeEnum.BINARY)) {
           flag =
               transform(
                   TransformUtils.compare(
                       leftTransformer.getType().getBinary(leftColumn, i).getStringValue(),
                       rightTransformer.getType().getBinary(rightColumn, i).getStringValue()));
-        } else if (leftTransformer.getTsDataType().equals(TSDataType.BOOLEAN)) {
+        } else if (leftTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)) {
           flag =
               transform(
                   Boolean.compare(
@@ -73,17 +68,10 @@ public abstract class CompareBinaryColumnTransformer extends BinaryColumnTransfo
 
   @Override
   protected void checkType() {
-    if (leftTransformer == null || rightTransformer == null) {
-      return;
-    }
-
     // Boolean type can only be compared by == or !=
-    if (leftTransformer.getTsDataType().equals(TSDataType.BOOLEAN)
-        || rightTransformer.getTsDataType().equals(TSDataType.BOOLEAN)) {
-      throw new UnSupportedDataTypeException(TSDataType.BOOLEAN.toString());
-    }
-    if (leftTransformer.getTsDataType().equals(rightTransformer.getTsDataType())) {
-      return;
+    if (leftTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)
+        || rightTransformer.getType().getTypeEnum().equals(TypeEnum.BOOLEAN)) {
+      throw new UnsupportedOperationException("Unsupported Type");
     }
   }
 

@@ -25,17 +25,17 @@ public class TypeFactory {
   public static Type getType(TSDataType tsDataType) {
     switch (tsDataType) {
       case INT32:
-        return new IntType();
+        return IntType.getInstance();
       case INT64:
-        return new LongType();
+        return LongType.getInstance();
       case FLOAT:
-        return new FloatType();
+        return FloatType.getInstance();
       case DOUBLE:
-        return new DoubleType();
+        return DoubleType.getInstance();
       case BOOLEAN:
-        return new BooleanType();
+        return BooleanType.getInstance();
       case TEXT:
-        return new BinaryType();
+        return BinaryType.getInstance();
       default:
         throw new UnsupportedOperationException(
             String.format("Invalid TSDataType for TypeFactory: %s", tsDataType));
