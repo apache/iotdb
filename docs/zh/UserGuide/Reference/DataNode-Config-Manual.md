@@ -1455,7 +1455,7 @@ IoTDB DataNode 与 Standalone 模式共用一套配置文件，均位于 IoTDB �
 |名字| compressor |
 |:---:|:---|
 |描述| 数据压缩方法 |
-|类型| 枚举 String : “UNCOMPRESSED”, “SNAPPY”, “LZ4”, “ZSTD” |
+|类型| 枚举 String : “UNCOMPRESSED”, “SNAPPY”, “LZ4” |
 |默认值| SNAPPY |
 |改后生效方式|触发生效|
 
