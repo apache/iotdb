@@ -27,9 +27,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
-import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
-import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -56,13 +53,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /** NodeManager manages cluster node addition and removal requests */
@@ -180,6 +174,7 @@ public class NodeManager {
   public DataNodeConfigurationResp getDataNodeConfiguration(GetDataNodeConfigurationPlan req) {
     return (DataNodeConfigurationResp) getConsensusManager().read(req).getDataset();
   }
+
   /**
    * Only leader use this interface
    *
@@ -207,6 +202,18 @@ public class NodeManager {
    */
   public List<TDataNodeConfiguration> getRegisteredDataNodes(int dataNodeId) {
     return nodeInfo.getRegisteredDataNodes(dataNodeId);
+  }
+
+  public Map<Integer, TDataNodeLocation> getRegisteredDataNodeLocations(int dataNodeId) {
+    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    nodeInfo
+        .getRegisteredDataNodes(dataNodeId)
+        .forEach(
+            dataNodeConfiguration ->
+                dataNodeLocations.put(
+                    dataNodeConfiguration.getLocation().getDataNodeId(),
+                    dataNodeConfiguration.getLocation()));
+    return dataNodeLocations;
   }
 
   public List<TDataNodesInfo> getRegisteredDataNodesInfoList() {
@@ -426,56 +433,25 @@ public class NodeManager {
   }
 
   public List<TSStatus> flush(TFlushReq req) {
-    List<TDataNodeConfiguration> registeredDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(req.dataNodeId);
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
     List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
-    CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
-    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
-    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
-    AtomicInteger index = new AtomicInteger();
-    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
-      handlerMap.put(
-          index.get(),
-          new FlushHandler(
-              dataNodeInfo.getLocation(),
-              countDownLatch,
-              DataNodeRequestType.FLUSH,
-              dataNodeResponseStatus,
-              dataNodeLocations,
-              index.get()));
-      dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
-    }
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(req, handlerMap, dataNodeLocations);
+        .sendAsyncRequestToDataNodeWithRetry(
+            req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 
   public List<TSStatus> clearCache() {
     Object req = new Object();
-
-    List<TDataNodeConfiguration> registeredDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
     List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
-    CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
-    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
-    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
-    AtomicInteger index = new AtomicInteger();
-    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
-      handlerMap.put(
-          index.get(),
-          new ClearCacheHandler(
-              dataNodeInfo.getLocation(),
-              countDownLatch,
-              DataNodeRequestType.CLEARCACHE,
-              dataNodeResponseStatus,
-              dataNodeLocations,
-              index.get()));
-      dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
-    }
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(req, handlerMap, dataNodeLocations);
+        .sendAsyncRequestToDataNodeWithRetry(
+            req, dataNodeLocationMap, DataNodeRequestType.CLEARCACHE, dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 
