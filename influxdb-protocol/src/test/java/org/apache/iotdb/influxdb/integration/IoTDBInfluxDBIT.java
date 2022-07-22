@@ -180,7 +180,6 @@ public class IoTDBInfluxDBIT {
 
     Object[] retArray = new Object[] {0, 99.0, 87.0, 186.0, 2, 12.0, 93.0, 87, 99};
     for (int i = 0; i < series.getColumns().size(); i++) {
-      System.out.println(series.getValues().get(0));
       assertEquals(retArray[i], series.getValues().get(0).get(i));
     }
   }
@@ -197,7 +196,6 @@ public class IoTDBInfluxDBIT {
     Object[] retArray =
         new Object[] {0, 2, 87, "china", 99.0, 93.0, 93.0, 87.0, 87, 12.0, 6.0, 186.0};
     for (int i = 0; i < series.getColumns().size(); i++) {
-      System.out.println(series.getValues().get(0));
       assertEquals(retArray[i], series.getValues().get(0).get(i));
     }
   }
