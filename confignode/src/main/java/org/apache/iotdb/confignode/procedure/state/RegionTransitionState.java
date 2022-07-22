@@ -17,22 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client;
+package org.apache.iotdb.confignode.procedure.state;
 
-public enum DataNodeRequestType {
-  DELETE_REGIONS,
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
+public enum RegionTransitionState {
+  REGION_MIGRATE_PREPARE,
+  ADD_NEW_NODE_TO_REGION_CONSENSUS_GROUP,
   MIGRATE_REGION,
-  DISABLE_DATA_NODE,
-  STOP_DATA_NODE,
-
-  SET_TTL,
-  CREATE_DATA_REGIONS,
-  CREATE_SCHEMA_REGIONS,
-  CREATE_FUNCTION,
-  DROP_FUNCTION,
-  FLUSH,
-  UPDATE_REGION_ROUTE_MAP
+  WAIT_FOR_REGION_MIGRATE_FINISHED,
+  UPDATE_REGION_LOCATION_CACHE
 }
