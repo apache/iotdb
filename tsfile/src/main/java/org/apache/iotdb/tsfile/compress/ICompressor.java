@@ -38,7 +38,6 @@ import java.util.zip.GZIPOutputStream;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.GZIP;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.LZ4;
 import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.SNAPPY;
-import static org.apache.iotdb.tsfile.file.metadata.enums.CompressionType.ZSTD;
 
 /** compress data according to type in schema. */
 public interface ICompressor extends Serializable {

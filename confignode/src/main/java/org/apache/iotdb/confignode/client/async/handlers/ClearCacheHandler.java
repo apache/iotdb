@@ -40,13 +40,12 @@ public class ClearCacheHandler extends AbstractRetryHandler
   private final List<TSStatus> dataNodeResponseStatus;
 
   public ClearCacheHandler(
-      TDataNodeLocation targetDataNode,
       CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
-      List<TSStatus> dataNodeResponseStatus,
-      Map<Integer, TDataNodeLocation> dataNodeLocations,
-      int index) {
-    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
+      TDataNodeLocation targetDataNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      List<TSStatus> dataNodeResponseStatus) {
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
     this.dataNodeResponseStatus = dataNodeResponseStatus;
   }
 
@@ -54,10 +53,13 @@ public class ClearCacheHandler extends AbstractRetryHandler
   public void onComplete(TSStatus response) {
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeResponseStatus.add(response);
-      dataNodeLocations.remove(index);
+      dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully Clear Cache on DataNode: {}", targetDataNode);
     } else {
-      LOGGER.error("Failed to Clear Cache on DataNode {}, {}", dataNodeLocations, response);
+      LOGGER.error(
+          "Failed to Clear Cache on DataNode {}, {}",
+          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
+          response);
     }
     countDownLatch.countDown();
   }
