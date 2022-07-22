@@ -181,23 +181,23 @@ public class AsyncDataNodeClientPool {
   public void createRegions(
       CreateRegionGroupsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
     // Map<index, TDataNodeLocation>
-    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     int index = 0;
     // Count the datanodes to be sent
     for (List<TRegionReplicaSet> regionReplicaSets :
         createRegionGroupsPlan.getRegionGroupMap().values()) {
       for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
-          dataNodeLocations.put(index++, dataNodeLocation);
+          dataNodeLocationMap.put(index++, dataNodeLocation);
         }
       }
     }
-    if (dataNodeLocations.isEmpty()) {
+    if (dataNodeLocationMap.isEmpty()) {
       return;
     }
     for (int retry = 0; retry < retryNum; retry++) {
       index = 0;
-      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
+      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
       AbstractRetryHandler handler;
       for (Map.Entry<String, List<TRegionReplicaSet>> entry :
           createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
@@ -205,7 +205,7 @@ public class AsyncDataNodeClientPool {
         for (TRegionReplicaSet regionReplicaSet : entry.getValue()) {
           // Enumerate each Region
           for (TDataNodeLocation targetDataNode : regionReplicaSet.getDataNodeLocations()) {
-            if (dataNodeLocations.containsKey(index)) {
+            if (dataNodeLocationMap.containsKey(index)) {
               switch (regionReplicaSet.getRegionId().getType()) {
                 case SchemaRegion:
                   handler =
@@ -214,7 +214,7 @@ public class AsyncDataNodeClientPool {
                           DataNodeRequestType.CREATE_SCHEMA_REGIONS,
                           regionReplicaSet.regionId,
                           targetDataNode,
-                          dataNodeLocations,
+                          dataNodeLocationMap,
                           index++);
                   sendAsyncRequestToDataNode(
                       targetDataNode,
@@ -229,7 +229,7 @@ public class AsyncDataNodeClientPool {
                           DataNodeRequestType.CREATE_DATA_REGIONS,
                           regionReplicaSet.regionId,
                           targetDataNode,
-                          dataNodeLocations,
+                          dataNodeLocationMap,
                           index++);
                   sendAsyncRequestToDataNode(
                       targetDataNode,
@@ -254,7 +254,7 @@ public class AsyncDataNodeClientPool {
       }
       // Check if there is a node that fails to send the request, and
       // retry if there is one
-      if (dataNodeLocations.isEmpty()) {
+      if (dataNodeLocationMap.isEmpty()) {
         break;
       }
     }

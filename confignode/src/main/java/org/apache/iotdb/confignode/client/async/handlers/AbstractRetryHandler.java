@@ -34,7 +34,7 @@ public abstract class AbstractRetryHandler {
    * different requests will be sent to the same node when createRegions,so for CreateRegions ->
    * Map<index, TDataNodeLocation> for others -> Map<dataNodeId, TDataNodeLocation>
    */
-  protected Map<Integer, TDataNodeLocation> dataNodeLocations;
+  protected Map<Integer, TDataNodeLocation> dataNodeLocationMap;
   /** Request type to DataNode */
   protected DataNodeRequestType dataNodeRequestType;
   /** Target DataNode */
@@ -44,9 +44,9 @@ public abstract class AbstractRetryHandler {
       CountDownLatch countDownLatch,
       DataNodeRequestType dataNodeRequestType,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocations) {
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     this.countDownLatch = countDownLatch;
-    this.dataNodeLocations = dataNodeLocations;
+    this.dataNodeLocationMap = dataNodeLocationMap;
     this.dataNodeRequestType = dataNodeRequestType;
     this.targetDataNode = targetDataNode;
   }
