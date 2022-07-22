@@ -113,7 +113,7 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
   @Override
   public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
-    return null;
+    return Collections.emptyMap();
   }
 
   @Override

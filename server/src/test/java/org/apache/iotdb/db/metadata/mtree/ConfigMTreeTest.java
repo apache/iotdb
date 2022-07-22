@@ -22,7 +22,6 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -345,7 +344,8 @@ public class ConfigMTreeTest {
   }
 
   @Test
-  public void testSetTemplate() throws IllegalPathException, StorageGroupNotSetException {
+  public void testSetTemplate() throws MetadataException {
+    root.setStorageGroup(new PartialPath("root.a"));
     PartialPath path = new PartialPath("root.a.template0");
     try {
       root.checkTemplateOnPath(path);
