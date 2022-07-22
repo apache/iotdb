@@ -62,6 +62,7 @@ public class RemoveConfigNodeProcedure
     try {
       switch (state) {
         case REMOVE_CONFIG_NODE_PREPARE:
+          env.broadCastTheLatestConfigNodeGroup();
           setNextState(RemoveConfigNodeState.REMOVE_PEER);
           break;
         case REMOVE_PEER:
@@ -76,7 +77,6 @@ public class RemoveConfigNodeProcedure
           break;
         case STOP_CONFIG_NODE:
           env.stopConfigNode(tConfigNodeLocation);
-          env.broadCastTheLatestConfigNodeGroup();
           LOG.info("Stop Config Node {}", tConfigNodeLocation);
           return Flow.NO_MORE_STATE;
       }
