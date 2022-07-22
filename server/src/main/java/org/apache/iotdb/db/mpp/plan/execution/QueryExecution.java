@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.query.QueryTimeoutRuntimeException;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.execution.QueryState;
@@ -170,6 +171,12 @@ public class QueryExecution implements IQueryExecution {
       stateMachine.transitionToRunning();
       return;
     }
+    long remainTime = context.getTimeOut() - (System.currentTimeMillis() - context.getStartTime());
+    if (remainTime <= 0) {
+      throw new QueryTimeoutRuntimeException();
+    }
+    context.setTimeOut(remainTime);
+
     doLogicalPlan();
     doDistributedPlan();
     if (context.getQueryType() == QueryType.READ) {
@@ -454,7 +461,9 @@ public class QueryExecution implements IQueryExecution {
 
     TSStatus tsstatus = RpcUtils.getStatus(statusCode, stateMachine.getFailureMessage());
 
-    if (stateMachine.getFailureStatus() != null) {
+    // If RETRYING is triggered by this QueryExecution, the stateMachine.getFailureStatus() is also
+    // not null. We should only return the failure status when QueryExecution is in Done state.
+    if (state.isDone() && stateMachine.getFailureStatus() != null) {
       tsstatus = stateMachine.getFailureStatus();
     }
 

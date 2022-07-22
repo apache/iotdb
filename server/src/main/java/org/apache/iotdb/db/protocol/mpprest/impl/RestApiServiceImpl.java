@@ -97,7 +97,8 @@ public class RestApiServiceImpl extends RestApiService {
               null,
               sql.getSql(),
               PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              SCHEMA_FETCHER,
+              config.getQueryTimeoutThreshold());
 
       return Response.ok()
           .entity(
@@ -130,7 +131,13 @@ public class RestApiServiceImpl extends RestApiService {
       // create and cache dataset
       ExecutionResult result =
           COORDINATOR.execute(
-              statement, queryId, null, sql.getSql(), PARTITION_FETCHER, SCHEMA_FETCHER);
+              statement,
+              queryId,
+              null,
+              sql.getSql(),
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              config.getQueryTimeoutThreshold());
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return Response.ok()
             .entity(
@@ -174,7 +181,8 @@ public class RestApiServiceImpl extends RestApiService {
               null,
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              SCHEMA_FETCHER,
+              config.getQueryTimeoutThreshold());
 
       return Response.ok()
           .entity(

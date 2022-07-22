@@ -17,23 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.component;
+package org.apache.iotdb.confignode.procedure.state;
 
-/** The order of query result set by timestamp */
-public enum OrderBy {
-  TIMESTAMP_ASC,
-  TIMESTAMP_DESC,
-  DEVICE_ASC,
-  DEVICE_DESC;
-
-  public OrderBy reverse() {
-    switch (this) {
-      case TIMESTAMP_ASC:
-        return TIMESTAMP_DESC;
-      case TIMESTAMP_DESC:
-        return TIMESTAMP_ASC;
-      default:
-        throw new UnsupportedOperationException();
-    }
-  }
+public enum RegionTransitionState {
+  REGION_MIGRATE_PREPARE,
+  ADD_NEW_NODE_TO_REGION_CONSENSUS_GROUP,
+  MIGRATE_REGION,
+  WAIT_FOR_REGION_MIGRATE_FINISHED,
+  UPDATE_REGION_LOCATION_CACHE
 }
