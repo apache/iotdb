@@ -849,7 +849,7 @@ public class QueryHandler {
         curQueryPath.append(".").append("*");
       }
     }
-    if (currentQueryMaxTagNum<tagOrders.size()){
+    if (currentQueryMaxTagNum < tagOrders.size()) {
       curQueryPath.append(".**");
     }
     // construct actual query condition

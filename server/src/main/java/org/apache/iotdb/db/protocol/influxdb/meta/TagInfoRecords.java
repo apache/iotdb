@@ -65,10 +65,10 @@ public class TagInfoRecords {
 
   public void add(String database, String measurement, String tag, int order) {
     deviceIds.add(TAG_INFO_DEVICE_ID);
-    if (times.size()==0){
+    if (times.size() == 0) {
       times.add(System.currentTimeMillis());
-    }else {
-      times.add(times.get(times.size()-1)+1);
+    } else {
+      times.add(times.get(times.size() - 1) + 1);
     }
     measurementsList.add(TAG_INFO_MEASUREMENTS);
     typesList.add(TAG_INFO_TYPES);

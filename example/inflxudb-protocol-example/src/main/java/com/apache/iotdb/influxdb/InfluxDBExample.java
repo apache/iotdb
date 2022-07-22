@@ -20,6 +20,7 @@
 package com.apache.iotdb.influxdb;
 
 import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
+
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
@@ -31,80 +32,81 @@ import java.util.concurrent.TimeUnit;
 
 public class InfluxDBExample {
 
-    private static InfluxDB influxDB;
+  private static InfluxDB influxDB;
 
-    private static final String database = "monitor";
+  private static final String database = "monitor";
 
-    private static final String measurement = "factory";
+  private static final String measurement = "factory";
 
-    public static void main(String[] args) {
-        influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
-        influxDB.createDatabase(database);
-        influxDB.setDatabase(database);
-        insertData();
-        queryData();
-        influxDB.close();
-    }
+  public static void main(String[] args) {
+    influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
+    influxDB.createDatabase(database);
+    influxDB.setDatabase(database);
+    insertData();
+    queryData();
+    influxDB.close();
+  }
 
-    private static void insertData() {
-        Point.Builder builder = Point.measurement(measurement);
-        Map<String, String> tags = new HashMap<>();
-        Map<String, Object> fields = new HashMap<>();
-        tags.put("workshop", "A1");
-        tags.put("production", "B1");
-        tags.put("cell", "C1");
-        fields.put("temperature", 16.9);
-        fields.put("pressure", 142);
-        builder.tag(tags);
-        builder.fields(fields);
-        builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
-        Point point = builder.build();
-        influxDB.write(point);
+  private static void insertData() {
+    Point.Builder builder = Point.measurement(measurement);
+    Map<String, String> tags = new HashMap<>();
+    Map<String, Object> fields = new HashMap<>();
+    tags.put("workshop", "A1");
+    tags.put("production", "B1");
+    tags.put("cell", "C1");
+    fields.put("temperature", 16.9);
+    fields.put("pressure", 142);
+    builder.tag(tags);
+    builder.fields(fields);
+    builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+    Point point = builder.build();
+    influxDB.write(point);
 
-        builder = Point.measurement(measurement);
-        tags = new HashMap<>();
-        fields = new HashMap<>();
-        tags.put("workshop", "A1");
-        tags.put("production", "B1");
-        tags.put("cell", "C2");
-        fields.put("temperature", 16.5);
-        fields.put("pressure", 108);
-        builder.tag(tags);
-        builder.fields(fields);
-        builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
-        point = builder.build();
-        influxDB.write(point);
+    builder = Point.measurement(measurement);
+    tags = new HashMap<>();
+    fields = new HashMap<>();
+    tags.put("workshop", "A1");
+    tags.put("production", "B1");
+    tags.put("cell", "C2");
+    fields.put("temperature", 16.5);
+    fields.put("pressure", 108);
+    builder.tag(tags);
+    builder.fields(fields);
+    builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+    point = builder.build();
+    influxDB.write(point);
 
-        builder = Point.measurement(measurement);
-        tags = new HashMap<>();
-        fields = new HashMap<>();
-        tags.put("workshop", "A1");
-        tags.put("production", "B2");
-        tags.put("cell", "C2");
-        fields.put("temperature", 13.0);
-        fields.put("pressure", 130);
-        builder.tag(tags);
-        builder.fields(fields);
-        builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
-        point = builder.build();
-        influxDB.write(point);
-    }
+    builder = Point.measurement(measurement);
+    tags = new HashMap<>();
+    fields = new HashMap<>();
+    tags.put("workshop", "A1");
+    tags.put("production", "B2");
+    tags.put("cell", "C2");
+    fields.put("temperature", 13.0);
+    fields.put("pressure", 130);
+    builder.tag(tags);
+    builder.fields(fields);
+    builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+    point = builder.build();
+    influxDB.write(point);
+  }
 
-    private static void queryData() {
-        Query query;
-        QueryResult result;
+  private static void queryData() {
+    Query query;
+    QueryResult result;
 
-        query =
-                new Query(
-                        "select * from factory where (workshop=\"A1\" and production=\"B1\" and cell =\"C1\" and time>now()-7d)", database);
-        result = influxDB.query(query);
-        System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
+    query =
+        new Query(
+            "select * from factory where (workshop=\"A1\" and production=\"B1\" and cell =\"C1\" and time>now()-7d)",
+            database);
+    result = influxDB.query(query);
+    System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
 
-        query =
-                new Query(
-                        "select count(temperature),first(temperature),last(temperature),max(temperature),mean(temperature),median(temperature),min(temperature),mode(temperature),spread(temperature),stddev(temperature),sum(temperature) from student where ((workshop=\"A1\" and production=\"B1\" and cell =\"C1\" ) or temperature< 15 )",
-                        database);
-        result = influxDB.query(query);
-        System.out.println("query2 result:" + result.getResults().get(0).getSeries().get(0).toString());
-    }
+    query =
+        new Query(
+            "select count(temperature),first(temperature),last(temperature),max(temperature),mean(temperature),median(temperature),min(temperature),mode(temperature),spread(temperature),stddev(temperature),sum(temperature) from student where ((workshop=\"A1\" and production=\"B1\" and cell =\"C1\" ) or temperature< 15 )",
+            database);
+    result = influxDB.query(query);
+    System.out.println("query2 result:" + result.getResults().get(0).getSeries().get(0).toString());
+  }
 }

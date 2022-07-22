@@ -47,17 +47,15 @@ public class IoTDBInfluxDBIT {
   private static String password;
   private static InfluxDB influxDB;
 
-//  @ClassRule
-//  public static GenericContainer<?> iotdb =
-//      new GenericContainer(DockerImageName.parse("apache/iotdb:influxdb-protocol-on"))
-//          .withExposedPorts(8086);
+  @ClassRule
+  public static GenericContainer<?> iotdb =
+      new GenericContainer(DockerImageName.parse("apache/iotdb:influxdb-protocol-on"))
+          .withExposedPorts(8086);
 
   @BeforeClass
   public static void setUp() {
-//    host = iotdb.getContainerIpAddress();
-//    port = iotdb.getMappedPort(8086);
-    host = "127.0.0.1";
-    port = 8086;
+    host = iotdb.getContainerIpAddress();
+    port = iotdb.getMappedPort(8086);
     username = "root";
     password = "root";
     influxDB = IoTDBInfluxDBFactory.connect(host, port, username, password);
