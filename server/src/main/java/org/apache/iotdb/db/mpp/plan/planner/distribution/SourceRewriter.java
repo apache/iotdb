@@ -531,6 +531,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public PlanNode visitGroupByLevel(GroupByLevelNode root, DistributionPlanContext context) {
+    if (shouldUseNaiveAggregation(root)) {
+      return defaultRewrite(root, context);
+    }
     // Firstly, we build the tree structure for GroupByLevelNode
     List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
     Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
@@ -552,6 +555,22 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // Then, we calculate the attributes for GroupByLevelNode in each level
     calculateGroupByLevelNodeAttributes(newRoot, 0);
     return newRoot;
+  }
+
+  // If the Aggregation Query contains value filter, we need to use the naive query plan
+  // for it. That is, do the raw data query and then do the aggregation operation.
+  // Currently, the method to judge whether the query should use naive query plan is whether
+  // AggregationNode is contained in the PlanNode tree of logical plan.
+  private boolean shouldUseNaiveAggregation(PlanNode root) {
+    if (root instanceof AggregationNode) {
+      return true;
+    }
+    for (PlanNode child : root.getChildren()) {
+      if (shouldUseNaiveAggregation(child)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private GroupByLevelNode groupSourcesForGroupByLevelWithSlidingWindow(
