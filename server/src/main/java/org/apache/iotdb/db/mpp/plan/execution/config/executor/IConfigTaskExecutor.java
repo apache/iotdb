@@ -62,6 +62,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq);
 
+  SettableFuture<ConfigTaskResult> clearCache();
+
   SettableFuture<ConfigTaskResult> showCluster();
 
   SettableFuture<ConfigTaskResult> showTTL(ShowTTLStatement showTTLStatement);

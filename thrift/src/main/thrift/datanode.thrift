@@ -323,6 +323,8 @@ service IDataNodeRPCService {
 
   common.TSStatus flush(common.TFlushReq req)
 
+  common.TSStatus clearCache()
+
   common.TSStatus setTTL(common.TSetTTLReq req)
 }
 

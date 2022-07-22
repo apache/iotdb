@@ -268,6 +268,8 @@ public interface IManager {
 
   TSStatus flush(TFlushReq req);
 
+  TSStatus clearCache();
+
   /**
    * Get the latest RegionRouteMap
    *

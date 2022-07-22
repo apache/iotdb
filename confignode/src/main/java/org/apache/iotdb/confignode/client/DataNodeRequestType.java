@@ -33,5 +33,6 @@ public enum DataNodeRequestType {
   CREATE_FUNCTION,
   DROP_FUNCTION,
   FLUSH,
+  CLEARCACHE,
   UPDATE_REGION_ROUTE_MAP
 }

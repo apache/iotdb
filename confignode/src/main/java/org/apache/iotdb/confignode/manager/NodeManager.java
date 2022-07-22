@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
+import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -440,6 +441,34 @@ public class NodeManager {
               dataNodeInfo.getLocation(),
               countDownLatch,
               DataNodeRequestType.FLUSH,
+              dataNodeResponseStatus,
+              dataNodeLocations,
+              index.get()));
+      dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
+    }
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(req, handlerMap, dataNodeLocations);
+    return dataNodeResponseStatus;
+  }
+
+  public List<TSStatus> clearCache() {
+    Object req = new Object();
+
+    List<TDataNodeConfiguration> registeredDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes(-1);
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
+    CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
+    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
+    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    AtomicInteger index = new AtomicInteger();
+    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
+      handlerMap.put(
+          index.get(),
+          new ClearCacheHandler(
+              dataNodeInfo.getLocation(),
+              countDownLatch,
+              DataNodeRequestType.CLEARCACHE,
               dataNodeResponseStatus,
               dataNodeLocations,
               index.get()));
