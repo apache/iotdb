@@ -29,7 +29,10 @@ public abstract class AbstractRetryHandler {
 
   protected CountDownLatch countDownLatch;
 
-  /** The DataNode that successfully execute the request will be removed from this list */
+  /**
+   * Map<DataNodeId, TDataNodeLocation> The DataNode that successfully execute the request will be
+   * removed from this list
+   */
   protected Map<Integer, TDataNodeLocation> dataNodeLocationMap;
   /** Request type to DataNode */
   protected DataNodeRequestType dataNodeRequestType;

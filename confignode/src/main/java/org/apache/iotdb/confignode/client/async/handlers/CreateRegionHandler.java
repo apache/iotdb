@@ -39,6 +39,8 @@ public class CreateRegionHandler extends AbstractRetryHandler
   private static final Logger LOGGER = LoggerFactory.getLogger(CreateRegionHandler.class);
 
   // The index of dataNodeLocations
+  // We use Index instead of DataNodeId because it is possible to send multiple createRegion
+  // requests to the same DataNode
   private final int index;
   // Used for Logger
   private final TConsensusGroupId consensusGroupId;
