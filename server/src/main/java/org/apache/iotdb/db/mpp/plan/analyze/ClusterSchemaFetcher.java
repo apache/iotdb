@@ -91,6 +91,7 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
     Map<Integer, Template> templateMap = new HashMap<>();
+    patternTree.constructTree();
     for (PartialPath pattern : patternTree.getAllPathPatterns()) {
       templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
     }

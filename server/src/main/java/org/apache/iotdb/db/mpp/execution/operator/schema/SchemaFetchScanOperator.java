@@ -110,7 +110,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
     SchemaTree schemaTree = new SchemaTree();
     List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
     for (PartialPath path : partialPathList) {
-      schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
+      schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(path, templateMap));
     }
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
