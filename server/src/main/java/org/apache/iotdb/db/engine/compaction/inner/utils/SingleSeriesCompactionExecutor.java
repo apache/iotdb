@@ -125,8 +125,9 @@ public class SingleSeriesCompactionExecutor {
         if (this.chunkWriter == null) {
           constructChunkWriterFromReadChunk(currentChunk);
         }
-        // Fix: When the same measurement has different encoding/compression methods in the tsfile file, there will be an error in data writing
-        if(isTypeChanged(lastChunk, currentChunk)) {
+        // Fix: When the same measurement has different encoding/compression methods in the tsfile
+        // file, there will be an error in data writing
+        if (isTypeChanged(lastChunk, currentChunk)) {
           forceFlush();
           constructChunkWriterFromReadChunk(currentChunk);
         }
@@ -159,15 +160,17 @@ public class SingleSeriesCompactionExecutor {
 
   private boolean isTypeChanged(Chunk lastChunk, Chunk currentChunk) {
 
-    if(lastChunk == null || currentChunk == null) {
+    if (lastChunk == null || currentChunk == null) {
       return false;
     }
-    if(currentChunk.getHeader() == null && lastChunk.getHeader() == null) {
+    if (currentChunk.getHeader() == null && lastChunk.getHeader() == null) {
       return false;
     }
-    boolean encodingEqule = currentChunk.getHeader().getEncodingType() == lastChunk.getHeader().getEncodingType();
-    boolean compressionTypeEqule = currentChunk.getHeader().getCompressionType() == lastChunk.getHeader().getCompressionType();
-    if(!encodingEqule || !compressionTypeEqule) {
+    boolean encodingEqule =
+        currentChunk.getHeader().getEncodingType() == lastChunk.getHeader().getEncodingType();
+    boolean compressionTypeEqule =
+        currentChunk.getHeader().getCompressionType() == lastChunk.getHeader().getCompressionType();
+    if (!encodingEqule || !compressionTypeEqule) {
       return true;
     }
     return false;

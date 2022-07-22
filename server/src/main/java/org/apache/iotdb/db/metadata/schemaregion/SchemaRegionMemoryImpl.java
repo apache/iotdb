@@ -61,7 +61,18 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
+import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -790,16 +801,15 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     // mlog
     if (!isRecovering) {
       writeToMLog(
-              new AlterTimeSeriesPlan(
-                      fullPath,
-                      AlterTimeSeriesOperator.AlterType.SET_TYPE,
-                      null,
-                      null,
-                      null,
-                      null,
-                      measurementMNode.getSchema().getEncodingType(),
-                      measurementMNode.getSchema().getCompressor()
-              ));
+          new AlterTimeSeriesPlan(
+              fullPath,
+              AlterTimeSeriesOperator.AlterType.SET_TYPE,
+              null,
+              null,
+              null,
+              null,
+              measurementMNode.getSchema().getEncodingType(),
+              measurementMNode.getSchema().getCompressor()));
       forceMlog();
     }
     return new Pair<>(schema.getEncodingType(), schema.getCompressor());

@@ -160,10 +160,10 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
       CompressionType compressionType,
       Map<String, String> props) {
 
-    if(encoding == null) {
+    if (encoding == null) {
       encoding = this.schema.getEncodingType();
     }
-    if(compressionType == null) {
+    if (compressionType == null) {
       compressionType = this.schema.getCompressor();
     }
     this.schema =

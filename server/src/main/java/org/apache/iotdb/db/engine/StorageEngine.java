@@ -791,7 +791,7 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
 
     try {
-      if(curEncoding == null || curCompressionType == null) {
+      if (curEncoding == null || curCompressionType == null) {
         throw new MetadataException("system error, curEncoding or curCompressionType is null");
       }
       List<PartialPath> sgPaths = IoTDB.schemaProcessor.getBelongedStorageGroups(fullPath);

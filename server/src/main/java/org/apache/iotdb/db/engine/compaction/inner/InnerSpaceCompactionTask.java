@@ -387,7 +387,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     }
     try {
       // Merge is not allowed when rewrite operation is running
-      if(tsFileManager.isRewriteLocked()) {
+      if (tsFileManager.isRewriteLocked()) {
         releaseFileLocksAndResetMergingStatus();
         return false;
       }

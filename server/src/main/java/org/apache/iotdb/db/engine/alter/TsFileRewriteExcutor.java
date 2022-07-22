@@ -2,6 +2,7 @@ package org.apache.iotdb.db.engine.alter;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -18,7 +19,6 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
-import org.glassfish.jaxb.runtime.v2.schemagen.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,8 +63,7 @@ public class TsFileRewriteExcutor {
   public void execute() throws IOException {
 
     tsFileResource.tryReadLock();
-    try (TsFileSequenceReader reader =
-            new TsFileSequenceReader(tsFileResource.getTsFilePath());
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
         TsFileIOWriter writer = new TsFileIOWriter(targetTsFileResource.getTsFile())) {
       // read devices
       TsFileDeviceIterator deviceIterator = reader.getAllDevicesIteratorWithIsAligned();
@@ -100,7 +99,8 @@ public class TsFileRewriteExcutor {
     }
   }
 
-  private void rewriteNotAligned(String device, TsFileSequenceReader reader, TsFileIOWriter writer, String targetMeasurement)
+  private void rewriteNotAligned(
+      String device, TsFileSequenceReader reader, TsFileIOWriter writer, String targetMeasurement)
       throws IOException {
     Map<String, List<ChunkMetadata>> measurementMap = reader.readChunkMetadataInDevice(device);
     if (measurementMap == null) {
@@ -113,14 +113,14 @@ public class TsFileRewriteExcutor {
             logger.warn("[alter timeseries] empty measurement({})", measurementId);
             return;
           }
-          boolean findTarget = Util.equal(measurementId, targetMeasurement);
+          boolean findTarget = CommonUtils.equal(measurementId, targetMeasurement);
           // target chunk writer
           ChunkWriterImpl chunkWriter =
               new ChunkWriterImpl(
                   new MeasurementSchema(
                       measurementId,
-                          chunkMetadatas.get(0).getDataType(),
-                          curEncoding,
+                      chunkMetadatas.get(0).getDataType(),
+                      curEncoding,
                       curCompressionType));
           chunkMetadatas.forEach(
               chunkMetadata -> {
@@ -128,7 +128,7 @@ public class TsFileRewriteExcutor {
                 try {
                   // old mem chunk
                   currentChunk = reader.readMemChunk(chunkMetadata);
-                  if(!findTarget) {
+                  if (!findTarget) {
                     // skip
                     writer.writeChunk(currentChunk, chunkMetadata);
                     return;

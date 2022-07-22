@@ -64,7 +64,10 @@ public class TsFileManager {
   private boolean allowCompaction = true;
   private AtomicLong currentCompactionTaskSerialId = new AtomicLong(0);
 
-  /** TsFile rewrite lock: controls operations that need to rewrite TsFiles, such as merging, altering encoding and compression methods */
+  /**
+   * TsFile rewrite lock: controls operations that need to rewrite TsFiles, such as merging,
+   * altering encoding and compression methods
+   */
   private final ReentrantLock rewriteLock = new ReentrantLock(true);
 
   public TsFileManager(String storageGroupName, String dataRegionId, String storageGroupDir) {

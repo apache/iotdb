@@ -32,7 +32,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
-/** Alteringlogger records the progress of modifying the encoding compression method in the form of text lines in the file "alter.log". */
+/**
+ * Alteringlogger records the progress of modifying the encoding compression method in the form of
+ * text lines in the file "alter.log".
+ */
 public class AlertingLogger implements AutoCloseable {
 
   public static final String ALTERING_LOG_NAME = "alter.log";
@@ -56,16 +59,21 @@ public class AlertingLogger implements AutoCloseable {
     logStream.close();
   }
 
-  public void logHeader(PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType, Set<Long> timePartitions) throws IOException {
+  public void logHeader(
+      PartialPath fullPath,
+      TSEncoding curEncoding,
+      CompressionType curCompressionType,
+      Set<Long> timePartitions)
+      throws IOException {
 
-    if(fullPath == null || curEncoding == null || curCompressionType == null) {
+    if (fullPath == null || curEncoding == null || curCompressionType == null) {
       throw new IOException("alter params is null");
     }
     logStream.write(fullPath.getFullPath());
     logStream.write(curEncoding.serialize());
     logStream.write(curCompressionType.serialize());
     logStream.newLine();
-    for (long timePartition: timePartitions){
+    for (long timePartition : timePartitions) {
       logStream.write(Long.toString(timePartition));
       logStream.newLine();
     }
@@ -74,15 +82,21 @@ public class AlertingLogger implements AutoCloseable {
     logStream.flush();
   }
 
-  public void startTimePartition(List<TsFileResource> selectedFiles, long timePartition, boolean isSeq) throws IOException {
-    if(selectedFiles == null || selectedFiles.isEmpty()) {
+  public void startTimePartition(
+      List<TsFileResource> selectedFiles, long timePartition, boolean isSeq) throws IOException {
+    if (selectedFiles == null || selectedFiles.isEmpty()) {
       throw new IOException("selectedFiles is null or empty");
     }
-    logStream.write(FLAG_TIME_PARTITION_START + TsFileIdentifier.INFO_SEPARATOR + timePartition + TsFileIdentifier.INFO_SEPARATOR + (isSeq ? FLAG_SEQ : FLAG_UNSEQ));
+    logStream.write(
+        FLAG_TIME_PARTITION_START
+            + TsFileIdentifier.INFO_SEPARATOR
+            + timePartition
+            + TsFileIdentifier.INFO_SEPARATOR
+            + (isSeq ? FLAG_SEQ : FLAG_UNSEQ));
     logStream.newLine();
     for (TsFileResource tsFileResource : selectedFiles) {
       logStream.write(
-              FLAG_INIT_SELECTED_FILE
+          FLAG_INIT_SELECTED_FILE
               + TsFileIdentifier.INFO_SEPARATOR
               + TsFileIdentifier.getFileIdentifierFromFilePath(
                       tsFileResource.getTsFile().getAbsolutePath())
@@ -93,15 +107,14 @@ public class AlertingLogger implements AutoCloseable {
   }
 
   public void doneFile(TsFileResource file) throws IOException {
-    if(file == null) {
+    if (file == null) {
       throw new IOException("file is null");
     }
     logStream.write(
-            FLAG_DONE
-                    + TsFileIdentifier.INFO_SEPARATOR
-                    + TsFileIdentifier.getFileIdentifierFromFilePath(
-                            file.getTsFile().getAbsolutePath())
-                    .toString());
+        FLAG_DONE
+            + TsFileIdentifier.INFO_SEPARATOR
+            + TsFileIdentifier.getFileIdentifierFromFilePath(file.getTsFile().getAbsolutePath())
+                .toString());
     logStream.newLine();
     logStream.flush();
   }
@@ -119,7 +132,7 @@ public class AlertingLogger implements AutoCloseable {
     File dataRegionDir = new File(directory);
     if (dataRegionDir.exists()) {
       File[] files = dataRegionDir.listFiles((dir, name) -> name.equals(ALTERING_LOG_NAME));
-      if(files == null || files.length == 0) {
+      if (files == null || files.length == 0) {
         return null;
       }
       return files[0];
