@@ -18,10 +18,6 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
-
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
@@ -30,18 +26,23 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
-import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.compareTimeSeries;
+import static org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil.compareTimeSeries;
 
-// collect all last query result in the same data region and sort them according to the time-series's alphabetical order
+// collect all last query result in the same data region and sort them according to the
+// time-series's alphabetical order
 public class LastQuerySortOperator implements ProcessOperator {
 
-  private static final int MAX_DETECT_COUNT = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+  private static final int MAX_DETECT_COUNT =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
 
   // we must make sure that data in cachedTsBlock has already been sorted
   // values that have last cache
@@ -68,7 +69,11 @@ public class LastQuerySortOperator implements ProcessOperator {
   // used to cache previous TsBlock get from children
   private TsBlock previousTsBlock;
 
-  public LastQuerySortOperator(OperatorContext operatorContext, TsBlock cachedTsBlock, List<UpdateLastCacheOperator> children, Comparator<Binary> timeSeriesComparator) {
+  public LastQuerySortOperator(
+      OperatorContext operatorContext,
+      TsBlock cachedTsBlock,
+      List<UpdateLastCacheOperator> children,
+      Comparator<Binary> timeSeriesComparator) {
     this.cachedTsBlock = cachedTsBlock;
     this.cachedTsBlockSize = cachedTsBlock.getPositionCount();
     this.operatorContext = operatorContext;
@@ -104,7 +109,8 @@ public class LastQuerySortOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    // we have consumed up data from children Operator, just return all remaining cached data in cachedTsBlock, tsBlockBuilder and previousTsBlock
+    // we have consumed up data from children Operator, just return all remaining cached data in
+    // cachedTsBlock, tsBlockBuilder and previousTsBlock
     if (currentIndex >= inputOperatorsCount) {
       while (previousTsBlock != null) {
         if (canUseDataFromCachedTsBlock(previousTsBlock)) {
@@ -124,14 +130,15 @@ public class LastQuerySortOperator implements ProcessOperator {
       return res;
     }
 
-
     // start stopwatch
     long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
     long start = System.nanoTime();
 
     int endIndex = getEndIndex();
 
-    while ((System.nanoTime() - start < maxRuntime) && (currentIndex < endIndex || previousTsBlock != null) && !tsBlockBuilder.isFull()) {
+    while ((System.nanoTime() - start < maxRuntime)
+        && (currentIndex < endIndex || previousTsBlock != null)
+        && !tsBlockBuilder.isFull()) {
       if (previousTsBlock != null) {
         if (canUseDataFromCachedTsBlock(previousTsBlock)) {
           LastQueryUtil.appendLastValue(tsBlockBuilder, cachedTsBlock, cachedTsBlockRowIndex++);
@@ -164,7 +171,10 @@ public class LastQuerySortOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return currentIndex < inputOperatorsCount || cachedTsBlockRowIndex < cachedTsBlockSize || !tsBlockBuilder.isEmpty() || previousTsBlock != null;
+    return currentIndex < inputOperatorsCount
+        || cachedTsBlockRowIndex < cachedTsBlockSize
+        || !tsBlockBuilder.isEmpty()
+        || previousTsBlock != null;
   }
 
   @Override
@@ -185,6 +195,8 @@ public class LastQuerySortOperator implements ProcessOperator {
   }
 
   private boolean canUseDataFromCachedTsBlock(TsBlock tsBlock) {
-    return cachedTsBlockRowIndex < cachedTsBlockSize && compareTimeSeries(cachedTsBlock, cachedTsBlockRowIndex, tsBlock, 0, timeSeriesComparator) < 0;
+    return cachedTsBlockRowIndex < cachedTsBlockSize
+        && compareTimeSeries(cachedTsBlock, cachedTsBlockRowIndex, tsBlock, 0, timeSeriesComparator)
+            < 0;
   }
 }

@@ -36,10 +36,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -230,8 +230,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public PlanNode visitLastQueryScan(LastQueryScanNode node, DistributionPlanContext context) {
-    LastQueryMergeNode mergeNode =
-        new LastQueryMergeNode(
+    LastQueryNode mergeNode =
+        new LastQueryNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.getPartitionTimeFilter(),
             new OrderByParameter());
@@ -241,8 +241,8 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   @Override
   public PlanNode visitAlignedLastQueryScan(
       AlignedLastQueryScanNode node, DistributionPlanContext context) {
-    LastQueryMergeNode mergeNode =
-        new LastQueryMergeNode(
+    LastQueryNode mergeNode =
+        new LastQueryNode(
             context.queryContext.getQueryId().genPlanNodeId(),
             node.getPartitionTimeFilter(),
             new OrderByParameter());
@@ -370,7 +370,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   }
 
   @Override
-  public PlanNode visitLastQueryMerge(LastQueryMergeNode node, DistributionPlanContext context) {
+  public PlanNode visitLastQuery(LastQueryNode node, DistributionPlanContext context) {
     // For last query, we need to keep every FI's root node is LastQueryMergeNode. So we
     // force every region group have a parent node even if there is only 1 child for it.
     context.setForceAddParent(true);

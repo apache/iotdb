@@ -18,16 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
-import org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,11 +34,11 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 
-
 // collect all last query result in the same data region and there is no order guarantee
 public class LastQueryOperator implements ProcessOperator {
 
-  private static final int MAX_DETECT_COUNT = TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+  private static final int MAX_DETECT_COUNT =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
 
   private final OperatorContext operatorContext;
 
@@ -51,8 +50,10 @@ public class LastQueryOperator implements ProcessOperator {
 
   private TsBlockBuilder tsBlockBuilder;
 
-
-  public LastQueryOperator(OperatorContext operatorContext, List<UpdateLastCacheOperator> children, TsBlockBuilder builder) {
+  public LastQueryOperator(
+      OperatorContext operatorContext,
+      List<UpdateLastCacheOperator> children,
+      TsBlockBuilder builder) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.inputOperatorsCount = children.size();
@@ -85,7 +86,8 @@ public class LastQueryOperator implements ProcessOperator {
   @Override
   public TsBlock next() {
 
-    // we have consumed up data from children Operator, just return all remaining cached data in tsBlockBuilder
+    // we have consumed up data from children Operator, just return all remaining cached data in
+    // tsBlockBuilder
     if (currentIndex >= inputOperatorsCount) {
       return tsBlockBuilder.build();
     }
@@ -96,7 +98,9 @@ public class LastQueryOperator implements ProcessOperator {
 
     int endIndex = getEndIndex();
 
-    while ((System.nanoTime() - start < maxRuntime) && (currentIndex < endIndex) && !tsBlockBuilder.isFull()) {
+    while ((System.nanoTime() - start < maxRuntime)
+        && (currentIndex < endIndex)
+        && !tsBlockBuilder.isFull()) {
       if (children.get(currentIndex).hasNext()) {
         TsBlock tsBlock = children.get(currentIndex).next();
         if (tsBlock == null) {

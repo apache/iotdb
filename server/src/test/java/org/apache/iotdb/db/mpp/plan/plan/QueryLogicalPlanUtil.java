@@ -36,10 +36,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -140,8 +140,8 @@ public class QueryLogicalPlanUtil {
         new LastQueryScanNode(
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2")));
 
-    LastQueryMergeNode lastQueryMergeNode =
-        new LastQueryMergeNode(
+    LastQueryNode lastQueryNode =
+        new LastQueryNode(
             queryId.genPlanNodeId(),
             sourceNodeList,
             TimeFilter.gt(100),
@@ -149,7 +149,7 @@ public class QueryLogicalPlanUtil {
                 Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC))));
 
     querySQLs.add(sql);
-    sqlToPlanMap.put(sql, lastQueryMergeNode);
+    sqlToPlanMap.put(sql, lastQueryNode);
   }
 
   /* Simple Query */

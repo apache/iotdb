@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQuerySortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
@@ -50,6 +51,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -60,9 +62,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class LastQueryOperatorTest {
+public class LastQuerySortOperatorTest {
 
-  private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.LastQueryOperatorTest";
+  private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.LastQuerySortOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
   private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
@@ -170,17 +172,18 @@ public class LastQueryOperatorTest {
               null,
               false);
 
-      LastQueryOperator lastQueryOperator =
-          new LastQueryOperator(
+      LastQuerySortOperator lastQuerySortOperator =
+          new LastQuerySortOperator(
               fragmentInstanceContext.getOperatorContexts().get(4),
+              LastQueryUtil.createTsBlockBuilder().build(),
               ImmutableList.of(updateLastCacheOperator1, updateLastCacheOperator2),
-              LastQueryUtil.createTsBlockBuilder());
+              Comparator.naturalOrder());
 
       int count = 0;
-      while (!lastQueryOperator.isFinished()) {
-        assertTrue(lastQueryOperator.isBlocked().isDone());
-        assertTrue(lastQueryOperator.hasNext());
-        TsBlock result = lastQueryOperator.next();
+      while (!lastQuerySortOperator.isFinished()) {
+        assertTrue(lastQuerySortOperator.isBlocked().isDone());
+        assertTrue(lastQuerySortOperator.hasNext());
+        TsBlock result = lastQuerySortOperator.next();
         if (result == null) {
           continue;
         }
@@ -292,24 +295,25 @@ public class LastQueryOperatorTest {
       TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(6);
 
       LastQueryUtil.appendLastValue(
-          builder, 499, SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor2", "10499", "INT32");
+          builder, 499, SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor4", "10499", "INT32");
       LastQueryUtil.appendLastValue(
           builder, 499, SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor3", "10499", "INT32");
       LastQueryUtil.appendLastValue(
-          builder, 499, SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor4", "10499", "INT32");
+          builder, 499, SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor2", "10499", "INT32");
 
-      LastQueryOperator lastQueryOperator =
-          new LastQueryOperator(
+      LastQuerySortOperator lastQuerySortOperator =
+          new LastQuerySortOperator(
               fragmentInstanceContext.getOperatorContexts().get(4),
-              ImmutableList.of(updateLastCacheOperator1, updateLastCacheOperator2),
-              builder);
+              builder.build(),
+              ImmutableList.of(updateLastCacheOperator2, updateLastCacheOperator1),
+              Comparator.reverseOrder());
 
       int count = 0;
-      int[] suffix = new int[] {2, 3, 4, 0, 1};
-      while (!lastQueryOperator.isFinished()) {
-        assertTrue(lastQueryOperator.isBlocked().isDone());
-        assertTrue(lastQueryOperator.hasNext());
-        TsBlock result = lastQueryOperator.next();
+      int[] suffix = new int[] {4, 3, 2, 1, 0};
+      while (!lastQuerySortOperator.isFinished()) {
+        assertTrue(lastQuerySortOperator.isBlocked().isDone());
+        assertTrue(lastQuerySortOperator.hasNext());
+        TsBlock result = lastQuerySortOperator.next();
         if (result == null) {
           continue;
         }

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator;
+package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
@@ -55,6 +55,10 @@ public class LastQueryUtil {
         ImmutableList.of(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
   }
 
+  public static Binary getTimeSeries(TsBlock tsBlock, int index) {
+    return tsBlock.getColumn(0).getBinary(index);
+  }
+
   public static void appendLastValue(
       TsBlockBuilder builder, long lastTime, String fullPath, String lastValue, String dataType) {
     // Time
@@ -68,6 +72,18 @@ public class LastQueryUtil {
     builder.declarePosition();
   }
 
+  public static void appendLastValue(
+      TsBlockBuilder builder, long lastTime, Binary fullPath, String lastValue, String dataType) {
+    // Time
+    builder.getTimeColumnBuilder().writeLong(lastTime);
+    // timeseries
+    builder.getColumnBuilder(0).writeBinary(fullPath);
+    // value
+    builder.getColumnBuilder(1).writeBinary(new Binary(lastValue));
+    // dataType
+    builder.getColumnBuilder(2).writeBinary(new Binary(dataType));
+    builder.declarePosition();
+  }
 
   public static void appendLastValue(TsBlockBuilder builder, TsBlock tsBlock) {
     if (tsBlock.isEmpty()) {
@@ -99,7 +115,8 @@ public class LastQueryUtil {
     builder.declarePosition();
   }
 
-  public static int compareTimeSeries(TsBlock a, int indexA, TsBlock b, int indexB, Comparator<Binary> comparator) {
+  public static int compareTimeSeries(
+      TsBlock a, int indexA, TsBlock b, int indexB, Comparator<Binary> comparator) {
     return comparator.compare(a.getColumn(0).getBinary(indexA), b.getColumn(0).getBinary(indexB));
   }
 
