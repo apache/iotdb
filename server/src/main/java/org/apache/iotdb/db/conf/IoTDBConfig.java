@@ -516,7 +516,7 @@ public class IoTDBConfig {
   private long cacheFileReaderClearPeriod = 100000;
 
   /** the max executing time of query in ms. Unit: millisecond */
-  private int queryTimeoutThreshold = 60000;
+  private long queryTimeoutThreshold = 60000;
 
   /** the max time to live of a session in ms. Unit: millisecond */
   private int sessionTimeoutThreshold = 0;
@@ -1489,11 +1489,11 @@ public class IoTDBConfig {
     this.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
   }
 
-  public int getQueryTimeoutThreshold() {
+  public long getQueryTimeoutThreshold() {
     return queryTimeoutThreshold;
   }
 
-  public void setQueryTimeoutThreshold(int queryTimeoutThreshold) {
+  public void setQueryTimeoutThreshold(long queryTimeoutThreshold) {
     this.queryTimeoutThreshold = queryTimeoutThreshold;
   }
 

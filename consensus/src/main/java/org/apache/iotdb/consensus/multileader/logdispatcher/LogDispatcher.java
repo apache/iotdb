@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
@@ -337,7 +338,9 @@ public class LogDispatcher {
         IndexedConsensusRequest data = walEntryiterator.next();
         currentIndex = data.getSearchIndex();
         iteratorIndex = currentIndex;
-        logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
+        for (IConsensusRequest innerRequest : data.getRequests()) {
+          logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), true));
+        }
         if (currentIndex == maxIndex - 1) {
           break;
         }
@@ -347,7 +350,9 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, List<TLogBatch> logBatches) {
-      logBatches.add(new TLogBatch(request.serializeToByteBuffer()));
+      for (IConsensusRequest innerRequest : request.getRequests()) {
+        logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), false));
+      }
     }
   }
 }

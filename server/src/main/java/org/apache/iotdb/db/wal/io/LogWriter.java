@@ -39,11 +39,10 @@ import java.nio.channels.FileChannel;
 public abstract class LogWriter implements ILogWriter {
   private static final Logger logger = LoggerFactory.getLogger(LogWriter.class);
 
-  private final File logFile;
-  private final FileOutputStream logStream;
-  private final FileChannel logChannel;
-
-  private long size;
+  protected final File logFile;
+  protected final FileOutputStream logStream;
+  protected final FileChannel logChannel;
+  protected long size;
 
   public LogWriter(File logFile) throws FileNotFoundException {
     this.logFile = logFile;

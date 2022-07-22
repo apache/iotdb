@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.collect.ImmutableList;
@@ -46,7 +46,7 @@ public class TransformNode extends ProcessNode {
   protected final boolean keepNull;
   protected final ZoneId zoneId;
 
-  protected final OrderBy scanOrder;
+  protected final Ordering scanOrder;
 
   private List<String> outputColumnNames;
 
@@ -56,7 +56,7 @@ public class TransformNode extends ProcessNode {
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id);
     this.childPlanNode = childPlanNode;
     this.outputExpressions = outputExpressions;
@@ -70,7 +70,7 @@ public class TransformNode extends ProcessNode {
       Expression[] outputExpressions,
       boolean keepNull,
       ZoneId zoneId,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id);
     this.outputExpressions = outputExpressions;
     this.keepNull = keepNull;
@@ -146,7 +146,7 @@ public class TransformNode extends ProcessNode {
     }
     boolean keepNull = ReadWriteIOUtils.readBool(byteBuffer);
     ZoneId zoneId = ZoneId.of(Objects.requireNonNull(ReadWriteIOUtils.readString(byteBuffer)));
-    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new TransformNode(planNodeId, outputExpressions, keepNull, zoneId, scanOrder);
   }
@@ -163,7 +163,7 @@ public class TransformNode extends ProcessNode {
     return zoneId;
   }
 
-  public OrderBy getScanOrder() {
+  public Ordering getScanOrder() {
     return scanOrder;
   }
 

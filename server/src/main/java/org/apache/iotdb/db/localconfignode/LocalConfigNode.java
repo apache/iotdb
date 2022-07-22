@@ -1199,7 +1199,7 @@ public class LocalConfigNode {
     List<String> rolePrivilegesList = new ArrayList<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
       if (authorStatement.getNodeName().getFullPath().equals("")
-          || AuthUtils.pathBelongsTo(
+          || AuthUtils.pathOrBelongsTo(
               authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
         rolePrivilegesList.add(pathPrivilege.toString());
       }
@@ -1231,7 +1231,7 @@ public class LocalConfigNode {
       List<String> rolePrivileges = new ArrayList<>();
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
         if (authorStatement.getNodeName().getFullPath().equals("")
-            || AuthUtils.pathBelongsTo(
+            || AuthUtils.pathOrBelongsTo(
                 authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
           rolePrivileges.add("");
           userPrivilegesList.add(pathPrivilege.toString());
@@ -1244,7 +1244,7 @@ public class LocalConfigNode {
         }
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
           if (authorStatement.getNodeName().getFullPath().equals("")
-              || AuthUtils.pathBelongsTo(
+              || AuthUtils.pathOrBelongsTo(
                   authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
             rolePrivileges.add(roleN);
             userPrivilegesList.add(pathPrivilege.toString());

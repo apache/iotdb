@@ -81,7 +81,8 @@ public class ConfigNode implements ConfigNodeMBean {
       initConfigManager();
       // Set up internal services
       setUpInternalServices();
-
+      // Add some Metrics for configManager
+      configManager.addMetrics();
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         setUpRPCService();
@@ -143,8 +144,6 @@ public class ConfigNode implements ConfigNodeMBean {
       }
       System.exit(-1);
     }
-    configManager.addMetrics();
-
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 

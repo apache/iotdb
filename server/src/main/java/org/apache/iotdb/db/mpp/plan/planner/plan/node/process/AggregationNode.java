@@ -24,7 +24,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -55,13 +55,13 @@ public class AggregationNode extends MultiChildNode {
   // Its value will be null if there is no `group by time` clause.
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
 
-  protected OrderBy scanOrder;
+  protected Ordering scanOrder;
 
   public AggregationNode(
       PlanNodeId id,
       List<AggregationDescriptor> aggregationDescriptorList,
       @Nullable GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id, new ArrayList<>());
     this.aggregationDescriptorList = getDeduplicatedDescriptors(aggregationDescriptorList);
     this.groupByTimeParameter = groupByTimeParameter;
@@ -73,7 +73,7 @@ public class AggregationNode extends MultiChildNode {
       List<PlanNode> children,
       List<AggregationDescriptor> aggregationDescriptorList,
       @Nullable GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     this(id, aggregationDescriptorList, groupByTimeParameter, scanOrder);
     this.children = children;
   }
@@ -87,7 +87,7 @@ public class AggregationNode extends MultiChildNode {
     return groupByTimeParameter;
   }
 
-  public OrderBy getScanOrder() {
+  public Ordering getScanOrder() {
     return scanOrder;
   }
 
@@ -173,7 +173,7 @@ public class AggregationNode extends MultiChildNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new AggregationNode(
         planNodeId, aggregationDescriptorList, groupByTimeParameter, scanOrder);

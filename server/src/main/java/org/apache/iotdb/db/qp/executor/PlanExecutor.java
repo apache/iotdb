@@ -163,7 +163,7 @@ import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
-import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -1516,7 +1516,7 @@ public class PlanExecutor implements IPlanExecutor {
         logger.info(
             "try to split the tsFile={} du to it spans multi partitions",
             tsFileResource.getTsFile().getPath());
-        TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
+        TsFileSplitByPartitionTool.rewriteTsFile(tsFileResource, splitResources);
         tsFileResource.writeLock();
         tsFileResource.removeModFile();
         tsFileResource.writeUnlock();
@@ -2368,7 +2368,8 @@ public class PlanExecutor implements IPlanExecutor {
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (path == null
+            || AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
           RowRecord record = new RowRecord(index++);
           Field field = new Field(TSDataType.TEXT);
           field.setBinaryV(new Binary(pathPrivilege.toString()));
@@ -2410,7 +2411,8 @@ public class PlanExecutor implements IPlanExecutor {
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (path == null
+            || AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
           RowRecord record = new RowRecord(index++);
           Field roleF = new Field(TSDataType.TEXT);
           roleF.setBinaryV(new Binary(""));
@@ -2428,7 +2430,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
           if (path == null
-              || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+              || AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
             RowRecord record = new RowRecord(index++);
             Field roleF = new Field(TSDataType.TEXT);
             roleF.setBinaryV(new Binary(roleN));

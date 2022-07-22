@@ -412,9 +412,9 @@ public class IoTDBDescriptor {
       conf.setSubCompactionTaskNum(subtaskNum);
 
       conf.setQueryTimeoutThreshold(
-          Integer.parseInt(
+          Long.parseLong(
               properties.getProperty(
-                  "query_timeout_threshold", Integer.toString(conf.getQueryTimeoutThreshold()))));
+                  "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))));
 
       conf.setSessionTimeoutThreshold(
           Integer.parseInt(
