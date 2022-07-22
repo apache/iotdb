@@ -20,25 +20,33 @@
 package org.apache.iotdb.db.mpp.plan.statement.internal;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
 import java.util.List;
+import java.util.Map;
 
 public class SchemaFetchStatement extends Statement {
 
   private final PathPatternTree patternTree;
+  private final Map<Integer, Template> templateMap;
 
-  public SchemaFetchStatement(PathPatternTree patternTree) {
+  public SchemaFetchStatement(PathPatternTree patternTree, Map<Integer, Template> templateMap) {
     super();
     this.patternTree = patternTree;
+    this.templateMap = templateMap;
     setType(StatementType.FETCH_SCHEMA);
   }
 
   public PathPatternTree getPatternTree() {
     return patternTree;
+  }
+
+  public Map<Integer, Template> getTemplateMap() {
+    return templateMap;
   }
 
   @Override

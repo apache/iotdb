@@ -59,6 +59,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -89,7 +90,11 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public SchemaTree fetchSchema(PathPatternTree patternTree) {
-    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree));
+    Map<Integer, Template> templateMap = new HashMap<>();
+    for (PartialPath pattern : patternTree.getAllPathPatterns()) {
+      templateMap.putAll(templateManager.checkAllRelatedTemplate(pattern));
+    }
+    return executeSchemaFetchQuery(new SchemaFetchStatement(patternTree, templateMap));
   }
 
   private SchemaTree executeSchemaFetchQuery(SchemaFetchStatement schemaFetchStatement) {

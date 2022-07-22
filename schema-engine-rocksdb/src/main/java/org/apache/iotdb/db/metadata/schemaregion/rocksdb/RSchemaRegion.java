@@ -1131,6 +1131,12 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
+  public List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
   public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     if (plan.getKey() != null && plan.getValue() != null) {

@@ -653,7 +653,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         new ArrayList<>(analysis.getSchemaPartitionInfo().getSchemaPartitionMap().keySet());
     return planBuilder
         .planSchemaFetchMerge(storageGroupList)
-        .planSchemaFetchSource(storageGroupList, schemaFetchStatement.getPatternTree())
+        .planSchemaFetchSource(
+            storageGroupList,
+            schemaFetchStatement.getPatternTree(),
+            schemaFetchStatement.getTemplateMap())
         .getRoot();
   }
 

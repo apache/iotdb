@@ -1010,6 +1010,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
   }
 
+  @Override
+  public List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     // show timeseries with index

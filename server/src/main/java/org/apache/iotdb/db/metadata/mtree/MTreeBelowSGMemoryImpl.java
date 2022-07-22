@@ -669,6 +669,26 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
     return new Pair<>(result, offset);
   }
 
+  public List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
+    List<MeasurementPath> result = new LinkedList<>();
+    MeasurementCollector<List<PartialPath>> collector =
+        new MeasurementCollector<List<PartialPath>>(storageGroupMNode, pathPattern, store) {
+          @Override
+          protected void collectMeasurement(IMeasurementMNode node) {
+            MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
+            if (nodes[nodes.length - 1].equals(node.getAlias())) {
+              // only when user query with alias, the alias in path will be set
+              path.setMeasurementAlias(node.getAlias());
+            }
+            result.add(path);
+          }
+        };
+    collector.setTemplateMap(templateMap);
+    collector.traverse();
+    return result;
+  }
+
   /**
    * Get all measurement schema matching the given path pattern
    *

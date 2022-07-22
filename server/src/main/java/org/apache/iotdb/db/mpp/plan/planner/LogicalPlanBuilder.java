@@ -722,7 +722,9 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planSchemaFetchSource(
-      List<String> storageGroupList, PathPatternTree patternTree) {
+      List<String> storageGroupList,
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap) {
     PartialPath storageGroupPath;
     for (String storageGroup : storageGroupList) {
       try {
@@ -735,7 +737,10 @@ public class LogicalPlanBuilder {
         }
         this.root.addChild(
             new SchemaFetchScanNode(
-                context.getQueryId().genPlanNodeId(), storageGroupPath, overlappedPatternTree));
+                context.getQueryId().genPlanNodeId(),
+                storageGroupPath,
+                overlappedPatternTree,
+                templateMap));
       } catch (IllegalPathException e) {
         // definitely won't happen
         throw new RuntimeException(e);

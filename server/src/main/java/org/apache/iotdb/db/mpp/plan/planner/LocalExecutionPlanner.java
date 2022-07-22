@@ -1182,6 +1182,7 @@ public class LocalExecutionPlanner {
           node.getPlanNodeId(),
           operatorContext,
           node.getPatternTree(),
+          node.getTemplateMap(),
           ((SchemaDriverContext) (context.instanceContext.getDriverContext())).getSchemaRegion());
     }
 

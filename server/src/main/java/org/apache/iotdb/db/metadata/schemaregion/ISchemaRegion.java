@@ -253,6 +253,9 @@ public interface ISchemaRegion {
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException;
 
+  List<MeasurementPath> fetchSchema(PartialPath pathPattern, Map<Integer, Template> templateMap)
+      throws MetadataException;
+
   Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException;
 
