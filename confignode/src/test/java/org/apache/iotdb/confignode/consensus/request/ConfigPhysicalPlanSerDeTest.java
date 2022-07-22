@@ -622,10 +622,9 @@ public class ConfigPhysicalPlanSerDeTest {
   @Test
   public void GetSchemaTemplatePlanTest() throws IOException {
     GetAllSchemaTemplatePlan getAllSchemaTemplatePlan0 = new GetAllSchemaTemplatePlan();
-    GetAllSchemaTemplatePlan getAllSchemaTemplatePlan1 =
-        (GetAllSchemaTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(getAllSchemaTemplatePlan0.serializeToByteBuffer());
-    Assert.assertEquals(getAllSchemaTemplatePlan0, getAllSchemaTemplatePlan1);
+    Assert.assertTrue(
+        ConfigPhysicalPlan.Factory.create(getAllSchemaTemplatePlan0.serializeToByteBuffer())
+            instanceof GetAllSchemaTemplatePlan);
   }
 
   @Test

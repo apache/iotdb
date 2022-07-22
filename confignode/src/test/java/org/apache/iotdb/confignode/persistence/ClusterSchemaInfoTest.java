@@ -34,9 +34,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.io.FileUtils;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -55,16 +55,16 @@ public class ClusterSchemaInfoTest {
   private static ClusterSchemaInfo clusterSchemaInfo;
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
-  @BeforeClass
-  public static void setup() throws IOException {
+  @Before
+  public void setup() throws IOException {
     clusterSchemaInfo = new ClusterSchemaInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
   }
 
-  @AfterClass
-  public static void cleanup() throws IOException {
+  @After
+  public void cleanup() throws IOException {
     clusterSchemaInfo.clear();
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
@@ -113,6 +113,13 @@ public class ClusterSchemaInfoTest {
     CreateSchemaTemplatePlan createSchemaTemplatePlan =
         new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
     clusterSchemaInfo.createSchemaTemplate(createSchemaTemplatePlan);
+
+    clusterSchemaInfo.setStorageGroup(
+        new SetStorageGroupPlan(new TStorageGroupSchema("root.test1")));
+    clusterSchemaInfo.setStorageGroup(
+        new SetStorageGroupPlan(new TStorageGroupSchema("root.test2")));
+    clusterSchemaInfo.setStorageGroup(
+        new SetStorageGroupPlan(new TStorageGroupSchema("root.test3")));
 
     clusterSchemaInfo.setSchemaTemplate(
         new SetSchemaTemplatePlan(templateName, "root.test1.template"));
