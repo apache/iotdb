@@ -47,15 +47,17 @@ public class IoTDBInfluxDBIT {
   private static String password;
   private static InfluxDB influxDB;
 
-  @ClassRule
-  public static GenericContainer<?> iotdb =
-      new GenericContainer(DockerImageName.parse("apache/iotdb:influxdb-protocol-on"))
-          .withExposedPorts(8086);
+//  @ClassRule
+//  public static GenericContainer<?> iotdb =
+//      new GenericContainer(DockerImageName.parse("apache/iotdb:influxdb-protocol-on"))
+//          .withExposedPorts(8086);
 
   @BeforeClass
   public static void setUp() {
-    host = iotdb.getContainerIpAddress();
-    port = iotdb.getMappedPort(8086);
+//    host = iotdb.getContainerIpAddress();
+//    port = iotdb.getMappedPort(8086);
+    host = "127.0.0.1";
+    port = 8086;
     username = "root";
     password = "root";
     influxDB = IoTDBInfluxDBFactory.connect(host, port, username, password);
@@ -180,6 +182,7 @@ public class IoTDBInfluxDBIT {
 
     Object[] retArray = new Object[] {0, 99.0, 87.0, 186.0, 2, 12.0, 93.0, 87, 99};
     for (int i = 0; i < series.getColumns().size(); i++) {
+      System.out.println(series.getValues().get(0));
       assertEquals(retArray[i], series.getValues().get(0).get(i));
     }
   }
@@ -196,6 +199,7 @@ public class IoTDBInfluxDBIT {
     Object[] retArray =
         new Object[] {0, 2, 87, "china", 99.0, 93.0, 93.0, 87.0, 87, 12.0, 6.0, 186.0};
     for (int i = 0; i < series.getColumns().size(); i++) {
+      System.out.println(series.getValues().get(0));
       assertEquals(retArray[i], series.getValues().get(0).get(i));
     }
   }
