@@ -29,7 +29,6 @@ public class EntityCounter extends CounterTraverser {
   public EntityCounter(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
-    shouldTraverseTemplate = true;
   }
 
   @Override
