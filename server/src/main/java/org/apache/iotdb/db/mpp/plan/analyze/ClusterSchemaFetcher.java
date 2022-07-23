@@ -305,7 +305,16 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
       if (shouldActivateTemplate) {
         internalActivateTemplate(devicePath);
-        missingMeasurements.removeAll(template.getSchemaMap().keySet());
+        List<String> recheckedMissingMeasurements = new ArrayList<>();
+        List<TSDataType> recheckedMissingDataTypes = new ArrayList<>();
+        for (int i = 0; i < missingMeasurements.size(); i++) {
+          if (!template.hasSchema(missingMeasurements.get(i))) {
+            recheckedMissingMeasurements.add(missingMeasurements.get(i));
+            recheckedMissingDataTypes.add(dataTypesOfMissingMeasurement.get(i));
+          }
+        }
+        missingMeasurements = recheckedMissingMeasurements;
+        dataTypesOfMissingMeasurement = recheckedMissingDataTypes;
         for (Map.Entry<String, IMeasurementSchema> entry : template.getSchemaMap().entrySet()) {
           schemaTree.appendSingleMeasurement(
               devicePath.concatNode(entry.getKey()),
