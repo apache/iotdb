@@ -25,6 +25,7 @@ import org.apache.iotdb.db.utils.writelog.SingleFileLogReader;
 import java.io.File;
 import java.io.IOException;
 
+/** TODO refactor TriggerLogReader without org.apache.iotdb.db */
 public class TriggerLogReader implements AutoCloseable {
 
   private final SingleFileLogReader logReader;
@@ -37,8 +38,9 @@ public class TriggerLogReader implements AutoCloseable {
     return !logReader.isFileCorrupted() && logReader.hasNext();
   }
 
-  public PhysicalPlan next() {
-    return logReader.next();
+  public TriggerRegistrationInformation next() {
+    PhysicalPlan physicalPlan = logReader.next();
+    return TriggerRegistrationInformation.convertFromPhysicalPlan(physicalPlan);
   }
 
   @Override

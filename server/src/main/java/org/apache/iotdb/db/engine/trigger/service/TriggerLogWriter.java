@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.utils.writelog.ILogWriter;
 import org.apache.iotdb.db.utils.writelog.LogWriter;
 
@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 
+// TODO refactor TriggerLogWriter without PhysicalPlan
 public class TriggerLogWriter implements AutoCloseable {
 
   private final ByteBuffer logBuffer;
@@ -44,11 +45,12 @@ public class TriggerLogWriter implements AutoCloseable {
     logWriter = new LogWriter(logFile, false);
   }
 
-  public synchronized void write(PhysicalPlan plan) throws IOException {
+  public synchronized void write(TriggerRegistrationInformation registrationInformation)
+      throws IOException {
     try {
-      plan.serialize(logBuffer);
+      registrationInformation.convertToPhysicalPlan().serialize(logBuffer);
       logWriter.write(logBuffer);
-    } catch (BufferOverflowException e) {
+    } catch (BufferOverflowException | TriggerManagementException e) {
       throw new IOException(
           "Current trigger management operation plan is too large to write into buffer, please increase tlog_buffer_size.",
           e);

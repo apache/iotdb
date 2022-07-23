@@ -26,9 +26,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
+import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
@@ -36,11 +35,6 @@ import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -74,35 +68,54 @@ public class TriggerRegistrationService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerRegistrationService.class);
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
-
-  private static final String LOG_FILE_DIR =
-      IoTDBDescriptor.getInstance().getConfig().getSystemDir()
-          + File.separator
-          + "trigger"
-          + File.separator;
-  private static final String LOG_FILE_NAME = LOG_FILE_DIR + "tlog.bin";
-  private static final String TEMPORARY_LOG_FILE_NAME = LOG_FILE_NAME + ".tmp";
-
-  private static final String LIB_ROOT = IoTDBDescriptor.getInstance().getConfig().getTriggerDir();
-
+  private final String logFileDir;
+  private final String logFileName;
+  private final String temporaryLogFileName;
+  private final String libRoot;
+  private final boolean enableIDTable;
   private final ConcurrentHashMap<String, TriggerExecutor> executors;
 
   private TriggerLogWriter logWriter;
 
-  private TriggerRegistrationService() {
+  private TriggerRegistrationService(String systemDir, String libRoot, boolean enableIDTable) {
+    logFileDir = systemDir + File.separator + "trigger" + File.separator;
+    logFileName = logFileDir + "tlog.bin";
+    temporaryLogFileName = logFileName + ".tmp";
+    this.libRoot = libRoot;
+    this.enableIDTable = enableIDTable;
     executors = new ConcurrentHashMap<>();
   }
 
-  public synchronized void register(CreateTriggerPlan plan)
+  public synchronized void register(
+      String triggerName,
+      TriggerEvent event,
+      PartialPath fullPath,
+      String classPath,
+      Map<String, String> attributes)
       throws TriggerManagementException, TriggerExecutionException {
-    IMNode imNode = tryGetMNode(plan);
-    checkIfRegistered(plan, imNode);
-    tryAppendRegistrationLog(plan);
-    doRegister(plan, imNode);
+    IMNode imNode = tryGetMNode(fullPath);
+    checkIfRegistered(triggerName, classPath, imNode);
+    TriggerRegistrationInformation registrationInformation =
+        TriggerRegistrationInformation.getCreateInfo(
+            triggerName, event, fullPath, classPath, attributes);
+    tryAppendRegistrationLog(registrationInformation);
+    doRegister(registrationInformation, imNode);
   }
 
-  private void checkIfRegistered(CreateTriggerPlan plan, IMNode imNode)
+  private IMNode tryGetMNode(PartialPath fullPath) throws TriggerManagementException {
+    try {
+      IMNode imNode = IoTDB.schemaProcessor.getMNodeForTrigger(fullPath);
+      if (imNode == null) {
+        throw new TriggerManagementException(
+            String.format("Path [%s] does not exist", fullPath.getFullPath()));
+      }
+      return imNode;
+    } catch (MetadataException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private void checkIfRegistered(String triggerName, String className, IMNode imNode)
       throws TriggerManagementException {
     TriggerExecutor executor = imNode.getTriggerExecutor();
     if (executor != null) {
@@ -110,79 +123,68 @@ public class TriggerRegistrationService implements IService {
       throw new TriggerManagementException(
           String.format(
               "Failed to register trigger %s(%s), because a trigger %s(%s) has already been registered on the timeseries %s.",
-              plan.getTriggerName(),
-              plan.getClassName(),
+              triggerName,
+              className,
               information.getTriggerName(),
               information.getClassName(),
               imNode.getFullPath()));
     }
 
-    executor = executors.get(plan.getTriggerName());
+    executor = executors.get(triggerName);
     if (executor != null) {
       TriggerRegistrationInformation information = executor.getRegistrationInformation();
       throw new TriggerManagementException(
-          information.getClassName().equals(plan.getClassName())
+          information.getClassName().equals(className)
               ? String.format(
                   "Failed to register trigger %s(%s), because a trigger with the same trigger name and the class name has already been registered.",
-                  plan.getTriggerName(), plan.getClassName())
+                  triggerName, className)
               : String.format(
                   "Failed to register trigger %s(%s), because a trigger %s(%s) with the same trigger name but a different class name has already been registered.",
-                  plan.getTriggerName(),
-                  plan.getClassName(),
+                  triggerName,
+                  className,
                   information.getTriggerName(),
                   information.getClassName()));
     }
   }
 
-  private IMNode tryGetMNode(CreateTriggerPlan plan) throws TriggerManagementException {
+  private void tryAppendRegistrationLog(TriggerRegistrationInformation registrationInformation)
+      throws TriggerManagementException {
     try {
-      IMNode imNode = IoTDB.schemaProcessor.getMNodeForTrigger(plan.getFullPath());
-      if (imNode == null) {
-        throw new TriggerManagementException(
-            String.format("Path [%s] does not exist", plan.getFullPath().getFullPath()));
-      }
-      return imNode;
-    } catch (MetadataException e) {
-      throw new TriggerManagementException(e.getMessage(), e);
-    }
-  }
-
-  private void tryAppendRegistrationLog(CreateTriggerPlan plan) throws TriggerManagementException {
-    try {
-      logWriter.write(plan);
+      logWriter.write(registrationInformation);
     } catch (IOException e) {
       throw new TriggerManagementException(
           String.format(
               "Failed to append trigger management operation log when registering trigger %s(%s), because %s",
-              plan.getTriggerName(), plan.getClassName(), e));
+              registrationInformation.getTriggerName(), registrationInformation.getClassName(), e));
     }
   }
 
-  private void doRegister(CreateTriggerPlan plan, IMNode imNode)
+  private void doRegister(TriggerRegistrationInformation registrationInformation, IMNode imNode)
       throws TriggerManagementException, TriggerExecutionException {
-    TriggerRegistrationInformation information = new TriggerRegistrationInformation(plan);
     TriggerClassLoader classLoader =
-        TriggerClassLoaderManager.getInstance().register(plan.getClassName());
+        TriggerClassLoaderManager.getInstance().register(registrationInformation.getClassName());
 
     TriggerExecutor executor;
     try {
-      executor = new TriggerExecutor(information, classLoader, imNode);
+      executor = new TriggerExecutor(registrationInformation, classLoader, imNode);
       executor.onCreate();
     } catch (TriggerManagementException | TriggerExecutionException e) {
-      TriggerClassLoaderManager.getInstance().deregister(plan.getClassName());
+      TriggerClassLoaderManager.getInstance().deregister(registrationInformation.getClassName());
       throw e;
     }
 
-    executors.put(plan.getTriggerName(), executor);
+    executors.put(registrationInformation.getTriggerName(), executor);
     imNode.setTriggerExecutor(executor);
 
     // update id table
-    if (CONFIG.isEnableIDTable()) {
+    if (enableIDTable) {
       try {
         IDTable idTable =
-            IDTableManager.getInstance().getIDTable(plan.getFullPath().getDevicePath());
+            IDTableManager.getInstance()
+                .getIDTable(registrationInformation.getFullPath().getDevicePath());
         if (executor.getIMNode().isMeasurement()) {
-          idTable.registerTrigger(plan.getFullPath(), (IMeasurementMNode) imNode);
+          idTable.registerTrigger(
+              registrationInformation.getFullPath(), (IMeasurementMNode) imNode);
         }
       } catch (MetadataException e) {
         throw new TriggerManagementException(e.getMessage(), e);
@@ -190,10 +192,10 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  public synchronized void deregister(DropTriggerPlan plan) throws TriggerManagementException {
-    getTriggerExecutorWithExistenceCheck(plan.getTriggerName());
-    tryAppendDeregistrationLog(plan);
-    doDeregister(plan);
+  public synchronized void deregister(String triggerName) throws TriggerManagementException {
+    getTriggerExecutorWithExistenceCheck(triggerName);
+    tryAppendDeregistrationLog(TriggerRegistrationInformation.getDropInfo(triggerName));
+    doDeregister(triggerName);
   }
 
   private TriggerExecutor getTriggerExecutorWithExistenceCheck(String triggerName)
@@ -208,19 +210,20 @@ public class TriggerRegistrationService implements IService {
     return executor;
   }
 
-  private void tryAppendDeregistrationLog(DropTriggerPlan plan) throws TriggerManagementException {
+  private void tryAppendDeregistrationLog(TriggerRegistrationInformation registrationInformation)
+      throws TriggerManagementException {
     try {
-      logWriter.write(plan);
+      logWriter.write(registrationInformation);
     } catch (IOException e) {
       throw new TriggerManagementException(
           String.format(
               "Failed to drop trigger %s because the operation plan was failed to log: %s",
-              plan.getTriggerName(), e));
+              registrationInformation.getTriggerName(), e));
     }
   }
 
-  private void doDeregister(DropTriggerPlan plan) throws TriggerManagementException {
-    TriggerExecutor executor = executors.remove(plan.getTriggerName());
+  private void doDeregister(String triggerName) throws TriggerManagementException {
+    TriggerExecutor executor = executors.remove(triggerName);
 
     IMNode imNode = executor.getIMNode();
     try {
@@ -240,7 +243,7 @@ public class TriggerRegistrationService implements IService {
         .deregister(executor.getRegistrationInformation().getClassName());
 
     // update id table
-    if (CONFIG.isEnableIDTable()) {
+    if (enableIDTable) {
       try {
         PartialPath fullPath = executor.getIMNode().getPartialPath();
         IDTable idTable = IDTableManager.getInstance().getIDTable(fullPath.getDevicePath());
@@ -253,42 +256,42 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
-  public void activate(StartTriggerPlan plan)
+  public void activate(String triggerName)
       throws TriggerManagementException, TriggerExecutionException {
-    TriggerExecutor executor = getTriggerExecutorWithExistenceCheck(plan.getTriggerName());
+    TriggerExecutor executor = getTriggerExecutorWithExistenceCheck(triggerName);
 
     if (!executor.getRegistrationInformation().isStopped()) {
       throw new TriggerManagementException(
-          String.format("Trigger %s has already been started.", plan.getTriggerName()));
+          String.format("Trigger %s has already been started.", triggerName));
     }
 
     try {
-      logWriter.write(plan);
+      logWriter.write(TriggerRegistrationInformation.getStartInfo(triggerName));
     } catch (IOException e) {
       throw new TriggerManagementException(
           String.format(
               "Failed to append trigger management operation log when starting trigger %s, because %s",
-              plan.getTriggerName(), e));
+              triggerName, e));
     }
 
     executor.onStart();
   }
 
-  public void inactivate(StopTriggerPlan plan) throws TriggerManagementException {
-    TriggerExecutor executor = getTriggerExecutorWithExistenceCheck(plan.getTriggerName());
+  public void inactivate(String triggerName) throws TriggerManagementException {
+    TriggerExecutor executor = getTriggerExecutorWithExistenceCheck(triggerName);
 
     if (executor.getRegistrationInformation().isStopped()) {
       throw new TriggerManagementException(
-          String.format("Trigger %s has already been stopped.", plan.getTriggerName()));
+          String.format("Trigger %s has already been stopped.", triggerName));
     }
 
     try {
-      logWriter.write(plan);
+      logWriter.write(TriggerRegistrationInformation.getStopInfo(triggerName));
     } catch (IOException e) {
       throw new TriggerManagementException(
           String.format(
               "Failed to append trigger management operation log when stopping trigger %s, because %s",
-              plan.getTriggerName(), e));
+              triggerName, e));
     }
 
     try {
@@ -346,10 +349,10 @@ public class TriggerRegistrationService implements IService {
   @Override
   public void start() throws StartupException {
     try {
-      makeDirIfNecessary(LIB_ROOT);
-      makeDirIfNecessary(LOG_FILE_DIR);
+      makeDirIfNecessary(libRoot);
+      makeDirIfNecessary(logFileDir);
       doRecovery();
-      logWriter = new TriggerLogWriter(LOG_FILE_NAME);
+      logWriter = new TriggerLogWriter(logFileName);
     } catch (Exception e) {
       throw new StartupException(e);
     }
@@ -364,8 +367,8 @@ public class TriggerRegistrationService implements IService {
   }
 
   private void doRecovery() throws IOException, TriggerManagementException {
-    File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(TEMPORARY_LOG_FILE_NAME);
-    File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
+    File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(temporaryLogFileName);
+    File logFile = SystemFileFactory.INSTANCE.getFile(logFileName);
 
     if (temporaryLogFile.exists()) {
       if (logFile.exists()) {
@@ -381,50 +384,49 @@ public class TriggerRegistrationService implements IService {
   }
 
   private void doRecoveryFromLogFile(File logFile) throws IOException, TriggerManagementException {
-    for (CreateTriggerPlan createTriggerPlan : recoverCreateTriggerPlans(logFile)) {
+    for (TriggerRegistrationInformation registrationInformation :
+        recoverRegistrationInfos(logFile)) {
       try {
-        doRegister(createTriggerPlan, tryGetMNode(createTriggerPlan));
-        if (createTriggerPlan.isStopped()) {
-          executors.get(createTriggerPlan.getTriggerName()).onStop();
+        if (TriggerOperationType.CREATE == registrationInformation.getOperationType()) {
+          boolean stopped = registrationInformation.isStopped();
+          doRegister(registrationInformation, tryGetMNode(registrationInformation.getFullPath()));
+          if (stopped) {
+            executors.get(registrationInformation.getTriggerName()).onStop();
+          }
         }
       } catch (TriggerExecutionException | TriggerManagementException e) {
         LOGGER.error(
             "Failed to register the trigger {}({}) during recovering.",
-            createTriggerPlan.getTriggerName(),
-            createTriggerPlan.getClassName());
+            registrationInformation.getTriggerName(),
+            registrationInformation.getClassName());
       }
     }
   }
 
-  private Collection<CreateTriggerPlan> recoverCreateTriggerPlans(File logFile)
+  private Collection<TriggerRegistrationInformation> recoverRegistrationInfos(File logFile)
       throws IOException, TriggerManagementException {
-    Map<String, CreateTriggerPlan> recoveredCreateTriggerPlans = new HashMap<>();
+    Map<String, TriggerRegistrationInformation> recoveredTriggerRegistrationInfo = new HashMap<>();
 
     try (TriggerLogReader reader = new TriggerLogReader(logFile)) {
       while (reader.hasNext()) {
-        PhysicalPlan plan = reader.next();
-        CreateTriggerPlan createTriggerPlan;
-        switch (plan.getOperatorType()) {
-          case CREATE_TRIGGER:
-            recoveredCreateTriggerPlans.put(
-                ((CreateTriggerPlan) plan).getTriggerName(), (CreateTriggerPlan) plan);
+        TriggerRegistrationInformation registrationInformation = reader.next();
+        switch (registrationInformation.getOperationType()) {
+          case CREATE:
+            recoveredTriggerRegistrationInfo.put(
+                registrationInformation.getTriggerName(), registrationInformation);
             break;
-          case DROP_TRIGGER:
-            recoveredCreateTriggerPlans.remove(((DropTriggerPlan) plan).getTriggerName());
+          case DROP:
+            recoveredTriggerRegistrationInfo.remove(registrationInformation.getTriggerName());
             break;
-          case START_TRIGGER:
-            createTriggerPlan =
-                recoveredCreateTriggerPlans.get(((StartTriggerPlan) plan).getTriggerName());
-            if (createTriggerPlan != null) {
-              createTriggerPlan.markAsStarted();
-            }
+          case START:
+            registrationInformation =
+                recoveredTriggerRegistrationInfo.get(registrationInformation.getTriggerName());
+            registrationInformation.markAsStarted();
             break;
-          case STOP_TRIGGER:
-            createTriggerPlan =
-                recoveredCreateTriggerPlans.get(((StopTriggerPlan) plan).getTriggerName());
-            if (createTriggerPlan != null) {
-              createTriggerPlan.markAsStopped();
-            }
+          case STOP:
+            registrationInformation =
+                recoveredTriggerRegistrationInfo.get(registrationInformation.getTriggerName());
+            registrationInformation.markAsStopped();
             break;
           default:
             throw new TriggerManagementException(
@@ -432,8 +434,7 @@ public class TriggerRegistrationService implements IService {
         }
       }
     }
-
-    return recoveredCreateTriggerPlans.values();
+    return recoveredTriggerRegistrationInfo.values();
   }
 
   @Override
@@ -444,8 +445,8 @@ public class TriggerRegistrationService implements IService {
       logWriter.close();
       logWriter.deleteLogFile();
 
-      File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(TEMPORARY_LOG_FILE_NAME);
-      File logFile = SystemFileFactory.INSTANCE.getFile(LOG_FILE_NAME);
+      File temporaryLogFile = SystemFileFactory.INSTANCE.getFile(temporaryLogFileName);
+      File logFile = SystemFileFactory.INSTANCE.getFile(logFileName);
       FSFactoryProducer.getFSFactory().moveFile(temporaryLogFile, logFile);
     } catch (IOException ignored) {
       // ignored
@@ -453,12 +454,13 @@ public class TriggerRegistrationService implements IService {
   }
 
   private void writeTemporaryLogFile() throws IOException {
-    try (TriggerLogWriter temporaryLogWriter = new TriggerLogWriter(TEMPORARY_LOG_FILE_NAME)) {
+    try (TriggerLogWriter temporaryLogWriter = new TriggerLogWriter(temporaryLogFileName)) {
       for (TriggerExecutor executor : executors.values()) {
         TriggerRegistrationInformation information = executor.getRegistrationInformation();
-        temporaryLogWriter.write(information.convertToCreateTriggerPlan());
+        temporaryLogWriter.write(information);
         if (information.isStopped()) {
-          temporaryLogWriter.write(new StopTriggerPlan(information.getTriggerName()));
+          temporaryLogWriter.write(
+              TriggerRegistrationInformation.getStopInfo(information.getTriggerName()));
         }
       }
     }
@@ -467,7 +469,7 @@ public class TriggerRegistrationService implements IService {
   @TestOnly
   public void deregisterAll() throws TriggerManagementException {
     for (TriggerExecutor executor : executors.values()) {
-      deregister(new DropTriggerPlan(executor.getRegistrationInformation().getTriggerName()));
+      deregister(executor.getRegistrationInformation().getTriggerName());
     }
   }
 
@@ -491,14 +493,17 @@ public class TriggerRegistrationService implements IService {
     return executors.size();
   }
 
-  public static TriggerRegistrationService getInstance() {
-    return TriggerRegistrationService.TriggerRegistrationServiceHelper.INSTANCE;
+  private static TriggerRegistrationService INSTANCE = null;
+
+  public static TriggerRegistrationService setUpAndGetInstance(
+      String systemDir, String libRoot, boolean enableIDTable) {
+    if (INSTANCE == null) {
+      INSTANCE = new TriggerRegistrationService(systemDir, libRoot, enableIDTable);
+    }
+    return INSTANCE;
   }
 
-  private static class TriggerRegistrationServiceHelper {
-
-    private static final TriggerRegistrationService INSTANCE = new TriggerRegistrationService();
-
-    private TriggerRegistrationServiceHelper() {}
+  public static TriggerRegistrationService getInstance() {
+    return INSTANCE;
   }
 }

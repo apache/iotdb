@@ -26,7 +26,6 @@ import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,8 +105,7 @@ public class TriggerEngine {
 
     TriggerRegistrationInformation information = executor.getRegistrationInformation();
     try {
-      TriggerRegistrationService.getInstance()
-          .deregister(new DropTriggerPlan(information.getTriggerName()));
+      TriggerRegistrationService.getInstance().deregister(information.getTriggerName());
     } catch (TriggerManagementException e) {
       LOGGER.warn(
           "Failed to deregister trigger {}({}) when deleting timeseries ({}).",

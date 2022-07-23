@@ -544,7 +544,13 @@ public class IDTableTest {
 
       CreateTriggerPlan plan = (CreateTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
 
-      TriggerRegistrationService.getInstance().register(plan);
+      TriggerRegistrationService.getInstance()
+          .register(
+              plan.getTriggerName(),
+              plan.getEvent(),
+              plan.getFullPath(),
+              plan.getClassName(),
+              plan.getAttributes());
 
       TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT64};
       String[] columns = new String[2];
@@ -586,7 +592,7 @@ public class IDTableTest {
       String sql2 = "Drop trigger trigger1";
 
       DropTriggerPlan plan2 = (DropTriggerPlan) processor.parseSQLToPhysicalPlan(sql2);
-      TriggerRegistrationService.getInstance().deregister(plan2);
+      TriggerRegistrationService.getInstance().deregister(plan2.getTriggerName());
 
       idTable.getSeriesSchemas(insertRowPlan);
       assertNull(s1Node.getTriggerExecutor());

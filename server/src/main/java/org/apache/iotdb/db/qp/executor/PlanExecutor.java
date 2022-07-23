@@ -551,23 +551,29 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean operateCreateTrigger(CreateTriggerPlan plan)
       throws TriggerManagementException, TriggerExecutionException {
-    TriggerRegistrationService.getInstance().register(plan);
+    TriggerRegistrationService.getInstance()
+        .register(
+            plan.getTriggerName(),
+            plan.getEvent(),
+            plan.getFullPath(),
+            plan.getClassName(),
+            plan.getAttributes());
     return true;
   }
 
   private boolean operateDropTrigger(DropTriggerPlan plan) throws TriggerManagementException {
-    TriggerRegistrationService.getInstance().deregister(plan);
+    TriggerRegistrationService.getInstance().deregister(plan.getTriggerName());
     return true;
   }
 
   private boolean operateStartTrigger(StartTriggerPlan plan)
       throws TriggerManagementException, TriggerExecutionException {
-    TriggerRegistrationService.getInstance().activate(plan);
+    TriggerRegistrationService.getInstance().activate(plan.getTriggerName());
     return true;
   }
 
   private boolean operateStopTrigger(StopTriggerPlan plan) throws TriggerManagementException {
-    TriggerRegistrationService.getInstance().inactivate(plan);
+    TriggerRegistrationService.getInstance().inactivate(plan.getTriggerName());
     return true;
   }
 

@@ -37,7 +37,7 @@ public class TriggerClassLoader extends URLClassLoader {
 
   private final String libRoot;
 
-  TriggerClassLoader(String libRoot) throws IOException {
+  public TriggerClassLoader(String libRoot) throws IOException {
     super(new URL[0]);
     this.libRoot = libRoot;
     LOGGER.info("Trigger lib root: {}", libRoot);

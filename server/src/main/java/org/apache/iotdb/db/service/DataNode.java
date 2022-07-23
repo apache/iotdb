@@ -313,7 +313,11 @@ public class DataNode implements DataNodeMBean {
     // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
     // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
     // registerManager.register(SettleService.getINSTANCE());
-    registerManager.register(TriggerRegistrationService.getInstance());
+    registerManager.register(
+        TriggerRegistrationService.setUpAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
+            IoTDBDescriptor.getInstance().getConfig().getTriggerDir(),
+            IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()));
     registerManager.register(ContinuousQueryService.getInstance());
 
     // start reporter

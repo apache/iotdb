@@ -176,7 +176,11 @@ public class NewIoTDB implements NewIoTDBMBean {
     if (!IoTDBDescriptor.getInstance().getConfig().isMppMode()) {
       registerManager.register(SettleService.getINSTANCE());
     }
-    registerManager.register(TriggerRegistrationService.getInstance());
+    registerManager.register(
+        TriggerRegistrationService.setUpAndGetInstance(
+            IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
+            IoTDBDescriptor.getInstance().getConfig().getTriggerDir(),
+            IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()));
     registerManager.register(ContinuousQueryService.getInstance());
 
     // start reporter
