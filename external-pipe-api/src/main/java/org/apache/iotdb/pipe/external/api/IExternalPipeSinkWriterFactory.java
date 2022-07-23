@@ -48,7 +48,6 @@ public interface IExternalPipeSinkWriterFactory extends Supplier<IExternalPipeSi
    * Otherwise, the CMD will be refused with prompt info that is from Exception.getMessage();
    *
    * @param sinkParams Contains the parameters in CMD "CREATE PIPESINK ..."
-   * @return true means successful
    * @throws Exception
    */
   void validateSinkParams(Map<String, String> sinkParams) throws Exception;
