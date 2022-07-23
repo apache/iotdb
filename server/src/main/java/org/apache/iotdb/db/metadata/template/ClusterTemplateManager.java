@@ -48,7 +48,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -109,8 +108,8 @@ public class ClusterTemplateManager implements ITemplateManager {
     try {
       Template template = new Template(statement);
       req.setName(template.getName());
-      req.setSerializedTemplate(Template.template2ByteBuffer(template));
-    } catch (IOException | IllegalPathException e) {
+      req.setSerializedTemplate(template.serialize());
+    } catch (IllegalPathException e) {
       throw new RuntimeException(e);
     }
     return req;
@@ -126,22 +125,12 @@ public class ClusterTemplateManager implements ITemplateManager {
       if (tGetAllTemplatesResp.getStatus().getCode()
           == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         List<ByteBuffer> list = tGetAllTemplatesResp.getTemplateList();
-        Optional<List<ByteBuffer>> optional = Optional.ofNullable(list);
-        optional
-            .orElse(new ArrayList<>())
-            .forEach(
-                item -> {
-                  try {
-                    Template template = Template.byteBuffer2Template(item);
-                    templatesList.add(template);
-                  } catch (IOException | ClassNotFoundException e) {
-                    throw new RuntimeException(
-                        new IoTDBException(
-                            "deserialize template error.",
-                            e,
-                            TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
-                  }
-                });
+        list.forEach(
+            templateData -> {
+              Template template = new Template();
+              template.deserialize(templateData);
+              templatesList.add(template);
+            });
       } else {
         throw new RuntimeException(
             new IoTDBException(
@@ -158,15 +147,14 @@ public class ClusterTemplateManager implements ITemplateManager {
 
   @Override
   public Template getTemplate(String name) {
-    Template template = null;
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       TGetTemplateResp resp = configNodeClient.getTemplate(name);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         byte[] templateBytes = resp.getTemplate();
-        if (templateBytes != null && templateBytes.length > 0) {
-          template = Template.byteBuffer2Template(ByteBuffer.wrap(templateBytes));
-        }
+        Template template = new Template();
+        template.deserialize(ByteBuffer.wrap(templateBytes));
+        return template;
       } else {
         throw new RuntimeException(
             new IoTDBException(resp.status.getMessage(), resp.status.getCode()));
@@ -176,7 +164,6 @@ public class ClusterTemplateManager implements ITemplateManager {
           new IoTDBException(
               "get template info error.", TSStatusCode.UNDEFINED_TEMPLATE.getStatusCode()));
     }
-    return template;
   }
 
   @Override

@@ -19,13 +19,9 @@
 
 package org.apache.iotdb.confignode.persistence.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.io.IOUtils;
@@ -61,7 +57,7 @@ public class TemplateTable {
 
   private final String snapshotFileName = "template_info.bin";
 
-  public TemplateTable() throws IOException {
+  public TemplateTable() {
     templateReadWriteLock = new ReentrantReadWriteLock();
     templateIdGenerator = new AtomicInteger(0);
   }
@@ -88,27 +84,17 @@ public class TemplateTable {
     }
   }
 
-  public TSStatus createTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
+  public void createTemplate(Template template) throws MetadataException {
     try {
       templateReadWriteLock.writeLock().lock();
-      Template template =
-          Template.byteBuffer2Template(ByteBuffer.wrap(createSchemaTemplatePlan.getTemplate()));
       Template temp = this.templateMap.get(template.getName());
-      if (temp != null && template.getName().equalsIgnoreCase(temp.getName())) {
+      if (temp != null) {
         LOGGER.error(
             "Failed to create template, because template name {} is exists", template.getName());
-        return RpcUtils.getStatus(
-            TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode(),
-            String.format(
-                "Failed to create template, because template name %s is exists",
-                template.getName()));
+        throw new MetadataException("Duplicated template name: " + temp.getName());
       }
       template.setId(templateIdGenerator.getAndIncrement());
       this.templateMap.put(template.getName(), template);
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (IOException | ClassNotFoundException e) {
-      LOGGER.warn("Error to create template", e);
-      return new TSStatus(TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode());
     } finally {
       templateReadWriteLock.writeLock().unlock();
     }

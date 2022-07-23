@@ -20,7 +20,6 @@
 package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -29,7 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -65,8 +63,7 @@ public class TemplateTableTest {
   }
 
   @Test
-  public void testSnapshot()
-      throws IOException, TException, MetadataException, ClassNotFoundException {
+  public void testSnapshot() throws IOException, MetadataException {
     int n = 2;
     String templateName = "template_test";
 
@@ -82,9 +79,7 @@ public class TemplateTableTest {
       }
       Template template = new Template(statement);
       templates.add(template);
-      CreateSchemaTemplatePlan createSchemaTemplatePlan =
-          new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
-      templateTable.createTemplate(createSchemaTemplatePlan);
+      templateTable.createTemplate(template);
     }
 
     templateTable.processTakeSnapshot(snapshotDir);

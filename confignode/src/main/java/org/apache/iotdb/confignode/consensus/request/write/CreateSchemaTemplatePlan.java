@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.consensus.request.write;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -31,32 +32,38 @@ import java.util.Objects;
 
 public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
 
-  private byte[] template;
+  private byte[] templateData;
 
   public CreateSchemaTemplatePlan() {
     super(ConfigPhysicalPlanType.CreateSchemaTemplate);
   }
 
-  public CreateSchemaTemplatePlan(byte[] template) {
+  public CreateSchemaTemplatePlan(byte[] templateData) {
     this();
-    this.template = template;
+    this.templateData = templateData;
   }
 
-  public byte[] getTemplate() {
+  public byte[] getTemplateData() {
+    return templateData;
+  }
+
+  public Template getTemplate() {
+    Template template = new Template();
+    template.deserialize(ByteBuffer.wrap(templateData));
     return template;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(ConfigPhysicalPlanType.CreateSchemaTemplate.ordinal());
-    stream.writeInt(template.length);
-    stream.write(template);
+    stream.writeInt(templateData.length);
+    stream.write(templateData);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int length = ReadWriteIOUtils.readInt(buffer);
-    this.template = ReadWriteIOUtils.readBytes(buffer, length);
+    this.templateData = ReadWriteIOUtils.readBytes(buffer, length);
   }
 
   @Override
@@ -64,11 +71,11 @@ public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     CreateSchemaTemplatePlan that = (CreateSchemaTemplatePlan) o;
-    return Arrays.equals(that.template, template);
+    return Arrays.equals(that.templateData, templateData);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(template);
+    return Objects.hash(templateData);
   }
 }

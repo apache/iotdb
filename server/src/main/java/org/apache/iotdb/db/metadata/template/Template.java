@@ -42,11 +42,8 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -702,6 +699,16 @@ public class Template implements Serializable {
     }
   }
 
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      serialize(outputStream);
+    } catch (IOException ignored) {
+
+    }
+    return ByteBuffer.wrap(outputStream.toByteArray());
+  }
+
   public void deserialize(ByteBuffer buffer) {
     id = ReadWriteIOUtils.readInt(buffer);
     name = ReadWriteIOUtils.readString(buffer);
@@ -750,20 +757,5 @@ public class Template implements Serializable {
    */
   public void setRehash(int code) {
     rehashCode = code;
-  }
-
-  public static ByteBuffer template2ByteBuffer(Template template) throws IOException {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    ObjectOutputStream dataOutputStream = new ObjectOutputStream(byteArrayOutputStream);
-    dataOutputStream.writeObject(template);
-    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-  }
-
-  public static Template byteBuffer2Template(ByteBuffer byteBuffer)
-      throws IOException, ClassNotFoundException {
-    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteBuffer.array());
-    ObjectInputStream ois = new ObjectInputStream(byteArrayInputStream);
-    Template template = (Template) ois.readObject();
-    return template;
   }
 }

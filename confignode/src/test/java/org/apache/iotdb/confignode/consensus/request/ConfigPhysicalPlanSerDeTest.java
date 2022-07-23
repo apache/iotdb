@@ -597,7 +597,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void CreateSchemaTemplatePlanTest() throws IOException, IllegalPathException {
     Template template = new Template(newCreateSchemaTemplateStatement("template_name"));
     CreateSchemaTemplatePlan createSchemaTemplatePlan0 =
-        new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
+        new CreateSchemaTemplatePlan(template.serialize().array());
     CreateSchemaTemplatePlan createSchemaTemplatePlan1 =
         (CreateSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(createSchemaTemplatePlan0.serializeToByteBuffer());

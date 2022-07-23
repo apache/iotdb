@@ -111,7 +111,7 @@ public class ClusterSchemaInfoTest {
     String templateName = "template_name";
     Template template = new Template(newCreateSchemaTemplateStatement(templateName));
     CreateSchemaTemplatePlan createSchemaTemplatePlan =
-        new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
+        new CreateSchemaTemplatePlan(template.serialize().array());
     clusterSchemaInfo.createSchemaTemplate(createSchemaTemplatePlan);
 
     clusterSchemaInfo.setStorageGroup(

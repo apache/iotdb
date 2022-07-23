@@ -338,12 +338,8 @@ public class ClusterSchemaManager {
         templateResp
             .getTemplateList()
             .forEach(
-                item -> {
-                  try {
-                    list.add(Template.template2ByteBuffer(item));
-                  } catch (IOException e) {
-                    e.printStackTrace();
-                  }
+                template -> {
+                  list.add(template.serialize());
                 });
         resp.setTemplateList(list);
       }
@@ -362,18 +358,13 @@ public class ClusterSchemaManager {
     TemplateInfoResp templateResp =
         (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
     TGetTemplateResp resp = new TGetTemplateResp();
-    try {
-      if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (templateResp.getTemplateList() != null && !templateResp.getTemplateList().isEmpty()) {
-          ByteBuffer byteBuffer =
-              Template.template2ByteBuffer(templateResp.getTemplateList().get(0));
-          resp.setTemplate(byteBuffer);
-        }
+    if (templateResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (templateResp.getTemplateList() != null && !templateResp.getTemplateList().isEmpty()) {
+        ByteBuffer byteBuffer = templateResp.getTemplateList().get(0).serialize();
+        resp.setTemplate(byteBuffer);
       }
-      resp.setStatus(templateResp.getStatus());
-    } catch (IOException e) {
-      resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
     }
+    resp.setStatus(templateResp.getStatus());
     return resp;
   }
 
