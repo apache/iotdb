@@ -58,6 +58,7 @@ public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfi
     try {
       switch (state) {
         case REMOVE_CONFIG_NODE_PREPARE:
+          env.broadCastTheLatestConfigNodeGroup();
           setNextState(RemoveConfigNodeState.REMOVE_PEER);
           break;
         case REMOVE_PEER:
