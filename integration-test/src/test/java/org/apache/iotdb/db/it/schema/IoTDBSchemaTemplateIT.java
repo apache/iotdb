@@ -272,8 +272,8 @@ public class IoTDBSchemaTemplateIT {
     Set<String> expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t1")) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("paths")));
+        expectedResultSet.remove(resultSet.getString("paths"));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -282,8 +282,8 @@ public class IoTDBSchemaTemplateIT {
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.executeQuery("SHOW PATHS SET SCHEMA TEMPLATE t2")) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("paths")));
+        expectedResultSet.remove(resultSet.getString("paths"));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
@@ -292,8 +292,8 @@ public class IoTDBSchemaTemplateIT {
     expectedResultSet = new HashSet<>(Arrays.asList(expectedResult));
     try (ResultSet resultSet = statement.executeQuery("SHOW PATHS USING SCHEMA TEMPLATE t1")) {
       while (resultSet.next()) {
-        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("child paths")));
-        expectedResultSet.remove(resultSet.getString("child paths"));
+        Assert.assertTrue(expectedResultSet.contains(resultSet.getString("paths")));
+        expectedResultSet.remove(resultSet.getString("paths"));
       }
     }
     Assert.assertEquals(0, expectedResultSet.size());
