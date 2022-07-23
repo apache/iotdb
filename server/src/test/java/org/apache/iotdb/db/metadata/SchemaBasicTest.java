@@ -1841,8 +1841,8 @@ public abstract class SchemaBasicTest {
       Assert.assertEquals(1, schemaProcessor.getDevicesNum(new PartialPath("root.laptop.d2")));
       Assert.assertEquals(2, schemaProcessor.getDevicesNum(new PartialPath("root.laptop.*")));
       Assert.assertEquals(2, schemaProcessor.getDevicesNum(new PartialPath("root.laptop.**")));
-      Assert.assertEquals(1, schemaProcessor.getDevicesNum(new PartialPath("root.tree.**")));
-      Assert.assertEquals(3, schemaProcessor.getDevicesNum(new PartialPath("root.**")));
+      Assert.assertEquals(3, schemaProcessor.getDevicesNum(new PartialPath("root.tree.**")));
+      Assert.assertEquals(5, schemaProcessor.getDevicesNum(new PartialPath("root.**")));
 
       schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.a.s3"),
