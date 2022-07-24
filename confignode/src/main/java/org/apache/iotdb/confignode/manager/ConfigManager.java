@@ -874,8 +874,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
     TShowDataNodesResp resp = new TShowDataNodesResp();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      List<TDataNodeInfo> registeredDataNodesInfoList =
-          nodeManager.getRegisteredDataNodesInfoList();
+      List<TDataNodeInfo> registeredDataNodesInfoList = nodeManager.getRegisteredDataNodeInfoList();
 
       // Map<DataNodeId, DataRegionNum>
       Map<Integer, AtomicInteger> dataRegionNumMap = new HashMap<>();

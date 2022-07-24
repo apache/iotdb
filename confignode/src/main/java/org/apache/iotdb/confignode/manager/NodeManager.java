@@ -216,8 +216,8 @@ public class NodeManager {
     return dataNodeLocations;
   }
 
-  public List<TDataNodesInfo> getRegisteredDataNodesInfoList() {
-    List<TDataNodesInfo> dataNodesLocations = new ArrayList<>();
+  public List<TDataNodeInfo> getRegisteredDataNodeInfoList() {
+    List<TDataNodeInfo> dataNodeInfoList = new ArrayList<>();
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes(-1);
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
@@ -231,10 +231,10 @@ public class NodeManager {
             info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
             info.setDataRegionNum(0);
             info.setSchemaRegionNum(0);
-            dataNodesLocations.add(info);
+            dataNodeInfoList.add(info);
           });
     }
-    return dataNodesLocations;
+    return dataNodeInfoList;
   }
   /**
    * Provides ConfigNodeGroup information for the newly registered ConfigNode
