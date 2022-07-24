@@ -403,6 +403,8 @@ service IConfigNodeRPCService {
 
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
 
+  common.TSStatus removeConsensusGroup(common.TConfigNodeLocation configNodeLocation)
+
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 
   /* UDF */

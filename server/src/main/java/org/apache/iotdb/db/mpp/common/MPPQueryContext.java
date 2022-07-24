@@ -30,6 +30,8 @@ public class MPPQueryContext {
   private QueryId queryId;
   private SessionInfo session;
   private QueryType queryType = QueryType.READ;
+  private long timeOut;
+  private long startTime;
 
   private TEndPoint localDataBlockEndpoint;
   private TEndPoint localInternalEndpoint;
@@ -53,12 +55,38 @@ public class MPPQueryContext {
     this.resultNodeContext = new ResultNodeContext(queryId);
   }
 
+  public MPPQueryContext(
+      String sql,
+      QueryId queryId,
+      SessionInfo session,
+      TEndPoint localDataBlockEndpoint,
+      TEndPoint localInternalEndpoint,
+      long timeOut,
+      long startTime) {
+    this.sql = sql;
+    this.queryId = queryId;
+    this.session = session;
+    this.localDataBlockEndpoint = localDataBlockEndpoint;
+    this.localInternalEndpoint = localInternalEndpoint;
+    this.resultNodeContext = new ResultNodeContext(queryId);
+    this.timeOut = timeOut;
+    this.startTime = startTime;
+  }
+
   public QueryId getQueryId() {
     return queryId;
   }
 
   public QueryType getQueryType() {
     return queryType;
+  }
+
+  public long getTimeOut() {
+    return timeOut;
+  }
+
+  public void setTimeOut(long timeOut) {
+    this.timeOut = timeOut;
   }
 
   public void setQueryType(QueryType queryType) {
@@ -79,5 +107,13 @@ public class MPPQueryContext {
 
   public SessionInfo getSession() {
     return session;
+  }
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
   }
 }

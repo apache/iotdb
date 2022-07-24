@@ -22,6 +22,7 @@ package org.apache.iotdb.consensus.common.request;
 import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 
 /** only used for multi-leader consensus. */
@@ -32,26 +33,26 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   private final long safelyDeletedSearchIndex;
 
-  private final IConsensusRequest request;
+  private final List<IConsensusRequest> requests;
 
-  public IndexedConsensusRequest(long searchIndex, IConsensusRequest request) {
-    this(searchIndex, ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX, request);
+  public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
+    this(searchIndex, ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX, requests);
   }
 
   public IndexedConsensusRequest(
-      long searchIndex, long safelyDeletedSearchIndex, IConsensusRequest request) {
+      long searchIndex, long safelyDeletedSearchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
     this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
-    this.request = request;
+    this.requests = requests;
   }
 
   @Override
   public ByteBuffer serializeToByteBuffer() {
-    return request.serializeToByteBuffer();
+    throw new UnsupportedOperationException();
   }
 
-  public IConsensusRequest getRequest() {
-    return request;
+  public List<IConsensusRequest> getRequests() {
+    return requests;
   }
 
   public long getSearchIndex() {
@@ -73,11 +74,11 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     IndexedConsensusRequest that = (IndexedConsensusRequest) o;
     return searchIndex == that.searchIndex
         && safelyDeletedSearchIndex == that.safelyDeletedSearchIndex
-        && Objects.equals(request, that.request);
+        && requests.equals(that.requests);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(searchIndex, safelyDeletedSearchIndex, request);
+    return Objects.hash(searchIndex, safelyDeletedSearchIndex, requests);
   }
 }

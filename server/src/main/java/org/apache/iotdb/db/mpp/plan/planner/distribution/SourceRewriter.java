@@ -52,6 +52,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SourceNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -96,7 +97,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     DeviceMergeNode deviceMergeNode =
         new DeviceMergeNode(
             context.queryContext.getQueryId().genPlanNodeId(),
-            node.getMergeOrders(),
+            node.getMergeOrderParameter(),
             node.getDevices());
 
     // Step 2: Iterate all partition and create DeviceViewNode for each region
@@ -112,7 +113,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       DeviceViewNode regionDeviceViewNode =
           new DeviceViewNode(
               context.queryContext.getQueryId().genPlanNodeId(),
-              node.getMergeOrders(),
+              node.getMergeOrderParameter(),
               node.getOutputColumnNames(),
               node.getDeviceToMeasurementIndexesMap());
       for (int i = 0; i < devices.size(); i++) {
@@ -231,7 +232,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
   public PlanNode visitLastQueryScan(LastQueryScanNode node, DistributionPlanContext context) {
     LastQueryMergeNode mergeNode =
         new LastQueryMergeNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getPartitionTimeFilter());
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getPartitionTimeFilter(),
+            new OrderByParameter());
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -240,7 +243,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
       AlignedLastQueryScanNode node, DistributionPlanContext context) {
     LastQueryMergeNode mergeNode =
         new LastQueryMergeNode(
-            context.queryContext.getQueryId().genPlanNodeId(), node.getPartitionTimeFilter());
+            context.queryContext.getQueryId().genPlanNodeId(),
+            node.getPartitionTimeFilter(),
+            new OrderByParameter());
     return processRawSeriesScan(node, context, mergeNode);
   }
 
@@ -526,6 +531,9 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
 
   @Override
   public PlanNode visitGroupByLevel(GroupByLevelNode root, DistributionPlanContext context) {
+    if (shouldUseNaiveAggregation(root)) {
+      return defaultRewrite(root, context);
+    }
     // Firstly, we build the tree structure for GroupByLevelNode
     List<SeriesAggregationSourceNode> sources = splitAggregationSourceByPartition(root, context);
     Map<TRegionReplicaSet, List<SeriesAggregationSourceNode>> sourceGroup =
@@ -547,6 +555,22 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // Then, we calculate the attributes for GroupByLevelNode in each level
     calculateGroupByLevelNodeAttributes(newRoot, 0);
     return newRoot;
+  }
+
+  // If the Aggregation Query contains value filter, we need to use the naive query plan
+  // for it. That is, do the raw data query and then do the aggregation operation.
+  // Currently, the method to judge whether the query should use naive query plan is whether
+  // AggregationNode is contained in the PlanNode tree of logical plan.
+  private boolean shouldUseNaiveAggregation(PlanNode root) {
+    if (root instanceof AggregationNode) {
+      return true;
+    }
+    for (PlanNode child : root.getChildren()) {
+      if (shouldUseNaiveAggregation(child)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private GroupByLevelNode groupSourcesForGroupByLevelWithSlidingWindow(

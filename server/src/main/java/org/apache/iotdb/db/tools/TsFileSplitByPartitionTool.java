@@ -67,9 +67,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class TsFileRewriteTool implements AutoCloseable {
+public class TsFileSplitByPartitionTool implements AutoCloseable {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileRewriteTool.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsFileSplitByPartitionTool.class);
 
   protected TsFileSequenceReader reader;
   protected File oldTsFile;
@@ -98,7 +98,7 @@ public class TsFileRewriteTool implements AutoCloseable {
    *
    * @throws IOException If some I/O error occurs
    */
-  public TsFileRewriteTool(TsFileResource resourceToBeRewritten) throws IOException {
+  public TsFileSplitByPartitionTool(TsFileResource resourceToBeRewritten) throws IOException {
     oldTsFileResource = resourceToBeRewritten;
     oldTsFile = resourceToBeRewritten.getTsFile();
     String file = oldTsFile.getAbsolutePath();
@@ -110,7 +110,7 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
   }
 
-  public TsFileRewriteTool(TsFileResource resourceToBeRewritten, boolean needReaderForV2)
+  public TsFileSplitByPartitionTool(TsFileResource resourceToBeRewritten, boolean needReaderForV2)
       throws IOException {
     oldTsFileResource = resourceToBeRewritten;
     oldTsFile = resourceToBeRewritten.getTsFile();
@@ -136,7 +136,8 @@ public class TsFileRewriteTool implements AutoCloseable {
   public static void rewriteTsFile(
       TsFileResource resourceToBeRewritten, List<TsFileResource> rewrittenResources)
       throws IOException, WriteProcessException, IllegalPathException {
-    try (TsFileRewriteTool rewriteTool = new TsFileRewriteTool(resourceToBeRewritten)) {
+    try (TsFileSplitByPartitionTool rewriteTool =
+        new TsFileSplitByPartitionTool(resourceToBeRewritten)) {
       rewriteTool.parseAndRewriteFile(rewrittenResources);
     }
   }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.thrift.impl;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -41,6 +42,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
+import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -92,10 +94,12 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
+import com.google.common.collect.ImmutableList;
 import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -122,26 +126,63 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSendFragmentInstanceResp sendFragmentInstance(TSendFragmentInstanceReq req) {
     LOGGER.info("receive FragmentInstance to group[{}]", req.getConsensusGroupId());
-    ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
-    ConsensusReadResponse readResponse;
+
+    // deserialize ConsensusGroupId
+    ConsensusGroupId groupId;
+    try {
+      groupId = ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
+    } catch (Throwable t) {
+      LOGGER.error("Deserialize ConsensusGroupId failed. ", t);
+      TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+      resp.setMessage("Deserialize ConsensusGroupId failed: " + t.getMessage());
+      return resp;
+    }
+
     // We deserialize here instead of the underlying state machine because parallelism is possible
     // here but not at the underlying state machine
-    FragmentInstance fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
-    if (groupId instanceof DataRegionId) {
-      readResponse = DataRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
-    } else {
-      readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
+    FragmentInstance fragmentInstance;
+    try {
+      fragmentInstance = FragmentInstance.deserializeFrom(req.fragmentInstance.body);
+    } catch (Throwable t) {
+      LOGGER.error("Deserialize FragmentInstance failed.", t);
+      TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+      resp.setMessage("Deserialize FragmentInstance failed: " + t.getMessage());
+      return resp;
     }
-    if (!readResponse.isSuccess()) {
+
+    // execute fragment instance in state machine
+    ConsensusReadResponse readResponse;
+    try (SetThreadName threadName = new SetThreadName(fragmentInstance.getId().getFullId())) {
+      if (groupId instanceof DataRegionId) {
+        readResponse = DataRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
+      } else {
+        readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, fragmentInstance);
+      }
+      TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp();
+      if (!readResponse.isSuccess()) {
+        LOGGER.error(
+            "Execute FragmentInstance in ConsensusGroup {} failed.",
+            req.getConsensusGroupId(),
+            readResponse.getException());
+        resp.setAccepted(false);
+        resp.setMessage(
+            "Execute FragmentInstance failed: "
+                + (readResponse.getException() == null
+                    ? ""
+                    : readResponse.getException().getMessage()));
+      } else {
+        FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse.getDataset();
+        resp.setAccepted(!info.getState().isFailed());
+        resp.setMessage(info.getMessage());
+      }
+      return resp;
+    } catch (Throwable t) {
       LOGGER.error(
-          "execute FragmentInstance in ConsensusGroup {} failed because {}",
-          req.getConsensusGroupId(),
-          readResponse.getException());
-      return new TSendFragmentInstanceResp(false);
+          "Execute FragmentInstance in ConsensusGroup {} failed.", req.getConsensusGroupId(), t);
+      TSendFragmentInstanceResp resp = new TSendFragmentInstanceResp(false);
+      resp.setMessage("Execute FragmentInstance failed: " + t.getMessage());
+      return resp;
     }
-    FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse.getDataset();
-    return new TSendFragmentInstanceResp(!info.getState().isFailed());
   }
 
   @Override
@@ -208,11 +249,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TFragmentInstanceStateResp fetchFragmentInstanceState(TFetchFragmentInstanceStateReq req) {
     FragmentInstanceId instanceId = FragmentInstanceId.fromThrift(req.fragmentInstanceId);
-    try (SetThreadName threadName = new SetThreadName(instanceId.getFullId())) {
-      FragmentInstanceInfo info = FragmentInstanceManager.getInstance().getInstanceInfo(instanceId);
-      return info != null
-          ? new TFragmentInstanceStateResp(info.getState().toString())
-          : new TFragmentInstanceStateResp(FragmentInstanceState.NO_SUCH_INSTANCE.toString());
+    FragmentInstanceInfo info = FragmentInstanceManager.getInstance().getInstanceInfo(instanceId);
+    if (info != null) {
+      TFragmentInstanceStateResp resp = new TFragmentInstanceStateResp(info.getState().toString());
+      resp.setFailedMessages(ImmutableList.of(info.getMessage()));
+      return resp;
+    } else {
+      return new TFragmentInstanceStateResp(FragmentInstanceState.NO_SUCH_INSTANCE.toString());
     }
   }
 
@@ -441,6 +484,20 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
     return StorageEngineV2.getInstance().setTTL(req);
+  }
+
+  @Override
+  public TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req) {
+    List<TConfigNodeLocation> configNodeLocations = req.getConfigNodeLocations();
+    if (configNodeLocations != null) {
+      ConfigNodeInfo.getInstance()
+          .updateConfigNodeList(
+              configNodeLocations
+                  .parallelStream()
+                  .map(TConfigNodeLocation::getInternalEndPoint)
+                  .collect(Collectors.toList()));
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override

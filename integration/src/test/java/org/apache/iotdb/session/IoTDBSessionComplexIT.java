@@ -593,7 +593,7 @@ public class IoTDBSessionComplexIT {
     paths.add("root.sg1.d2.s1");
     paths.add("root.sg1.d2.s2");
 
-    SessionDataSet sessionDataSet = session.executeRawDataQuery(paths, 450L, 600L);
+    SessionDataSet sessionDataSet = session.executeRawDataQuery(paths, 450L, 600L, 60000);
     sessionDataSet.setFetchSize(1024);
 
     int count = 0;

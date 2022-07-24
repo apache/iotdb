@@ -36,7 +36,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.merge.SingleColumnMerg
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -136,7 +136,7 @@ public class TimeJoinOperatorTest {
           new TimeJoinOperator(
               fragmentInstanceContext.getOperatorContexts().get(2),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2),
-              OrderBy.TIMESTAMP_ASC,
+              Ordering.ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32),
               Arrays.asList(
                   new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
@@ -251,7 +251,7 @@ public class TimeJoinOperatorTest {
           new TimeJoinOperator(
               fragmentInstanceContext.getOperatorContexts().get(3),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2, seriesScanOperator3),
-              OrderBy.TIMESTAMP_ASC,
+              Ordering.ASC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32),
               Arrays.asList(
                   new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),
@@ -369,7 +369,7 @@ public class TimeJoinOperatorTest {
           new TimeJoinOperator(
               fragmentInstanceContext.getOperatorContexts().get(3),
               Arrays.asList(seriesScanOperator1, seriesScanOperator2, seriesScanOperator3),
-              OrderBy.TIMESTAMP_DESC,
+              Ordering.DESC,
               Arrays.asList(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32),
               Arrays.asList(
                   new SingleColumnMerger(new InputLocation(0, 0), new DescTimeComparator()),

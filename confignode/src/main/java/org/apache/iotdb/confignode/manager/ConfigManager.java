@@ -144,8 +144,6 @@ public class ConfigManager implements IManager {
   /** UDF */
   private final UDFManager udfManager;
 
-  private final DataNodeRemoveManager dataNodeRemoveManager;
-
   public ConfigManager() throws IOException {
     // Build the persistence module
     NodeInfo nodeInfo = new NodeInfo();
@@ -169,7 +167,6 @@ public class ConfigManager implements IManager {
     this.procedureManager = new ProcedureManager(this, procedureInfo);
     this.udfManager = new UDFManager(this, udfInfo);
     this.loadManager = new LoadManager(this);
-    this.dataNodeRemoveManager = new DataNodeRemoveManager(this);
     this.consensusManager = new ConsensusManager(this, stateMachine);
   }
 
@@ -177,7 +174,6 @@ public class ConfigManager implements IManager {
     consensusManager.close();
     partitionManager.getRegionCleaner().shutdown();
     procedureManager.shiftExecutor(false);
-    dataNodeRemoveManager.stop();
   }
 
   @Override
@@ -808,11 +804,15 @@ public class ConfigManager implements IManager {
   @Override
   public TSStatus removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
     TSStatus status = confirmLeader();
+
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return nodeManager.removeConfigNode(removeConfigNodePlan);
-    } else {
-      return status;
+      status = nodeManager.checkConfigNode(removeConfigNodePlan);
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        procedureManager.removeConfigNode(removeConfigNodePlan);
+      }
     }
+
+    return status;
   }
 
   @Override
@@ -855,11 +855,6 @@ public class ConfigManager implements IManager {
   @Override
   public UDFManager getUDFManager() {
     return udfManager;
-  }
-
-  @Override
-  public DataNodeRemoveManager getDataNodeRemoveManager() {
-    return dataNodeRemoveManager;
   }
 
   @Override
@@ -927,6 +922,7 @@ public class ConfigManager implements IManager {
     }
   }
 
+  @Override
   public ProcedureManager getProcedureManager() {
     return procedureManager;
   }

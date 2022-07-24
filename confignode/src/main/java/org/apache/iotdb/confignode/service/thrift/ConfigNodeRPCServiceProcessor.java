@@ -28,8 +28,6 @@ import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
-import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConstant;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
@@ -178,7 +176,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) throws TException {
-    configManager.getDataNodeRemoveManager().reportRegionMigrateResult(req);
+    configManager.getProcedureManager().reportRegionMigrateResult(req);
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -450,30 +448,19 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus removeConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
     RemoveConfigNodePlan removeConfigNodePlan = new RemoveConfigNodePlan(configNodeLocation);
-
     TSStatus status = configManager.removeConfigNode(removeConfigNodePlan);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      status =
-          (TSStatus)
-              SyncConfigNodeClientPool.getInstance()
-                  .sendSyncRequestToConfigNodeWithRetry(
-                      configNodeLocation.getInternalEndPoint(),
-                      configNodeLocation,
-                      ConfigNodeRequestType.STOP_CONFIG_NODE);
-    }
-
     // Print log to record the ConfigNode that performs the RemoveConfigNodeRequest
     LOGGER.info("Execute RemoveConfigNodeRequest {} with result {}", configNodeLocation, status);
 
     return status;
   }
 
-  /** For leader to stop ConfigNode */
   @Override
-  public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) throws TException {
+  public TSStatus removeConsensusGroup(TConfigNodeLocation configNodeLocation) throws TException {
     if (!configManager.getNodeManager().getRegisteredConfigNodes().contains(configNodeLocation)) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("Stop ConfigNode failed because the ConfigNode not in current Cluster.");
+          .setMessage(
+              "remove ConsensusGroup failed because the ConfigNode not in current Cluster.");
     }
 
     ConsensusGroupId groupId = configManager.getConsensusManager().getConsensusGroupId();
@@ -481,9 +468,20 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         configManager.getConsensusManager().getConsensusImpl().removeConsensusGroup(groupId);
     if (!resp.isSuccess()) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("Stop ConfigNode failed because remove ConsensusGroup failed.");
+          .setMessage("remove ConsensusGroup failed because remove ConsensusGroup failed.");
     }
+    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
+        .setMessage("remove ConsensusGroup success.");
+  }
 
+  /**
+   * stop config node
+   *
+   * @param configNodeLocation
+   * @return
+   */
+  @Override
+  public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
             () -> {
               try {

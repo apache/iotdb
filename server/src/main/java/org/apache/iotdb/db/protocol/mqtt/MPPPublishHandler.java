@@ -21,6 +21,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterSchemaFetcher;
@@ -54,6 +55,7 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(MPPPublishHandler.class);
 
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
   private long sessionId;
   private final PayloadFormatter payloadFormat;
@@ -146,7 +148,8 @@ public class MPPPublishHandler extends AbstractInterceptHandler {
                       SESSION_MANAGER.getSessionInfo(sessionId),
                       "",
                       partitionFetcher,
-                      schemaFetcher);
+                      schemaFetcher,
+                      config.getQueryTimeoutThreshold());
           tsStatus = result.status;
         }
       } catch (Exception e) {

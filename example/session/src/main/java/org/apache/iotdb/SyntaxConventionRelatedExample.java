@@ -109,8 +109,10 @@ public class SyntaxConventionRelatedExample {
 
     long startTime = 1L;
     long endTime = 100L;
+    long timeOut = 60000;
 
-    try (SessionDataSet dataSet1 = session.executeRawDataQuery(paths, startTime, endTime)) {
+    try (SessionDataSet dataSet1 =
+        session.executeRawDataQuery(paths, startTime, endTime, timeOut)) {
 
       System.out.println(dataSet1.getColumnNames());
       dataSet1.setFetchSize(1024);
