@@ -27,8 +27,6 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
-import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -41,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
+import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
@@ -54,14 +53,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /** NodeManager manages cluster node addition and removal requests */
@@ -139,8 +134,11 @@ public class NodeManager {
    */
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     LOGGER.info("Node manager start to remove DataNode {}", removeDataNodePlan);
+
+    DataNodeRemoveHandler dataNodeRemoveHandler =
+        new DataNodeRemoveHandler((ConfigManager) configManager);
     DataNodeToStatusResp preCheckStatus =
-        configManager.getDataNodeRemoveManager().checkRemoveDataNodeRequest(removeDataNodePlan);
+        dataNodeRemoveHandler.checkRemoveDataNodeRequest(removeDataNodePlan);
     if (preCheckStatus.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       LOGGER.error(
           "the remove Data Node request check failed.  req: {}, check result: {}",
@@ -151,7 +149,7 @@ public class NodeManager {
     // if add request to queue, then return to client
     DataNodeToStatusResp dataSet = new DataNodeToStatusResp();
     boolean registerSucceed =
-        configManager.getDataNodeRemoveManager().registerRequest(removeDataNodePlan);
+        configManager.getProcedureManager().removeDataNode(removeDataNodePlan);
     TSStatus status;
     if (registerSucceed) {
       status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -176,6 +174,7 @@ public class NodeManager {
   public DataNodeConfigurationResp getDataNodeConfiguration(GetDataNodeConfigurationPlan req) {
     return (DataNodeConfigurationResp) getConsensusManager().read(req).getDataset();
   }
+
   /**
    * Only leader use this interface
    *
@@ -205,6 +204,18 @@ public class NodeManager {
     return nodeInfo.getRegisteredDataNodes(dataNodeId);
   }
 
+  public Map<Integer, TDataNodeLocation> getRegisteredDataNodeLocations(int dataNodeId) {
+    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    nodeInfo
+        .getRegisteredDataNodes(dataNodeId)
+        .forEach(
+            dataNodeConfiguration ->
+                dataNodeLocations.put(
+                    dataNodeConfiguration.getLocation().getDataNodeId(),
+                    dataNodeConfiguration.getLocation()));
+    return dataNodeLocations;
+  }
+
   public List<TDataNodesInfo> getRegisteredDataNodesInfoList() {
     List<TDataNodesInfo> dataNodesLocations = new ArrayList<>();
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes(-1);
@@ -227,25 +238,6 @@ public class NodeManager {
     }
     return dataNodesLocations;
   }
-
-  /**
-   * get data node remove request queue
-   *
-   * @return LinkedBlockingQueue
-   */
-  public LinkedBlockingQueue<RemoveDataNodePlan> getDataNodeRemoveRequestQueue() {
-    return nodeInfo.getDataNodeRemoveRequestQueue();
-  }
-
-  /**
-   * get head data node remove request
-   *
-   * @return RemoveDataNodeReq
-   */
-  public RemoveDataNodePlan getHeadRequestForDataNodeRemove() {
-    return nodeInfo.getHeadRequestForDataNodeRemove();
-  }
-
   /**
    * Provides ConfigNodeGroup information for the newly registered ConfigNode
    *
@@ -441,28 +433,13 @@ public class NodeManager {
   }
 
   public List<TSStatus> flush(TFlushReq req) {
-    List<TDataNodeConfiguration> registeredDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(req.dataNodeId);
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
     List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
-    CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
-    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
-    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
-    AtomicInteger index = new AtomicInteger();
-    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
-      handlerMap.put(
-          index.get(),
-          new FlushHandler(
-              dataNodeInfo.getLocation(),
-              countDownLatch,
-              DataNodeRequestType.FLUSH,
-              dataNodeResponseStatus,
-              dataNodeLocations,
-              index.get()));
-      dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
-    }
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(req, handlerMap, dataNodeLocations);
+        .sendAsyncRequestToDataNodeWithRetry(
+            req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 

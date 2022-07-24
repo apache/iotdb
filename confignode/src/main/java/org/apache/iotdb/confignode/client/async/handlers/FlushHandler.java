@@ -39,13 +39,12 @@ public class FlushHandler extends AbstractRetryHandler implements AsyncMethodCal
   private final List<TSStatus> dataNodeResponseStatus;
 
   public FlushHandler(
-      TDataNodeLocation targetDataNode,
       CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
-      List<TSStatus> dataNodeResponseStatus,
-      Map<Integer, TDataNodeLocation> dataNodeLocations,
-      int index) {
-    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
+      TDataNodeLocation targetDataNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      List<TSStatus> dataNodeResponseStatus) {
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
     this.dataNodeResponseStatus = dataNodeResponseStatus;
   }
 
@@ -53,10 +52,13 @@ public class FlushHandler extends AbstractRetryHandler implements AsyncMethodCal
   public void onComplete(TSStatus response) {
     if (response.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeResponseStatus.add(response);
-      dataNodeLocations.remove(index);
+      dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully Flush on DataNode: {}", targetDataNode);
     } else {
-      LOGGER.error("Failed to Flush on DataNode {}, {}", dataNodeLocations, response);
+      LOGGER.error(
+          "Failed to Flush on DataNode {}, {}",
+          dataNodeLocationMap.get(targetDataNode.getDataNodeId()),
+          response);
     }
     countDownLatch.countDown();
   }

@@ -36,18 +36,17 @@ public class UpdateRegionRouteMapHandler extends AbstractRetryHandler
   private static final Logger LOGGER = LoggerFactory.getLogger(UpdateRegionRouteMapHandler.class);
 
   public UpdateRegionRouteMapHandler(
-      TDataNodeLocation targetDataNode,
       CountDownLatch countDownLatch,
       DataNodeRequestType requestType,
-      Map<Integer, TDataNodeLocation> dataNodeLocations,
-      int index) {
-    super(countDownLatch, requestType, targetDataNode, dataNodeLocations, index);
+      TDataNodeLocation targetDataNode,
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
+    super(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
   }
 
   @Override
   public void onComplete(TSStatus status) {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      getDataNodeLocations().remove(targetDataNode);
+      dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
       LOGGER.info("Successfully update the RegionRouteMap on DataNode: {}", targetDataNode);
     } else {
       LOGGER.error("Update RegionRouteMap on DataNode: {} failed", targetDataNode);

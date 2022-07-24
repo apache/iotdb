@@ -42,7 +42,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -364,7 +364,7 @@ public class RawDataAggregationOperatorTest {
         new TimeJoinOperator(
             fragmentInstanceContext.getOperatorContexts().get(2),
             Arrays.asList(seriesScanOperator1, seriesScanOperator2),
-            OrderBy.TIMESTAMP_ASC,
+            Ordering.ASC,
             Arrays.asList(TSDataType.INT32, TSDataType.INT32),
             Arrays.asList(
                 new SingleColumnMerger(new InputLocation(0, 0), new AscTimeComparator()),

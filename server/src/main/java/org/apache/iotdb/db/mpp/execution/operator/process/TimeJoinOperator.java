@@ -22,7 +22,7 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.ColumnMerger;
 import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -82,7 +82,7 @@ public class TimeJoinOperator implements ProcessOperator {
   public TimeJoinOperator(
       OperatorContext operatorContext,
       List<Operator> children,
-      OrderBy mergeOrder,
+      Ordering mergeOrder,
       List<TSDataType> dataTypes,
       List<ColumnMerger> mergers,
       TimeComparator comparator) {
@@ -96,8 +96,7 @@ public class TimeJoinOperator implements ProcessOperator {
     this.inputIndex = new int[this.inputOperatorsCount];
     this.shadowInputIndex = new int[this.inputOperatorsCount];
     this.noMoreTsBlocks = new boolean[this.inputOperatorsCount];
-    this.timeSelector =
-        new TimeSelector(this.inputOperatorsCount << 1, OrderBy.TIMESTAMP_ASC == mergeOrder);
+    this.timeSelector = new TimeSelector(this.inputOperatorsCount << 1, Ordering.ASC == mergeOrder);
     this.outputColumnCount = dataTypes.size();
     this.dataTypes = dataTypes;
     this.tsBlockBuilder = new TsBlockBuilder(dataTypes);

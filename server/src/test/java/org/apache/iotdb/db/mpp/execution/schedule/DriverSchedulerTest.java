@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.mpp.execution.schedule;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -39,6 +40,8 @@ import java.util.List;
 public class DriverSchedulerTest {
 
   private final DriverScheduler manager = DriverScheduler.getInstance();
+  private static final long QUERY_TIMEOUT_MS =
+      IoTDBDescriptor.getInstance().getConfig().getQueryTimeoutThreshold();
 
   @After
   public void tearDown() {
@@ -63,7 +66,7 @@ public class DriverSchedulerTest {
     IDriver mockDriver2 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver2.getInfo()).thenReturn(instanceId2);
     List<IDriver> instances = Arrays.asList(mockDriver1, mockDriver2);
-    manager.submitDrivers(queryId, instances);
+    manager.submitDrivers(queryId, instances, QUERY_TIMEOUT_MS);
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(1, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
@@ -83,7 +86,7 @@ public class DriverSchedulerTest {
     IDriver mockDriver3 = Mockito.mock(IDriver.class);
     FragmentInstanceId instanceId3 = new FragmentInstanceId(fragmentId, "inst-2");
     Mockito.when(mockDriver3.getInfo()).thenReturn(instanceId3);
-    manager.submitDrivers(queryId, Collections.singletonList(mockDriver3));
+    manager.submitDrivers(queryId, Collections.singletonList(mockDriver3), QUERY_TIMEOUT_MS);
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(1, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId));
@@ -101,7 +104,7 @@ public class DriverSchedulerTest {
     FragmentInstanceId instanceId4 = new FragmentInstanceId(fragmentId2, "inst-0");
     IDriver mockDriver4 = Mockito.mock(IDriver.class);
     Mockito.when(mockDriver4.getInfo()).thenReturn(instanceId4);
-    manager.submitDrivers(queryId2, Collections.singletonList(mockDriver4));
+    manager.submitDrivers(queryId2, Collections.singletonList(mockDriver4), QUERY_TIMEOUT_MS);
     Assert.assertTrue(manager.getBlockedTasks().isEmpty());
     Assert.assertEquals(2, manager.getQueryMap().size());
     Assert.assertTrue(manager.getQueryMap().containsKey(queryId2));
