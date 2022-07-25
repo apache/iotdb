@@ -186,7 +186,7 @@
         <javax.annotation-api.version>1.3.2</javax.annotation-api.version>
         <log4j.version>1.2.19</log4j.version>
         <lz4-java.version>1.8.0</lz4-java.version>
-        <aircompressor.version>0.20</aircompressor.version>
+        <aircompressor.version>0.21</aircompressor.version>
         <jackson-mapper-asl.version>1.9.13</jackson-mapper-asl.version>
         <jaxb-runtime.version>3.0.2</jaxb-runtime.version>
         <mockito-core.version>2.23.0</mockito-core.version>
