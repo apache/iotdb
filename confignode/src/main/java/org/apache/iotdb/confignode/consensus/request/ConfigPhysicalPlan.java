@@ -19,6 +19,7 @@
 package org.apache.iotdb.confignode.consensus.request;
 
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -212,6 +213,9 @@ public abstract class ConfigPhysicalPlan implements IConsensusRequest {
           break;
         case GetSchemaTemplate:
           req = new GetSchemaTemplatePlan();
+          break;
+        case CheckTemplateSettable:
+          req = new CheckTemplateSettablePlan();
           break;
         case GetPathsSetTemplate:
           req = new GetPathsSetTemplatePlan();

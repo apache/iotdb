@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
+import org.apache.iotdb.confignode.consensus.request.read.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
@@ -148,8 +149,9 @@ public class ConfigPlanExecutor {
       case GetAllSchemaTemplate:
         return clusterSchemaInfo.getAllTemplates();
       case GetSchemaTemplate:
-        GetSchemaTemplatePlan plan = (GetSchemaTemplatePlan) req;
-        return clusterSchemaInfo.getTemplate(plan.getTemplateName());
+        return clusterSchemaInfo.getTemplate((GetSchemaTemplatePlan) req);
+      case CheckTemplateSettable:
+        return clusterSchemaInfo.checkTemplateSettable((CheckTemplateSettablePlan) req);
       case GetPathsSetTemplate:
         return clusterSchemaInfo.getPathsSetTemplate((GetPathsSetTemplatePlan) req);
       case GetAllTemplateSetInfo:

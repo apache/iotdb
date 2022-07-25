@@ -29,6 +29,7 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.read.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetAllSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetAllTemplateSetInfoPlan;
@@ -55,6 +56,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -376,18 +378,16 @@ public class ClusterSchemaManager {
    * @return
    */
   public synchronized TSStatus setSchemaTemplate(String templateName, String path) {
-    // execute set operation on configNode
-    SetSchemaTemplatePlan setSchemaTemplatePlan = new SetSchemaTemplatePlan(templateName, path);
-    TSStatus status = getConsensusManager().write(setSchemaTemplatePlan).getStatus();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return status;
+    // check whether the template can be set on given path
+    CheckTemplateSettablePlan checkTemplateSettablePlan =
+        new CheckTemplateSettablePlan(templateName, path);
+    TemplateInfoResp resp =
+        (TemplateInfoResp) getConsensusManager().read(checkTemplateSettablePlan).getDataset();
+    if (resp.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return resp.getStatus();
     }
 
-    // get template
-    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(templateName);
-    TemplateInfoResp templateResp =
-        (TemplateInfoResp) getConsensusManager().read(getSchemaTemplatePlan).getDataset();
-    Template template = templateResp.getTemplateList().get(0);
+    Template template = resp.getTemplateList().get(0);
 
     // prepare template data and req
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -399,9 +399,11 @@ public class ClusterSchemaManager {
     } catch (IOException ignored) {
     }
     TUpdateTemplateReq req = new TUpdateTemplateReq();
+    req.setType(TemplateInternalRPCUpdateType.ADD_TEMPLATE_SET_INFO.toByte());
     req.setTemplateInfo(outputStream.toByteArray());
 
     // sync template set info to all dataNodes
+    TSStatus status;
     List<TDataNodeConfiguration> allDataNodes =
         configManager.getNodeManager().getRegisteredDataNodes(-1);
     for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
@@ -412,10 +414,54 @@ public class ClusterSchemaManager {
                   req,
                   DataNodeRequestType.UPDATE_TEMPLATE);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        return status;
+        // roll back the synced cache on dataNodes
+        return status.setSubStatus(rollbackTemplateSetInfoSync(template.getId(), path));
       }
     }
-    return status;
+
+    // execute set operation on configNode
+    SetSchemaTemplatePlan setSchemaTemplatePlan = new SetSchemaTemplatePlan(templateName, path);
+    status = getConsensusManager().write(setSchemaTemplatePlan).getStatus();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      return status;
+    } else {
+      // roll back the synced cache on dataNodes
+      return status.setSubStatus(rollbackTemplateSetInfoSync(template.getId(), path));
+    }
+  }
+
+  private List<TSStatus> rollbackTemplateSetInfoSync(int templateId, String path) {
+    // construct the rollbackReq
+    TUpdateTemplateReq rollbackReq = new TUpdateTemplateReq();
+    rollbackReq.setType(TemplateInternalRPCUpdateType.INVALIDATE_TEMPLATE_SET_INFO.toByte());
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(templateId, outputStream);
+      ReadWriteIOUtils.write(path, outputStream);
+    } catch (IOException ignored) {
+
+    }
+    rollbackReq.setTemplateInfo(outputStream.toByteArray());
+
+    // get all dataNodes
+    List<TDataNodeConfiguration> allDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes(-1);
+
+    // send rollbackReq
+    TSStatus status;
+    List<TSStatus> failedRollbackStatusList = new ArrayList<>();
+    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
+      status =
+          SyncDataNodeClientPool.getInstance()
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeInfo.getLocation().getInternalEndPoint(),
+                  rollbackReq,
+                  DataNodeRequestType.UPDATE_TEMPLATE);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        failedRollbackStatusList.add(status);
+      }
+    }
+    return failedRollbackStatusList;
   }
 
   /**

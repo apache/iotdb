@@ -306,4 +306,27 @@ public class ClusterTemplateManager implements ITemplateManager {
       readWriteLock.writeLock().unlock();
     }
   }
+
+  public void invalidateTemplateSetInfo(byte[] templateSetInfo) {
+    if (templateSetInfo == null) {
+      return;
+    }
+    readWriteLock.writeLock().lock();
+    try {
+      ByteBuffer buffer = ByteBuffer.wrap(templateSetInfo);
+      int templateId = ReadWriteIOUtils.readInt(buffer);
+      String pathSetTemplate = ReadWriteIOUtils.readString(buffer);
+      try {
+        PartialPath path = new PartialPath(pathSetTemplate);
+        pathSetTemplateMap.remove(path);
+        if (templateSetOnPathsMap.containsKey(templateId)) {
+          templateSetOnPathsMap.get(templateId).remove(path);
+        }
+      } catch (IllegalPathException ignored) {
+
+      }
+    } finally {
+      readWriteLock.writeLock().unlock();
+    }
+  }
 }

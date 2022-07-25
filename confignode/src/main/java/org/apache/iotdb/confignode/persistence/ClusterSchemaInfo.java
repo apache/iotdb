@@ -26,8 +26,10 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
+import org.apache.iotdb.confignode.consensus.request.read.CheckTemplateSettablePlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
@@ -64,6 +66,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -577,11 +580,11 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
-  public TemplateInfoResp getTemplate(String req) {
+  public TemplateInfoResp getTemplate(GetSchemaTemplatePlan getSchemaTemplatePlan) {
     TemplateInfoResp result = new TemplateInfoResp();
     List<Template> list = new ArrayList<>();
     try {
-      list.add(templateTable.getTemplate(req));
+      list.add(templateTable.getTemplate(getSchemaTemplatePlan.getTemplateName()));
       result.setTemplateList(list);
       result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     } catch (MetadataException e) {
@@ -591,6 +594,34 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     return result;
   }
 
+  public synchronized TemplateInfoResp checkTemplateSettable(
+      CheckTemplateSettablePlan checkTemplateSettablePlan) {
+    TemplateInfoResp resp = new TemplateInfoResp();
+    PartialPath path;
+    try {
+      path = new PartialPath(checkTemplateSettablePlan.getPath());
+    } catch (IllegalPathException e) {
+      LOGGER.error(e.getMessage());
+      resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      return resp;
+    }
+
+    try {
+      mTree.checkTemplateOnPath(path);
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      resp.setTemplateList(
+          Collections.singletonList(
+              templateTable.getTemplate(checkTemplateSettablePlan.getName())));
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    }
+
+    return resp;
+  }
+
+  // Before execute this method, checkTemplateSettable method should be invoked first and the whole
+  // process must be synchronized
   public synchronized TSStatus setSchemaTemplate(SetSchemaTemplatePlan setSchemaTemplatePlan) {
     PartialPath path;
     try {
@@ -602,7 +633,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     try {
       int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
-      mTree.checkTemplateOnPath(path);
       mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {

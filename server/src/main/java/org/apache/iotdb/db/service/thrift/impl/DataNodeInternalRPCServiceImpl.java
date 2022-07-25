@@ -51,6 +51,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
@@ -504,7 +505,14 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   @Override
   public TSStatus updateTemplate(TUpdateTemplateReq req) throws TException {
-    ClusterTemplateManager.getInstance().updateTemplateSetInfo(req.getTemplateInfo());
+    switch (TemplateInternalRPCUpdateType.getType(req.type)) {
+      case ADD_TEMPLATE_SET_INFO:
+        ClusterTemplateManager.getInstance().updateTemplateSetInfo(req.getTemplateInfo());
+        break;
+      case INVALIDATE_TEMPLATE_SET_INFO:
+        ClusterTemplateManager.getInstance().invalidateTemplateSetInfo(req.getTemplateInfo());
+        break;
+    }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 

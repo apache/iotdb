@@ -199,7 +199,8 @@ struct TUpdateConfigNodeGroupReq {
 }
 
 struct TUpdateTemplateReq{
-    1: required binary templateInfo
+    1: required byte type
+    2: required binary templateInfo
 }
 
 service IDataNodeRPCService {
