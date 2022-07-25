@@ -87,7 +87,7 @@ public class LastQuerySortOperatorTest {
   }
 
   @Test
-  public void testLastQueryMergeOperatorTestWithoutCachedValue() {
+  public void testLastQuerySortOperatorAsc() {
     try {
       List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath1 =
@@ -207,7 +207,7 @@ public class LastQuerySortOperatorTest {
   }
 
   @Test
-  public void testUpdateLastCacheOperatorTestWithCachedValue() {
+  public void testLastQuerySortOperatorDesc() {
     try {
       List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
       MeasurementPath measurementPath1 =

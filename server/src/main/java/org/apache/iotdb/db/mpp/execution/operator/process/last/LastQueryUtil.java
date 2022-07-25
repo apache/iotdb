@@ -145,4 +145,41 @@ public class LastQueryUtil {
     return CACHE_ENABLED && (timeFilter == null || timeFilter instanceof GtEq)
         || (timeFilter instanceof Gt);
   }
+
+  public static class LastEntry {
+    private final long time;
+    private final Binary timeSeries;
+    private final Binary value;
+    private final Binary dataType;
+
+    public LastEntry(long time, Binary timeSeries, Binary value, Binary dataType) {
+      this.time = time;
+      this.timeSeries = timeSeries;
+      this.value = value;
+      this.dataType = dataType;
+    }
+
+    public LastEntry(TsBlock tsBlock, int index) {
+      this.time = tsBlock.getTimeByIndex(index);
+      this.timeSeries = tsBlock.getColumn(0).getBinary(index);
+      this.value = tsBlock.getColumn(1).getBinary(index);
+      this.dataType = tsBlock.getColumn(2).getBinary(index);
+    }
+
+    public long getTime() {
+      return time;
+    }
+
+    public Binary getTimeSeries() {
+      return timeSeries;
+    }
+
+    public Binary getValue() {
+      return value;
+    }
+
+    public Binary getDataType() {
+      return dataType;
+    }
+  }
 }

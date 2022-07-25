@@ -163,8 +163,9 @@ public class LastQueryMergeOperator implements ProcessOperator {
         && (comparator.compare(timeSeriesSelector.firstKey(), currentEndTimeSeries) <= 0)) {
       Location location = timeSeriesSelector.pollFirstEntry().getValue();
       appendLastValue(tsBlockBuilder, inputTsBlocks[location.tsBlockIndex], location.rowIndex);
-      tsBlockBuilder.declarePosition();
     }
+
+    clearTsBlockCache(currentEndTimeSeries);
 
     TsBlock res = tsBlockBuilder.build();
     tsBlockBuilder.reset();
@@ -223,6 +224,18 @@ public class LastQueryMergeOperator implements ProcessOperator {
   private boolean empty(int columnIndex) {
     return inputTsBlocks[columnIndex] == null
         || inputTsBlocks[columnIndex].getPositionCount() == inputIndex[columnIndex];
+  }
+
+  private void clearTsBlockCache(Binary endTimeSeries) {
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (!empty(i)
+          && comparator.compare(
+                  getTimeSeries(inputTsBlocks[i], inputTsBlocks[i].getPositionCount() - 1),
+                  endTimeSeries)
+              == 0) {
+        inputTsBlocks[i] = null;
+      }
+    }
   }
 
   private static class Location {
