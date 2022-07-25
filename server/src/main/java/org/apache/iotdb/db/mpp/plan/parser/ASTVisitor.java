@@ -2345,8 +2345,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
-    CreateSchemaTemplateStatement createTemplateStatement = new CreateSchemaTemplateStatement();
-    String name = parseIdentifier(ctx.templateName.getText());
+    String name = parseIdentifier(parseIdentifier(ctx.templateName.getText()));
     List<List<String>> measurementsList = new ArrayList<List<String>>();
     List<List<TSDataType>> dataTypesList = new ArrayList<List<TSDataType>>();
     List<List<TSEncoding>> encodingsList = new ArrayList<List<TSEncoding>>();
@@ -2388,10 +2387,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
-    createTemplateStatement =
-        new CreateSchemaTemplateStatement(
-            name, measurementsList, dataTypesList, encodingsList, compressorsList);
-    return createTemplateStatement;
+    return new CreateSchemaTemplateStatement(
+        name, measurementsList, dataTypesList, encodingsList, compressorsList);
   }
 
   void parseAttributeClause(
@@ -2485,31 +2482,27 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitShowSchemaTemplates(IoTDBSqlParser.ShowSchemaTemplatesContext ctx) {
-    ShowSchemaTemplateStatement showSchemaTemplateStatement = new ShowSchemaTemplateStatement();
-    return showSchemaTemplateStatement;
+    return new ShowSchemaTemplateStatement();
   }
 
   @Override
   public Statement visitShowNodesInSchemaTemplate(
       IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.children.get(0).getText();
-    ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement =
-        new ShowNodesInSchemaTemplateStatement(templateName);
-    return showNodesInSchemaTemplateStatement;
+    String templateName = parseIdentifier(ctx.templateName.getText());
+    return new ShowNodesInSchemaTemplateStatement(templateName);
   }
 
   @Override
   public Statement visitSetSchemaTemplate(IoTDBSqlParser.SetSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.getText();
+    String templateName = parseIdentifier(ctx.templateName.getText());
     return new SetSchemaTemplateStatement(templateName, parsePrefixPath(ctx.prefixPath()));
   }
 
   @Override
   public Statement visitShowPathsSetSchemaTemplate(
       IoTDBSqlParser.ShowPathsSetSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.getText();
-    ShowPathSetTemplateStatement statement = new ShowPathSetTemplateStatement(templateName);
-    return statement;
+    String templateName = parseIdentifier(ctx.templateName.getText());
+    return new ShowPathSetTemplateStatement(templateName);
   }
 
   @Override
@@ -2523,7 +2516,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowPathsUsingSchemaTemplate(
       IoTDBSqlParser.ShowPathsUsingSchemaTemplateContext ctx) {
-    return new ShowPathsUsingTemplateStatement(ctx.templateName.children.get(0).getText());
+    return new ShowPathsUsingTemplateStatement(parseIdentifier(ctx.templateName.getText()));
   }
 
   // schema template
