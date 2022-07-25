@@ -422,7 +422,7 @@ public class ClusterSchemaManager {
     // execute set operation on configNode
     SetSchemaTemplatePlan setSchemaTemplatePlan = new SetSchemaTemplatePlan(templateName, path);
     status = getConsensusManager().write(setSchemaTemplatePlan).getStatus();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return status;
     } else {
       // roll back the synced cache on dataNodes
