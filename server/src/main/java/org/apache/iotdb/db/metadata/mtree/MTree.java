@@ -1406,6 +1406,14 @@ public class MTree implements Serializable {
           throw new PathNotExistException(path.getFullPath(), true);
         }
         next = upperTemplate.getDirectNode(nodes[i]);
+        if (next.isMeasurement()) {
+          next =
+              MeasurementMNode.getMeasurementMNode(
+                  cur.getAsEntityMNode(),
+                  next.getName(),
+                  next.getAsMeasurementMNode().getSchema(),
+                  null);
+        }
       }
       cur = next;
     }
