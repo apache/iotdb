@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
@@ -61,7 +61,7 @@ public class ShowClusterTask implements IConfigTask {
   }
 
   public static void buildTSBlock(
-      TClusterNodeInfos clusterNodeInfos, SettableFuture<ConfigTaskResult> future) {
+      TShowClusterResp clusterNodeInfos, SettableFuture<ConfigTaskResult> future) {
     TsBlockBuilder builder =
         new TsBlockBuilder(HeaderConstant.showClusterHeader.getRespDataTypes());
 
