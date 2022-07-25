@@ -881,7 +881,7 @@ public class PlanExecutor implements IPlanExecutor {
   private Map<PartialPath, Integer> getTimeseriesCountGroupByLevel(CountPlan countPlan)
       throws MetadataException {
     return IoTDB.schemaProcessor.getMeasurementCountGroupByLevel(
-        countPlan.getPath(), countPlan.getLevel(), countPlan.isPrefixMatch(), false);
+        countPlan.getPath(), countPlan.getLevel(), countPlan.isPrefixMatch());
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {

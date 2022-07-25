@@ -144,6 +144,8 @@ public class SchemaCountOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(0),
               partialPath,
               true,
+              null,
+              null,
               false);
       TsBlock tsBlock = null;
       while (timeSeriesCountOperator.hasNext()) {
@@ -157,6 +159,8 @@ public class SchemaCountOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(0),
               new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG + ".device1.*"),
               false,
+              null,
+              null,
               false);
       tsBlock = timeSeriesCountOperator2.next();
       assertFalse(timeSeriesCountOperator2.hasNext());
@@ -201,6 +205,8 @@ public class SchemaCountOperatorTest {
               partialPath,
               true,
               2,
+              null,
+              null,
               false);
       TsBlock tsBlock = null;
       while (timeSeriesCountOperator.hasNext()) {
@@ -222,6 +228,8 @@ public class SchemaCountOperatorTest {
               partialPath,
               true,
               1,
+              null,
+              null,
               false);
       while (timeSeriesCountOperator2.hasNext()) {
         tsBlock = timeSeriesCountOperator2.next();

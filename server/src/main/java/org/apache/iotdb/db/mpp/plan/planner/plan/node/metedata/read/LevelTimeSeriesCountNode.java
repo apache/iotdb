@@ -35,26 +35,45 @@ import java.util.Objects;
 
 public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
   private final int level;
-  private final boolean hasTag;
+  private final String key;
+  private final String value;
+  private final boolean isContains;
 
   public LevelTimeSeriesCountNode(
-      PlanNodeId id, PartialPath partialPath, boolean isPrefixPath, int level, boolean hasTag) {
+      PlanNodeId id,
+      PartialPath partialPath,
+      boolean isPrefixPath,
+      int level,
+      String key,
+      String value,
+      boolean isContains) {
     super(id, partialPath, isPrefixPath);
     this.level = level;
-    this.hasTag = hasTag;
+    this.key = key;
+    this.value = value;
+    this.isContains = isContains;
   }
 
   public int getLevel() {
     return level;
   }
 
-  public boolean hasTag() {
-    return hasTag;
+  public String getKey() {
+    return key;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public boolean isContains() {
+    return isContains;
   }
 
   @Override
   public PlanNode clone() {
-    return new LevelTimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, level, hasTag);
+    return new LevelTimeSeriesCountNode(
+        getPlanNodeId(), path, isPrefixPath, level, key, value, isContains);
   }
 
   @Override
@@ -68,7 +87,9 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     ReadWriteIOUtils.write(level, byteBuffer);
-    ReadWriteIOUtils.write(hasTag, byteBuffer);
+    ReadWriteIOUtils.write(key, byteBuffer);
+    ReadWriteIOUtils.write(value, byteBuffer);
+    ReadWriteIOUtils.write(isContains, byteBuffer);
   }
 
   @Override
@@ -77,7 +98,9 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(path.getFullPath(), stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
     ReadWriteIOUtils.write(level, stream);
-    ReadWriteIOUtils.write(hasTag, stream);
+    ReadWriteIOUtils.write(key, stream);
+    ReadWriteIOUtils.write(value, stream);
+    ReadWriteIOUtils.write(isContains, stream);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
@@ -90,9 +113,12 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     }
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
     int level = ReadWriteIOUtils.readInt(buffer);
-    boolean hasTag = ReadWriteIOUtils.readBool(buffer);
+    String key = ReadWriteIOUtils.readString(buffer);
+    String value = ReadWriteIOUtils.readString(buffer);
+    boolean isContains = ReadWriteIOUtils.readBool(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new LevelTimeSeriesCountNode(planNodeId, path, isPrefixPath, level, hasTag);
+    return new LevelTimeSeriesCountNode(
+        planNodeId, path, isPrefixPath, level, key, value, isContains);
   }
 
   @Override

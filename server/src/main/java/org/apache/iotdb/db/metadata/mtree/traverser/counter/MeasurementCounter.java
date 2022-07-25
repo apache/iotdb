@@ -23,16 +23,32 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 
+import java.util.ArrayList;
+import java.util.List;
+
 // This method implements the measurement count function.
 // One MultiMeasurement will only be count once.
 public class MeasurementCounter extends CounterTraverser {
 
-  private boolean hasTag;
+  private List<String> timeseries = new ArrayList<>();
+  private boolean hasTag = false;
 
-  public MeasurementCounter(IMNode startNode, PartialPath path, IMTreeStore store, boolean hasTag)
+  public MeasurementCounter(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
     isMeasurementTraverser = true;
+  }
+
+  public MeasurementCounter(
+      IMNode startNode,
+      PartialPath path,
+      IMTreeStore store,
+      List<String> timeseries,
+      boolean hasTag)
+      throws MetadataException {
+    super(startNode, path, store);
+    isMeasurementTraverser = true;
+    this.timeseries = timeseries;
     this.hasTag = hasTag;
   }
 
@@ -47,7 +63,7 @@ public class MeasurementCounter extends CounterTraverser {
       return false;
     }
     if (hasTag) {
-      if (node.getAsMeasurementMNode().getOffset() == -1) {
+      if (!timeseries.contains(node.getFullPath())) {
         return true;
       }
     }

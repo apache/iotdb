@@ -755,18 +755,29 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planTimeSeriesCountSource(
-      PartialPath partialPath, boolean prefixPath, boolean hasTag) {
+      PartialPath partialPath, boolean prefixPath, String key, String value, boolean isContains) {
     this.root =
         new TimeSeriesCountNode(
-            context.getQueryId().genPlanNodeId(), partialPath, prefixPath, hasTag);
+            context.getQueryId().genPlanNodeId(), partialPath, prefixPath, key, value, isContains);
     return this;
   }
 
   public LogicalPlanBuilder planLevelTimeSeriesCountSource(
-      PartialPath partialPath, boolean prefixPath, int level, boolean hasTag) {
+      PartialPath partialPath,
+      boolean prefixPath,
+      int level,
+      String key,
+      String value,
+      boolean isContains) {
     this.root =
         new LevelTimeSeriesCountNode(
-            context.getQueryId().genPlanNodeId(), partialPath, prefixPath, level, hasTag);
+            context.getQueryId().genPlanNodeId(),
+            partialPath,
+            prefixPath,
+            level,
+            key,
+            value,
+            isContains);
     return this;
   }
 

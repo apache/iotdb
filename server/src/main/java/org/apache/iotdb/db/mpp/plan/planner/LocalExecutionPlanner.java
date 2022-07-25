@@ -506,7 +506,9 @@ public class LocalExecutionPlanner {
           operatorContext,
           node.getPath(),
           node.isPrefixPath(),
-          node.hasTag());
+          node.getKey(),
+          node.getValue(),
+          node.isContains());
     }
 
     @Override
@@ -524,7 +526,9 @@ public class LocalExecutionPlanner {
           node.getPath(),
           node.isPrefixPath(),
           node.getLevel(),
-          node.hasTag());
+          node.getKey(),
+          node.getValue(),
+          node.isContains());
     }
 
     @Override

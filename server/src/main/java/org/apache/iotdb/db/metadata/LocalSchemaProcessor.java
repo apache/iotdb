@@ -461,7 +461,7 @@ public class LocalSchemaProcessor {
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
    * path. All timeseries start with the matched prefix path will be counted.
    */
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch, boolean hasTag)
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     // todo this is for test assistance, refactor this to support massive timeseries
     if (pathPattern.getFullPath().equals("root.**")
@@ -470,7 +470,7 @@ public class LocalSchemaProcessor {
     }
     int count = 0;
     for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
-      count += schemaRegion.getAllTimeseriesCount(pathPattern, isPrefixMatch, hasTag);
+      count += schemaRegion.getAllTimeseriesCount(pathPattern, isPrefixMatch);
     }
     return count;
   }
@@ -479,9 +479,8 @@ public class LocalSchemaProcessor {
    * To calculate the count of timeseries matching given path. The path could be a pattern of a full
    * path, may contain wildcard.
    */
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean hasTag)
-      throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false, hasTag);
+  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
+    return getAllTimeseriesCount(pathPattern, false);
   }
 
   /**
@@ -539,13 +538,11 @@ public class LocalSchemaProcessor {
   }
 
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch, boolean hasTag)
-      throws MetadataException {
+      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     Map<PartialPath, Integer> result = new HashMap<>();
     Map<PartialPath, Integer> sgResult;
     for (ISchemaRegion schemaRegion : getInvolvedSchemaRegions(pathPattern, isPrefixMatch)) {
-      sgResult =
-          schemaRegion.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch, hasTag);
+      sgResult = schemaRegion.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
       for (PartialPath path : sgResult.keySet()) {
         if (result.containsKey(path)) {
           result.put(path, result.get(path) + sgResult.get(path));

@@ -829,24 +829,23 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch, boolean hasTag)
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    CounterTraverser counter =
-        new MeasurementCounter(storageGroupMNode, pathPattern, store, hasTag);
+    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getCount();
   }
 
-  /**
-   * Get the count of timeseries matching the given path.
-   *
-   * @param pathPattern a path pattern or a full path, may contain wildcard
-   */
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean hasTag)
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
       throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false, hasTag);
+    CounterTraverser counter =
+        new MeasurementCounter(storageGroupMNode, pathPattern, store, timeseries, hasTag);
+    counter.setPrefixMatch(isPrefixMatch);
+    counter.traverse();
+    return counter.getCount();
   }
 
   /**
@@ -891,10 +890,25 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   @Override
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch, boolean hasTag)
+      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
+    MeasurementGroupByLevelCounter counter =
+        new MeasurementGroupByLevelCounter(storageGroupMNode, pathPattern, store, level);
+    counter.setPrefixMatch(isPrefixMatch);
+    counter.traverse();
+    return counter.getResult();
+  }
+
+  @Override
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      List<String> timeseries,
+      boolean hasTag)
       throws MetadataException {
     MeasurementGroupByLevelCounter counter =
-        new MeasurementGroupByLevelCounter(storageGroupMNode, pathPattern, store, level, hasTag);
+        new MeasurementGroupByLevelCounter(
+            storageGroupMNode, pathPattern, store, level, timeseries, hasTag);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getResult();

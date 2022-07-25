@@ -860,9 +860,20 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
    * path. All timeseries start with the matched prefix path will be counted.
    */
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch, boolean hasTag)
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch, hasTag);
+    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
+  }
+
+  @Override
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
+      throws MetadataException {
+    return mtree.getAllTimeseriesCount(
+        pathPattern,
+        isPrefixMatch,
+        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
+        true);
   }
 
   /**
@@ -895,9 +906,25 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch, boolean hasTag)
+      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
+    return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
+  }
+
+  @Override
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      String key,
+      String value,
+      boolean isContains)
       throws MetadataException {
-    return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch, hasTag);
+    return mtree.getMeasurementCountGroupByLevel(
+        pathPattern,
+        level,
+        isPrefixMatch,
+        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
+        true);
   }
 
   // endregion
