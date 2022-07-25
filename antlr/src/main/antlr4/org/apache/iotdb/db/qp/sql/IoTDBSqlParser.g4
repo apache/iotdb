@@ -639,7 +639,7 @@ flush
 
 // Clear Cache
 clearCache
-    : CLEAR CACHE
+    : CLEAR CACHE (ON (LOCAL | CLUSTER))?
     ;
 
 // Settle

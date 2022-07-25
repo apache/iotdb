@@ -35,9 +35,29 @@ import java.util.List;
 public class ClearCacheStatement extends Statement implements IConfigStatement {
 
   private static final Logger logger = LoggerFactory.getLogger(ClearCacheStatement.class);
+  /** list of storage group */
+  private List<PartialPath> storageGroups;
+
+  private boolean isCluster;
 
   public ClearCacheStatement(StatementType clearCacheType) {
     this.statementType = clearCacheType;
+  }
+
+  public List<PartialPath> getStorageGroups() {
+    return storageGroups;
+  }
+
+  public void setStorageGroups(List<PartialPath> storageGroups) {
+    this.storageGroups = storageGroups;
+  }
+
+  public boolean isCluster() {
+    return isCluster;
+  }
+
+  public void setCluster(boolean isCluster) {
+    this.isCluster = isCluster;
   }
 
   @Override
@@ -47,7 +67,10 @@ public class ClearCacheStatement extends Statement implements IConfigStatement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return Collections.emptyList();
+    if (storageGroups == null) {
+      return Collections.emptyList();
+    }
+    return storageGroups;
   }
 
   @Override

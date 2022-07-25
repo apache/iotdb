@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.client.async.datanode;
 
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -115,6 +116,15 @@ public class AsyncDataNodeClientPool {
                     dataNodeLocationMap,
                     dataNodeResponseStatus);
             break;
+          case CLEARCACHE:
+            handler =
+                new ClearCacheHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
           case UPDATE_REGION_ROUTE_MAP:
             handler =
                 new UpdateRegionRouteMapHandler(
@@ -167,7 +177,7 @@ public class AsyncDataNodeClientPool {
           client.flush((TFlushReq) req, (FlushHandler) handler);
           break;
         case CLEARCACHE:
-          client.clearCache((ClearCacheHandler) handler);
+          client.clearCache((TClearCacheReq) req, (ClearCacheHandler) handler);
           break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);

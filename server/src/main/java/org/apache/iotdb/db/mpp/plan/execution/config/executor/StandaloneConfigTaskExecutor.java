@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -236,7 +237,7 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> clearCache() {
+  public SettableFuture<ConfigTaskResult> clearCache(TClearCacheReq tclearCacheReq) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
     TSStatus tsStatus = localConfigNode.executeClearCacheOperation();

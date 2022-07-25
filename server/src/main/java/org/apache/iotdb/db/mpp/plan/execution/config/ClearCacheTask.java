@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 
@@ -26,17 +29,25 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 public class ClearCacheTask implements IConfigTask {
 
-  //   private ClearCacheStatement clearCacheStatement;
+  private ClearCacheStatement clearCacheStatement;
 
   public ClearCacheTask(ClearCacheStatement clearCacheStatement) {
-    // this.clearCacheStatement = clearCacheStatement;
+    this.clearCacheStatement = clearCacheStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
+    TClearCacheReq tClearCacheReq = new TClearCacheReq();
+
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if (clearCacheStatement.isCluster()) {
+      tClearCacheReq.setDataNodeId(-1);
+    } else {
+      tClearCacheReq.setDataNodeId(config.getDataNodeId());
+    }
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.clearCache();
+    return configTaskExecutor.clearCache(tClearCacheReq);
   }
 }

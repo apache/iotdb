@@ -2309,6 +2309,12 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
     ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.ClearCache);
+
+    if (ctx.LOCAL() != null) {
+      clearCacheStatement.setCluster(false);
+    } else {
+      clearCacheStatement.setCluster(true);
+    }
     return clearCacheStatement;
   }
 

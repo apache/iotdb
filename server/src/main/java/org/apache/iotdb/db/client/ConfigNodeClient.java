@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.client;
 
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -763,10 +764,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TSStatus clearCache() throws TException {
+  public TSStatus clearCache(TClearCacheReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.clearCache();
+        TSStatus status = client.clearCache(req);
         if (!updateConfigNodeLeader(status)) {
           return status;
         }
