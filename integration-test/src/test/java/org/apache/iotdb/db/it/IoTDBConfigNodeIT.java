@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
@@ -37,11 +36,9 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -108,14 +105,10 @@ public class IoTDBConfigNodeIT {
     TShowClusterResp clusterNodes;
     TSStatus status;
 
-    List<TConfigNodeLocation> configNodeLocations = new ArrayList<>();
     List<ConfigNodeWrapper> configNodeWrappers = EnvFactory.getEnv().getConfigNodeWrapperList();
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
-      clusterNodes = getClusterNodeInfos(client, 1, 3);
-      configNodeLocations.add(clusterNodes.getConfigNodeList().get(0));
-
       // add ConfigNode
       for (int i = 0; i < 2; i++) {
         ConfigNodeWrapper configNodeWrapper =
@@ -129,36 +122,34 @@ public class IoTDBConfigNodeIT {
         configNodeWrapper.changeConfig(ConfigFactory.getConfig().getConfignodeProperties());
         configNodeWrapper.start();
         configNodeWrappers.add(configNodeWrapper);
-
-        TConfigNodeLocation configNodeLocation =
-            new TConfigNodeLocation(
-                -1,
-                new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getPort()),
-                new TEndPoint(configNodeWrapper.getIp(), configNodeWrapper.getConsensusPort()));
-        configNodeLocations.add(configNodeLocation);
       }
-
       EnvFactory.getEnv().setConfigNodeWrapperList(configNodeWrappers);
-
       clusterNodes = getClusterNodeInfos(client, 3, 3);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), clusterNodes.getStatus().getCode());
 
       // test remove ConfigNode
-      status = client.removeConfigNode(clusterNodes.getConfigNodeList().get(1));
-      TConfigNodeLocation stopConfigNodeLocation = configNodeLocations.get(1);
-      configNodeLocations.remove(1);
+      TConfigNodeLocation removedConfigNodeLocation = clusterNodes.getConfigNodeList().get(1);
+      status = client.removeConfigNode(removedConfigNodeLocation);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       clusterNodes = getClusterNodeInfos(client, 2, 3);
+
       List<TConfigNodeLocation> configNodeList = clusterNodes.getConfigNodeList();
-      for (int i = 0; i < 2; i++) {
-        assertEquals(
-            configNodeLocations.get(i).internalEndPoint, configNodeList.get(i).internalEndPoint);
-        assertEquals(
-            configNodeLocations.get(i).consensusEndPoint, configNodeList.get(i).consensusEndPoint);
+      for (TConfigNodeLocation configNodeLocation : configNodeList) {
+        if (configNodeLocation
+                .getInternalEndPoint()
+                .getIp()
+                .equals(removedConfigNodeLocation.getInternalEndPoint().getIp())
+            && configNodeLocation.getInternalEndPoint().getPort()
+                == removedConfigNodeLocation.getInternalEndPoint().getPort()
+            && configNodeLocation.getConsensusEndPoint().getPort()
+                == removedConfigNodeLocation.getConsensusEndPoint().getPort()) {
+          fail("Failed to remove ConfigNode");
+          break;
+        }
       }
 
       // test stop ConfigNode
-      status = client.stopConfigNode(stopConfigNodeLocation);
+      status = client.stopConfigNode(removedConfigNodeLocation);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     } catch (TException | IOException | InterruptedException e) {
