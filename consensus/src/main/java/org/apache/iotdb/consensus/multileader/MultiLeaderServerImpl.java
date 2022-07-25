@@ -174,6 +174,7 @@ public class MultiLeaderServerImpl {
       for (int i = 0; i < size; i++) {
         configuration.add(Peer.deserialize(buffer));
       }
+      logger.info("Recover multiLeader, configuration: {}", configuration);
     } catch (IOException e) {
       logger.error("Unexpected error occurs when recovering configuration", e);
     }
