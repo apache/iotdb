@@ -51,7 +51,9 @@ public enum PrivilegeType {
   DROP_CONTINUOUS_QUERY,
   ALL,
   DELETE_STORAGE_GROUP(true),
-  ALTER_TIMESERIES(true);
+  ALTER_TIMESERIES(true),
+  UPDATE_TEMPLATE,
+  APPLY_TEMPLATE(true);
 
   private static final int PRIVILEGE_COUNT = values().length;
 
