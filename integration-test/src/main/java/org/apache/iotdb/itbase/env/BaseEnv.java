@@ -48,7 +48,11 @@ public interface BaseEnv {
 
   List<ConfigNodeWrapper> getConfigNodeWrapperList();
 
+  void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList);
+
   List<DataNodeWrapper> getDataNodeWrapperList();
+
+  void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
 
   IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException;
 }

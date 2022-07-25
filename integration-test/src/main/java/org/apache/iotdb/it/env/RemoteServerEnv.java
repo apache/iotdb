@@ -123,8 +123,18 @@ public class RemoteServerEnv implements BaseEnv {
   }
 
   @Override
+  public void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList) {
+    // Do nothing
+  }
+
+  @Override
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return null;
+  }
+
+  @Override
+  public void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList) {
+    // Do nothing
   }
 
   @Override

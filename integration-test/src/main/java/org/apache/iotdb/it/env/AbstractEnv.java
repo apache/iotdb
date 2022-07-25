@@ -305,8 +305,16 @@ public abstract class AbstractEnv implements BaseEnv {
     return configNodeWrapperList;
   }
 
+  public void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList) {
+    this.configNodeWrapperList = configNodeWrapperList;
+  }
+
   public List<DataNodeWrapper> getDataNodeWrapperList() {
     return dataNodeWrapperList;
+  }
+
+  public void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList) {
+    this.dataNodeWrapperList = dataNodeWrapperList;
   }
 
   public IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException {
