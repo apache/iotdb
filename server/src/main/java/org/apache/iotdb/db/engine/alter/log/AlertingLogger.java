@@ -70,8 +70,10 @@ public class AlertingLogger implements AutoCloseable {
       throw new IOException("alter params is null");
     }
     logStream.write(fullPath.getFullPath());
-    logStream.write(curEncoding.serialize());
-    logStream.write(curCompressionType.serialize());
+    logStream.newLine();
+    logStream.write(Byte.toString(curEncoding.serialize()));
+    logStream.newLine();
+    logStream.write(Byte.toString(curCompressionType.serialize()));
     logStream.newLine();
     for (long timePartition : timePartitions) {
       logStream.write(Long.toString(timePartition));
