@@ -45,7 +45,6 @@ import java.util.Map;
 import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
-@Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBAlignByDeviceIT {
 
   private static String[] sqls =
@@ -127,6 +126,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void selectTest() {
     String[] retArray =
         new String[] {
@@ -194,6 +194,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void selectWithDuplicatedPathsTest() {
     String[] retArray =
         new String[] {
@@ -251,6 +252,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void selectLimitTest() {
     String[] retArray =
         new String[] {
@@ -304,6 +306,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void selectSlimitTest2() {
     String[] retArray =
         new String[] {
@@ -348,6 +351,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void selectSlimitTest() {
     String[] retArray =
         new String[] {
@@ -404,6 +408,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void selectWithValueFilterTest() {
     String[] retArray =
         new String[] {
@@ -460,6 +465,8 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category(ClusterIT.class)
+  // Result is different from Old standalone version
   public void selectDifferentSeriesWithValueFilterWithoutCacheTest() {
     String[] retArray =
         new String[] {
@@ -469,6 +476,7 @@ public class IoTDBAlignByDeviceIT {
           "103,root.vehicle.d0,99,",
           "104,root.vehicle.d0,90,",
           "105,root.vehicle.d0,99,",
+          "946684800000,root.vehicle.d0,null",
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -508,6 +516,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void selectDifferentSeriesWithBinaryValueFilterWithoutCacheTest() {
     String[] retArray =
         new String[] {
@@ -552,6 +561,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void aggregateTest() {
     String[] retArray =
         new String[] {"root.vehicle.d0,11,11,6,6,1,", "root.vehicle.d1,2,null,null,null,null,"};
@@ -600,6 +610,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeTest() {
     String[] retArray =
         new String[] {
@@ -655,6 +666,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void groupByTimeWithValueFilterTest() {
     String[] retArray =
         new String[] {
@@ -700,6 +712,7 @@ public class IoTDBAlignByDeviceIT {
 
   @Ignore
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void fillTest() {
     String[] retArray =
         new String[] {
@@ -751,6 +764,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void errorCaseTest3() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -773,6 +787,7 @@ public class IoTDBAlignByDeviceIT {
    * count(root.vehicle.d0.s0) INT64 count(root.vehicle.d1.s0) INT64 count(root.other.d1.s0) INT64
    */
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void unusualCaseTest1() {
     String[] retArray =
         new String[] {"root.other.d1,1,", "root.vehicle.d0,11,", "root.vehicle.d1,2,"};
@@ -810,6 +825,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void unusualCaseTest2() {
     String[] retArray =
         new String[] {
@@ -869,6 +885,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void selectNonExistTest() {
     String[] retArray =
         new String[] {
@@ -957,6 +974,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void selectWithRegularExpressionTest() {
     String[] retArray =
         new String[] {
@@ -1024,6 +1042,7 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
+  @Category({LocalStandaloneIT.class, ClusterIT.class})
   public void selectWithNonExistMeasurementInWhereClause() {
     String[] retArray = new String[] {"1,root.vehicle.d0,101,1101,null,null,null,"};
 
