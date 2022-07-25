@@ -96,8 +96,7 @@ public class MetadataUpgradeTest {
 
     LocalSchemaProcessor schemaProcessor = IoTDB.schemaProcessor;
     Assert.assertEquals(8, schemaProcessor.getStorageGroupNum(new PartialPath("root.**"), false));
-    Assert.assertEquals(
-        10, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.**"), false));
+    Assert.assertEquals(10, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.**")));
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
         new ShowTimeSeriesPlan(

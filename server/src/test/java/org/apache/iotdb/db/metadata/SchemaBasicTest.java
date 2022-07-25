@@ -440,30 +440,19 @@ public abstract class SchemaBasicTest {
           CompressionType.GZIP,
           null);
 
-      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.**"), false), 6);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.**"), false), 6);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.*"), false), 1);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.*.*"), false), 4);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.*.**"), false), 5);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1"), false), 1);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1"), false), 2);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**"), false), 3);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*"), false), 2);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1"), false), 1);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d2.**"), false), 2);
-      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop"), false), 0);
-      assertEquals(
-          schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1"), false), 0);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.**")), 6);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.**")), 6);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.*")), 1);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.*.*")), 4);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.*.**")), 5);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.*.*.t1")), 1);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")), 2);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")), 3);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d1.*")), 2);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d2.s1")), 1);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d2.**")), 2);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop")), 0);
+      assertEquals(schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d3.s1")), 0);
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -1767,21 +1756,20 @@ public abstract class SchemaBasicTest {
           new ActivateTemplatePlan(new PartialPath("root.tree.d0.v1")));
 
       Assert.assertEquals(
-          2, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**"), false));
+          2, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")));
       Assert.assertEquals(
-          1, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1"), false));
+          1, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
       Assert.assertEquals(
-          1, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.computer.d1.s1"), false));
+          1, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.computer.d1.s1")));
       Assert.assertEquals(
-          1, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.computer.d1.s2"), false));
+          1, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.computer.d1.s2")));
       Assert.assertEquals(
-          3, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.computer.d1.**"), false));
+          3, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.computer.d1.**")));
       Assert.assertEquals(
-          3, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.computer.**"), false));
+          3, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.computer.**")));
       Assert.assertEquals(
-          12, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.tree.**"), false));
-      Assert.assertEquals(
-          17, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.**"), false));
+          12, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.tree.**")));
+      Assert.assertEquals(17, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.**")));
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -1999,7 +1987,7 @@ public abstract class SchemaBasicTest {
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = schemaProcessor.getSeriesSchemasAndReadLockDevice(insertRowPlan);
       assertEquals(
-          3, schemaProcessor.getAllTimeseriesCount(node.getPartialPath().concatNode("**"), false));
+          3, schemaProcessor.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
 
     } catch (Exception e) {
       e.printStackTrace();
@@ -2104,7 +2092,7 @@ public abstract class SchemaBasicTest {
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = schemaProcessor.getSeriesSchemasAndReadLockDevice(insertRowPlan);
       assertEquals(
-          1, schemaProcessor.getAllTimeseriesCount(node.getPartialPath().concatNode("**"), false));
+          1, schemaProcessor.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
       assertNull(insertRowPlan.getMeasurementMNodes()[0]);
       assertEquals(1, insertRowPlan.getFailedMeasurementNumber());
 
@@ -2281,7 +2269,7 @@ public abstract class SchemaBasicTest {
     schemaProcessor.createAlignedTimeSeries(createAlignedTimeSeriesPlan);
 
     Assert.assertEquals(
-        5, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.device0.*"), false));
+        5, schemaProcessor.getAllTimeseriesCount(new PartialPath("root.laptop.device0.*")));
     Assert.assertTrue(schemaProcessor.isPathExist(new PartialPath("root.laptop.device0.alias2")));
 
     ShowTimeSeriesPlan showTimeSeriesPlan =
