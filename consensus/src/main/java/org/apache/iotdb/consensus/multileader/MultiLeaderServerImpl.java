@@ -114,9 +114,9 @@ public class MultiLeaderServerImpl {
           buildIndexedConsensusRequestForLocalRequest(request);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
         logger.info(
-            "DataRegion[{}]: index after build: safeIndex: {}, searchIndex: {}",
+            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
             thisNode.getGroupId(),
-            indexedConsensusRequest.getSafelyDeletedSearchIndex(),
+            getCurrentSafelyDeletedSearchIndex(),
             indexedConsensusRequest.getSearchIndex());
       }
       // TODO wal and memtable
