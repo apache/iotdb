@@ -117,7 +117,7 @@ public class DisorderedClusterTestResultSet implements ResultSet {
   private <T> T cachedResultAndReturnOne(List<T> data) {
     for (int i = 0; i < data.size(); i++) {
       List<StringBuilder> list = cachedResult.get(i);
-      list.get(list.size() - 1).append(data.get(i).toString()).append(",");
+      list.get(list.size() - 1).append(data.get(i)).append(",");
     }
     return data.get(0);
   }

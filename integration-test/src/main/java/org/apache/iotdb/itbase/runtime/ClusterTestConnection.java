@@ -47,6 +47,7 @@ public class ClusterTestConnection implements Connection {
   private final List<NodeConnection> readConnections;
   private boolean isClosed;
   private boolean resultSetDisordered;
+  private Statement statement;
 
   public ClusterTestConnection(
       NodeConnection writeConnection, List<NodeConnection> readConnections) {
@@ -57,7 +58,9 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public Statement createStatement() throws SQLException {
-    return new ClusterTestStatement(writeConnection, readConnections, resultSetDisordered);
+    this.statement =
+        new ClusterTestStatement(writeConnection, readConnections, resultSetDisordered);
+    return this.statement;
   }
 
   @Override
@@ -96,12 +99,14 @@ public class ClusterTestConnection implements Connection {
   }
 
   @Override
-  public void close() {
+  public void close() throws SQLException {
     writeConnection.close();
     for (NodeConnection conn : readConnections) {
       conn.close();
     }
     isClosed = true;
+
+    this.statement.close();
   }
 
   @Override

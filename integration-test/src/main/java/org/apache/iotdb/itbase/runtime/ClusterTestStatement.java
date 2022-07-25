@@ -41,6 +41,7 @@ public class ClusterTestStatement implements Statement {
   private int queryTimeout = DEFAULT_QUERY_TIMEOUT;
   private int fetchSize = Config.DEFAULT_FETCH_SIZE;
   private boolean isResultSetDisorder;
+  private ResultSet resultSet;
 
   public ClusterTestStatement(
       NodeConnection writeConnection,
@@ -67,10 +68,12 @@ public class ClusterTestStatement implements Statement {
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
     if (!isResultSetDisorder) {
-      return new ClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
+      this.resultSet = new ClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
     } else {
-      return new DisorderedClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
+      this.resultSet =
+          new DisorderedClusterTestResultSet(readStatements, readEndpoints, sql, queryTimeout);
     }
+    return this.resultSet;
   }
 
   @Override
@@ -107,6 +110,8 @@ public class ClusterTestStatement implements Statement {
                 }));
     delegate.requestAll();
     closed = true;
+
+    this.resultSet.close();
   }
 
   @Override
