@@ -61,7 +61,19 @@ public class LastCacheManager {
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
-    return lastCacheContainer.getCachedLast();
+    TimeValuePair result = lastCacheContainer.getCachedLast();
+    long ttl = getTTL(node);
+    return result == null || ttl == -1 || result.getTimestamp() < System.currentTimeMillis() - ttl
+        ? null
+        : result;
+  }
+
+  private static long getTTL(IMeasurementMNode node) {
+    IMNode ancestor = node;
+    while (ancestor != null && !ancestor.isStorageGroup()) {
+      ancestor = ancestor.getParent();
+    }
+    return ancestor == null ? -1 : ancestor.getAsStorageGroupMNode().getDataTTL();
   }
 
   /**
@@ -248,6 +260,27 @@ public class LastCacheManager {
             e);
         return Long.MIN_VALUE;
       }
+    }
+  }
+
+  public static void checkTTLOnLastCache(IMNode node, long dataTTL) {
+    if (node.isMeasurement()) {
+      processTTLOnLastCacheContainer(node.getAsMeasurementMNode().getLastCacheContainer(), dataTTL);
+      return;
+    }
+
+    if (node.isEntity()) {
+      Map<String, ILastCacheContainer> containerMap =
+          node.getAsEntityMNode().getTemplateLastCaches();
+      for (ILastCacheContainer container : containerMap.values()) {
+        processTTLOnLastCacheContainer(container, dataTTL);
+      }
+    }
+  }
+
+  private static void processTTLOnLastCacheContainer(ILastCacheContainer container, long dataTTL) {
+    if (container.getCachedLast().getTimestamp() < System.currentTimeMillis() - dataTTL) {
+      container.resetLastCache();
     }
   }
 }

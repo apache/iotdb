@@ -220,4 +220,27 @@ public class IoTDBTtlIT {
               || result.equals("root.group2.sgroup1 10000\n" + "root.group1,null\n"));
     }
   }
+
+  @Test
+  public void testTTLOnLastCache() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.TTL_SG1");
+      statement.execute("CREATE TIMESERIES root.TTL_SG1.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
+
+      long now = System.currentTimeMillis();
+      statement.execute(
+          String.format("INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 110, 1));
+
+      statement.execute("SET TTL TO root.TTL_SG1 100");
+
+      try (ResultSet resultSet = statement.executeQuery("SELECT last s1 FROM root.TTL_SG1")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+    }
+  }
 }
