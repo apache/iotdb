@@ -26,7 +26,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -49,7 +48,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 // TODO add them back while implementing order by timeseries
-@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBLastQueryWithDeletionIT {
@@ -100,7 +98,9 @@ public class IoTDBLastQueryWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select last * from root.sg1.d1")) {
+        ResultSet resultSet =
+            statement.executeQuery(
+                "select last * from root.sg1.d1 order by timesereis order by timesereis")) {
 
       int cnt = 0;
       while (resultSet.next()) {
@@ -140,7 +140,9 @@ public class IoTDBLastQueryWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select last * from root.sg1.*")) {
+        ResultSet resultSet =
+            statement.executeQuery(
+                "select last * from root.sg1.* order by timesereis order by timesereis")) {
 
       int cnt = 0;
       while (resultSet.next()) {
@@ -172,7 +174,8 @@ public class IoTDBLastQueryWithDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet =
-            statement.executeQuery("select last * from root.sg1.d1 where time > 30")) {
+            statement.executeQuery(
+                "select last * from root.sg1.d1 where time > 30 order by timesereis order by timesereis")) {
       int cnt = 0;
       while (resultSet.next()) {
         String ans =
@@ -203,7 +206,9 @@ public class IoTDBLastQueryWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select last s1, s4, s5 from root.sg1.d1")) {
+        ResultSet resultSet =
+            statement.executeQuery(
+                "select last s1, s4, s5 from root.sg1.d1 order by timesereis order by timesereis")) {
 
       int cnt = 0;
       while (resultSet.next()) {
@@ -233,7 +238,9 @@ public class IoTDBLastQueryWithDeletionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
-        ResultSet resultSet = statement.executeQuery("select last s1, s4 from root.sg1.d1")) {
+        ResultSet resultSet =
+            statement.executeQuery(
+                "select last s1, s4 from root.sg1.d1 order by timesereis order by timesereis")) {
 
       int cnt = 0;
       while (resultSet.next()) {
@@ -265,7 +272,8 @@ public class IoTDBLastQueryWithDeletionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement();
         ResultSet resultSet =
-            statement.executeQuery("select last s1, s4, s5 from root.sg1.d1 where time > 30")) {
+            statement.executeQuery(
+                "select last s1, s4, s5 from root.sg1.d1 where time > 30 order by timesereis order by timesereis")) {
 
       int cnt = 0;
       while (resultSet.next()) {
@@ -301,7 +309,7 @@ public class IoTDBLastQueryWithDeletionIT {
         Statement statement = connection.createStatement();
         ResultSet resultSet =
             statement.executeQuery(
-                "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30")) {
+                "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30 order by timesereis order by timesereis")) {
 
       int cnt = 0;
       while (resultSet.next()) {
