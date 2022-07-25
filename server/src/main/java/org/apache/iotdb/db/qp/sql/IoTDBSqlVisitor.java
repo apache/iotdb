@@ -2024,6 +2024,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new ShowOperator(SQLConstant.TOK_VERSION);
   }
 
+  // Show System Status
+
+  @Override
+  public Operator visitShowSystemStatus(IoTDBSqlParser.ShowSystemStatusContext ctx) {
+    return new ShowOperator(SQLConstant.TOK_SYSTEM_STATUS);
+  }
+
   // Show Flush Info
 
   @Override

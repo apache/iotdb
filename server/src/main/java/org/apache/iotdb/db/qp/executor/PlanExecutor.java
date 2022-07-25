@@ -30,6 +30,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
@@ -601,7 +602,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateSetSystemMode(SetSystemModePlan plan) {
-    IoTDBDescriptor.getInstance().getConfig().setReadOnly(plan.isReadOnly());
+    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -719,6 +720,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowFlushTaskInfo();
       case VERSION:
         return processShowVersion();
+      case SYSTEM_STATUS:
+        return processShowSystemStatus();
       case TIMESERIES:
         return processShowTimeseries((ShowTimeSeriesPlan) showPlan, context);
       case STORAGE_GROUP:
@@ -1038,6 +1041,20 @@ public class PlanExecutor implements IPlanExecutor {
             Collections.singletonList(TSDataType.TEXT));
     Field field = new Field(TSDataType.TEXT);
     field.setBinaryV(new Binary(IoTDBConstant.VERSION));
+    RowRecord rowRecord = new RowRecord(0);
+    rowRecord.addField(field);
+    singleDataSet.setRecord(rowRecord);
+    return singleDataSet;
+  }
+
+  private QueryDataSet processShowSystemStatus() {
+    SingleDataSet singleDataSet =
+        new SingleDataSet(
+            Collections.singletonList(new PartialPath(IoTDBConstant.COLUMN_STATUS, false)),
+            Collections.singletonList(TSDataType.TEXT));
+    Field field = new Field(TSDataType.TEXT);
+    field.setBinaryV(
+        new Binary(IoTDBDescriptor.getInstance().getConfig().getSystemStatus().toString()));
     RowRecord rowRecord = new RowRecord(0);
     rowRecord.addField(field);
     singleDataSet.setRecord(rowRecord);

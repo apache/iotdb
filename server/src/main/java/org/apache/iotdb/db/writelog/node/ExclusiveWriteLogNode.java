@@ -21,6 +21,7 @@ package org.apache.iotdb.db.writelog.node;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -317,7 +318,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       writer.write(logBufferFlushing);
     } catch (Throwable e) {
       logger.error("Log node {} sync failed, change system mode to read-only", identifier, e);
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
     } finally {
       // switch buffer flushing to idle and notify the sync thread
       synchronized (switchBufferCondition) {

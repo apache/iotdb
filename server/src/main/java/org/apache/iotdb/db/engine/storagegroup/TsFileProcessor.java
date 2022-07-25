@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
@@ -1046,7 +1047,7 @@ public class TsFileProcessor {
               storageGroupName,
               tsFileResource.getTsFile().getName(),
               e);
-          IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
           try {
             logger.error(
                 "{}: {} IOTask meets error, truncate the corrupted data",
@@ -1132,7 +1133,9 @@ public class TsFileProcessor {
     // for sync flush
     syncReleaseFlushedMemTable(memTableToFlush);
 
-    if (shouldClose && flushingMemTables.isEmpty() && writer != null) {
+    // retry to avoid unnecessary read-only mode
+    int retryCnt = 0;
+    while (shouldClose && flushingMemTables.isEmpty() && writer != null) {
       try {
         writer.mark();
         updateCompressionRatio(memTableToFlush);
@@ -1148,11 +1151,11 @@ public class TsFileProcessor {
         }
       } catch (Exception e) {
         logger.error(
-            "{} meet error when flush FileMetadata to {}, change system mode to read-only",
+            "{}: {} marking or ending file meet error",
             storageGroupName,
-            tsFileResource.getTsFile().getAbsolutePath(),
+            tsFileResource.getTsFile().getName(),
             e);
-        IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+        // truncate broken data
         try {
           writer.reset();
         } catch (IOException e1) {
@@ -1162,11 +1165,24 @@ public class TsFileProcessor {
               tsFileResource.getTsFile().getName(),
               e1);
         }
-        logger.error(
-            "{}: {} marking or ending file meet error",
-            storageGroupName,
-            tsFileResource.getTsFile().getName(),
-            e);
+        // retry or set read-only
+        if (retryCnt < 3) {
+          logger.warn(
+              "{} meet error when flush FileMetadata to {}, retry it again",
+              storageGroupName,
+              tsFileResource.getTsFile().getAbsolutePath(),
+              e);
+          retryCnt++;
+          continue;
+        } else {
+          logger.error(
+              "{} meet error when flush FileMetadata to {}, change system mode to read-only",
+              storageGroupName,
+              tsFileResource.getTsFile().getAbsolutePath(),
+              e);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
+          break;
+        }
       }
       // for sync close
       if (logger.isDebugEnabled()) {
@@ -1178,6 +1194,7 @@ public class TsFileProcessor {
       synchronized (flushingMemTables) {
         flushingMemTables.notifyAll();
       }
+      break;
     }
   }
 

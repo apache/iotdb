@@ -141,7 +141,11 @@ public class IoTDBConfig {
   /** Is the write ahead log enable. */
   private boolean enableWal = true;
 
-  private volatile boolean readOnly = false;
+  /** Shutdown system or set it to read-only mode when unrecoverable error occurs. */
+  private boolean enableReadOnly = true;
+
+  /** Status of current system. */
+  private volatile SystemStatus status = SystemStatus.NORMAL;
 
   private boolean enableDiscardOutOfOrderData = false;
 
@@ -1384,12 +1388,39 @@ public class IoTDBConfig {
     this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
-  public boolean isReadOnly() {
-    return readOnly;
+  boolean isEnableReadOnly() {
+    return enableReadOnly;
   }
 
-  public void setReadOnly(boolean readOnly) {
-    this.readOnly = readOnly;
+  void setEnableReadOnly(boolean enableReadOnly) {
+    this.enableReadOnly = enableReadOnly;
+  }
+
+  public boolean isReadOnly() {
+    return status == SystemStatus.READONLY;
+  }
+
+  public SystemStatus getSystemStatus() {
+    return status;
+  }
+
+  public void setSystemStatus(SystemStatus newStatus) {
+    if (newStatus == SystemStatus.READONLY) {
+      if (enableReadOnly) {
+        logger.error(
+            "System mode will be set to {}! Only query statements are permitted!",
+            newStatus,
+            new RuntimeException("System mode is set to read-only"));
+      } else {
+        logger.error(
+            "Unrecoverable error occurs! Shutdown system directly when read-only mode is disabled.",
+            new RuntimeException("System mode is set to read-only"));
+        System.exit(-1);
+      }
+    } else {
+      logger.warn("Set system mode from {} to {}.", status, newStatus);
+    }
+    this.status = newStatus;
   }
 
   public String getRpcImplClassName() {

@@ -22,6 +22,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -141,7 +142,7 @@ public class EnvironmentUtils {
       fail();
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
+    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
     // unit tests.
     IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);

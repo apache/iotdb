@@ -482,6 +482,10 @@ SYSTEM
     : S Y S T E M
     ;
 
+STATUS
+    : S T A T U S
+    ;
+
 TAGS
     : T A G S
     ;

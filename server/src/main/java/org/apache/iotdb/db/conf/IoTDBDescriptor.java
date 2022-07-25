@@ -620,6 +620,10 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
+      conf.setEnableReadOnly(
+          Boolean.parseBoolean(
+              properties.getProperty("enable_read_only", String.valueOf(conf.isEnableReadOnly()))));
+
       // the num of memtables in each storage group
       conf.setConcurrentWritingTimePartition(
           Integer.parseInt(

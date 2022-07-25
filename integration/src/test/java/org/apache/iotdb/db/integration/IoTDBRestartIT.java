@@ -20,6 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
@@ -423,7 +424,7 @@ public class IoTDBRestartIT {
       statement.execute("flush");
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
+    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
     EnvironmentUtils.restartDaemon();
 
     try (Connection connection =
