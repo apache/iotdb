@@ -52,6 +52,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 
 public class ClusterTemplateManager implements ITemplateManager {
 
@@ -255,17 +256,44 @@ public class ClusterTemplateManager implements ITemplateManager {
     try {
       Map<Integer, Template> result = new HashMap<>();
       int templateId;
-      for (PartialPath path : pathSetTemplateMap.keySet()) {
-        if (pathPattern.overlapWith(path)
-            || pathPattern.overlapWith(path.concatNode(MULTI_LEVEL_PATH_WILDCARD))) {
-          templateId = pathSetTemplateMap.get(path);
-          result.put(templateId, templateIdMap.get(templateId));
+      Template template;
+      for (Map.Entry<PartialPath, Integer> entry : pathSetTemplateMap.entrySet()) {
+        templateId = entry.getValue();
+        template = templateIdMap.get(templateId);
+        if (checkIsRelated(pathPattern, entry.getKey(), template)) {
+          result.put(templateId, template);
         }
       }
       return result;
     } finally {
       readWriteLock.readLock().unlock();
     }
+  }
+
+  private boolean checkIsRelated(
+      PartialPath pathPattern, PartialPath pathSetTemplate, Template template) {
+    // e.g. given template t1(s1 int32) set on root.sg, the possible timeseries are matched by
+    // root.sg.s1 or root.sg.**.s1
+    // thus we check pathPattern.overlapWith(root.sg.s1) || pathPattern.overlapWith(root.sg.**.s1)
+    // and the following logic is equivalent with the above expression
+
+    String measurement = pathPattern.getTailNode();
+    if (measurement.equals(MULTI_LEVEL_PATH_WILDCARD)
+        || measurement.equals(ONE_LEVEL_PATH_WILDCARD)) {
+      return pathPattern.overlapWith(
+              pathSetTemplate
+                  .concatNode(MULTI_LEVEL_PATH_WILDCARD)
+                  .concatNode(ONE_LEVEL_PATH_WILDCARD))
+          || pathPattern.overlapWith(pathSetTemplate.concatNode(ONE_LEVEL_PATH_WILDCARD));
+    }
+
+    if (template.hasSchema(measurement)) {
+      return pathPattern.overlapWith(
+              pathSetTemplate.concatNode(MULTI_LEVEL_PATH_WILDCARD).concatNode(measurement))
+          || pathPattern.overlapWith(pathSetTemplate.concatNode(measurement));
+    }
+
+    return false;
   }
 
   public void updateTemplateSetInfo(byte[] templateSetInfo) {

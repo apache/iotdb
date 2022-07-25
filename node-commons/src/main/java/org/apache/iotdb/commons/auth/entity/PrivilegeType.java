@@ -53,7 +53,9 @@ public enum PrivilegeType {
   DELETE_STORAGE_GROUP(true),
   ALTER_TIMESERIES(true),
   UPDATE_TEMPLATE,
-  APPLY_TEMPLATE(true);
+  READ_TEMPLATE,
+  APPLY_TEMPLATE(true),
+  READ_TEMPLATE_APPLICATION;
 
   private static final int PRIVILEGE_COUNT = values().length;
 
