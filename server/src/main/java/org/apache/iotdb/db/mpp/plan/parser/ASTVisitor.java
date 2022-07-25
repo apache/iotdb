@@ -74,6 +74,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.literal.BooleanLiteral;
 import org.apache.iotdb.db.mpp.plan.statement.literal.DoubleLiteral;
@@ -1315,6 +1316,44 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     insertStatement.setValuesList(valuesList);
   }
 
+  // Load File
+
+  @Override
+  public Statement visitLoadFile(IoTDBSqlParser.LoadFileContext ctx) {
+    LoadFileStatement loadFileStatement =
+        new LoadFileStatement(parseStringLiteral(ctx.fileName.getText()));
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(loadFileStatement, ctx.loadFilesClause());
+    }
+    return loadFileStatement;
+  }
+
+  /**
+   * used for parsing load tsfile, context will be one of "SCHEMA, LEVEL, METADATA", and maybe
+   * followed by a recursion property statement
+   *
+   * @param loadFileStatement the result statement, setting by clause context
+   * @param ctx context of property statement
+   */
+  private void parseLoadFiles(
+      LoadFileStatement loadFileStatement, IoTDBSqlParser.LoadFilesClauseContext ctx) {
+    if (ctx.AUTOREGISTER() != null) {
+      loadFileStatement.setAutoCreateSchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+    } else if (ctx.SGLEVEL() != null) {
+      loadFileStatement.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
+    } else if (ctx.VERIFY() != null) {
+      loadFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+    } else {
+      throw new SQLParserException(
+          String.format(
+              "load tsfile format %s error, please input AUTOREGISTER | SGLEVEL | VERIFY.",
+              ctx.getText()));
+    }
+    if (ctx.loadFilesClause() != null) {
+      parseLoadFiles(loadFileStatement, ctx.loadFilesClause());
+    }
+  }
+
   /** Common Parsers */
 
   // IoTDB Objects ========================================================================
@@ -1941,11 +1980,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       default:
         throw new SemanticException(DELETE_RANGE_ERROR_MSG);
     }
-  }
-
-  /** function for parsing file path used by LOAD statement. */
-  public String parseFilePath(String src) {
-    return src.substring(1, src.length() - 1);
   }
 
   // Expression & Predicate ========================================================================

@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.DataPartitionQueryParam;
 import org.apache.iotdb.commons.partition.SchemaNodeManagementPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
@@ -55,6 +58,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatemen
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
@@ -82,6 +86,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.GroupByMonthFilter;
@@ -92,6 +97,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1045,6 +1052,60 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
     Analysis analysis = new Analysis();
     analysis.setStatement(insertRowsOfOneDeviceStatement);
+    analysis.setDataPartitionInfo(dataPartition);
+
+    return analysis;
+  }
+
+  @Override
+  public Analysis visitLoadFile(LoadFileStatement loadFileStatement, MPPQueryContext context) {
+    context.setQueryType(QueryType.WRITE);
+
+    Map<String, Long> device2MinTime = new HashMap<>();
+    Map<String, Long> device2MaxTime = new HashMap<>();
+    for (File tsFile : loadFileStatement.getTsFiles()) {
+      try {
+        TsFileResource resource = new TsFileResource(tsFile);
+        FileLoaderUtils.loadOrGenerateResource(resource);
+        for (String device : resource.getDevices()) {
+          device2MinTime.put(
+              device,
+              Math.min(
+                  device2MinTime.getOrDefault(device, Long.MAX_VALUE),
+                  resource.getStartTime(device)));
+          device2MaxTime.put(
+              device,
+              Math.max(
+                  device2MaxTime.getOrDefault(device, Long.MIN_VALUE),
+                  resource.getEndTime(device)));
+        }
+      } catch (IOException e) {
+        logger.error(String.format("Parse file %s to resource error.", tsFile.getPath()), e);
+        throw new SemanticException(
+            String.format("Parse file %s to resource error", tsFile.getPath()));
+      }
+    }
+
+    List<DataPartitionQueryParam> params = new ArrayList<>();
+    for (Map.Entry<String, Long> entry : device2MinTime.entrySet()) {
+      List<TTimePartitionSlot> timePartitionSlots = new ArrayList<>();
+      String device = entry.getKey();
+      long endTime = device2MaxTime.get(device);
+      long interval = StorageEngineV2.getTimePartitionInterval();
+      long time = (entry.getValue() / interval) * interval;
+      for (; time <= endTime; time += interval) {
+        timePartitionSlots.add(StorageEngineV2.getTimePartitionSlot(time));
+      }
+
+      DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
+      dataPartitionQueryParam.setDevicePath(device);
+      dataPartitionQueryParam.setTimePartitionSlotList(timePartitionSlots);
+    }
+
+    DataPartition dataPartition = partitionFetcher.getOrCreateDataPartition(params);
+
+    Analysis analysis = new Analysis();
+    analysis.setStatement(loadFileStatement);
     analysis.setDataPartitionInfo(dataPartition);
 
     return analysis;
