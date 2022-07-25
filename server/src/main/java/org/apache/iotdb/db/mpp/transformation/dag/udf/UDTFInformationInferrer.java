@@ -27,6 +27,7 @@ import org.apache.iotdb.udf.api.UDTF;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,13 +36,13 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
-public class UDTFTypeInferrer {
+public class UDTFInformationInferrer {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(UDTFTypeInferrer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(UDTFInformationInferrer.class);
 
   protected final String functionName;
 
-  public UDTFTypeInferrer(String functionName) {
+  public UDTFInformationInferrer(String functionName) {
     this.functionName = functionName;
   }
 
@@ -50,27 +51,52 @@ public class UDTFTypeInferrer {
       List<TSDataType> childExpressionDataTypes,
       Map<String, String> attributes) {
     try {
-      UDTF udtf = (UDTF) UDFRegistrationService.getInstance().reflect(functionName);
-
-      UDFParameters parameters =
-          new UDFParameters(
-              childExpressions,
-              UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
-              attributes);
-      udtf.validate(new UDFParameterValidator(parameters));
-
-      // use ZoneId.systemDefault() because UDF's data type is ZoneId independent
-      UDTFConfigurations configurations = new UDTFConfigurations(ZoneId.systemDefault());
-      udtf.beforeStart(parameters, configurations);
-
-      udtf.beforeDestroy();
-
-      return UDFDataTypeTransformer.transformToTsDataType(configurations.getOutputDataType());
+      return UDFDataTypeTransformer.transformToTsDataType(
+          reflectAndGetConfigurations(childExpressions, childExpressionDataTypes, attributes)
+              .getOutputDataType());
     } catch (Exception e) {
       LOGGER.warn("Error occurred during inferring UDF data type", e);
       throw new SemanticException(
           String.format("Error occurred during inferring UDF data type: %s", System.lineSeparator())
               + e);
     }
+  }
+
+  public AccessStrategy getAccessStrategy(
+      List<String> childExpressions,
+      List<TSDataType> childExpressionDataTypes,
+      Map<String, String> attributes) {
+    try {
+
+      return reflectAndGetConfigurations(childExpressions, childExpressionDataTypes, attributes)
+          .getAccessStrategy();
+    } catch (Exception e) {
+      LOGGER.warn("Error occurred during getting UDF access strategy", e);
+      throw new SemanticException(
+          String.format(
+                  "Error occurred during getting UDF access strategy: %s", System.lineSeparator())
+              + e);
+    }
+  }
+
+  private UDTFConfigurations reflectAndGetConfigurations(
+      List<String> childExpressions,
+      List<TSDataType> childExpressionDataTypes,
+      Map<String, String> attributes)
+      throws Exception {
+    UDTF udtf = (UDTF) UDFRegistrationService.getInstance().reflect(functionName);
+
+    UDFParameters parameters =
+        new UDFParameters(
+            childExpressions,
+            UDFDataTypeTransformer.transformToUDFDataTypeList(childExpressionDataTypes),
+            attributes);
+    udtf.validate(new UDFParameterValidator(parameters));
+
+    // use ZoneId.systemDefault() because UDF's data type is ZoneId independent
+    UDTFConfigurations configurations = new UDTFConfigurations(ZoneId.systemDefault());
+    udtf.beforeStart(parameters, configurations);
+    udtf.beforeDestroy();
+    return configurations;
   }
 }
