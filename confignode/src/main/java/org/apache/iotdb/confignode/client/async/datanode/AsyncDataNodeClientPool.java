@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.client.async.datanode;
 
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -34,6 +35,7 @@ import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandle
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
+import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -42,6 +44,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,6 +120,11 @@ public class AsyncDataNodeClientPool {
                 new UpdateRegionRouteMapHandler(
                     countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
             break;
+          case BROADCAST_LATEST_CONFIG_NODE_GROUP:
+            handler =
+                new UpdateConfigNodeGroupHandler(
+                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+            break;
           default:
             return;
         }
@@ -163,6 +171,10 @@ public class AsyncDataNodeClientPool {
           break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
+          break;
+        case BROADCAST_LATEST_CONFIG_NODE_GROUP:
+          client.updateConfigNodeGroup(
+              (TUpdateConfigNodeGroupReq) req, (UpdateConfigNodeGroupHandler) handler);
           break;
         default:
       }
@@ -262,6 +274,28 @@ public class AsyncDataNodeClientPool {
       if (dataNodeLocationMap.isEmpty()) {
         break;
       }
+    }
+  }
+
+  /**
+   * notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
+   *
+   * @param registeredDataNodeLocationMap Map<Integer, TDataNodeLocation>
+   * @param registeredConfigNodes List<TConfigNodeLocation>
+   */
+  public void broadCastTheLatestConfigNodeGroup(
+      Map<Integer, TDataNodeLocation> registeredDataNodeLocationMap,
+      List<TConfigNodeLocation> registeredConfigNodes) {
+    if (registeredDataNodeLocationMap != null) {
+      TUpdateConfigNodeGroupReq updateConfigNodeGroupReq =
+          new TUpdateConfigNodeGroupReq(registeredConfigNodes);
+      LOGGER.info("Begin to broadcast the latest configNodeGroup: {}", registeredConfigNodes);
+      sendAsyncRequestToDataNodeWithRetry(
+          updateConfigNodeGroupReq,
+          registeredDataNodeLocationMap,
+          DataNodeRequestType.BROADCAST_LATEST_CONFIG_NODE_GROUP,
+          null);
+      LOGGER.info("Broadcast the latest configNodeGroup finished.");
     }
   }
 
