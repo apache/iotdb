@@ -77,4 +77,8 @@ public enum PrivilegeType {
   public static boolean isPathRelevant(int type) {
     return 0 <= type && type < PRIVILEGE_COUNT && values()[type].isPathRelevant;
   }
+
+  public boolean isPathRelevant() {
+    return isPathRelevant;
+  }
 }
