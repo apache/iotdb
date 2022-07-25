@@ -848,7 +848,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces for get and auto create device
-
   /**
    * get device node, if the schema region is not set, create it when autoCreateSchema is true
    *
@@ -887,7 +886,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces for metadata info Query
-
   /**
    * Check whether the path exists.
    *
@@ -1317,7 +1315,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces for alias and tag/attribute operations
-
   /**
    * Set the new offset of a timeseries. Only used for Recover. When creating tags/attributes for a
    * timeseries, if is first time, the file offset where the tags/attributes stored will be stored
@@ -1518,7 +1515,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces and Implementation for InsertPlan process
-
   /** get schema for device. Attention!!! Only support insertPlan */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
@@ -1734,7 +1730,6 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   // endregion
 
   // region Interfaces and Implementation for Template operations
-
   /**
    * Get all paths set designated template
    *

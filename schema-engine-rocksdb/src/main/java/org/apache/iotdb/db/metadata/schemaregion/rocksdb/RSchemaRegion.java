@@ -870,7 +870,6 @@ public class RSchemaRegion implements ISchemaRegion {
   @Override
   public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-
     return getCountByNodeType(new Character[] {NODE_TYPE_ENTITY}, pathPattern.getNodes());
   }
 

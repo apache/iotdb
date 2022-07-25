@@ -1338,6 +1338,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** Common Parsers */
 
   // IoTDB Objects ========================================================================
+
   private PartialPath parseFullPath(IoTDBSqlParser.FullPathContext ctx) {
     List<IoTDBSqlParser.NodeNameWithoutWildcardContext> nodeNamesWithoutStar =
         ctx.nodeNameWithoutWildcard();
@@ -1557,6 +1558,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** Data Control Language (DCL) */
 
   // Create User
+
   @Override
   public Statement visitCreateUser(IoTDBSqlParser.CreateUserContext ctx) {
     AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.CREATE_USER);

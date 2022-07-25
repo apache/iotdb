@@ -107,9 +107,6 @@ public class MeasurementGroupByLevelCounter extends Traverser {
     }
     if (hasTag) {
       if (!timeseries.contains(node.getFullPath())) {
-        if (level >= groupByLevel) {
-          result.put(path, result.get(path));
-        }
         return true;
       }
     }

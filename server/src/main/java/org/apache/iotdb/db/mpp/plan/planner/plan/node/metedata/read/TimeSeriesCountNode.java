@@ -102,7 +102,6 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
       throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
     }
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
-    boolean hasTag = ReadWriteIOUtils.readBool(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
     String key = ReadWriteIOUtils.readString(buffer);
     String value = ReadWriteIOUtils.readString(buffer);
