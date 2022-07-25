@@ -135,12 +135,13 @@ public interface ISchemaRegion {
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
    * path. All timeseries start with the matched prefix path will be counted.
    */
-  int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch, boolean hasTag)
       throws MetadataException;
 
   // The measurements will be grouped by the node in given level and then counted for each group.
   Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
+      PartialPath pathPattern, int level, boolean isPrefixMatch, boolean hasTag)
+      throws MetadataException;
 
   /**
    * To calculate the count of devices for given path pattern. If using prefix match, the path

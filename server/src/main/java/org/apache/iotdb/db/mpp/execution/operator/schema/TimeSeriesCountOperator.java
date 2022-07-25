@@ -34,6 +34,7 @@ public class TimeSeriesCountOperator implements SourceOperator {
   private final OperatorContext operatorContext;
   private final PartialPath partialPath;
   private final boolean isPrefixPath;
+  private final boolean hasTag;
 
   private boolean isFinished;
 
@@ -46,11 +47,13 @@ public class TimeSeriesCountOperator implements SourceOperator {
       PlanNodeId sourceId,
       OperatorContext operatorContext,
       PartialPath partialPath,
-      boolean isPrefixPath) {
+      boolean isPrefixPath,
+      boolean hasTag) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.partialPath = partialPath;
     this.isPrefixPath = isPrefixPath;
+    this.hasTag = hasTag;
   }
 
   @Override
@@ -68,7 +71,7 @@ public class TimeSeriesCountOperator implements SourceOperator {
       count =
           ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
               .getSchemaRegion()
-              .getAllTimeseriesCount(partialPath, isPrefixPath);
+              .getAllTimeseriesCount(partialPath, isPrefixPath, hasTag);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }

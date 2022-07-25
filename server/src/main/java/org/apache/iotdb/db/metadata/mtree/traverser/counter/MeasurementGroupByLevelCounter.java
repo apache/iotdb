@@ -31,6 +31,7 @@ public class MeasurementGroupByLevelCounter extends Traverser {
 
   // level query option
   private int groupByLevel;
+  private boolean hasTag;
 
   private Map<PartialPath, Integer> result = new HashMap<>();
 
@@ -38,10 +39,11 @@ public class MeasurementGroupByLevelCounter extends Traverser {
   private PartialPath path;
 
   public MeasurementGroupByLevelCounter(
-      IMNode startNode, PartialPath path, IMTreeStore store, int groupByLevel)
+      IMNode startNode, PartialPath path, IMTreeStore store, int groupByLevel, boolean hasTag)
       throws MetadataException {
     super(startNode, path, store);
     this.groupByLevel = groupByLevel;
+    this.hasTag = hasTag;
     checkLevelAboveSG();
   }
 
@@ -85,6 +87,11 @@ public class MeasurementGroupByLevelCounter extends Traverser {
     }
     if (!node.isMeasurement()) {
       return false;
+    }
+    if (hasTag) {
+      if (node.getAsMeasurementMNode().getOffset() == -1) {
+        return true;
+      }
     }
     if (level >= groupByLevel) {
       result.put(path, result.get(path) + 1);

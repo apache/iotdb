@@ -461,9 +461,11 @@ public abstract class MTreeBelowSGTest {
           null,
           null);
 
-      assertEquals(4, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.**")));
-      assertEquals(2, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")));
-      assertEquals(0, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3")));
+      assertEquals(4, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.**"), false));
+      assertEquals(
+          2, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1"), false));
+      assertEquals(
+          0, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3"), false));
 
       assertEquals(
           1,
@@ -511,7 +513,7 @@ public abstract class MTreeBelowSGTest {
 
     assertEquals(2, storageGroup.getDevices(new PartialPath("root"), true).size());
     assertEquals(2, storageGroup.getDevices(new PartialPath("root.**"), false).size());
-    assertEquals(2, storageGroup.getAllTimeseriesCount(new PartialPath("root.**")));
+    assertEquals(2, storageGroup.getAllTimeseriesCount(new PartialPath("root.**"), false));
     assertEquals(2, storageGroup.getMeasurementPaths(new PartialPath("root.**")).size());
     assertEquals(
         2,
@@ -807,28 +809,28 @@ public abstract class MTreeBelowSGTest {
 
     PartialPath pattern = new PartialPath("root.sg.**");
     Map<PartialPath, Integer> result =
-        storageGroup.getMeasurementCountGroupByLevel(pattern, 2, false);
+        storageGroup.getMeasurementCountGroupByLevel(pattern, 2, false, false);
     assertEquals(2, result.size());
     assertEquals(3, (int) result.get(new PartialPath("root.sg.a1")));
     assertEquals(2, (int) result.get(new PartialPath("root.sg.a2")));
 
-    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 3, false);
+    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 3, false, false);
     assertEquals(4, result.size());
     assertEquals(1, (int) result.get(new PartialPath("root.sg.a1.s1")));
     assertEquals(2, (int) result.get(new PartialPath("root.sg.a1.d1")));
     assertEquals(1, (int) result.get(new PartialPath("root.sg.a2.s1")));
     assertEquals(1, (int) result.get(new PartialPath("root.sg.a2.d1")));
 
-    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 5, false);
+    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 5, false, false);
     assertEquals(0, result.size());
 
     pattern = new PartialPath("root.**.s1");
-    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 2, false);
+    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 2, false, false);
     assertEquals(2, result.size());
     assertEquals(2, (int) result.get(new PartialPath("root.sg.a1")));
     assertEquals(2, (int) result.get(new PartialPath("root.sg.a2")));
 
-    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 3, false);
+    result = storageGroup.getMeasurementCountGroupByLevel(pattern, 3, false, false);
     assertEquals(4, result.size());
     assertEquals(1, (int) result.get(new PartialPath("root.sg.a1.s1")));
     assertEquals(1, (int) result.get(new PartialPath("root.sg.a1.d1")));

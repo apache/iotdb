@@ -850,14 +850,14 @@ public class RSchemaRegion implements ISchemaRegion {
   }
 
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch, boolean hasTag)
       throws MetadataException {
     return getCountByNodeType(new Character[] {NODE_TYPE_MEASUREMENT}, pathPattern.getNodes());
   }
 
   @TestOnly
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false);
+    return getAllTimeseriesCount(pathPattern, false, false);
   }
 
   @Override
@@ -908,7 +908,8 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
+      PartialPath pathPattern, int level, boolean isPrefixMatch, boolean hasTag)
+      throws MetadataException {
     Map<PartialPath, Integer> result = new ConcurrentHashMap<>();
     BiFunction<byte[], byte[], Boolean> function =
         (a, b) -> {

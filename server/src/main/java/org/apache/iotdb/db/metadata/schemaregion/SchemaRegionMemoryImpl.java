@@ -907,9 +907,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
    * path. All timeseries start with the matched prefix path will be counted.
    */
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch, boolean hasTag)
       throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
+    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch, hasTag);
   }
 
   /**
@@ -942,8 +942,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
-    return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
+      PartialPath pathPattern, int level, boolean isPrefixMatch, boolean hasTag)
+      throws MetadataException {
+    return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch, hasTag);
   }
 
   // endregion

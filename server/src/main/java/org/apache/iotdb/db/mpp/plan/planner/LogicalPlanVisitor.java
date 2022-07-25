@@ -534,7 +534,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
     return planBuilder
         .planTimeSeriesCountSource(
-            countTimeSeriesStatement.getPartialPath(), countTimeSeriesStatement.isPrefixPath())
+            countTimeSeriesStatement.getPartialPath(),
+            countTimeSeriesStatement.isPrefixPath(),
+            countTimeSeriesStatement.getKey() == null ? false : true)
         .planCountMerge()
         .getRoot();
   }
@@ -547,7 +549,8 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         .planLevelTimeSeriesCountSource(
             countLevelTimeSeriesStatement.getPartialPath(),
             countLevelTimeSeriesStatement.isPrefixPath(),
-            countLevelTimeSeriesStatement.getLevel())
+            countLevelTimeSeriesStatement.getLevel(),
+            countLevelTimeSeriesStatement.getKey() == null ? false : true)
         .planCountMerge()
         .getRoot();
   }

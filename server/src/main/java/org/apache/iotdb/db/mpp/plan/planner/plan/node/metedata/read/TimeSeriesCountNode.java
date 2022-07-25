@@ -34,13 +34,21 @@ import java.util.List;
 
 public class TimeSeriesCountNode extends SchemaQueryScanNode {
 
-  public TimeSeriesCountNode(PlanNodeId id, PartialPath partialPath, boolean isPrefixPath) {
+  private boolean hasTag;
+
+  public TimeSeriesCountNode(
+      PlanNodeId id, PartialPath partialPath, boolean isPrefixPath, boolean hasTag) {
     super(id, partialPath, isPrefixPath);
+    this.hasTag = hasTag;
+  }
+
+  public boolean hasTag() {
+    return hasTag;
   }
 
   @Override
   public PlanNode clone() {
-    return new TimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath);
+    return new TimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, hasTag);
   }
 
   @Override
@@ -53,6 +61,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     PlanNodeType.TIME_SERIES_COUNT.serialize(byteBuffer);
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
+    ReadWriteIOUtils.write(hasTag, byteBuffer);
   }
 
   @Override
@@ -60,6 +69,7 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
     PlanNodeType.TIME_SERIES_COUNT.serialize(stream);
     ReadWriteIOUtils.write(path.getFullPath(), stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
+    ReadWriteIOUtils.write(hasTag, stream);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
@@ -71,7 +81,8 @@ public class TimeSeriesCountNode extends SchemaQueryScanNode {
       throw new IllegalArgumentException("Cannot deserialize DevicesSchemaScanNode", e);
     }
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
+    boolean hasTag = ReadWriteIOUtils.readBool(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new TimeSeriesCountNode(planNodeId, path, isPrefixPath);
+    return new TimeSeriesCountNode(planNodeId, path, isPrefixPath, hasTag);
   }
 }

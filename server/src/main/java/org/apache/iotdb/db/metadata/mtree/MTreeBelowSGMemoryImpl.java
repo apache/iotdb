@@ -829,9 +829,10 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch, boolean hasTag)
       throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(storageGroupMNode, pathPattern, store);
+    CounterTraverser counter =
+        new MeasurementCounter(storageGroupMNode, pathPattern, store, hasTag);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getCount();
@@ -843,8 +844,9 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   @Override
-  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false);
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean hasTag)
+      throws MetadataException {
+    return getAllTimeseriesCount(pathPattern, false, hasTag);
   }
 
   /**
@@ -889,9 +891,10 @@ public class MTreeBelowSGMemoryImpl implements IMTreeBelowSG {
 
   @Override
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
+      PartialPath pathPattern, int level, boolean isPrefixMatch, boolean hasTag)
+      throws MetadataException {
     MeasurementGroupByLevelCounter counter =
-        new MeasurementGroupByLevelCounter(storageGroupMNode, pathPattern, store, level);
+        new MeasurementGroupByLevelCounter(storageGroupMNode, pathPattern, store, level, hasTag);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getResult();

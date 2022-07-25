@@ -27,10 +27,13 @@ import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 // One MultiMeasurement will only be count once.
 public class MeasurementCounter extends CounterTraverser {
 
-  public MeasurementCounter(IMNode startNode, PartialPath path, IMTreeStore store)
+  private boolean hasTag;
+
+  public MeasurementCounter(IMNode startNode, PartialPath path, IMTreeStore store, boolean hasTag)
       throws MetadataException {
     super(startNode, path, store);
     isMeasurementTraverser = true;
+    this.hasTag = hasTag;
   }
 
   @Override
@@ -42,6 +45,11 @@ public class MeasurementCounter extends CounterTraverser {
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
     if (!node.isMeasurement()) {
       return false;
+    }
+    if (hasTag) {
+      if (node.getAsMeasurementMNode().getOffset() == -1) {
+        return true;
+      }
     }
     count++;
     return true;

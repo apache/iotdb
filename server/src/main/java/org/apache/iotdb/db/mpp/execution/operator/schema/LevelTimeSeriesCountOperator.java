@@ -38,6 +38,7 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
   private final PartialPath partialPath;
   private final boolean isPrefixPath;
   private final int level;
+  private final boolean hasTag;
 
   private boolean isFinished;
 
@@ -46,12 +47,14 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
       OperatorContext operatorContext,
       PartialPath partialPath,
       boolean isPrefixPath,
-      int level) {
+      int level,
+      boolean hasTag) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.partialPath = partialPath;
     this.isPrefixPath = isPrefixPath;
     this.level = level;
+    this.hasTag = hasTag;
   }
 
   @Override
@@ -74,7 +77,7 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
       countMap =
           ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
               .getSchemaRegion()
-              .getMeasurementCountGroupByLevel(partialPath, level, isPrefixPath);
+              .getMeasurementCountGroupByLevel(partialPath, level, isPrefixPath, hasTag);
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }

@@ -35,20 +35,26 @@ import java.util.Objects;
 
 public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
   private final int level;
+  private final boolean hasTag;
 
   public LevelTimeSeriesCountNode(
-      PlanNodeId id, PartialPath partialPath, boolean isPrefixPath, int level) {
+      PlanNodeId id, PartialPath partialPath, boolean isPrefixPath, int level, boolean hasTag) {
     super(id, partialPath, isPrefixPath);
     this.level = level;
+    this.hasTag = hasTag;
   }
 
   public int getLevel() {
     return level;
   }
 
+  public boolean hasTag() {
+    return hasTag;
+  }
+
   @Override
   public PlanNode clone() {
-    return new LevelTimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, level);
+    return new LevelTimeSeriesCountNode(getPlanNodeId(), path, isPrefixPath, level, hasTag);
   }
 
   @Override
@@ -62,6 +68,7 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(path.getFullPath(), byteBuffer);
     ReadWriteIOUtils.write(isPrefixPath, byteBuffer);
     ReadWriteIOUtils.write(level, byteBuffer);
+    ReadWriteIOUtils.write(hasTag, byteBuffer);
   }
 
   @Override
@@ -70,6 +77,7 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     ReadWriteIOUtils.write(path.getFullPath(), stream);
     ReadWriteIOUtils.write(isPrefixPath, stream);
     ReadWriteIOUtils.write(level, stream);
+    ReadWriteIOUtils.write(hasTag, stream);
   }
 
   public static PlanNode deserialize(ByteBuffer buffer) {
@@ -82,8 +90,9 @@ public class LevelTimeSeriesCountNode extends SchemaQueryScanNode {
     }
     boolean isPrefixPath = ReadWriteIOUtils.readBool(buffer);
     int level = ReadWriteIOUtils.readInt(buffer);
+    boolean hasTag = ReadWriteIOUtils.readBool(buffer);
     PlanNodeId planNodeId = PlanNodeId.deserialize(buffer);
-    return new LevelTimeSeriesCountNode(planNodeId, path, isPrefixPath, level);
+    return new LevelTimeSeriesCountNode(planNodeId, path, isPrefixPath, level, hasTag);
   }
 
   @Override

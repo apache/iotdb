@@ -502,7 +502,11 @@ public class LocalExecutionPlanner {
               TimeSeriesCountOperator.class.getSimpleName());
       context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
       return new TimeSeriesCountOperator(
-          node.getPlanNodeId(), operatorContext, node.getPath(), node.isPrefixPath());
+          node.getPlanNodeId(),
+          operatorContext,
+          node.getPath(),
+          node.isPrefixPath(),
+          node.hasTag());
     }
 
     @Override
@@ -519,7 +523,8 @@ public class LocalExecutionPlanner {
           operatorContext,
           node.getPath(),
           node.isPrefixPath(),
-          node.getLevel());
+          node.getLevel(),
+          node.hasTag());
     }
 
     @Override
