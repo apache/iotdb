@@ -22,6 +22,7 @@
 package org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary;
 
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.util.TransformUtils;
 
 public class BetweenTransformer extends CompareTernaryTransformer {
 
@@ -54,11 +55,11 @@ public class BetweenTransformer extends CompareTernaryTransformer {
   @Override
   protected Evaluator constructTextEvaluator() {
     return () ->
-        ((compare(
+        ((TransformUtils.compare(
                         firstPointReader.currentBinary().getStringValue(),
                         secondPointReader.currentBinary().getStringValue())
                     >= 0)
-                && (compare(
+                && (TransformUtils.compare(
                         firstPointReader.currentBinary().getStringValue(),
                         thirdPointReader.currentBinary().getStringValue())
                     <= 0))
