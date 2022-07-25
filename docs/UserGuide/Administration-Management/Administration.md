@@ -393,7 +393,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |UPDATE_TEMPLATE|create, drop, append and prune schema template; path independent|Eg1: `create schema template t1(s1 int32)`
 |READ_TEMPLATE|show schema templates and show nodes in schema template; path independent|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1` 
 |APPLY_TEMPLATE|set, unset and activate schema template; path dependent|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`
-|READ_TEMPLATE_APPLICATION|show paths set and using schema template; path dependent|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
+|READ_TEMPLATE_APPLICATION|show paths set and using schema template; path independent|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
 
 Note that the following SQL statements need to be granted multiple permissions before they can be used：
 
