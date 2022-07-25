@@ -197,6 +197,13 @@ public interface IMTreeBelowSG {
       throws MetadataException;
 
   /**
+   * Get the count of timeseries matching the given path.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   */
+  int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException;
+
+  /**
    * Get the count of timeseries matching the given path by tag.
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard

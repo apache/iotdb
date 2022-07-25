@@ -852,6 +852,16 @@ public class MTreeBelowSGCachedImpl implements IMTreeBelowSG {
     return counter.getCount();
   }
 
+  /**
+   * Get the count of timeseries matching the given path.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   */
+  @Override
+  public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
+    return getAllTimeseriesCount(pathPattern, false);
+  }
+
   @Override
   public int getAllTimeseriesCount(
       PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)

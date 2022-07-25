@@ -461,11 +461,9 @@ public abstract class MTreeBelowSGTest {
           null,
           null);
 
-      assertEquals(4, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.**"), false));
-      assertEquals(
-          2, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1"), false));
-      assertEquals(
-          0, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3"), false));
+      assertEquals(4, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.**")));
+      assertEquals(2, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.*.s1")));
+      assertEquals(0, storageGroup.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s3")));
 
       assertEquals(
           1,
@@ -513,7 +511,7 @@ public abstract class MTreeBelowSGTest {
 
     assertEquals(2, storageGroup.getDevices(new PartialPath("root"), true).size());
     assertEquals(2, storageGroup.getDevices(new PartialPath("root.**"), false).size());
-    assertEquals(2, storageGroup.getAllTimeseriesCount(new PartialPath("root.**"), false));
+    assertEquals(2, storageGroup.getAllTimeseriesCount(new PartialPath("root.**")));
     assertEquals(2, storageGroup.getMeasurementPaths(new PartialPath("root.**")).size());
     assertEquals(
         2,
