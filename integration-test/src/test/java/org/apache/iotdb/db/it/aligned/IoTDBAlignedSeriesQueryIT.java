@@ -112,7 +112,7 @@ public class IoTDBAlignedSeriesQueryIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg1.d1 order by timesereis")) {
+          statement.executeQuery("select last * from root.sg1.d1 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -156,7 +156,7 @@ public class IoTDBAlignedSeriesQueryIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg1.*  order by timesereis")) {
+          statement.executeQuery("select last * from root.sg1.*  order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -191,7 +191,7 @@ public class IoTDBAlignedSeriesQueryIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last * from root.sg1.d1 where time > 30 order by timesereis")) {
+              "select last * from root.sg1.d1 where time > 30 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -227,7 +227,8 @@ public class IoTDBAlignedSeriesQueryIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last s1, s4, s5 from root.sg1.d1 order by timesereis")) {
+          statement.executeQuery(
+              "select last s1, s4, s5 from root.sg1.d1 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -260,7 +261,7 @@ public class IoTDBAlignedSeriesQueryIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last s1, s4 from root.sg1.d1 order by timesereis")) {
+          statement.executeQuery("select last s1, s4 from root.sg1.d1 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -294,7 +295,7 @@ public class IoTDBAlignedSeriesQueryIT {
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last s1, s4, s5 from root.sg1.d1 where time > 30 order by timesereis")) {
+              "select last s1, s4, s5 from root.sg1.d1 where time > 30 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -332,7 +333,7 @@ public class IoTDBAlignedSeriesQueryIT {
       // 1 4 5
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30 order by timesereis")) {
+              "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30 order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
