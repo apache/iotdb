@@ -302,7 +302,7 @@ public class LogDispatcher {
         AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
         TSyncLogReq req =
             new TSyncLogReq(peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
-        logger.info(
+        logger.debug(
             "Send Batch[startIndex:{}, endIndex:{}] to ConsensusGroup:{}",
             batch.getStartIndex(),
             batch.getEndIndex(),
