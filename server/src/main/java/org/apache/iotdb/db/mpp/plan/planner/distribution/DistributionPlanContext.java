@@ -27,7 +27,10 @@ public class DistributionPlanContext {
   protected boolean forceAddParent;
   // That the variable is true means there is some source series which is
   // distributed in multi DataRegions
-  protected boolean seriesDistributedInMultiRegion;
+  protected boolean oneSeriesInMultiRegion;
+  // That the variable is true means this query will be distributed in multi
+  // DataRegions
+  protected boolean queryMultiRegion;
 
   protected DistributionPlanContext(MPPQueryContext queryContext) {
     this.isRoot = true;
@@ -48,7 +51,15 @@ public class DistributionPlanContext {
     this.forceAddParent = forceAddParent;
   }
 
-  public void setSeriesDistributedInMultiRegion(boolean seriesDistributedInMultiRegion) {
-    this.seriesDistributedInMultiRegion = seriesDistributedInMultiRegion;
+  public void setOneSeriesInMultiRegion(boolean oneSeriesInMultiRegion) {
+    this.oneSeriesInMultiRegion = oneSeriesInMultiRegion;
+  }
+
+  public boolean isQueryMultiRegion() {
+    return queryMultiRegion;
+  }
+
+  public void setQueryMultiRegion(boolean queryMultiRegion) {
+    this.queryMultiRegion = queryMultiRegion;
   }
 }

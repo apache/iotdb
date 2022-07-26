@@ -378,14 +378,18 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // force every region group have a parent node even if there is only 1 child for it.
     context.setForceAddParent(true);
     PlanNode root = processRawMultiChildNode(node, context);
-    PlanNode newRoot = genLastQueryRootNode(node, context);
-    root.getChildren().forEach(newRoot::addChild);
-    return newRoot;
+    if (context.queryMultiRegion) {
+      PlanNode newRoot = genLastQueryRootNode(node, context);
+      root.getChildren().forEach(newRoot::addChild);
+      return newRoot;
+    } else {
+      return root;
+    }
   }
 
   private PlanNode genLastQueryRootNode(LastQueryNode node, DistributionPlanContext context) {
     PlanNodeId id = context.queryContext.getQueryId().genPlanNodeId();
-    if (context.seriesDistributedInMultiRegion || !node.getMergeOrderParameter().isEmpty()) {
+    if (context.oneSeriesInMultiRegion || !node.getMergeOrderParameter().isEmpty()) {
       return new LastQueryMergeNode(id, node.getMergeOrderParameter());
     }
     return new LastQueryCollectNode(id);
@@ -417,7 +421,7 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         if (dataDistribution.size() > 1) {
           // We mark this variable to `true` if there is some series which is distributed in multi
           // DataRegions
-          context.setSeriesDistributedInMultiRegion(true);
+          context.setOneSeriesInMultiRegion(true);
         }
         // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
         // SeriesScanNode.
@@ -432,6 +436,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // Step 2: For the source nodes, group them by the DataRegion.
     Map<TRegionReplicaSet, List<SourceNode>> sourceGroup =
         sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+
+    if (sourceGroup.size() > 1) {
+      context.setQueryMultiRegion(true);
+    }
 
     // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
     // and make the
