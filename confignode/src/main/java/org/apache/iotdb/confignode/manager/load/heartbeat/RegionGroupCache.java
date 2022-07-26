@@ -62,6 +62,7 @@ public class RegionGroupCache implements IRegionGroupCache {
       // And un-sequential HeartbeatSamples will be discarded.
       if (samples.size() == 0
           || samples.getLast().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
+        LOGGER.info("[cacheRegionHeartbeat] {}", newHeartbeatSample);
         samples.add(newHeartbeatSample);
       }
 
@@ -77,6 +78,8 @@ public class RegionGroupCache implements IRegionGroupCache {
     int updateLeaderDataNodeId = -1;
     int originLeaderDataNodeId = leaderDataNodeId.get();
     List<String> middleValue = new ArrayList<>();
+
+    LOGGER.info("begin to update region cache");
 
     synchronized (slidingWindow) {
       for (LinkedList<RegionHeartbeatSample> samples : slidingWindow.values()) {
