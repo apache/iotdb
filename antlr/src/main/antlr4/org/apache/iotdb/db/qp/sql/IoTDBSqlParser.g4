@@ -62,7 +62,7 @@ utilityStatement
     : merge | fullMerge | flush | clearCache | settle
     | setSystemStatus | showVersion | showFlushInfo | showLockInfo | showQueryResource
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
-    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile | showSystemStatus;
+    | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 
 /**
@@ -617,11 +617,6 @@ setSystemStatus
 // Show Version
 showVersion
     : SHOW VERSION
-    ;
-
-// Show System Status
-showSystemStatus
-    : SHOW SYSTEM STATUS
     ;
 
 // Show Flush Info

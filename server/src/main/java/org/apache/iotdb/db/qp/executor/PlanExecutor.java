@@ -602,7 +602,9 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateSetSystemMode(SetSystemModePlan plan) {
-    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setSystemStatus(plan.isReadOnly() ? SystemStatus.READONLY : SystemStatus.NORMAL);
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -720,8 +722,6 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowFlushTaskInfo();
       case VERSION:
         return processShowVersion();
-      case SYSTEM_STATUS:
-        return processShowSystemStatus();
       case TIMESERIES:
         return processShowTimeseries((ShowTimeSeriesPlan) showPlan, context);
       case STORAGE_GROUP:
@@ -1041,20 +1041,6 @@ public class PlanExecutor implements IPlanExecutor {
             Collections.singletonList(TSDataType.TEXT));
     Field field = new Field(TSDataType.TEXT);
     field.setBinaryV(new Binary(IoTDBConstant.VERSION));
-    RowRecord rowRecord = new RowRecord(0);
-    rowRecord.addField(field);
-    singleDataSet.setRecord(rowRecord);
-    return singleDataSet;
-  }
-
-  private QueryDataSet processShowSystemStatus() {
-    SingleDataSet singleDataSet =
-        new SingleDataSet(
-            Collections.singletonList(new PartialPath(IoTDBConstant.COLUMN_STATUS, false)),
-            Collections.singletonList(TSDataType.TEXT));
-    Field field = new Field(TSDataType.TEXT);
-    field.setBinaryV(
-        new Binary(IoTDBDescriptor.getInstance().getConfig().getSystemStatus().toString()));
     RowRecord rowRecord = new RowRecord(0);
     rowRecord.addField(field);
     singleDataSet.setRecord(rowRecord);

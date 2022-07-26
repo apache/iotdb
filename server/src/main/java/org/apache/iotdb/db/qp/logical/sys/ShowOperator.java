@@ -56,8 +56,6 @@ public class ShowOperator extends Operator {
         return new ShowContinuousQueriesPlan();
       case SQLConstant.TOK_SCHEMA_TEMPLATE_SHOW:
         return new ShowTemplatesPlan();
-      case SQLConstant.TOK_SYSTEM_STATUS:
-        return new ShowPlan(ShowContentType.SYSTEM_STATUS);
       default:
         throw new LogicalOperatorException(
             String.format("not supported operator type %s in show operation.", operatorType));

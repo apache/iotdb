@@ -142,7 +142,7 @@ public class EnvironmentUtils {
       fail();
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
+    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.NORMAL);
     // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
     // unit tests.
     IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);

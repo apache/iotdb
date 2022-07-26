@@ -424,7 +424,7 @@ public class IoTDBRestartIT {
       statement.execute("flush");
     }
 
-    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
+    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.NORMAL);
     EnvironmentUtils.restartDaemon();
 
     try (Connection connection =

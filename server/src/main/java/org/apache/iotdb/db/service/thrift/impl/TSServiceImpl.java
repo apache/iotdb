@@ -101,6 +101,7 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSGetSystemStatusResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
@@ -1130,6 +1131,13 @@ public class TSServiceImpl implements TSIService.Iface {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
     }
+  }
+
+  @Override
+  public TSGetSystemStatusResp getSystemStatus(long sessionId) {
+    return new TSGetSystemStatusResp(
+        RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS),
+        IoTDBDescriptor.getInstance().getConfig().getSystemStatus().toString());
   }
 
   @Override

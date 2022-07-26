@@ -50,6 +50,7 @@ import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
+import org.apache.iotdb.session.util.SystemStatus;
 import org.apache.iotdb.session.util.ThreadUtils;
 import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -419,6 +420,10 @@ public class Session {
       return new SessionConnection(session, zoneId);
     }
     return new SessionConnection(session, endpoint, zoneId);
+  }
+
+  public SystemStatus getSystemStatus() throws IoTDBConnectionException {
+    return defaultSessionConnection.getSystemStatus();
   }
 
   public synchronized String getTimeZone() {
