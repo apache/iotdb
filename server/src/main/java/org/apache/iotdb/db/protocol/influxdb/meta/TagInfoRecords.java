@@ -24,8 +24,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
 import org.influxdb.InfluxDBException;
 
 import java.util.ArrayList;
@@ -65,6 +65,7 @@ public class TagInfoRecords {
 
   public void add(String database, String measurement, String tag, int order) {
     deviceIds.add(TAG_INFO_DEVICE_ID);
+    //Multiple adjacent records, possibly with the same timestamp
     times.add(System.currentTimeMillis());
     measurementsList.add(TAG_INFO_MEASUREMENTS);
     typesList.add(TAG_INFO_TYPES);
@@ -80,11 +81,18 @@ public class TagInfoRecords {
   public List<InsertRowPlan> convertToInsertRowPlans() {
     ArrayList<InsertRowPlan> insertRowPlans = new ArrayList<>();
     for (int i = 0; i < deviceIds.size(); i++) {
+      //Prevent later inserted records from overwriting previous records
+      long now = 0;
+      if(now != times.get(i)){
+        now = times.get(i);
+      }else {
+        now = times.get(i)+1;
+      }
       try {
         insertRowPlans.add(
             new InsertRowPlan(
                 new PartialPath(deviceIds.get(i)),
-                times.get(i),
+                now,
                 measurementsList.get(i).toArray(new String[0]),
                 DataTypeUtils.getValueBuffer(typesList.get(i), valuesList.get(i)),
                 false));
@@ -93,5 +101,27 @@ public class TagInfoRecords {
       }
     }
     return insertRowPlans;
+  }
+
+  public List<TSInsertRecordReq> convertToInsertRecordsReq(long sessionID) throws IoTDBConnectionException{
+    ArrayList<TSInsertRecordReq> reqs = new ArrayList<>();
+    long now = 0;
+    for(int i = 0;i < deviceIds.size();i++){
+      TSInsertRecordReq tsInsertRecordReq = new TSInsertRecordReq();
+      tsInsertRecordReq.setSessionId(sessionID);
+      //Prevent later inserted records from overwriting previous records
+      if(now != times.get(i)){
+        now = times.get(i);
+      }else {
+        now = times.get(i)+1;
+      }
+      tsInsertRecordReq.setTimestamp(now);
+      tsInsertRecordReq.setIsAligned(false);
+      tsInsertRecordReq.setPrefixPath(deviceIds.get(i));
+      tsInsertRecordReq.setMeasurements(measurementsList.get(i));
+      tsInsertRecordReq.setValues(DataTypeUtils.getValueBuffer(typesList.get(i), valuesList.get(i)));
+      reqs.add(tsInsertRecordReq);
+    }
+    return reqs;
   }
 }

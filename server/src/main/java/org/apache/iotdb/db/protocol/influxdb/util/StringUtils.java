@@ -33,7 +33,7 @@ public class StringUtils {
    */
   public static String removeQuotation(String str) {
     if ((str.charAt(0) == '"' && str.charAt(str.length() - 1) == '"')
-        || str.charAt(0) == '\'' && str.charAt(str.length() - 1) == '\'') {
+            || str.charAt(0) == '\'' && str.charAt(str.length() - 1) == '\'') {
       return str.substring(1, str.length() - 1);
     }
     return str;
@@ -70,6 +70,17 @@ public class StringUtils {
   public static String getFieldByPath(String path) {
     String[] tmpList = path.split("\\.");
     return tmpList[tmpList.length - 1];
+  }
+
+  /**
+   * get the devicePath through the fullPath
+   *
+   * @param path path to process
+   * @return devicePath
+   */
+  public static String getDeviceByPath(String path) {
+    String field = getFieldByPath(path);
+    return path.substring(0, path.length() - field.length() - 1);
   }
 
   /**
