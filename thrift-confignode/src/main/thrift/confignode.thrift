@@ -53,6 +53,7 @@ struct TDataNodeRegisterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional i32 dataNodeId
   4: optional TGlobalConfig globalConfig
+  5: optional binary templateInfo
 }
 
 struct TDataNodeRemoveResp {

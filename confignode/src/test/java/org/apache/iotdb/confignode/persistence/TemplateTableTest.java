@@ -19,10 +19,8 @@
 
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -30,7 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.thrift.TException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -38,7 +35,6 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -67,8 +63,7 @@ public class TemplateTableTest {
   }
 
   @Test
-  public void testSnapshot()
-      throws IOException, TException, IllegalPathException, ClassNotFoundException {
+  public void testSnapshot() throws IOException, MetadataException {
     int n = 2;
     String templateName = "template_test";
 
@@ -84,9 +79,7 @@ public class TemplateTableTest {
       }
       Template template = new Template(statement);
       templates.add(template);
-      CreateSchemaTemplatePlan createSchemaTemplatePlan =
-          new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
-      templateTable.createTemplate(createSchemaTemplatePlan);
+      templateTable.createTemplate(template);
     }
 
     templateTable.processTakeSnapshot(snapshotDir);
@@ -96,11 +89,8 @@ public class TemplateTableTest {
     // show nodes in schema template
     for (int i = 0; i < n; i++) {
       String templateNameTmp = templateName + "_" + i;
-      TGetTemplateResp templateResp = templateTable.getMatchedTemplateByName(templateNameTmp);
       Template template = templates.get(i);
-      Template serTemplate =
-          Template.byteBuffer2Template(ByteBuffer.wrap(templateResp.getTemplate()));
-      Assert.assertEquals(template, serTemplate);
+      Assert.assertEquals(template, templateTable.getTemplate(templateNameTmp));
     }
   }
 
