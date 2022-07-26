@@ -17,38 +17,39 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.tsfile.read.common.type;
 
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
+import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Objects;
+public class BooleanType implements Type {
 
-public class GetSchemaTemplatePlan extends ConfigPhysicalPlan {
+  private static final BooleanType INSTANCE = new BooleanType();
 
-  public GetSchemaTemplatePlan() {
-    super(ConfigPhysicalPlanType.ShowSchemaTemplate);
+  private BooleanType() {}
+
+  @Override
+  public boolean getBoolean(Column c, int position) {
+    return c.getBoolean(position);
   }
 
   @Override
-  protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.ShowSchemaTemplate.ordinal());
+  public void writeBoolean(ColumnBuilder builder, boolean value) {
+    builder.writeBoolean(value);
   }
 
   @Override
-  protected void deserializeImpl(ByteBuffer buffer) throws IOException {}
-
-  @Override
-  public boolean equals(Object o) {
-    if (o != null) return true;
-    return false;
+  public ColumnBuilder createColumnBuilder(int expectedEntries) {
+    return new BooleanColumnBuilder(null, expectedEntries);
   }
 
   @Override
-  public int hashCode() {
-    return Objects.hash(this);
+  public TypeEnum getTypeEnum() {
+    return TypeEnum.BOOLEAN;
+  }
+
+  public static BooleanType getInstance() {
+    return INSTANCE;
   }
 }

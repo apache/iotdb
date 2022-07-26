@@ -17,61 +17,65 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.write.template;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 
-public class GetNodesInSchemaTemplatePlan extends ConfigPhysicalPlan {
+public class CreateSchemaTemplatePlan extends ConfigPhysicalPlan {
 
-  private String templateName;
+  private byte[] templateData;
 
-  public GetNodesInSchemaTemplatePlan() {
-    super(ConfigPhysicalPlanType.ShowNodesInSchemaTemplate);
+  public CreateSchemaTemplatePlan() {
+    super(ConfigPhysicalPlanType.CreateSchemaTemplate);
   }
 
-  public GetNodesInSchemaTemplatePlan(String templateName) {
+  public CreateSchemaTemplatePlan(byte[] templateData) {
     this();
-    this.templateName = templateName;
+    this.templateData = templateData;
   }
 
-  public String getTemplateName() {
-    return templateName;
+  public byte[] getTemplateData() {
+    return templateData;
+  }
+
+  public Template getTemplate() {
+    Template template = new Template();
+    template.deserialize(ByteBuffer.wrap(templateData));
+    return template;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.ShowNodesInSchemaTemplate.ordinal());
-    byte[] bytes = this.getTemplateName().getBytes();
-    int length = bytes.length;
-    stream.writeInt(length);
-    stream.write(bytes);
+    stream.writeInt(ConfigPhysicalPlanType.CreateSchemaTemplate.ordinal());
+    stream.writeInt(templateData.length);
+    stream.write(templateData);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     int length = ReadWriteIOUtils.readInt(buffer);
-    byte[] dataBytes = ReadWriteIOUtils.readBytes(buffer, length);
-    this.templateName = new String(dataBytes, TSFileConfig.STRING_CHARSET);
+    this.templateData = ReadWriteIOUtils.readBytes(buffer, length);
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    GetNodesInSchemaTemplatePlan that = (GetNodesInSchemaTemplatePlan) o;
-    return this.templateName.equalsIgnoreCase(this.templateName);
+    CreateSchemaTemplatePlan that = (CreateSchemaTemplatePlan) o;
+    return Arrays.equals(that.templateData, templateData);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(templateName);
+    return Objects.hash(templateData);
   }
 }

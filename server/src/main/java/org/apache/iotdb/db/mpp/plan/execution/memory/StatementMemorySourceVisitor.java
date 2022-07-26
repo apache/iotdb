@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -198,6 +199,16 @@ public class StatementMemorySourceVisitor
     tsBlockBuilder.getTimeColumnBuilder().writeLong(0L);
     tsBlockBuilder.getColumnBuilder(0).writeInt(0);
     tsBlockBuilder.declarePosition();
+    return new StatementMemorySource(
+        tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
+  }
+
+  @Override
+  public StatementMemorySource visitShowPathsUsingTemplate(
+      ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement,
+      StatementMemorySourceContext context) {
+    TsBlockBuilder tsBlockBuilder =
+        new TsBlockBuilder(HeaderConstant.showPathsUsingTemplate.getRespDataTypes());
     return new StatementMemorySource(
         tsBlockBuilder.build(), context.getAnalysis().getRespDatasetHeader());
   }

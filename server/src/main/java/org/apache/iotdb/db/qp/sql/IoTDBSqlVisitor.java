@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.sql;
 
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -1974,7 +1975,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     String privilege = parsePrivilege(ctx.privileges())[0];
 
     PartialPath prefixPath;
-    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+    if (!PrivilegeType.valueOf(privilege).isPathRelevant()) {
       String[] path = {"root"};
       prefixPath = new PartialPath(path);
     } else {

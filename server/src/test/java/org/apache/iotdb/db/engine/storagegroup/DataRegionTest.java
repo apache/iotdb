@@ -979,7 +979,7 @@ public class DataRegionTest {
   }
 
   @Test
-  public void testDeleteDataInFlushingMemtable()
+  public void testDeleteDataNotInFlushingMemtable()
       throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
     for (int j = 0; j < 100; j++) {
       TSRecord record = new TSRecord(j, deviceId);
@@ -997,8 +997,89 @@ public class DataRegionTest {
     dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+  }
+
+  @Test
+  public void testDeleteDataInSeqFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is not in flushing memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in flushing memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 100, 300, 0, null);
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
     Assert.assertTrue(tsFileResource.getModFile().exists());
-    Assert.assertEquals(2, tsFileResource.getModFile().getModifications().size());
+    Assert.assertEquals(3, tsFileResource.getModFile().getModifications().size());
+  }
+
+  @Test
+  public void testDeleteDataInUnSeqFlushingMemtable()
+      throws IllegalPathException, WriteProcessException, TriggerExecutionException, IOException {
+    for (int j = 100; j < 200; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    TsFileResource tsFileResource = dataRegion.getTsFileManager().getTsFileList(true).get(0);
+
+    // delete data which is not in work memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 99, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in work memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 100, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 150, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 100, 300, 0, null);
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+
+    // insert unseq data points
+    for (int j = 50; j < 100; j++) {
+      TSRecord record = new TSRecord(j, deviceId);
+      record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
+      dataRegion.insert(buildInsertRowNodeByTSRecord(record));
+    }
+    // delete data which is not in work memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 200, 299, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in work memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 80, 85, 0, null);
+
+    Assert.assertFalse(tsFileResource.getModFile().exists());
+
+    tsFileResource = dataRegion.getTsFileManager().getTsFileList(false).get(0);
+    TsFileProcessor tsFileProcessor = tsFileResource.getProcessor();
+    tsFileProcessor.getFlushingMemTable().addLast(tsFileProcessor.getWorkMemTable());
+
+    // delete data which is not in flushing memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 0, 49, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 100, 200, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d200.s0"), 50, 70, 0, null);
+
+    // delete data which is in flushing memtable
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 25, 50, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 50, 80, 0, null);
+    dataRegion.delete(new PartialPath("root.vehicle.d0.s0"), 99, 150, 0, null);
+
+    dataRegion.syncCloseAllWorkingTsFileProcessors();
+    Assert.assertTrue(tsFileResource.getModFile().exists());
+    Assert.assertEquals(3, tsFileResource.getModFile().getModifications().size());
   }
 
   static class DummyDataRegion extends DataRegion {

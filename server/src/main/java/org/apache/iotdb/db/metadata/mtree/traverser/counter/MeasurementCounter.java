@@ -30,7 +30,7 @@ public class MeasurementCounter extends CounterTraverser {
   public MeasurementCounter(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
-    isMeasurementTraverser = true;
+    shouldTraverseTemplate = true;
   }
 
   @Override

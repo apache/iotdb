@@ -224,9 +224,9 @@ public class NodeInfo implements SnapshotProcessor {
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {
-        result.setDataNodeInfoMap(new HashMap<>(registeredDataNodes));
+        result.setDataNodeConfigurationMap(new HashMap<>(registeredDataNodes));
       } else {
-        result.setDataNodeInfoMap(
+        result.setDataNodeConfigurationMap(
             registeredDataNodes.get(dataNodeId) == null
                 ? new HashMap<>(0)
                 : Collections.singletonMap(dataNodeId, registeredDataNodes.get(dataNodeId)));
