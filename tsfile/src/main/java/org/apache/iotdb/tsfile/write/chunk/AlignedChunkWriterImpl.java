@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -39,6 +41,9 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   private final TimeChunkWriter timeChunkWriter;
   private final List<ValueChunkWriter> valueChunkWriterList;
   private int valueIndex;
+
+  // Used for batch writing
+  private long remainingPointsNumber;
 
   /** @param schema schema of this measurement */
   public AlignedChunkWriterImpl(VectorMeasurementSchema schema) {
@@ -66,6 +71,7 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
 
     this.valueIndex = 0;
+    this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
   public AlignedChunkWriterImpl(List<IMeasurementSchema> schemaList) {
@@ -91,6 +97,8 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
 
     this.valueIndex = 0;
+
+    this.remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
   public void write(long time, int value, boolean isNull) {
@@ -156,46 +164,38 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
   }
 
-  public void write(long[] time, int[] value, boolean[] isNull, int batchSize) {
-    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
-    for (int i = 0; i < batchSize; i++) {
-      valueChunkWriter.write(time[i], value[i], isNull[i]);
-    }
-  }
+  public void write(TimeColumn timeColumn, Column[] valueColumns, int batchSize) {
+    valueIndex = 0;
+    long[] times = timeColumn.getTimes();
 
-  public void write(long[] time, long[] value, boolean[] isNull, int batchSize) {
-    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
-    for (int i = 0; i < batchSize; i++) {
-      valueChunkWriter.write(time[i], value[i], isNull[i]);
+    for (Column column : valueColumns) {
+      ValueChunkWriter chunkWriter = valueChunkWriterList.get(valueIndex++);
+      TSDataType tsDataType = chunkWriter.getDataType();
+      switch (tsDataType) {
+        case TEXT:
+          chunkWriter.write(times, column.getBinary(), column.isNull(), batchSize);
+          break;
+        case DOUBLE:
+          chunkWriter.write(times, column.getDouble(), column.isNull(), batchSize);
+          break;
+        case BOOLEAN:
+          chunkWriter.write(times, column.getBoolean(), column.isNull(), batchSize);
+          break;
+        case INT64:
+          chunkWriter.write(times, column.getLong(), column.isNull(), batchSize);
+          break;
+        case INT32:
+          chunkWriter.write(times, column.getInt(), column.isNull(), batchSize);
+          break;
+        case FLOAT:
+          chunkWriter.write(times, column.getFloat(), column.isNull(), batchSize);
+          break;
+        default:
+          throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+      }
     }
-  }
 
-  public void write(long[] time, boolean[] value, boolean[] isNull, int batchSize) {
-    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
-    for (int i = 0; i < batchSize; i++) {
-      valueChunkWriter.write(time[i], value[i], isNull[i]);
-    }
-  }
-
-  public void write(long[] time, float[] value, boolean[] isNull, int batchSize) {
-    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
-    for (int i = 0; i < batchSize; i++) {
-      valueChunkWriter.write(time[i], value[i], isNull[i]);
-    }
-  }
-
-  public void write(long[] time, double[] value, boolean[] isNull, int batchSize) {
-    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
-    for (int i = 0; i < batchSize; i++) {
-      valueChunkWriter.write(time[i], value[i], isNull[i]);
-    }
-  }
-
-  public void write(long[] time, Binary[] value, boolean[] isNull, int batchSize) {
-    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
-    for (int i = 0; i < batchSize; i++) {
-      valueChunkWriter.write(time[i], value[i], isNull[i]);
-    }
+    write(times, batchSize);
   }
 
   public void write(long[] time, int batchSize) {
@@ -204,6 +204,8 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     if (checkPageSizeAndMayOpenANewPage()) {
       writePageToPageBuffer();
     }
+
+    remainingPointsNumber = timeChunkWriter.getRemainingPointNumberForCurrentPage();
   }
 
   /**

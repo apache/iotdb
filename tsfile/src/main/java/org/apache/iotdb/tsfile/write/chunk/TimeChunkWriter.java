@@ -110,7 +110,7 @@ public class TimeChunkWriter {
    * to pageBuffer
    */
   public boolean checkPageSizeAndMayOpenANewPage() {
-    if (pageWriter.getPointNumber() == maxNumberOfPointsInPage) {
+    if (pageWriter.getPointNumber() >= maxNumberOfPointsInPage) {
       logger.debug("current line count reaches the upper bound, write page {}", measurementId);
       return true;
     } else if (pageWriter.getPointNumber()
@@ -134,6 +134,10 @@ public class TimeChunkWriter {
       }
     }
     return false;
+  }
+
+  public long getRemainingPointNumberForCurrentPage() {
+    return maxNumberOfPointsInPage - pageWriter.getPointNumber();
   }
 
   public void writePageToPageBuffer() {
