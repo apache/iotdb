@@ -47,7 +47,7 @@ public class MeasurementCounter extends CounterTraverser {
       boolean hasTag)
       throws MetadataException {
     super(startNode, path, store);
-    isMeasurementTraverser = true;
+    shouldTraverseTemplate = true;
     this.timeseries = timeseries;
     this.hasTag = hasTag;
   }
