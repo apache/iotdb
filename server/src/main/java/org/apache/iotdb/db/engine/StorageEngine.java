@@ -1110,7 +1110,7 @@ public class StorageEngine implements IService {
   public String getStorageGroupPath(PartialPath path) throws StorageEngineException {
     PartialPath deviceId = path.getDevicePath();
     DataRegion storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.getLogicalStorageGroupName()
+    return storageGroupProcessor.getStorageGroupName()
         + File.separator
         + storageGroupProcessor.getDataRegionId();
   }

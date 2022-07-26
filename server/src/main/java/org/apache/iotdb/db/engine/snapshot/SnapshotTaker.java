@@ -91,7 +91,7 @@ public class SnapshotTaker {
 
       LOGGER.info(
           "Successfully take snapshot for {}-{}, snapshot directory is {}",
-          dataRegion.getLogicalStorageGroupName(),
+          dataRegion.getStorageGroupName(),
           dataRegion.getDataRegionId(),
           snapshotDirPath);
 
@@ -99,7 +99,7 @@ public class SnapshotTaker {
     } catch (Exception e) {
       LOGGER.error(
           "Exception occurs when taking snapshot for {}-{}",
-          dataRegion.getLogicalStorageGroupName(),
+          dataRegion.getStorageGroupName(),
           dataRegion.getDataRegionId(),
           e);
       return false;
@@ -124,7 +124,7 @@ public class SnapshotTaker {
                   ? IoTDBConstant.SEQUENCE_FLODER_NAME
                   : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
               + File.separator
-              + dataRegion.getLogicalStorageGroupName()
+              + dataRegion.getStorageGroupName()
               + File.separator
               + dataRegion.getDataRegionId()
               + File.separator
@@ -156,7 +156,7 @@ public class SnapshotTaker {
             snapshotDir,
             "sequence"
                 + File.separator
-                + dataRegion.getLogicalStorageGroupName()
+                + dataRegion.getStorageGroupName()
                 + File.separator
                 + dataRegion.getDataRegionId());
     unseqBaseDir =
@@ -164,7 +164,7 @@ public class SnapshotTaker {
             snapshotDir,
             "unsequence"
                 + File.separator
-                + dataRegion.getLogicalStorageGroupName()
+                + dataRegion.getStorageGroupName()
                 + File.separator
                 + dataRegion.getDataRegionId());
 
@@ -218,7 +218,7 @@ public class SnapshotTaker {
               dataDir,
               "sequence"
                   + File.separator
-                  + dataRegion.getLogicalStorageGroupName()
+                  + dataRegion.getStorageGroupName()
                   + File.separator
                   + dataRegion.getDataRegionId());
       File unseqDir =
@@ -226,7 +226,7 @@ public class SnapshotTaker {
               dataDir,
               "unsequence"
                   + File.separator
-                  + dataRegion.getLogicalStorageGroupName()
+                  + dataRegion.getStorageGroupName()
                   + File.separator
                   + dataRegion.getDataRegionId());
       File localSeqSnapshotDir =
@@ -238,7 +238,7 @@ public class SnapshotTaker {
                   + File.separator
                   + snapshotDir.getName()
                   + File.separator
-                  + dataRegion.getLogicalStorageGroupName()
+                  + dataRegion.getStorageGroupName()
                   + File.separator
                   + dataRegion.getDataRegionId());
       File localUnseqSnapshotDir =
@@ -250,7 +250,7 @@ public class SnapshotTaker {
                   + File.separator
                   + snapshotDir.getName()
                   + File.separator
-                  + dataRegion.getLogicalStorageGroupName()
+                  + dataRegion.getStorageGroupName()
                   + File.separator
                   + dataRegion.getDataRegionId());
       if (!localSeqSnapshotDir.mkdirs()) {
@@ -270,10 +270,9 @@ public class SnapshotTaker {
         } catch (IOException e) {
           LOGGER.error(
               "Failed to create snapshot for {}-{}",
-              dataRegion.getLogicalStorageGroupName(),
+              dataRegion.getStorageGroupName(),
               dataRegion.getDataRegionId(),
               e);
-        } finally {
           cleanUpWhenFail(snapshotDir);
         }
 
@@ -285,10 +284,9 @@ public class SnapshotTaker {
         } catch (IOException e) {
           LOGGER.error(
               "Failed to create snapshot for {}-{}",
-              dataRegion.getLogicalStorageGroupName(),
+              dataRegion.getStorageGroupName(),
               dataRegion.getDataRegionId(),
               e);
-        } finally {
           cleanUpWhenFail(snapshotDir);
         }
       }

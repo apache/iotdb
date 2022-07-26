@@ -67,7 +67,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     } catch (Exception e) {
       logger.error(
           "Exception occurs when taking snapshot for {}-{} in {}",
-          region.getLogicalStorageGroupName(),
+          region.getStorageGroupName(),
           region.getDataRegionId(),
           snapshotDir,
           e);
@@ -80,7 +80,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     DataRegion newRegion =
         new SnapshotLoader(
                 latestSnapshotRootDir.getAbsolutePath(),
-                region.getLogicalStorageGroupName(),
+                region.getStorageGroupName(),
                 region.getDataRegionId())
             .loadSnapshotForStateMachine();
     if (newRegion == null) {
