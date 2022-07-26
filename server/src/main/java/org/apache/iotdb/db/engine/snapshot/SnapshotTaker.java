@@ -30,7 +30,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.LinkedList;
@@ -49,6 +51,7 @@ public class SnapshotTaker {
   public static String SNAPSHOT_FILE_INFO_SEP_STR = "_";
   private File seqBaseDir;
   private File unseqBaseDir;
+  private SnapshotLogger snapshotLogger;
 
   public SnapshotTaker(DataRegion dataRegion) {
     this.dataRegion = dataRegion;
@@ -64,68 +67,48 @@ public class SnapshotTaker {
       throw new DirectoryNotLegalException(
           String.format("%s already exists and is not empty", snapshotDirPath));
     }
-    boolean inSameDisk = isSnapshotDirAndDataDirOnSameDisk(snapshotDir);
-    seqBaseDir =
-        new File(
-            snapshotDir,
-            "sequence"
-                + File.separator
-                + dataRegion.getLogicalStorageGroupName()
-                + File.separator
-                + dataRegion.getDataRegionId());
-    unseqBaseDir =
-        new File(
-            snapshotDir,
-            "unsequence"
-                + File.separator
-                + dataRegion.getLogicalStorageGroupName()
-                + File.separator
-                + dataRegion.getDataRegionId());
 
     if (!snapshotDir.exists() && !snapshotDir.mkdirs()) {
       throw new IOException(String.format("Failed to create directory %s", snapshotDir));
     }
 
+    boolean inSameDisk = isSnapshotDirAndDataDirOnSameDisk(snapshotDir);
+
     if (flushBeforeSnapshot) {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
     }
 
-    List<Long> timePartitions = dataRegion.getTimePartitions();
-    TsFileManager manager = dataRegion.getTsFileManager();
-    manager.readLock();
+    File snapshotLog = new File(snapshotDir, SnapshotLogger.SNAPSHOT_LOG_NAME);
     try {
-      for (Long timePartition : timePartitions) {
-        List<String> seqDataDirs = getAllDataDirOfOnePartition(true, timePartition);
-
-        try {
-          createFileSnapshot(seqDataDirs, true, timePartition);
-        } catch (IOException e) {
-          LOGGER.error("Fail to create snapshot", e);
-          cleanUpWhenFail(snapshotDir);
-          return false;
-        }
-
-        List<String> unseqDataDirs = getAllDataDirOfOnePartition(false, timePartition);
-
-        try {
-          createFileSnapshot(unseqDataDirs, false, timePartition);
-        } catch (IOException e) {
-          LOGGER.error("Fail to create snapshot", e);
-          cleanUpWhenFail(snapshotDir);
-          return false;
-        }
+      snapshotLogger = new SnapshotLogger(snapshotLog);
+      boolean success = false;
+      if (inSameDisk) {
+        success = createSnapshotInLocalDisk(snapshotDir);
+      } else {
+        success = createSnapshotInAnotherDisk(snapshotDir);
       }
+
+      LOGGER.info(
+          "Successfully take snapshot for {}-{}, snapshot directory is {}",
+          dataRegion.getLogicalStorageGroupName(),
+          dataRegion.getDataRegionId(),
+          snapshotDirPath);
+
+      return success;
+    } catch (Exception e) {
+      LOGGER.error(
+          "Exception occurs when taking snapshot for {}-{}",
+          dataRegion.getLogicalStorageGroupName(),
+          dataRegion.getDataRegionId(),
+          e);
+      return false;
     } finally {
-      manager.readUnlock();
+      try {
+        snapshotLogger.close();
+      } catch (Exception e) {
+        LOGGER.error("Failed to close snapshot logger", e);
+      }
     }
-
-    LOGGER.info(
-        "Successfully take snapshot for {}-{}, snapshot directory is {}",
-        dataRegion.getLogicalStorageGroupName(),
-        dataRegion.getDataRegionId(),
-        snapshotDirPath);
-
-    return true;
   }
 
   private List<String> getAllDataDirOfOnePartition(boolean sequence, long timePartition) {
@@ -150,43 +133,6 @@ public class SnapshotTaker {
     return resultDirs;
   }
 
-  private void createFileSnapshot(List<String> sourceDirPaths, boolean sequence, long timePartition)
-      throws IOException {
-    File timePartitionDir =
-        new File(sequence ? seqBaseDir : unseqBaseDir, String.valueOf(timePartition));
-    if (!timePartitionDir.exists() && !timePartitionDir.mkdirs()) {
-      throw new IOException(
-          String.format("%s not exists and cannot create it", timePartitionDir.getAbsolutePath()));
-    }
-
-    for (String sourceDirPath : sourceDirPaths) {
-      File sourceDir = new File(sourceDirPath);
-      if (!sourceDir.exists()) {
-        continue;
-      }
-      // Collect TsFile, TsFileResource, Mods, CompactionMods
-      File[] files =
-          sourceDir.listFiles(
-              (dir, name) ->
-                  name.endsWith(".tsfile")
-                      || name.endsWith(TsFileResource.RESOURCE_SUFFIX)
-                      || name.endsWith(ModificationFile.FILE_SUFFIX)
-                      || name.endsWith(ModificationFile.COMPACTION_FILE_SUFFIX)
-                      || name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
-                      || name.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)
-                      || name.endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)
-                      || name.endsWith(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX));
-      if (files == null || files.length == 0) {
-        continue;
-      }
-
-      for (File file : files) {
-        File linkFile = new File(timePartitionDir, file.getName());
-        Files.createLink(linkFile.toPath(), file.toPath());
-      }
-    }
-  }
-
   private void cleanUpWhenFail(File snapshotDir) {
     File[] files = snapshotDir.listFiles();
     if (files != null) {
@@ -196,16 +142,189 @@ public class SnapshotTaker {
         }
       }
     }
+    try {
+      snapshotLogger.cleanUpWhenFailed();
+    } catch (IOException e) {
+      LOGGER.error("Failed to clean up log file", e);
+    }
   }
 
-  private void createSnapshotInLocalDisk(File snapshotDir) {}
+  private boolean createSnapshotInLocalDisk(File snapshotDir) {
+    seqBaseDir =
+        new File(
+            snapshotDir,
+            "sequence"
+                + File.separator
+                + dataRegion.getLogicalStorageGroupName()
+                + File.separator
+                + dataRegion.getDataRegionId());
+    unseqBaseDir =
+        new File(
+            snapshotDir,
+            "unsequence"
+                + File.separator
+                + dataRegion.getLogicalStorageGroupName()
+                + File.separator
+                + dataRegion.getDataRegionId());
 
-  private void createSnapshotInAnotherDisk(File snapshotDir) {}
+    List<Long> timePartitions = dataRegion.getTimePartitions();
+    TsFileManager manager = dataRegion.getTsFileManager();
+    manager.readLock();
+    try {
+      try {
+        snapshotLogger.logSnapshotType(SnapshotLogger.SnapshotType.LOCAL_DISK);
+      } catch (IOException e) {
+        LOGGER.error("Fail to create snapshot", e);
+        cleanUpWhenFail(snapshotDir);
+        return false;
+      }
+      for (Long timePartition : timePartitions) {
+        List<String> seqDataDirs = getAllDataDirOfOnePartition(true, timePartition);
+
+        try {
+          for (String seqDataDir : seqDataDirs) {
+            createFileSnapshotToTargetOne(
+                new File(seqDataDir), new File(seqBaseDir, String.valueOf(timePartition)));
+          }
+        } catch (IOException e) {
+          LOGGER.error("Fail to create snapshot", e);
+          cleanUpWhenFail(snapshotDir);
+          return false;
+        }
+
+        List<String> unseqDataDirs = getAllDataDirOfOnePartition(false, timePartition);
+        try {
+          for (String unseqDataDir : unseqDataDirs) {
+            createFileSnapshotToTargetOne(
+                new File(unseqDataDir), new File(seqBaseDir, String.valueOf(timePartition)));
+          }
+        } catch (IOException e) {
+          LOGGER.error("Fail to create snapshot", e);
+          cleanUpWhenFail(snapshotDir);
+          return false;
+        }
+      }
+    } finally {
+      manager.readUnlock();
+    }
+    return true;
+  }
+
+  private boolean createSnapshotInAnotherDisk(File snapshotDir) {
+    for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
+      File seqDir =
+          new File(
+              dataDir,
+              "sequence"
+                  + File.separator
+                  + dataRegion.getLogicalStorageGroupName()
+                  + File.separator
+                  + dataRegion.getDataRegionId());
+      File unseqDir =
+          new File(
+              dataDir,
+              "unsequence"
+                  + File.separator
+                  + dataRegion.getLogicalStorageGroupName()
+                  + File.separator
+                  + dataRegion.getDataRegionId());
+      File localSeqSnapshotDir =
+          new File(
+              dataDir,
+              "snapshot"
+                  + File.separator
+                  + "sequence"
+                  + File.separator
+                  + snapshotDir.getName()
+                  + File.separator
+                  + dataRegion.getLogicalStorageGroupName()
+                  + File.separator
+                  + dataRegion.getDataRegionId());
+      File localUnseqSnapshotDir =
+          new File(
+              dataDir,
+              "snapshot"
+                  + File.separator
+                  + "unsequence"
+                  + File.separator
+                  + snapshotDir.getName()
+                  + File.separator
+                  + dataRegion.getLogicalStorageGroupName()
+                  + File.separator
+                  + dataRegion.getDataRegionId());
+      if (!localSeqSnapshotDir.mkdirs()) {
+        LOGGER.warn("Failed to create local snapshot dir {}", localSeqSnapshotDir);
+        return false;
+      }
+      List<Long> timePartitions = dataRegion.getTimePartitions();
+      TsFileManager manager = dataRegion.getTsFileManager();
+      manager.readLock();
+      for (long timePartition : timePartitions) {
+        File seqTimePartitionDir = new File(seqDir, String.valueOf(timePartition));
+        File seqTimePartitionSnapshotDir =
+            new File(localSeqSnapshotDir, String.valueOf(timePartition));
+
+        try {
+          createFileSnapshotToTargetOne(seqTimePartitionDir, seqTimePartitionSnapshotDir);
+        } catch (IOException e) {
+          LOGGER.error(
+              "Failed to create snapshot for {}-{}",
+              dataRegion.getLogicalStorageGroupName(),
+              dataRegion.getDataRegionId(),
+              e);
+        } finally {
+          cleanUpWhenFail(snapshotDir);
+        }
+
+        File unseqTimePartitionDir = new File(unseqDir, String.valueOf(timePartition));
+        File unseqTimePartitionSnapshotDir =
+            new File(localUnseqSnapshotDir, String.valueOf(timePartition));
+        try {
+          createFileSnapshotToTargetOne(unseqTimePartitionDir, unseqTimePartitionSnapshotDir);
+        } catch (IOException e) {
+          LOGGER.error(
+              "Failed to create snapshot for {}-{}",
+              dataRegion.getLogicalStorageGroupName(),
+              dataRegion.getDataRegionId(),
+              e);
+        } finally {
+          cleanUpWhenFail(snapshotDir);
+        }
+      }
+    }
+
+    return true;
+  }
+
+  private void createFileSnapshotToTargetOne(File sourceDir, File targetDir) throws IOException {
+    File[] files =
+        sourceDir.listFiles(
+            (dir, name) ->
+                name.endsWith(".tsfile")
+                    || name.endsWith(TsFileResource.RESOURCE_SUFFIX)
+                    || name.endsWith(ModificationFile.FILE_SUFFIX)
+                    || name.endsWith(ModificationFile.COMPACTION_FILE_SUFFIX)
+                    || name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
+                    || name.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)
+                    || name.endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)
+                    || name.endsWith(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX));
+    if (files == null) {
+      return;
+    }
+    if (!targetDir.exists() && !targetDir.mkdirs()) {
+      throw new IOException("Failed to create dir " + targetDir.getAbsolutePath());
+    }
+    for (File file : files) {
+      File targetFile = new File(targetDir, file.getName());
+      Files.createLink(targetFile.toPath(), file.toPath());
+      snapshotLogger.logFile(file.getAbsolutePath(), targetFile.getAbsolutePath());
+    }
+  }
 
   private boolean isSnapshotDirAndDataDirOnSameDisk(File snapshotDir) throws IOException {
-    String testFileName = "test";
+    String testFileName = "test.txt";
     File testFile = new File(snapshotDir, testFileName);
-    if (!testFile.createNewFile()) {
+    if (!testFile.createNewFile() || !createTestFile(testFile)) {
       throw new IOException(
           "Failed to test whether the data dir and snapshot dir is on the same disk");
     }
@@ -214,13 +333,28 @@ public class SnapshotTaker {
       File dirFile = new File(dataDir);
       File testSnapshotFile = new File(dirFile, testFileName);
       try {
-        Files.createLink(testFile.toPath(), testSnapshotFile.toPath());
+        Files.createLink(testSnapshotFile.toPath(), testFile.toPath());
       } catch (IOException e) {
+        LOGGER.error(
+            "Failed to create file in {}, test file exists:{}",
+            testSnapshotFile,
+            testFile.exists(),
+            e);
         return false;
       }
       testSnapshotFile.delete();
     }
     testFile.delete();
     return true;
+  }
+
+  private boolean createTestFile(File testFile) {
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(testFile))) {
+      writer.write("test");
+      writer.flush();
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
   }
 }

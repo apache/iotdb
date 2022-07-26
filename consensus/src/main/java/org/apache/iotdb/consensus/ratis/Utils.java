@@ -180,6 +180,8 @@ public class Utils {
         properties, config.getLeaderElection().getLeaderStepDownWaitTimeKey());
     RaftServerConfigKeys.LeaderElection.setPreVote(
         properties, config.getLeaderElection().isPreVote());
+    RaftServerConfigKeys.Snapshot.setAutoTriggerThreshold(properties, 5);
+    RaftServerConfigKeys.Log.setPurgeUptoSnapshotIndex(properties, true);
 
     RaftServerConfigKeys.Snapshot.setAutoTriggerEnabled(
         properties, config.getSnapshot().isAutoTriggerEnabled());
