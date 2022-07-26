@@ -381,4 +381,31 @@ public class IoTDBAliasIT {
       resultSetEqualTest(sqls.get(i), expectHeaders.get(i), retArrays.get(i));
     }
   }
+
+  // ------------------------------------ Function name --------------------------------------
+
+  @Test
+  public void aggregationFuncNameTest() {
+    String expectedHeader =
+        "count(root.sg.d1.temperature),count(root.sg.d2.temperature),"
+            + "COUNT(root.sg.d1.temperature),COUNT(root.sg.d2.temperature),"
+            + "CoUnT(root.sg.d1.temperature),CoUnT(root.sg.d2.temperature),";
+    String[] retArray = new String[] {"4,4,4,4,4,4,"};
+
+    resultSetEqualTest(
+        "select count(temperature),COUNT(temperature),CoUnT(temperature) from root.sg.*",
+        expectedHeader,
+        retArray);
+  }
+
+  @Test
+  public void groupByLevelFuncNameTest() {
+    String expectedHeader = "count(root.sg.*.s2),COUNT(root.sg.*.s2),CoUnT(root.sg.*.s2),";
+    String[] retArray = new String[] {"8,8,8,"};
+
+    resultSetEqualTest(
+        "select count(s2),COUNT(s2),CoUnT(s2) from root.sg.* group by level = 1",
+        expectedHeader,
+        retArray);
+  }
 }

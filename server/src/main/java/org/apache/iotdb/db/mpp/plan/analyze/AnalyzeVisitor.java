@@ -684,10 +684,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 groupedExpression,
                 groupByLevelController.getAlias(groupedExpression.getExpressionString()));
         Expression groupedExpressionWithoutAlias = outputExpression.left;
+
+        Set<Expression> rawExpressions = rawGroupByLevelExpressions.get(groupedExpression);
+        rawExpressions.forEach(
+            expression -> ExpressionAnalyzer.updateTypeProvider(expression, typeProvider));
+        rawExpressions.forEach(expression -> expression.inferTypes(typeProvider));
+
         Set<Expression> rawExpressionsWithoutAlias =
-            rawGroupByLevelExpressions.get(groupedExpression).stream()
+            rawExpressions.stream()
                 .map(ExpressionAnalyzer::removeAliasFromExpression)
                 .collect(Collectors.toSet());
+        rawExpressionsWithoutAlias.forEach(
+            expression -> ExpressionAnalyzer.updateTypeProvider(expression, typeProvider));
         rawExpressionsWithoutAlias.forEach(expression -> expression.inferTypes(typeProvider));
 
         groupByLevelExpressions.put(groupedExpressionWithoutAlias, rawExpressionsWithoutAlias);
