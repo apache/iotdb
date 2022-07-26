@@ -17,28 +17,23 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.exception.sql;
+package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.db.mpp.plan.constant.FilterConstant;
+import org.apache.iotdb.consensus.common.DataSet;
 
-public class StatementAnalyzeException extends RuntimeException {
+public class AllTemplateSetInfoResp implements DataSet {
 
-  public StatementAnalyzeException(String message) {
-    super(message);
+  private byte[] templateInfo;
+
+  public AllTemplateSetInfoResp(byte[] templateInfo) {
+    this.templateInfo = templateInfo;
   }
 
-  public StatementAnalyzeException(String filterOperator, FilterConstant.FilterType filterType) {
-    super(
-        String.format(
-            "Unknown token in [%s]: [%s], [%s].",
-            filterOperator, filterType, FilterConstant.filterNames.get(filterType)));
+  public byte[] getTemplateInfo() {
+    return templateInfo;
   }
 
-  public StatementAnalyzeException(String type, String message) {
-    super(String.format("Unsupported type: [%s]. %s", type, message));
-  }
-
-  public StatementAnalyzeException(Exception cause) {
-    super(cause);
+  public void setTemplateInfo(byte[] templateInfo) {
+    this.templateInfo = templateInfo;
   }
 }

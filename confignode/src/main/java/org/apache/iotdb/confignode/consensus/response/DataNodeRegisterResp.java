@@ -33,6 +33,7 @@ public class DataNodeRegisterResp implements DataSet {
   private List<TConfigNodeLocation> configNodeList;
   private Integer dataNodeId;
   private TGlobalConfig globalConfig;
+  private byte[] templateInfo;
 
   public DataNodeRegisterResp() {
     this.dataNodeId = null;
@@ -59,6 +60,10 @@ public class DataNodeRegisterResp implements DataSet {
     this.globalConfig = globalConfig;
   }
 
+  public void setTemplateInfo(byte[] templateInfo) {
+    this.templateInfo = templateInfo;
+  }
+
   public TDataNodeRegisterResp convertToRpcDataNodeRegisterResp() {
     TDataNodeRegisterResp resp = new TDataNodeRegisterResp();
     resp.setStatus(status);
@@ -68,6 +73,7 @@ public class DataNodeRegisterResp implements DataSet {
         || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
       resp.setDataNodeId(dataNodeId);
       resp.setGlobalConfig(globalConfig);
+      resp.setTemplateInfo(templateInfo);
     }
 
     return resp;

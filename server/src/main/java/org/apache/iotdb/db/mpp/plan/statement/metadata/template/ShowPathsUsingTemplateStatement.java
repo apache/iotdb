@@ -19,26 +19,18 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata.template;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
-import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-import java.util.Collections;
-import java.util.List;
-
-public class SetSchemaTemplateStatement extends Statement implements IConfigStatement {
+public class ShowPathsUsingTemplateStatement extends ShowStatement {
 
   private String templateName;
-  private PartialPath path;
 
-  public SetSchemaTemplateStatement(String templateName, PartialPath path) {
+  public ShowPathsUsingTemplateStatement(String templateName) {
     super();
-    statementType = StatementType.SET_TEMPLATE;
+    statementType = StatementType.SHOW_PATH_USING_SCHEMA_TEMPLATE;
     this.templateName = templateName;
-    this.path = path;
   }
 
   public String getTemplateName() {
@@ -49,26 +41,8 @@ public class SetSchemaTemplateStatement extends Statement implements IConfigStat
     this.templateName = templateName;
   }
 
-  public PartialPath getPath() {
-    return path;
-  }
-
-  public void setPath(PartialPath path) {
-    this.path = path;
-  }
-
-  @Override
-  public List<PartialPath> getPaths() {
-    return Collections.singletonList(path);
-  }
-
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitSetSchemaTemplate(this, context);
-  }
-
-  @Override
-  public QueryType getQueryType() {
-    return QueryType.WRITE;
+    return visitor.visitShowPathsUsingTemplate(this, context);
   }
 }
