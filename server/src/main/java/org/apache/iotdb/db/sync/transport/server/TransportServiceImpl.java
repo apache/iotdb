@@ -266,8 +266,8 @@ public class TransportServiceImpl implements TransportService.Iface {
         logger.error("Pipe data transport error, {}", e.getMessage());
         return new TransportStatus(RETRY_CODE, "Data digest transport error " + e.getMessage());
       } catch (PipeDataLoadException e) {
-        logger.error("Fail to pipeData because {}.", e.getMessage());
-        return new TransportStatus(ERROR_CODE, "Data digest transport error " + e.getMessage());
+        logger.error("Fail to load pipeData because {}.", e.getMessage());
+        return new TransportStatus(ERROR_CODE, "Fail to load pipeData because " + e.getMessage());
       }
     } else {
       // Write buff to {file}.patch
