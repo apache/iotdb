@@ -111,7 +111,9 @@ public class ClusterTestStatement implements Statement {
     delegate.requestAll();
     closed = true;
 
-    this.resultSet.close();
+    if (this.resultSet != null && !this.resultSet.isClosed()) {
+      this.resultSet.close();
+    }
   }
 
   @Override

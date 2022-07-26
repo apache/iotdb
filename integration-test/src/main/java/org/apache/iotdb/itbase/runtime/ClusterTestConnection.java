@@ -106,7 +106,9 @@ public class ClusterTestConnection implements Connection {
     }
     isClosed = true;
 
-    this.statement.close();
+    if (this.statement != null && !this.statement.isClosed()) {
+      this.statement.close();
+    }
   }
 
   @Override
