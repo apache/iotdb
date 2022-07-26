@@ -32,11 +32,13 @@ import java.util.Deque;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.PATH_ROOT;
+import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 
 /**
  * This class defines the main traversal framework and declares some methods for result process
@@ -63,8 +65,9 @@ public abstract class Traverser {
 
   protected boolean isInTemplate = false;
 
-  // if isMeasurementTraverser, measurement in template should be processed
-  protected boolean isMeasurementTraverser = false;
+  // if true, measurement in template should be processed
+  protected boolean shouldTraverseTemplate = false;
+  protected Map<Integer, Template> templateMap;
 
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
@@ -238,11 +241,15 @@ public abstract class Traverser {
 
     traverseContext.pop();
 
+    if (!shouldTraverseTemplate) {
+      return;
+    }
+
     if (!node.isUseTemplate()) {
       return;
     }
 
-    Template upperTemplate = node.getUpperTemplate();
+    Template upperTemplate = getUpperTemplate(node);
     isInTemplate = true;
     traverseContext.push(node);
     for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
@@ -323,11 +330,15 @@ public abstract class Traverser {
       traverseContext.pop();
     }
 
+    if (!shouldTraverseTemplate) {
+      return;
+    }
+
     if (!node.isUseTemplate()) {
       return;
     }
 
-    Template upperTemplate = node.getUpperTemplate();
+    Template upperTemplate = getUpperTemplate(node);
 
     isInTemplate = true;
     traverseContext.push(node);
@@ -402,11 +413,15 @@ public abstract class Traverser {
       traverseContext.pop();
     }
 
+    if (!shouldTraverseTemplate) {
+      return;
+    }
+
     if (!node.isUseTemplate()) {
       return;
     }
 
-    Template upperTemplate = node.getUpperTemplate();
+    Template upperTemplate = getUpperTemplate(node);
     isInTemplate = true;
     IMNode targetNode = upperTemplate.getDirectNode(targetName);
     if (targetNode != null) {
@@ -423,6 +438,40 @@ public abstract class Traverser {
       traverseContext.pop();
     }
     isInTemplate = false;
+  }
+
+  protected Template getUpperTemplate(IMNode node) {
+    Iterator<IMNode> iterator = traverseContext.iterator();
+    IMNode ancestor;
+    if (templateMap == null) {
+      // old standalone
+      if (node.getSchemaTemplate() != null) {
+        return node.getUpperTemplate();
+      }
+      while (iterator.hasNext()) {
+        ancestor = iterator.next();
+        if (ancestor.getSchemaTemplate() != null) {
+          return ancestor.getSchemaTemplate();
+        }
+      }
+    } else {
+      // new cluster
+      if (node.getSchemaTemplateId() != NON_TEMPLATE) {
+        return templateMap.get(node.getSchemaTemplateId());
+      }
+      while (iterator.hasNext()) {
+        ancestor = iterator.next();
+        if (ancestor.getSchemaTemplateId() != NON_TEMPLATE) {
+          return templateMap.get(ancestor.getSchemaTemplateId());
+        }
+      }
+    }
+    // if the node is usingTemplate, the upperTemplate won't be null
+    return null;
+  }
+
+  public void setTemplateMap(Map<Integer, Template> templateMap) {
+    this.templateMap = templateMap;
   }
 
   public void setPrefixMatch(boolean isPrefixMatch) {

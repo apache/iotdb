@@ -31,14 +31,14 @@ public abstract class MeasurementCollector<T> extends CollectorTraverser<T> {
   public MeasurementCollector(IMNode startNode, PartialPath path, IMTreeStore store)
       throws MetadataException {
     super(startNode, path, store);
-    isMeasurementTraverser = true;
+    shouldTraverseTemplate = true;
   }
 
   public MeasurementCollector(
       IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
       throws MetadataException {
     super(startNode, path, store, limit, offset);
-    isMeasurementTraverser = true;
+    shouldTraverseTemplate = true;
   }
 
   @Override

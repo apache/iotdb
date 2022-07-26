@@ -26,12 +26,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManageme
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryOrderByHeatNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.TimeSeriesSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.ActivateTemplateNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.AlterTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateAlignedTimeSeriesNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.write.CreateMultiTimeSeriesNode;
@@ -128,7 +130,9 @@ public enum PlanNodeType {
   LAST_QUERY_MERGE((short) 49),
   LAST_QUERY_COLLECT((short) 50),
   NODE_PATHS_COUNT((short) 51),
-  INTERNAL_CREATE_TIMESERIES((short) 52);
+  INTERNAL_CREATE_TIMESERIES((short) 52),
+  ACTIVATE_TEMPLATE((short) 53),
+  PATHS_USING_TEMPLATE_SCAN((short) 54);
 
   public static final int BYTES = Short.BYTES;
 
@@ -275,6 +279,10 @@ public enum PlanNodeType {
         return NodePathsCountNode.deserialize(buffer);
       case 52:
         return InternalCreateTimeSeriesNode.deserialize(buffer);
+      case 53:
+        return ActivateTemplateNode.deserialize(buffer);
+      case 54:
+        return PathsUsingTemplateScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }

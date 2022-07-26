@@ -167,6 +167,7 @@ public class InternalMNode extends MNode {
 
     newMNode.setSchemaTemplate(schemaTemplate);
     newMNode.setUseTemplate(useTemplate);
+    newMNode.setSchemaTemplateId(schemaTemplateId);
 
     if (children != null) {
       newMNode.setChildren(children);
