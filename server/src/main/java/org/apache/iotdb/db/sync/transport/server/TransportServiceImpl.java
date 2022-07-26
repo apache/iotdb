@@ -24,15 +24,11 @@ import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
-import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.service.transport.thrift.IdentityInfo;
 import org.apache.iotdb.service.transport.thrift.MetaInfo;
-import org.apache.iotdb.service.transport.thrift.RequestType;
-import org.apache.iotdb.service.transport.thrift.SyncRequest;
-import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.service.transport.thrift.TransportService;
 import org.apache.iotdb.service.transport.thrift.TransportStatus;
 import org.apache.iotdb.service.transport.thrift.Type;
@@ -258,11 +254,19 @@ public class TransportServiceImpl implements TransportService.Iface {
           // Do with file
           handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
         }
-        PipeDataQueueFactory.getBufferedPipeDataQueue(SyncPathUtil.getPipeLogDirPath(identityInfo))
-            .offer(pipeData);
+        logger.info(
+                "Start load pipeData with serialize number {} and type {},value={}",
+                pipeData.getSerialNumber(),
+                pipeData.getType(),
+                pipeData);
+        pipeData.createLoader().load();
+        logger.info("Load pipeData with serialize number {} successfully.", pipeData.getSerialNumber());
       } catch (IOException | IllegalPathException e) {
         logger.error("Pipe data transport error, {}", e.getMessage());
         return new TransportStatus(RETRY_CODE, "Data digest transport error " + e.getMessage());
+      } catch (PipeDataLoadException e) {
+        logger.error("Fail to pipeData because {}.", e.getMessage());
+        return new TransportStatus(ERROR_CODE, "Data digest transport error " + e.getMessage());
       }
     } else {
       // Write buff to {file}.patch
@@ -336,11 +340,6 @@ public class TransportServiceImpl implements TransportService.Iface {
     }
   }
 
-  @Override
-  public SyncResponse heartbeat(SyncRequest syncRequest) throws TException {
-    return ReceiverService.getInstance().receiveMsg(syncRequest);
-  }
-
   private void writeRecordFile(File recordFile, long position) throws IOException {
     File tmpFile = new File(recordFile.getAbsolutePath() + ".tmp");
     FileWriter fileWriter = new FileWriter(tmpFile, false);
@@ -362,13 +361,7 @@ public class TransportServiceImpl implements TransportService.Iface {
         identityInfoCounter.compute(identityInfo, (k, v) -> v == null ? 0 : v - 1);
         if (identityInfoCounter.get(identityInfo) == 0) {
           identityInfoCounter.remove(identityInfo);
-          ReceiverService.getInstance()
-              .receiveMsg(
-                  new SyncRequest(
-                      RequestType.STOP,
-                      identityInfo.getPipeName(),
-                      identityInfo.getAddress(),
-                      identityInfo.getCreateTime()));
+          // TODO：发送端退出
         }
       }
     }

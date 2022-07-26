@@ -25,13 +25,13 @@ import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
-import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.sync.datasource.SyncResponseType;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
 import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
@@ -42,8 +42,6 @@ import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.sender.recovery.SenderLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.recovery.SenderLogger;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
-import org.apache.iotdb.service.transport.thrift.RequestType;
-import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -177,7 +175,6 @@ public class SenderService implements IService {
       try {
         transportHandler =
             TransportHandler.getNewTransportHandler(runningPipe, (IoTDBPipeSink) runningPipeSink);
-        sendMsg(RequestType.CREATE);
       } catch (ClassCastException e) {
         logger.error(
             String.format(
@@ -189,9 +186,6 @@ public class SenderService implements IService {
             String.format(
                 "Wrong pipeSink type %s for create pipe %s",
                 runningPipeSink.getType(), runningPipeSink.getPipeSinkName()));
-      } catch (PipeException e) {
-        runningPipe = null;
-        throw e;
       }
     } else { // for external pipe
       // == start ExternalPipeProcessor for send data to external pipe plugin
@@ -247,7 +241,6 @@ public class SenderService implements IService {
     checkRunningPipeExistAndName(pipeName);
     if (runningPipe.getStatus() == Pipe.PipeStatus.STOP) {
       if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
-        sendMsg(RequestType.START);
         runningPipe.start();
         transportHandler.start();
       } else { // for external PIPE
@@ -312,7 +305,6 @@ public class SenderService implements IService {
         }
         runningPipe.drop();
         msgManager.removeAllPipe();
-        sendMsg(RequestType.DROP);
       } else { // for external pipe
         // == drop ExternalPipeProcesser
         if (extPipePluginManager != null) {
@@ -357,32 +349,14 @@ public class SenderService implements IService {
     runningPipe.setDisconnected(isConnecting);
   }
 
-  /** transport */
-  private void sendMsg(RequestType type) throws PipeException {
-    try {
-      receiveMsg(transportHandler.sendMsg(type));
-    } catch (SyncConnectionException e) {
-      logger.warn(
-          String.format(
-              "Connect to pipeSink %s error when %s pipe.", runningPipe.getPipeSink(), type.name()),
-          e);
-      throw new PipeException(
-          String.format(
-              "Can not connect to pipeSink %s, please check net and receiver is available, and try again.",
-              runningPipe.getPipeSink()));
-    }
-  }
-
-  public synchronized void receiveMsg(SyncResponse response) {
+  public synchronized void receiveMsg(SyncResponseType type, String message) {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
-      logger.info(String.format("No running pipe for receiving msg %s.", response));
+      logger.info(String.format("No running pipe for receiving msg %s.", message));
       return;
     }
-    switch (response.type) {
-      case INFO:
-        break;
+    switch (type) {
       case ERROR:
-        logger.warn(String.format("%s from receiver: %s", response.type.name(), response.msg));
+        logger.warn(String.format("%s from receiver: %s", type.name(), message));
         try {
           stopPipe(runningPipe.getName());
         } catch (PipeException e) {
@@ -397,8 +371,8 @@ public class SenderService implements IService {
             runningPipe.getStatus() == Pipe.PipeStatus.RUNNING
                 ? Operator.OperatorType.START_PIPE
                 : Operator.OperatorType.STOP_PIPE,
-            response.type,
-            response.msg);
+            type,
+            message);
         break;
     }
   }

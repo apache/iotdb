@@ -19,38 +19,26 @@
 package org.apache.iotdb.db.sync.receiver.manager;
 
 import org.apache.iotdb.commons.sync.SyncPathUtil;
-import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
-import org.apache.iotdb.db.sync.receiver.AbstractReceiverInfo;
-import org.apache.iotdb.db.sync.receiver.collector.Collector;
+import org.apache.iotdb.db.sync.receiver.AbstractSyncInfo;
 
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
 
-public class LocalReceiverInfo extends AbstractReceiverInfo {
+public class LocalSyncInfo extends AbstractSyncInfo {
 
-  private Collector collector;
-
-  public void setCollector(Collector collector) {
-    this.collector = collector;
-  }
+  public void setCollector() {}
 
   @Override
-  protected void afterStartPipe(String pipeName, String remoteIp, long createTime) {
-    collector.startPipe(pipeName, remoteIp, createTime);
-  }
+  protected void afterStartPipe(String pipeName, String remoteIp, long createTime) {}
 
   @Override
-  protected void afterStopPipe(String pipeName, String remoteIp, long createTime) {
-    collector.stopPipe(pipeName, remoteIp, createTime);
-  }
+  protected void afterStopPipe(String pipeName, String remoteIp, long createTime) {}
 
   @Override
   protected void afterDropPipe(String pipeName, String remoteIp, long createTime) {
-    collector.stopPipe(pipeName, remoteIp, createTime);
-    PipeDataQueueFactory.removeBufferedPipeDataQueue(
-        SyncPathUtil.getReceiverPipeLogDir(pipeName, remoteIp, createTime));
+
     File dir = new File(SyncPathUtil.getReceiverPipeDir(pipeName, remoteIp, createTime));
     try {
       FileUtils.deleteDirectory(dir);

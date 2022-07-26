@@ -46,9 +46,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import static org.apache.iotdb.commons.sync.SyncConstant.PIPE_MESSAGE_TYPE;
 import static org.apache.iotdb.commons.sync.SyncConstant.PIPE_NAME_MAP_TYPE;
 
-public abstract class AbstractReceiverInfo {
+public abstract class AbstractSyncInfo {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractReceiverInfo.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractSyncInfo.class);
 
   protected boolean pipeServerEnable;
   // <pipeName, <remoteIp, <createTime, status>>>
@@ -57,7 +57,7 @@ public abstract class AbstractReceiverInfo {
   protected Map<String, List<PipeMessage>> pipeMessageMap;
   protected ReceiverLog log;
 
-  public AbstractReceiverInfo() {
+  public AbstractSyncInfo() {
     log = new ReceiverLog();
     ReceiverLogAnalyzer analyzer = new ReceiverLogAnalyzer();
     try {

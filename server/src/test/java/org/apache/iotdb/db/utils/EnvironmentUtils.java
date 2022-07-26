@@ -49,7 +49,6 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -184,9 +183,6 @@ public class EnvironmentUtils {
 
     // clear last query executor
     LastQueryExecutor.clear();
-
-    // clear pipe data queue
-    PipeDataQueueFactory.clear();
 
     // delete all directory
     cleanAllDir();

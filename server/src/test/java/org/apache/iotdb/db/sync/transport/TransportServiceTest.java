@@ -32,10 +32,9 @@ import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueue;
-import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.transport.client.TransportClient;
+import org.apache.iotdb.db.sync.transport.client.StandaloneTransportClient;
 import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -73,9 +72,6 @@ public class TransportServiceTest {
     EnvironmentUtils.envSetUp();
     remoteIp1 = "127.0.0.1";
     fileDir = new File(SyncPathUtil.getReceiverFileDataDir(pipeName1, remoteIp1, createdTime1));
-    pipeDataQueue =
-        PipeDataQueueFactory.getBufferedPipeDataQueue(
-            SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
     if (!tmpDir.exists()) {
       tmpDir.mkdirs();
     }
@@ -128,8 +124,8 @@ public class TransportServiceTest {
 
     // 4. start client
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
-    TransportClient client =
-        new TransportClient(
+    StandaloneTransportClient client =
+        new StandaloneTransportClient(
             pipe,
             "127.0.0.1",
             IoTDBDescriptor.getInstance().getConfig().getPipeServerPort(),

@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.sync.datasource.SyncResponseType;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.recovery.SenderLogger;
-import org.apache.iotdb.service.transport.thrift.ResponseType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +58,7 @@ public class MsgManager {
   }
 
   public synchronized void recordMsg(
-      Pipe pipe, Operator.OperatorType operatorType, ResponseType type, String inputMsg) {
+      Pipe pipe, Operator.OperatorType operatorType, SyncResponseType type, String inputMsg) {
     if (runningPipe == null) {
       logger.warn(
           String.format("No running Pipe for recording msg [%s] %s.", type.name(), inputMsg));

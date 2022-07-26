@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.sync.receiver.manager;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.sync.receiver.AbstractReceiverInfo;
+import org.apache.iotdb.db.sync.receiver.AbstractSyncInfo;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -39,7 +39,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.constant.TestConstant.BASE_OUTPUT_PATH;
 
-public class AbstractReceiverInfoTest {
+public class AbstractSyncInfoTest {
   private static final String pipe1 = "pipe1";
   private static final String pipe2 = "pipe2";
   private static final String ip1 = "192.168.1.11";
@@ -59,7 +59,7 @@ public class AbstractReceiverInfoTest {
 
   @Test
   public void testOperatePipe() throws Exception {
-    MockReceiverInfo manager = new MockReceiverInfo();
+    MockSyncInfo manager = new MockSyncInfo();
     try {
       manager.startServer();
       manager.createPipe(pipe1, ip1, createdTime1);
@@ -119,8 +119,8 @@ public class AbstractReceiverInfoTest {
 
   @Test
   public void testSerialize() throws Exception {
-    MockReceiverInfo manager1 = new MockReceiverInfo();
-    MockReceiverInfo manager2 = new MockReceiverInfo();
+    MockSyncInfo manager1 = new MockSyncInfo();
+    MockSyncInfo manager2 = new MockSyncInfo();
     File snapshotFile = new File(BASE_OUTPUT_PATH, "sync_receiver_snapshot");
     try {
       try (FileOutputStream fileOutputStream = new FileOutputStream(snapshotFile);
@@ -155,7 +155,7 @@ public class AbstractReceiverInfoTest {
     }
   }
 
-  private class MockReceiverInfo extends AbstractReceiverInfo {
+  private class MockSyncInfo extends AbstractSyncInfo {
     private final List<String> operateRecord = new ArrayList<>();
 
     public List<String> getOperateRecord() {
