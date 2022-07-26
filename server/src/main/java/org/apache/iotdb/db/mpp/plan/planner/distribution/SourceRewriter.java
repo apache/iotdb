@@ -26,6 +26,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.LogicalPlanBuilder;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.SimplePlanNodeRewriter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
@@ -39,6 +40,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.MultiChildNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
@@ -374,7 +377,22 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // For last query, we need to keep every FI's root node is LastQueryMergeNode. So we
     // force every region group have a parent node even if there is only 1 child for it.
     context.setForceAddParent(true);
-    return processRawMultiChildNode(node, context);
+    PlanNode root = processRawMultiChildNode(node, context);
+    if (context.queryMultiRegion) {
+      PlanNode newRoot = genLastQueryRootNode(node, context);
+      root.getChildren().forEach(newRoot::addChild);
+      return newRoot;
+    } else {
+      return root;
+    }
+  }
+
+  private PlanNode genLastQueryRootNode(LastQueryNode node, DistributionPlanContext context) {
+    PlanNodeId id = context.queryContext.getQueryId().genPlanNodeId();
+    if (context.oneSeriesInMultiRegion || !node.getMergeOrderParameter().isEmpty()) {
+      return new LastQueryMergeNode(id, node.getMergeOrderParameter());
+    }
+    return new LastQueryCollectNode(id);
   }
 
   @Override
@@ -400,6 +418,11 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
         SeriesSourceNode handle = (SeriesSourceNode) child;
         List<TRegionReplicaSet> dataDistribution =
             analysis.getPartitionInfo(handle.getPartitionPath(), handle.getPartitionTimeFilter());
+        if (dataDistribution.size() > 1) {
+          // We mark this variable to `true` if there is some series which is distributed in multi
+          // DataRegions
+          context.setOneSeriesInMultiRegion(true);
+        }
         // If the size of dataDistribution is m, this SeriesScanNode should be seperated into m
         // SeriesScanNode.
         for (TRegionReplicaSet dataRegion : dataDistribution) {
@@ -413,6 +436,10 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
     // Step 2: For the source nodes, group them by the DataRegion.
     Map<TRegionReplicaSet, List<SourceNode>> sourceGroup =
         sources.stream().collect(Collectors.groupingBy(SourceNode::getRegionReplicaSet));
+
+    if (sourceGroup.size() > 1) {
+      context.setQueryMultiRegion(true);
+    }
 
     // Step 3: For the source nodes which belong to same data region, add a TimeJoinNode for them
     // and make the
