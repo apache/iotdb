@@ -732,7 +732,7 @@ public class ExpressionAnalyzer {
               ((BinaryExpression) predicate).getRightExpression(), false, false);
 
       if (leftResultPair.left != null && rightResultPair.left != null) {
-        if (isFirstOr) {
+        if (isFirstOr && !leftResultPair.right && !rightResultPair.right) {
           ((BinaryExpression) predicate)
               .setLeftExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
           ((BinaryExpression) predicate)
