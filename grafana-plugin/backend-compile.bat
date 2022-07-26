@@ -20,10 +20,10 @@
 @echo off
 for /F %%i in ('cd') do ( set pwdpath=%%i)
 for /F %%i in ('go env GOPATH') do ( set gopath=%%i)
-cd %gopath%
+%gopath%
 dir
 c:
-cd /d %gopath%
+cd /d%gopath%
 dir
 go env
 echo %gopath%
@@ -34,4 +34,5 @@ git clone https://github.com/magefile/mage
 cd mage
 go run bootstrap.go
 cd /d %pwdpath%
+dir
 %gopath%\bin\mage -v
