@@ -358,6 +358,15 @@ public class DataRegion {
     }
   }
 
+  @TestOnly
+  public DataRegion(String logicalStorageGroupName, String id) {
+    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.dataRegionId = id;
+    this.tsFileManager = new TsFileManager(logicalStorageGroupName, id, "");
+    this.partitionMaxFileVersions = new HashMap<>();
+    partitionMaxFileVersions.put(0L, 0L);
+  }
+
   public String getLogicalStorageGroupName() {
     return logicalStorageGroupName;
   }
