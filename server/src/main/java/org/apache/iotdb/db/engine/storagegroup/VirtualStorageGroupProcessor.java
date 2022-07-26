@@ -1207,7 +1207,7 @@ public class VirtualStorageGroupProcessor {
         logger.error(
             "disk space is insufficient when creating TsFile processor, change system mode to read-only",
             e);
-        IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
+        IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
         break;
       } catch (IOException e) {
         if (retryCnt < 3) {
@@ -1216,7 +1216,7 @@ public class VirtualStorageGroupProcessor {
         } else {
           logger.error(
               "meet IOException when creating TsFileProcessor, change system mode to read-only", e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
           break;
         }
       }

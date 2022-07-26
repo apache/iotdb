@@ -1047,7 +1047,7 @@ public class TsFileProcessor {
               storageGroupName,
               tsFileResource.getTsFile().getName(),
               e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
           try {
             logger.error(
                 "{}: {} IOTask meets error, truncate the corrupted data",
@@ -1180,7 +1180,7 @@ public class TsFileProcessor {
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
               e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READONLY);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
           break;
         }
       }

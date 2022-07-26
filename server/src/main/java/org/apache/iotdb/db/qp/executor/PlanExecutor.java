@@ -604,7 +604,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateSetSystemMode(SetSystemModePlan plan) {
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setSystemStatus(plan.isReadOnly() ? SystemStatus.READONLY : SystemStatus.NORMAL);
+        .setSystemStatus(plan.isReadOnly() ? SystemStatus.READ_ONLY : SystemStatus.NORMAL);
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {

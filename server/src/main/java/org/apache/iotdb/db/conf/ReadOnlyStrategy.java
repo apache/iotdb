@@ -18,10 +18,12 @@
  */
 package org.apache.iotdb.db.conf;
 
-/** Status of current system */
-public enum SystemStatus {
-  /** System can read and write normally */
-  NORMAL,
-  /** Only read statements are permitted */
+/** How to deal with unrecoverable errors */
+public enum ReadOnlyStrategy {
+  /** Sets system to read-only and only query statements are permitted */
   READ_ONLY,
+  /** Shutdowns system */
+  SHUTDOWN,
+  /** Just logs error */
+  LOG_ERROR,
 }
