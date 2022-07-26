@@ -31,6 +31,11 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
+
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
@@ -408,5 +413,43 @@ public class IoTDBSchemaTemplateIT {
     // create schema template
     statement.execute("CREATE SCHEMA TEMPLATE t1 (s1 INT64, s2 DOUBLE)");
     statement.execute("CREATE SCHEMA TEMPLATE t2 aligned (s1 INT64, s2 DOUBLE)");
+  }
+
+  @Test
+  public void testLastCacheWithTemplate() throws SQLException {
+    statement.execute("set storage group to root.clsu1");
+    statement.execute("set schema template t1 to root.clsu1");
+    statement.execute("insert into root.clsu1.device1(time, s1) values(220, 200)");
+    statement.execute("insert into root.clsu1.device2(time, s1) values(320, 200)");
+
+    String[] lastQuerySqlArray =
+        new String[] {
+          "select last s1 from root.clsu1.device1",
+          "select last s1 from root.clsu1.device2",
+          "select last s1 from root.clsu1.device2",
+        };
+
+    String[] retArray =
+        new String[] {
+          "root.clsu1.device1.s1,220,200,INT64",
+          "root.clsu1.device2.s1,320,200,INT64",
+          "root.clsu1.device2.s1,320,200,INT64",
+        };
+
+    for (int i = 0; i < retArray.length; i++) {
+      statement.execute(lastQuerySqlArray[i]);
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans =
+            resultSet.getString(TIMESEIRES_STR)
+                + ","
+                + resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(VALUE_STR)
+                + ","
+                + resultSet.getString(DATA_TYPE_STR);
+        Assert.assertEquals(retArray[i], ans);
+      }
+    }
   }
 }
