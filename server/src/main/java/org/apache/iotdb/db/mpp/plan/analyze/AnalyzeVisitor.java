@@ -576,7 +576,8 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     if (queryStatement.getWhereCondition() != null) {
       Expression predicate = queryStatement.getWhereCondition().getPredicate();
       WhereCondition whereCondition = queryStatement.getWhereCondition();
-      Pair<Filter, Boolean> resultPair = ExpressionAnalyzer.transformToGlobalTimeFilter(predicate);
+      Pair<Filter, Boolean> resultPair =
+          ExpressionAnalyzer.transformToGlobalTimeFilter(predicate, true);
       predicate = ExpressionAnalyzer.evaluatePredicate(predicate);
 
       // set where condition to null if predicate is true

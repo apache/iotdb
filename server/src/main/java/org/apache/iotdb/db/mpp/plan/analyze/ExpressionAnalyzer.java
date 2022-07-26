@@ -687,23 +687,28 @@ public class ExpressionAnalyzer {
    * @param predicate raw query filter
    * @return global time filter
    */
-  public static Pair<Filter, Boolean> transformToGlobalTimeFilter(Expression predicate) {
+  public static Pair<Filter, Boolean> transformToGlobalTimeFilter(
+      Expression predicate, boolean canRewrite) {
     if (predicate.getExpressionType().equals(ExpressionType.LOGIC_AND)) {
       Pair<Filter, Boolean> leftResultPair =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
+          transformToGlobalTimeFilter(
+              ((BinaryExpression) predicate).getLeftExpression(), canRewrite);
       Pair<Filter, Boolean> rightResultPair =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
+          transformToGlobalTimeFilter(
+              ((BinaryExpression) predicate).getRightExpression(), canRewrite);
 
       // rewrite predicate to avoid duplicate calculation on time filter
       // If Left-child or Right-child does not contain value filter
       // We can set it to true in Predicate Tree
-      if (leftResultPair.left != null && !leftResultPair.right) {
-        ((BinaryExpression) predicate)
-            .setLeftExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
-      }
-      if (rightResultPair.left != null && !rightResultPair.right) {
-        ((BinaryExpression) predicate)
-            .setRightExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
+      if (canRewrite) {
+        if (leftResultPair.left != null && !leftResultPair.right) {
+          ((BinaryExpression) predicate)
+              .setLeftExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
+        }
+        if (rightResultPair.left != null && !rightResultPair.right) {
+          ((BinaryExpression) predicate)
+              .setRightExpression(new ConstantOperand(TSDataType.BOOLEAN, "true"));
+        }
       }
 
       if (leftResultPair.left != null && rightResultPair.left != null) {
@@ -718,9 +723,9 @@ public class ExpressionAnalyzer {
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_OR)) {
       Pair<Filter, Boolean> leftResultPair =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression());
+          transformToGlobalTimeFilter(((BinaryExpression) predicate).getLeftExpression(), false);
       Pair<Filter, Boolean> rightResultPair =
-          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression());
+          transformToGlobalTimeFilter(((BinaryExpression) predicate).getRightExpression(), false);
 
       if (leftResultPair.left != null && rightResultPair.left != null) {
         return new Pair<>(
@@ -730,7 +735,7 @@ public class ExpressionAnalyzer {
       return new Pair<>(null, true);
     } else if (predicate.getExpressionType().equals(ExpressionType.LOGIC_NOT)) {
       Pair<Filter, Boolean> childResultPair =
-          transformToGlobalTimeFilter(((UnaryExpression) predicate).getExpression());
+          transformToGlobalTimeFilter(((UnaryExpression) predicate).getExpression(), canRewrite);
       return new Pair<>(FilterFactory.not(childResultPair.left), childResultPair.right);
     } else if (predicate.isCompareBinaryExpression()) {
       Filter timeInLeftFilter =
