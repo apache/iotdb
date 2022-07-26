@@ -20,9 +20,8 @@
 @echo off
 for /F %%i in ('cd') do ( set pwdpath=%%i)
 for /F %%i in ('go env GOPATH') do ( set gopath=%%i)
-cd /d %gopath%
 c:
-cd C:\Users\runneradmin\go
+cd /d %gopath%
 dir
 go env
 echo %gopath%
