@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.influxdb;
 
-import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
-
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.Point;
 import org.influxdb.dto.Query;
