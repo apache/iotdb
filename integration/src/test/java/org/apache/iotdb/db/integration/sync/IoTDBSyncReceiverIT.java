@@ -134,11 +134,8 @@ public class IoTDBSyncReceiverIT {
   public void testReceiveDataAndLoad() {
     logger.info("testReceiveDataAndLoad");
     try {
-      // TODO：1. handshake create pipe
-      //      client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1,
-      // createdTime1));
-      //      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1,
-      // createdTime1));
+      // 1. handshake
+      client.handshake();
 
       // 2. send pipe data
       int serialNum = 0;
