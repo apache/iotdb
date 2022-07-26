@@ -371,15 +371,37 @@ public class ReadPointCompactionPerformer
       throws IOException {
     while (reader.hasNextBatch()) {
       TsBlock tsBlock = reader.nextBatch();
-      IPointReader pointReader;
       if (isAligned) {
-        pointReader = tsBlock.getTsBlockAlignedRowIterator();
+        //        IPointReader pointReader = tsBlock.getTsBlockAlignedRowIterator();
+        //        while (pointReader.hasNextTimeValuePair()) {
+        //          TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
+        //          writer.write(
+        //                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(),
+        // subTaskId);
+        //        }
+        //      for (int i=0;i<tsBlock.getPositionCount();i++) {
+        writer.write(
+            tsBlock.getTimeColumn(),
+            tsBlock.getValueColumns(),
+            subTaskId,
+            tsBlock.getPositionCount());
+        //          writer.write((TimeColumn) tsBlock.getTimeColumn().getRegion(i,1),
+        // tsBlock.getRegion(i,1).valueColumns, subTaskId, 1);
+        //        }
+        //        IPointReader pointReader = tsBlock.getTsBlockAlignedRowIterator();
+        //        while (pointReader.hasNextTimeValuePair()) {
+        //          TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
+        //          writer.write(
+        //                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(),
+        // subTaskId);
+        //        }
       } else {
-        pointReader = tsBlock.getTsBlockSingleColumnIterator();
-      }
-      while (pointReader.hasNextTimeValuePair()) {
-        TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
-        writer.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
+        IPointReader pointReader = tsBlock.getTsBlockSingleColumnIterator();
+        while (pointReader.hasNextTimeValuePair()) {
+          TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
+          writer.write(
+              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue(), subTaskId);
+        }
       }
     }
   }

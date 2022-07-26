@@ -19,6 +19,10 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -60,7 +64,44 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   }
 
   @Override
-  public void write(long[] timestamps, Object values) {}
+  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException {
+    long[] times = timestamps.getTimes();
+    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
+
+    for (Column column : columns) {
+      TSDataType tsDataType = chunkWriter.getCurrentValueChunkType();
+      switch (tsDataType) {
+        case TEXT:
+          chunkWriter.write(times, column.getBinary(), column.isNull(), batchSize);
+          break;
+        case DOUBLE:
+          chunkWriter.write(times, column.getDouble(), column.isNull(), batchSize);
+          break;
+        case BOOLEAN:
+          chunkWriter.write(times, column.getBoolean(), column.isNull(), batchSize);
+          break;
+        case INT64:
+          chunkWriter.write(times, column.getLong(), column.isNull(), batchSize);
+          break;
+        case INT32:
+          chunkWriter.write(times, column.getInt(), column.isNull(), batchSize);
+          break;
+        case FLOAT:
+          chunkWriter.write(times, column.getFloat(), column.isNull(), batchSize);
+          break;
+        default:
+          throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+      }
+    }
+
+    chunkWriter.write(times, batchSize);
+
+    measurementPointCountArray[subTaskId] += batchSize;
+
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
+    isEmptyFile = false;
+  }
 
   @Override
   public void endFile() throws IOException {

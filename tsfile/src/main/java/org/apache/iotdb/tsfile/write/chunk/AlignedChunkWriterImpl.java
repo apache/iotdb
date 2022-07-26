@@ -156,6 +156,56 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
   }
 
+  public void write(long[] time, int[] value, boolean[] isNull, int batchSize) {
+    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
+    for (int i = 0; i < batchSize; i++) {
+      valueChunkWriter.write(time[i], value[i], isNull[i]);
+    }
+  }
+
+  public void write(long[] time, long[] value, boolean[] isNull, int batchSize) {
+    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
+    for (int i = 0; i < batchSize; i++) {
+      valueChunkWriter.write(time[i], value[i], isNull[i]);
+    }
+  }
+
+  public void write(long[] time, boolean[] value, boolean[] isNull, int batchSize) {
+    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
+    for (int i = 0; i < batchSize; i++) {
+      valueChunkWriter.write(time[i], value[i], isNull[i]);
+    }
+  }
+
+  public void write(long[] time, float[] value, boolean[] isNull, int batchSize) {
+    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
+    for (int i = 0; i < batchSize; i++) {
+      valueChunkWriter.write(time[i], value[i], isNull[i]);
+    }
+  }
+
+  public void write(long[] time, double[] value, boolean[] isNull, int batchSize) {
+    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
+    for (int i = 0; i < batchSize; i++) {
+      valueChunkWriter.write(time[i], value[i], isNull[i]);
+    }
+  }
+
+  public void write(long[] time, Binary[] value, boolean[] isNull, int batchSize) {
+    ValueChunkWriter valueChunkWriter = valueChunkWriterList.get(valueIndex++);
+    for (int i = 0; i < batchSize; i++) {
+      valueChunkWriter.write(time[i], value[i], isNull[i]);
+    }
+  }
+
+  public void write(long[] time, int batchSize) {
+    valueIndex = 0;
+    timeChunkWriter.write(time, batchSize);
+    if (checkPageSizeAndMayOpenANewPage()) {
+      writePageToPageBuffer();
+    }
+  }
+
   /**
    * check occupied memory size, if it exceeds the PageSize threshold, construct a page and put it
    * to pageBuffer

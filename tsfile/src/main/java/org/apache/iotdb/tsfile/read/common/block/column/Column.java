@@ -65,6 +65,41 @@ public interface Column {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
+  /** Gets the boolean array. */
+  default boolean[] getBoolean() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Gets the little endian int array. */
+  default int[] getInt() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Gets the little endian long array. */
+  default long[] getLong() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Gets the float array. */
+  default float[] getFloat() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Gets the double array. */
+  default double[] getDouble() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Gets the Binary list. */
+  default Binary[] getBinary() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
+  /** Gets the Object array. */
+  default Object[] getObject() {
+    throw new UnsupportedOperationException(getClass().getName());
+  }
+
   /** Gets a TsPrimitiveType at {@code position}. */
   default TsPrimitiveType getTsPrimitiveType(int position) {
     throw new UnsupportedOperationException(getClass().getName());
@@ -85,6 +120,7 @@ public interface Column {
    */
   boolean isNull(int position);
 
+  boolean[] isNull();
   /** Returns the number of positions in this block. */
   int getPositionCount();
 
