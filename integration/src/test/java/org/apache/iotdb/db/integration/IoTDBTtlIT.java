@@ -27,6 +27,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -235,11 +236,7 @@ public class IoTDBTtlIT {
       statement.execute("SET TTL TO root.TTL_SG1 100");
 
       try (ResultSet resultSet = statement.executeQuery("SELECT last s1 FROM root.TTL_SG1")) {
-        int cnt = 0;
-        while (resultSet.next()) {
-          cnt++;
-        }
-        assertEquals(1, cnt);
+        Assert.assertFalse(resultSet.next());
       }
     }
   }

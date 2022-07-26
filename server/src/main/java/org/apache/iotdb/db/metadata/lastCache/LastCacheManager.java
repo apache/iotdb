@@ -279,7 +279,9 @@ public class LastCacheManager {
   }
 
   private static void processTTLOnLastCacheContainer(ILastCacheContainer container, long dataTTL) {
-    if (container.getCachedLast().getTimestamp() < System.currentTimeMillis() - dataTTL) {
+    TimeValuePair timeValuePair = container.getCachedLast();
+    if (timeValuePair != null
+        && timeValuePair.getTimestamp() < System.currentTimeMillis() - dataTTL) {
       container.resetLastCache();
     }
   }
