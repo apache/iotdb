@@ -198,6 +198,11 @@ struct TUpdateConfigNodeGroupReq {
   1: required list<common.TConfigNodeLocation> configNodeLocations
 }
 
+struct TUpdateTemplateReq{
+    1: required byte type
+    2: required binary templateInfo
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -334,6 +339,8 @@ service IDataNodeRPCService {
    * @param list<common.TConfigNodeLocation> configNodeLocations
    */
   common.TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req)
+
+  common.TSStatus updateTemplate(TUpdateTemplateReq req)
 }
 
 service MPPDataExchangeService {

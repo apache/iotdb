@@ -96,6 +96,9 @@ public abstract class UDTFMath implements UDTF {
 
   @Override
   public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
     switch (dataType) {
       case INT32:
         return transformer.transform(row.getInt(0));

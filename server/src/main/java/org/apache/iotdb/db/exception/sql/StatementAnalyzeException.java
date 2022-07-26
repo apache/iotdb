@@ -37,4 +37,8 @@ public class StatementAnalyzeException extends RuntimeException {
   public StatementAnalyzeException(String type, String message) {
     super(String.format("Unsupported type: [%s]. %s", type, message));
   }
+
+  public StatementAnalyzeException(Exception cause) {
+    super(cause);
+  }
 }

@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManageme
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -672,8 +674,9 @@ public class LogicalPlanBuilder {
       int offset,
       boolean orderByHeat,
       boolean contains,
-      boolean prefixPath) {
-    TimeSeriesSchemaScanNode timeSeriesMetaScanNode =
+      boolean prefixPath,
+      Map<Integer, Template> templateMap) {
+    this.root =
         new TimeSeriesSchemaScanNode(
             context.getQueryId().genPlanNodeId(),
             pathPattern,
@@ -683,8 +686,8 @@ public class LogicalPlanBuilder {
             offset,
             orderByHeat,
             contains,
-            prefixPath);
-    this.root = timeSeriesMetaScanNode;
+            prefixPath,
+            templateMap);
     return this;
   }
 
@@ -719,7 +722,9 @@ public class LogicalPlanBuilder {
   }
 
   public LogicalPlanBuilder planSchemaFetchSource(
-      List<String> storageGroupList, PathPatternTree patternTree) {
+      List<String> storageGroupList,
+      PathPatternTree patternTree,
+      Map<Integer, Template> templateMap) {
     PartialPath storageGroupPath;
     for (String storageGroup : storageGroupList) {
       try {
@@ -732,7 +737,10 @@ public class LogicalPlanBuilder {
         }
         this.root.addChild(
             new SchemaFetchScanNode(
-                context.getQueryId().genPlanNodeId(), storageGroupPath, overlappedPatternTree));
+                context.getQueryId().genPlanNodeId(),
+                storageGroupPath,
+                overlappedPatternTree,
+                templateMap));
       } catch (IllegalPathException e) {
         // definitely won't happen
         throw new RuntimeException(e);
@@ -808,6 +816,11 @@ public class LogicalPlanBuilder {
         new NodeManagementMemoryMergeNode(context.getQueryId().genPlanNodeId(), data);
     memorySourceNode.addChild(this.getRoot());
     this.root = memorySourceNode;
+    return this;
+  }
+
+  public LogicalPlanBuilder planPathsUsingTemplateSource(int templateId) {
+    this.root = new PathsUsingTemplateScanNode(context.getQueryId().genPlanNodeId(), templateId);
     return this;
   }
 }

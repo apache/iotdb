@@ -51,6 +51,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -202,7 +203,8 @@ public class SchemaQueryScanOperatorTest {
               null,
               false,
               false,
-              false);
+              false,
+              Collections.emptyMap());
       while (timeSeriesMetaScanOperator.hasNext()) {
         TsBlock tsBlock = timeSeriesMetaScanOperator.next();
         assertEquals(8, tsBlock.getValueColumnCount());
