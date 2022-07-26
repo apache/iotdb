@@ -35,6 +35,7 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -47,7 +48,7 @@ public class ClusterTestConnection implements Connection {
   private final List<NodeConnection> readConnections;
   private boolean isClosed;
   private boolean resultSetDisordered;
-  private Statement statement;
+  private final List<Statement> statementList = new ArrayList<>();
 
   public ClusterTestConnection(
       NodeConnection writeConnection, List<NodeConnection> readConnections) {
@@ -58,9 +59,10 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public Statement createStatement() throws SQLException {
-    this.statement =
+    Statement statement =
         new ClusterTestStatement(writeConnection, readConnections, resultSetDisordered);
-    return this.statement;
+    this.statementList.add(statement);
+    return statement;
   }
 
   @Override
@@ -106,8 +108,10 @@ public class ClusterTestConnection implements Connection {
     }
     isClosed = true;
 
-    if (this.statement != null && !this.statement.isClosed()) {
-      this.statement.close();
+    for (Statement statement : this.statementList) {
+      if (!statement.isClosed()) {
+        statement.close();
+      }
     }
   }
 
