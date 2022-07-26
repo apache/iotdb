@@ -36,6 +36,7 @@ import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
@@ -44,10 +45,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
-import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.statement.component.*;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowStatement;
@@ -572,9 +570,18 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Filter globalTimeFilter = null;
     boolean hasValueFilter = false;
     if (queryStatement.getWhereCondition() != null) {
-      Pair<Filter, Boolean> resultPair =
-          ExpressionAnalyzer.transformToGlobalTimeFilter(
-              queryStatement.getWhereCondition().getPredicate());
+      Expression predicate = queryStatement.getWhereCondition().getPredicate();
+      WhereCondition whereCondition = queryStatement.getWhereCondition();
+      Pair<Filter, Boolean> resultPair = ExpressionAnalyzer.transformToGlobalTimeFilter(predicate);
+      predicate = ExpressionAnalyzer.evaluatePredicate(predicate);
+
+      // set where condition to null if predicate is true
+      if (predicate.getExpressionType().equals(ExpressionType.CONSTANT)
+          && Boolean.parseBoolean(predicate.getExpressionString())) {
+        queryStatement.setWhereCondition(null);
+      } else {
+        whereCondition.setPredicate(predicate);
+      }
       globalTimeFilter = resultPair.left;
       hasValueFilter = resultPair.right;
     }
