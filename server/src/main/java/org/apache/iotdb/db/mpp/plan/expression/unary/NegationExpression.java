@@ -27,9 +27,12 @@ import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.unary.ArithmeticNegationColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.ArithmeticNegationTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import java.nio.ByteBuffer;
 
@@ -46,6 +49,12 @@ public class NegationExpression extends UnaryExpression {
   @Override
   protected Transformer constructTransformer(LayerPointReader pointReader) {
     return new ArithmeticNegationTransformer(pointReader);
+  }
+
+  @Override
+  protected ColumnTransformer getConcreteUnaryColumnTransformer(
+      ColumnTransformer childColumnTransformer, Type returnType) {
+    return new ArithmeticNegationColumnTransformer(returnType, childColumnTransformer);
   }
 
   @Override
