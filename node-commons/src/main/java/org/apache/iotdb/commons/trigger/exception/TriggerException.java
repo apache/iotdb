@@ -17,12 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.service;
+package org.apache.iotdb.commons.trigger.exception;
 
-public enum TriggerOperationType {
-  CREATE,
-  DROP,
-  START,
-  STOP,
-  SHOW
+import org.apache.iotdb.commons.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
+
+public class TriggerException extends IoTDBException {
+  public TriggerException(String message) {
+    super(message, TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode());
+  }
+
+  public TriggerException(String message, Throwable cause) {
+    super(message, cause, TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode());
+  }
 }

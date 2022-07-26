@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.service;
+package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
 

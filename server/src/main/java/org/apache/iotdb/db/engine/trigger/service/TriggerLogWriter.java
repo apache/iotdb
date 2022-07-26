@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.utils.writelog.ILogWriter;
 import org.apache.iotdb.db.utils.writelog.LogWriter;
 

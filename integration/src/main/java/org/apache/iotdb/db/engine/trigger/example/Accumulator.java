@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.engine.trigger.example;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.trigger.api.Trigger;
-import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.commons.trigger.api.Trigger;
+import org.apache.iotdb.commons.trigger.api.TriggerAttributes;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.utils.Binary;
 

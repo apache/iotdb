@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.engine.trigger.builtin;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.trigger.api.Trigger;
-import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.commons.trigger.api.Trigger;
+import org.apache.iotdb.commons.trigger.api.TriggerAttributes;
+import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.engine.trigger.sink.api.Event;
 import org.apache.iotdb.db.engine.trigger.sink.api.Handler;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.engine.trigger.sink.forward.mqtt.MQTTForwardConfigura
 import org.apache.iotdb.db.engine.trigger.sink.forward.mqtt.MQTTForwardEvent;
 import org.apache.iotdb.db.engine.trigger.sink.forward.mqtt.MQTTForwardHandler;
 import org.apache.iotdb.db.engine.trigger.utils.BatchHandlerQueue;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.util.HashMap;

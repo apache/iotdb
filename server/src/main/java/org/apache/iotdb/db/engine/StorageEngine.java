@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -624,7 +625,7 @@ public class StorageEngine implements IService {
 
     try {
       dataRegion.insert(insertRowPlan);
-    } catch (WriteProcessException e) {
+    } catch (WriteProcessException | TriggerExecutionException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -650,7 +651,7 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     try {
       dataRegion.insert(insertRowsOfOneDevicePlan);
-    } catch (WriteProcessException e) {
+    } catch (WriteProcessException | TriggerExecutionException e) {
       throw new StorageEngineException(e);
     }
   }
@@ -679,7 +680,11 @@ public class StorageEngine implements IService {
     }
 
     getSeriesSchemas(insertTabletPlan, dataRegion);
-    dataRegion.insertTablet(insertTabletPlan);
+    try {
+      dataRegion.insertTablet(insertTabletPlan);
+    } catch (TriggerExecutionException e) {
+      throw new StorageEngineException(e);
+    }
   }
 
   /** flush command Sync asyncCloseOneProcessor all file node processors. */

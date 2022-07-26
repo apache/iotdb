@@ -48,7 +48,7 @@
 
 ### 用户编程接口
 
-编写一个触发器需要实现`org.apache.iotdb.db.engine.trigger.api.Trigger`类。
+编写一个触发器需要实现`org.apache.iotdb.commons.trigger.api.Trigger`类。
 
 该类提供了两类编程接口：**生命周期钩子**和**数据变动侦听钩子**。该类中所有的接口都不是必须实现的，当您不实现它们时，它们不会对流经的数据操作产生任何响应。您可以根据实际需要，只实现其中若干接口。
 
@@ -742,8 +742,8 @@ INSERT INTO root.mqtt.d1(timestamp, s2) VALUES (2, true);
 ```java
 package org.apache.iotdb.trigger;
 
-import org.apache.iotdb.db.engine.trigger.api.Trigger;
-import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.commons.trigger.api.Trigger;
+import org.apache.iotdb.commons.trigger.api.TriggerAttributes;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;

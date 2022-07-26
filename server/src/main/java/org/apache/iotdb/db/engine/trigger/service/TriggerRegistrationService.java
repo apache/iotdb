@@ -23,14 +23,17 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
+import org.apache.iotdb.commons.trigger.ITriggerRegistrationService;
+import org.apache.iotdb.commons.trigger.TriggerClassLoader;
+import org.apache.iotdb.commons.trigger.TriggerClassLoaderManager;
+import org.apache.iotdb.commons.trigger.TriggerEvent;
+import org.apache.iotdb.commons.trigger.TriggerOperationType;
+import org.apache.iotdb.commons.trigger.api.Trigger;
+import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
+import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.engine.trigger.api.Trigger;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
-import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -64,7 +67,7 @@ import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS_STARTED;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TRIGGER_STATUS_STOPPED;
 
-public class TriggerRegistrationService implements IService {
+public class TriggerRegistrationService implements ITriggerRegistrationService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerRegistrationService.class);
 
@@ -86,6 +89,7 @@ public class TriggerRegistrationService implements IService {
     executors = new ConcurrentHashMap<>();
   }
 
+  @Override
   public synchronized void register(
       String triggerName,
       TriggerEvent event,
@@ -162,14 +166,16 @@ public class TriggerRegistrationService implements IService {
   private void doRegister(TriggerRegistrationInformation registrationInformation, IMNode imNode)
       throws TriggerManagementException, TriggerExecutionException {
     TriggerClassLoader classLoader =
-        TriggerClassLoaderManager.getInstance().register(registrationInformation.getClassName());
+        TriggerClassLoaderManager.setUpAndGetInstance(libRoot)
+            .register(registrationInformation.getClassName());
 
     TriggerExecutor executor;
     try {
       executor = new TriggerExecutor(registrationInformation, classLoader, imNode);
       executor.onCreate();
     } catch (TriggerManagementException | TriggerExecutionException e) {
-      TriggerClassLoaderManager.getInstance().deregister(registrationInformation.getClassName());
+      TriggerClassLoaderManager.setUpAndGetInstance(libRoot)
+          .deregister(registrationInformation.getClassName());
       throw e;
     }
 
@@ -192,6 +198,7 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
+  @Override
   public synchronized void deregister(String triggerName) throws TriggerManagementException {
     getTriggerExecutorWithExistenceCheck(triggerName);
     tryAppendDeregistrationLog(TriggerRegistrationInformation.getDropInfo(triggerName));
@@ -239,7 +246,7 @@ public class TriggerRegistrationService implements IService {
       LOGGER.warn(e.getMessage(), e);
     }
 
-    TriggerClassLoaderManager.getInstance()
+    TriggerClassLoaderManager.setUpAndGetInstance(libRoot)
         .deregister(executor.getRegistrationInformation().getClassName());
 
     // update id table
@@ -256,6 +263,7 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
+  @Override
   public void activate(String triggerName)
       throws TriggerManagementException, TriggerExecutionException {
     TriggerExecutor executor = getTriggerExecutorWithExistenceCheck(triggerName);
@@ -277,6 +285,7 @@ public class TriggerRegistrationService implements IService {
     executor.onStart();
   }
 
+  @Override
   public void inactivate(String triggerName) throws TriggerManagementException {
     TriggerExecutor executor = getTriggerExecutorWithExistenceCheck(triggerName);
 
@@ -305,6 +314,7 @@ public class TriggerRegistrationService implements IService {
     }
   }
 
+  @Override
   public QueryDataSet show() {
     ListDataSet dataSet =
         new ListDataSet(

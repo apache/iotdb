@@ -20,8 +20,8 @@
 package org.apache.iotdb.trigger;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.trigger.api.Trigger;
-import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.commons.trigger.api.Trigger;
+import org.apache.iotdb.commons.trigger.api.TriggerAttributes;
 import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBEvent;
 import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBHandler;

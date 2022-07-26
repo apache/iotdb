@@ -24,13 +24,13 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -212,8 +212,8 @@ public class TTLTest {
 
   @Test
   public void testTTLRead()
-      throws IOException, WriteProcessException, StorageEngineException, QueryProcessException,
-          MetadataException {
+      throws IOException, WriteProcessException, QueryProcessException, MetadataException,
+          TriggerExecutionException {
     prepareData();
 
     // files before ttl
@@ -290,7 +290,7 @@ public class TTLTest {
   @Test
   public void testTTLRemoval()
       throws StorageEngineException, WriteProcessException, QueryProcessException,
-          IllegalPathException {
+          IllegalPathException, TriggerExecutionException {
     prepareData();
 
     dataRegion.syncCloseAllWorkingTsFileProcessors();

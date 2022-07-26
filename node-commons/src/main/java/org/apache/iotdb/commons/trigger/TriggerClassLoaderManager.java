@@ -17,10 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.service;
+package org.apache.iotdb.commons.trigger;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.TriggerManagementException;
+import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -35,11 +34,12 @@ public class TriggerClassLoaderManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerClassLoaderManager.class);
 
-  private static final String LIB_ROOT = IoTDBDescriptor.getInstance().getConfig().getTriggerDir();
+  private final String libRoot;
 
   private final Map<String, Pair<TriggerClassLoader, Integer>> classNameToClassLoaderUsagePairMap;
 
-  private TriggerClassLoaderManager() {
+  private TriggerClassLoaderManager(String triggerLibRoot) {
+    this.libRoot = triggerLibRoot;
     classNameToClassLoaderUsagePairMap = new HashMap<>();
   }
 
@@ -48,7 +48,7 @@ public class TriggerClassLoaderManager {
         classNameToClassLoaderUsagePairMap.get(className);
     if (classLoaderUsagePair == null) {
       try {
-        TriggerClassLoader classLoader = new TriggerClassLoader(LIB_ROOT);
+        TriggerClassLoader classLoader = new TriggerClassLoader(libRoot);
         classLoaderUsagePair = new Pair<>(classLoader, 0);
         classNameToClassLoaderUsagePairMap.put(className, classLoaderUsagePair);
         LOGGER.info(
@@ -81,14 +81,12 @@ public class TriggerClassLoaderManager {
     }
   }
 
-  public static TriggerClassLoaderManager getInstance() {
-    return TriggerClassLoaderManager.TriggerClassLoaderManagerHelper.INSTANCE;
-  }
+  private static TriggerClassLoaderManager INSTANCE = null;
 
-  private static class TriggerClassLoaderManagerHelper {
-
-    private static final TriggerClassLoaderManager INSTANCE = new TriggerClassLoaderManager();
-
-    private TriggerClassLoaderManagerHelper() {}
+  public static TriggerClassLoaderManager setUpAndGetInstance(String triggerLibRoot) {
+    if (INSTANCE == null) {
+      INSTANCE = new TriggerClassLoaderManager(triggerLibRoot);
+    }
+    return INSTANCE;
   }
 }

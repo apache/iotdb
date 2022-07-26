@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.api;
+package org.apache.iotdb.commons.trigger.api;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Binary;

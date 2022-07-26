@@ -20,8 +20,9 @@
 package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
-import org.apache.iotdb.db.exception.TriggerManagementException;
+import org.apache.iotdb.commons.trigger.TriggerEvent;
+import org.apache.iotdb.commons.trigger.TriggerOperationType;
+import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;

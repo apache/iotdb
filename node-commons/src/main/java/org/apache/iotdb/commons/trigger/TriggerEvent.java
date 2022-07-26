@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.executor;
+package org.apache.iotdb.commons.trigger;
 
 public enum TriggerEvent {
   BEFORE_INSERT((byte) 0, "before insert"),

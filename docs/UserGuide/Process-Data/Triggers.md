@@ -52,7 +52,7 @@ Note that the dependency version should be correspondent to the target server ve
 
 ### Programming Interfaces
 
-To implement a trigger, you need to implement the `org.apache.iotdb.db.engine.trigger.api.Trigger` class.
+To implement a trigger, you need to implement the `org.apache.iotdb.commons.trigger.api.Trigger` class.
 
 This class provides two types of programming interfaces: **life cycle hooks** and **data change listening hooks**. All the interfaces in this class are not required to be implemented. When the interfaces are not implemented, the trigger will not respond to the data changes. You can implement only some of these interfaces according to your needs.
 
@@ -803,8 +803,8 @@ It shows:
 ```java
 package org.apache.iotdb.trigger;
 
-import org.apache.iotdb.db.engine.trigger.api.Trigger;
-import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;
+import org.apache.iotdb.commons.trigger.api.Trigger;
+import org.apache.iotdb.commons.trigger.api.TriggerAttributes;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;

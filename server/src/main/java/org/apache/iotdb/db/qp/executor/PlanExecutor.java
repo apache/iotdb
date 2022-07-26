@@ -32,6 +32,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
+import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.commons.udf.builtin.BuiltinAggregationFunction;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
@@ -53,8 +55,6 @@ import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TriggerExecutionException;
-import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
@@ -395,13 +395,29 @@ public class PlanExecutor implements IPlanExecutor {
       case DROP_FUNCTION:
         return operateDropFunction((DropFunctionPlan) plan);
       case CREATE_TRIGGER:
-        return operateCreateTrigger((CreateTriggerPlan) plan);
+        try {
+          return operateCreateTrigger((CreateTriggerPlan) plan);
+        } catch (TriggerManagementException | TriggerExecutionException e) {
+          throw new StorageEngineException(e);
+        }
       case DROP_TRIGGER:
-        return operateDropTrigger((DropTriggerPlan) plan);
+        try {
+          return operateDropTrigger((DropTriggerPlan) plan);
+        } catch (TriggerManagementException e) {
+          throw new StorageEngineException(e);
+        }
       case START_TRIGGER:
-        return operateStartTrigger((StartTriggerPlan) plan);
+        try {
+          return operateStartTrigger((StartTriggerPlan) plan);
+        } catch (TriggerManagementException | TriggerExecutionException e) {
+          throw new StorageEngineException(e);
+        }
       case STOP_TRIGGER:
-        return operateStopTrigger((StopTriggerPlan) plan);
+        try {
+          return operateStopTrigger((StopTriggerPlan) plan);
+        } catch (TriggerManagementException e) {
+          throw new StorageEngineException(e);
+        }
       case KILL:
         try {
           operateKillQuery((KillQueryPlan) plan);
