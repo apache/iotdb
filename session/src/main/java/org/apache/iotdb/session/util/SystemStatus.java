@@ -23,5 +23,5 @@ public enum SystemStatus {
   /** System can read and write normally */
   NORMAL,
   /** Only query statements are permitted */
-  READONLY,
+  READ_ONLY,
 }
