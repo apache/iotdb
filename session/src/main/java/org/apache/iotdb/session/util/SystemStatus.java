@@ -22,6 +22,6 @@ package org.apache.iotdb.session.util;
 public enum SystemStatus {
   /** System can read and write normally */
   NORMAL,
-  /** Only read statements are permitted */
+  /** Only query statements are permitted */
   READONLY,
 }

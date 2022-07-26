@@ -1408,8 +1408,7 @@ public class IoTDBConfig {
     if (newStatus == SystemStatus.READ_ONLY) {
       if (readOnlyStrategy == ReadOnlyStrategy.READ_ONLY) {
         logger.error(
-            "System mode will be set to {}! Only query statements are permitted!",
-            newStatus,
+            "change system mode to read-only! Only query statements are permitted!",
             new RuntimeException("System mode is set to read-only"));
       } else if (readOnlyStrategy == ReadOnlyStrategy.SHUTDOWN) {
         logger.error(

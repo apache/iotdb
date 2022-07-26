@@ -1143,7 +1143,7 @@ public class TsFileProcessor {
           logger.debug(
               "{}: {} flushingMemtables is empty and will close the file",
               storageGroupName,
-              tsFileResource.getTsFile().getName());
+              tsFileResource.getTsFile().getAbsolutePath());
         }
         endFile();
         if (logger.isDebugEnabled()) {
@@ -1153,16 +1153,16 @@ public class TsFileProcessor {
         logger.error(
             "{}: {} marking or ending file meet error",
             storageGroupName,
-            tsFileResource.getTsFile().getName(),
+            tsFileResource.getTsFile().getAbsolutePath(),
             e);
-        // truncate broken data
+        // truncate broken metadata
         try {
           writer.reset();
         } catch (IOException e1) {
           logger.error(
               "{}: {} truncate corrupted data meets error",
               storageGroupName,
-              tsFileResource.getTsFile().getName(),
+              tsFileResource.getTsFile().getAbsolutePath(),
               e1);
         }
         // retry or set read-only
@@ -1189,7 +1189,7 @@ public class TsFileProcessor {
         logger.debug(
             "{}: {} try to get flushingMemtables lock.",
             storageGroupName,
-            tsFileResource.getTsFile().getName());
+            tsFileResource.getTsFile().getAbsolutePath());
       }
       synchronized (flushingMemTables) {
         flushingMemTables.notifyAll();
