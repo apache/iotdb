@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package com.apache.iotdb.influxdb;
+package org.apache.iotdb.influxdb;
 
 import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
 
