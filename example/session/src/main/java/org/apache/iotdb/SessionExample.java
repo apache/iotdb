@@ -82,15 +82,14 @@ public class SessionExample {
     }
 
     //     createTemplate();
-//    createTimeseries();
-//    createMultiTimeseries();
-//    insertRecord();
-//    insertTablet();
-    insertTablet1();
+    createTimeseries();
+    createMultiTimeseries();
+    insertRecord();
+    insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
     //    insertRecords();
-        insertText();
+    //    insertText();
     //    selectInto();
     //    createAndDropContinuousQueries();
     //    nonQuery();
@@ -103,16 +102,16 @@ public class SessionExample {
     //    deleteTimeseries();
     //    setTimeout();
 
-//    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-//    sessionEnableRedirect.setEnableQueryRedirection(true);
-//    sessionEnableRedirect.open(false);
-//
-//    // set session fetchSize
-//    sessionEnableRedirect.setFetchSize(10000);
-//
-//    insertRecord4Redirect();
-//    query4Redirect();
-//    sessionEnableRedirect.close();
+    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    sessionEnableRedirect.setEnableQueryRedirection(true);
+    sessionEnableRedirect.open(false);
+
+    // set session fetchSize
+    sessionEnableRedirect.setFetchSize(10000);
+
+    insertRecord4Redirect();
+    query4Redirect();
+    sessionEnableRedirect.close();
     session.close();
   }
 
@@ -433,46 +432,6 @@ public class SessionExample {
     if (tablet.rowSize != 0) {
       session.insertTablet(tablet);
       tablet.reset();
-    }
-  }
-
-  private static void insertTablet1() throws IoTDBConnectionException, StatementExecutionException {
-    // The schema of measurements of one device
-    // only measurementId and data type in MeasurementSchema take effects in Tablet
-    List<MeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.TEXT));
-
-    Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
-
-    // Method 1 to add tablet data
-    long timestamp = System.currentTimeMillis();
-
-    for (long row = 0; row < 100; row++) {
-      int rowIndex = tablet.rowSize++;
-      tablet.addTimestamp(rowIndex, timestamp);
-      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, "test");
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.insertTablet(tablet, true);
-        tablet.reset();
-      }
-      timestamp++;
-    }
-
-    if (tablet.rowSize != 0) {
-      session.insertTablet(tablet);
-      tablet.reset();
-    }
-
-    if (tablet.rowSize != 0) {
-      session.insertTablet(tablet);
-      tablet.reset();
-    }
-
-    try (SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg1.d1")) {
-      System.out.println(dataSet.getColumnNames());
-      while (dataSet.hasNext()) {
-        System.out.println(dataSet.next());
-      }
     }
   }
 

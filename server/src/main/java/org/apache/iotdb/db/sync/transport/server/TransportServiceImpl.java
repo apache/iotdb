@@ -255,12 +255,13 @@ public class TransportServiceImpl implements TransportService.Iface {
           handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
         }
         logger.info(
-                "Start load pipeData with serialize number {} and type {},value={}",
-                pipeData.getSerialNumber(),
-                pipeData.getType(),
-                pipeData);
+            "Start load pipeData with serialize number {} and type {},value={}",
+            pipeData.getSerialNumber(),
+            pipeData.getType(),
+            pipeData);
         pipeData.createLoader().load();
-        logger.info("Load pipeData with serialize number {} successfully.", pipeData.getSerialNumber());
+        logger.info(
+            "Load pipeData with serialize number {} successfully.", pipeData.getSerialNumber());
       } catch (IOException | IllegalPathException e) {
         logger.error("Pipe data transport error, {}", e.getMessage());
         return new TransportStatus(RETRY_CODE, "Data digest transport error " + e.getMessage());
