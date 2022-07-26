@@ -130,6 +130,9 @@ public class HeaderConstant {
   // dataset header for show paths using template
   public static final DatasetHeader showPathsUsingTemplate;
 
+  // dataset header for show confignodes
+  public static final DatasetHeader showConfigNodesHeader;
+
   static {
     countStorageGroupHeader =
         new DatasetHeader(
@@ -269,6 +272,17 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
                 new ColumnHeader(COLUMN_DATA_REGION_NUM, TSDataType.INT32),
                 new ColumnHeader(COLUMN_SCHEMA_REGION_NUM, TSDataType.INT32)),
+            true);
+  }
+
+  static {
+    showConfigNodesHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
             true);
   }
 

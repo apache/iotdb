@@ -267,6 +267,19 @@ struct TShowDataNodesResp {
   2: optional list<TDataNodeInfo> dataNodesInfoList
 }
 
+// Show confignodes
+struct TConfigNodeInfo {
+  1: required i32 configNodeId
+  2: required string status
+  3: required string internalAddress
+  4: required i32 internalPort
+}
+
+struct TShowConfigNodesResp {
+  1: required common.TSStatus status
+  2: optional list<TConfigNodeInfo> configNodesInfoList
+}
+
 // Show regions
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
@@ -423,6 +436,8 @@ service IConfigNodeRPCService {
   TShowClusterResp showCluster()
 
   TShowDataNodesResp showDataNodes()
+
+  TShowConfigNodesResp showConfigNodes()
 
   TShowRegionResp showRegion(TShowRegionReq req)
 

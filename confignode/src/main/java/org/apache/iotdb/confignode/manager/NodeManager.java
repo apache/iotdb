@@ -39,6 +39,7 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
@@ -53,6 +54,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -236,6 +238,27 @@ public class NodeManager {
     }
     return dataNodeInfoList;
   }
+
+  public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {
+    List<TConfigNodeInfo> configNodeInfoList = new ArrayList<>();
+    List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
+    if (registeredConfigNodes != null) {
+      registeredConfigNodes.forEach(
+          (configNodeInfo) -> {
+            TConfigNodeInfo info = new TConfigNodeInfo();
+            int configNodeId = configNodeInfo.getConfigNodeId();
+            info.setConfigNodeId(configNodeId);
+            info.setStatus(
+                getLoadManager().getNodeCacheMap().get(configNodeId).getNodeStatus().getStatus());
+            info.setInternalAddress(configNodeInfo.getInternalEndPoint().getIp());
+            info.setInternalPort(configNodeInfo.getInternalEndPoint().getPort());
+            configNodeInfoList.add(info);
+          });
+    }
+    configNodeInfoList.sort(Comparator.comparingInt(TConfigNodeInfo::getConfigNodeId));
+    return configNodeInfoList;
+  }
+
   /**
    * Provides ConfigNodeGroup information for the newly registered ConfigNode
    *

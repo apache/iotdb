@@ -98,6 +98,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
@@ -2340,6 +2341,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitShowDataNodes(IoTDBSqlParser.ShowDataNodesContext ctx) {
     return new ShowDataNodesStatement();
+  }
+
+  // show confignodes
+
+  @Override
+  public Statement visitShowConfigNodes(IoTDBSqlParser.ShowConfigNodesContext ctx) {
+    return new ShowConfigNodesStatement();
   }
 
   // schema template
