@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.write;
+package org.apache.iotdb.confignode.consensus.request.read.template;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -26,40 +26,46 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
-public class SetSchemaTemplatePlan extends ConfigPhysicalPlan {
+public class GetSchemaTemplatePlan extends ConfigPhysicalPlan {
 
-  private String name;
-  private String path;
+  private String templateName;
 
-  public SetSchemaTemplatePlan() {
-    super(ConfigPhysicalPlanType.SetSchemaTemplate);
+  public GetSchemaTemplatePlan() {
+    super(ConfigPhysicalPlanType.GetSchemaTemplate);
   }
 
-  public SetSchemaTemplatePlan(String name, String path) {
-    super(ConfigPhysicalPlanType.SetSchemaTemplate);
-    this.name = name;
-    this.path = path;
+  public GetSchemaTemplatePlan(String templateName) {
+    this();
+    this.templateName = templateName;
   }
 
-  public String getName() {
-    return name;
-  }
-
-  public String getPath() {
-    return path;
+  public String getTemplateName() {
+    return templateName;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.SetSchemaTemplate.ordinal());
-    ReadWriteIOUtils.write(name, stream);
-    ReadWriteIOUtils.write(path, stream);
+    ReadWriteIOUtils.write(ConfigPhysicalPlanType.GetSchemaTemplate.ordinal(), stream);
+    ReadWriteIOUtils.write(templateName, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    this.name = ReadWriteIOUtils.readString(buffer);
-    this.path = ReadWriteIOUtils.readString(buffer);
+    this.templateName = ReadWriteIOUtils.readString(buffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    GetSchemaTemplatePlan that = (GetSchemaTemplatePlan) o;
+    return this.templateName.equalsIgnoreCase(this.templateName);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(templateName);
   }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.read.template;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -26,15 +26,15 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class GetAllSchemaTemplatePlan extends ConfigPhysicalPlan {
+public class GetAllTemplateSetInfoPlan extends ConfigPhysicalPlan {
 
-  public GetAllSchemaTemplatePlan() {
-    super(ConfigPhysicalPlanType.GetAllSchemaTemplate);
+  public GetAllTemplateSetInfoPlan() {
+    super(ConfigPhysicalPlanType.GetAllTemplateSetInfo);
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetAllSchemaTemplate.ordinal());
+    stream.writeInt(ConfigPhysicalPlanType.GetAllTemplateSetInfo.ordinal());
   }
 
   @Override

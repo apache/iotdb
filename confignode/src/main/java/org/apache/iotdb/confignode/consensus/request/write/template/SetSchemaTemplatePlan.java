@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.consensus.request.read;
+package org.apache.iotdb.confignode.consensus.request.write.template;
 
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
@@ -27,31 +27,39 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public class GetPathsSetTemplatePlan extends ConfigPhysicalPlan {
+public class SetSchemaTemplatePlan extends ConfigPhysicalPlan {
 
   private String name;
+  private String path;
 
-  public GetPathsSetTemplatePlan() {
-    super(ConfigPhysicalPlanType.GetPathsSetTemplate);
+  public SetSchemaTemplatePlan() {
+    super(ConfigPhysicalPlanType.SetSchemaTemplate);
   }
 
-  public GetPathsSetTemplatePlan(String name) {
-    super(ConfigPhysicalPlanType.GetPathsSetTemplate);
+  public SetSchemaTemplatePlan(String name, String path) {
+    super(ConfigPhysicalPlanType.SetSchemaTemplate);
     this.name = name;
+    this.path = path;
   }
 
   public String getName() {
     return name;
   }
 
+  public String getPath() {
+    return path;
+  }
+
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.GetPathsSetTemplate.ordinal());
+    stream.writeInt(ConfigPhysicalPlanType.SetSchemaTemplate.ordinal());
     ReadWriteIOUtils.write(name, stream);
+    ReadWriteIOUtils.write(path, stream);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
     this.name = ReadWriteIOUtils.readString(buffer);
+    this.path = ReadWriteIOUtils.readString(buffer);
   }
 }
