@@ -106,6 +106,13 @@ public class SessionTimeoutManager {
     return SessionTimeoutManagerHelper.INSTANCE;
   }
 
+  public boolean isSessionExits(long sessionId) {
+    if (SESSION_TIMEOUT == 0) {
+      return true;
+    }
+    return sessionIdToLastActiveTime.containsKey(sessionId);
+  }
+
   private static class SessionTimeoutManagerHelper {
 
     private static final SessionTimeoutManager INSTANCE = new SessionTimeoutManager();

@@ -363,6 +363,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return resp.setStatus(getNotLoggedInStatus());
     }
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return resp.setStatus(getSessionTimeoutStatus());
+    }
 
     TSStatus status;
     try {
@@ -509,6 +512,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return getSessionTimeoutStatus();
+    }
 
     InsertRowsPlan insertRowsPlan;
     int index = 0;
@@ -615,6 +621,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return RpcUtils.getTSExecuteStatementResp(getSessionTimeoutStatus());
+      }
 
       long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
@@ -653,7 +662,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return RpcUtils.getTSExecuteStatementResp(getSessionTimeoutStatus());
+      }
       long startTime = System.currentTimeMillis();
       String statement = req.getStatement();
       PhysicalPlan physicalPlan =
@@ -689,7 +700,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return RpcUtils.getTSExecuteStatementResp(getSessionTimeoutStatus());
+      }
       long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           serviceProvider
@@ -735,7 +748,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return RpcUtils.getTSExecuteStatementResp(getSessionTimeoutStatus());
+      }
       long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           serviceProvider
@@ -1003,7 +1018,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return RpcUtils.getTSFetchResultsResp(getSessionTimeoutStatus());
+      }
       if (!SESSION_MANAGER.hasDataset(req.queryId)) {
         return RpcUtils.getTSFetchResultsResp(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed query"));
@@ -1069,7 +1086,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
     }
-
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return RpcUtils.getTSExecuteStatementResp(getSessionTimeoutStatus());
+    }
     try {
       PhysicalPlan physicalPlan =
           serviceProvider
@@ -1189,7 +1208,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
-
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return getSessionTimeoutStatus();
+    }
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, first device {}, first time {}",
@@ -1261,7 +1282,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
-
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return getSessionTimeoutStatus();
+    }
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, device {}, first time {}",
@@ -1307,7 +1330,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
-
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return getSessionTimeoutStatus();
+    }
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, device {}, first time {}",
@@ -1365,7 +1390,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
-
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return getSessionTimeoutStatus();
+    }
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, first device {}, first time {}",
@@ -1479,7 +1506,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return getSessionTimeoutStatus();
+      }
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
           SESSION_MANAGER.getCurrSessionId(),
@@ -1514,7 +1543,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return getSessionTimeoutStatus();
+      }
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
           SESSION_MANAGER.getCurrSessionId(),
@@ -1550,7 +1581,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return getSessionTimeoutStatus();
+      }
       DeletePlan plan = new DeletePlan();
       plan.setDeleteStartTime(req.getStartTime());
       plan.setDeleteEndTime(req.getEndTime());
@@ -1577,7 +1610,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return getSessionTimeoutStatus();
+      }
       InsertTabletPlan insertTabletPlan =
           new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
@@ -1613,7 +1648,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return getSessionTimeoutStatus();
+      }
       return insertTabletsInternally(req);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_TABLETS, e.getErrorCode());
@@ -1714,7 +1751,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return getSessionTimeoutStatus();
+      }
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSessionId(), req.getPath());
@@ -1746,7 +1785,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return getSessionTimeoutStatus();
+      }
       // if measurements.size() == 1, convert to create timeseries
       if (req.measurements.size() == 1) {
         return createTimeseries(
@@ -1804,7 +1845,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return getSessionTimeoutStatus();
+      }
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create {} timeseries, the first is {}",
@@ -1918,7 +1961,9 @@ public class TSServiceImpl implements TSIService.Iface {
       if (!serviceProvider.checkLogin(req.getSessionId())) {
         return getNotLoggedInStatus();
       }
-
+      if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+        return getSessionTimeoutStatus();
+      }
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create schema template {}",
@@ -2022,7 +2067,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
-
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return getSessionTimeoutStatus();
+    }
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} set device template {}.{}",
@@ -2045,7 +2092,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
-
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return getSessionTimeoutStatus();
+    }
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} unset schema template {}.{}",
@@ -2093,7 +2142,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
-
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return getSessionTimeoutStatus();
+    }
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} create timeseries of schema template on path {}",
@@ -2115,7 +2166,9 @@ public class TSServiceImpl implements TSIService.Iface {
     if (!serviceProvider.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
-
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return getSessionTimeoutStatus();
+    }
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} drop schema template {}.",
@@ -2126,6 +2179,10 @@ public class TSServiceImpl implements TSIService.Iface {
     DropTemplatePlan plan = new DropTemplatePlan(req.templateName);
     TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
+  }
+
+  private TSStatus getSessionTimeoutStatus() {
+    return RpcUtils.getStatus(TSStatusCode.SESSION_TIMEOUT, "Session timeout");
   }
 
   @Override

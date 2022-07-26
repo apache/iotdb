@@ -109,10 +109,24 @@ public abstract class ServiceProvider {
     boolean isLoggedIn = currSessionId != null && currSessionId == sessionId;
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
+      return false;
     } else {
       SessionTimeoutManager.getInstance().refresh(sessionId);
     }
     return isLoggedIn;
+  }
+
+  /**
+   * Check whether current session is timeout.
+   *
+   * @param sessionId Session id.
+   * @return true: If session timeout; false: If not session timeout.
+   */
+  public boolean checkSessionTimeout(long sessionId) {
+    if (!SessionTimeoutManager.getInstance().isSessionExits(sessionId)) {
+      return true;
+    }
+    return false;
   }
 
   public boolean checkAuthorization(PhysicalPlan plan, String username) throws AuthException {
@@ -230,7 +244,9 @@ public abstract class ServiceProvider {
           TSStatusCode.NOT_LOGIN_ERROR,
           "Log in failed. Either you are not authorized or the session has timed out.");
     }
-
+    if (checkSessionTimeout(sessionId)) {
+      return RpcUtils.getStatus(TSStatusCode.SESSION_TIMEOUT, "Session timeout");
+    }
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "{}: receive close operation from Session {}",

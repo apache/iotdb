@@ -89,7 +89,10 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     if (!serviceProvider.checkLogin(req.sessionId)) {
       return getNotLoggedInStatus();
     }
-
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return RpcUtils.getInfluxDBStatus(
+          TSStatusCode.SESSION_TIMEOUT.getStatusCode(), "Session timeout");
+    }
     List<TSStatus> tsStatusList = new ArrayList<>();
     int executeCode = TSStatusCode.SUCCESS_STATUS.getStatusCode();
     for (Point point :
@@ -118,6 +121,10 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
   public TSStatus createDatabase(TSCreateDatabaseReq req) throws TException {
     if (!serviceProvider.checkLogin(req.sessionId)) {
       return getNotLoggedInStatus();
+    }
+    if (serviceProvider.checkSessionTimeout(req.getSessionId())) {
+      return RpcUtils.getInfluxDBStatus(
+          TSStatusCode.SESSION_TIMEOUT.getStatusCode(), "Session timeout");
     }
     try {
       SetStorageGroupPlan setStorageGroupPlan =
