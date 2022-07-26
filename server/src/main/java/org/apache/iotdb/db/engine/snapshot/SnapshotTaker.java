@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
+import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -329,23 +330,21 @@ public class SnapshotTaker {
           "Failed to test whether the data dir and snapshot dir is on the same disk");
     }
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    for (String dataDir : dataDirs) {
-      File dirFile = new File(dataDir);
-      File testSnapshotFile = new File(dirFile, testFileName);
-      try {
-        Files.createLink(testSnapshotFile.toPath(), testFile.toPath());
-      } catch (IOException e) {
-        LOGGER.error(
-            "Failed to create file in {}, test file exists:{}",
-            testSnapshotFile,
-            testFile.exists(),
-            e);
-        return false;
+    try {
+      for (String dataDir : dataDirs) {
+        File dirFile = new File(dataDir);
+        File testSnapshotFile = new File(dirFile, testFileName);
+        try {
+          Files.createLink(testSnapshotFile.toPath(), testFile.toPath());
+        } catch (IOException e) {
+          return false;
+        }
+        testSnapshotFile.delete();
       }
-      testSnapshotFile.delete();
+      return true;
+    } finally {
+      FileUtils.delete(testFile.toPath());
     }
-    testFile.delete();
-    return true;
   }
 
   private boolean createTestFile(File testFile) {
