@@ -915,7 +915,7 @@ public class ConfigManager implements IManager {
             }));
       }
 
-      return resp.setStatus(StatusUtils.OK);
+      return resp.setDataNodesInfoList(registeredDataNodesInfoList).setStatus(StatusUtils.OK);
     } else {
       return resp.setStatus(status);
     }
