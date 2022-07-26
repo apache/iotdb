@@ -63,15 +63,16 @@ public class IoTDBMetricsUtils {
     return stringBuilder.toString();
   }
 
-  public static void checkAndCreateStorageGroup(SessionPool session) {
-    try {
-      SessionDataSetWrapper result =
-          session.executeQueryStatement("show storage group " + STORAGE_GROUP);
-      if (0 == result.getBatchSize()) {
+  public static void checkOrCreateStorageGroup(SessionPool session) {
+    try (SessionDataSetWrapper result =
+        session.executeQueryStatement("show storage group " + STORAGE_GROUP)) {
+      if (!result.hasNext()) {
         session.setStorageGroup(STORAGE_GROUP);
       }
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
-      logger.error("CheckAndCreateStorageGroup failed", e);
+    } catch (IoTDBConnectionException e) {
+      logger.error("CheckOrCreateStorageGroup failed because ", e);
+    } catch (StatementExecutionException e) {
+      // do nothing
     }
   }
 }

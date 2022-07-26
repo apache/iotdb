@@ -80,7 +80,7 @@ public class IoTDBReporter extends ScheduledReporter {
             ioTDBReporterConfig.getUsername(),
             ioTDBReporterConfig.getPassword(),
             ioTDBReporterConfig.getMaxConnectionNumber());
-    IoTDBMetricsUtils.checkAndCreateStorageGroup(sessionPool);
+    IoTDBMetricsUtils.checkOrCreateStorageGroup(sessionPool);
   }
 
   @Override
