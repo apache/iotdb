@@ -348,6 +348,17 @@ public class AuthorityChecker {
         return PrivilegeType.CREATE_CONTINUOUS_QUERY.ordinal();
       case DROP_CONTINUOUS_QUERY:
         return PrivilegeType.DROP_CONTINUOUS_QUERY.ordinal();
+      case CREATE_TEMPLATE:
+        return PrivilegeType.UPDATE_TEMPLATE.ordinal();
+      case SET_TEMPLATE:
+      case ACTIVATE_TEMPLATE:
+        return PrivilegeType.APPLY_TEMPLATE.ordinal();
+      case SHOW_SCHEMA_TEMPLATE:
+      case SHOW_NODES_IN_SCHEMA_TEMPLATE:
+        return PrivilegeType.READ_TEMPLATE.ordinal();
+      case SHOW_PATH_SET_SCHEMA_TEMPLATE:
+      case SHOW_PATH_USING_SCHEMA_TEMPLATE:
+        return PrivilegeType.READ_TEMPLATE_APPLICATION.ordinal();
       default:
         logger.error("Unrecognizable operator type ({}) for AuthorityChecker.", type);
         return -1;

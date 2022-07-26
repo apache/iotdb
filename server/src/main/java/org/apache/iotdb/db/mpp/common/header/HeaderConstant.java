@@ -127,6 +127,9 @@ public class HeaderConstant {
   // dataset header for show path set template
   public static final DatasetHeader showPathSetTemplate;
 
+  // dataset header for show paths using template
+  public static final DatasetHeader showPathsUsingTemplate;
+
   static {
     countStorageGroupHeader =
         new DatasetHeader(
@@ -272,7 +275,8 @@ public class HeaderConstant {
   static {
     showSchemaTemplate =
         new DatasetHeader(
-            Arrays.asList(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT)), true);
+            Collections.singletonList(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT)),
+            true);
     showNodesInSchemaTemplate =
         new DatasetHeader(
             Arrays.asList(
@@ -282,6 +286,10 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT)),
             true);
     showPathSetTemplate =
-        new DatasetHeader(Arrays.asList(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT)), true);
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT)), true);
+    showPathsUsingTemplate =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT)), true);
   }
 }

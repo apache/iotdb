@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -105,10 +106,12 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -1576,7 +1579,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     String privilege = parsePrivilege(ctx.privileges())[0];
     PartialPath prefixPath;
-    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+    if (!PrivilegeType.valueOf(privilege).isPathRelevant()) {
       String[] path = {"root"};
       prefixPath = new PartialPath(path);
     } else {
@@ -2339,10 +2342,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new ShowDataNodesStatement();
   }
 
+  // schema template
+
   @Override
   public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
-    CreateSchemaTemplateStatement createTemplateStatement = new CreateSchemaTemplateStatement();
-    String name = parseIdentifier(ctx.templateName.getText());
+    String name = parseIdentifier(parseIdentifier(ctx.templateName.getText()));
     List<List<String>> measurementsList = new ArrayList<List<String>>();
     List<List<TSDataType>> dataTypesList = new ArrayList<List<TSDataType>>();
     List<List<TSEncoding>> encodingsList = new ArrayList<List<TSEncoding>>();
@@ -2384,10 +2388,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
-    createTemplateStatement =
-        new CreateSchemaTemplateStatement(
-            name, measurementsList, dataTypesList, encodingsList, compressorsList);
-    return createTemplateStatement;
+    return new CreateSchemaTemplateStatement(
+        name, measurementsList, dataTypesList, encodingsList, compressorsList);
   }
 
   void parseAttributeClause(
@@ -2481,37 +2483,42 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitShowSchemaTemplates(IoTDBSqlParser.ShowSchemaTemplatesContext ctx) {
-    ShowSchemaTemplateStatement showSchemaTemplateStatement = new ShowSchemaTemplateStatement();
-    return showSchemaTemplateStatement;
+    return new ShowSchemaTemplateStatement();
   }
 
   @Override
   public Statement visitShowNodesInSchemaTemplate(
       IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.children.get(0).getText();
-    ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement =
-        new ShowNodesInSchemaTemplateStatement(templateName);
-    return showNodesInSchemaTemplateStatement;
+    String templateName = parseIdentifier(ctx.templateName.getText());
+    return new ShowNodesInSchemaTemplateStatement(templateName);
   }
 
   @Override
   public Statement visitSetSchemaTemplate(IoTDBSqlParser.SetSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.children.get(0).getText();
-    String path = ctx.getText();
-    SetSchemaTemplateStatement statement = null;
-    try {
-      statement = new SetSchemaTemplateStatement(templateName, path);
-    } catch (IllegalPathException e) {
-      throw new SQLParserException("set template: path error.");
-    }
-    return statement;
+    String templateName = parseIdentifier(ctx.templateName.getText());
+    return new SetSchemaTemplateStatement(templateName, parsePrefixPath(ctx.prefixPath()));
   }
 
   @Override
   public Statement visitShowPathsSetSchemaTemplate(
       IoTDBSqlParser.ShowPathsSetSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.children.get(0).getText();
-    ShowPathSetTemplateStatement statement = new ShowPathSetTemplateStatement(templateName);
+    String templateName = parseIdentifier(ctx.templateName.getText());
+    return new ShowPathSetTemplateStatement(templateName);
+  }
+
+  @Override
+  public Statement visitCreateTimeseriesOfSchemaTemplate(
+      IoTDBSqlParser.CreateTimeseriesOfSchemaTemplateContext ctx) {
+    ActivateTemplateStatement statement = new ActivateTemplateStatement();
+    statement.setPath(parsePrefixPath(ctx.prefixPath()));
     return statement;
   }
+
+  @Override
+  public Statement visitShowPathsUsingSchemaTemplate(
+      IoTDBSqlParser.ShowPathsUsingSchemaTemplateContext ctx) {
+    return new ShowPathsUsingTemplateStatement(parseIdentifier(ctx.templateName.getText()));
+  }
+
+  // schema template
 }
