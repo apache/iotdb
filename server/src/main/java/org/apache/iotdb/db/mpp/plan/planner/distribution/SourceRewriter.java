@@ -451,7 +451,17 @@ public class SourceRewriter extends SimplePlanNodeRewriter<DistributionPlanConte
           if (seriesScanNodes.size() == 1 && !context.forceAddParent) {
             root.addChild(seriesScanNodes.get(0));
           } else {
-            if (!addParent[0]) {
+            // If there is only one RegionGroup here, we should not create new MultiChildNode as the
+            // parent.
+            // If the size of RegionGroup is larger than 1, we need to consider the value of
+            // `forceAddParent`.
+            // If `forceAddParent` is true, we should not create new MultiChildNode as the parent,
+            // either.
+            // At last, we can use the parameter `addParent[0]` to judge whether to create new
+            // MultiChildNode.
+            boolean appendToRootDirectly =
+                sourceGroup.size() == 1 || (!addParent[0] && !context.forceAddParent);
+            if (appendToRootDirectly) {
               seriesScanNodes.forEach(root::addChild);
               addParent[0] = true;
             } else {

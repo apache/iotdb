@@ -31,8 +31,10 @@ import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import org.junit.Assert;
@@ -59,6 +61,9 @@ public class LastQueryTest {
 
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(1, distributedQueryPlan.getInstances().size());
+    Assert.assertTrue(
+        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0)
+            instanceof LastQueryNode);
   }
 
   @Test
@@ -74,9 +79,14 @@ public class LastQueryTest {
 
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(2, distributedQueryPlan.getInstances().size());
-    Assert.assertTrue(
-        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0)
-            instanceof LastQueryMergeNode);
+    PlanNode rootNode =
+        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+    Assert.assertTrue(rootNode instanceof LastQueryMergeNode);
+    rootNode
+        .getChildren()
+        .forEach(
+            child ->
+                Assert.assertTrue(child instanceof LastQueryNode || child instanceof ExchangeNode));
   }
 
   @Test
@@ -93,9 +103,14 @@ public class LastQueryTest {
 
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(3, distributedQueryPlan.getInstances().size());
-    Assert.assertTrue(
-        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0)
-            instanceof LastQueryMergeNode);
+    PlanNode rootNode =
+        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+    Assert.assertTrue(rootNode instanceof LastQueryMergeNode);
+    rootNode
+        .getChildren()
+        .forEach(
+            child ->
+                Assert.assertTrue(child instanceof LastQueryNode || child instanceof ExchangeNode));
   }
 
   @Test
@@ -112,9 +127,14 @@ public class LastQueryTest {
 
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(2, distributedQueryPlan.getInstances().size());
-    Assert.assertTrue(
-        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0)
-            instanceof LastQueryMergeNode);
+    PlanNode rootNode =
+        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+    Assert.assertTrue(rootNode instanceof LastQueryMergeNode);
+    rootNode
+        .getChildren()
+        .forEach(
+            child ->
+                Assert.assertTrue(child instanceof LastQueryNode || child instanceof ExchangeNode));
   }
 
   @Test
@@ -135,9 +155,14 @@ public class LastQueryTest {
 
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(2, distributedQueryPlan.getInstances().size());
-    Assert.assertTrue(
-        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0)
-            instanceof LastQueryCollectNode);
+    PlanNode rootNode =
+        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+    Assert.assertTrue(rootNode instanceof LastQueryCollectNode);
+    rootNode
+        .getChildren()
+        .forEach(
+            child ->
+                Assert.assertTrue(child instanceof LastQueryNode || child instanceof ExchangeNode));
   }
 
   private LogicalQueryPlan constructLastQuery(List<String> paths, MPPQueryContext context)
