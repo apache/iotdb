@@ -416,7 +416,7 @@ public class LoadManager {
         .collect(Collectors.toList());
   }
 
-  public void printRegionRouteMap(
+  public static void printRegionRouteMap(
       long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> regionRouteMap) {
     LOGGER.info("[latestRegionRouteMap] timestamp:{}", timestamp);
     LOGGER.info("[latestRegionRouteMap] RegionRouteMap:");
