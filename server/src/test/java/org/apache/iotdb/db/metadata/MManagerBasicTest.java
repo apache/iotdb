@@ -35,6 +35,7 @@ import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
@@ -1918,13 +1919,13 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
 
-      assertEquals(6, manager.getTotalSeriesNumber());
+      assertEquals(6, manager.getTotalNormalSeriesNumber());
       EnvironmentUtils.restartDaemon();
-      assertEquals(6, manager.getTotalSeriesNumber());
+      assertEquals(6, manager.getTotalNormalSeriesNumber());
       manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
-      assertEquals(5, manager.getTotalSeriesNumber());
+      assertEquals(5, manager.getTotalNormalSeriesNumber());
       manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
-      assertEquals(0, manager.getTotalSeriesNumber());
+      assertEquals(0, manager.getTotalNormalSeriesNumber());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -2581,5 +2582,86 @@ public class MManagerBasicTest {
     result = manager.getChildNodeNameInNextLevel(new PartialPath("root.sg"), 1, 0);
     Assert.assertEquals(1, result.size());
     Assert.assertTrue(result.contains("d1"));
+  }
+
+  @Test
+  public void testTimeseriesNumberStatistic() throws Exception {
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d0"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s2.t1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.s3"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s1"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d2.s2"),
+          TSDataType.INT32,
+          TSEncoding.PLAIN,
+          CompressionType.GZIP,
+          null);
+
+      assertEquals(6, manager.getTotalNormalSeriesNumber());
+
+      manager.setStorageGroup(new PartialPath("root.sg"));
+
+      CreateTemplatePlan plan = getCreateTemplatePlan("s0");
+      manager.createSchemaTemplate(plan);
+      SetTemplatePlan setPlan = new SetTemplatePlan("template1", "root.sg.d1");
+      manager.setSchemaTemplate(setPlan);
+
+      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.sg.d1")));
+
+      assertEquals(6, manager.getTotalNormalSeriesNumber());
+      assertEquals(1, manager.getTotalTemplateSeriesNumber());
+
+      manager.deleteTimeseries(new PartialPath("root.laptop.d2.s1"));
+      assertEquals(5, manager.getTotalNormalSeriesNumber());
+      assertEquals(1, manager.getTotalTemplateSeriesNumber());
+
+      manager.deleteStorageGroups(Collections.singletonList(new PartialPath("root.laptop")));
+      assertEquals(0, manager.getTotalNormalSeriesNumber());
+      assertEquals(1, manager.getTotalTemplateSeriesNumber());
+
+      String failedName = manager.deleteTimeseries(new PartialPath("root.sg.d1.s0"));
+      assertTrue(failedName.contains("root.sg.d1.s0"));
+      assertEquals(1, manager.getTotalTemplateSeriesNumber());
+
+      DeactivateTemplatePlan deactivateTemplatePlan =
+          new DeactivateTemplatePlan("template1", "root.sg.d1");
+      deactivateTemplatePlan.setPaths(Collections.singletonList(new PartialPath("root.sg.d1")));
+      manager.deactivateSchemaTemplate(deactivateTemplatePlan);
+      assertEquals(0, manager.getTotalTemplateSeriesNumber());
+
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }

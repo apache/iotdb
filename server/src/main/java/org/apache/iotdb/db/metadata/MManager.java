@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.DifferentTemplateException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.MeasurementInsideTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -185,7 +186,8 @@ public class MManager {
   private boolean initialized;
   private boolean allowToCreateNewSeries = true;
 
-  private AtomicLong totalSeriesNumber = new AtomicLong();
+  private AtomicLong totalNormalSeriesNumber = new AtomicLong();
+  private AtomicLong totalTemplateSeriesNumber = new AtomicLong();
 
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
@@ -319,10 +321,20 @@ public class MManager {
         .getOrCreateAutoGauge(
             Metric.QUANTITY.toString(),
             MetricLevel.IMPORTANT,
-            totalSeriesNumber,
+            totalNormalSeriesNumber,
             AtomicLong::get,
             Tag.NAME.toString(),
-            "timeSeries");
+            "normal-timeSeries");
+
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.QUANTITY.toString(),
+            MetricLevel.IMPORTANT,
+            totalTemplateSeriesNumber,
+            AtomicLong::get,
+            Tag.NAME.toString(),
+            "template-timeSeries");
 
     MetricsService.getInstance()
         .getMetricManager()
@@ -445,7 +457,8 @@ public class MManager {
       if (this.mNodeCache != null) {
         this.mNodeCache.invalidateAll();
       }
-      this.totalSeriesNumber.set(0);
+      this.totalNormalSeriesNumber.set(0);
+      this.totalTemplateSeriesNumber.set(0);
       this.templateManager.clear();
       if (logWriter != null) {
         logWriter.close();
@@ -596,9 +609,9 @@ public class MManager {
       }
 
       // update statistics and schemaDataTypeNumMap
-      totalSeriesNumber.addAndGet(1);
-      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
-        logger.warn("Current series number {} is too large...", totalSeriesNumber);
+      totalNormalSeriesNumber.addAndGet(1);
+      if (totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+        logger.warn("Current series number {} is too large...", totalNormalSeriesNumber);
         allowToCreateNewSeries = false;
       }
 
@@ -700,9 +713,9 @@ public class MManager {
       mNodeCache.invalidate(prefixPath);
 
       // update statistics and schemaDataTypeNumMap
-      totalSeriesNumber.addAndGet(measurements.size());
-      if (totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
-        logger.warn("Current series number {} is too large...", totalSeriesNumber);
+      totalNormalSeriesNumber.addAndGet(measurements.size());
+      if (totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE >= MTREE_SIZE_THRESHOLD) {
+        logger.warn("Current series number {} is too large...", totalNormalSeriesNumber);
         allowToCreateNewSeries = false;
       }
       // write log
@@ -793,6 +806,8 @@ public class MManager {
         deleteTimeSeriesPlan.setDeletePathList(Collections.singletonList(p));
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
       }
+    } catch (MeasurementInsideTemplateException e) {
+      failedNames.add(e.getPath());
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
     }
@@ -825,10 +840,10 @@ public class MManager {
       mNodeCache.invalidate(node.getPartialPath());
       node = node.getParent();
     }
-    totalSeriesNumber.addAndGet(-1);
+    totalNormalSeriesNumber.addAndGet(-1);
     if (!allowToCreateNewSeries
-        && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
-      logger.info("Current series number {} come back to normal level", totalSeriesNumber);
+        && totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+      logger.info("Current series number {} come back to normal level", totalNormalSeriesNumber);
       allowToCreateNewSeries = true;
     }
     return storageGroupPath;
@@ -865,12 +880,14 @@ public class MManager {
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     try {
       for (PartialPath storageGroup : storageGroups) {
-        totalSeriesNumber.addAndGet(
-            -mtree.getAllTimeseriesCount(storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD)));
+        totalNormalSeriesNumber.addAndGet(
+            -mtree.getAllTimeseriesCount(
+                storageGroup.concatNode(MULTI_LEVEL_PATH_WILDCARD), false, false));
         // clear cached MNode
         if (!allowToCreateNewSeries
-            && totalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
-          logger.info("Current series number {} come back to normal level", totalSeriesNumber);
+            && totalNormalSeriesNumber.get() * ESTIMATED_SERIES_SIZE < MTREE_SIZE_THRESHOLD) {
+          logger.info(
+              "Current series number {} come back to normal level", totalNormalSeriesNumber);
           allowToCreateNewSeries = true;
         }
         mNodeCache.invalidateAll();
@@ -998,8 +1015,12 @@ public class MManager {
 
   // region Interfaces for metadata count
 
-  public long getTotalSeriesNumber() {
-    return totalSeriesNumber.get();
+  public long getTotalNormalSeriesNumber() {
+    return totalNormalSeriesNumber.get();
+  }
+
+  public long getTotalTemplateSeriesNumber() {
+    return totalTemplateSeriesNumber.get();
   }
 
   /**
@@ -1009,7 +1030,7 @@ public class MManager {
    */
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
+    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch, true);
   }
 
   /**
@@ -2452,6 +2473,8 @@ public class MManager {
       }
 
       node.setUseTemplate(false);
+      totalTemplateSeriesNumber.addAndGet(-node.getUpperTemplate().getMeasurementsCount());
+
       // clear caches within MManger
       mNodeCache.invalidate(node);
       if (node.isEntity()) {
@@ -2470,7 +2493,8 @@ public class MManager {
 
   IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     // check whether any template has been set on designated path
-    if (node.getUpperTemplate() == null) {
+    Template template = node.getUpperTemplate();
+    if (template == null) {
       throw new MetadataException(
           String.format("Path [%s] has not been set any template.", node.getFullPath()));
     }
@@ -2480,8 +2504,7 @@ public class MManager {
 
     // check alignment of template and mounted node
     // if direct measurement exists, node will be replaced
-    IMNode mountedMNode =
-        mtree.checkTemplateAlignmentWithMountedNode(node, node.getUpperTemplate());
+    IMNode mountedMNode = mtree.checkTemplateAlignmentWithMountedNode(node, template);
 
     // if has direct measurement (be a EntityNode), to ensure alignment adapt with former node or
     // template
@@ -2494,6 +2517,7 @@ public class MManager {
                   : node.getUpperTemplate().isDirectAligned());
     }
     mountedMNode.setUseTemplate(true);
+    totalTemplateSeriesNumber.addAndGet(template.getMeasurementsCount());
 
     if (node != mountedMNode) {
       mNodeCache.invalidate(mountedMNode.getPartialPath());
