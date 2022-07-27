@@ -38,7 +38,7 @@ public class PrimitiveArrayManager {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  public static final int ARRAY_SIZE = CONFIG.getPrimitiveArraySize();
+  public static int ARRAY_SIZE = CONFIG.getPrimitiveArraySize();
 
   /**
    * The actual used memory will be 50% larger than the statistic, so we need to limit the size of
@@ -143,6 +143,14 @@ public class PrimitiveArrayManager {
       array = createPrimitiveArray(dataType);
     }
     return array;
+  }
+
+  public static void changeSize(int size) {
+    synchronized (POOLED_ARRAYS) {
+      ARRAY_SIZE = size;
+      release(POOLED_ARRAYS);
+      updateLimits();
+    }
   }
 
   private static void updateLimits() {
@@ -256,6 +264,10 @@ public class PrimitiveArrayManager {
       order = TSDataType.TEXT.serialize();
     } else {
       throw new UnSupportedDataTypeException(array.getClass().toString());
+    }
+
+    if(Array.getLength(array) != ARRAY_SIZE) {
+      return;
     }
 
     synchronized (POOLED_ARRAYS[order]) {
