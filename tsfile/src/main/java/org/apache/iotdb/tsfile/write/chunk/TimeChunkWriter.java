@@ -101,8 +101,8 @@ public class TimeChunkWriter {
     pageWriter.write(time);
   }
 
-  public void write(long[] timestamps, int batchSize) {
-    pageWriter.write(timestamps, batchSize);
+  public void write(long[] timestamps, int batchSize, int arrayOffset) {
+    pageWriter.write(timestamps, batchSize, arrayOffset);
   }
 
   /**

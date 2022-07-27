@@ -165,6 +165,17 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   }
 
   public void write(TimeColumn timeColumn, Column[] valueColumns, int batchSize) {
+    if (remainingPointsNumber < batchSize) {
+      int pointsHasWritten = (int) remainingPointsNumber;
+      batchWrite(timeColumn, valueColumns, pointsHasWritten, 0);
+      batchWrite(timeColumn, valueColumns, batchSize - pointsHasWritten, pointsHasWritten);
+    } else {
+      batchWrite(timeColumn, valueColumns, batchSize, 0);
+    }
+  }
+
+  private void batchWrite(
+      TimeColumn timeColumn, Column[] valueColumns, int batchSize, int arrayOffset) {
     valueIndex = 0;
     long[] times = timeColumn.getTimes();
 
@@ -173,34 +184,34 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
       TSDataType tsDataType = chunkWriter.getDataType();
       switch (tsDataType) {
         case TEXT:
-          chunkWriter.write(times, column.getBinary(), column.isNull(), batchSize);
+          chunkWriter.write(times, column.getBinary(), column.isNull(), batchSize, arrayOffset);
           break;
         case DOUBLE:
-          chunkWriter.write(times, column.getDouble(), column.isNull(), batchSize);
+          chunkWriter.write(times, column.getDouble(), column.isNull(), batchSize, arrayOffset);
           break;
         case BOOLEAN:
-          chunkWriter.write(times, column.getBoolean(), column.isNull(), batchSize);
+          chunkWriter.write(times, column.getBoolean(), column.isNull(), batchSize, arrayOffset);
           break;
         case INT64:
-          chunkWriter.write(times, column.getLong(), column.isNull(), batchSize);
+          chunkWriter.write(times, column.getLong(), column.isNull(), batchSize, arrayOffset);
           break;
         case INT32:
-          chunkWriter.write(times, column.getInt(), column.isNull(), batchSize);
+          chunkWriter.write(times, column.getInt(), column.isNull(), batchSize, arrayOffset);
           break;
         case FLOAT:
-          chunkWriter.write(times, column.getFloat(), column.isNull(), batchSize);
+          chunkWriter.write(times, column.getFloat(), column.isNull(), batchSize, arrayOffset);
           break;
         default:
           throw new UnsupportedOperationException("Unknown data type " + tsDataType);
       }
     }
 
-    write(times, batchSize);
+    write(times, batchSize, arrayOffset);
   }
 
-  public void write(long[] time, int batchSize) {
+  public void write(long[] time, int batchSize, int arrayOffset) {
     valueIndex = 0;
-    timeChunkWriter.write(time, batchSize);
+    timeChunkWriter.write(time, batchSize, arrayOffset);
     if (checkPageSizeAndMayOpenANewPage()) {
       writePageToPageBuffer();
     }

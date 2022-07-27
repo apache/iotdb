@@ -153,7 +153,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
       throws IOException {
-    if (measurementPointCountArray[subTaskId] % 10 == 0 && checkChunkSize(subTaskId)) {
+    if (checkChunkSize(subTaskId)) {
       flushChunkToFileWriter(fileWriter, subTaskId);
       CompactionMetricsRecorder.recordWriteInfo(
           this instanceof CrossSpaceCompactionWriter
