@@ -123,7 +123,7 @@ public abstract class ServiceProvider {
    * @return true: If session timeout; false: If not session timeout.
    */
   public boolean checkSessionTimeout(long sessionId) {
-    if (!SessionTimeoutManager.getInstance().isSessionExits(sessionId)) {
+    if (!SessionTimeoutManager.getInstance().isSessionAlive(sessionId)) {
       return true;
     }
     return false;
