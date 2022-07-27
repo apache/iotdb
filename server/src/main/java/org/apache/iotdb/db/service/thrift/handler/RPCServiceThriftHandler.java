@@ -16,8 +16,11 @@
  */
 package org.apache.iotdb.db.service.thrift.handler;
 
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
-
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
@@ -32,7 +35,11 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
 
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    // nothing
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateGauge(
+            Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "RPC")
+        .incr(1L);
     return null;
   }
 
@@ -40,6 +47,11 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
   public void deleteContext(ServerContext arg0, TProtocol arg1, TProtocol arg2) {
     // release query resources.
     serviceImpl.handleClientExit();
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateGauge(
+            Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "RPC")
+        .decr(1L);
   }
 
   @Override
