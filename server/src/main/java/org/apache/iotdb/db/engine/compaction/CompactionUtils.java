@@ -41,6 +41,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -522,7 +523,7 @@ public class CompactionUtils {
 
   private static void checkThreadInterrupted(List<TsFileResource> tsFileResource)
       throws InterruptedException {
-    if (Thread.currentThread().isInterrupted()) {
+    if (Thread.currentThread().isInterrupted() || !IoTDB.activated) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", tsFileResource.toString()));
