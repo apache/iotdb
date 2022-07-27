@@ -318,7 +318,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       writer.write(logBufferFlushing);
     } catch (Throwable e) {
       logger.error("Log node {} sync failed, change system mode to read-only", identifier, e);
-      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
     } finally {
       // switch buffer flushing to idle and notify the sync thread
       synchronized (switchBufferCondition) {

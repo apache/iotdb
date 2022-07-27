@@ -1216,7 +1216,7 @@ public class VirtualStorageGroupProcessor {
         } else {
           logger.error(
               "meet IOException when creating TsFileProcessor, change system mode to read-only", e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
           break;
         }
       }

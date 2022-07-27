@@ -142,7 +142,7 @@ public class IoTDBConfig {
   private boolean enableWal = true;
 
   /** Shutdown system or set it to read-only mode when unrecoverable error occurs. */
-  private ReadOnlyStrategy readOnlyStrategy = ReadOnlyStrategy.READ_ONLY;
+  private boolean allowReadOnlyWhenErrorsOccur = true;
 
   /** Status of current system. */
   private volatile SystemStatus status = SystemStatus.NORMAL;
@@ -1388,16 +1388,17 @@ public class IoTDBConfig {
     this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
-  ReadOnlyStrategy getReadOnlyStrategy() {
-    return readOnlyStrategy;
+  boolean isAllowReadOnlyWhenErrorsOccur() {
+    return allowReadOnlyWhenErrorsOccur;
   }
 
-  void setReadOnlyStrategy(ReadOnlyStrategy readOnlyStrategy) {
-    this.readOnlyStrategy = readOnlyStrategy;
+  void setAllowReadOnlyWhenErrorsOccur(boolean allowReadOnlyWhenErrorsOccur) {
+    this.allowReadOnlyWhenErrorsOccur = allowReadOnlyWhenErrorsOccur;
   }
 
   public boolean isReadOnly() {
-    return status == SystemStatus.READ_ONLY && readOnlyStrategy == ReadOnlyStrategy.READ_ONLY;
+    return status == SystemStatus.READ_ONLY
+        || (status == SystemStatus.ERROR && allowReadOnlyWhenErrorsOccur);
   }
 
   public SystemStatus getSystemStatus() {
@@ -1406,19 +1407,20 @@ public class IoTDBConfig {
 
   public void setSystemStatus(SystemStatus newStatus) {
     if (newStatus == SystemStatus.READ_ONLY) {
-      if (readOnlyStrategy == ReadOnlyStrategy.READ_ONLY) {
+      logger.error(
+          "Change system mode to read-only! Only query statements are permitted!",
+          new RuntimeException("System mode is set to READ_ONLY"));
+    } else if (newStatus == SystemStatus.ERROR) {
+      if (allowReadOnlyWhenErrorsOccur) {
         logger.error(
-            "change system mode to read-only! Only query statements are permitted!",
-            new RuntimeException("System mode is set to read-only"));
-      } else if (readOnlyStrategy == ReadOnlyStrategy.SHUTDOWN) {
+            "Unrecoverable error occurs! Make system read-only when allow_read_only_when_errors_occur is true.",
+            new RuntimeException("System mode is set to READ_ONLY"));
+        newStatus = SystemStatus.READ_ONLY;
+      } else {
         logger.error(
-            "Unrecoverable error occurs! Shutdown system directly when read-only strategy is SHUTDOWN.",
-            new RuntimeException("System mode is set to read-only"));
+            "Unrecoverable error occurs! Shutdown system directly when allow_read_only_when_errors_occur is false.",
+            new RuntimeException("System mode is set to ERROR"));
         System.exit(-1);
-      } else if (readOnlyStrategy == ReadOnlyStrategy.LOG_ERROR) {
-        logger.error(
-            "Unrecoverable error occurs! Please take care of your data!",
-            new RuntimeException("System mode is set to read-only"));
       }
     } else {
       logger.warn("Set system mode from {} to {}.", status, newStatus);

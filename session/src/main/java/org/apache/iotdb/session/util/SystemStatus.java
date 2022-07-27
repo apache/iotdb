@@ -24,4 +24,9 @@ public enum SystemStatus {
   NORMAL,
   /** Only query statements are permitted */
   READ_ONLY,
+  /**
+   * Unrecoverable errors occur, system will be read-only or exit according to the param
+   * allow_read_only_when_errors_occur
+   */
+  ERROR,
 }

@@ -1043,11 +1043,11 @@ public class TsFileProcessor {
           }
         } else {
           logger.error(
-              "{}: {} meet error when flushing a memtable, change system mode to read-only",
+              "{}: {} meet error when flushing a memtable, change system mode to ERROR",
               storageGroupName,
               tsFileResource.getTsFile().getName(),
               e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
           try {
             logger.error(
                 "{}: {} IOTask meets error, truncate the corrupted data",
@@ -1180,7 +1180,7 @@ public class TsFileProcessor {
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
               e);
-          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
           break;
         }
       }
