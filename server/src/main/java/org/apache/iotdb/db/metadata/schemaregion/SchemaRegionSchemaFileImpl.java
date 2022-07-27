@@ -59,6 +59,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
@@ -1009,6 +1010,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
   }
 
+  @Override
+  public List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
   public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     // show timeseries with index
@@ -1798,6 +1805,17 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     } finally {
       mtree.unPinMNode(node);
     }
+  }
+
+  @Override
+  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
