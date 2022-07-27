@@ -244,14 +244,14 @@ public class NodeManager {
     List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
     if (registeredConfigNodes != null) {
       registeredConfigNodes.forEach(
-          (configNodeInfo) -> {
+          (configNodeLocation) -> {
             TConfigNodeInfo info = new TConfigNodeInfo();
-            int configNodeId = configNodeInfo.getConfigNodeId();
+            int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);
             info.setStatus(
                 getLoadManager().getNodeCacheMap().get(configNodeId).getNodeStatus().getStatus());
-            info.setInternalAddress(configNodeInfo.getInternalEndPoint().getIp());
-            info.setInternalPort(configNodeInfo.getInternalEndPoint().getPort());
+            info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
+            info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             configNodeInfoList.add(info);
           });
     }
