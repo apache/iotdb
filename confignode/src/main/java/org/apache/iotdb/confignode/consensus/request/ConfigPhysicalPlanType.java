@@ -68,9 +68,11 @@ public enum ConfigPhysicalPlanType {
   GetDataNodesInfoList,
   GetNodePathsPartition,
   CreateSchemaTemplate,
-  ShowSchemaTemplate,
-  ShowNodesInSchemaTemplate,
+  GetAllSchemaTemplate,
+  GetSchemaTemplate,
   UpdateRegionLocation,
+  CheckTemplateSettable,
   SetSchemaTemplate,
-  GetPathsSetTemplate;
+  GetPathsSetTemplate,
+  GetAllTemplateSetInfo;
 }

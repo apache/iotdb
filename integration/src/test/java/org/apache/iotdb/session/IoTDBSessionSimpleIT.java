@@ -1377,24 +1377,6 @@ public class IoTDBSessionSimpleIT {
     }
 
     assertTrue(checkSet.isEmpty());
-
-    dataSet = session.executeQueryStatement("show devices");
-
-    checkSet.add("root.sg.loc,true");
-    checkSet.add("root.sg.loc.GPS,false");
-    checkSet.add("root.sg.loc.vehicle,true");
-    checkSet.add("root.sg.loc.vehicle.GPS,false");
-    checkSet.add("root.sg.loc.area,true");
-    checkSet.add("root.sg.loc.area.GPS,false");
-    checkSet.add("root.sg.loc.area.vehicle,true");
-    checkSet.add("root.sg.loc.area.vehicle.GPS,false");
-
-    while (dataSet.hasNext()) {
-      List<Field> fields = dataSet.next().getFields();
-      checkSet.remove(fields.get(0).toString() + "," + fields.get(1).toString());
-    }
-
-    assertTrue(checkSet.isEmpty());
   }
 
   @Test
