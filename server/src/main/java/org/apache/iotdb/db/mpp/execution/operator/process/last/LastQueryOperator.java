@@ -89,7 +89,9 @@ public class LastQueryOperator implements ProcessOperator {
     // we have consumed up data from children Operator, just return all remaining cached data in
     // tsBlockBuilder
     if (currentIndex >= inputOperatorsCount) {
-      return tsBlockBuilder.build();
+      TsBlock res = tsBlockBuilder.build();
+      tsBlockBuilder.reset();
+      return res;
     }
 
     // start stopwatch

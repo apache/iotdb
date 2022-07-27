@@ -161,6 +161,45 @@ public class TagManager {
     }
   }
 
+  public List<String> getMatchedTimeseriesInIndex(String key, String value, boolean isContains) {
+    if (!tagIndex.containsKey(key)) {
+      return Collections.emptyList();
+    }
+    Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(key);
+    if (value2Node.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<String> timeseries = new ArrayList<>();
+    List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
+    if (isContains) {
+      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
+        String tagValue = entry.getKey();
+        if (tagValue.contains(value)) {
+          allMatchedNodes.addAll(entry.getValue());
+        }
+      }
+    } else {
+      for (Map.Entry<String, Set<IMeasurementMNode>> entry : value2Node.entrySet()) {
+        if (entry.getKey() == null || entry.getValue() == null) {
+          continue;
+        }
+        String tagValue = entry.getKey();
+        if (value.equals(tagValue)) {
+          allMatchedNodes.addAll(entry.getValue());
+        }
+      }
+    }
+    allMatchedNodes =
+        allMatchedNodes.stream()
+            .sorted(Comparator.comparing(IMNode::getFullPath))
+            .collect(toList());
+    allMatchedNodes.forEach(measurementMNode -> timeseries.add(measurementMNode.getFullPath()));
+    return timeseries;
+  }
+
   public List<IMeasurementMNode> getMatchedTimeseriesInIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     if (!tagIndex.containsKey(plan.getKey())) {

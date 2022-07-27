@@ -22,7 +22,7 @@ package org.apache.iotdb.metrics.dropwizard.reporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.MetricName;
-import org.apache.iotdb.metrics.utils.MetricsUtils;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -80,6 +80,7 @@ public class IoTDBReporter extends ScheduledReporter {
             ioTDBReporterConfig.getUsername(),
             ioTDBReporterConfig.getPassword(),
             ioTDBReporterConfig.getMaxConnectionNumber());
+    IoTDBMetricsUtils.checkOrCreateStorageGroup(sessionPool);
   }
 
   @Override
@@ -232,7 +233,7 @@ public class IoTDBReporter extends ScheduledReporter {
 
   private void updateValue(String name, Map<String, String> labels, Object value) {
     if (value != null) {
-      String deviceId = MetricsUtils.generatePath(name, labels);
+      String deviceId = IoTDBMetricsUtils.generatePath(name, labels);
       List<String> sensors = Collections.singletonList("value");
 
       List<TSDataType> dataTypes = new ArrayList<>();

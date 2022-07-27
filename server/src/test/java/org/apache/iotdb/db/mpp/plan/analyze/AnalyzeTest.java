@@ -19,11 +19,24 @@
 
 package org.apache.iotdb.db.mpp.plan.analyze;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.QueryId;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LessThanExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
+import org.apache.iotdb.db.mpp.plan.expression.binary.LogicOrExpression;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.parser.StatementGenerator;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.time.ZonedDateTime;
@@ -35,6 +48,96 @@ public class AnalyzeTest {
   @Test
   public void testRawDataQuery() {
     // TODO: @lmh add UTs
+  }
+
+  @Test
+  public void testTimeFilterRewrite() throws IllegalPathException {
+    // Test whether time filter has been removed after extracting
+    String[] sqls =
+        new String[] {
+          "select s1 from root.sg.d1 where time>1 and time<3",
+          "select s1 from root.sg.d1 where time>1 and time<3 or time>100",
+          "select s1 from root.sg.d1 where time>1 or time<3",
+          "select s1 from root.sg.d1 where time>1 and time<3 and s1>1",
+          "select s1 from root.sg.d1 where time>1 and time<3 or s1>1",
+          "select s1 from root.sg.d1 where time>1 or time<3 or time >5",
+          "select s1 from root.sg.d1 where time>1 and time<3 and s1>1 and time>4",
+          "select s1 from root.sg.d1 where time>1 and time<3 or time >4 and time>5",
+          "select s1 from root.sg.d1 where time>1 or time<3 and s1>1",
+          "select s1 from root.sg.d1 where time>1 or time<3 or s1>1",
+          "select s1 from root.sg.d1 where time>1 or s1>1 and time<3",
+          "select s1 from root.sg.d1 where time>1 or s1>1 or time<3",
+        };
+
+    Expression[] predicates =
+        new Expression[] {
+          null,
+          null,
+          null,
+          new GreaterThanExpression(
+              new TimeSeriesOperand(new PartialPath("s1")),
+              new ConstantOperand(TSDataType.INT32, "1")),
+          new LogicOrExpression(
+              new LogicAndExpression(
+                  new GreaterThanExpression(
+                      new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "1")),
+                  new LessThanExpression(
+                      new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "3"))),
+              new GreaterThanExpression(
+                  new TimeSeriesOperand(new PartialPath("s1")),
+                  new ConstantOperand(TSDataType.INT32, "1"))),
+          null,
+          new GreaterThanExpression(
+              new TimeSeriesOperand(new PartialPath("s1")),
+              new ConstantOperand(TSDataType.INT32, "1")),
+          null,
+          new LogicOrExpression(
+              new GreaterThanExpression(
+                  new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "1")),
+              new LogicAndExpression(
+                  new LessThanExpression(
+                      new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "3")),
+                  new GreaterThanExpression(
+                      new TimeSeriesOperand(new PartialPath("s1")),
+                      new ConstantOperand(TSDataType.INT32, "1")))),
+          new LogicOrExpression(
+              new GreaterThanExpression(
+                  new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "1")),
+              new LogicOrExpression(
+                  new LessThanExpression(
+                      new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "3")),
+                  new GreaterThanExpression(
+                      new TimeSeriesOperand(new PartialPath("s1")),
+                      new ConstantOperand(TSDataType.INT32, "1")))),
+          new LogicOrExpression(
+              new GreaterThanExpression(
+                  new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "1")),
+              new LogicAndExpression(
+                  new GreaterThanExpression(
+                      new TimeSeriesOperand(new PartialPath("s1")),
+                      new ConstantOperand(TSDataType.INT32, "1")),
+                  new LessThanExpression(
+                      new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "3")))),
+          new LogicOrExpression(
+              new GreaterThanExpression(
+                  new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "1")),
+              new LogicOrExpression(
+                  new GreaterThanExpression(
+                      new TimeSeriesOperand(new PartialPath("s1")),
+                      new ConstantOperand(TSDataType.INT32, "1")),
+                  new LessThanExpression(
+                      new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "3")))),
+        };
+
+    for (int i = 0; i < sqls.length; i++) {
+      Analysis analysis = analyzeSQL(sqls[i]);
+      QueryStatement queryStatement = (QueryStatement) analysis.getStatement();
+      if (predicates[i] == null) {
+        Assert.assertNull(queryStatement.getWhereCondition());
+      } else {
+        Assert.assertEquals(predicates[i], queryStatement.getWhereCondition().getPredicate());
+      }
+    }
   }
 
   private Analysis analyzeSQL(String sql) {
