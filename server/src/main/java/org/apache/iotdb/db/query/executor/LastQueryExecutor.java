@@ -199,6 +199,7 @@ public class LastQueryExecutor {
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
               .getQueryDataSource(nonCachedPaths.get(i), context, filter, ascending);
+      filter = dataSource.updateFilterUsingTTL(filter);
       LastPointReader lastReader =
           nonCachedPaths
               .get(i)
