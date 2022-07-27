@@ -23,9 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -83,19 +81,11 @@ public class RegionGroupCache implements IRegionGroupCache {
     long updateVersion = Long.MIN_VALUE;
     int updateLeaderDataNodeId = -1;
     int originLeaderDataNodeId = leaderDataNodeId.get();
-    List<String> middleValue = new ArrayList<>();
 
     synchronized (slidingWindow) {
       for (LinkedList<RegionHeartbeatSample> samples : slidingWindow.values()) {
         if (samples.size() > 0) {
           RegionHeartbeatSample lastSample = samples.getLast();
-          middleValue.add(
-              "DataNodeId: "
-                  + lastSample.getBelongedDataNodeId()
-                  + ", sendTime: "
-                  + lastSample.getSendTimestamp()
-                  + ", isLeader: "
-                  + lastSample.isLeader());
           if (lastSample.getSendTimestamp() > updateVersion && lastSample.isLeader()) {
             updateVersion = lastSample.getSendTimestamp();
             updateLeaderDataNodeId = lastSample.getBelongedDataNodeId();
@@ -103,15 +93,6 @@ public class RegionGroupCache implements IRegionGroupCache {
         }
       }
     }
-
-    LOGGER.info(
-        "[updateLoadStatistic] consensusGroup: {}, middleValue: {}, originVersion: {}, originLeader: {}, updateVersion: {}, updateLeader: {}",
-        consensusGroupId,
-        middleValue,
-        versionTimestamp.get(),
-        originLeaderDataNodeId,
-        updateVersion,
-        updateLeaderDataNodeId);
 
     if (updateVersion > versionTimestamp.get()) {
       // Only update when the leadership information is latest
