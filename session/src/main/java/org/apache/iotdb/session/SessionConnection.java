@@ -498,7 +498,6 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccess(tsStatus);
     } catch (SessionTimeoutException e) {
-      System.out.println(e);
       throw new TException(e);
     }
   }
@@ -508,7 +507,6 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccessWithRedirection(tsStatus);
     } catch (SessionTimeoutException e) {
-      System.out.println(e);
       throw new TException(e);
     }
   }
@@ -519,7 +517,6 @@ public class SessionConnection {
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(tsStatus, prefixPaths);
     } catch (SessionTimeoutException e) {
-      System.out.println(e);
       throw new TException(e);
     }
   }
