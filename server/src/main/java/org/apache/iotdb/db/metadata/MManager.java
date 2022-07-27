@@ -1947,6 +1947,16 @@ public class MManager {
           node.getAsEntityMNode(), originalPath, startTime, endTime);
     }
   }
+
+  public void checkTTLOnLastCache() {
+    try {
+      mtree.processMNodeDuringTraversal(
+          new PartialPath(new String[] {"root", "**"}), LastCacheManager::checkTTLOnLastCache);
+    } catch (MetadataException e) {
+      logger.error(e.getMessage(), e);
+    }
+  }
+
   // endregion
 
   // region Interfaces and Implementation for InsertPlan process

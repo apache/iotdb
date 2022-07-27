@@ -44,6 +44,7 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.CollectorTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
 import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
@@ -104,6 +105,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -1969,4 +1971,34 @@ public class MTree implements Serializable {
     return res;
   }
   // endregion
+
+  public void processMNodeDuringTraversal(
+      PartialPath pathPattern, BiConsumer<IMNode, Long> consumer) throws MetadataException {
+    Traverser traverser =
+        new Traverser(root, pathPattern) {
+
+          private long dataTTL = -1;
+
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            return processMNode(node);
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            return processMNode(node);
+          }
+
+          private boolean processMNode(IMNode node) {
+            if (node.isStorageGroup()) {
+              dataTTL = node.getAsStorageGroupMNode().getDataTTL();
+            }
+            consumer.accept(node, dataTTL);
+            return node.isMeasurement();
+          }
+        };
+    traverser.traverse();
+  }
 }

@@ -395,6 +395,7 @@ public class StorageEngine implements IService {
 
   private void checkTTL() {
     try {
+      IoTDB.metaManager.checkTTLOnLastCache();
       for (StorageGroupManager processor : processorMap.values()) {
         processor.checkTTL();
       }
