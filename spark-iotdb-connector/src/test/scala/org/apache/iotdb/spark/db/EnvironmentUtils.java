@@ -31,6 +31,7 @@ import org.apache.iotdb.commons.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.commons.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
@@ -111,7 +112,7 @@ public class EnvironmentUtils {
       Assert.fail();
     }
     StorageEngine.getInstance().reset();
-    IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
+    IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.NORMAL);
 
     // clean wal
     WALManager.getInstance().stop();

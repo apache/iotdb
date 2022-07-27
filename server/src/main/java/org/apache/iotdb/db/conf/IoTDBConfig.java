@@ -79,7 +79,11 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  private volatile boolean readOnly = false;
+  /** Shutdown system or set it to read-only mode when unrecoverable error occurs. */
+  private boolean allowReadOnlyWhenErrorsOccur = true;
+
+  /** Status of current system. */
+  private volatile SystemStatus status = SystemStatus.NORMAL;
 
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
@@ -1503,12 +1507,44 @@ public class IoTDBConfig {
     this.sessionTimeoutThreshold = sessionTimeoutThreshold;
   }
 
-  public boolean isReadOnly() {
-    return readOnly;
+  boolean isAllowReadOnlyWhenErrorsOccur() {
+    return allowReadOnlyWhenErrorsOccur;
   }
 
-  public void setReadOnly(boolean readOnly) {
-    this.readOnly = readOnly;
+  void setAllowReadOnlyWhenErrorsOccur(boolean allowReadOnlyWhenErrorsOccur) {
+    this.allowReadOnlyWhenErrorsOccur = allowReadOnlyWhenErrorsOccur;
+  }
+
+  public boolean isReadOnly() {
+    return status == SystemStatus.READ_ONLY
+        || (status == SystemStatus.ERROR && allowReadOnlyWhenErrorsOccur);
+  }
+
+  public SystemStatus getSystemStatus() {
+    return status;
+  }
+
+  public void setSystemStatus(SystemStatus newStatus) {
+    if (newStatus == SystemStatus.READ_ONLY) {
+      logger.error(
+          "Change system mode to read-only! Only query statements are permitted!",
+          new RuntimeException("System mode is set to READ_ONLY"));
+    } else if (newStatus == SystemStatus.ERROR) {
+      if (allowReadOnlyWhenErrorsOccur) {
+        logger.error(
+            "Unrecoverable error occurs! Make system read-only when allow_read_only_when_errors_occur is true.",
+            new RuntimeException("System mode is set to READ_ONLY"));
+        newStatus = SystemStatus.READ_ONLY;
+      } else {
+        logger.error(
+            "Unrecoverable error occurs! Shutdown system directly when allow_read_only_when_errors_occur is false.",
+            new RuntimeException("System mode is set to ERROR"));
+        System.exit(-1);
+      }
+    } else {
+      logger.warn("Set system mode from {} to {}.", status, newStatus);
+    }
+    this.status = newStatus;
   }
 
   public String getRpcImplClassName() {
