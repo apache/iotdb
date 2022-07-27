@@ -35,17 +35,14 @@ public class IoTDBMetricsUtils {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMetricsUtils.class);
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
+  private static final String STORAGE_GROUP = "root." + metricConfig.getIoTDBReporterConfig().getDatabase();
 
   public static String generatePath(String name, Map<String, String> labels) {
     StringBuilder stringBuilder = new StringBuilder();
     stringBuilder
-        .append("root.")
-        .append(metricConfig.getIoTDBReporterConfig().getDatabase())
+        .append(STORAGE_GROUP)
         .append(".\"")
         .append(metricConfig.getInstanceHost())
-        .append(STORAGE_GROUP)
-        .append(".`")
-        .append(metricConfig.getRpcAddress())
         .append(":")
         .append(metricConfig.getInstancePort())
         .append("\"")
