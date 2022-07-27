@@ -79,8 +79,6 @@ public class RegionGroupCache implements IRegionGroupCache {
     int originLeaderDataNodeId = leaderDataNodeId.get();
     List<String> middleValue = new ArrayList<>();
 
-    LOGGER.info("begin to update region cache");
-
     synchronized (slidingWindow) {
       for (LinkedList<RegionHeartbeatSample> samples : slidingWindow.values()) {
         if (samples.size() > 0) {
