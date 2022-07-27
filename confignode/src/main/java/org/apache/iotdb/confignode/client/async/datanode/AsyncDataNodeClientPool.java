@@ -116,7 +116,7 @@ public class AsyncDataNodeClientPool {
                     dataNodeLocationMap,
                     dataNodeResponseStatus);
             break;
-          case CLEARCACHE:
+          case CLEAR_CACHE:
             handler =
                 new ClearCacheHandler(
                     countDownLatch,
@@ -176,7 +176,7 @@ public class AsyncDataNodeClientPool {
         case FLUSH:
           client.flush((TFlushReq) req, (FlushHandler) handler);
           break;
-        case CLEARCACHE:
+        case CLEAR_CACHE:
           client.clearCache((TClearCacheReq) req, (ClearCacheHandler) handler);
           break;
         case UPDATE_REGION_ROUTE_MAP:

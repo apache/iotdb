@@ -48,7 +48,7 @@ IoTDB> FULL MERGE
 
 ## CLEAR CACHE
 
-Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint.
+Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint. In cluster mode, we provide commands to clear a single node cache and clear the cluster cache.
 
 ```sql
 IoTDB> CLEAR CACHE
