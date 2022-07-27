@@ -19,11 +19,16 @@
 package org.apache.iotdb.db.it;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
-import org.apache.iotdb.it.env.*;
+import org.apache.iotdb.it.env.ConfigFactory;
+import org.apache.iotdb.it.env.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.DataNodeWrapper;
+import org.apache.iotdb.it.env.EnvFactory;
+import org.apache.iotdb.it.env.EnvUtils;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -38,25 +43,27 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
 public class IoTDBConfigNodeIT {
 
-  protected static String enableConfigNodeConsensusProtocolClass;
-  protected static String enableSchemaRegionConsensusProtocolClass;
-  protected static String enableDataRegionConsensusProtocolClass;
+  protected static String originalConfigNodeConsensusProtocolClass;
+  protected static String originalSchemaRegionConsensusProtocolClass;
+  protected static String originalDataRegionConsensusProtocolClass;
 
   private final int retryNum = 30;
 
   @Before
   public void setUp() throws Exception {
-    enableConfigNodeConsensusProtocolClass =
+    originalConfigNodeConsensusProtocolClass =
         ConfigFactory.getConfig().getConfigNodeConsesusProtocolClass();
-    enableSchemaRegionConsensusProtocolClass =
+    originalSchemaRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getSchemaRegionConsensusProtocolClass();
-    enableDataRegionConsensusProtocolClass =
+    originalDataRegionConsensusProtocolClass =
         ConfigFactory.getConfig().getDataRegionConsensusProtocolClass();
 
     ConfigFactory.getConfig()
@@ -73,39 +80,78 @@ public class IoTDBConfigNodeIT {
   public void tearDown() {
     EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig()
-        .setConfigNodeConsesusProtocolClass(enableConfigNodeConsensusProtocolClass);
+        .setConfigNodeConsesusProtocolClass(originalConfigNodeConsensusProtocolClass);
     ConfigFactory.getConfig()
-        .setSchemaRegionConsensusProtocolClass(enableSchemaRegionConsensusProtocolClass);
+        .setSchemaRegionConsensusProtocolClass(originalSchemaRegionConsensusProtocolClass);
     ConfigFactory.getConfig()
-        .setDataRegionConsensusProtocolClass(enableDataRegionConsensusProtocolClass);
+        .setDataRegionConsensusProtocolClass(originalDataRegionConsensusProtocolClass);
   }
 
   private TShowClusterResp getClusterNodeInfos(
-      IConfigNodeRPCService.Iface client, int configNodeNum, int dataNodeNum)
+      IConfigNodeRPCService.Iface client, int expectedConfigNodeNum, int expectedDataNodeNum)
       throws TException, InterruptedException {
     TShowClusterResp clusterNodes = null;
     for (int i = 0; i < retryNum; i++) {
       clusterNodes = client.showCluster();
+      if (clusterNodes.getConfigNodeListSize() == expectedConfigNodeNum
+          && clusterNodes.getDataNodeListSize() == expectedDataNodeNum) {
+        break;
+      }
       Thread.sleep(1000);
-
-      if (clusterNodes.getConfigNodeListSize() == configNodeNum
-          && clusterNodes.getDataNodeListSize() == dataNodeNum) break;
     }
 
-    if (clusterNodes.getConfigNodeListSize() != configNodeNum
-        || clusterNodes.getDataNodeListSize() != dataNodeNum) {
-      fail("getClusterNodeInfos failed");
-    }
+    assertEquals(expectedConfigNodeNum, clusterNodes.getConfigNodeListSize());
+    assertEquals(expectedDataNodeNum, clusterNodes.getDataNodeListSize());
 
     return clusterNodes;
   }
 
+  private void checkNodeConfig(
+      List<TConfigNodeLocation> configNodeList,
+      List<TDataNodeLocation> dataNodeList,
+      List<ConfigNodeWrapper> configNodeWrappers,
+      List<DataNodeWrapper> dataNodeWrappers) {
+    // check ConfigNode
+    for (TConfigNodeLocation configNodeLocation : configNodeList) {
+      boolean found = false;
+      for (ConfigNodeWrapper configNodeWrapper : configNodeWrappers) {
+        if (configNodeWrapper.getIp().equals(configNodeLocation.getInternalEndPoint().getIp())
+            && configNodeWrapper.getPort() == configNodeLocation.getInternalEndPoint().getPort()
+            && configNodeWrapper.getConsensusPort()
+                == configNodeLocation.getConsensusEndPoint().getPort()) {
+          found = true;
+          break;
+        }
+      }
+      assertTrue(found);
+    }
+
+    // check DataNode
+    for (TDataNodeLocation dataNodeLocation : dataNodeList) {
+      boolean found = false;
+      for (DataNodeWrapper dataNodeWrapper : dataNodeWrappers) {
+        if (dataNodeWrapper.getIp().equals(dataNodeLocation.getClientRpcEndPoint().getIp())
+            && dataNodeWrapper.getPort() == dataNodeLocation.getClientRpcEndPoint().getPort()
+            && dataNodeWrapper.getInternalPort() == dataNodeLocation.getInternalEndPoint().getPort()
+            && dataNodeWrapper.getSchemaRegionConsensusPort()
+                == dataNodeLocation.getSchemaRegionConsensusEndPoint().getPort()
+            && dataNodeWrapper.getDataRegionConsensusPort()
+                == dataNodeLocation.getDataRegionConsensusEndPoint().getPort()) {
+          found = true;
+          break;
+        }
+      }
+      assertTrue(found);
+    }
+  }
+
   @Test
-  public void removeAndStopConfigNodeTest() {
+  public void removeAndStopConfigNodeTest() throws TException, IOException, InterruptedException {
     TShowClusterResp clusterNodes;
     TSStatus status;
 
     List<ConfigNodeWrapper> configNodeWrappers = EnvFactory.getEnv().getConfigNodeWrapperList();
+    List<DataNodeWrapper> dataNodeWrappers = EnvFactory.getEnv().getDataNodeWrapperList();
 
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
@@ -126,35 +172,37 @@ public class IoTDBConfigNodeIT {
       EnvFactory.getEnv().setConfigNodeWrapperList(configNodeWrappers);
       clusterNodes = getClusterNodeInfos(client, 3, 3);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), clusterNodes.getStatus().getCode());
+      List<TConfigNodeLocation> configNodeLocationList = clusterNodes.getConfigNodeList();
+      List<TDataNodeLocation> dataNodeLocationList = clusterNodes.getDataNodeList();
+      checkNodeConfig(
+          configNodeLocationList, dataNodeLocationList, configNodeWrappers, dataNodeWrappers);
 
       // test remove ConfigNode
       TConfigNodeLocation removedConfigNodeLocation = clusterNodes.getConfigNodeList().get(1);
-      status = client.removeConfigNode(removedConfigNodeLocation);
-      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      for (int i = 0; i < retryNum; i++) {
+        Thread.sleep(1000);
+        status = client.removeConfigNode(removedConfigNodeLocation);
+        if (TSStatusCode.SUCCESS_STATUS.getStatusCode() == status.getCode()) {
+          break;
+        }
+      }
+
       clusterNodes = getClusterNodeInfos(client, 2, 3);
+      assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), clusterNodes.getStatus().getCode());
+      checkNodeConfig(
+          clusterNodes.getConfigNodeList(),
+          clusterNodes.getDataNodeList(),
+          configNodeWrappers,
+          dataNodeWrappers);
 
       List<TConfigNodeLocation> configNodeList = clusterNodes.getConfigNodeList();
       for (TConfigNodeLocation configNodeLocation : configNodeList) {
-        if (configNodeLocation
-                .getInternalEndPoint()
-                .getIp()
-                .equals(removedConfigNodeLocation.getInternalEndPoint().getIp())
-            && configNodeLocation.getInternalEndPoint().getPort()
-                == removedConfigNodeLocation.getInternalEndPoint().getPort()
-            && configNodeLocation.getConsensusEndPoint().getPort()
-                == removedConfigNodeLocation.getConsensusEndPoint().getPort()) {
-          fail("Failed to remove ConfigNode");
-          break;
-        }
+        assertNotEquals(removedConfigNodeLocation, configNodeLocation);
       }
 
       // test stop ConfigNode
       status = client.stopConfigNode(removedConfigNodeLocation);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-    } catch (TException | IOException | InterruptedException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
     }
   }
 }
