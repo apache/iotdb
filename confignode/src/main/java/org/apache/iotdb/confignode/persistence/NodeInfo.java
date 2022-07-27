@@ -112,7 +112,9 @@ public class NodeInfo implements SnapshotProcessor {
               registeredConfigNodes,
               o -> getRegisteredConfigNodeCount(),
               Tag.NAME.toString(),
-              "online");
+              "total",
+              Tag.STATUS.toString(),
+              "registed");
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
@@ -121,7 +123,9 @@ public class NodeInfo implements SnapshotProcessor {
               registeredDataNodes,
               Map::size,
               Tag.NAME.toString(),
-              "online");
+              "total",
+              Tag.STATUS.toString(),
+              "registed");
     }
   }
 
