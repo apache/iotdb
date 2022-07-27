@@ -21,10 +21,18 @@ package org.apache.iotdb.metrics.utils;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.pool.SessionDataSetWrapper;
+import org.apache.iotdb.session.pool.SessionPool;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
-public class MetricsUtils {
+public class IoTDBMetricsUtils {
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBMetricsUtils.class);
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
 
@@ -35,6 +43,9 @@ public class MetricsUtils {
         .append(metricConfig.getIoTDBReporterConfig().getDatabase())
         .append(".\"")
         .append(metricConfig.getInstanceHost())
+        .append(STORAGE_GROUP)
+        .append(".`")
+        .append(metricConfig.getRpcAddress())
         .append(":")
         .append(metricConfig.getInstancePort())
         .append("\"")
@@ -52,5 +63,18 @@ public class MetricsUtils {
           .append("\"");
     }
     return stringBuilder.toString();
+  }
+
+  public static void checkOrCreateStorageGroup(SessionPool session) {
+    try (SessionDataSetWrapper result =
+        session.executeQueryStatement("show storage group " + STORAGE_GROUP)) {
+      if (!result.hasNext()) {
+        session.setStorageGroup(STORAGE_GROUP);
+      }
+    } catch (IoTDBConnectionException e) {
+      logger.error("CheckOrCreateStorageGroup failed because ", e);
+    } catch (StatementExecutionException e) {
+      // do nothing
+    }
   }
 }
