@@ -94,10 +94,10 @@ public class MicrometerMetricManagerTest {
   @Test
   public void removeGauge() {
     Gauge gauge1 =
-            metricManager.getOrCreateGauge("gauge_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
+        metricManager.getOrCreateGauge("gauge_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
     metricManager.removeGauge("gauge_remove", "tag1", "tag2");
     Gauge gauge2 =
-            metricManager.getOrCreateGauge("gauge_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
+        metricManager.getOrCreateGauge("gauge_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
     assertNotEquals(gauge1, gauge2);
   }
 }

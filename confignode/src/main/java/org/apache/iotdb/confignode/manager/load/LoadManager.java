@@ -54,7 +54,6 @@ import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCac
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
-import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -422,30 +421,29 @@ public class LoadManager {
 
   public List<TConfigNodeLocation> getUnknownConfigNodes() {
     return getNodeManager().getRegisteredConfigNodes().stream()
-            .filter(
-                    registeredConfigNode ->
-                            nodeCacheMap
-                                    .get(registeredConfigNode.getConfigNodeId())
-                                    .getNodeStatus()
-                                    .equals(NodeStatus.Unknown))
-            .collect(Collectors.toList());
+        .filter(
+            registeredConfigNode ->
+                nodeCacheMap
+                    .get(registeredConfigNode.getConfigNodeId())
+                    .getNodeStatus()
+                    .equals(NodeStatus.Unknown))
+        .collect(Collectors.toList());
   }
 
   public List<TDataNodeConfiguration> getUnknownDataNodes(int dataNodeId) {
     return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
-            .filter(
-                    registeredDataNode ->
-                            nodeCacheMap
-                                    .get(registeredDataNode.getLocation().getDataNodeId())
-                                    .getNodeStatus()
-                                    .equals(NodeStatus.Unknown))
-            .collect(Collectors.toList());
+        .filter(
+            registeredDataNode ->
+                nodeCacheMap
+                    .get(registeredDataNode.getLocation().getDataNodeId())
+                    .getNodeStatus()
+                    .equals(NodeStatus.Unknown))
+        .collect(Collectors.toList());
   }
-
 
   public int getRunningConfigNodesNum() {
     List<TConfigNodeLocation> allConfigNodes = getOnlineConfigNodes();
-    if(allConfigNodes == null){
+    if (allConfigNodes == null) {
       return 0;
     }
     return allConfigNodes.size();
@@ -453,7 +451,7 @@ public class LoadManager {
 
   public int getRunningDataNodesNum() {
     List<TDataNodeConfiguration> allDataNodes = getOnlineDataNodes(-1);
-    if(allDataNodes == null){
+    if (allDataNodes == null) {
       return 0;
     }
     return allDataNodes.size();
@@ -461,7 +459,7 @@ public class LoadManager {
 
   public int getUnknownConfigNodesNum() {
     List<TConfigNodeLocation> allConfigNodes = getUnknownConfigNodes();
-    if(allConfigNodes == null){
+    if (allConfigNodes == null) {
       return 0;
     }
     return allConfigNodes.size();
@@ -469,7 +467,7 @@ public class LoadManager {
 
   public int getUnknownDataNodesNum() {
     List<TDataNodeConfiguration> allDataNodes = getUnknownDataNodes(-1);
-    if(allDataNodes == null){
+    if (allDataNodes == null) {
       return 0;
     }
     return allDataNodes.size();
@@ -478,83 +476,82 @@ public class LoadManager {
   public void addMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
-              .getMetricManager()
-              .getOrCreateGauge(
-                      Metric.CONFIG_NODE.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      "total",
-                      Tag.STATUS.toString(),
-                      "online")
-              .set(getRunningConfigNodesNum());
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CONFIG_NODE.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "total",
+              Tag.STATUS.toString(),
+              "online")
+          .set(getRunningConfigNodesNum());
       MetricsService.getInstance()
-              .getMetricManager()
-              .getOrCreateGauge(
-                      Metric.DATA_NODE.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      "total",
-                      Tag.STATUS.toString(),
-                      "online")
-              .set(getRunningDataNodesNum());
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.DATA_NODE.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "total",
+              Tag.STATUS.toString(),
+              "online")
+          .set(getRunningDataNodesNum());
       MetricsService.getInstance()
-              .getMetricManager()
-              .getOrCreateGauge(
-                      Metric.CONFIG_NODE.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      "total",
-                      Tag.STATUS.toString(),
-                      "unknown")
-              .set(getUnknownConfigNodesNum());
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CONFIG_NODE.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "total",
+              Tag.STATUS.toString(),
+              "unknown")
+          .set(getUnknownConfigNodesNum());
       MetricsService.getInstance()
-              .getMetricManager()
-              .getOrCreateGauge(
-                      Metric.DATA_NODE.toString(),
-                      MetricLevel.CORE,
-                      Tag.NAME.toString(),
-                      "total",
-                      Tag.STATUS.toString(),
-                      "unknown")
-              .set(getUnknownDataNodesNum());
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.DATA_NODE.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "total",
+              Tag.STATUS.toString(),
+              "unknown")
+          .set(getUnknownDataNodesNum());
     }
   }
 
-  public void removeMetrics(){
+  public void removeMetrics() {
     MetricsService.getInstance()
-            .getMetricManager()
-            .removeGauge(
-                    Metric.CONFIG_NODE.toString(),
-                    Tag.NAME.toString(),
-                    "total",
-                    Tag.STATUS.toString(),
-                    "online");
+        .getMetricManager()
+        .removeGauge(
+            Metric.CONFIG_NODE.toString(),
+            Tag.NAME.toString(),
+            "total",
+            Tag.STATUS.toString(),
+            "online");
     MetricsService.getInstance()
-            .getMetricManager()
-            .removeGauge(
-                    Metric.DATA_NODE.toString(),
-                    Tag.NAME.toString(),
-                    "total",
-                    Tag.STATUS.toString(),
-                    "online");
+        .getMetricManager()
+        .removeGauge(
+            Metric.DATA_NODE.toString(),
+            Tag.NAME.toString(),
+            "total",
+            Tag.STATUS.toString(),
+            "online");
     MetricsService.getInstance()
-            .getMetricManager()
-            .removeGauge(
-                    Metric.CONFIG_NODE.toString(),
-                    Tag.NAME.toString(),
-                    "total",
-                    Tag.STATUS.toString(),
-                    "unknown");
+        .getMetricManager()
+        .removeGauge(
+            Metric.CONFIG_NODE.toString(),
+            Tag.NAME.toString(),
+            "total",
+            Tag.STATUS.toString(),
+            "unknown");
     MetricsService.getInstance()
-            .getMetricManager()
-            .removeGauge(
-                    Metric.DATA_NODE.toString(),
-                    Tag.NAME.toString(),
-                    "total",
-                    Tag.STATUS.toString(),
-                    "unknown");
+        .getMetricManager()
+        .removeGauge(
+            Metric.DATA_NODE.toString(),
+            Tag.NAME.toString(),
+            "total",
+            Tag.STATUS.toString(),
+            "unknown");
   }
-
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
