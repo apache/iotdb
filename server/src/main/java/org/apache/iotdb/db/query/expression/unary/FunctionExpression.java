@@ -213,8 +213,8 @@ public class FunctionExpression extends Expression {
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     for (Expression expression : expressions) {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
-      memoryAssigner.increaseExpressionReference(this);
     }
+    memoryAssigner.increaseExpressionReference(this);
   }
 
   @Override
