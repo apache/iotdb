@@ -20,28 +20,30 @@ package org.apache.iotdb.commons.concurrent;
 
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 
-/** A wrapper for {@link Runnable} logging errors when uncaught exception is thrown. */
-public abstract class WrappedRunnable implements Runnable {
+import java.util.concurrent.Callable;
+
+/** A wrapper for {@link Callable} logging errors when uncaught exception is thrown. */
+public abstract class WrappedCallable<V> implements Callable<V> {
 
   @Override
-  public final void run() {
+  public final V call() {
     try {
-      runMayThrow();
+      return callMayThrow();
     } catch (Exception e) {
       throw ScheduledExecutorUtil.propagate(e);
     }
   }
 
-  public abstract void runMayThrow() throws Exception;
+  public abstract V callMayThrow() throws Exception;
 
-  public static Runnable wrap(Runnable runnable) {
-    if (runnable instanceof WrappedRunnable) {
-      return runnable;
+  public static <V> Callable<V> wrap(Callable<V> callable) {
+    if (callable instanceof WrappedCallable) {
+      return callable;
     }
-    return new WrappedRunnable() {
+    return new WrappedCallable<V>() {
       @Override
-      public void runMayThrow() {
-        runnable.run();
+      public V callMayThrow() throws Exception {
+        return callable.call();
       }
     };
   }
