@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.micrometer.reporter;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricsUtils;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -57,6 +57,7 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
             ioTDBReporterConfig.getUsername(),
             ioTDBReporterConfig.getPassword(),
             ioTDBReporterConfig.getMaxConnectionNumber());
+    IoTDBMetricsUtils.checkOrCreateStorageGroup(sessionPool);
   }
 
   @Override
@@ -128,7 +129,7 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
 
   private void updateValue(String name, Map<String, String> labels, Double value, Long time) {
     if (value != null) {
-      String deviceId = MetricsUtils.generatePath(name, labels);
+      String deviceId = IoTDBMetricsUtils.generatePath(name, labels);
       List<String> sensors = Collections.singletonList("value");
       List<TSDataType> dataTypes = Collections.singletonList(TSDataType.DOUBLE);
       List<Object> values = Collections.singletonList(value);

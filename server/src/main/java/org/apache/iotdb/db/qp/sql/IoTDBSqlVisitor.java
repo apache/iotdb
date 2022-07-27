@@ -1057,8 +1057,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
               new PartialPath(SQLConstant.getSingleRootArray()),
               orderByHeat);
     }
-    if (ctx.showWhereClause() != null) {
-      parseShowWhereClause(ctx.showWhereClause(), showTimeSeriesOperator);
+    if (ctx.tagWhereClause() != null) {
+      parseShowWhereClause(ctx.tagWhereClause(), showTimeSeriesOperator);
     }
     if (ctx.limitClause() != null) {
       parseLimitClause(ctx.limitClause(), showTimeSeriesOperator);
@@ -1067,7 +1067,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private void parseShowWhereClause(
-      IoTDBSqlParser.ShowWhereClauseContext ctx, ShowTimeSeriesOperator operator) {
+      IoTDBSqlParser.TagWhereClauseContext ctx, ShowTimeSeriesOperator operator) {
     IoTDBSqlParser.AttributeValueContext attributeValueContext;
     if (ctx.containsExpression() != null) {
       operator.setContains(true);
@@ -1975,7 +1975,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     String privilege = parsePrivilege(ctx.privileges())[0];
 
     PartialPath prefixPath;
-    if (!PrivilegeType.valueOf(privilege).isPathRelevant()) {
+    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
       prefixPath = new PartialPath(path);
     } else {
@@ -2023,7 +2023,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     String privilege = parsePrivilege(ctx.privileges())[0];
 
     PartialPath prefixPath;
-    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
       prefixPath = new PartialPath(path);
     } else {

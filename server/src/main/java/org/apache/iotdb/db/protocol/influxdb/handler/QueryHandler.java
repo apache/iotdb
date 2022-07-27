@@ -849,7 +849,9 @@ public class QueryHandler {
         curQueryPath.append(".").append("*");
       }
     }
-    curQueryPath.append(".**");
+    if (currentQueryMaxTagNum < tagOrders.size()) {
+      curQueryPath.append(".**");
+    }
     // construct actual query condition
     StringBuilder realIotDBCondition = new StringBuilder();
     for (int i = 0; i < fieldExpressions.size(); i++) {

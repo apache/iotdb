@@ -24,6 +24,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.ConfigNodeClientPoolFactory;
@@ -150,6 +151,9 @@ public class AsyncDataNodeClientPool {
     try {
       client = clientManager.borrowClient(dataNodeLocation.getInternalEndPoint());
       switch (handler.getDataNodeRequestType()) {
+        case SET_TTL:
+          client.setTTL((TSetTTLReq) req, (SetTTLHandler) handler);
+          break;
         case CREATE_DATA_REGIONS:
           client.createDataRegion((TCreateDataRegionReq) req, (CreateRegionHandler) handler);
           break;
@@ -173,6 +177,9 @@ public class AsyncDataNodeClientPool {
               (TUpdateConfigNodeGroupReq) req, (UpdateConfigNodeGroupHandler) handler);
           break;
         default:
+          LOGGER.error(
+              "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
+              handler.getDataNodeRequestType());
       }
     } catch (Exception e) {
       LOGGER.warn(
