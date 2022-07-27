@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 
 /** This test is for ReceiverLog and ReceiverLogAnalyzer */
-public class ReceiverLogAnalyzerTest {
+public class SyncLoggerAnalyzerTest {
 
   private static final String pipe1 = "pipe1";
   private static final String pipe2 = "pipe2";
@@ -56,7 +56,7 @@ public class ReceiverLogAnalyzerTest {
   @Test
   public void testServiceLog() {
     try {
-      ReceiverLog log = new ReceiverLog();
+      SyncLogger log = new SyncLogger();
       log.startPipeServer();
       log.createPipe(pipe1, ip1, 1);
       log.createPipe(pipe2, ip2, 2);
@@ -68,10 +68,10 @@ public class ReceiverLogAnalyzerTest {
       log.dropPipe(pipe1, ip2, 3);
       log.startPipe(pipe1, ip1, 1);
       log.close();
-      ReceiverLogAnalyzer receiverLogAnalyzer = new ReceiverLogAnalyzer();
-      receiverLogAnalyzer.scan();
-      Map<String, Map<String, Map<Long, PipeStatus>>> map = receiverLogAnalyzer.getPipeInfos();
-      Assert.assertTrue(receiverLogAnalyzer.isPipeServerEnable());
+      SyncLogAnalyzer syncLogAnalyzer = new SyncLogAnalyzer();
+      syncLogAnalyzer.recover();
+      Map<String, Map<String, Map<Long, PipeStatus>>> map = syncLogAnalyzer.getPipeInfos();
+      Assert.assertTrue(syncLogAnalyzer.isPipeServerEnable());
       Assert.assertNotNull(map);
       Assert.assertEquals(2, map.get(pipe1).size());
       Assert.assertEquals(1, map.get(pipe2).size());
@@ -90,7 +90,7 @@ public class ReceiverLogAnalyzerTest {
     String pipeIdentifier1 = SyncPathUtil.getReceiverPipeDirName(pipe1, ip1, createdTime1);
     String pipeIdentifier2 = SyncPathUtil.getReceiverPipeDirName(pipe2, ip2, createdTime2);
     try {
-      ReceiverLog log = new ReceiverLog();
+      SyncLogger log = new SyncLogger();
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
       PipeMessage warn = new PipeMessage(PipeMessage.MsgType.WARN, "warn");
       PipeMessage error = new PipeMessage(PipeMessage.MsgType.ERROR, "error");
@@ -106,9 +106,9 @@ public class ReceiverLogAnalyzerTest {
       log.comsumePipeMsg(pipeIdentifier2);
       log.close();
 
-      ReceiverLogAnalyzer receiverLogAnalyzer = new ReceiverLogAnalyzer();
-      receiverLogAnalyzer.scan();
-      Map<String, List<PipeMessage>> map = receiverLogAnalyzer.getPipeMessageMap();
+      SyncLogAnalyzer syncLogAnalyzer = new SyncLogAnalyzer();
+      syncLogAnalyzer.recover();
+      Map<String, List<PipeMessage>> map = syncLogAnalyzer.getPipeMessageMap();
       Assert.assertNotNull(map);
       Assert.assertEquals(3, map.get(pipeIdentifier1).size());
       Assert.assertNull(map.get(pipeIdentifier2));

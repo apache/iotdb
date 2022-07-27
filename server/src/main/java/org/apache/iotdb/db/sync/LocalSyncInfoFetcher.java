@@ -19,14 +19,23 @@
 package org.apache.iotdb.db.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.db.exception.sync.PipeException;
+import org.apache.iotdb.db.exception.sync.PipeSinkException;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.receiver.AbstractSyncInfo;
 import org.apache.iotdb.db.sync.receiver.manager.LocalSyncInfo;
+import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
+import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
 
 public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
@@ -38,25 +47,99 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
     syncInfo = new LocalSyncInfo();
   }
 
+  // region Implement of PipeSink
+
   @Override
   public TSStatus addPipeSink(CreatePipeSinkPlan plan) {
-    return null;
+    try {
+      syncInfo.addPipeSink(plan);
+    } catch (PipeSinkException | IOException e) {
+      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus dropPipeSink(String name) {
-    return null;
+    try {
+      syncInfo.dropPipeSink(name);
+    } catch (PipeSinkException | IOException e) {
+      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public PipeSink getPipeSink(String name) {
-    return null;
+    return syncInfo.getPipeSink(name);
   }
 
   @Override
   public List<PipeSink> getAllPipeSink() {
-    return null;
+    return syncInfo.getAllPipeSink();
   }
+
+  // endregion
+
+  // region Implement of Pipe
+
+  @Override
+  public TSStatus addPipe(CreatePipePlan plan, long createTime) {
+    try {
+      syncInfo.addPipe(plan, createTime);
+    } catch (PipeException | IOException e) {
+      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus stopPipe(String pipeName) {
+    try {
+      syncInfo.operatePipe(pipeName, Operator.OperatorType.STOP_PIPE);
+    } catch (PipeException | IOException e) {
+      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus startPipe(String pipeName) {
+    try {
+      syncInfo.operatePipe(pipeName, Operator.OperatorType.START_PIPE);
+    } catch (PipeException | IOException e) {
+      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus dropPipe(String pipeName) {
+    try {
+      syncInfo.operatePipe(pipeName, Operator.OperatorType.DROP_PIPE);
+    } catch (PipeException | IOException e) {
+      RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public List<Pipe> getAllPipes() {
+    return syncInfo.getAllPipes();
+  }
+
+  @Override
+  public String getPipeMsg(Pipe pipe) {
+    return syncInfo.getPipeMessage(pipe.getName(), pipe.getCreateTime(), false).getMsg();
+  }
+
+  @Override
+  public TSStatus recordMsg(Pipe pipe, PipeMessage pipeMessage) {
+    syncInfo.writePipeMessage(pipe.getName(), pipe.getCreateTime(), pipeMessage);
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  // endregion
 
   // region singleton
   private static class LocalSyncInfoFetcherHolder {

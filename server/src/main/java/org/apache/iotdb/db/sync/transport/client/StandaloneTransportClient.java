@@ -23,9 +23,9 @@ import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.SyncConnectionException;
-import org.apache.iotdb.db.sync.datasource.SyncResponseType;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -433,7 +433,7 @@ public class StandaloneTransportClient implements ITransportClient {
           if (!handshake()) {
             SenderService.getInstance()
                 .receiveMsg(
-                    SyncResponseType.ERROR,
+                    PipeMessage.MsgType.ERROR,
                     String.format("Can not handshake with %s:%d.", ipAddress, port));
           }
           while (!Thread.currentThread().isInterrupted()) {
@@ -443,7 +443,7 @@ public class StandaloneTransportClient implements ITransportClient {
               // can do something.
               SenderService.getInstance()
                   .receiveMsg(
-                      SyncResponseType.WARN,
+                      PipeMessage.MsgType.WARN,
                       String.format(
                           "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber()));
               continue;

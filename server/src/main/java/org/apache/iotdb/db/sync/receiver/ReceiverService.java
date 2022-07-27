@@ -31,7 +31,6 @@ import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.sync.receiver.manager.LocalSyncInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -39,14 +38,12 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESERVER_STATUS;
 
@@ -77,13 +74,6 @@ public class ReceiverService implements IService {
       return;
     }
     try {
-      List<PipeInfo> pipeInfos = receiverInfo.getAllPipeInfos();
-      for (PipeInfo pipeInfo : pipeInfos) {
-        if (pipeInfo.getStatus().equals(PipeStatus.RUNNING)) {
-          throw new PipeServerException(
-              "Failed to stop pipe server because there is pipe still running.");
-        }
-      }
       TransportServerManager.getInstance().stopService();
       receiverInfo.stopServer();
     } catch (IOException e) {
@@ -122,15 +112,17 @@ public class ReceiverService implements IService {
 
   /** query by sql SHOW PIPE */
   public QueryDataSet showPipe(ShowPipePlan plan, ListDataSet dataSet) {
-    List<PipeInfo> pipeInfos;
-    if (!StringUtils.isEmpty(plan.getPipeName())) {
-      pipeInfos = receiverInfo.getPipeInfosByPipeName(plan.getPipeName());
-    } else {
-      pipeInfos = receiverInfo.getAllPipeInfos();
-    }
-    for (PipeInfo pipeInfo : pipeInfos) {
-      putPipeRecord(dataSet, pipeInfo);
-    }
+    // TODO: implement show pipe in receiver
+
+    //    List<PipeInfo> pipeInfos;
+    //    if (!StringUtils.isEmpty(plan.getPipeName())) {
+    //      pipeInfos = receiverInfo.getPipeInfosByPipeName(plan.getPipeName());
+    //    } else {
+    //      pipeInfos = receiverInfo.getAllPipeInfos();
+    //    }
+    //    for (PipeInfo pipeInfo : pipeInfos) {
+    //      putPipeRecord(dataSet, pipeInfo);
+    //    }
     return dataSet;
   }
 
@@ -142,13 +134,6 @@ public class ReceiverService implements IService {
     record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
     record.addField(Binary.valueOf(pipeInfo.getRemoteIp()), TSDataType.TEXT);
     record.addField(Binary.valueOf(pipeInfo.getStatus().name()), TSDataType.TEXT);
-    record.addField(
-        Binary.valueOf(
-            receiverInfo
-                .getPipeMessage(
-                    pipeInfo.getPipeName(), pipeInfo.getRemoteIp(), pipeInfo.getCreateTime(), false)
-                .getMsg()),
-        TSDataType.TEXT);
     dataSet.putRecord(record);
   }
 
