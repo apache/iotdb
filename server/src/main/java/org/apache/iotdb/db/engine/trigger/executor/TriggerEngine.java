@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.engine.trigger.executor;
 
 import org.apache.iotdb.commons.trigger.TriggerEvent;
+import org.apache.iotdb.commons.trigger.TriggerRegistrationInformation;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationInformation;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;

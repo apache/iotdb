@@ -29,9 +29,12 @@ import org.apache.iotdb.commons.trigger.TriggerClassLoader;
 import org.apache.iotdb.commons.trigger.TriggerClassLoaderManager;
 import org.apache.iotdb.commons.trigger.TriggerEvent;
 import org.apache.iotdb.commons.trigger.TriggerOperationType;
+import org.apache.iotdb.commons.trigger.TriggerRegistrationInformation;
 import org.apache.iotdb.commons.trigger.api.Trigger;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
+import org.apache.iotdb.commons.trigger.utils.TriggerLogReader;
+import org.apache.iotdb.commons.trigger.utils.TriggerLogWriter;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
@@ -73,6 +76,7 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
 
   private final String logFileDir;
   private final String logFileName;
+  private final int tLogBufferSize;
   private final String temporaryLogFileName;
   private final String libRoot;
   private final boolean enableIDTable;
@@ -80,10 +84,12 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
 
   private TriggerLogWriter logWriter;
 
-  private TriggerRegistrationService(String systemDir, String libRoot, boolean enableIDTable) {
+  private TriggerRegistrationService(
+      String systemDir, String libRoot, int tLogBufferSize, boolean enableIDTable) {
     logFileDir = systemDir + File.separator + "trigger" + File.separator;
     logFileName = logFileDir + "tlog.bin";
     temporaryLogFileName = logFileName + ".tmp";
+    this.tLogBufferSize = tLogBufferSize;
     this.libRoot = libRoot;
     this.enableIDTable = enableIDTable;
     executors = new ConcurrentHashMap<>();
@@ -362,7 +368,7 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
       makeDirIfNecessary(libRoot);
       makeDirIfNecessary(logFileDir);
       doRecovery();
-      logWriter = new TriggerLogWriter(logFileName);
+      logWriter = new TriggerLogWriter(logFileName, tLogBufferSize);
     } catch (Exception e) {
       throw new StartupException(e);
     }
@@ -464,7 +470,8 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
   }
 
   private void writeTemporaryLogFile() throws IOException {
-    try (TriggerLogWriter temporaryLogWriter = new TriggerLogWriter(temporaryLogFileName)) {
+    try (TriggerLogWriter temporaryLogWriter =
+        new TriggerLogWriter(temporaryLogFileName, tLogBufferSize)) {
       for (TriggerExecutor executor : executors.values()) {
         TriggerRegistrationInformation information = executor.getRegistrationInformation();
         temporaryLogWriter.write(information);
@@ -506,9 +513,9 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
   private static TriggerRegistrationService INSTANCE = null;
 
   public static TriggerRegistrationService setUpAndGetInstance(
-      String systemDir, String libRoot, boolean enableIDTable) {
+      String systemDir, String libRoot, int tLogBufferSize, boolean enableIDTable) {
     if (INSTANCE == null) {
-      INSTANCE = new TriggerRegistrationService(systemDir, libRoot, enableIDTable);
+      INSTANCE = new TriggerRegistrationService(systemDir, libRoot, tLogBufferSize, enableIDTable);
     }
     return INSTANCE;
   }

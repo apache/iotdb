@@ -17,37 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.trigger.service;
+package org.apache.iotdb.commons.trigger;
 
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.trigger.TriggerEvent;
-import org.apache.iotdb.commons.trigger.TriggerOperationType;
-import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 
-/**
- * TODO refactor Trigger TriggerRegistrationInformation to TriggerManagementInfo and optimize its
- * lifecycle
- */
 public class TriggerRegistrationInformation {
 
-  private final String triggerName;
+  private String triggerName;
   private TriggerEvent event = null;
   private PartialPath fullPath = null;
   private String className = null;
   private Map<String, String> attributes = null;
 
   private volatile boolean isStopped;
-  private final TriggerOperationType operationType;
+  private TriggerOperationType operationType;
+
+  private TriggerRegistrationInformation() {}
 
   private TriggerRegistrationInformation(String triggerName, TriggerOperationType operationType) {
     this.triggerName = triggerName;
@@ -133,69 +124,39 @@ public class TriggerRegistrationInformation {
     return operationType;
   }
 
-  public void serialize(ByteBuffer buffer) throws IOException {
+  public void serialize(ByteBuffer buffer) {
     buffer.mark();
-    try {
-      if (TriggerOperationType.CREATE == operationType) {
-        buffer.put((byte) TriggerOperationType.CREATE.ordinal());
-        ReadWriteIOUtils.write(triggerName, buffer);
-        buffer.put(event.getId());
-        ReadWriteIOUtils.write(fullPath.getFullPath(), buffer);
-        ReadWriteIOUtils.write(className, buffer);
-        ReadWriteIOUtils.write(attributes, buffer);
-      } else if (TriggerOperationType.DROP == operationType) {
-        buffer.put((byte) TriggerOperationType.DROP.ordinal());
-        ReadWriteIOUtils.write(triggerName, buffer);
-      } else if (TriggerOperationType.START == operationType) {
-        buffer.put((byte) TriggerOperationType.START.ordinal());
-        ReadWriteIOUtils.write(triggerName, buffer);
-      } else if (TriggerOperationType.STOP == operationType) {
-        buffer.put((byte) TriggerOperationType.STOP.ordinal());
-        ReadWriteIOUtils.write(triggerName, buffer);
-      }
-    } catch (UnsupportedOperationException e) {
-      // ignore and throw
-      throw e;
-    } catch (Exception e) {
-      buffer.reset();
-      throw e;
+    buffer.put((byte) operationType.ordinal());
+    ReadWriteIOUtils.write(triggerName, buffer);
+    if (TriggerOperationType.CREATE == operationType) {
+      ReadWriteIOUtils.write(triggerName, buffer);
+      buffer.put(event.getId());
+      ReadWriteIOUtils.write(fullPath.getFullPath(), buffer);
+      ReadWriteIOUtils.write(className, buffer);
+      ReadWriteIOUtils.write(attributes, buffer);
     }
   }
 
-  public PhysicalPlan convertToPhysicalPlan() throws TriggerManagementException {
-    switch (operationType) {
-      case CREATE:
-        return new CreateTriggerPlan(triggerName, event, fullPath, className, attributes);
-      case DROP:
-        return new DropTriggerPlan(triggerName);
-      case START:
-        return new StartTriggerPlan(triggerName);
-      case STOP:
-        return new StopTriggerPlan(triggerName);
-      default:
-        throw new TriggerManagementException(
-            "TriggerRegistrationInformation converts to PhysicalPlan error");
+  public void deserialize(ByteBuffer buffer) throws IOException, IllegalPathException {
+    int typeNum = buffer.get();
+    if (typeNum < 0 || typeNum >= TriggerOperationType.values().length) {
+      throw new IOException("unrecognized log type: " + typeNum);
+    }
+    operationType = TriggerOperationType.values()[typeNum];
+    triggerName = ReadWriteIOUtils.readString(buffer);
+    if (TriggerOperationType.CREATE == operationType) {
+      triggerName = ReadWriteIOUtils.readString(buffer);
+      event = TriggerEvent.construct(buffer.get());
+      fullPath = new PartialPath(ReadWriteIOUtils.readString(buffer));
+      className = ReadWriteIOUtils.readString(buffer);
+      attributes = ReadWriteIOUtils.readMap(buffer);
     }
   }
 
-  public static TriggerRegistrationInformation convertFromPhysicalPlan(PhysicalPlan plan) {
-    switch (plan.getOperatorType()) {
-      case CREATE_TRIGGER:
-        CreateTriggerPlan createTriggerPlan = (CreateTriggerPlan) plan;
-        return getCreateInfo(
-            createTriggerPlan.getTriggerName(),
-            createTriggerPlan.getEvent(),
-            createTriggerPlan.getFullPath(),
-            createTriggerPlan.getClassName(),
-            createTriggerPlan.getAttributes());
-      case DROP_TRIGGER:
-        return getDropInfo(((DropTriggerPlan) plan).getTriggerName());
-      case START_TRIGGER:
-        return getStartInfo(((StartTriggerPlan) plan).getTriggerName());
-      case STOP_TRIGGER:
-        return getStopInfo(((StopTriggerPlan) plan).getTriggerName());
-      default:
-        return null;
-    }
+  public static TriggerRegistrationInformation createFromBuffer(ByteBuffer buffer)
+      throws IllegalPathException, IOException {
+    TriggerRegistrationInformation info = new TriggerRegistrationInformation();
+    info.deserialize(buffer);
+    return info;
   }
 }

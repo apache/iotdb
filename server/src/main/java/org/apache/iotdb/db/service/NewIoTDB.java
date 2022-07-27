@@ -180,6 +180,7 @@ public class NewIoTDB implements NewIoTDBMBean {
         TriggerRegistrationService.setUpAndGetInstance(
             IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
             IoTDBDescriptor.getInstance().getConfig().getTriggerDir(),
+            IoTDBDescriptor.getInstance().getConfig().getTlogBufferSize(),
             IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()));
     registerManager.register(ContinuousQueryService.getInstance());
 
