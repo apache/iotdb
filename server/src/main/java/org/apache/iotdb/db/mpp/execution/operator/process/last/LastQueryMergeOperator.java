@@ -156,7 +156,9 @@ public class LastQueryMergeOperator implements ProcessOperator {
     }
 
     if (timeSeriesSelector.isEmpty()) {
-      return tsBlockBuilder.build();
+      TsBlock res = tsBlockBuilder.build();
+      tsBlockBuilder.reset();
+      return res;
     }
 
     while (!timeSeriesSelector.isEmpty()
