@@ -1599,7 +1599,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
     String privilege = parsePrivilege(ctx.privileges())[0];
     PartialPath prefixPath;
-    if (!PrivilegeType.valueOf(privilege).isPathRelevant()) {
+    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
       prefixPath = new PartialPath(path);
     } else {
@@ -1644,7 +1644,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     String privilege = parsePrivilege(ctx.privileges())[0];
 
     PartialPath prefixPath;
-    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
       prefixPath = new PartialPath(path);
     } else {
