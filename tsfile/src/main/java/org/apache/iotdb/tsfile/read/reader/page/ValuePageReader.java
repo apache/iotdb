@@ -271,4 +271,8 @@ public class ValuePageReader {
   public TSDataType getDataType() {
     return dataType;
   }
+
+  public byte[] getBitmap() {
+    return bitmap;
+  }
 }

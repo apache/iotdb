@@ -47,6 +47,8 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   private boolean isModified;
   private TsBlockBuilder builder;
 
+  private static final int MASK = 0x80;
+
   public AlignedPageReader(
       PageHeader timePageHeader,
       ByteBuffer timePageData,
@@ -107,36 +109,55 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   @Override
   public TsBlock getAllSatisfiedData() throws IOException {
-    // TODO change from the row-based style to column-based style
     builder.reset();
-    int timeIndex = -1;
-    while (timePageReader.hasNextTime()) {
-      long timestamp = timePageReader.nextTime();
-      timeIndex++;
-      // if all the sub sensors' value are null in current row, just discard it
-      boolean isNull = true;
-      Object notNullObject = null;
-      TsPrimitiveType[] v = new TsPrimitiveType[valueCount];
-      for (int i = 0; i < v.length; i++) {
-        ValuePageReader pageReader = valuePageReaderList.get(i);
-        v[i] = pageReader == null ? null : pageReader.nextValue(timestamp, timeIndex);
-        if (v[i] != null) {
-          isNull = false;
-          notNullObject = v[i].getValue();
-        }
+    long[] timeBatch = timePageReader.getNextTimeBatch();
+    byte[][] bitMaps = new byte[valueCount][];
+    for (int i = 0; i < valueCount; i++) {
+      ValuePageReader pageReader = valuePageReaderList.get(i);
+      if (pageReader != null) {
+        bitMaps[i] = pageReader.getBitmap();
       }
-      // Currently, if it's a value filter, it will only accept AlignedPath with only one sub
-      // sensor
-      if (!isNull && (filter == null || filter.satisfy(timestamp, notNullObject))) {
-        builder.getTimeColumnBuilder().writeLong(timestamp);
-        for (int i = 0; i < v.length; i++) {
-          if (v[i] != null) {
-            builder.getColumnBuilder(i).writeTsPrimitiveType(v[i]);
-          } else {
+    }
+
+    // if all the sub sensors' value are null in current row, just discard it
+    // if !filter.satisfy, discard this row
+    boolean[] keepCurrentRow = new boolean[timeBatch.length];
+    for (int i = 0; i < timeBatch.length; i++) {
+      byte b = 0;
+      for (int j = 0; j < valueCount; j++) {
+        if (bitMaps[j] == null) {
+          continue;
+        }
+        b = (byte) (b | ((bitMaps[j][i / 8] & 0xFF) & (MASK >>> (i % 8))));
+      }
+      keepCurrentRow[i] = (b != 0) && (filter == null || filter.satisfy(timeBatch[i], null));
+    }
+
+    // construct time column
+    for (int i = 0; i < timeBatch.length; i++) {
+      if (keepCurrentRow[i]) {
+        builder.getTimeColumnBuilder().writeLong(timeBatch[i]);
+        builder.declarePosition();
+      }
+    }
+
+    // construct value columns
+    for (int i = 0; i < valueCount; i++) {
+      TsPrimitiveType[] values = null;
+      boolean isCurrentColumnNull = true;
+      ValuePageReader pageReader = valuePageReaderList.get(i);
+      if (pageReader != null) {
+        values = pageReader.nextValueBatch(timeBatch);
+        isCurrentColumnNull = false;
+      }
+      for (int j = 0; j < timeBatch.length; j++) {
+        if (keepCurrentRow[j]) {
+          if (isCurrentColumnNull || values[j] == null) {
             builder.getColumnBuilder(i).appendNull();
+          } else {
+            builder.getColumnBuilder(i).writeTsPrimitiveType(values[j]);
           }
         }
-        builder.declarePosition();
       }
     }
     return builder.build();
