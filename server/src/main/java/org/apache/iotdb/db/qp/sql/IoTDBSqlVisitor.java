@@ -2023,7 +2023,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     String privilege = parsePrivilege(ctx.privileges())[0];
 
     PartialPath prefixPath;
-    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
       prefixPath = new PartialPath(path);
     } else {
