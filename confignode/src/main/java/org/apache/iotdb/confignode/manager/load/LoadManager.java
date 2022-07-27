@@ -335,6 +335,9 @@ public class LoadManager {
    * @param registeredDataNodes DataNodes that registered in cluster
    */
   private void pingRegisteredDataNodes(List<TDataNodeConfiguration> registeredDataNodes) {
+    // Generate heartbeat request
+    THeartbeatReq heartbeatReq = genHeartbeatReq();
+
     // Send heartbeat requests
     for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       DataNodeHeartbeatHandler handler =
@@ -347,7 +350,7 @@ public class LoadManager {
               regionGroupCacheMap);
       AsyncDataNodeClientPool.getInstance()
           .getDataNodeHeartBeat(
-              dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
+              dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
   }
 

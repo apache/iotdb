@@ -93,8 +93,8 @@ public class LeaderRouterTest {
 
     // Build regionGroupCacheMap
     Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap = new HashMap<>();
-    regionGroupCacheMap.put(groupId1, new RegionGroupCache());
-    regionGroupCacheMap.put(groupId2, new RegionGroupCache());
+    regionGroupCacheMap.put(groupId1, new RegionGroupCache(groupId1));
+    regionGroupCacheMap.put(groupId2, new RegionGroupCache(groupId2));
 
     /* Simulate ratis consensus protocol(only one leader) */
     regionGroupCacheMap

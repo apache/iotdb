@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +39,9 @@ public class RegionGroupCache implements IRegionGroupCache {
 
   private static final int maximumWindowSize = 100;
   // Map<DataNodeId(where a RegionReplica resides), LinkedList<RegionHeartbeatSample>>
+
+  private final TConsensusGroupId consensusGroupId;
+
   private final Map<Integer, LinkedList<RegionHeartbeatSample>> slidingWindow;
 
   // Indicates the version of the statistics
@@ -44,7 +49,9 @@ public class RegionGroupCache implements IRegionGroupCache {
   // The DataNode where the leader resides
   private final AtomicInteger leaderDataNodeId;
 
-  public RegionGroupCache() {
+  public RegionGroupCache(TConsensusGroupId consensusGroupId) {
+    this.consensusGroupId = consensusGroupId;
+
     this.slidingWindow = new ConcurrentHashMap<>();
 
     this.versionTimestamp = new AtomicLong(0);
@@ -97,14 +104,14 @@ public class RegionGroupCache implements IRegionGroupCache {
       }
     }
 
-    //    LOGGER.info(
-    //        "[updateLoadStatistic] {}, originVersion: {}, originLeader: {}, updateVersion: {},
-    // updateLeader: {}",
-    //        middleValue,
-    //        versionTimestamp.get(),
-    //        originLeaderDataNodeId,
-    //        updateVersion,
-    //        updateLeaderDataNodeId);
+    LOGGER.info(
+        "[updateLoadStatistic] consensusGroup: {}, middleValue: {}, originVersion: {}, originLeader: {}, updateVersion: {}, updateLeader: {}",
+        consensusGroupId,
+        middleValue,
+        versionTimestamp.get(),
+        originLeaderDataNodeId,
+        updateVersion,
+        updateLeaderDataNodeId);
 
     if (updateVersion > versionTimestamp.get()) {
       // Only update when the leadership information is latest

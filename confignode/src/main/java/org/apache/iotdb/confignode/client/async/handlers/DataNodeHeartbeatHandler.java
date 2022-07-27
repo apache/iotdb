@@ -53,8 +53,6 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
   @Override
   public void onComplete(THeartbeatResp heartbeatResp) {
-    LOGGER.info("[receiveHeartbeat] {}", heartbeatResp);
-
     long receiveTime = System.currentTimeMillis();
 
     // Update NodeCache
@@ -68,7 +66,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
           .forEach(
               (consensusGroupId, isLeader) ->
                   regionGroupCacheMap
-                      .computeIfAbsent(consensusGroupId, empty -> new RegionGroupCache())
+                      .computeIfAbsent(
+                          consensusGroupId, empty -> new RegionGroupCache(consensusGroupId))
                       .cacheHeartbeatSample(
                           new RegionHeartbeatSample(
                               heartbeatResp.getHeartbeatTimestamp(),
