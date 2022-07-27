@@ -106,7 +106,7 @@ public class SessionTimeoutManager {
     return SessionTimeoutManagerHelper.INSTANCE;
   }
 
-  public boolean isSessionExits(long sessionId) {
+  public boolean isSessionAlive(long sessionId) {
     if (SESSION_TIMEOUT == 0) {
       return true;
     }
