@@ -1151,7 +1151,7 @@ public:
 
     std::vector<std::string> showMeasurementsInTemplate(const std::string &template_name, const std::string &pattern);
 
-	bool checkTemplateExists(const std::string &template_name);
+    bool checkTemplateExists(const std::string &template_name);
 };
 
 #endif // IOTDB_SESSION_H

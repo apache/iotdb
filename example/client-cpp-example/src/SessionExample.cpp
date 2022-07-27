@@ -159,7 +159,7 @@ void insertTablet() {
         tablet.timestamps[row] = time;
 
         bool randVal1 = rand() % 2;
-		tablet.addValue(0, row, &randVal1);
+        tablet.addValue(0, row, &randVal1);
 
         int randVal2 = rand();
         tablet.addValue(1, row, &randVal2);
@@ -292,7 +292,7 @@ void insertTabletWithNullValues() {
         tablet.timestamps[row] = time;
         for (int i = 0; i < 3; i++) {
             int64_t randVal = rand();
-			tablet.addValue(i, row, &randVal);
+            tablet.addValue(i, row, &randVal);
             // mark null value
             if (row % 3 == i) {
                 tablet.bitMaps[i]->mark(row);

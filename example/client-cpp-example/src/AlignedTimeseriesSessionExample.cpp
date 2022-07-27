@@ -165,12 +165,12 @@ void insertAlignedTablet() {
     for (int64_t time = 0; time < DEFAULT_ROW_NUMBER; time++) {
         int row = tablet.rowSize++;
         tablet.timestamps[row] = time;
-		int randVal1 = 123456;
+        int randVal1 = 123456;
         double randVal2 = 123456.1234;
         double randVal3 = 123456.1234;
-		tablet.addValue(0, row, &randVal1);
-		tablet.addValue(1, row, &randVal2);
-		tablet.addValue(2, row, &randVal3);
+        tablet.addValue(0, row, &randVal1);
+        tablet.addValue(1, row, &randVal2);
+        tablet.addValue(2, row, &randVal3);
         if (tablet.rowSize == tablet.maxRowNumber) {
             session->insertTablet(tablet, true);
             tablet.reset();
@@ -209,26 +209,26 @@ void insertAlignedTablets() {
         tablet2.timestamps[row2] = time;
         tablet3.timestamps[row3] = time;
 
-		int randVal11 = rand();
-		int randVal12 = rand();
-		int randVal13 = rand();
-		tablet1.addValue(0, row1, &randVal11);
-		tablet2.addValue(0, row2, &randVal12);
-		tablet3.addValue(0, row3, &randVal13);
+        int randVal11 = rand();
+        int randVal12 = rand();
+        int randVal13 = rand();
+        tablet1.addValue(0, row1, &randVal11);
+        tablet2.addValue(0, row2, &randVal12);
+        tablet3.addValue(0, row3, &randVal13);
 
-		double randVal21 = rand() / 99.9;
-		double randVal22 = rand() / 99.9;
-		double randVal23 = rand() / 99.9;
-		tablet1.addValue(1, row1, &randVal21);
-		tablet2.addValue(1, row2, &randVal22);
-		tablet3.addValue(1, row3, &randVal23);
+        double randVal21 = rand() / 99.9;
+        double randVal22 = rand() / 99.9;
+        double randVal23 = rand() / 99.9;
+        tablet1.addValue(1, row1, &randVal21);
+        tablet2.addValue(1, row2, &randVal22);
+        tablet3.addValue(1, row3, &randVal23);
 
-		bool randVal31 = (bool)(rand() % 2);
-		bool randVal32 = (bool)(rand() % 2);
-		bool randVal33 = (bool)(rand() % 2);
-		tablet1.addValue(2, row1, &randVal31);
-		tablet2.addValue(2, row2, &randVal32);
-		tablet3.addValue(2, row3, &randVal33);
+        bool randVal31 = (bool)(rand() % 2);
+        bool randVal32 = (bool)(rand() % 2);
+        bool randVal33 = (bool)(rand() % 2);
+        tablet1.addValue(2, row1, &randVal31);
+        tablet2.addValue(2, row2, &randVal32);
+        tablet3.addValue(2, row3, &randVal33);
 
         if (tablet1.rowSize == tablet1.maxRowNumber) {
             session->insertAlignedTablets(tabletMap, true);
@@ -263,15 +263,15 @@ void insertNullableTabletWithAlignedTimeseries() {
         int row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         for (int i = 0; i < 3; i++) {
-			int randVal1 = rand();
+            int randVal1 = rand();
             int64_t randVal2 = rand();
-			bool randVal3 = (bool)(rand() % 2);
+            bool randVal3 = (bool)(rand() % 2);
             if (i == 0) {
-				tablet.addValue(i, row, &randVal1);
+                tablet.addValue(i, row, &randVal1);
             } else if (i == 1) {
-				tablet.addValue(i, row, &randVal2);
+                tablet.addValue(i, row, &randVal2);
             } else {
-				tablet.addValue(i, row, &randVal3);
+                tablet.addValue(i, row, &randVal3);
             }
             // mark null value
             if (row % 3 == i) {

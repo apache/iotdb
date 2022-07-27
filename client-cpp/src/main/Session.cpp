@@ -106,26 +106,26 @@ void Tablet::createColumns() {
     for (size_t i = 0; i < schemas.size(); i++) {
         TSDataType::TSDataType dataType = schemas[i].second;
         switch (dataType) {
-			case TSDataType::BOOLEAN:
-				values[i] = new bool[maxRowNumber];
-				break;
-			case TSDataType::INT32:
-				values[i] = new int[maxRowNumber];
-				break;
-			case TSDataType::INT64:
-				values[i] = new int64_t[maxRowNumber];
-				break;
-			case TSDataType::FLOAT:
-				values[i] = new float[maxRowNumber];
-				break;
-			case TSDataType::DOUBLE:
-				values[i] = new double[maxRowNumber];
-				break;
-			case TSDataType::TEXT:
-				values[i] = new string[maxRowNumber];
-				break;
-			default:
-				throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+            case TSDataType::BOOLEAN:
+                values[i] = new bool[maxRowNumber];
+                break;
+            case TSDataType::INT32:
+                values[i] = new int[maxRowNumber];
+                break;
+            case TSDataType::INT64:
+                values[i] = new int64_t[maxRowNumber];
+                break;
+            case TSDataType::FLOAT:
+                values[i] = new float[maxRowNumber];
+                break;
+            case TSDataType::DOUBLE:
+                values[i] = new double[maxRowNumber];
+                break;
+            case TSDataType::TEXT:
+                values[i] = new string[maxRowNumber];
+                break;
+            default:
+                throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
         }
     }
 }
@@ -134,38 +134,38 @@ void Tablet::deleteColumns() {
     for (size_t i = 0; i < schemas.size(); i++) {
         TSDataType::TSDataType dataType = schemas[i].second;
         switch (dataType) {
-			case TSDataType::BOOLEAN: {
-				bool* valueBuf = (bool*)(values[i]);
-				delete[] valueBuf;
-				break;
-			}
-			case TSDataType::INT32: {
-				int* valueBuf = (int*)(values[i]);
-				delete[] valueBuf;
-				break;
-			}
-			case TSDataType::INT64: {
-				int64_t* valueBuf = (int64_t*)(values[i]);
-				delete[] valueBuf;
-				break;
-			}
-			case TSDataType::FLOAT: {
-				float* valueBuf = (float*)(values[i]);
-				delete[] valueBuf;
-				break;
-			}
-			case TSDataType::DOUBLE: {
-				double* valueBuf = (double*)(values[i]);
-				delete[] valueBuf;
-				break;
-			}
-			case TSDataType::TEXT: {
-				string* valueBuf = (string*)(values[i]);
-				delete[] valueBuf;
-				break;
-			}
-			default:
-				throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+            case TSDataType::BOOLEAN: {
+                bool* valueBuf = (bool*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            case TSDataType::INT32: {
+                int* valueBuf = (int*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            case TSDataType::INT64: {
+                int64_t* valueBuf = (int64_t*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            case TSDataType::FLOAT: {
+                float* valueBuf = (float*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            case TSDataType::DOUBLE: {
+                double* valueBuf = (double*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            case TSDataType::TEXT: {
+                string* valueBuf = (string*)(values[i]);
+                delete[] valueBuf;
+                break;
+            }
+            default:
+                throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
         }
     }
 }
@@ -173,38 +173,38 @@ void Tablet::deleteColumns() {
 void Tablet::addValue(int schemaId, int rowIndex, void* value) {
     TSDataType::TSDataType dataType = schemas[schemaId].second;
     switch (dataType) {
-		case TSDataType::BOOLEAN: {
-			bool* valueBuf = (bool*)(values[schemaId]);
-			valueBuf[rowIndex] = *((bool*)value);
-			break;
-		}
-		case TSDataType::INT32: {
-			int* valueBuf = (int*)(values[schemaId]);
-			valueBuf[rowIndex] = *((int*)value);
-			break;
-		}
-		case TSDataType::INT64: {
-			int64_t* valueBuf = (int64_t*)(values[schemaId]);
-			valueBuf[rowIndex] = *((int64_t*)value);
-			break;
-		}
-		case TSDataType::FLOAT: {
-			float* valueBuf = (float*)(values[schemaId]);
-			valueBuf[rowIndex] = *((float*)value);
-			break;
-		}
-		case TSDataType::DOUBLE: {
-			double* valueBuf = (double*)(values[schemaId]);
-			valueBuf[rowIndex] = *((double*)value);
-			break;
-		}
-		case TSDataType::TEXT: {
-			string* valueBuf = (string*)(values[schemaId]);
-			valueBuf[rowIndex] = *(string*)value;
-			break;
-		}
-		default:
-			throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+        case TSDataType::BOOLEAN: {
+            bool* valueBuf = (bool*)(values[schemaId]);
+            valueBuf[rowIndex] = *((bool*)value);
+            break;
+        }
+        case TSDataType::INT32: {
+            int* valueBuf = (int*)(values[schemaId]);
+            valueBuf[rowIndex] = *((int*)value);
+            break;
+        }
+        case TSDataType::INT64: {
+            int64_t* valueBuf = (int64_t*)(values[schemaId]);
+            valueBuf[rowIndex] = *((int64_t*)value);
+            break;
+        }
+        case TSDataType::FLOAT: {
+            float* valueBuf = (float*)(values[schemaId]);
+            valueBuf[rowIndex] = *((float*)value);
+            break;
+        }
+        case TSDataType::DOUBLE: {
+            double* valueBuf = (double*)(values[schemaId]);
+            valueBuf[rowIndex] = *((double*)value);
+            break;
+        }
+        case TSDataType::TEXT: {
+            string* valueBuf = (string*)(values[schemaId]);
+            valueBuf[rowIndex] = *(string*)value;
+            break;
+        }
+        default:
+            throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
     }
 }
 
@@ -224,32 +224,32 @@ int Tablet::getValueByteSize() {
     int valueOccupation = 0;
     for (size_t i = 0; i < schemas.size(); i++) {
         switch (schemas[i].second) {
-			case TSDataType::BOOLEAN:
-				valueOccupation += rowSize;
-				break;
-			case TSDataType::INT32:
-				valueOccupation += rowSize * 4;
-				break;
-			case TSDataType::INT64:
-				valueOccupation += rowSize * 8;
-				break;
-			case TSDataType::FLOAT:
-				valueOccupation += rowSize * 4;
-				break;
-			case TSDataType::DOUBLE:
-				valueOccupation += rowSize * 8;
-				break;
-			case TSDataType::TEXT: {
-				valueOccupation += rowSize * 4;
-				string* valueBuf = (string*)(values[i]);
-				for (size_t j = 0; j < rowSize; j++) {
-					valueOccupation += (int)(valueBuf[j].size());
-				}
-				break;
-			}
-			default:
-				throw UnSupportedDataTypeException(
-					string("Data type ") + to_string(schemas[i].second) + " is not supported.");
+            case TSDataType::BOOLEAN:
+                valueOccupation += rowSize;
+                break;
+            case TSDataType::INT32:
+                valueOccupation += rowSize * 4;
+                break;
+            case TSDataType::INT64:
+                valueOccupation += rowSize * 8;
+                break;
+            case TSDataType::FLOAT:
+                valueOccupation += rowSize * 4;
+                break;
+            case TSDataType::DOUBLE:
+                valueOccupation += rowSize * 8;
+                break;
+            case TSDataType::TEXT: {
+                valueOccupation += rowSize * 4;
+                string* valueBuf = (string*)(values[i]);
+                for (size_t j = 0; j < rowSize; j++) {
+                    valueOccupation += (int)(valueBuf[j].size());
+                }
+                break;
+            }
+            default:
+                throw UnSupportedDataTypeException(
+                    string("Data type ") + to_string(schemas[i].second) + " is not supported.");
         }
     }
     return valueOccupation;
@@ -273,75 +273,75 @@ string SessionUtils::getValue(const Tablet &tablet) {
         TSDataType::TSDataType dataType = tablet.schemas[i].second;
         BitMap* bitMap = tablet.bitMaps[i].get();
         switch (dataType) { 
-			case TSDataType::BOOLEAN: {
-				bool* valueBuf = (bool*)(tablet.values[i]);
-				for (int index = 0; index < tablet.rowSize; index++) {
-					if (!bitMap->isMarked(index)) {
-						valueBuffer.putBool(valueBuf[index]);
-					}
-					else {
-						valueBuffer.putBool(false);
-					}
-				}
-				break;
-			}
-			case TSDataType::INT32: {
-				int* valueBuf = (int*)(tablet.values[i]);
-				for (int index = 0; index < tablet.rowSize; index++) {
-					if (!bitMap->isMarked(index)) {
-						valueBuffer.putInt(valueBuf[index]);
-					}
-					else {
-						valueBuffer.putInt((numeric_limits<int>::min)());
-					}
-				}
-				break;
-			}
-			case TSDataType::INT64: {
-				int64_t* valueBuf = (int64_t*)(tablet.values[i]);
-				for (int index = 0; index < tablet.rowSize; index++) {
-					if (!bitMap->isMarked(index)) {
-						valueBuffer.putLong(valueBuf[index]);
-					}
-					else {
-						valueBuffer.putLong((numeric_limits<int64_t>::min)());
-					}
-				}
-				break;
-			}
-			case TSDataType::FLOAT: {
-				float* valueBuf = (float*)(tablet.values[i]);
-				for (int index = 0; index < tablet.rowSize; index++) {
-					if (!bitMap->isMarked(index)) {
-						valueBuffer.putFloat(valueBuf[index]);
-					}
-					else {
-						valueBuffer.putFloat((numeric_limits<float>::min)());
-					}
-				}
-				break;
-			}
-			case TSDataType::DOUBLE: {
-				double* valueBuf = (double*)(tablet.values[i]);
-				for (int index = 0; index < tablet.rowSize; index++) {
-					if (!bitMap->isMarked(index)) {
-						valueBuffer.putDouble(valueBuf[index]);
-					}
-					else {
-						valueBuffer.putDouble((numeric_limits<double>::min)());
-					}
-				}
-				break;
-			}
-			case TSDataType::TEXT: {
-				string* valueBuf = (string*)(tablet.values[i]);
-				for (int index = 0; index < tablet.rowSize; index++) {
-					valueBuffer.putString(valueBuf[index]);
-				}
-				break;
-			}
-			default:
-				throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+            case TSDataType::BOOLEAN: {
+                bool* valueBuf = (bool*)(tablet.values[i]);
+                for (int index = 0; index < tablet.rowSize; index++) {
+                    if (!bitMap->isMarked(index)) {
+                        valueBuffer.putBool(valueBuf[index]);
+                    }
+                    else {
+                        valueBuffer.putBool(false);
+                    }
+                }
+                break;
+            }
+            case TSDataType::INT32: {
+                int* valueBuf = (int*)(tablet.values[i]);
+                for (int index = 0; index < tablet.rowSize; index++) {
+                    if (!bitMap->isMarked(index)) {
+                        valueBuffer.putInt(valueBuf[index]);
+                    }
+                    else {
+                        valueBuffer.putInt((numeric_limits<int>::min)());
+                    }
+                }
+                break;
+            }
+            case TSDataType::INT64: {
+                int64_t* valueBuf = (int64_t*)(tablet.values[i]);
+                for (int index = 0; index < tablet.rowSize; index++) {
+                    if (!bitMap->isMarked(index)) {
+                        valueBuffer.putLong(valueBuf[index]);
+                    }
+                    else {
+                        valueBuffer.putLong((numeric_limits<int64_t>::min)());
+                    }
+                }
+                break;
+            }
+            case TSDataType::FLOAT: {
+                float* valueBuf = (float*)(tablet.values[i]);
+                for (int index = 0; index < tablet.rowSize; index++) {
+                    if (!bitMap->isMarked(index)) {
+                        valueBuffer.putFloat(valueBuf[index]);
+                    }
+                    else {
+                        valueBuffer.putFloat((numeric_limits<float>::min)());
+                    }
+                }
+                break;
+            }
+            case TSDataType::DOUBLE: {
+                double* valueBuf = (double*)(tablet.values[i]);
+                for (int index = 0; index < tablet.rowSize; index++) {
+                    if (!bitMap->isMarked(index)) {
+                        valueBuffer.putDouble(valueBuf[index]);
+                    }
+                    else {
+                        valueBuffer.putDouble((numeric_limits<double>::min)());
+                    }
+                }
+                break;
+            }
+            case TSDataType::TEXT: {
+                string* valueBuf = (string*)(tablet.values[i]);
+                for (int index = 0; index < tablet.rowSize; index++) {
+                    valueBuffer.putString(valueBuf[index]);
+                }
+                break;
+            }
+            default:
+                throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
         }
     }
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
@@ -626,32 +626,32 @@ void Session::sortTablet(Tablet& tablet) {
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
         TSDataType::TSDataType dataType = tablet.schemas[i].second;
         switch (dataType) {
-			case TSDataType::BOOLEAN: {
-				sortValuesList((bool*)(tablet.values[i]), index, tablet.rowSize);
-				break;
-			}
-			case TSDataType::INT32: {
-				sortValuesList((int*)(tablet.values[i]), index, tablet.rowSize);
-				break;
-			}
-			case TSDataType::INT64: {
-				sortValuesList((int64_t*)(tablet.values[i]), index, tablet.rowSize);
-				break;
-			}
-			case TSDataType::FLOAT: {
-				sortValuesList((float*)(tablet.values[i]), index, tablet.rowSize);
-				break;
-			}
-			case TSDataType::DOUBLE: {
-				sortValuesList((double*)(tablet.values[i]), index, tablet.rowSize);
-				break;
-			}
-			case TSDataType::TEXT: {
-				sortValuesList((string*)(tablet.values[i]), index, tablet.rowSize);
-				break;
-			}
-			default:
-				throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+            case TSDataType::BOOLEAN: {
+                sortValuesList((bool*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            case TSDataType::INT32: {
+                sortValuesList((int*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            case TSDataType::INT64: {
+                sortValuesList((int64_t*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            case TSDataType::FLOAT: {
+                sortValuesList((float*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            case TSDataType::DOUBLE: {
+                sortValuesList((double*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            case TSDataType::TEXT: {
+                sortValuesList((string*)(tablet.values[i]), index, tablet.rowSize);
+                break;
+            }
+            default:
+                throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
         }
     }
 
@@ -710,7 +710,7 @@ Session::putValuesIntoBuffer(const vector<TSDataType::TSDataType> &types, const 
                 appendValues(buf, values[i], sizeof(double));
                 break;
             case TSDataType::TEXT: {
-				int len = (int)strlen(values[i]);
+                int len = (int)strlen(values[i]);
                 appendValues(buf, (char *) (&len), sizeof(int));
                 // no need to change the byte order of string value
                 buf.append(values[i], len);
