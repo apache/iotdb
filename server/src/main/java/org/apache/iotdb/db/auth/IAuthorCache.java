@@ -19,23 +19,17 @@
 
 package org.apache.iotdb.db.auth;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
 
-import com.google.common.util.concurrent.SettableFuture;
+public interface IAuthorCache {
+  User getUserCache(String userName);
 
-import java.util.List;
+  Role getRoleCache(String roleName);
 
-public interface IAuthorityFetcher {
+  void putUserCache(String userName, User user);
 
-  TSStatus checkUser(String username, String password);
+  void putRoleCache(String roleName, Role role);
 
-  TSStatus checkUserPrivileges(String username, List<String> allPath, int permission);
-
-  SettableFuture<ConfigTaskResult> operatePermission(AuthorStatement authorStatement);
-
-  SettableFuture<ConfigTaskResult> queryPermission(AuthorStatement authorStatement);
-
-  IAuthorCache getAuthorCache();
+  boolean invalidateCache(String userName, String roleName);
 }
