@@ -1043,7 +1043,7 @@ public class TsFileProcessor {
           }
         } else {
           logger.error(
-              "{}: {} meet error when flushing a memtable, change system mode to ERROR",
+              "{}: {} meet error when flushing a memtable, change system mode to error",
               storageGroupName,
               tsFileResource.getTsFile().getName(),
               e);
@@ -1176,7 +1176,7 @@ public class TsFileProcessor {
           continue;
         } else {
           logger.error(
-              "{} meet error when flush FileMetadata to {}, change system mode to read-only",
+              "{} meet error when flush FileMetadata to {}, change system mode to error",
               storageGroupName,
               tsFileResource.getTsFile().getAbsolutePath(),
               e);

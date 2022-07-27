@@ -115,7 +115,7 @@ public class MLogWriter implements AutoCloseable {
           retryCnt++;
         } else {
           logger.error(
-              "MLog {} sync failed, change system mode to read-only", logFile.getAbsoluteFile(), e);
+              "MLog {} sync failed, change system mode to error", logFile.getAbsoluteFile(), e);
           IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
           break;
         }
