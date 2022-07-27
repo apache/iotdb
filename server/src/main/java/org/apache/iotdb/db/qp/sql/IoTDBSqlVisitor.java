@@ -1975,7 +1975,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     String privilege = parsePrivilege(ctx.privileges())[0];
 
     PartialPath prefixPath;
-    if (!PrivilegeType.valueOf(privilege).isPathRelevant()) {
+    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
       prefixPath = new PartialPath(path);
     } else {
