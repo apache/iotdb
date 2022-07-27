@@ -48,7 +48,12 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.influxdb.dto.QueryResult;
 
-import java.util.*;
+import java.util.Map;
+import java.util.List;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Arrays;
+
 
 public abstract class AbstractQueryHandler {
 
