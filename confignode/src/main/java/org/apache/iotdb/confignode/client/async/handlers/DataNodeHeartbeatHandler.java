@@ -53,6 +53,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
   @Override
   public void onComplete(THeartbeatResp heartbeatResp) {
+    LOGGER.info("[receiveHeartbeat] {}", heartbeatResp);
+
     long receiveTime = System.currentTimeMillis();
 
     // Update NodeCache

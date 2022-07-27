@@ -62,7 +62,6 @@ public class RegionGroupCache implements IRegionGroupCache {
       // And un-sequential HeartbeatSamples will be discarded.
       if (samples.size() == 0
           || samples.getLast().getSendTimestamp() < newHeartbeatSample.getSendTimestamp()) {
-        LOGGER.info("[cacheRegionHeartbeat] {}", newHeartbeatSample);
         samples.add(newHeartbeatSample);
       }
 
@@ -98,13 +97,14 @@ public class RegionGroupCache implements IRegionGroupCache {
       }
     }
 
-    LOGGER.info(
-        "[updateLoadStatistic] {}, originVersion: {}, originLeader: {}, updateVersion: {}, updateLeader: {}",
-        middleValue,
-        versionTimestamp.get(),
-        originLeaderDataNodeId,
-        updateVersion,
-        updateLeaderDataNodeId);
+    //    LOGGER.info(
+    //        "[updateLoadStatistic] {}, originVersion: {}, originLeader: {}, updateVersion: {},
+    // updateLeader: {}",
+    //        middleValue,
+    //        versionTimestamp.get(),
+    //        originLeaderDataNodeId,
+    //        updateVersion,
+    //        updateLeaderDataNodeId);
 
     if (updateVersion > versionTimestamp.get()) {
       // Only update when the leadership information is latest
