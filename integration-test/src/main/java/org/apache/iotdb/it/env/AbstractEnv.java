@@ -60,6 +60,7 @@ public abstract class AbstractEnv implements BaseEnv {
   protected List<DataNodeWrapper> dataNodeWrapperList = Collections.emptyList();
   private final Random rand = new Random();
   protected String testMethodName = null;
+  private final List<Connection> connectionList = new ArrayList<>();
 
   protected void initEnvironment(int configNodesNum, int dataNodesNum) {
     this.configNodeWrapperList = new ArrayList<>();
@@ -140,6 +141,16 @@ public abstract class AbstractEnv implements BaseEnv {
       }
     }
     testMethodName = null;
+
+    for (Connection connection : this.connectionList) {
+      try {
+        if (!connection.isClosed()) {
+          connection.close();
+        }
+      } catch (SQLException e) {
+        throw new RuntimeException(e);
+      }
+    }
   }
 
   public String getTestClassName() {
@@ -249,11 +260,6 @@ public abstract class AbstractEnv implements BaseEnv {
     return cmd + ports.stream().map(String::valueOf).collect(Collectors.joining("|")) + "\"";
   }
 
-  @Override
-  public Connection getConnection() throws SQLException {
-    return new ClusterTestConnection(getWriteConnection(null), getReadConnections(null));
-  }
-
   private Connection getConnection(String endpoint, int queryTimeout) throws SQLException {
     IoTDBConnection connection =
         (IoTDBConnection)
@@ -262,17 +268,26 @@ public abstract class AbstractEnv implements BaseEnv {
                 System.getProperty("User", "root"),
                 System.getProperty("Password", "root"));
     connection.setQueryTimeout(queryTimeout);
-
+    this.connectionList.add(connection);
     return connection;
   }
 
   @Override
+  public Connection getConnection() throws SQLException {
+    return getConnection(null);
+  }
+
+  @Override
   public Connection getConnection(Constant.Version version) throws SQLException {
+    Connection connection;
     if (System.getProperty("ReadAndVerifyWithMultiNode", "true").equalsIgnoreCase("true")) {
-      return new ClusterTestConnection(getWriteConnection(version), getReadConnections(version));
+      connection =
+          new ClusterTestConnection(getWriteConnection(version), getReadConnections(version));
     } else {
-      return getWriteConnection(version).getUnderlyingConnecton();
+      connection = getWriteConnection(version).getUnderlyingConnecton();
     }
+    this.connectionList.add(connection);
+    return connection;
   }
 
   protected NodeConnection getWriteConnection(Constant.Version version) throws SQLException {

@@ -421,6 +421,8 @@ public class IoTDBConnection implements Connection {
       } catch (TException | IoTDBSQLException e) {
         throw new SQLClientInfoException("Set time_zone error: ", null, e);
       }
+    } else if (name.equalsIgnoreCase("result_set_disordered")) {
+      // Do nothing.
     } else {
       HashMap<String, ClientInfoStatus> hashMap = new HashMap<>();
       hashMap.put(name, ClientInfoStatus.REASON_UNKNOWN_PROPERTY);

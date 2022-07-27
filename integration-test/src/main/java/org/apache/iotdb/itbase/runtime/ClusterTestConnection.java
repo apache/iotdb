@@ -35,6 +35,7 @@ import java.sql.SQLXML;
 import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -46,6 +47,8 @@ public class ClusterTestConnection implements Connection {
   private final NodeConnection writeConnection;
   private final List<NodeConnection> readConnections;
   private boolean isClosed;
+  private boolean resultSetDisordered;
+  private final List<Statement> statementList = new ArrayList<>();
 
   public ClusterTestConnection(
       NodeConnection writeConnection, List<NodeConnection> readConnections) {
@@ -56,7 +59,10 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public Statement createStatement() throws SQLException {
-    return new ClusterTestStatement(writeConnection, readConnections);
+    Statement statement =
+        new ClusterTestStatement(writeConnection, readConnections, resultSetDisordered);
+    this.statementList.add(statement);
+    return statement;
   }
 
   @Override
@@ -95,12 +101,18 @@ public class ClusterTestConnection implements Connection {
   }
 
   @Override
-  public void close() {
+  public void close() throws SQLException {
     writeConnection.close();
     for (NodeConnection conn : readConnections) {
       conn.close();
     }
     isClosed = true;
+
+    for (Statement statement : this.statementList) {
+      if (!statement.isClosed()) {
+        statement.close();
+      }
+    }
   }
 
   @Override
@@ -269,9 +281,13 @@ public class ClusterTestConnection implements Connection {
 
   @Override
   public void setClientInfo(String name, String value) throws SQLClientInfoException {
-    writeConnection.getUnderlyingConnecton().setClientInfo(name, value);
-    for (NodeConnection conn : readConnections) {
-      conn.getUnderlyingConnecton().setClientInfo(name, value);
+    if (name.equalsIgnoreCase("result_set_disordered")) {
+      this.resultSetDisordered = Boolean.parseBoolean(value);
+    } else {
+      writeConnection.getUnderlyingConnecton().setClientInfo(name, value);
+      for (NodeConnection conn : readConnections) {
+        conn.getUnderlyingConnecton().setClientInfo(name, value);
+      }
     }
   }
 
