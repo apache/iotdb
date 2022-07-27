@@ -114,7 +114,7 @@ public class NodeInfo implements SnapshotProcessor {
               Tag.NAME.toString(),
               "total",
               Tag.STATUS.toString(),
-              "registed");
+              "registered");
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
@@ -125,7 +125,7 @@ public class NodeInfo implements SnapshotProcessor {
               Tag.NAME.toString(),
               "total",
               Tag.STATUS.toString(),
-              "registed");
+              "registered");
     }
   }
 

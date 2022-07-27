@@ -448,24 +448,6 @@ public class LoadManager {
     if(allConfigNodes == null){
       return 0;
     }
-    for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
-      String name =
-              "EndPoint("
-                      + configNodeLocation.getInternalEndPoint().ip
-                      + ":"
-                      + configNodeLocation.getInternalEndPoint().port
-                      + ")";
-      MetricsService.getInstance()
-              .getMetricManager()
-              .getOrCreateGauge(
-                      Metric.CONFIG_NODE.toString(),
-                      MetricLevel.IMPORTANT,
-                      Tag.NAME.toString(),
-                      name,
-                      Tag.STATUS.toString(),
-                      "1:online,0:unkonwn")
-              .set(1);
-    }
     return allConfigNodes.size();
   }
 
@@ -473,25 +455,6 @@ public class LoadManager {
     List<TDataNodeConfiguration> allDataNodes = getOnlineDataNodes(-1);
     if(allDataNodes == null){
       return 0;
-    }
-    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
-      TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
-      String name =
-              "EndPoint("
-                      + dataNodeLocation.getClientRpcEndPoint().ip
-                      + ":"
-                      + dataNodeLocation.getClientRpcEndPoint().port
-                      + ")";
-      MetricsService.getInstance()
-              .getMetricManager()
-              .getOrCreateGauge(
-                      Metric.DATA_NODE.toString(),
-                      MetricLevel.IMPORTANT,
-                      Tag.NAME.toString(),
-                      name,
-                      Tag.STATUS.toString(),
-                      "1:online,0:unkonwn")
-              .set(1);
     }
     return allDataNodes.size();
   }
@@ -501,24 +464,6 @@ public class LoadManager {
     if(allConfigNodes == null){
       return 0;
     }
-    for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
-      String name =
-              "EndPoint("
-                      + configNodeLocation.getInternalEndPoint().ip
-                      + ":"
-                      + configNodeLocation.getInternalEndPoint().port
-                      + ")";
-      MetricsService.getInstance()
-              .getMetricManager()
-              .getOrCreateGauge(
-                      Metric.CONFIG_NODE.toString(),
-                      MetricLevel.IMPORTANT,
-                      Tag.NAME.toString(),
-                      name,
-                      Tag.STATUS.toString(),
-                      "1:online,0:unkonwn")
-              .set(0);
-    }
     return allConfigNodes.size();
   }
 
@@ -526,25 +471,6 @@ public class LoadManager {
     List<TDataNodeConfiguration> allDataNodes = getUnknownDataNodes(-1);
     if(allDataNodes == null){
       return 0;
-    }
-    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
-      TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
-      String name =
-              "EndPoint("
-                      + dataNodeLocation.getClientRpcEndPoint().ip
-                      + ":"
-                      + dataNodeLocation.getClientRpcEndPoint().port
-                      + ")";
-      MetricsService.getInstance()
-              .getMetricManager()
-              .getOrCreateGauge(
-                      Metric.DATA_NODE.toString(),
-                      MetricLevel.IMPORTANT,
-                      Tag.NAME.toString(),
-                      name,
-                      Tag.STATUS.toString(),
-                      "1:online,0:unkonwn")
-              .set(0);
     }
     return allDataNodes.size();
   }
@@ -627,47 +553,6 @@ public class LoadManager {
                     "total",
                     Tag.STATUS.toString(),
                     "unknown");
-
-    List<TConfigNodeLocation> allConfigNodes = getOnlineConfigNodes();
-    allConfigNodes.addAll(getUnknownConfigNodes());
-
-    List<TDataNodeConfiguration> allDataNodes = getOnlineDataNodes(-1);
-    allDataNodes.addAll(getUnknownDataNodes(-1));
-
-    for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
-      String name =
-              "EndPoint("
-                      + configNodeLocation.getInternalEndPoint().ip
-                      + ":"
-                      + configNodeLocation.getInternalEndPoint().port
-                      + ")";
-      MetricsService.getInstance()
-              .getMetricManager()
-              .removeGauge(
-                      Metric.CONFIG_NODE.toString(),
-                      Tag.NAME.toString(),
-                      name,
-                      Tag.STATUS.toString(),
-                      "1:online,0:unkonwn");
-    }
-
-    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
-      TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
-      String name =
-              "EndPoint("
-                      + dataNodeLocation.getClientRpcEndPoint().ip
-                      + ":"
-                      + dataNodeLocation.getClientRpcEndPoint().port
-                      + ")";
-      MetricsService.getInstance()
-              .getMetricManager()
-              .removeGauge(
-                      Metric.DATA_NODE.toString(),
-                      Tag.NAME.toString(),
-                      name,
-                      Tag.STATUS.toString(),
-                      "1:online,0:unkonwn");
-    }
   }
 
 
