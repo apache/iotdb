@@ -140,7 +140,13 @@ public class SchemaCountOperatorTest {
           .setDriverContext(new SchemaDriverContext(fragmentInstanceContext, schemaRegion));
       TimeSeriesCountOperator timeSeriesCountOperator =
           new TimeSeriesCountOperator(
-              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), partialPath, true);
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              partialPath,
+              true,
+              null,
+              null,
+              false);
       TsBlock tsBlock = null;
       while (timeSeriesCountOperator.hasNext()) {
         tsBlock = timeSeriesCountOperator.next();
@@ -152,6 +158,9 @@ public class SchemaCountOperatorTest {
               planNodeId,
               fragmentInstanceContext.getOperatorContexts().get(0),
               new PartialPath(SCHEMA_COUNT_OPERATOR_TEST_SG + ".device1.*"),
+              false,
+              null,
+              null,
               false);
       tsBlock = timeSeriesCountOperator2.next();
       assertFalse(timeSeriesCountOperator2.hasNext());
@@ -195,7 +204,10 @@ public class SchemaCountOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(0),
               partialPath,
               true,
-              2);
+              2,
+              null,
+              null,
+              false);
       TsBlock tsBlock = null;
       while (timeSeriesCountOperator.hasNext()) {
         tsBlock = timeSeriesCountOperator.next();
@@ -215,7 +227,10 @@ public class SchemaCountOperatorTest {
               fragmentInstanceContext.getOperatorContexts().get(0),
               partialPath,
               true,
-              1);
+              1,
+              null,
+              null,
+              false);
       while (timeSeriesCountOperator2.hasNext()) {
         tsBlock = timeSeriesCountOperator2.next();
       }

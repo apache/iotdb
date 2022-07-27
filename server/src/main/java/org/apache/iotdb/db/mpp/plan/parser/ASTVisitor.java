@@ -190,7 +190,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** Data Definition Language (DDL) */
 
   // Create Timeseries ========================================================================
-
   @Override
   public Statement visitCreateNonAlignedTimeseries(
       IoTDBSqlParser.CreateNonAlignedTimeseriesContext ctx) {
@@ -522,8 +521,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new ShowTimeSeriesStatement(
               new PartialPath(SQLConstant.getSingleRootArray()), orderByHeat);
     }
-    if (ctx.showWhereClause() != null) {
-      parseShowWhereClause(ctx.showWhereClause(), showTimeSeriesStatement);
+    if (ctx.tagWhereClause() != null) {
+      parseTagWhereClause(ctx.tagWhereClause(), showTimeSeriesStatement);
     }
     if (ctx.limitClause() != null) {
       parseLimitClause(ctx.limitClause(), showTimeSeriesStatement);
@@ -531,19 +530,34 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return showTimeSeriesStatement;
   }
 
-  private void parseShowWhereClause(
-      IoTDBSqlParser.ShowWhereClauseContext ctx, ShowTimeSeriesStatement statement) {
+  private void parseTagWhereClause(IoTDBSqlParser.TagWhereClauseContext ctx, Statement statement) {
     IoTDBSqlParser.AttributeValueContext attributeValueContext;
+    String key;
+    String value;
+    boolean isContains;
     if (ctx.containsExpression() != null) {
-      statement.setContains(true);
+      isContains = true;
       attributeValueContext = ctx.containsExpression().attributeValue();
-      statement.setKey(parseAttributeKey(ctx.containsExpression().attributeKey()));
+      key = parseAttributeKey(ctx.containsExpression().attributeKey());
     } else {
-      statement.setContains(false);
+      isContains = false;
       attributeValueContext = ctx.attributePair().attributeValue();
-      statement.setKey(parseAttributeKey(ctx.attributePair().attributeKey()));
+      key = parseAttributeKey(ctx.attributePair().attributeKey());
     }
-    statement.setValue(parseAttributeValue(attributeValueContext));
+    value = parseAttributeValue(attributeValueContext);
+    if (statement instanceof ShowTimeSeriesStatement) {
+      ((ShowTimeSeriesStatement) statement).setContains(isContains);
+      ((ShowTimeSeriesStatement) statement).setKey(key);
+      ((ShowTimeSeriesStatement) statement).setValue(value);
+    } else if (statement instanceof CountTimeSeriesStatement) {
+      ((CountTimeSeriesStatement) statement).setContains(isContains);
+      ((CountTimeSeriesStatement) statement).setKey(key);
+      ((CountTimeSeriesStatement) statement).setValue(value);
+    } else if (statement instanceof CountLevelTimeSeriesStatement) {
+      ((CountLevelTimeSeriesStatement) statement).setContains(isContains);
+      ((CountLevelTimeSeriesStatement) statement).setKey(key);
+      ((CountLevelTimeSeriesStatement) statement).setValue(value);
+    }
   }
 
   // Show Storage Group
@@ -594,6 +608,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Count TimeSeries ========================================================================
   @Override
   public Statement visitCountTimeseries(CountTimeseriesContext ctx) {
+    Statement statement;
     PartialPath path;
     if (ctx.prefixPath() != null) {
       path = parsePrefixPath(ctx.prefixPath());
@@ -602,9 +617,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.INTEGER_LITERAL() != null) {
       int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
-      return new CountLevelTimeSeriesStatement(path, level);
+      statement = new CountLevelTimeSeriesStatement(path, level);
+    } else {
+      statement = new CountTimeSeriesStatement(path);
     }
-    return new CountTimeSeriesStatement(path);
+    if (ctx.tagWhereClause() != null) {
+      parseTagWhereClause(ctx.tagWhereClause(), statement);
+    }
+    return statement;
   }
 
   // Count Nodes ========================================================================

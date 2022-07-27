@@ -261,11 +261,7 @@ showDevices
 
 // Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
-    ;
-
-showWhereClause
-    : WHERE (attributePair | containsExpression)
+    : SHOW LATEST? TIMESERIES prefixPath? tagWhereClause? limitClause?
     ;
 
 // Show Child Paths
@@ -350,12 +346,16 @@ countDevices
 
 // Count Timeseries
 countTimeseries
-    : COUNT TIMESERIES prefixPath? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
+    : COUNT TIMESERIES prefixPath? tagWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
     ;
 
 // Count Nodes
 countNodes
     : COUNT NODES prefixPath LEVEL operator_eq INTEGER_LITERAL
+    ;
+
+tagWhereClause
+    : WHERE (attributePair | containsExpression)
     ;
 
 

@@ -866,6 +866,17 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
   }
 
+  @Override
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
+      throws MetadataException {
+    return mtree.getAllTimeseriesCount(
+        pathPattern,
+        isPrefixMatch,
+        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
+        true);
+  }
+
   /**
    * To calculate the count of devices for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
@@ -898,6 +909,23 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
     return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
+  }
+
+  @Override
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      String key,
+      String value,
+      boolean isContains)
+      throws MetadataException {
+    return mtree.getMeasurementCountGroupByLevel(
+        pathPattern,
+        level,
+        isPrefixMatch,
+        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
+        true);
   }
 
   // endregion
