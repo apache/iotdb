@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -446,7 +447,10 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
         sourceFiles.add(resource);
         CompactionFileGeneratorUtils.writeTsFile(
-            fullPathSetWithDeleted, chunkPagePointsNum, i * 1500L, resource);
+            fullPathSetWithDeleted, chunkPagePointsNum, i * 2000L, resource);
+        Map<String, Pair<Long, Long>> deletionMap = new HashMap<>();
+        deletionMap.put(deletedPath, new Pair<>(i * 2000L, (i + 1) * 2000L));
+        CompactionFileGeneratorUtils.generateMods(deletionMap, resource, false);
       }
       Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
