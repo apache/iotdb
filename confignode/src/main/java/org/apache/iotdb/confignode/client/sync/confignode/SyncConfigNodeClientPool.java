@@ -104,6 +104,11 @@ public class SyncConfigNodeClientPool {
       }
     }
     LOGGER.error("{} failed on ConfigNode {}", requestType, endPoint, lastException);
+    if (requestType == ConfigNodeRequestType.REGISTER_CONFIG_NODE) {
+      return new TConfigNodeRegisterResp(
+          new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
+              .setMessage("All retry failed due to" + lastException.getMessage()));
+    }
     return new TSStatus(TSStatusCode.ALL_RETRY_FAILED.getStatusCode())
         .setMessage("All retry failed due to" + lastException.getMessage());
   }
