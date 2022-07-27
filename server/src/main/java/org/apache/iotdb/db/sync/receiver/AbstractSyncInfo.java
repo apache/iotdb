@@ -82,11 +82,11 @@ public abstract class AbstractSyncInfo {
     }
   }
 
-  protected abstract void afterStartPipe(String pipeName, String remoteIp, long createTime);
+  protected abstract void afterStartPipe(String pipeName, long createTime);
 
-  protected abstract void afterStopPipe(String pipeName, String remoteIp, long createTime);
+  protected abstract void afterStopPipe(String pipeName, long createTime);
 
-  protected abstract void afterDropPipe(String pipeName, String remoteIp, long createTime);
+  protected abstract void afterDropPipe(String pipeName, long createTime);
 
   public void close() throws IOException {
     syncLogger.close();
@@ -95,13 +95,13 @@ public abstract class AbstractSyncInfo {
   // region Implement of PipeServer
 
   public void startServer() throws IOException {
-    syncLogger.startPipeServer();
     pipeServerEnable = true;
+    syncLogger.startPipeServer();
   }
 
   public void stopServer() throws IOException {
-    syncLogger.stopPipeServer();
     pipeServerEnable = false;
+    syncLogger.stopPipeServer();
   }
 
   // endregion
@@ -176,6 +176,22 @@ public abstract class AbstractSyncInfo {
   public void operatePipe(String pipeName, Operator.OperatorType operatorType)
       throws PipeException, IOException {
     checkRunningPipeExistAndName(pipeName);
+    switch (operatorType) {
+      case START_PIPE:
+        //        runningPipe.start();
+        afterStartPipe(runningPipe.getName(), runningPipe.getCreateTime());
+        break;
+      case STOP_PIPE:
+        //        runningPipe.stop();
+        afterStopPipe(runningPipe.getName(), runningPipe.getCreateTime());
+        break;
+      case DROP_PIPE:
+        //        runningPipe.drop();
+        afterDropPipe(runningPipe.getName(), runningPipe.getCreateTime());
+        break;
+      default:
+        throw new PipeException("Unknown operatorType " + operatorType);
+    }
     syncLogger.operatePipe(pipeName, operatorType);
   }
 
