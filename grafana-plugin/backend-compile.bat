@@ -22,7 +22,6 @@ for /F %%i in ('cd') do ( set pwdpath=%%i)
 for /F %%i in ('go env GOPATH') do ( set gopath=%%i)
 %gopath:~0,2%
 cd /d %gopath%
-go env
 go env -w GOPROXY=https://goproxy.cn
 go get -u github.com/grafana/grafana-plugin-sdk-go
 go mod tidy
