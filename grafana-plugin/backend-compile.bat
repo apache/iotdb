@@ -30,6 +30,4 @@ git clone https://github.com/magefile/mage
 cd mage
 go run bootstrap.go
 cd /d %pwdpath%
-dir
 %gopath%\bin\mage -v
-dir
