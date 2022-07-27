@@ -27,12 +27,12 @@ public abstract class WrappedRunnable implements Runnable {
   public final void run() {
     try {
       runMayThrow();
-    } catch (Exception e) {
+    } catch (Throwable e) {
       throw ScheduledExecutorUtil.propagate(e);
     }
   }
 
-  public abstract void runMayThrow() throws Exception;
+  public abstract void runMayThrow() throws Throwable;
 
   public static Runnable wrap(Runnable runnable) {
     if (runnable instanceof WrappedRunnable) {
