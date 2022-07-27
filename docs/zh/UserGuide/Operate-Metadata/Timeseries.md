@@ -271,10 +271,10 @@ ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=
 
 * 使用标签作为过滤条件查询时间序列
 ```
-* SHOW TIMESERIES (<`PathPattern`>)? WhereClause
+SHOW TIMESERIES (<`PathPattern`>)? WhereClause
 ```
 
-  返回给定路径的下的所有满足条件的时间序列信息，SQL 语句如下所示：
+返回给定路径的下的所有满足条件的时间序列信息，SQL 语句如下所示：
 
 ```
 ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
@@ -301,6 +301,52 @@ It costs 0.005s
 +------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
 Total line number = 1
 It costs 0.004s
+```
+
+- 使用标签作为过滤条件统计时间序列数量
+
+```
+COUNT TIMESERIES (<`PathPattern`>)? WhereClause
+COUNT TIMESERIES (<`PathPattern`>)? WhereClause GROUP BY LEVEL=<INTEGER>
+```
+
+返回给定路径的下的所有满足条件的时间序列的数量，SQL 语句如下所示：
+
+```
+count timeseries
+count timeseries root.** where unit = c
+count timeseries root.** where unit = c group by level = 2
+```
+
+执行结果分别为：
+
+```
+IoTDB> count timeseries
++-----------------+
+|count(timeseries)|
++-----------------+
+|                6|
++-----------------+
+Total line number = 1
+It costs 0.019s
+IoTDB> count timeseries root.** where unit = c
++-----------------+
+|count(timeseries)|
++-----------------+
+|                2|
++-----------------+
+Total line number = 1
+It costs 0.020s
+IoTDB> count timeseries root.** where unit = c group by level = 2
++--------------+-----------------+
+|        column|count(timeseries)|
++--------------+-----------------+
+|  root.ln.wf02|                2|
+|  root.ln.wf01|                0|
+|root.sgcc.wf03|                0|
++--------------+-----------------+
+Total line number = 3
+It costs 0.011s
 ```
 
 > 注意，现在我们只支持一个查询条件，要么是等值条件查询，要么是包含条件查询。当然 where 子句中涉及的必须是标签值，而不能是属性值。

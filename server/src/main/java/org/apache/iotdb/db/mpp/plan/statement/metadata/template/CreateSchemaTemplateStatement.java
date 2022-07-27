@@ -94,7 +94,7 @@ public class CreateSchemaTemplateStatement extends Statement implements IConfigS
     this.alignedDeviceId = new HashSet<>();
   }
 
-  private CreateSchemaTemplateStatement(
+  public CreateSchemaTemplateStatement(
       String name,
       List<List<String>> measurements,
       List<List<TSDataType>> dataTypes,

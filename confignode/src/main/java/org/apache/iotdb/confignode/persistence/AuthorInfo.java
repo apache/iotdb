@@ -388,10 +388,8 @@ public class AuthorInfo implements SnapshotProcessor {
   public TPermissionInfoResp getUserPermissionInfo(String username) throws AuthException {
     TPermissionInfoResp result = new TPermissionInfoResp();
     TUserResp tUserResp = new TUserResp();
-    TRoleResp tRoleResp = new TRoleResp();
     Map<String, TRoleResp> tRoleRespMap = new HashMap();
     List<String> userPrivilegeList = new ArrayList<>();
-    List<String> rolePrivilegeList = new ArrayList<>();
 
     // User permission information
     User user = authorizer.getUser(username);
@@ -411,14 +409,13 @@ public class AuthorInfo implements SnapshotProcessor {
     if (user.getRoleList() != null) {
       for (String roleName : user.getRoleList()) {
         Role role = authorizer.getRole(roleName);
-        tRoleResp.setRoleName(roleName);
+        List<String> rolePrivilegeList = new ArrayList<>();
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
           rolePrivilegeList.add(pathPrivilege.getPath());
           String privilegeIdList = pathPrivilege.getPrivileges().toString();
           rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
         }
-        tRoleResp.setPrivilegeList(rolePrivilegeList);
-        tRoleRespMap.put(roleName, tRoleResp);
+        tRoleRespMap.put(roleName, new TRoleResp(roleName, rolePrivilegeList));
       }
     }
     result.setUserInfo(tUserResp);

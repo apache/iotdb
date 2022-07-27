@@ -20,10 +20,12 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Map;
 
 public class ShowTimeSeriesPlan extends ShowPlan {
 
@@ -33,6 +35,8 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private boolean orderByHeat;
+
+  private Map<Integer, Template> relatedTemplate;
 
   public ShowTimeSeriesPlan(PartialPath path) {
     super(ShowContentType.TIMESERIES, path);
@@ -94,6 +98,14 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
   public void setOrderByHeat(boolean orderByHeat) {
     this.orderByHeat = orderByHeat;
+  }
+
+  public Map<Integer, Template> getRelatedTemplate() {
+    return relatedTemplate;
+  }
+
+  public void setRelatedTemplate(Map<Integer, Template> relatedTemplate) {
+    this.relatedTemplate = relatedTemplate;
   }
 
   @Override

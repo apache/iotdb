@@ -1841,8 +1841,9 @@ public abstract class SchemaBasicTest {
       Assert.assertEquals(1, schemaProcessor.getDevicesNum(new PartialPath("root.laptop.d2")));
       Assert.assertEquals(2, schemaProcessor.getDevicesNum(new PartialPath("root.laptop.*")));
       Assert.assertEquals(2, schemaProcessor.getDevicesNum(new PartialPath("root.laptop.**")));
-      Assert.assertEquals(3, schemaProcessor.getDevicesNum(new PartialPath("root.tree.**")));
-      Assert.assertEquals(5, schemaProcessor.getDevicesNum(new PartialPath("root.**")));
+      // ignore the device in tree template for new cluster single level template dev
+      Assert.assertEquals(1, schemaProcessor.getDevicesNum(new PartialPath("root.tree.**")));
+      Assert.assertEquals(3, schemaProcessor.getDevicesNum(new PartialPath("root.**")));
 
       schemaProcessor.createTimeseries(
           new PartialPath("root.laptop.d1.a.s3"),
