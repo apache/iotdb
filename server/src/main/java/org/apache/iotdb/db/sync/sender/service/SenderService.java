@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.sync.SyncUtils;
 import org.apache.iotdb.db.sync.datasource.SyncResponseType;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
@@ -82,13 +83,10 @@ public class SenderService implements IService {
     return SenderService.SenderServiceHolder.INSTANCE;
   }
 
-  /** pipesink * */
+  // region Interfaces and Implementation of PipeSink
+
   public PipeSink getPipeSink(String name) {
     return pipeSinks.getOrDefault(name, null);
-  }
-
-  public ExtPipePluginManager getExternalPipeManager() {
-    return extPipePluginManager;
   }
 
   public boolean isPipeSinkExist(String name) {
@@ -101,21 +99,8 @@ public class SenderService implements IService {
           "There is a pipeSink named " + plan.getPipeSinkName() + " in IoTDB, please drop it.");
     }
 
-    addPipeSink(parseCreatePipeSinkPlan(plan));
+    addPipeSink(SyncUtils.parseCreatePipeSinkPlan(plan));
     senderLogger.addPipeSink(plan);
-  }
-
-  public PipeSink parseCreatePipeSinkPlan(CreatePipeSinkPlan plan) throws PipeSinkException {
-    PipeSink pipeSink;
-    try {
-      pipeSink =
-          PipeSink.PipeSinkFactory.createPipeSink(plan.getPipeSinkType(), plan.getPipeSinkName());
-    } catch (UnsupportedOperationException e) {
-      throw new PipeSinkException(e.getMessage());
-    }
-
-    pipeSink.setAttribute(plan.getPipeSinkAttributes());
-    return pipeSink;
   }
 
   // should guarantee the adding pipesink is not exist.
@@ -147,8 +132,10 @@ public class SenderService implements IService {
     }
     return allPipeSinks;
   }
+  // endregion
 
-  /** pipe * */
+  // region Interfaces and Implementation of Pipe
+
   public synchronized void addPipe(CreatePipePlan plan) throws PipeException {
     // common check
     if (runningPipe != null && runningPipe.getStatus() != Pipe.PipeStatus.DROP) {
@@ -328,6 +315,7 @@ public class SenderService implements IService {
   public List<Pipe> getAllPipes() {
     return new ArrayList<>(pipes);
   }
+  // endregion
 
   public synchronized String getPipeMsg(Pipe pipe) {
     return msgManager.getPipeMsg(pipe);
@@ -445,6 +433,10 @@ public class SenderService implements IService {
   @Override
   public ServiceType getID() {
     return ServiceType.SENDER_SERVICE;
+  }
+
+  public ExtPipePluginManager getExternalPipeManager() {
+    return extPipePluginManager;
   }
 
   private void recover() throws IOException, PipeException {

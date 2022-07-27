@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.sync.SyncUtils;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.service.MsgManager;
@@ -80,8 +81,7 @@ public class SenderLogAnalyzer {
             lineNumber += 1;
             CreatePipeSinkPlan pipeSinkPlan = CreatePipeSinkPlan.parseString(readLine);
             pipeSinks.put(
-                pipeSinkPlan.getPipeSinkName(),
-                SenderService.getInstance().parseCreatePipeSinkPlan(pipeSinkPlan));
+                pipeSinkPlan.getPipeSinkName(), SyncUtils.parseCreatePipeSinkPlan(pipeSinkPlan));
             break;
           case DROP_PIPESINK:
             pipeSinks.remove(parseStrings[1]);

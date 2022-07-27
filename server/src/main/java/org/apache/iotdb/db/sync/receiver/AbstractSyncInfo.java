@@ -25,6 +25,7 @@ import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.receiver.recovery.ReceiverLog;
 import org.apache.iotdb.db.sync.receiver.recovery.ReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
+import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
@@ -55,6 +56,8 @@ public abstract class AbstractSyncInfo {
   protected Map<String, Map<String, Map<Long, Pipe.PipeStatus>>> pipeInfos;
   // <pipeFolderName, pipeMsg>
   protected Map<String, List<PipeMessage>> pipeMessageMap;
+
+  private Map<String, PipeSink> pipeSinks;
   protected ReceiverLog log;
 
   public AbstractSyncInfo() {
