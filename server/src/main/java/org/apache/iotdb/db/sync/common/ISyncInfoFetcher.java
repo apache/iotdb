@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync;
+package org.apache.iotdb.db.sync.common;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
+import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 
 import java.util.List;
@@ -30,7 +30,7 @@ import java.util.List;
 public interface ISyncInfoFetcher {
 
   // region Interfaces of PipeSink
-  // TODO: use PipeSink as parameter directly
+  // TODO: use CreatePipeSinkNode as parameter
   TSStatus addPipeSink(CreatePipeSinkPlan plan);
 
   TSStatus dropPipeSink(String name);
@@ -42,7 +42,7 @@ public interface ISyncInfoFetcher {
 
   // region Interfaces of Pipe
 
-  // TODO: use PipeInfo as parameter directly
+  // TODO: use CreatePipeNode as parameter
   TSStatus addPipe(CreatePipePlan plan, long createTime);
 
   TSStatus stopPipe(String pipeName);

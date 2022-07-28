@@ -233,12 +233,6 @@ public class IoTDBSyncReceiverIT {
       };
       SyncTestUtil.checkResult(sql2, columnNames2, retArray2);
 
-      //      client.senderTransport(
-      //          new DeletionPipeData(
-      //              new Deletion(new PartialPath("root.sg1.**"), 0, 0, 99), serialNum++));
-      //      Thread.sleep(1000);
-      //      SyncTestUtil.checkResult(sql2, columnNames2, retArray2);
-
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail(e.getMessage());

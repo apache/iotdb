@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.receiver.recovery;
+package org.apache.iotdb.db.sync.common.persistence;
 
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.ServiceType;
@@ -25,10 +25,10 @@ import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.SyncUtils;
-import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
+import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -130,7 +130,7 @@ public class SyncLogAnalyzer {
             lineNumber += 1;
             CreatePipeSinkPlan pipeSinkPlan = CreatePipeSinkPlan.parseString(readLine);
             pipeSinks.put(
-                pipeSinkPlan.getPipeSinkName(), SyncUtils.parseCreatePipeSinkPlan(pipeSinkPlan));
+                pipeSinkPlan.getPipeSinkName(), SyncPipeUtil.parseCreatePipeSinkPlan(pipeSinkPlan));
             break;
           case DROP_PIPESINK:
             pipeSinks.remove(parseStrings[1]);
@@ -140,7 +140,7 @@ public class SyncLogAnalyzer {
             lineNumber += 1;
             CreatePipePlan pipePlan = CreatePipePlan.parseString(readLine);
             runningPipe =
-                SyncUtils.parseCreatePipePlanAsPipeInfo(
+                SyncPipeUtil.parseCreatePipePlanAsPipeInfo(
                     pipePlan,
                     pipeSinks.get(pipePlan.getPipeSinkName()),
                     Long.parseLong(parseStrings[1]));

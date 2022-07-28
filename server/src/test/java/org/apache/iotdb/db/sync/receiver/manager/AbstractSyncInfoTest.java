@@ -23,7 +23,7 @@ import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.receiver.AbstractSyncInfo;
+import org.apache.iotdb.db.sync.common.AbstractSyncInfo;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 

@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.sync.receiver.manager.LocalSyncInfo;
+import org.apache.iotdb.db.sync.common.LocalSyncInfo;
 import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;

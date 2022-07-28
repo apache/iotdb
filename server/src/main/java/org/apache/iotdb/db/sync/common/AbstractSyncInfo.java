@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.receiver;
+package org.apache.iotdb.db.sync.common;
 
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
@@ -25,13 +25,13 @@ import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.SyncUtils;
-import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogAnalyzer;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogger;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
-import org.apache.iotdb.db.sync.receiver.recovery.SyncLogAnalyzer;
-import org.apache.iotdb.db.sync.receiver.recovery.SyncLogger;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
+import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +48,6 @@ public abstract class AbstractSyncInfo {
   protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractSyncInfo.class);
 
   protected boolean pipeServerEnable;
-  // <pipeName, <remoteIp, <createTime, status>>>
-  //  protected Map<String, Map<String, Map<Long, Pipe.PipeStatus>>> pipeInfos;
   // <pipeFolderName, pipeMsg>
   protected Map<String, List<PipeMessage>> pipeMessageMap;
 
@@ -115,7 +113,7 @@ public abstract class AbstractSyncInfo {
           "There is a pipeSink named " + plan.getPipeSinkName() + " in IoTDB, please drop it.");
     }
 
-    PipeSink pipeSink = SyncUtils.parseCreatePipeSinkPlan(plan);
+    PipeSink pipeSink = SyncPipeUtil.parseCreatePipeSinkPlan(plan);
     // should guarantee the adding pipesink is not exist.
     pipeSinks.put(pipeSink.getPipeSinkName(), pipeSink);
     syncLogger.addPipeSink(plan);
@@ -166,7 +164,7 @@ public abstract class AbstractSyncInfo {
     }
 
     PipeSink runningPipeSink = getPipeSink(plan.getPipeSinkName());
-    runningPipe = SyncUtils.parseCreatePipePlanAsPipeInfo(plan, runningPipeSink, createTime);
+    runningPipe = SyncPipeUtil.parseCreatePipePlanAsPipeInfo(plan, runningPipeSink, createTime);
     pipes.add(runningPipe);
     syncLogger.addPipe(plan, createTime);
   }

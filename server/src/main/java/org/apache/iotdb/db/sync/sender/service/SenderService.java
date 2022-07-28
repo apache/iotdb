@@ -34,20 +34,20 @@ import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.sync.ISyncInfoFetcher;
-import org.apache.iotdb.db.sync.LocalSyncInfoFetcher;
-import org.apache.iotdb.db.sync.SyncUtils;
+import org.apache.iotdb.db.sync.common.ISyncInfoFetcher;
+import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogAnalyzer;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
 import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
-import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
-import org.apache.iotdb.db.sync.receiver.recovery.SyncLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
+import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
+import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -131,7 +131,7 @@ public class SenderService implements IService {
     }
 
     PipeSink runningPipeSink = getPipeSink(plan.getPipeSinkName());
-    runningPipe = SyncUtils.parseCreatePipePlanAsPipe(plan, runningPipeSink, currentTime);
+    runningPipe = SyncPipeUtil.parseCreatePipePlanAsPipe(plan, runningPipeSink, currentTime);
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       try {
         transportHandler =
@@ -430,7 +430,7 @@ public class SenderService implements IService {
     analyzer.recover();
     PipeInfo runningPipeInfo = analyzer.getRunningPipeInfo();
     this.runningPipe =
-        SyncUtils.parsePipeInfoAsPipe(
+        SyncPipeUtil.parsePipeInfoAsPipe(
             runningPipeInfo, analyzer.getAllPipeSinks().get(runningPipeInfo.getPipeSinkName()));
     if (runningPipe == null || Pipe.PipeStatus.DROP.equals(runningPipeInfo.getStatus())) {
       return;
