@@ -807,7 +807,7 @@ public class MManager {
         logWriter.deleteTimeseries(deleteTimeSeriesPlan);
       }
     } catch (MeasurementInsideTemplateException e) {
-      failedNames.add(e.getPath());
+      failedNames.add(e.getMessage());
     } catch (DeleteFailedException e) {
       failedNames.add(e.getName());
     }
