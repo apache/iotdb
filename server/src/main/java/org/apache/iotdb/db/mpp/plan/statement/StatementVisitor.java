@@ -48,6 +48,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
@@ -267,6 +268,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowDataNodes(ShowDataNodesStatement showDataNodesStatement, C context) {
     return visitStatement(showDataNodesStatement, context);
+  }
+
+  public R visitShowConfigNodes(ShowConfigNodesStatement showConfigNodesStatement, C context) {
+    return visitStatement(showConfigNodesStatement, context);
   }
 
   public R visitShowVersion(ShowVersionStatement showVersionStatement, C context) {

@@ -139,9 +139,22 @@ public interface ISchemaRegion {
   int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException;
 
+  int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
+      throws MetadataException;
+
   // The measurements will be grouped by the node in given level and then counted for each group.
   Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
+
+  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      String key,
+      String value,
+      boolean isContains)
+      throws MetadataException;
 
   /**
    * To calculate the count of devices for given path pattern. If using prefix match, the path

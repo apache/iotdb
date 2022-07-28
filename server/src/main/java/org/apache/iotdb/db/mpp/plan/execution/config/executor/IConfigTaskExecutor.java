@@ -70,6 +70,8 @@ public interface IConfigTaskExecutor {
 
   SettableFuture<ConfigTaskResult> showDataNodes(ShowDataNodesStatement showDataNodesStatement);
 
+  SettableFuture<ConfigTaskResult> showConfigNodes();
+
   SettableFuture<ConfigTaskResult> createSchemaTemplate(
       CreateSchemaTemplateStatement createSchemaTemplateStatement);
 

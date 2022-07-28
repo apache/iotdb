@@ -35,7 +35,11 @@ public class InfluxSpreadFunction extends InfluxAggregator {
 
   @Override
   public InfluxFunctionValue calculateBruteForce() {
-    return new InfluxFunctionValue(maxNum - minNum, 0L);
+    if (maxNum == null || minNum == null) {
+      return new InfluxFunctionValue(null, 0L);
+    } else {
+      return new InfluxFunctionValue(maxNum - minNum, 0L);
+    }
   }
 
   @Override

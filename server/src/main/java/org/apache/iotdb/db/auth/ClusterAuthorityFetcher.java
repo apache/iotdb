@@ -35,7 +35,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -43,8 +42,6 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.google.common.util.concurrent.SettableFuture;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -56,44 +53,24 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
-
   private static final Logger logger = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
 
-  private IoTDBDescriptor conf = IoTDBDescriptor.getInstance();
-
-  private Cache<String, User> userCache =
-      Caffeine.newBuilder()
-          .maximumSize(conf.getConfig().getAuthorCacheSize())
-          .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
-          .build();
-
-  private Cache<String, Role> roleCache =
-      Caffeine.newBuilder()
-          .maximumSize(conf.getConfig().getAuthorCacheSize())
-          .expireAfterAccess(conf.getConfig().getAuthorCacheExpireTime(), TimeUnit.MINUTES)
-          .build();
+  private IAuthorCache iAuthorCache;
 
   private static final IClientManager<PartitionRegionId, ConfigNodeClient>
       CONFIG_NODE_CLIENT_MANAGER =
           new IClientManager.Factory<PartitionRegionId, ConfigNodeClient>()
               .createClientManager(new DataNodeClientPoolFactory.ConfigNodeClientPoolFactory());
 
-  private static final class ClusterAuthorityFetcherHolder {
-    private static final ClusterAuthorityFetcher INSTANCE = new ClusterAuthorityFetcher();
-
-    private ClusterAuthorityFetcherHolder() {}
-  }
-
-  public static ClusterAuthorityFetcher getInstance() {
-    return ClusterAuthorityFetcher.ClusterAuthorityFetcherHolder.INSTANCE;
+  public ClusterAuthorityFetcher(IAuthorCache iAuthorCache) {
+    this.iAuthorCache = iAuthorCache;
   }
 
   @Override
   public TSStatus checkUserPrivileges(String username, List<String> allPath, int permission) {
-    User user = userCache.getIfPresent(username);
+    User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       for (String path : allPath) {
         try {
@@ -103,12 +80,12 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
             }
             boolean status = false;
             for (String roleName : user.getRoleList()) {
-              Role role = roleCache.getIfPresent(roleName);
+              Role role = iAuthorCache.getRoleCache(roleName);
               // It is detected that the role of the user does not exist in the cache, indicating
               // that the permission information of the role has changed.
               // The user cache needs to be initialized
               if (role == null) {
-                invalidateCache(username, "");
+                iAuthorCache.invalidateCache(username, "");
                 return checkPath(username, allPath, permission);
               }
               status = role.checkPrivilege(path, permission);
@@ -197,8 +174,13 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   }
 
   @Override
+  public IAuthorCache getAuthorCache() {
+    return iAuthorCache;
+  }
+
+  @Override
   public TSStatus checkUser(String username, String password) {
-    User user = userCache.getIfPresent(username);
+    User user = iAuthorCache.getUserCache(username);
     if (user != null) {
       if (password != null && AuthUtils.validatePassword(password, user.getPassword())) {
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
@@ -225,7 +207,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         }
       }
       if (status.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        userCache.put(username, cacheUser(status));
+        iAuthorCache.putUserCache(username, cacheUser(status));
         return status.getStatus();
       } else {
         return status.getStatus();
@@ -248,44 +230,11 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
     }
     if (permissionInfoResp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      userCache.put(username, cacheUser(permissionInfoResp));
+      iAuthorCache.putUserCache(username, cacheUser(permissionInfoResp));
       return permissionInfoResp.getStatus();
     } else {
       return permissionInfoResp.getStatus();
     }
-  }
-
-  /**
-   * Initialize user and role cache information.
-   *
-   * <p>If the permission information of the role changes, only the role cache information is
-   * cleared. During permission checking, if the role belongs to a user, the user will be
-   * initialized.
-   */
-  public boolean invalidateCache(String username, String roleName) {
-    if (username != null) {
-      if (userCache.getIfPresent(username) != null) {
-        List<String> roleList = userCache.getIfPresent(username).getRoleList();
-        if (!roleList.isEmpty()) {
-          roleCache.invalidateAll(roleList);
-        }
-        userCache.invalidate(username);
-      }
-      if (userCache.getIfPresent(username) != null) {
-        logger.error("datanode cache initialization failed");
-        return false;
-      }
-    }
-    if (roleName != null) {
-      if (roleCache.getIfPresent(roleName) != null) {
-        roleCache.invalidate(roleName);
-      }
-      if (roleCache.getIfPresent(roleName) != null) {
-        logger.error("datanode cache initialization failed");
-        return false;
-      }
-    }
-    return true;
   }
 
   /** cache user */
@@ -303,7 +252,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
     user.setPrivilegeList(pathPrivilegeList);
     user.setRoleList(tPermissionInfoResp.getUserInfo().getRoleList());
     for (String roleName : tPermissionInfoResp.getRoleInfo().keySet()) {
-      roleCache.put(roleName, cacheRole(roleName, tPermissionInfoResp));
+      iAuthorCache.putRoleCache(roleName, cacheRole(roleName, tPermissionInfoResp));
     }
     return user;
   }
@@ -352,13 +301,5 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
         AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
         authorStatement.getNodeName() == null ? "" : authorStatement.getNodeName().getFullPath());
-  }
-
-  public Cache<String, User> getUserCache() {
-    return userCache;
-  }
-
-  public Cache<String, Role> getRoleCache() {
-    return roleCache;
   }
 }

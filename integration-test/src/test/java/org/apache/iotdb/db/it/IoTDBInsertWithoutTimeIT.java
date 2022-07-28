@@ -79,12 +79,15 @@ public class IoTDBInsertWithoutTimeIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("insert into root.sg1.d1(s1, s2, s3) values (1, 1, '1')");
+      Thread.sleep(1);
       statement.execute("insert into root.sg1.d1(s2, s1, s3) values (2, 2, '2')");
+      Thread.sleep(1);
       statement.execute("insert into root.sg1.d1(s3, s2, s1) values ('3', 3, 3)");
+      Thread.sleep(1);
       statement.execute("insert into root.sg1.d1(s1) values (1)");
       statement.execute("insert into root.sg1.d1(s2) values (2)");
       statement.execute("insert into root.sg1.d1(s3) values ('3')");
-    } catch (SQLException e) {
+    } catch (SQLException | InterruptedException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
