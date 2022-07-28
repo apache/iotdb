@@ -2099,7 +2099,7 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException, IOException, MetadataException {
 
     AUDIT_LOGGER.info("alter timeseries {} {} {}", fullPath, curEncoding, curCompressionType);
-    if(IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+    if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new QueryProcessException("This command is not supported in cluster mode");
     }
     // schema alter
