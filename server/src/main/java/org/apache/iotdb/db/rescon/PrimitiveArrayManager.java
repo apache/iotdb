@@ -266,8 +266,8 @@ public class PrimitiveArrayManager {
       throw new UnSupportedDataTypeException(array.getClass().toString());
     }
 
-    if(Array.getLength(array) != ARRAY_SIZE) {
-      return;
+    if (Array.getLength(array) != ARRAY_SIZE) {
+      return ;
     }
 
     synchronized (POOLED_ARRAYS[order]) {
