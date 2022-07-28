@@ -388,7 +388,6 @@ public class IoTDBTriggerManagementIT {
       statement.execute(
           "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute("stop trigger trigger_1");
-      statement.execute("stop trigger trigger_1");
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("Trigger trigger_1 has already been stopped"));
     }

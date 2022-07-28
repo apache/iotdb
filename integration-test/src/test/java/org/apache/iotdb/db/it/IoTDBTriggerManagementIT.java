@@ -17,29 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.it.trigger;
+package org.apache.iotdb.db.it;
 
-import org.apache.iotdb.commons.trigger.TriggerEvent;
-import org.apache.iotdb.commons.trigger.TriggerRegistrationInformation;
-import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
-import org.apache.iotdb.db.engine.trigger.example.Accumulator;
-import org.apache.iotdb.db.engine.trigger.example.Counter;
-import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
-import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -52,6 +44,18 @@ import static org.junit.Assert.fail;
 @RunWith(IoTDBTestRunner.class)
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBTriggerManagementIT {
+
+  private static final String TRIGGER_NAME = "trigger name";
+  private static final String STATUS = "status";
+  private static final String EVENT = "event";
+  private static final String PATH = "path";
+  private static final String CLASS_NAME = "class name";
+  private static final String ATTRIBUTES = "attributes";
+
+  private static final String STATUS_STARTED = "started";
+  private static final String STATUS_STOPPED = "stopped";
+  private static final String EVENT_BEFORE = "before insert";
+  private static final String EVENT_AFTER = "after insert";
 
   @Before
   public void setUp() throws Exception {
@@ -93,36 +97,57 @@ public class IoTDBTriggerManagementIT {
           "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute(
           "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-      assertFalse(
-          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_1"))
-              .isStopped());
-      assertFalse(
-          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_2"))
-              .isStopped());
 
       // show
       resultSet = statement.executeQuery("show triggers");
+
       assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_BEFORE, resultSet.getObject(EVENT));
+
       assertTrue(resultSet.next());
+      assertEquals("trigger_2", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_AFTER, resultSet.getObject(EVENT));
+
       assertFalse(resultSet.next());
 
       // stop trigger
       statement.execute("stop trigger trigger_1");
-      assertTrue(
-          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_1"))
-              .isStopped());
 
       // show
       resultSet = statement.executeQuery("show triggers");
+
       assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STOPPED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_BEFORE, resultSet.getObject(EVENT));
+
       assertTrue(resultSet.next());
+      assertEquals("trigger_2", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_AFTER, resultSet.getObject(EVENT));
+
       assertFalse(resultSet.next());
 
       // start trigger
       statement.execute("start trigger trigger_1");
-      assertFalse(
-          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_1"))
-              .isStopped());
+
+      // show
+      resultSet = statement.executeQuery("show triggers");
+
+      assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_BEFORE, resultSet.getObject(EVENT));
+
+      assertTrue(resultSet.next());
+      assertEquals("trigger_2", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_AFTER, resultSet.getObject(EVENT));
+
+      assertFalse(resultSet.next());
 
       // drop trigger
       statement.execute("drop trigger trigger_1");
@@ -131,7 +156,7 @@ public class IoTDBTriggerManagementIT {
       // show
       resultSet = statement.executeQuery("show triggers");
       assertFalse(resultSet.next());
-    } catch (SQLException | TriggerManagementException throwable) {
+    } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
   }
@@ -262,9 +287,19 @@ public class IoTDBTriggerManagementIT {
       statement.execute(
           "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
+      // show
       ResultSet resultSet = statement.executeQuery("show triggers");
+
       assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_BEFORE, resultSet.getObject(EVENT));
+
       assertTrue(resultSet.next());
+      assertEquals("trigger_2", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_AFTER, resultSet.getObject(EVENT));
+
       assertFalse(resultSet.next());
 
       statement.execute("drop trigger trigger_1");
@@ -273,32 +308,6 @@ public class IoTDBTriggerManagementIT {
       resultSet = statement.executeQuery("show triggers");
       assertFalse(resultSet.next());
     } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testCreateSeveralTimes() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-      ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_1"))
-          .setAccumulator(1234);
-
-      statement.execute(
-          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-      statement.execute(
-          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-      statement.execute(
-          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-
-      assertEquals(
-          1234,
-          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_1"))
-              .getAccumulator(),
-          0);
-    } catch (SQLException | TriggerManagementException throwable) {
       fail(throwable.getMessage());
     }
   }
@@ -352,7 +361,6 @@ public class IoTDBTriggerManagementIT {
       statement.execute(
           "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute("stop trigger trigger_1");
-      statement.execute("stop trigger trigger_1");
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("Trigger trigger_1 has already been stopped"));
     }
@@ -364,40 +372,45 @@ public class IoTDBTriggerManagementIT {
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-      assertFalse(
-          TriggerRegistrationService.getInstance()
-              .getRegistrationInformation("trigger_1")
-              .isStopped());
+      // show
+      ResultSet resultSet = statement.executeQuery("show triggers");
+      assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
 
       statement.execute("stop trigger trigger_1");
-      assertTrue(
-          TriggerRegistrationService.getInstance()
-              .getRegistrationInformation("trigger_1")
-              .isStopped());
+      // show
+      resultSet = statement.executeQuery("show triggers");
+      assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STOPPED, resultSet.getObject(STATUS));
 
       statement.execute("start trigger trigger_1");
-      assertFalse(
-          TriggerRegistrationService.getInstance()
-              .getRegistrationInformation("trigger_1")
-              .isStopped());
+      // show
+      resultSet = statement.executeQuery("show triggers");
+      assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
 
       statement.execute("stop trigger trigger_1");
-      assertTrue(
-          TriggerRegistrationService.getInstance()
-              .getRegistrationInformation("trigger_1")
-              .isStopped());
+      // show
+      resultSet = statement.executeQuery("show triggers");
+      assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STOPPED, resultSet.getObject(STATUS));
 
       statement.execute("start trigger trigger_1");
-      assertFalse(
-          TriggerRegistrationService.getInstance()
-              .getRegistrationInformation("trigger_1")
-              .isStopped());
-    } catch (SQLException | TriggerManagementException e) {
+      // show
+      resultSet = statement.executeQuery("show triggers");
+      assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+    } catch (SQLException e) {
       fail(e.getMessage());
     }
   }
 
-  @Test
+  @Ignore
   @SuppressWarnings("squid:S5961")
   public void testRecovery() throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -424,32 +437,33 @@ public class IoTDBTriggerManagementIT {
       fail(e.getMessage());
     }
 
-    EnvironmentUtils.restartDaemon();
+    //    EnvironmentUtils.restartDaemon();
 
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      // show
+      ResultSet resultSet = statement.executeQuery("show triggers");
 
-      TriggerRegistrationInformation trigger1Info =
-          TriggerRegistrationService.getInstance().getRegistrationInformation("trigger_1");
-      assertEquals("trigger_1", trigger1Info.getTriggerName());
-      assertEquals("root.vehicle.d1.s3", trigger1Info.getFullPath().getFullPath());
-      assertEquals(TriggerEvent.AFTER_INSERT, trigger1Info.getEvent());
+      assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STOPPED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_AFTER, resultSet.getObject(EVENT));
+      assertEquals("root.vehicle.d1.s3", resultSet.getObject(PATH));
       assertEquals(
-          "org.apache.iotdb.db.engine.trigger.example.Counter", trigger1Info.getClassName());
-      assertEquals("{}", trigger1Info.getAttributes().toString());
-      assertTrue(trigger1Info.isStopped());
+          "org.apache.iotdb.db.engine.trigger.example.Counter", resultSet.getObject(CLASS_NAME));
+      assertEquals("{}", resultSet.getObject(ATTRIBUTES));
 
-      TriggerRegistrationInformation trigger2Info =
-          TriggerRegistrationService.getInstance().getRegistrationInformation("trigger_2");
-      assertEquals("trigger_2", trigger2Info.getTriggerName());
-      assertEquals("root.vehicle.d1.s4", trigger2Info.getFullPath().getFullPath());
-      assertEquals(TriggerEvent.BEFORE_INSERT, trigger2Info.getEvent());
+      assertTrue(resultSet.next());
+      assertEquals("trigger_2", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_BEFORE, resultSet.getObject(EVENT));
+      assertEquals("root.vehicle.d1.s4", resultSet.getObject(PATH));
       assertEquals(
-          "org.apache.iotdb.db.engine.trigger.example.Accumulator", trigger2Info.getClassName());
-      assertEquals("{k4=v4}", trigger2Info.getAttributes().toString());
-      assertFalse(trigger2Info.isStopped());
+          "org.apache.iotdb.db.engine.trigger.example.Accumulator",
+          resultSet.getObject(CLASS_NAME));
+      assertEquals("{k4=v4}", resultSet.getObject(ATTRIBUTES));
+
+      assertFalse(resultSet.next());
 
       statement.execute("drop trigger trigger_2");
       statement.execute("drop trigger trigger_1");
@@ -465,35 +479,46 @@ public class IoTDBTriggerManagementIT {
       fail(e.getMessage());
     }
 
-    EnvironmentUtils.restartDaemon();
+    //    EnvironmentUtils.restartDaemon();
 
-    TriggerRegistrationInformation trigger1Info =
-        TriggerRegistrationService.getInstance().getRegistrationInformation("trigger_1");
-    assertEquals("trigger_1", trigger1Info.getTriggerName());
-    assertEquals("root.vehicle.d1.s4", trigger1Info.getFullPath().getFullPath());
-    assertEquals(TriggerEvent.BEFORE_INSERT, trigger1Info.getEvent());
-    assertEquals(
-        "org.apache.iotdb.db.engine.trigger.example.Accumulator", trigger1Info.getClassName());
-    assertEquals("{k5=v5}", trigger1Info.getAttributes().toString());
-    assertFalse(trigger1Info.isStopped());
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // show
+      ResultSet resultSet = statement.executeQuery("show triggers");
 
-    TriggerRegistrationInformation trigger2Info =
-        TriggerRegistrationService.getInstance().getRegistrationInformation("trigger_2");
-    assertEquals("trigger_2", trigger2Info.getTriggerName());
-    assertEquals("root.vehicle.d1.s3", trigger2Info.getFullPath().getFullPath());
-    assertEquals(TriggerEvent.AFTER_INSERT, trigger2Info.getEvent());
-    assertEquals("org.apache.iotdb.db.engine.trigger.example.Counter", trigger2Info.getClassName());
-    assertEquals("{}", trigger2Info.getAttributes().toString());
-    assertTrue(trigger2Info.isStopped());
+      assertTrue(resultSet.next());
+      assertEquals("trigger_3", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_BEFORE, resultSet.getObject(EVENT));
+      assertEquals("root.vehicle.d1.s2", resultSet.getObject(PATH));
+      assertEquals(
+          "org.apache.iotdb.db.engine.trigger.example.Accumulator",
+          resultSet.getObject(CLASS_NAME));
+      assertEquals("{}", resultSet.getObject(ATTRIBUTES));
 
-    TriggerRegistrationInformation trigger3Info =
-        TriggerRegistrationService.getInstance().getRegistrationInformation("trigger_3");
-    assertEquals("trigger_3", trigger3Info.getTriggerName());
-    assertEquals("root.vehicle.d1.s2", trigger3Info.getFullPath().getFullPath());
-    assertEquals(TriggerEvent.BEFORE_INSERT, trigger3Info.getEvent());
-    assertEquals(
-        "org.apache.iotdb.db.engine.trigger.example.Accumulator", trigger3Info.getClassName());
-    assertEquals("{}", trigger3Info.getAttributes().toString());
-    assertFalse(trigger3Info.isStopped());
+      assertTrue(resultSet.next());
+      assertEquals("trigger_1", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STARTED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_BEFORE, resultSet.getObject(EVENT));
+      assertEquals("root.vehicle.d1.s4", resultSet.getObject(PATH));
+      assertEquals(
+          "org.apache.iotdb.db.engine.trigger.example.Accumulator",
+          resultSet.getObject(CLASS_NAME));
+      assertEquals("{k5=v5}", resultSet.getObject(ATTRIBUTES));
+
+      assertTrue(resultSet.next());
+      assertEquals("trigger_2", resultSet.getObject(TRIGGER_NAME));
+      assertEquals(STATUS_STOPPED, resultSet.getObject(STATUS));
+      assertEquals(EVENT_AFTER, resultSet.getObject(EVENT));
+      assertEquals("root.vehicle.d1.s3", resultSet.getObject(PATH));
+      assertEquals(
+          "org.apache.iotdb.db.engine.trigger.example.Counter", resultSet.getObject(CLASS_NAME));
+      assertEquals("{}", resultSet.getObject(ATTRIBUTES));
+
+      assertFalse(resultSet.next());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 }
