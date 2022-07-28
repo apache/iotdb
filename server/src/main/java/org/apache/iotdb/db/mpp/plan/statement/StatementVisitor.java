@@ -56,10 +56,12 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
@@ -299,5 +301,14 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement, C context) {
     return visitStatement(showPathSetTemplateStatement, context);
+  }
+
+  public R visitActivateTemplate(ActivateTemplateStatement activateTemplateStatement, C context) {
+    return visitStatement(activateTemplateStatement, context);
+  }
+
+  public R visitShowPathsUsingTemplate(
+      ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, C context) {
+    return visitStatement(showPathsUsingTemplateStatement, context);
   }
 }

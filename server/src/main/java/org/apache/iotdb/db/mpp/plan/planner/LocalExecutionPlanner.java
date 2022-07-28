@@ -92,6 +92,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOp
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
@@ -121,6 +122,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManageme
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -410,6 +412,8 @@ public class LocalExecutionPlanner {
         return visitLevelTimeSeriesCount((LevelTimeSeriesCountNode) node, context);
       } else if (node instanceof NodePathsSchemaScanNode) {
         return visitNodePathsSchemaScan((NodePathsSchemaScanNode) node, context);
+      } else if (node instanceof PathsUsingTemplateScanNode) {
+        return visitPathsUsingTemplateScan((PathsUsingTemplateScanNode) node, context);
       }
       return visitPlan(node, context);
     }
@@ -433,7 +437,8 @@ public class LocalExecutionPlanner {
           node.getValue(),
           node.isContains(),
           node.isOrderByHeat(),
-          node.isPrefixPath());
+          node.isPrefixPath(),
+          node.getTemplateMap());
     }
 
     @Override
@@ -1276,6 +1281,7 @@ public class LocalExecutionPlanner {
           node.getPlanNodeId(),
           operatorContext,
           node.getPatternTree(),
+          node.getTemplateMap(),
           ((SchemaDriverContext) (context.instanceContext.getDriverContext())).getSchemaRegion());
     }
 
@@ -1512,6 +1518,18 @@ public class LocalExecutionPlanner {
               .collect(Collectors.toList());
       Validate.isTrue(children.size() == 1);
       return children.get(0);
+    }
+
+    public Operator visitPathsUsingTemplateScan(
+        PathsUsingTemplateScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              PathsUsingTemplateScanNode.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new PathsUsingTemplateScanOperator(
+          node.getPlanNodeId(), operatorContext, node.getTemplateId());
     }
   }
 

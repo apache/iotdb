@@ -21,11 +21,12 @@ package org.apache.iotdb.confignode.persistence;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.utils.PathUtils;
-import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
@@ -34,9 +35,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.commons.io.FileUtils;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
@@ -55,16 +56,16 @@ public class ClusterSchemaInfoTest {
   private static ClusterSchemaInfo clusterSchemaInfo;
   private static final File snapshotDir = new File(BASE_OUTPUT_PATH, "snapshot");
 
-  @BeforeClass
-  public static void setup() throws IOException {
+  @Before
+  public void setup() throws IOException {
     clusterSchemaInfo = new ClusterSchemaInfo();
     if (!snapshotDir.exists()) {
       snapshotDir.mkdirs();
     }
   }
 
-  @AfterClass
-  public static void cleanup() throws IOException {
+  @After
+  public void cleanup() throws IOException {
     clusterSchemaInfo.clear();
     if (snapshotDir.exists()) {
       FileUtils.deleteDirectory(snapshotDir);
@@ -111,8 +112,15 @@ public class ClusterSchemaInfoTest {
     String templateName = "template_name";
     Template template = new Template(newCreateSchemaTemplateStatement(templateName));
     CreateSchemaTemplatePlan createSchemaTemplatePlan =
-        new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
+        new CreateSchemaTemplatePlan(template.serialize().array());
     clusterSchemaInfo.createSchemaTemplate(createSchemaTemplatePlan);
+
+    clusterSchemaInfo.setStorageGroup(
+        new SetStorageGroupPlan(new TStorageGroupSchema("root.test1")));
+    clusterSchemaInfo.setStorageGroup(
+        new SetStorageGroupPlan(new TStorageGroupSchema("root.test2")));
+    clusterSchemaInfo.setStorageGroup(
+        new SetStorageGroupPlan(new TStorageGroupSchema("root.test3")));
 
     clusterSchemaInfo.setSchemaTemplate(
         new SetSchemaTemplatePlan(templateName, "root.test1.template"));

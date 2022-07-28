@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.confignode.persistence;
+package org.apache.iotdb.confignode.persistence.schema;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -27,43 +27,45 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.CheckTemplateSettablePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.response.AllTemplateSetInfoResp;
 import org.apache.iotdb.confignode.consensus.response.CountStorageGroupResp;
 import org.apache.iotdb.confignode.consensus.response.PathInfoResp;
 import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.consensus.response.TemplateInfoResp;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
-import org.apache.iotdb.confignode.persistence.schema.TemplateTable;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -560,50 +562,65 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
   }
 
   public TSStatus createSchemaTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
-    return templateTable.createTemplate(createSchemaTemplatePlan);
+    try {
+      Template template = createSchemaTemplatePlan.getTemplate();
+      templateTable.createTemplate(template);
+      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    } catch (MetadataException e) {
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    }
   }
 
   public TemplateInfoResp getAllTemplates() {
     TemplateInfoResp result = new TemplateInfoResp();
-    TGetAllTemplatesResp resp = templateTable.getAllTemplate();
-    result.setStatus(resp.getStatus());
-    if (resp.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (resp.getTemplateList() != null) {
-        List<Template> list = new ArrayList<Template>();
-        resp.getTemplateList().stream()
-            .forEach(
-                item -> {
-                  try {
-                    list.add(Template.byteBuffer2Template(item));
-                  } catch (IOException | ClassNotFoundException e) {
-                    throw new RuntimeException("template deserialization error.", e);
-                  }
-                });
-        result.setTemplateList(list);
-      }
-    }
+    List<Template> resp = templateTable.getAllTemplate();
+    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    result.setTemplateList(resp);
     return result;
   }
 
-  public TemplateInfoResp getTemplate(String req) {
+  public TemplateInfoResp getTemplate(GetSchemaTemplatePlan getSchemaTemplatePlan) {
     TemplateInfoResp result = new TemplateInfoResp();
-    TGetTemplateResp resp = templateTable.getMatchedTemplateByName(req);
-    result.setStatus(resp.getStatus());
-    if (resp.status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      if (resp.getTemplate() != null) {
-        List<Template> list = new ArrayList<Template>();
-        try {
-          Template template = Template.byteBuffer2Template(ByteBuffer.wrap(resp.getTemplate()));
-          list.add(template);
-          result.setTemplateList(list);
-        } catch (IOException | ClassNotFoundException e) {
-          throw new RuntimeException("template deserialization error.", e);
-        }
-      }
+    List<Template> list = new ArrayList<>();
+    try {
+      list.add(templateTable.getTemplate(getSchemaTemplatePlan.getTemplateName()));
+      result.setTemplateList(list);
+      result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      result.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
     }
     return result;
   }
 
+  public synchronized TemplateInfoResp checkTemplateSettable(
+      CheckTemplateSettablePlan checkTemplateSettablePlan) {
+    TemplateInfoResp resp = new TemplateInfoResp();
+    PartialPath path;
+    try {
+      path = new PartialPath(checkTemplateSettablePlan.getPath());
+    } catch (IllegalPathException e) {
+      LOGGER.error(e.getMessage());
+      resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      return resp;
+    }
+
+    try {
+      mTree.checkTemplateOnPath(path);
+      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
+      resp.setTemplateList(
+          Collections.singletonList(
+              templateTable.getTemplate(checkTemplateSettablePlan.getName())));
+    } catch (MetadataException e) {
+      LOGGER.error(e.getMessage(), e);
+      resp.setStatus(RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    }
+
+    return resp;
+  }
+
+  // Before execute this method, checkTemplateSettable method should be invoked first and the whole
+  // process must be synchronized
   public synchronized TSStatus setSchemaTemplate(SetSchemaTemplatePlan setSchemaTemplatePlan) {
     PartialPath path;
     try {
@@ -615,7 +632,6 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
 
     try {
       int templateId = templateTable.getTemplate(setSchemaTemplatePlan.getName()).getId();
-      mTree.checkTemplateOnPath(path);
       mTree.getNodeWithAutoCreate(path).setSchemaTemplateId(templateId);
       return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (MetadataException e) {
@@ -635,6 +651,44 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
     pathInfoResp.setStatus(status);
     return pathInfoResp;
+  }
+
+  public AllTemplateSetInfoResp getAllTemplateSetInfo() {
+    List<Template> templateList = templateTable.getAllTemplate();
+    Map<Integer, List<String>> templateSetInfo = new HashMap<>();
+    int id;
+    for (Template template : templateList) {
+      id = template.getId();
+      try {
+        List<String> pathList = mTree.getPathsSetOnTemplate(id);
+        if (!pathList.isEmpty()) {
+          templateSetInfo.put(id, pathList);
+        }
+      } catch (MetadataException e) {
+        LOGGER.error("Error occurred when get paths set on template {}", id, e);
+      }
+    }
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      ReadWriteIOUtils.write(templateSetInfo.size(), outputStream);
+
+      for (Template template : templateList) {
+        if (templateSetInfo.containsKey(template.getId())) {
+          template.serialize(outputStream);
+
+          List<String> pathsSetTemplate = templateSetInfo.get(template.getId());
+          ReadWriteIOUtils.write(pathsSetTemplate.size(), outputStream);
+          for (String path : pathsSetTemplate) {
+            ReadWriteIOUtils.write(path, outputStream);
+          }
+        }
+      }
+    } catch (IOException ignored) {
+
+    }
+
+    return new AllTemplateSetInfoResp(outputStream.toByteArray());
   }
 
   @TestOnly

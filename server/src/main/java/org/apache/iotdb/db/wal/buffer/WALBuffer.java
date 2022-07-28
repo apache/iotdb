@@ -424,31 +424,13 @@ public class WALBuffer extends AbstractWALBuffer {
         switchSyncingBufferToIdle();
       }
 
-      // force os cache to the storage device
-      if (forceFlag) {
-        try {
-          currentWALFileWriter.force();
-        } catch (IOException e) {
-          logger.error(
-              "Fail to fsync wal node-{}'s log writer, change system mode to read-only.",
-              identifier,
-              e);
-          for (WALFlushListener fsyncListener : info.fsyncListeners) {
-            fsyncListener.fail(e);
-          }
-          config.setReadOnly(true);
-        }
-        // notify all waiting listeners
-        for (WALFlushListener fsyncListener : info.fsyncListeners) {
-          fsyncListener.succeed();
-        }
-      }
-
+      boolean forceSuccess = false;
       // try to roll log writer
       if (info.rollWALFileWriterListener != null
           || (forceFlag && currentWALFileWriter.size() >= config.getWalFileSizeThresholdInByte())) {
         try {
           rollLogWriter(searchIndex, currentWALFileWriter.getWalFileStatus());
+          forceSuccess = true;
           if (info.rollWALFileWriterListener != null) {
             info.rollWALFileWriterListener.succeed();
           }
@@ -461,6 +443,28 @@ public class WALBuffer extends AbstractWALBuffer {
             info.rollWALFileWriterListener.fail(e);
           }
           config.setReadOnly(true);
+        }
+      } else if (forceFlag) { // force os cache to the storage device, avoid force twice by judging
+        // after rolling file
+        try {
+          currentWALFileWriter.force();
+          forceSuccess = true;
+        } catch (IOException e) {
+          logger.error(
+              "Fail to fsync wal node-{}'s log writer, change system mode to read-only.",
+              identifier,
+              e);
+          for (WALFlushListener fsyncListener : info.fsyncListeners) {
+            fsyncListener.fail(e);
+          }
+          config.setReadOnly(true);
+        }
+      }
+
+      // notify all waiting listeners
+      if (forceSuccess) {
+        for (WALFlushListener fsyncListener : info.fsyncListeners) {
+          fsyncListener.succeed();
         }
       }
     }
