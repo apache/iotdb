@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -66,6 +67,7 @@ public class QueryStatement extends Statement {
   protected SelectComponent selectComponent;
   protected FromComponent fromComponent;
   protected WhereCondition whereCondition;
+  protected HavingCondition havingCondition;
 
   // row limit and offset for result set. The default value is 0, which means no limit
   protected int rowLimit = 0;
@@ -120,6 +122,18 @@ public class QueryStatement extends Statement {
 
   public void setWhereCondition(WhereCondition whereCondition) {
     this.whereCondition = whereCondition;
+  }
+
+  public boolean hasHaving() {
+    return havingCondition != null;
+  }
+
+  public HavingCondition getHavingCondition() {
+    return havingCondition;
+  }
+
+  public void setHavingCondition(HavingCondition havingCondition) {
+    this.havingCondition = havingCondition;
   }
 
   public int getRowLimit() {
@@ -261,6 +275,20 @@ public class QueryStatement extends Statement {
       if (isGroupByTime() || isGroupByLevel()) {
         throw new SemanticException(
             "Common queries and aggregated queries are not allowed to appear at the same time");
+      }
+    }
+
+    if (getHavingCondition() != null) {
+      Expression havingExpression = getHavingCondition().getPredicate();
+      if (ExpressionAnalyzer.identifyOutputColumnType(havingExpression, true)
+          != ResultColumn.ColumnType.AGGREGATION) {
+        throw new SemanticException("Expression of HAVING clause must to be an Aggregation");
+      }
+      if (isGroupByLevel()) { // check path in SELECT and HAVING only have one node
+        for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
+          ExpressionAnalyzer.checkIsAllPathOneNode(resultColumn.getExpression());
+        }
+        ExpressionAnalyzer.checkIsAllPathOneNode(havingExpression);
       }
     }
 

@@ -65,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillPolicy;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -824,6 +825,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       parseOrderByClause(ctx.orderByClause());
     }
 
+    // parse Having
+    if (ctx.havingClause() != null) {
+      parseHavingClause(ctx.havingClause());
+    }
+
     // parse limit & offset
     if (ctx.specialLimit() != null) {
       return visit(ctx.specialLimit());
@@ -840,6 +846,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     // parse order by time
     if (ctx.orderByClause() != null) {
       parseOrderByClause(ctx.orderByClause());
+    }
+
+    // parse Having
+    if (ctx.havingClause() != null) {
+      parseHavingClause(ctx.havingClause());
     }
 
     // parse limit & offset
@@ -972,6 +983,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       parseOrderByClause(ctx.orderByClause());
     }
 
+    // parse Having
+    if (ctx.havingClause() != null) {
+      parseHavingClause(ctx.havingClause());
+    }
+
     // parse limit & offset
     if (ctx.specialLimit() != null) {
       return visit(ctx.specialLimit());
@@ -993,6 +1009,13 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
 
     queryStatement.setGroupByLevelComponent(groupByLevelComponent);
+  }
+
+  // HAVING Clause
+  public void parseHavingClause(IoTDBSqlParser.HavingClauseContext ctx) {
+    Expression predicate =
+        parseExpression(ctx.expression(), ctx.expression().OPERATOR_NOT() == null);
+    queryStatement.setHavingCondition(new HavingCondition(predicate));
   }
 
   // Fill Clause

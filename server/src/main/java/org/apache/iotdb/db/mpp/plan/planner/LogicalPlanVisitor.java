@@ -118,6 +118,9 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                     analysis.getDeviceToQueryFilter() != null
                         ? analysis.getDeviceToQueryFilter().get(deviceName)
                         : null,
+                    analysis.getDeviceToQueryFilter() != null
+                        ? analysis.getDeviceToHavingExpression().get(deviceName)
+                        : null,
                     analysis.getDeviceToMeasurementIndexesMap().get(deviceName),
                     context));
         deviceToSubPlanMap.put(deviceName, subPlanBuilder.getRoot());
@@ -142,6 +145,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                   analysis.getAggregationTransformExpressions(),
                   analysis.getTransformExpressions(),
                   analysis.getQueryFilter(),
+                  analysis.getHavingExpression(),
                   null,
                   context));
     }
@@ -164,6 +168,7 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       Set<Expression> aggregationTransformExpressions,
       Set<Expression> transformExpressions,
       Expression queryFilter,
+      Expression havingExpression,
       List<Integer> measurementIndexes, // only used in ALIGN BY DEVICE
       MPPQueryContext context) {
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
@@ -304,6 +309,15 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
       }
     }
 
+    if (havingExpression != null) {
+      planBuilder = // plan Having
+          planBuilder.planFilterAndTransform(
+              havingExpression,
+              aggregationExpressions,
+              queryStatement.isGroupByTime(),
+              queryStatement.getSelectComponent().getZoneId(),
+              queryStatement.getResultTimeOrder());
+    }
     return planBuilder.getRoot();
   }
 

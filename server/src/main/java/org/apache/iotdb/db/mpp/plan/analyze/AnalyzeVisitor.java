@@ -325,6 +325,35 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           }
           analysis.setDeviceToQueryFilter(deviceToQueryFilter);
         }
+
+        if (queryStatement.hasHaving()) {
+          Map<String, Expression> deviceToHavingExpression = new HashMap<>();
+          Iterator<PartialPath> deviceIterator = deviceList.iterator();
+          while (deviceIterator.hasNext()) {
+            PartialPath devicePath = deviceIterator.next();
+            Expression havingExpression = null;
+            try {
+              havingExpression = analyzeHavingSplitByDevice(queryStatement, devicePath, schemaTree);
+            } catch (SemanticException e) {
+              if (e instanceof MeasurementNotExistException) {
+                logger.warn(e.getMessage());
+                deviceIterator.remove();
+                deviceToSourceExpressions.remove(devicePath.getFullPath());
+                continue;
+              }
+              throw e;
+            }
+            deviceToHavingExpression.put(devicePath.getFullPath(), havingExpression);
+            havingExpression.inferTypes(typeProvider);
+            updateSource(
+                havingExpression,
+                deviceToSourceExpressions.computeIfAbsent(
+                    devicePath.getFullPath(), key -> new LinkedHashSet<>()),
+                true);
+          }
+          analysis.setDeviceToHavingExpression(deviceToHavingExpression);
+        }
+
         analysis.setDeviceToSourceExpressions(deviceToSourceExpressions);
         analysis.setDeviceToTransformExpressions(deviceToTransformExpressions);
       } else {
@@ -333,6 +362,16 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             outputExpressions.stream()
                 .map(Pair::getLeft)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Expression> transformExpressionsInHaving =
+            queryStatement.hasHaving()
+                ? ExpressionAnalyzer.removeWildcardInHavingExpression(
+                        queryStatement.getHavingCondition().getPredicate(),
+                        queryStatement.getFromComponent().getPrefixPaths(),
+                        schemaTree,
+                        typeProvider)
+                    .stream()
+                    .collect(Collectors.toSet())
+                : null;
 
         if (queryStatement.isGroupByLevel()) {
           // map from grouped expression to set of input expressions
@@ -350,9 +389,27 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         if (queryStatement.isAggregationQuery()) {
           Set<Expression> aggregationExpressions = new HashSet<>();
           Set<Expression> aggregationTransformExpressions = new HashSet<>();
+          List<Expression> aggregationExpressionsInHaving = new ArrayList<>();
           isHasRawDataInputAggregation =
               analyzeAggregation(
                   transformExpressions, aggregationExpressions, aggregationTransformExpressions);
+          if (queryStatement.hasHaving()) {
+            isHasRawDataInputAggregation |=
+                analyzeAggregationInHaving(
+                    transformExpressionsInHaving,
+                    aggregationExpressionsInHaving,
+                    aggregationExpressions,
+                    aggregationTransformExpressions);
+
+            Expression havingExpression = // construct Filter from Having
+                analyzeHaving(
+                    queryStatement,
+                    analysis.getGroupByLevelExpressions(),
+                    transformExpressionsInHaving,
+                    aggregationExpressionsInHaving);
+            havingExpression.inferTypes(typeProvider);
+            analysis.setHavingExpression(havingExpression);
+          }
           analysis.setAggregationExpressions(aggregationExpressions);
           analysis.setAggregationTransformExpressions(aggregationTransformExpressions);
         }
@@ -366,6 +423,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
                 || isHasRawDataInputAggregation;
         for (Expression expression : transformExpressions) {
           updateSource(expression, sourceExpressions, isRawDataSource);
+        }
+
+        if (queryStatement.hasHaving()) {
+          for (Expression expression : transformExpressionsInHaving) {
+            updateSource(expression, sourceExpressions, isRawDataSource);
+          }
         }
 
         if (queryStatement.getWhereCondition() != null) {
@@ -649,6 +712,33 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Expression analyzeWhere(QueryStatement queryStatement, ISchemaTree schemaTree) {
+  private boolean analyzeAggregationInHaving(
+      Set<Expression> expressions,
+      List<Expression> aggregationExpressionsInHaving,
+      Set<Expression> aggregationExpressions,
+      Set<Expression> aggregationTransformExpressions) {
+    // true if nested expressions and UDFs exist in aggregation function
+    // i.e. select sum(s1 + 1) from root.sg.d1 align by device
+    boolean isHasRawDataInputAggregation = false;
+    for (Expression expression : expressions) {
+      for (Expression aggregationExpression :
+          ExpressionAnalyzer.searchAggregationExpressions(expression)) {
+        aggregationExpressionsInHaving.add(aggregationExpression);
+        aggregationExpressions.add(aggregationExpression);
+        aggregationTransformExpressions.addAll(aggregationExpression.getExpressions());
+      }
+    }
+
+    for (Expression aggregationTransformExpression : aggregationTransformExpressions) {
+      if (ExpressionAnalyzer.checkIsNeedTransform(aggregationTransformExpression)) {
+        isHasRawDataInputAggregation = true;
+        break;
+      }
+    }
+    return isHasRawDataInputAggregation;
+  }
+
+  private Expression analyzeWhere(QueryStatement queryStatement, SchemaTree schemaTree) {
     List<Expression> rewrittenPredicates =
         ExpressionAnalyzer.removeWildcardInQueryFilter(
             queryStatement.getWhereCondition().getPredicate(),
@@ -669,6 +759,57 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             typeProvider);
     return ExpressionUtils.constructQueryFilter(
         rewrittenPredicates.stream().distinct().collect(Collectors.toList()));
+  }
+
+  private Expression analyzeHaving(
+      QueryStatement queryStatement,
+      Map<Expression, Set<Expression>> groupByLevelExpressions,
+      Set<Expression> transformExpressionsInHaving,
+      List<Expression> aggregationExpressionsInHaving) {
+
+    if (queryStatement.isGroupByLevel()) {
+      Map<Expression, Expression> RawPathToGroupedPathMapInHaving =
+          analyzeGroupByLevelInHaving(
+              queryStatement, aggregationExpressionsInHaving, groupByLevelExpressions);
+      List<Expression> convertedPredicates = new ArrayList<>();
+      for (Expression expression : transformExpressionsInHaving) {
+        convertedPredicates.add(
+            ExpressionAnalyzer.replaceRawPathWithGroupedPath(
+                expression, RawPathToGroupedPathMapInHaving));
+      }
+      return ExpressionUtils.constructQueryFilter(
+          convertedPredicates.stream().distinct().collect(Collectors.toList()));
+    }
+
+    return ExpressionUtils.constructQueryFilter(
+        transformExpressionsInHaving.stream().distinct().collect(Collectors.toList()));
+  }
+
+  private Expression analyzeHavingSplitByDevice(
+      QueryStatement queryStatement, PartialPath devicePath, SchemaTree schemaTree) {
+    List<Expression> rewrittenPredicates =
+        ExpressionAnalyzer.removeWildcardInHavingExpressionByDevice(
+            queryStatement.getHavingCondition().getPredicate(),
+            devicePath,
+            schemaTree,
+            typeProvider);
+    return ExpressionUtils.constructQueryFilter(
+        rewrittenPredicates.stream().distinct().collect(Collectors.toList()));
+  }
+
+  private Map<Expression, Expression> analyzeGroupByLevelInHaving(
+      QueryStatement queryStatement,
+      List<Expression> inputExpressions,
+      Map<Expression, Set<Expression>> groupByLevelExpressions) {
+    GroupByLevelController groupByLevelController =
+        new GroupByLevelController(
+            queryStatement.getGroupByLevelComponent().getLevels(), typeProvider);
+    for (Expression inputExpression : inputExpressions) {
+      groupByLevelController.control(false, inputExpression, null);
+    }
+    Map<Expression, Set<Expression>> groupedPathMap = groupByLevelController.getGroupedPathMap();
+    groupByLevelExpressions.putAll(groupedPathMap);
+    return groupByLevelController.getRawPathToGroupedPathMap();
   }
 
   private Map<Expression, Set<Expression>> analyzeGroupByLevel(

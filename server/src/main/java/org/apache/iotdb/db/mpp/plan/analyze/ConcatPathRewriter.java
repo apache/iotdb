@@ -72,6 +72,13 @@ public class ConcatPathRewriter {
       ExpressionAnalyzer.constructPatternTreeFromExpression(
           queryStatement.getWhereCondition().getPredicate(), prefixPaths, patternTree);
     }
+
+    // concat HAVING with FROM
+    if (queryStatement.getHavingCondition() != null) {
+      ExpressionAnalyzer.constructPatternTreeFromExpression(
+          queryStatement.getHavingCondition().getPredicate(), prefixPaths, patternTree);
+    }
+
     return queryStatement;
   }
 
