@@ -19,7 +19,6 @@
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class RegionGroupCache implements IRegionGroupCache {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeHeartbeatHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RegionGroupCache.class);
 
   // TODO: This class might be split into SchemaRegionGroupCache and DataRegionGroupCache
 
