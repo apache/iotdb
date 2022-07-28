@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.service.thrift;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
@@ -53,17 +54,22 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -372,8 +378,10 @@ public class ConfigNodeRPCServiceProcessorTest {
     ByteBuffer buffer;
     TSchemaPartitionReq schemaPartitionReq;
     TSchemaPartitionResp schemaPartitionResp;
+    TSchemaPartitionTableResp schemaPartitionTableResp;
 
     Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap;
+    Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionTableMap;
 
     // Set StorageGroups
     status = processor.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
@@ -476,6 +484,22 @@ public class ConfigNodeRPCServiceProcessorTest {
               Assert.assertEquals(
                   TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
             });
+
+    buffer = generatePatternTreeBuffer(new String[]{d00, d01, d10, d11});
+    schemaPartitionReq.setPathPatternTree(buffer);
+    schemaPartitionTableResp = processor.getSchemaPartitionTable(schemaPartitionReq);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(),
+        schemaPartitionTableResp.getStatus().getCode());
+    schemaPartitionTableMap = schemaPartitionTableResp.getSchemaPartitionTable();
+    schemaPartitionTableMap.get(sg0).forEach(
+        (tSeriesPartitionSlot, tConsensusGroupId) -> {
+          Assert.assertEquals(TConsensusGroupType.SchemaRegion, tConsensusGroupId.getType());
+        });
+    schemaPartitionTableMap.get(sg0).forEach(
+        (tSeriesPartitionSlot, tConsensusGroupId) -> {
+          Assert.assertEquals(TConsensusGroupType.SchemaRegion, tConsensusGroupId.getType());
+        });
   }
 
   private Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
@@ -557,6 +581,53 @@ public class ConfigNodeRPCServiceProcessorTest {
     }
   }
 
+  private void checkDataPartitionTableMap(
+      int storageGroupNum,
+      int seriesPartitionSlotNum,
+      long timePartitionSlotNum,
+      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+          dataPartitionTableMap) {
+    final String sg = "root.sg";
+    Assert.assertEquals(storageGroupNum, dataPartitionTableMap.size());
+    for (int i = 0; i < storageGroupNum; i++) {
+      String storageGroup = sg + i;
+      Assert.assertTrue(dataPartitionTableMap.containsKey(storageGroup));
+      Assert.assertEquals(seriesPartitionSlotNum, dataPartitionTableMap.get(storageGroup).size());
+      for (int j = 0; j < seriesPartitionSlotNum; j++) {
+        TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(j);
+        Assert.assertTrue(dataPartitionTableMap.get(storageGroup).containsKey(seriesPartitionSlot));
+        Assert.assertEquals(
+            timePartitionSlotNum,
+            dataPartitionTableMap.get(storageGroup).get(seriesPartitionSlot).size());
+        for (long k = 0; k < timePartitionSlotNum; k++) {
+          TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(k);
+          Assert.assertTrue(
+              dataPartitionTableMap
+                  .get(storageGroup)
+                  .get(seriesPartitionSlot)
+                  .containsKey(timePartitionSlot));
+          // One RegionReplicaSet
+          Assert.assertEquals(
+              1,
+              dataPartitionTableMap
+                  .get(storageGroup)
+                  .get(seriesPartitionSlot)
+                  .get(timePartitionSlot)
+                  .size());
+          // Is DataRegion
+          Assert.assertEquals(
+              TConsensusGroupType.DataRegion,
+              dataPartitionTableMap
+                  .get(storageGroup)
+                  .get(seriesPartitionSlot)
+                  .get(timePartitionSlot)
+                  .get(0)
+                  .getType());
+        }
+      }
+    }
+  }
+
   @Test
   public void testGetAndCreateDataPartition() throws TException {
     final String sg = "root.sg";
@@ -622,6 +693,17 @@ public class ConfigNodeRPCServiceProcessorTest {
         seriesPartitionSlotNum,
         timePartitionSlotNum,
         dataPartitionResp.getDataPartitionMap());
+
+    // Test getDataPartitionTable
+    TDataPartitionTableResp dataPartitionTableResp =
+        processor.getDataPartitionTable(dataPartitionReq);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataPartitionTableResp.getStatus().getCode());
+    checkDataPartitionTableMap(
+        storageGroupNum,
+        seriesPartitionSlotNum,
+        timePartitionSlotNum,
+        dataPartitionTableResp.getDataPartitionTable());
   }
 
   @Test
@@ -1096,5 +1178,113 @@ public class ConfigNodeRPCServiceProcessorTest {
     Assert.assertEquals(2, nodeManagementResp.getMatchedNodeSize());
     Assert.assertNotNull(nodeManagementResp.getSchemaRegionMap());
     Assert.assertEquals(0, nodeManagementResp.getSchemaRegionMapSize());
+  }
+
+  @Test
+  public void testShowRegion() throws TException, IllegalPathException, IOException {
+    TSStatus status;
+    TShowRegionReq showRegionReq = new TShowRegionReq();
+    TShowRegionResp showRegionResp;
+    final String sg = "root.sg";
+    final String sg0 = "root.sg0";
+    final String sg1 = "root.sg1";
+
+    final String d00 = sg0 + ".d0.s";
+    final String d01 = sg0 + ".d1.s";
+    final String d10 = sg1 + ".d0.s";
+    final String d11 = sg1 + ".d1.s";
+
+    final int storageGroupNum = 2;
+    final int seriesPartitionSlotNum = 4;
+    final long timePartitionSlotNum = 6;
+
+    ByteBuffer buffer;
+    TSetStorageGroupReq setReq;
+    TSchemaPartitionReq schemaPartitionReq;
+    TSchemaPartitionResp schemaPartitionResp;
+    TDataPartitionReq dataPartitionReq;
+    TDataPartitionResp dataPartitionResp;
+    List<TRegionInfo> regionInfoList;
+    List<String> sgs = Arrays.asList(sg + "0", sg + "1");
+    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap;
+
+    // set StorageGroups
+    for (int i = 0; i < 2; i++) {
+      setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
+      status = processor.setStorageGroup(setReq);
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    }
+
+    // Test show Region, it should return an empty list
+    showRegionReq.setStorageGroups(sgs);
+    showRegionResp = processor.showRegion(showRegionReq);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
+    Assert.assertEquals(0, showRegionResp.getRegionInfoListSize());
+
+    // register DataNodes
+    registerDataNodes();
+
+    // create DataPartition
+    partitionSlotsMap =
+        constructPartitionSlotsMap(storageGroupNum, seriesPartitionSlotNum, timePartitionSlotNum);
+    dataPartitionReq = new TDataPartitionReq(partitionSlotsMap);
+    dataPartitionResp = processor.getOrCreateDataPartition(dataPartitionReq);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataPartitionResp.getStatus().getCode());
+    Assert.assertEquals(2, dataPartitionResp.getDataPartitionMapSize());
+
+    // create SchemaPartition
+    buffer = generatePatternTreeBuffer(new String[]{d00, d01, d10, d11});
+    schemaPartitionReq = new TSchemaPartitionReq(buffer);
+    schemaPartitionResp = processor.getOrCreateSchemaPartition(schemaPartitionReq);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), schemaPartitionResp.getStatus().getCode());
+    Assert.assertEquals(2, schemaPartitionResp.getSchemaRegionMapSize());
+
+    // Test show all Region
+    showRegionResp = processor.showRegion(showRegionReq);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
+    Assert.assertEquals(4, showRegionResp.getRegionInfoListSize());
+    regionInfoList = showRegionResp.getRegionInfoList();
+    for (int i = 0; i < 4; i++) {
+      if (regionInfoList.get(i).getConsensusGroupId().getType() == TConsensusGroupType.DataRegion) {
+        Assert.assertEquals(sg + (i % 2), regionInfoList.get(i).getStorageGroup());
+        Assert.assertEquals(seriesPartitionSlotNum, regionInfoList.get(i).getSeriesSlots());
+        Assert.assertEquals(
+            timePartitionSlotNum * seriesPartitionSlotNum, regionInfoList.get(i).getTimeSlots());
+      } else if (regionInfoList.get(i).getConsensusGroupId().getType() == TConsensusGroupType.SchemaRegion) {
+        Assert.assertEquals(sg + (i % 2), regionInfoList.get(i).getStorageGroup());
+        Assert.assertEquals(2, regionInfoList.get(i).getSeriesSlots());
+        Assert.assertEquals(0, regionInfoList.get(i).getTimeSlots());
+      }
+    }
+
+    // Test show dataRegion
+    showRegionReq.setConsensusGroupType(TConsensusGroupType.DataRegion);
+    showRegionResp = processor.showRegion(showRegionReq);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
+    Assert.assertEquals(2, showRegionResp.getRegionInfoListSize());
+    regionInfoList = showRegionResp.getRegionInfoList();
+    for (int i = 0; i < 2; i++) {
+      Assert.assertEquals(sg + i, regionInfoList.get(i).getStorageGroup());
+      Assert.assertEquals(
+          TConsensusGroupType.DataRegion, regionInfoList.get(i).getConsensusGroupId().getType());
+    }
+
+    // Test show schemaRegion
+    showRegionReq.setConsensusGroupType(TConsensusGroupType.SchemaRegion);
+    showRegionResp = processor.showRegion(showRegionReq);
+    Assert.assertEquals(
+        TSStatusCode.SUCCESS_STATUS.getStatusCode(), showRegionResp.getStatus().getCode());
+    Assert.assertEquals(2, showRegionResp.getRegionInfoListSize());
+    regionInfoList = showRegionResp.getRegionInfoList();
+    for (int i = 0; i < 2; i++) {
+      Assert.assertEquals(sg + i, regionInfoList.get(i).getStorageGroup());
+      Assert.assertEquals(
+          TConsensusGroupType.SchemaRegion, regionInfoList.get(i).getConsensusGroupId().getType());
+    }
   }
 }
