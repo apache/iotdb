@@ -561,6 +561,7 @@ public class LoadManager {
             Tag.STATUS.toString(),
             "unknown");
   }
+
   public static void printRegionRouteMap(
       long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> regionRouteMap) {
     LOGGER.info("[latestRegionRouteMap] timestamp:{}", timestamp);
