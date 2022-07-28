@@ -26,8 +26,8 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.SyncUtils;
+import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 
 import org.slf4j.Logger;
@@ -52,9 +52,8 @@ public class SyncLogAnalyzer {
   private Map<String, List<PipeMessage>> pipeMessageMap = new ConcurrentHashMap<>();
   // <pipeSinkName, PipeSink>
   private Map<String, PipeSink> pipeSinks = new ConcurrentHashMap<>();
-  private List<Pipe> pipes = new ArrayList<>();
-  private Pipe runningPipe;
-  private Pipe.PipeStatus runningPipeStatus;
+  private List<PipeInfo> pipes = new ArrayList<>();
+  private PipeInfo runningPipe;
 
   public void recover() throws StartupException {
     logger.info("Start to recover all sync state for sync.");
@@ -66,7 +65,7 @@ public class SyncLogAnalyzer {
     try (BufferedReader br = new BufferedReader(new FileReader(serviceLogFile))) {
       recoverPipe(br);
     } catch (IOException e) {
-      logger.info("Receiver service log file not found");
+      logger.info("Sync service log file not found");
     }
     File msgLogFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_MSG_LOG_NAME);
     try (BufferedReader loadReader = new BufferedReader(new FileReader(msgLogFile))) {
@@ -77,15 +76,15 @@ public class SyncLogAnalyzer {
         try {
           analyzeMsgLog(line);
         } catch (Exception e) {
-          logger.error("Receiver msg log recovery error: log file parse error at line " + lineNum);
+          logger.error("Sync msg log recovery error: log file parse error at line " + lineNum);
           logger.error(e.getMessage());
           throw new StartupException(
               ServiceType.RECEIVER_SERVICE.getName(),
-              "Receiver msg log file recover error at line " + lineNum);
+              "Sync msg log file recover error at line " + lineNum);
         }
       }
     } catch (IOException e) {
-      logger.info("Receiver msg log file not found");
+      logger.info("Sync msg log file not found");
     }
   }
 
@@ -105,16 +104,12 @@ public class SyncLogAnalyzer {
     return pipeSinks;
   }
 
-  public List<Pipe> getAllPipes() {
+  public List<PipeInfo> getAllPipeInfos() {
     return pipes;
   }
 
-  public Pipe getRunningPipe() {
+  public PipeInfo getRunningPipeInfo() {
     return runningPipe;
-  }
-
-  public Pipe.PipeStatus getRunningPipeStatus() {
-    return runningPipeStatus;
   }
 
   private void recoverPipe(BufferedReader br) throws IOException {
@@ -145,21 +140,20 @@ public class SyncLogAnalyzer {
             lineNumber += 1;
             CreatePipePlan pipePlan = CreatePipePlan.parseString(readLine);
             runningPipe =
-                SyncUtils.parseCreatePipePlan(
+                SyncUtils.parseCreatePipePlanAsPipeInfo(
                     pipePlan,
                     pipeSinks.get(pipePlan.getPipeSinkName()),
                     Long.parseLong(parseStrings[1]));
             pipes.add(runningPipe);
-            runningPipeStatus = runningPipe.getStatus();
             break;
-          case STOP_PIPE: // ignore status check
-            runningPipeStatus = Pipe.PipeStatus.STOP;
+          case STOP_PIPE:
+            runningPipe.stop();
             break;
           case START_PIPE:
-            runningPipeStatus = Pipe.PipeStatus.RUNNING;
+            runningPipe.start();
             break;
           case DROP_PIPE:
-            runningPipeStatus = Pipe.PipeStatus.DROP;
+            runningPipe.drop();
             break;
           case START_PIPE_SERVER:
             pipeServerEnable = true;

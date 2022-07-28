@@ -23,8 +23,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -78,24 +78,23 @@ public class SyncLoggerAnalyzerTest {
       log.close();
       SyncLogAnalyzer syncLogAnalyzer = new SyncLogAnalyzer();
       syncLogAnalyzer.recover();
-      List<Pipe> pipes = syncLogAnalyzer.getAllPipes();
+      List<PipeInfo> pipes = syncLogAnalyzer.getAllPipeInfos();
       Map<String, PipeSink> allPipeSinks = syncLogAnalyzer.getAllPipeSinks();
-      Pipe runningPipe = syncLogAnalyzer.getRunningPipe();
-      Pipe.PipeStatus runningPipeStatus = syncLogAnalyzer.getRunningPipeStatus();
+      PipeInfo runningPipe = syncLogAnalyzer.getRunningPipeInfo();
       Assert.assertTrue(syncLogAnalyzer.isPipeServerEnable());
       Assert.assertEquals(1, allPipeSinks.size());
       Assert.assertEquals(2, pipes.size());
-      Assert.assertEquals(pipe2, runningPipe.getName());
-      for (Pipe p : pipes) {
-        if (p.getName().equals(pipe1)) {
+      Assert.assertEquals(pipe2, runningPipe.getPipeName());
+      for (PipeInfo p : pipes) {
+        if (p.getPipeName().equals(pipe1)) {
           Assert.assertEquals(1, p.getCreateTime());
-          Assert.assertEquals("demo", p.getPipeSink().getPipeSinkName());
-        } else if (p.getName().equals(pipe2)) {
+          Assert.assertEquals("demo", p.getPipeSinkName());
+        } else if (p.getPipeName().equals(pipe2)) {
           Assert.assertEquals(2, p.getCreateTime());
-          Assert.assertEquals("demo", p.getPipeSink().getPipeSinkName());
+          Assert.assertEquals("demo", p.getPipeSinkName());
         }
       }
-      Assert.assertEquals(PipeStatus.RUNNING, runningPipeStatus);
+      Assert.assertEquals(PipeStatus.RUNNING, runningPipe.getStatus());
     } catch (Exception e) {
       Assert.fail();
       e.printStackTrace();

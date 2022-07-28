@@ -74,9 +74,6 @@ public class StandaloneTransportClient implements ITransportClient {
 
   private final Pipe pipe;
 
-  /* hold this lock to wait until successfully reconnect to receiver */
-  private final Object waitLock;
-
   /**
    * @param pipe sync task
    * @param ipAddress remote ip address
@@ -88,7 +85,6 @@ public class StandaloneTransportClient implements ITransportClient {
     this.pipe = pipe;
     this.ipAddress = ipAddress;
     this.port = port;
-    this.waitLock = new Object();
     this.localIP = localIP;
     serviceClient = new ClientWrapper(pipe, ipAddress, port, localIP);
     heartbeatClient = new ClientWrapper(pipe, ipAddress, port, localIP);
@@ -453,11 +449,7 @@ public class StandaloneTransportClient implements ITransportClient {
         } catch (SyncConnectionException e) {
           logger.error(
               String.format("Connect to receiver %s:%d error, because %s.", ipAddress, port, e));
-          // wait and retry
-          synchronized (waitLock) {
-            SenderService.getInstance().setConnecting(true);
-            waitLock.wait();
-          }
+          // TODO: wait and retry
         }
       }
     } catch (InterruptedException e) {

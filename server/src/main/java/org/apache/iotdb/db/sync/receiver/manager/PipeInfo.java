@@ -20,19 +20,24 @@ package org.apache.iotdb.db.sync.receiver.manager;
 
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 
-import java.util.Objects;
-
-public class PipeInfo {
+public abstract class PipeInfo {
   private String pipeName;
+  private String pipeSinkName;
   private PipeStatus status;
-  private String remoteIp;
   private long createTime;
 
-  public PipeInfo(String pipeName, String remoteIp, PipeStatus status, long createTime) {
+  public PipeInfo(String pipeName, String pipeSinkName, long createTime) {
     this.pipeName = pipeName;
-    this.remoteIp = remoteIp;
-    this.status = status;
+    this.pipeSinkName = pipeSinkName;
     this.createTime = createTime;
+    this.status = PipeStatus.STOP;
+  }
+
+  public PipeInfo(String pipeName, String pipeSinkName, PipeStatus status, long createTime) {
+    this.pipeName = pipeName;
+    this.pipeSinkName = pipeSinkName;
+    this.createTime = createTime;
+    this.status = status;
   }
 
   public String getPipeName() {
@@ -43,12 +48,28 @@ public class PipeInfo {
     this.pipeName = pipeName;
   }
 
+  public String getPipeSinkName() {
+    return pipeSinkName;
+  }
+
+  public void setPipeSinkName(String pipeSinkName) {
+    this.pipeSinkName = pipeSinkName;
+  }
+
   public PipeStatus getStatus() {
     return status;
   }
 
-  public void setStatus(PipeStatus status) {
-    this.status = status;
+  public void start() {
+    this.status = PipeStatus.RUNNING;
+  }
+
+  public void stop() {
+    this.status = PipeStatus.STOP;
+  }
+
+  public void drop() {
+    this.status = PipeStatus.DROP;
   }
 
   public long getCreateTime() {
@@ -57,29 +78,5 @@ public class PipeInfo {
 
   public void setCreateTime(long createTime) {
     this.createTime = createTime;
-  }
-
-  public String getRemoteIp() {
-    return remoteIp;
-  }
-
-  public void setRemoteIp(String remoteIp) {
-    this.remoteIp = remoteIp;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    PipeInfo pipeInfo = (PipeInfo) o;
-    return createTime == pipeInfo.createTime
-        && Objects.equals(pipeName, pipeInfo.pipeName)
-        && status == pipeInfo.status
-        && Objects.equals(remoteIp, pipeInfo.remoteIp);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(pipeName, status, remoteIp, createTime);
   }
 }

@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.SyncUtils;
+import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.receiver.recovery.SyncLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.recovery.SyncLogger;
@@ -54,13 +55,10 @@ public abstract class AbstractSyncInfo {
 
   private Map<String, PipeSink> pipeSinks;
 
-  // TODO: extract pipe info
-  private Pipe runningPipe;
-  private List<Pipe> pipes;
+  private PipeInfo runningPipe;
+  private List<PipeInfo> pipes;
 
-  // TODO: combine
   protected SyncLogger syncLogger;
-  //  private SenderLogger senderLogger;
 
   public AbstractSyncInfo() {
     syncLogger = new SyncLogger();
@@ -68,8 +66,8 @@ public abstract class AbstractSyncInfo {
     try {
       analyzer.recover();
       pipeSinks = analyzer.getAllPipeSinks();
-      pipes = analyzer.getAllPipes();
-      runningPipe = analyzer.getRunningPipe();
+      pipes = analyzer.getAllPipeInfos();
+      runningPipe = analyzer.getRunningPipeInfo();
       pipeServerEnable = analyzer.isPipeServerEnable();
       pipeMessageMap = analyzer.getPipeMessageMap();
     } catch (StartupException e) {
@@ -129,11 +127,11 @@ public abstract class AbstractSyncInfo {
     }
     if (runningPipe != null
         && runningPipe.getStatus() != Pipe.PipeStatus.DROP
-        && runningPipe.getPipeSink().getPipeSinkName().equals(name)) {
+        && runningPipe.getPipeSinkName().equals(name)) {
       throw new PipeSinkException(
           String.format(
               "Can not drop pipeSink %s, because pipe %s is using it.",
-              name, runningPipe.getName()));
+              name, runningPipe.getPipeName()));
     }
     pipeSinks.remove(name);
     syncLogger.dropPipeSink(name);
@@ -161,14 +159,14 @@ public abstract class AbstractSyncInfo {
       throw new PipeException(
           String.format(
               "Pipe %s is %s, please retry after drop it.",
-              runningPipe.getName(), runningPipe.getStatus().name()));
+              runningPipe.getPipeName(), runningPipe.getStatus().name()));
     }
     if (!isPipeSinkExist(plan.getPipeSinkName())) {
       throw new PipeException(String.format("Can not find pipeSink %s.", plan.getPipeSinkName()));
     }
 
     PipeSink runningPipeSink = getPipeSink(plan.getPipeSinkName());
-    runningPipe = SyncUtils.parseCreatePipePlan(plan, runningPipeSink, createTime);
+    runningPipe = SyncUtils.parseCreatePipePlanAsPipeInfo(plan, runningPipeSink, createTime);
     pipes.add(runningPipe);
     syncLogger.addPipe(plan, createTime);
   }
@@ -178,16 +176,16 @@ public abstract class AbstractSyncInfo {
     checkRunningPipeExistAndName(pipeName);
     switch (operatorType) {
       case START_PIPE:
-        //        runningPipe.start();
-        afterStartPipe(runningPipe.getName(), runningPipe.getCreateTime());
+        runningPipe.start();
+        afterStartPipe(runningPipe.getPipeName(), runningPipe.getCreateTime());
         break;
       case STOP_PIPE:
-        //        runningPipe.stop();
-        afterStopPipe(runningPipe.getName(), runningPipe.getCreateTime());
+        runningPipe.stop();
+        afterStopPipe(runningPipe.getPipeName(), runningPipe.getCreateTime());
         break;
       case DROP_PIPE:
-        //        runningPipe.drop();
-        afterDropPipe(runningPipe.getName(), runningPipe.getCreateTime());
+        runningPipe.drop();
+        afterDropPipe(runningPipe.getPipeName(), runningPipe.getCreateTime());
         break;
       default:
         throw new PipeException("Unknown operatorType " + operatorType);
@@ -195,7 +193,7 @@ public abstract class AbstractSyncInfo {
     syncLogger.operatePipe(pipeName, operatorType);
   }
 
-  public List<Pipe> getAllPipes() {
+  public List<PipeInfo> getAllPipeInfos() {
     return pipes;
   }
 
@@ -203,54 +201,15 @@ public abstract class AbstractSyncInfo {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
       throw new PipeException("There is no existing pipe.");
     }
-    if (!runningPipe.getName().equals(pipeName)) {
+    if (!runningPipe.getPipeName().equals(pipeName)) {
       throw new PipeException(
           String.format(
               "Pipe %s is %s, please retry after drop it.",
-              runningPipe.getName(), runningPipe.getStatus()));
+              runningPipe.getPipeName(), runningPipe.getStatus()));
     }
   }
 
   // endregion
-
-  //  public List<PipeInfo> getPipeInfosByPipeName(String pipeName) {
-  //    if (!pipeInfos.containsKey(pipeName)) {
-  //      return Collections.emptyList();
-  //    }
-  //    List<PipeInfo> res = new ArrayList<>();
-  //    for (Map.Entry<String, Map<Long, Pipe.PipeStatus>> remoteIpEntry :
-  //        pipeInfos.get(pipeName).entrySet()) {
-  //      for (Map.Entry<Long, Pipe.PipeStatus> createTimeEntry :
-  // remoteIpEntry.getValue().entrySet()) {
-  //        res.add(
-  //            new PipeInfo(
-  //                pipeName,
-  //                remoteIpEntry.getKey(),
-  //                createTimeEntry.getValue(),
-  //                createTimeEntry.getKey()));
-  //      }
-  //    }
-  //    return res;
-  //  }
-  //
-  //  public PipeInfo getPipeInfo(String pipeName, String remoteIp, long createTime) {
-  //    if (pipeInfos.containsKey(pipeName)
-  //        && pipeInfos.get(pipeName).containsKey(remoteIp)
-  //        && pipeInfos.get(pipeName).get(remoteIp).containsKey(createTime)) {
-  //      return new PipeInfo(
-  //          pipeName, remoteIp, pipeInfos.get(pipeName).get(remoteIp).get(createTime),
-  // createTime);
-  //    }
-  //    return null;
-  //  }
-  //
-  //  public List<PipeInfo> getAllPipeInfos() {
-  //    List<PipeInfo> res = new ArrayList<>();
-  //    for (String pipeName : pipeInfos.keySet()) {
-  //      res.addAll(getPipeInfosByPipeName(pipeName));
-  //    }
-  //    return res;
-  //  }
 
   /**
    * write a single message and serialize to disk

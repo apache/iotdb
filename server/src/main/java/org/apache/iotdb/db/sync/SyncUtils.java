@@ -22,6 +22,7 @@ import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
@@ -41,7 +42,7 @@ public class SyncUtils {
     return pipeSink;
   }
 
-  public static Pipe parseCreatePipePlan(
+  public static Pipe parseCreatePipePlanAsPipe(
       CreatePipePlan plan, PipeSink pipeSink, long pipeCreateTime) throws PipeException {
     boolean syncDelOp = true;
     for (Pair<String, String> pair : plan.getPipeAttributes()) {
@@ -55,5 +56,40 @@ public class SyncUtils {
 
     return new TsFilePipe(
         pipeCreateTime, plan.getPipeName(), pipeSink, plan.getDataStartTimestamp(), syncDelOp);
+  }
+
+  public static PipeInfo parseCreatePipePlanAsPipeInfo(
+      CreatePipePlan plan, PipeSink pipeSink, long pipeCreateTime) throws PipeException {
+    boolean syncDelOp = true;
+    for (Pair<String, String> pair : plan.getPipeAttributes()) {
+      pair.left = pair.left.toLowerCase();
+      if ("syncdelop".equals(pair.left)) {
+        syncDelOp = Boolean.parseBoolean(pair.right);
+      } else {
+        throw new PipeException(String.format("Can not recognition attribute %s", pair.left));
+      }
+    }
+
+    return new TsFilePipeInfo(
+        plan.getPipeName(),
+        pipeSink.getPipeSinkName(),
+        pipeCreateTime,
+        plan.getDataStartTimestamp(),
+        syncDelOp);
+  }
+
+  /** parse PipeInfo ass Pipe, ignore status */
+  public static Pipe parsePipeInfoAsPipe(PipeInfo pipeInfo, PipeSink pipeSink)
+      throws PipeException {
+    if (pipeInfo instanceof TsFilePipeInfo) {
+      return new TsFilePipe(
+          pipeInfo.getCreateTime(),
+          pipeInfo.getPipeName(),
+          pipeSink,
+          ((TsFilePipeInfo) pipeInfo).getDataStartTimestamp(),
+          ((TsFilePipeInfo) pipeInfo).isSyncDelOp());
+    } else {
+      throw new PipeException(String.format("Can not recognition pipeInfo type"));
+    }
   }
 }

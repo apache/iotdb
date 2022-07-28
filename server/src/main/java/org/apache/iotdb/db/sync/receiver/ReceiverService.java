@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.sync.receiver;
 
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
@@ -27,16 +26,13 @@ import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.sync.receiver.manager.LocalSyncInfo;
-import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,28 +109,7 @@ public class ReceiverService implements IService {
   /** query by sql SHOW PIPE */
   public QueryDataSet showPipe(ShowPipePlan plan, ListDataSet dataSet) {
     // TODO: implement show pipe in receiver
-
-    //    List<PipeInfo> pipeInfos;
-    //    if (!StringUtils.isEmpty(plan.getPipeName())) {
-    //      pipeInfos = receiverInfo.getPipeInfosByPipeName(plan.getPipeName());
-    //    } else {
-    //      pipeInfos = receiverInfo.getAllPipeInfos();
-    //    }
-    //    for (PipeInfo pipeInfo : pipeInfos) {
-    //      putPipeRecord(dataSet, pipeInfo);
-    //    }
     return dataSet;
-  }
-
-  private void putPipeRecord(ListDataSet dataSet, PipeInfo pipeInfo) {
-    RowRecord record = new RowRecord(0);
-    record.addField(
-        Binary.valueOf(DatetimeUtils.convertLongToDate(pipeInfo.getCreateTime())), TSDataType.TEXT);
-    record.addField(Binary.valueOf(pipeInfo.getPipeName()), TSDataType.TEXT);
-    record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
-    record.addField(Binary.valueOf(pipeInfo.getRemoteIp()), TSDataType.TEXT);
-    record.addField(Binary.valueOf(pipeInfo.getStatus().name()), TSDataType.TEXT);
-    dataSet.putRecord(record);
   }
 
   private ReceiverService() {

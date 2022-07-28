@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.sync.sender.service;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.IService;
@@ -30,12 +31,16 @@ import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.sync.ISyncInfoFetcher;
 import org.apache.iotdb.db.sync.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.SyncUtils;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
+import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
+import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.receiver.recovery.SyncLogAnalyzer;
 import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
@@ -45,6 +50,9 @@ import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +131,7 @@ public class SenderService implements IService {
     }
 
     PipeSink runningPipeSink = getPipeSink(plan.getPipeSinkName());
-    runningPipe = SyncUtils.parseCreatePipePlan(plan, runningPipeSink, currentTime);
+    runningPipe = SyncUtils.parseCreatePipePlanAsPipe(plan, runningPipeSink, currentTime);
     if (runningPipe.getPipeSink().getType() == PipeSink.PipeSinkType.IoTDB) {
       try {
         transportHandler =
@@ -217,12 +225,8 @@ public class SenderService implements IService {
     }
   }
 
-  public List<Pipe> getAllPipes() {
-    return syncInfoFetcher.getAllPipes();
-  }
-
-  public synchronized String getPipeMsg(Pipe pipe) {
-    return syncInfoFetcher.getPipeMsg(pipe);
+  public List<PipeInfo> getAllPipeInfos() {
+    return syncInfoFetcher.getAllPipeInfos();
   }
 
   private void checkRunningPipeExistAndName(String pipeName) throws PipeException {
@@ -287,10 +291,6 @@ public class SenderService implements IService {
 
   // endregion
 
-  public void setConnecting(boolean isConnecting) {
-    runningPipe.setDisconnected(isConnecting);
-  }
-
   public synchronized void receiveMsg(PipeMessage.MsgType type, String message) {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
       logger.info(String.format("No running pipe for receiving msg %s.", message));
@@ -309,11 +309,59 @@ public class SenderService implements IService {
         }
       case WARN:
         logger.warn(String.format("%s from receiver: %s", type.name(), message));
-        TSStatus status = syncInfoFetcher.recordMsg(runningPipe, new PipeMessage(type, message));
+        TSStatus status =
+            syncInfoFetcher.recordMsg(
+                runningPipe.getName(), runningPipe.getCreateTime(), new PipeMessage(type, message));
         if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
           logger.warn(String.format("Failed to record message: [%s] %s", type.name(), message));
         }
         break;
+    }
+  }
+
+  public void showPipe(ShowPipePlan plan, ListDataSet listDataSet) {
+    boolean showAll = "".equals(plan.getPipeName());
+    for (PipeInfo pipe : SenderService.getInstance().getAllPipeInfos()) {
+      if (showAll || plan.getPipeName().equals(pipe.getPipeName())) {
+        RowRecord record = new RowRecord(0);
+        record.addField(
+            Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipe.getPipeName()), TSDataType.TEXT);
+        record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipe.getPipeSinkName()), TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
+        record.addField(
+            Binary.valueOf(syncInfoFetcher.getPipeMsg(pipe.getPipeName(), pipe.getCreateTime())),
+            TSDataType.TEXT);
+        boolean needSetFields = true;
+        PipeSink pipeSink = syncInfoFetcher.getPipeSink(pipe.getPipeSinkName());
+        if (pipeSink.getType() == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
+          ExtPipePluginManager extPipePluginManager =
+              SenderService.getInstance().getExternalPipeManager();
+
+          if (extPipePluginManager != null) {
+            String extPipeType = ((ExternalPipeSink) pipeSink).getExtPipeSinkTypeName();
+            ExternalPipeStatus externalPipeStatus =
+                extPipePluginManager.getExternalPipeStatus(extPipeType);
+
+            if (externalPipeStatus != null) {
+              record.addField(
+                  Binary.valueOf(externalPipeStatus.getWriterInvocationFailures().toString()),
+                  TSDataType.TEXT);
+              record.addField(
+                  Binary.valueOf(externalPipeStatus.getWriterStatuses().toString()),
+                  TSDataType.TEXT);
+              needSetFields = false;
+            }
+          }
+        }
+
+        if (needSetFields) {
+          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+        }
+        listDataSet.putRecord(record);
+      }
     }
   }
 
@@ -380,12 +428,14 @@ public class SenderService implements IService {
   private void recover() throws IOException, PipeException, StartupException {
     SyncLogAnalyzer analyzer = new SyncLogAnalyzer();
     analyzer.recover();
-    this.runningPipe = analyzer.getRunningPipe();
-    Pipe.PipeStatus runningPipeStatus = analyzer.getRunningPipeStatus();
-    if (runningPipe == null || Pipe.PipeStatus.DROP.equals(runningPipeStatus)) {
+    PipeInfo runningPipeInfo = analyzer.getRunningPipeInfo();
+    this.runningPipe =
+        SyncUtils.parsePipeInfoAsPipe(
+            runningPipeInfo, analyzer.getAllPipeSinks().get(runningPipeInfo.getPipeSinkName()));
+    if (runningPipe == null || Pipe.PipeStatus.DROP.equals(runningPipeInfo.getStatus())) {
       return;
     } else {
-      switch (runningPipeStatus) {
+      switch (runningPipeInfo.getStatus()) {
         case RUNNING:
           runningPipe.start();
           break;
@@ -397,7 +447,8 @@ public class SenderService implements IService {
           break;
         default:
           throw new IOException(
-              String.format("Can not recognize running pipe status %s.", runningPipeStatus));
+              String.format(
+                  "Can not recognize running pipe status %s.", runningPipeInfo.getStatus()));
       }
     }
 

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.sync;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 
 import java.util.List;
@@ -51,11 +51,11 @@ public interface ISyncInfoFetcher {
 
   TSStatus dropPipe(String pipeName);
 
-  List<Pipe> getAllPipes();
+  List<PipeInfo> getAllPipeInfos();
 
   // endregion
 
-  String getPipeMsg(Pipe pipe);
+  String getPipeMsg(String pipeName, long createTime);
 
-  TSStatus recordMsg(Pipe pipe, PipeMessage pipeMessage);
+  TSStatus recordMsg(String pipeName, long createTime, PipeMessage pipeMessage);
 }

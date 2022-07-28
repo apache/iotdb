@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.sync;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -26,8 +27,8 @@ import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.sync.receiver.AbstractSyncInfo;
 import org.apache.iotdb.db.sync.receiver.manager.LocalSyncInfo;
+import org.apache.iotdb.db.sync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -124,18 +125,18 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   }
 
   @Override
-  public List<Pipe> getAllPipes() {
-    return syncInfo.getAllPipes();
+  public List<PipeInfo> getAllPipeInfos() {
+    return syncInfo.getAllPipeInfos();
   }
 
   @Override
-  public String getPipeMsg(Pipe pipe) {
-    return syncInfo.getPipeMessage(pipe.getName(), pipe.getCreateTime(), false).getMsg();
+  public String getPipeMsg(String pipeName, long createTime) {
+    return syncInfo.getPipeMessage(pipeName, createTime, false).getMsg();
   }
 
   @Override
-  public TSStatus recordMsg(Pipe pipe, PipeMessage pipeMessage) {
-    syncInfo.writePipeMessage(pipe.getName(), pipe.getCreateTime(), pipeMessage);
+  public TSStatus recordMsg(String pipeName, long createTime, PipeMessage pipeMessage) {
+    syncInfo.writePipeMessage(pipeName, createTime, pipeMessage);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
@@ -153,8 +154,8 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   }
   // endregion
 
-  public void clear(){
-    syncInfo = null;
+  @TestOnly
+  public void reset() {
+    syncInfo = new LocalSyncInfo();
   }
-
 }

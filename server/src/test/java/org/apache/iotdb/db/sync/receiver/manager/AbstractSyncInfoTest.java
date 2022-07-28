@@ -89,7 +89,7 @@ public class AbstractSyncInfoTest {
       for (int i = 0; i < expectedRecords.length; i++) {
         Assert.assertEquals(expectedRecords[i], actualRecords.get(i));
       }
-      Assert.assertEquals(2, syncInfo.getAllPipes().size());
+      Assert.assertEquals(2, syncInfo.getAllPipeInfos().size());
       Assert.assertEquals(1, syncInfo.getAllPipeSink().size());
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
       PipeMessage warn = new PipeMessage(PipeMessage.MsgType.WARN, "warn");
