@@ -86,10 +86,10 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
 
   @Override
   public TSStatus writePoints(TSWritePointsReq req) {
-    if (!serviceProvider.checkLogin(req.sessionId)) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.sessionId);
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
-
     List<TSStatus> tsStatusList = new ArrayList<>();
     int executeCode = TSStatusCode.SUCCESS_STATUS.getStatusCode();
     for (Point point :
@@ -114,10 +114,26 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     return new TSStatus().setCode(executeCode).setSubStatus(tsStatusList);
   }
 
+  private boolean isStatusNotSuccess(TSStatus tsStatus) {
+    return tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  private TSStatus checkLoginStatus(long sessionId) {
+    if (!serviceProvider.checkLogin(sessionId)) {
+      return getNotLoggedInStatus();
+    }
+    if (serviceProvider.checkSessionTimeout(sessionId)) {
+      return RpcUtils.getInfluxDBStatus(
+          TSStatusCode.SESSION_TIMEOUT.getStatusCode(), "Session timeout");
+    }
+    return RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
   @Override
   public TSStatus createDatabase(TSCreateDatabaseReq req) throws TException {
-    if (!serviceProvider.checkLogin(req.sessionId)) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.sessionId);
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
     try {
       SetStorageGroupPlan setStorageGroupPlan =

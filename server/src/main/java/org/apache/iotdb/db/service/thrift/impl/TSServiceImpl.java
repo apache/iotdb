@@ -359,12 +359,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSFetchMetadataResp fetchMetadata(TSFetchMetadataReq req) {
     TSFetchMetadataResp resp = new TSFetchMetadataResp();
-
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return resp.setStatus(getNotLoggedInStatus());
+    TSStatus status = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(status)) {
+      return resp.setStatus(status);
     }
-
-    TSStatus status;
     try {
       switch (req.getType()) {
         case "METADATA_IN_JSON":
@@ -506,8 +504,9 @@ public class TSServiceImpl implements TSIService.Iface {
     long t1 = System.currentTimeMillis();
     List<TSStatus> result = new ArrayList<>();
     boolean isAllSuccessful = true;
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
 
     InsertRowsPlan insertRowsPlan;
@@ -612,8 +611,9 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     String statement = req.getStatement();
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return RpcUtils.getTSExecuteStatementResp(loginStatus);
       }
 
       long startTime = System.currentTimeMillis();
@@ -650,10 +650,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSExecuteStatementResp executeQueryStatement(TSExecuteStatementReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return RpcUtils.getTSExecuteStatementResp(loginStatus);
       }
-
       long startTime = System.currentTimeMillis();
       String statement = req.getStatement();
       PhysicalPlan physicalPlan =
@@ -686,10 +686,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSExecuteStatementResp executeRawDataQuery(TSRawDataQueryReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return RpcUtils.getTSExecuteStatementResp(loginStatus);
       }
-
       long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           serviceProvider
@@ -732,10 +732,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSExecuteStatementResp executeLastDataQuery(TSLastDataQueryReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return RpcUtils.getTSExecuteStatementResp(loginStatus);
       }
-
       long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           serviceProvider
@@ -962,7 +962,7 @@ public class TSServiceImpl implements TSIService.Iface {
           continue;
         }
         TSStatus executionStatus = insertTabletsInternally(insertTabletPlans, sessionId);
-        if (executionStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        if (isStatusNotSuccess(executionStatus)
             && executionStatus.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
           return RpcUtils.getTSExecuteStatementResp(executionStatus).setQueryId(queryId);
         }
@@ -1000,10 +1000,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSFetchResultsResp fetchResults(TSFetchResultsReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return RpcUtils.getTSFetchResultsResp(getNotLoggedInStatus());
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return RpcUtils.getTSFetchResultsResp(loginStatus);
       }
-
       if (!SESSION_MANAGER.hasDataset(req.queryId)) {
         return RpcUtils.getTSFetchResultsResp(
             RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "Has not executed query"));
@@ -1066,10 +1066,10 @@ public class TSServiceImpl implements TSIService.Iface {
   /** update statement can be: 1. select-into statement 2. non-query statement */
   @Override
   public TSExecuteStatementResp executeUpdateStatement(TSExecuteStatementReq req) {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
+    TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(loginStatus)) {
+      return RpcUtils.getTSExecuteStatementResp(loginStatus);
     }
-
     try {
       PhysicalPlan physicalPlan =
           serviceProvider
@@ -1186,10 +1186,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus insertRecords(TSInsertRecordsReq req) {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
-
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, first device {}, first time {}",
@@ -1235,6 +1235,22 @@ public class TSServiceImpl implements TSIService.Iface {
         allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.prefixPaths.size());
   }
 
+  /**
+   * Checking the Login Status.
+   *
+   * @param sessionId Session id.
+   * @return When not login or session timeout, will return error status.
+   */
+  private TSStatus checkLoginStatus(long sessionId) {
+    if (!serviceProvider.checkLogin(sessionId)) {
+      return getNotLoggedInStatus();
+    }
+    if (serviceProvider.checkSessionTimeout(sessionId)) {
+      return getSessionTimeoutStatus();
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
   private TSStatus judgeFinalTsStatus(
       boolean allCheckSuccess,
       TSStatus executeTsStatus,
@@ -1258,10 +1274,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus insertRecordsOfOneDevice(TSInsertRecordsOfOneDeviceReq req) {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
-
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, device {}, first time {}",
@@ -1304,10 +1320,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq req) {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
-
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, device {}, first time {}",
@@ -1362,10 +1378,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus insertStringRecords(TSInsertStringRecordsReq req) {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
-
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, first device {}, first time {}",
@@ -1476,10 +1492,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus insertRecord(TSInsertRecordReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
-
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
           SESSION_MANAGER.getCurrSessionId(),
@@ -1511,10 +1527,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus insertStringRecord(TSInsertStringRecordReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
-
       AUDIT_LOGGER.debug(
           "Session {} insertRecord, device {}, time {}",
           SESSION_MANAGER.getCurrSessionId(),
@@ -1547,10 +1563,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus deleteData(TSDeleteDataReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
-
       DeletePlan plan = new DeletePlan();
       plan.setDeleteStartTime(req.getStartTime());
       plan.setDeleteEndTime(req.getEndTime());
@@ -1574,10 +1590,10 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus insertTablet(TSInsertTabletReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
-
       InsertTabletPlan insertTabletPlan =
           new InsertTabletPlan(new PartialPath(req.getPrefixPath()), req.measurements);
       insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
@@ -1610,10 +1626,10 @@ public class TSServiceImpl implements TSIService.Iface {
   public TSStatus insertTablets(TSInsertTabletsReq req) {
     long t1 = System.currentTimeMillis();
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
-
       return insertTabletsInternally(req);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_TABLETS, e.getErrorCode());
@@ -1670,8 +1686,9 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus setStorageGroup(long sessionId, String storageGroup) {
     try {
-      if (!serviceProvider.checkLogin(sessionId)) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(sessionId);
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
 
       SetStorageGroupPlan plan = new SetStorageGroupPlan(new PartialPath(storageGroup));
@@ -1689,8 +1706,9 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus deleteStorageGroups(long sessionId, List<String> storageGroups) {
     try {
-      if (!serviceProvider.checkLogin(sessionId)) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(sessionId);
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
 
       List<PartialPath> storageGroupList = new ArrayList<>();
@@ -1711,10 +1729,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
-
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create timeseries {}", SESSION_MANAGER.getCurrSessionId(), req.getPath());
@@ -1743,8 +1761,9 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus createAlignedTimeseries(TSCreateAlignedTimeseriesReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
 
       // if measurements.size() == 1, convert to create timeseries
@@ -1801,10 +1820,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
-
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create {} timeseries, the first is {}",
@@ -1888,8 +1907,9 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus deleteTimeseries(long sessionId, List<String> paths) {
     try {
-      if (!serviceProvider.checkLogin(sessionId)) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(sessionId);
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
 
       List<PartialPath> pathList = new ArrayList<>();
@@ -1915,10 +1935,10 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) throws TException {
     try {
-      if (!serviceProvider.checkLogin(req.getSessionId())) {
-        return getNotLoggedInStatus();
+      TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+      if (isStatusNotSuccess(loginStatus)) {
+        return loginStatus;
       }
-
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
             "Session-{} create schema template {}",
@@ -2019,10 +2039,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus setSchemaTemplate(TSSetSchemaTemplateReq req) throws TException {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
-
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} set device template {}.{}",
@@ -2042,10 +2062,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus unsetSchemaTemplate(TSUnsetSchemaTemplateReq req) throws TException {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
-
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} unset schema template {}.{}",
@@ -2066,8 +2086,9 @@ public class TSServiceImpl implements TSIService.Iface {
   @Override
   public TSStatus unsetUsingTemplate(long sessionId, String templateName, String prefixPath)
       throws TException {
-    if (!serviceProvider.checkLogin(sessionId)) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(sessionId);
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -2090,10 +2111,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus setUsingTemplate(TSSetUsingTemplateReq req) throws TException {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
-
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} create timeseries of schema template on path {}",
@@ -2112,10 +2133,10 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus dropSchemaTemplate(TSDropSchemaTemplateReq req) throws TException {
-    if (!serviceProvider.checkLogin(req.getSessionId())) {
-      return getNotLoggedInStatus();
+    TSStatus loginStatus = checkLoginStatus(req.getSessionId());
+    if (isStatusNotSuccess(loginStatus)) {
+      return loginStatus;
     }
-
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session-{} drop schema template {}.",
@@ -2126,6 +2147,14 @@ public class TSServiceImpl implements TSIService.Iface {
     DropTemplatePlan plan = new DropTemplatePlan(req.templateName);
     TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
+  }
+
+  private boolean isStatusNotSuccess(TSStatus tsStatus) {
+    return tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode();
+  }
+
+  private TSStatus getSessionTimeoutStatus() {
+    return RpcUtils.getStatus(TSStatusCode.SESSION_TIMEOUT, "Session timeout");
   }
 
   @Override
