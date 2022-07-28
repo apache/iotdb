@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -25,6 +31,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class RegionGroupCache implements IRegionGroupCache {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeHeartbeatHandler.class);
 
   // TODO: This class might be split into SchemaRegionGroupCache and DataRegionGroupCache
 
@@ -37,7 +45,11 @@ public class RegionGroupCache implements IRegionGroupCache {
   // The DataNode where the leader resides
   private final AtomicInteger leaderDataNodeId;
 
-  public RegionGroupCache() {
+  private final TConsensusGroupId groupId;
+
+  public RegionGroupCache(TConsensusGroupId groupId) {
+    this.groupId = groupId;
+
     this.slidingWindow = new ConcurrentHashMap<>();
 
     this.versionTimestamp = new AtomicLong(0);
@@ -46,6 +58,12 @@ public class RegionGroupCache implements IRegionGroupCache {
 
   @Override
   public void cacheHeartbeatSample(RegionHeartbeatSample newHeartbeatSample) {
+    LOGGER.info(
+        "[RegionGroupCache] group: {} receive a new HeartbeatSample: dataNode={}, sendTime={}, isLeader={}",
+        groupId,
+        newHeartbeatSample.getBelongedDataNodeId(),
+        newHeartbeatSample.getSendTimestamp(),
+        newHeartbeatSample.isLeader());
     slidingWindow.putIfAbsent(newHeartbeatSample.getBelongedDataNodeId(), new LinkedList<>());
     synchronized (slidingWindow.get(newHeartbeatSample.getBelongedDataNodeId())) {
       LinkedList<RegionHeartbeatSample> samples =
@@ -81,6 +99,14 @@ public class RegionGroupCache implements IRegionGroupCache {
         }
       }
     }
+
+    LOGGER.info(
+        "[RegionGroupCache] group: {} process a update: originTime={}, originLeader={}, updateTime={}, updateLeader={}",
+        groupId,
+        versionTimestamp.get(),
+        originLeaderDataNodeId,
+        updateVersion,
+        updateLeaderDataNodeId);
 
     if (updateVersion > versionTimestamp.get()) {
       // Only update when the leadership information is latest
