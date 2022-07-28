@@ -94,6 +94,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -537,7 +538,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
     TRegionRouteMapResp resp = configManager.getLatestRegionRouteMap();
-    LOGGER.info("Generate a latest RegionRouteMap: {}", resp);
+    configManager
+        .getLoadManager()
+        .printRegionRouteMap(resp.getTimestamp(), resp.getRegionRouteMap());
     return resp;
   }
 
@@ -549,6 +552,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowDataNodesResp showDataNodes() throws TException {
     return configManager.showDataNodes();
+  }
+
+  @Override
+  public TShowConfigNodesResp showConfigNodes() throws TException {
+    return configManager.showConfigNodes();
   }
 
   public void handleClientExit() {}

@@ -53,6 +53,7 @@ keyWords
     | CLEAR
     | CLUSTER
     | CONCAT
+    | CONFIGNODES
     | CONFIGURATION
     | CONTINUOUS
     | COUNT

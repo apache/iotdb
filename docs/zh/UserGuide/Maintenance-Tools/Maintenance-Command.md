@@ -310,6 +310,44 @@ Total line number = 3
 It costs 0.009s
 ```
 
+### 查看ConfigNode节点信息
+
+当前 IoTDB 支持使用如下 SQL 查看 ConfigNode的信息：
+
+```
+SHOW CONFIGNODES
+```
+
+示例：
+
+```
+IoTDB> show confignodes
++------+-------+-------+-----+
+|NodeID| Status|   Host| Port|
++------+-------+-------+-----+
+|     0|Running|0.0.0.0|22277|
+|     1|Running|0.0.0.0|22279|
+|     2|Running|0.0.0.0|22281|
++------+-------+-------+-----+
+Total line number = 3
+It costs 0.030s
+```
+
+停止一个节点之后，节点的状态会发生改变，状态显示如下：
+
+```
+IoTDB> show confignodes
++------+-------+-------+-----+
+|NodeID| Status|   Host| Port|
++------+-------+-------+-----+
+|     0|Running|0.0.0.0|22277|
+|     1|Running|0.0.0.0|22279|
+|     2|Unknown|0.0.0.0|22281|
++------+-------+-------+-----+
+Total line number = 3
+It costs 0.009s
+```
+
 ### 查看全部节点信息
 
 当前 IoTDB 支持使用如下 SQL 查看全部节点的信息：
