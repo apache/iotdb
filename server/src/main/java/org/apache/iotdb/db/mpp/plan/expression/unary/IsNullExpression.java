@@ -51,6 +51,10 @@ public class IsNullExpression extends UnaryExpression {
 
   @Override
   public TSDataType inferTypes(TypeProvider typeProvider) {
+    final String expressionString = toString();
+    if (!typeProvider.containsTypeInfoOf(expressionString)) {
+      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
+    }
     return TSDataType.BOOLEAN;
   }
 

@@ -80,6 +80,31 @@ public class BetweenExpression extends TernaryExpression {
 
   @Override
   public TSDataType inferTypes(TypeProvider typeProvider) {
+    final String expressionString = toString();
+    if (!typeProvider.containsTypeInfoOf(expressionString)) {
+      checkInputExpressionDataType(
+          firstExpression.toString(),
+          firstExpression.inferTypes(typeProvider),
+          TSDataType.INT32,
+          TSDataType.INT64,
+          TSDataType.FLOAT,
+          TSDataType.DOUBLE);
+      checkInputExpressionDataType(
+          secondExpression.toString(),
+          secondExpression.inferTypes(typeProvider),
+          TSDataType.INT32,
+          TSDataType.INT64,
+          TSDataType.FLOAT,
+          TSDataType.DOUBLE);
+      checkInputExpressionDataType(
+          thirdExpression.toString(),
+          thirdExpression.inferTypes(typeProvider),
+          TSDataType.INT32,
+          TSDataType.INT64,
+          TSDataType.FLOAT,
+          TSDataType.DOUBLE);
+      typeProvider.setType(expressionString, TSDataType.BOOLEAN);
+    }
     return TSDataType.BOOLEAN;
   }
 
