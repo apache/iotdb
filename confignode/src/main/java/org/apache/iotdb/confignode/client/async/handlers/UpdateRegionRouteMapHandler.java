@@ -47,16 +47,17 @@ public class UpdateRegionRouteMapHandler extends AbstractRetryHandler
   public void onComplete(TSStatus status) {
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       dataNodeLocationMap.remove(targetDataNode.getDataNodeId());
-      LOGGER.info("Successfully update the RegionRouteMap on DataNode: {}", targetDataNode);
+      LOGGER.info(
+          "Successfully update the RegionRouteMap on DataNode: {}", targetDataNode.getDataNodeId());
     } else {
-      LOGGER.error("Update RegionRouteMap on DataNode: {} failed", targetDataNode);
+      LOGGER.error("Update RegionRouteMap on DataNode: {} failed", targetDataNode.getDataNodeId());
     }
     countDownLatch.countDown();
   }
 
   @Override
   public void onError(Exception e) {
-    LOGGER.error("Update RegionRouteMap on DataNode: {} failed", targetDataNode);
+    LOGGER.error("Update RegionRouteMap on DataNode: {} failed", targetDataNode.getDataNodeId());
     countDownLatch.countDown();
   }
 }

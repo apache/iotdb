@@ -538,7 +538,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
     TRegionRouteMapResp resp = configManager.getLatestRegionRouteMap();
-    LOGGER.info("Generate a latest RegionRouteMap: {}", resp);
+    configManager
+        .getLoadManager()
+        .printRegionRouteMap(resp.getTimestamp(), resp.getRegionRouteMap());
     return resp;
   }
 

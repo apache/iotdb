@@ -326,7 +326,6 @@ public class AsyncDataNodeClientPool {
    */
   public void getDataNodeHeartBeat(
       TEndPoint endPoint, THeartbeatReq req, DataNodeHeartbeatHandler handler) {
-    // TODO: Add a retry logic
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);
