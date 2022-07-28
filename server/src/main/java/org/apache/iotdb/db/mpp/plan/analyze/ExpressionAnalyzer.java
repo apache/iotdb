@@ -983,10 +983,12 @@ public class ExpressionAnalyzer {
           functionExpression.getFunctionAttributes(),
           childExpressions);
     } else if (expression instanceof TimeSeriesOperand) {
-      MeasurementPath rawPath = (MeasurementPath) ((TimeSeriesOperand) expression).getPath();
+      PartialPath rawPath = ((TimeSeriesOperand) expression).getPath();
       if (rawPath.isMeasurementAliasExists()) {
-        MeasurementPath newPath = new MeasurementPath(rawPath, rawPath.getMeasurementSchema());
-        newPath.setUnderAlignedEntity(rawPath.isUnderAlignedEntity());
+        MeasurementPath measurementPath = (MeasurementPath) rawPath;
+        MeasurementPath newPath =
+            new MeasurementPath(measurementPath, measurementPath.getMeasurementSchema());
+        newPath.setUnderAlignedEntity(measurementPath.isUnderAlignedEntity());
         return new TimeSeriesOperand(newPath);
       }
       return expression;
