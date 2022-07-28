@@ -58,7 +58,9 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     writeDataPoint(timestamp, value, subTaskId);
-    checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
+    if (measurementPointCountArray[subTaskId] % 10 == 0) {
+      checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
+    }
     isEmptyFile = false;
   }
 
@@ -67,7 +69,6 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
       throws IOException {
     AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
     chunkWriter.write(timestamps, columns, batchSize);
-    measurementPointCountArray[subTaskId] += batchSize;
     checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
     isEmptyFile = false;
   }
