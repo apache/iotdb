@@ -587,12 +587,13 @@ public class DataRegion {
    */
   private void recoverAlter() throws IOException {
 
+    final String logKey = logicalStorageGroupName + "-" + dataRegionId;
     // recover log
     File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlertingLogger.ALTERING_LOG_NAME);
     if(!logFile.exists()) {
       return;
     }
-    logger.info("[recoverAlter] {} logFile:{}", logicalStorageGroupName + "-" + dataRegionId, logFile.getAbsolutePath());
+    logger.info("[recoverAlter] {} logFile:{}", logKey, logFile.getAbsolutePath());
     // wait lock
     if (!tsFileManager.rewriteLockWithTimeout(
             IoTDBDescriptor.getInstance().getConfig().getRewriteLockWaitTimeoutInMS())) {
@@ -617,10 +618,9 @@ public class DataRegion {
                             analyzer.getCompressionType(),
                             key.left,
                             key.right,
-                            alteringLog, tsFileIdentifiers);
-        } catch (IOException e) {
-          logger.error("Alter failed. rewriteDataInTsFIles fail", e);
-        } catch (IllegalPathException e) {
+                            alteringLog, tsFileIdentifiers, logKey);
+        } catch (Exception e) {
+          // TODO If it fails, you need to check and repair ".tsfile"
           logger.error("Alter failed. rewriteDataInTsFIles fail", e);
         }
       });
@@ -628,10 +628,10 @@ public class DataRegion {
         FileUtils.delete(logFile);
       }
     } catch (Exception e) {
-      // roll back TODO
-      logger.error("[recover alter] error", e);
+      logger.error("[recover alter] "+logKey+" error", e);
+      throw e;
     } finally {
-      logger.info("[recover alter] rewriteUnlock");
+      logger.info("[recover alter] "+logKey+" rewriteUnlock");
       tsFileManager.rewriteUnlock();
     }
   }
@@ -2244,6 +2244,7 @@ public class DataRegion {
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws IOException {
 
+    final String logKey = logicalStorageGroupName + "-" + dataRegionId + "-" + fullPath.getFullPath();
     // If there are still some old version tsfiles, the delete won't succeeded.
     if (upgradeFileCount.get() != 0) {
       throw new IOException(
@@ -2252,7 +2253,7 @@ public class DataRegion {
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
       throw new IOException("Alter failed. " + "Please do not delete until the old files settled.");
     }
-    logger.info("[alter timeseries] syncCloseAllWorkingTsFileProcessors");
+    logger.info("[alter timeseries] {} syncCloseAllWorkingTsFileProcessors", logKey);
     // flush & close
     syncCloseAllWorkingTsFileProcessors();
     logger.info("[alter timeseries] writeLock");
@@ -2267,7 +2268,7 @@ public class DataRegion {
     File logFile =
         SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlertingLogger.ALTERING_LOG_NAME);
     if (logFile.exists()) {
-      logger.info("[alter timeseries] rewriteUnlock");
+      logger.info("[alter timeseries] {} rewriteUnlock", logKey);
       tsFileManager.rewriteUnlock();
       throw new IOException(
           "Alter failed. "
@@ -2280,7 +2281,7 @@ public class DataRegion {
       alertingLogger.logHeader(fullPath, curEncoding, curCompressionType, timePartitions);
       timePartitions.forEach(
           timePartition -> {
-            logger.info("[alter timeseries] alterDataInTsFiles seq({})", timePartition);
+            logger.info("[alter timeseries] {} alterDataInTsFiles seq({})", logKey, timePartition);
             try {
               rewriteDataInTsFiles(
                   tsFileManager.getSequenceListByTimePartition(timePartition),
@@ -2289,8 +2290,8 @@ public class DataRegion {
                   curCompressionType,
                   timePartition,
                   true,
-                  alertingLogger, null);
-              logger.info("[alter timeseries] alterDataInTsFiles unseq({})", timePartition);
+                  alertingLogger, null, logKey);
+              logger.info("[alter timeseries] {} alterDataInTsFiles unseq({})", logKey, timePartition);
               rewriteDataInTsFiles(
                   tsFileManager.getUnsequenceListByTimePartition(timePartition),
                   fullPath,
@@ -2298,20 +2299,20 @@ public class DataRegion {
                   curCompressionType,
                   timePartition,
                   false,
-                  alertingLogger, null);
+                  alertingLogger, null, logKey);
             } catch (IOException e) {
-              // TODO
-              logger.error("[alter timeseries] timePartition " + timePartition + " error", e);
+              // TODO If it fails, stop the process?
+              logger.error("[alter timeseries] "+logKey+" timePartition " + timePartition + " error", e);
             }
           });
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
     } catch (Exception e) {
-      // roll back TODO
-      logger.error("[alter timeseries] error", e);
+      logger.error("[alter timeseries] "+logKey+" error", e);
+      throw e;
     } finally {
-      logger.info("[alter timeseries] rewriteUnlock");
+      logger.info("[alter timeseries] {} rewriteUnlock", logKey);
       tsFileManager.rewriteUnlock();
     }
   }
@@ -2323,7 +2324,7 @@ public class DataRegion {
       CompressionType curCompressionType,
       long timePartition,
       boolean sequence,
-      AlertingLogger alertingLogger, Set<TsFileIdentifier> undoneFiles)
+      AlertingLogger alertingLogger, Set<TsFileIdentifier> undoneFiles, String logKey)
       throws IOException {
 
     if (tsFileList == null || tsFileList.isEmpty()) {
@@ -2339,7 +2340,7 @@ public class DataRegion {
               }
               try {
                 logger.info(
-                    "[alter timeseries] rewriteDataInTsFile:{}, fileSize:{} start",
+                    "[alter timeseries] {} rewriteDataInTsFile:{}, fileSize:{} start", logKey
                     tsFileResource.getTsFilePath(),
                     tsFileResource.getTsFileSize());
                 // gen target tsFileResource
@@ -2357,13 +2358,13 @@ public class DataRegion {
                         sequence);
                 tsFileRewriteExcutor.execute();
                 // move tsfile
-                logger.info("[alter timeseries] move tsfile");
+                logger.debug("[alter timeseries] {} move tsfile", logKey);
                 tsFileResource.moveTsFile(
                     TSFILE_SUFFIX,
                     ALTER_OLD_TMP_FILE_SUFFIX);
                 targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
                 // replace
-                logger.info("[alter timeseries] replace tsfile");
+                logger.debug("[alter timeseries] {} replace tsfile", logKey);
                 if (sequence) {
                   tsFileManager.replace(
                       new ArrayList<>(Collections.singletonList(tsFileResource)),
@@ -2380,15 +2381,16 @@ public class DataRegion {
                       false);
                 }
                 // check & delete tsfile from disk
-                checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource);
+                checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource, logKey);
                 // log file done
                 alertingLogger.doneFile(tsFileResource);
                 logger.info(
-                    "[alter timeseries] rewriteDataInTsFile {} end",
+                    "[alter timeseries] {} rewriteDataInTsFile {} end", logKey,
                     tsFileResource.getTsFilePath());
               } catch (Exception e) {
-                // TODO
-                logger.error("[alter timeseries]", e);
+                // TODO If it fails, you need to check and repair.Tsfile
+                // TODO If it fails, stop the process?
+                logger.error("[alter timeseries] " + logKey + " error", e);
               }
             });
     alertingLogger.endTimePartition(timePartition);
@@ -2416,9 +2418,9 @@ public class DataRegion {
     return false;
   }
 
-  private void checkAndDeleteOldTsFile(TsFileResource tsFileResource, TsFileResource targetTsFileResource) throws IOException {
+  private void checkAndDeleteOldTsFile(TsFileResource tsFileResource, TsFileResource targetTsFileResource, String logKey) throws IOException {
     // check
-    logger.info("[alter timeseries] check tsfile");
+    logger.debug("[alter timeseries] {} check tsfile", logKey);
     if (targetTsFileResource.getTsFile().exists()
         && targetTsFileResource.getTsFile().length()
             < TSFileConfig.MAGIC_STRING.getBytes().length * 2L + Byte.BYTES) {
@@ -2429,11 +2431,10 @@ public class DataRegion {
                   targetTsFileResource));
     }
 
-    logger.info("[alter timeseries] delete tsfile");
+    logger.debug("[alter timeseries] {} delete tsfile", logKey);
     logger.info(
-        "[alter timeseries] {}-{} alter {} finish, start to delete old files",
-        logicalStorageGroupName,
-        dataRegionId,
+        "[alter timeseries] {} alter {} finish, start to delete old files",
+        logKey,
         tsFileResource.getTsFilePath());
     // delete the old files
     deleteTsFile(tsFileResource, logicalStorageGroupName + "-" + dataRegionId);

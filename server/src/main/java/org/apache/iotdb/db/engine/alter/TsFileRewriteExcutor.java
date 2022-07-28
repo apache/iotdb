@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -181,54 +182,49 @@ public class TsFileRewriteExcutor {
       logger.warn("[alter timeseries] device({}) measurementMap is null", device);
       return;
     }
-    measurementMap.forEach(
-        (measurementId, chunkMetadatas) -> {
-          if (chunkMetadatas == null || chunkMetadatas.isEmpty()) {
-            logger.warn("[alter timeseries] empty measurement({})", measurementId);
-            return;
-          }
-          boolean findTarget = isTargetDevice && CommonUtils.equal(measurementId, targetMeasurement);
-          // target chunk writer
-          ChunkWriterImpl chunkWriter =
+    for (Map.Entry<String, List<ChunkMetadata>> next : measurementMap.entrySet()) {
+      String measurementId = next.getKey();
+      List<ChunkMetadata> chunkMetadatas = next.getValue();
+      if (chunkMetadatas == null || chunkMetadatas.isEmpty()) {
+        logger.warn("[alter timeseries] empty measurement({})", measurementId);
+        return;
+      }
+      boolean findTarget = isTargetDevice && CommonUtils.equal(measurementId, targetMeasurement);
+      // target chunk writer
+      ChunkWriterImpl chunkWriter =
               new ChunkWriterImpl(
-                  new MeasurementSchema(
-                      measurementId,
-                      chunkMetadatas.get(0).getDataType(),
-                      curEncoding,
-                      curCompressionType));
-          chunkMetadatas.forEach(
-              chunkMetadata -> {
-                Chunk currentChunk;
-                try {
-                  // old mem chunk
-                  currentChunk = reader.readMemChunk(chunkMetadata);
-                  if (!findTarget) {
-                    // skip
-                    writer.writeChunk(currentChunk, chunkMetadata);
-                    return;
-                  }
-                  IChunkReader chunkReader = new ChunkReader(currentChunk, null);
-                  while (chunkReader.hasNextSatisfiedPage()) {
-                    IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
-                    while (batchIterator.hasNextTimeValuePair()) {
-                      TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
-                      writeTimeAndValueToChunkWriter(chunkWriter, timeValuePair);
-                      if (timeValuePair.getTimestamp() > maxEndTimestamp) {
-                        maxEndTimestamp = timeValuePair.getTimestamp();
-                      }
-                      if (timeValuePair.getTimestamp() < minStartTimestamp) {
-                        minStartTimestamp = timeValuePair.getTimestamp();
-                      }
-                    }
-                  }
-                  // flush
-                  chunkWriter.writeToFileWriter(writer);
-                } catch (IOException e) {
-                  // TODO
-                  logger.warn("[alter timeseries] chunk write faild", e);
-                }
-              });
-        });
+                      new MeasurementSchema(
+                              measurementId,
+                              chunkMetadatas.get(0).getDataType(),
+                              curEncoding,
+                              curCompressionType));
+      for (ChunkMetadata chunkMetadata :
+              chunkMetadatas) {
+        // old mem chunk
+        Chunk currentChunk = reader.readMemChunk(chunkMetadata);
+        if (!findTarget) {
+          // skip
+          writer.writeChunk(currentChunk, chunkMetadata);
+          return;
+        }
+        IChunkReader chunkReader = new ChunkReader(currentChunk, null);
+        while (chunkReader.hasNextSatisfiedPage()) {
+          IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
+          while (batchIterator.hasNextTimeValuePair()) {
+            TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
+            writeTimeAndValueToChunkWriter(chunkWriter, timeValuePair);
+            if (timeValuePair.getTimestamp() > maxEndTimestamp) {
+              maxEndTimestamp = timeValuePair.getTimestamp();
+            }
+            if (timeValuePair.getTimestamp() < minStartTimestamp) {
+              minStartTimestamp = timeValuePair.getTimestamp();
+            }
+          }
+        }
+        // flush
+        chunkWriter.writeToFileWriter(writer);
+      }
+    }
   }
 
   /** TODO Copy it from the compaction code and extract it later into the utility class */
