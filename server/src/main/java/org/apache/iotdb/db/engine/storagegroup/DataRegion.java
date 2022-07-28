@@ -2299,38 +2299,37 @@ public class DataRegion {
       Set<Long> timePartitions = tsFileManager.getTimePartitions();
       // log header
       alertingLogger.logHeader(fullPath, curEncoding, curCompressionType, timePartitions);
-      timePartitions.forEach(
-          timePartition -> {
-            logger.info("[alter timeseries] {} alterDataInTsFiles seq({})", logKey, timePartition);
-            try {
-              rewriteDataInTsFiles(
-                  tsFileManager.getSequenceListByTimePartition(timePartition),
-                  fullPath,
-                  curEncoding,
-                  curCompressionType,
-                  timePartition,
-                  true,
-                  alertingLogger,
-                  null,
-                  logKey);
-              logger.info(
-                  "[alter timeseries] {} alterDataInTsFiles unseq({})", logKey, timePartition);
-              rewriteDataInTsFiles(
-                  tsFileManager.getUnsequenceListByTimePartition(timePartition),
-                  fullPath,
-                  curEncoding,
-                  curCompressionType,
-                  timePartition,
-                  false,
-                  alertingLogger,
-                  null,
-                  logKey);
-            } catch (IOException e) {
-              // TODO If it fails, stop the process?
-              logger.error(
-                  "[alter timeseries] " + logKey + " timePartition " + timePartition + " error", e);
-            }
-          });
+      for (Long timePartition : timePartitions) {
+        logger.info("[alter timeseries] {} alterDataInTsFiles seq({})", logKey, timePartition);
+        try {
+          rewriteDataInTsFiles(
+              tsFileManager.getSequenceListByTimePartition(timePartition),
+              fullPath,
+              curEncoding,
+              curCompressionType,
+              timePartition,
+              true,
+              alertingLogger,
+              null,
+              logKey);
+          logger.info("[alter timeseries] {} alterDataInTsFiles unseq({})", logKey, timePartition);
+          rewriteDataInTsFiles(
+              tsFileManager.getUnsequenceListByTimePartition(timePartition),
+              fullPath,
+              curEncoding,
+              curCompressionType,
+              timePartition,
+              false,
+              alertingLogger,
+              null,
+              logKey);
+        } catch (IOException e) {
+          // TODO If it fails, stop the process?
+          logger.error(
+              "[alter timeseries] " + logKey + " timePartition " + timePartition + " error", e);
+          throw e;
+        }
+      }
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
@@ -2360,68 +2359,69 @@ public class DataRegion {
     }
     // log timePartition start
     alertingLogger.startTimePartition(tsFileList, timePartition, sequence);
-    tsFileList.stream()
-        .filter(tsFileResource -> findUndoneResourcesAndRemove(tsFileResource, undoneFiles))
-        .forEach(
-            tsFileResource -> {
-              if (tsFileResource == null || !tsFileResource.isClosed()) {
-                return;
-              }
-              try {
-                logger.info(
-                    "[alter timeseries] {} rewriteDataInTsFile:{}, fileSize:{} start",
-                    logKey,
-                    tsFileResource.getTsFilePath(),
-                    tsFileResource.getTsFileSize());
-                // gen target tsFileResource
-                TsFileResource targetTsFileResource =
-                    TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
-                // read .tsfile to .alter
-                TsFileRewriteExcutor tsFileRewriteExcutor =
-                    new TsFileRewriteExcutor(
-                        tsFileResource,
-                        targetTsFileResource,
-                        fullPath,
-                        curEncoding,
-                        curCompressionType,
-                        timePartition,
-                        sequence);
-                tsFileRewriteExcutor.execute();
-                // move tsfile
-                logger.debug("[alter timeseries] {} move tsfile", logKey);
-                tsFileResource.moveTsFile(TSFILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX);
-                targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
-                // replace
-                logger.debug("[alter timeseries] {} replace tsfile", logKey);
-                if (sequence) {
-                  tsFileManager.replace(
-                      new ArrayList<>(Collections.singletonList(tsFileResource)),
-                      Collections.emptyList(),
-                      new ArrayList<>(Collections.singletonList(targetTsFileResource)),
-                      timePartition,
-                      true);
-                } else {
-                  tsFileManager.replace(
-                      Collections.emptyList(),
-                      new ArrayList<>(Collections.singletonList(tsFileResource)),
-                      new ArrayList<>(Collections.singletonList(targetTsFileResource)),
-                      timePartition,
-                      false);
-                }
-                // check & delete tsfile from disk
-                checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource, logKey);
-                // log file done
-                alertingLogger.doneFile(tsFileResource);
-                logger.info(
-                    "[alter timeseries] {} rewriteDataInTsFile {} end",
-                    logKey,
-                    tsFileResource.getTsFilePath());
-              } catch (Exception e) {
-                // TODO If it fails, you need to check and repair.Tsfile
-                // TODO If it fails, stop the process?
-                logger.error("[alter timeseries] " + logKey + " error", e);
-              }
-            });
+    for (TsFileResource tsFileResource : tsFileList) {
+      if (!findUndoneResourcesAndRemove(tsFileResource, undoneFiles)) {
+        continue;
+      }
+      if (tsFileResource == null || !tsFileResource.isClosed()) {
+        return;
+      }
+      try {
+        logger.info(
+            "[alter timeseries] {} rewriteDataInTsFile:{}, fileSize:{} start",
+            logKey,
+            tsFileResource.getTsFilePath(),
+            tsFileResource.getTsFileSize());
+        // gen target tsFileResource
+        TsFileResource targetTsFileResource =
+            TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
+        // read .tsfile to .alter
+        TsFileRewriteExcutor tsFileRewriteExcutor =
+            new TsFileRewriteExcutor(
+                tsFileResource,
+                targetTsFileResource,
+                fullPath,
+                curEncoding,
+                curCompressionType,
+                timePartition,
+                sequence);
+        tsFileRewriteExcutor.execute();
+        // move tsfile
+        logger.debug("[alter timeseries] {} move tsfile", logKey);
+        tsFileResource.moveTsFile(TSFILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX);
+        targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
+        // replace
+        logger.debug("[alter timeseries] {} replace tsfile", logKey);
+        if (sequence) {
+          tsFileManager.replace(
+              new ArrayList<>(Collections.singletonList(tsFileResource)),
+              Collections.emptyList(),
+              new ArrayList<>(Collections.singletonList(targetTsFileResource)),
+              timePartition,
+              true);
+        } else {
+          tsFileManager.replace(
+              Collections.emptyList(),
+              new ArrayList<>(Collections.singletonList(tsFileResource)),
+              new ArrayList<>(Collections.singletonList(targetTsFileResource)),
+              timePartition,
+              false);
+        }
+        // check & delete tsfile from disk
+        checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource, logKey);
+        // log file done
+        alertingLogger.doneFile(tsFileResource);
+        logger.info(
+            "[alter timeseries] {} rewriteDataInTsFile {} end",
+            logKey,
+            tsFileResource.getTsFilePath());
+      } catch (Exception e) {
+        // TODO If it fails, you need to check and repair.Tsfile
+        // TODO If it fails, stop the process?
+        logger.error("[alter timeseries] " + logKey + " error", e);
+        throw e;
+      }
+    }
     alertingLogger.endTimePartition(timePartition);
   }
 
