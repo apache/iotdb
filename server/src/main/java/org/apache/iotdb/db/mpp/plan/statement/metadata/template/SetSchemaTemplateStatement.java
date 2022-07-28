@@ -19,31 +19,26 @@
 
 package org.apache.iotdb.db.mpp.plan.statement.metadata.template;
 
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.constant.StatementType;
 import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStatement;
 
-public class SetSchemaTemplateStatement extends ShowStatement implements IConfigStatement {
+import java.util.Collections;
+import java.util.List;
+
+public class SetSchemaTemplateStatement extends Statement implements IConfigStatement {
 
   private String templateName;
   private PartialPath path;
 
   public SetSchemaTemplateStatement(String templateName, PartialPath path) {
     super();
-    statementType = StatementType.SET_SCHEMA_TEMPLATE;
+    statementType = StatementType.SET_TEMPLATE;
     this.templateName = templateName;
     this.path = path;
-  }
-
-  public SetSchemaTemplateStatement(String templateName, String path) throws IllegalPathException {
-    super();
-    statementType = StatementType.SET_SCHEMA_TEMPLATE;
-    this.templateName = templateName;
-    this.path = new PartialPath(path);
   }
 
   public String getTemplateName() {
@@ -60,6 +55,11 @@ public class SetSchemaTemplateStatement extends ShowStatement implements IConfig
 
   public void setPath(PartialPath path) {
     this.path = path;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.singletonList(path);
   }
 
   @Override

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.mtree;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -462,15 +463,23 @@ public class ConfigMTree {
 
   // region MTree Node Management
 
-  public IMNode getNodeWithAutoCreate(PartialPath path) {
+  public IMNode getNodeWithAutoCreate(PartialPath path) throws StorageGroupNotSetException {
     String[] nodeNames = path.getNodes();
     IMNode cur = root;
     IMNode child;
+    boolean hasStorageGroup = false;
     for (int i = 1; i < nodeNames.length; i++) {
       child = cur.getChild(nodeNames[i]);
       if (child == null) {
-        child = cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        if (hasStorageGroup) {
+          child = cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        } else {
+          throw new StorageGroupNotSetException(path.getFullPath());
+        }
+      } else if (child.isStorageGroup()) {
+        hasStorageGroup = true;
       }
+
       cur = child;
     }
     return cur;
@@ -515,15 +524,18 @@ public class ConfigMTree {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath pathPattern)
-      throws MetadataException {
+  public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
+      PartialPath pathPattern) throws MetadataException {
     try {
-      MNodeAboveSGCollector<Set<String>> collector =
-          new MNodeAboveSGCollector<Set<String>>(
+      MNodeAboveSGCollector<Set<TSchemaNode>> collector =
+          new MNodeAboveSGCollector<Set<TSchemaNode>>(
               root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
             @Override
             protected void transferToResult(IMNode node) {
-              resultSet.add(getCurrentPartialPath(node).getFullPath());
+              resultSet.add(
+                  new TSchemaNode(
+                      getCurrentPartialPath(node).getFullPath(),
+                      node.getMNodeType(true).getNodeType()));
             }
           };
       collector.setResultSet(new TreeSet<>());

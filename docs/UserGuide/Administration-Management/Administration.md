@@ -263,11 +263,28 @@ LIST ROLE
 Eg: IoTDB > LIST ROLE
 ```
 
-* List Privileges
+* List Related Privileges of Users(On Specific Path)
 
 ```
-LIST PRIVILEGES USER  <username> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES USER `sgcc_write_user` ON root.sgcc.**;
+LIST PRIVILEGES USER <username> ON <path>;
+Eg: IoTDB> LIST PRIVILEGES USER `tempuser` ON root.ln.**;
++--------+-----------------------------------+
+|    role|                          privilege|
++--------+-----------------------------------+
+|        |      root.ln.** : ALTER_TIMESERIES|
+|temprole|root.ln.wf01.** : CREATE_TIMESERIES|
++--------+-----------------------------------+
+Total line number = 2
+It costs 0.005s
+IoTDB> LIST PRIVILEGES USER `tempuser` ON root.ln.wf01.wt01.**;
++--------+-----------------------------------+
+|    role|                          privilege|
++--------+-----------------------------------+
+|        |      root.ln.** : ALTER_TIMESERIES|
+|temprole|root.ln.wf01.** : CREATE_TIMESERIES|
++--------+-----------------------------------+
+Total line number = 2
+It costs 0.005s
 ```
 
 * List Privileges of Roles
@@ -277,11 +294,26 @@ LIST ROLE PRIVILEGES <roleName>
 Eg: IoTDB > LIST ROLE PRIVILEGES `actor`;
 ```
 
-* List Privileges of Roles(On Specific Path)
+* List Related Privileges of Roles(On Specific Path)
 
 ```
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES ROLE `write_role` ON root.sgcc.**;
+Eg: IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.**;
++-----------------------------------+
+|                          privilege|
++-----------------------------------+
+|root.ln.wf01.** : CREATE_TIMESERIES|
++-----------------------------------+
+Total line number = 1
+It costs 0.005s
+IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.wf01.wt01.**;
++-----------------------------------+
+|                          privilege|
++-----------------------------------+
+|root.ln.wf01.** : CREATE_TIMESERIES|
++-----------------------------------+
+Total line number = 1
+It costs 0.005s
 ```
 
 * List Privileges of Users
@@ -358,6 +390,10 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |STOP_TRIGGER|stop triggers; path dependent|Eg: `stop trigger 'alert-listener-sg1d1s1'`|
 |CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|Eg: `select s1, s1 into t1, t2 from root.sg.d1`|
 |DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|Eg1: `DROP CONTINUOUS QUERY cq3`<br />Eg2: `DROP CQ cq3`|
+|UPDATE_TEMPLATE|create, drop, append and prune schema template; path independent|Eg1: `create schema template t1(s1 int32)`
+|READ_TEMPLATE|show schema templates and show nodes in schema template; path independent|Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1` 
+|APPLY_TEMPLATE|set, unset and activate schema template; path dependent|Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`
+|READ_TEMPLATE_APPLICATION|show paths set and using schema template; path independent|Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`
 
 Note that the following SQL statements need to be granted multiple permissions before they can be used：
 
@@ -440,44 +476,6 @@ Eg: IoTDB > unset schema template t1 from root.sg1.d1
 
 ```
 Eg: IoTDB > drop schema template t1
-```
-
-###### Tag and Attribute Management
-
-- Rename the tag/attribute key
-
-```text
-ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
-```
-
-- reset the tag/attribute value
-
-```text
-ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
-```
-
-- delete the existing tag/attribute
-
-```text
-ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
-```
-
-- add new tags
-
-```text
-ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
-```
-
-- add new attributes
-
-```text
-ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
-```
-
-- upsert alias, tags and attributes
-
-```text
-ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
 
 ###### TsFile Management

@@ -313,6 +313,44 @@ Total line number = 3
 It costs 0.009s
 ```
 
+### Show all ConfigNode information
+
+Currently, IoTDB supports ConfigNode query using the following SQL：
+
+```
+SHOW CONFIGNODES
+```
+
+Eg :
+
+```
+IoTDB> show confignodes
++------+-------+-------+-----+
+|NodeID| Status|   Host| Port|
++------+-------+-------+-----+
+|     0|Running|0.0.0.0|22277|
+|     1|Running|0.0.0.0|22279|
+|     2|Running|0.0.0.0|22281|
++------+-------+-------+-----+
+Total line number = 3
+It costs 0.030s
+```
+
+After a ConfigNode is stopped, its status will change, as shown below:
+
+```
+IoTDB> show confignodes
++------+-------+-------+-----+
+|NodeID| Status|   Host| Port|
++------+-------+-------+-----+
+|     0|Running|0.0.0.0|22277|
+|     1|Running|0.0.0.0|22279|
+|     2|Unknown|0.0.0.0|22281|
++------+-------+-------+-----+
+Total line number = 3
+It costs 0.009s
+```
+
 ### Show all Node information
 
  Currently, iotdb supports the following SQL to view the information of all nodes : 

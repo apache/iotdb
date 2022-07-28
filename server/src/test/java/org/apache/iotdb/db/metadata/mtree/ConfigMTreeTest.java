@@ -344,7 +344,8 @@ public class ConfigMTreeTest {
   }
 
   @Test
-  public void testSetTemplate() throws IllegalPathException {
+  public void testSetTemplate() throws MetadataException {
+    root.setStorageGroup(new PartialPath("root.a"));
     PartialPath path = new PartialPath("root.a.template0");
     try {
       root.checkTemplateOnPath(path);

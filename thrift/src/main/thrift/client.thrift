@@ -215,6 +215,7 @@ struct TSInsertStringRecordReq {
   4: required list<string> values
   5: required i64 timestamp
   6: optional bool isAligned
+  7: optional i64 timeout
 }
 
 struct TSInsertTabletReq {
@@ -315,6 +316,7 @@ struct TSRawDataQueryReq {
   6: required i64 statementId
   7: optional bool enableRedirectQuery;
   8: optional bool jdbcQuery;
+  9: optional i64 timeout
 }
 
 struct TSLastDataQueryReq {
@@ -325,6 +327,7 @@ struct TSLastDataQueryReq {
   5: required i64 statementId
   6: optional bool enableRedirectQuery;
   7: optional bool jdbcQuery;
+  8: optional i64 timeout
 }
 
 struct TSCreateMultiTimeseriesReq {

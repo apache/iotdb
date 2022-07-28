@@ -167,6 +167,7 @@ public class InternalMNode extends MNode {
 
     newMNode.setSchemaTemplate(schemaTemplate);
     newMNode.setUseTemplate(useTemplate);
+    newMNode.setSchemaTemplateId(schemaTemplateId);
 
     if (children != null) {
       newMNode.setChildren(children);
@@ -213,6 +214,11 @@ public class InternalMNode extends MNode {
   @Override
   public void setSchemaTemplateId(int schemaTemplateId) {
     this.schemaTemplateId = schemaTemplateId;
+  }
+
+  @Override
+  public MNodeType getMNodeType(Boolean isConfig) {
+    return isConfig ? MNodeType.SG_INTERNAL : MNodeType.INTERNAL;
   }
 
   @Override

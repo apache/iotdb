@@ -81,6 +81,6 @@ public class ExchangeOperator implements SourceOperator {
 
   @Override
   public void close() throws Exception {
-    sourceHandle.abort();
+    sourceHandle.close();
   }
 }

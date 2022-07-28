@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.auth.AuthException;
 import org.apache.iotdb.commons.auth.entity.PathPrivilege;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeType;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -156,7 +158,7 @@ import org.apache.iotdb.db.service.SettleService;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
-import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -203,11 +205,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_NODES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
+import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CHILD_PATHS_TYPES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_COLUMN;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_BOUNDARY;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL;
@@ -887,22 +891,38 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
       throws MetadataException {
-    Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath());
+    Set<TSchemaNode> childPathsList = getPathNextChildren(showChildPathsPlan.getPath());
+
+    // sort by node type
+    Set<TSchemaNode> sortSet =
+        new TreeSet<>(
+            (o1, o2) -> {
+              if (o1.getNodeType() == o2.getNodeType()) {
+                return o1.getNodeName().compareTo(o2.getNodeName());
+              }
+              return o1.getNodeType() - o2.getNodeType();
+            });
+    sortSet.addAll(childPathsList);
     ListDataSet listDataSet =
         new ListDataSet(
-            Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
-            Collections.singletonList(TSDataType.TEXT));
-    for (String s : childPathsList) {
+            Arrays.asList(
+                new PartialPath(COLUMN_CHILD_PATHS, false),
+                new PartialPath(COLUMN_CHILD_PATHS_TYPES, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
+    for (TSchemaNode node : sortSet) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
-      field.setBinaryV(new Binary(s));
+      field.setBinaryV(new Binary(node.getNodeName()));
+      record.addField(field);
+      field = new Field(TSDataType.TEXT);
+      field.setBinaryV(new Binary(MNodeType.getMNodeType(node.getNodeType()).getNodeTypeName()));
       record.addField(field);
       listDataSet.putRecord(record);
     }
     return listDataSet;
   }
 
-  protected Set<String> getPathNextChildren(PartialPath path) throws MetadataException {
+  protected Set<TSchemaNode> getPathNextChildren(PartialPath path) throws MetadataException {
     return IoTDB.schemaProcessor.getChildNodePathInNextLevel(path);
   }
 
@@ -1443,7 +1463,7 @@ public class PlanExecutor implements IPlanExecutor {
         logger.info(
             "try to split the tsFile={} du to it spans multi partitions",
             tsFileResource.getTsFile().getPath());
-        TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
+        TsFileSplitByPartitionTool.rewriteTsFile(tsFileResource, splitResources);
         tsFileResource.writeLock();
         tsFileResource.removeModFile();
         tsFileResource.writeUnlock();
@@ -2295,7 +2315,8 @@ public class PlanExecutor implements IPlanExecutor {
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (path == null
+            || AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
           RowRecord record = new RowRecord(index++);
           Field field = new Field(TSDataType.TEXT);
           field.setBinaryV(new Binary(pathPrivilege.toString()));
@@ -2337,7 +2358,8 @@ public class PlanExecutor implements IPlanExecutor {
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (path == null
+            || AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
           RowRecord record = new RowRecord(index++);
           Field roleF = new Field(TSDataType.TEXT);
           roleF.setBinaryV(new Binary(""));
@@ -2355,7 +2377,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
           if (path == null
-              || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+              || AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
             RowRecord record = new RowRecord(index++);
             Field roleF = new Field(TSDataType.TEXT);
             roleF.setBinaryV(new Binary(roleN));

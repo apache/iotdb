@@ -55,6 +55,9 @@ public class UDTFEndsWith implements UDTF {
 
   @Override
   public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
     return row.getString(0).endsWith(target);
   }
 }

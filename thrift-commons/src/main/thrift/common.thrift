@@ -58,6 +58,11 @@ struct TRegionReplicaSet {
   2: required list<TDataNodeLocation> dataNodeLocations
 }
 
+struct TNodeResource {
+  1: required i32 cpuCoreNum
+  2: required i64 maxMemory
+}
+
 struct TConfigNodeLocation {
   1: required i32 configNodeId
   2: required TEndPoint internalEndPoint
@@ -78,22 +83,9 @@ struct TDataNodeLocation {
   6: required TEndPoint schemaRegionConsensusEndPoint
 }
 
-struct TDataNodeInfo {
+struct TDataNodeConfiguration {
   1: required TDataNodeLocation location
-  2: required i32 cpuCoreNum
-  3: required i64 maxMemory
-}
-
-// For show regions
-struct TRegionInfo {
-  1: required TConsensusGroupId consensusGroupId
-  2: required string storageGroup
-  3: required i32 dataNodeId
-  4: required string clientRpcIp
-  5: required i32 clientRpcPort
-  6: required i64 seriesSlots
-  7: required i64 timeSlots
-  8: optional string status
+  2: required TNodeResource resource
 }
 
 enum TRegionMigrateFailedType {
@@ -110,16 +102,13 @@ struct TFlushReq {
    3: optional i32 dataNodeId
 }
 
-struct TDataNodesInfo {
-  1: required i32 dataNodeId
-  2: required string status
-  3: required string rpcAddresss
-  4: required i32 rpcPort
-  5: required i32 dataRegionNum
-  6: required i32 schemaRegionNum
-}
-
 struct TSetTTLReq {
   1: required string storageGroup
   2: required i64 TTL
+}
+
+// for node management
+struct TSchemaNode {
+  1: required string nodeName
+  2: required byte nodeType
 }

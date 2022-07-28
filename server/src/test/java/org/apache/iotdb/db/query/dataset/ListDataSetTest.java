@@ -93,11 +93,14 @@ public class ListDataSetTest {
       throws QueryProcessException, TException, StorageEngineException,
           QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
           SQLException {
-    String[] results = new String[] {"0\troot.test.d0", "0\troot.test.d1", "0\troot.test.d2"};
+    String[] results =
+        new String[] {
+          "0\troot.test.d0\tDEVICE", "0\troot.test.d1\tDEVICE", "0\troot.test.d2\tDEVICE"
+        };
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan("show child paths root.test");
     QueryDataSet dataSet = queryExecutor.processQuery(plan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertTrue(dataSet instanceof ListDataSet);
-    Assert.assertEquals("[child paths]", dataSet.getPaths().toString());
+    Assert.assertEquals("[child paths, node types]", dataSet.getPaths().toString());
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();

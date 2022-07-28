@@ -23,18 +23,24 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
+import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -77,6 +83,7 @@ public class ProcedureManager {
             CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
             CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
         store.start();
+        LOGGER.info("ProcedureManager is started successfully.");
       }
     } else {
       if (executor.isRunning()) {
@@ -84,6 +91,7 @@ public class ProcedureManager {
         if (!executor.isRunning()) {
           executor.join();
           store.stop();
+          LOGGER.info("ProcedureManager is stopped successfully.");
         }
       }
     }
@@ -118,6 +126,35 @@ public class ProcedureManager {
     AddConfigNodeProcedure addConfigNodeProcedure =
         new AddConfigNodeProcedure(req.getConfigNodeLocation());
     this.executor.submitProcedure(addConfigNodeProcedure);
+  }
+
+  /**
+   * generate a procedure, and execute remove confignode one by one
+   *
+   * @param removeConfigNodePlan remove config node plan
+   */
+  public void removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
+    RemoveConfigNodeProcedure removeConfigNodeProcedure =
+        new RemoveConfigNodeProcedure(removeConfigNodePlan.getConfigNodeLocation());
+    this.executor.submitProcedure(removeConfigNodeProcedure);
+    LOGGER.info("Submit to remove ConfigNode, {}", removeConfigNodePlan);
+  }
+
+  /**
+   * generate a procedure, and execute remove datanode one by one
+   *
+   * @param removeDataNodePlan
+   * @return
+   */
+  public boolean removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+    removeDataNodePlan
+        .getDataNodeLocations()
+        .forEach(
+            tDataNodeLocation -> {
+              this.executor.submitProcedure(new RemoveDataNodeProcedure(tDataNodeLocation));
+              LOGGER.info("Submit to remove data node procedure, {}", tDataNodeLocation);
+            });
+    return true;
   }
 
   private static boolean getProcedureStatus(
@@ -200,5 +237,18 @@ public class ProcedureManager {
 
   public void setEnv(ConfigNodeProcedureEnv env) {
     this.env = env;
+  }
+
+  public void reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
+    this.executor.getProcedures().values().stream()
+        .forEach(
+            procedure -> {
+              if (procedure instanceof RegionMigrateProcedure) {
+                RegionMigrateProcedure regionMigrateProcedure = (RegionMigrateProcedure) procedure;
+                if (regionMigrateProcedure.getConsensusGroupId().equals(req.getRegionId())) {
+                  regionMigrateProcedure.notifyTheRegionMigrateFinished();
+                }
+              }
+            });
   }
 }

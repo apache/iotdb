@@ -20,10 +20,10 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.performer.impl.ReadPointCompactionPerformer;
+import org.apache.iotdb.db.engine.compaction.reader.IDataBlockReader;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -46,7 +46,7 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private final String device;
   private final Set<String> measurementList;
-  private final QueryContext queryContext;
+  private final FragmentInstanceContext fragmentInstanceContext;
   private final QueryDataSource queryDataSource;
   private final AbstractCompactionWriter compactionWriter;
   private final Map<String, MeasurementSchema> schemaMap;
@@ -55,14 +55,14 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
   public ReadPointPerformerSubTask(
       String device,
       Set<String> measurementList,
-      QueryContext queryContext,
+      FragmentInstanceContext fragmentInstanceContext,
       QueryDataSource queryDataSource,
       AbstractCompactionWriter compactionWriter,
       Map<String, MeasurementSchema> schemaMap,
       int taskId) {
     this.device = device;
     this.measurementList = measurementList;
-    this.queryContext = queryContext;
+    this.fragmentInstanceContext = fragmentInstanceContext;
     this.queryDataSource = queryDataSource;
     this.compactionWriter = compactionWriter;
     this.schemaMap = schemaMap;
@@ -74,19 +74,20 @@ public class ReadPointPerformerSubTask implements Callable<Void> {
     for (String measurement : measurementList) {
       List<IMeasurementSchema> measurementSchemas =
           Collections.singletonList(schemaMap.get(measurement));
-      IBatchReader dataBatchReader =
+      IDataBlockReader dataBlockReader =
           ReadPointCompactionPerformer.constructReader(
               device,
               Collections.singletonList(measurement),
               measurementSchemas,
               measurementList,
-              queryContext,
+              fragmentInstanceContext,
               queryDataSource,
               false);
 
-      if (dataBatchReader.hasNextBatch()) {
+      if (dataBlockReader.hasNextBatch()) {
         compactionWriter.startMeasurement(measurementSchemas, taskId);
-        ReadPointCompactionPerformer.writeWithReader(compactionWriter, dataBatchReader, taskId);
+        ReadPointCompactionPerformer.writeWithReader(
+            compactionWriter, dataBlockReader, taskId, false);
         compactionWriter.endMeasurement(taskId);
       }
     }

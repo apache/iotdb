@@ -127,6 +127,7 @@ struct TFetchFragmentInstanceStateReq {
 // TODO: need to supply more fields according to implementation
 struct TFragmentInstanceStateResp {
   1: required string state
+  2: optional list<string> failedMessages
 }
 
 struct TCancelQueryReq {
@@ -191,6 +192,15 @@ struct THeartbeatResp {
 struct TRegionRouteReq {
   1: required i64 timestamp
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
+}
+
+struct TUpdateConfigNodeGroupReq {
+  1: required list<common.TConfigNodeLocation> configNodeLocations
+}
+
+struct TUpdateTemplateReq{
+    1: required byte type
+    2: required binary templateInfo
 }
 
 service IDataNodeRPCService {
@@ -323,6 +333,14 @@ service IDataNodeRPCService {
   common.TSStatus flush(common.TFlushReq req)
 
   common.TSStatus setTTL(common.TSetTTLReq req)
+  /**
+   * configNode will notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
+   *
+   * @param list<common.TConfigNodeLocation> configNodeLocations
+   */
+  common.TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req)
+
+  common.TSStatus updateTemplate(TUpdateTemplateReq req)
 }
 
 service MPPDataExchangeService {

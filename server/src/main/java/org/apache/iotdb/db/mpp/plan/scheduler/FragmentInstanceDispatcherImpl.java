@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -46,16 +47,13 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import com.google.common.util.concurrent.SettableFuture;
 import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -102,67 +100,45 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     return executor.submit(
         () -> {
           for (FragmentInstance instance : instances) {
-            boolean accepted = dispatchOneInstance(instance);
-            if (!accepted) {
-              return new FragInstanceDispatchResult(false);
+            try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+              dispatchOneInstance(instance);
+            } catch (FragmentInstanceDispatchException e) {
+              return new FragInstanceDispatchResult(e.getFailureStatus());
+            } catch (Throwable t) {
+              logger.error("cannot dispatch FI for read operation", t);
+              return new FragInstanceDispatchResult(
+                  RpcUtils.getStatus(
+                      TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage()));
             }
           }
           return new FragInstanceDispatchResult(true);
         });
   }
 
-  // TODO: (xingtanzjr) Return the detailed write states for each FragmentInstance
-  private Future<FragInstanceDispatchResult> dispatchWrite(List<FragmentInstance> instances) {
-    List<Future<Boolean>> futures = new LinkedList<>();
-    for (FragmentInstance instance : instances) {
-      futures.add(writeOperationExecutor.submit(() -> dispatchOneInstance(instance)));
-    }
-    SettableFuture<FragInstanceDispatchResult> resultFuture = SettableFuture.create();
-    for (Future<Boolean> future : futures) {
-      try {
-        Boolean success = future.get();
-        if (!success) {
-          resultFuture.set(new FragInstanceDispatchResult(false));
-          break;
-        }
-      } catch (ExecutionException | InterruptedException e) {
-        if (e instanceof InterruptedException) {
-          Thread.currentThread().interrupt();
-        }
-        resultFuture.setException(e);
-        break;
-      }
-    }
-    resultFuture.set(new FragInstanceDispatchResult(true));
-    return resultFuture;
-  }
-
   private Future<FragInstanceDispatchResult> dispatchWriteSync(List<FragmentInstance> instances) {
-    boolean result = true;
-    try {
-      for (FragmentInstance instance : instances) {
-
-        if (!dispatchOneInstance(instance)) {
-          result = false;
-          break;
-        }
+    for (FragmentInstance instance : instances) {
+      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+        dispatchOneInstance(instance);
+      } catch (FragmentInstanceDispatchException e) {
+        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+      } catch (Throwable t) {
+        logger.error("cannot dispatch FI for write operation", t);
+        return immediateFuture(
+            new FragInstanceDispatchResult(
+                RpcUtils.getStatus(
+                    TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
       }
-      return immediateFuture(new FragInstanceDispatchResult(result));
-    } catch (FragmentInstanceDispatchException e) {
-      logger.error("cannot dispatch FI for write operation", e);
-      return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
     }
+    return immediateFuture(new FragInstanceDispatchResult(true));
   }
 
-  private boolean dispatchOneInstance(FragmentInstance instance)
+  private void dispatchOneInstance(FragmentInstance instance)
       throws FragmentInstanceDispatchException {
-    try (SetThreadName fragmentInstanceName = new SetThreadName(instance.getId().getFullId())) {
-      TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
-      if (isDispatchedToLocal(endPoint)) {
-        return dispatchLocally(instance);
-      } else {
-        return dispatchRemote(instance, endPoint);
-      }
+    TEndPoint endPoint = instance.getHostDataNode().getInternalEndPoint();
+    if (isDispatchedToLocal(endPoint)) {
+      dispatchLocally(instance);
+    } else {
+      dispatchRemote(instance, endPoint);
     }
   }
 
@@ -170,7 +146,7 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
     return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
   }
 
-  private boolean dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
+  private void dispatchRemote(FragmentInstance instance, TEndPoint endPoint)
       throws FragmentInstanceDispatchException {
     try (SyncDataNodeInternalServiceClient client =
         internalServiceClientManager.borrowClient(endPoint)) {
@@ -182,7 +158,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
                   instance.getRegionReplicaSet().getRegionId());
           TSendFragmentInstanceResp sendFragmentInstanceResp =
               client.sendFragmentInstance(sendFragmentInstanceReq);
-          return sendFragmentInstanceResp.accepted;
+          if (!sendFragmentInstanceResp.accepted) {
+            logger.error(sendFragmentInstanceResp.message);
+            throw new FragmentInstanceDispatchException(
+                RpcUtils.getStatus(
+                    TSStatusCode.EXECUTE_STATEMENT_ERROR, sendFragmentInstanceResp.message));
+          }
+          break;
         case WRITE:
           TSendPlanNodeReq sendPlanNodeReq =
               new TSendPlanNodeReq(
@@ -193,36 +175,79 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
             logger.error(sendPlanNodeResp.getStatus().message);
             throw new FragmentInstanceDispatchException(sendPlanNodeResp.getStatus());
           }
-          return true;
+          break;
+        default:
+          throw new FragmentInstanceDispatchException(
+              RpcUtils.getStatus(
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                  String.format("unknown query type [%s]", instance.getType())));
       }
     } catch (IOException | TException e) {
       logger.error("can't connect to node {}", endPoint, e);
-      throw new FragmentInstanceDispatchException(e);
+      TSStatus status = new TSStatus();
+      status.setCode(TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode());
+      status.setMessage("can't connect to node {}" + endPoint);
+      throw new FragmentInstanceDispatchException(status);
     }
-    return false;
   }
 
-  private boolean dispatchLocally(FragmentInstance instance)
-      throws FragmentInstanceDispatchException {
-    ConsensusGroupId groupId =
-        ConsensusGroupId.Factory.createFromTConsensusGroupId(
-            instance.getRegionReplicaSet().getRegionId());
+  private void dispatchLocally(FragmentInstance instance) throws FragmentInstanceDispatchException {
+    // deserialize ConsensusGroupId
+    ConsensusGroupId groupId;
+    try {
+      groupId =
+          ConsensusGroupId.Factory.createFromTConsensusGroupId(
+              instance.getRegionReplicaSet().getRegionId());
+    } catch (Throwable t) {
+      logger.error("Deserialize ConsensusGroupId failed. ", t);
+      throw new FragmentInstanceDispatchException(
+          RpcUtils.getStatus(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR,
+              "Deserialize ConsensusGroupId failed: " + t.getMessage()));
+    }
+
     switch (instance.getType()) {
       case READ:
+        // execute fragment instance in state machine
         ConsensusReadResponse readResponse;
-        if (groupId instanceof DataRegionId) {
-          readResponse = DataRegionConsensusImpl.getInstance().read(groupId, instance);
-        } else {
-          readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, instance);
+        try {
+          if (groupId instanceof DataRegionId) {
+            readResponse = DataRegionConsensusImpl.getInstance().read(groupId, instance);
+          } else {
+            readResponse = SchemaRegionConsensusImpl.getInstance().read(groupId, instance);
+          }
+          if (readResponse == null) {
+            logger.error("ReadResponse is null");
+            throw new FragmentInstanceDispatchException(
+                RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, "ReadResponse is null"));
+          }
+        } catch (Throwable t) {
+          logger.error("Execute FragmentInstance in ConsensusGroup {} failed.", groupId, t);
+          throw new FragmentInstanceDispatchException(
+              RpcUtils.getStatus(
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                  "Execute FragmentInstance failed. " + t.getMessage()));
         }
         if (!readResponse.isSuccess()) {
           logger.error(
-              "dispatch FragmentInstance {} locally failed because {}",
+              "dispatch FragmentInstance {} locally failed. ",
               instance,
               readResponse.getException());
-          return false;
+          throw new FragmentInstanceDispatchException(
+              RpcUtils.getStatus(
+                  TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                  "Execute FragmentInstance failed: "
+                      + (readResponse.getException() == null
+                          ? ""
+                          : readResponse.getException().getMessage())));
+        } else {
+          FragmentInstanceInfo info = (FragmentInstanceInfo) readResponse.getDataset();
+          if (info.getState().isFailed()) {
+            throw new FragmentInstanceDispatchException(
+                RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, info.getMessage()));
+          }
         }
-        return !((FragmentInstanceInfo) readResponse.getDataset()).getState().isFailed();
+        break;
       case WRITE:
         PlanNode planNode = instance.getFragment().getRoot();
         boolean hasFailedMeasurement = false;
@@ -258,11 +283,13 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
               RpcUtils.getStatus(
                   TSStatusCode.METADATA_ERROR.getStatusCode(), partialInsertMessage));
         }
-
-        return true;
+        break;
+      default:
+        throw new FragmentInstanceDispatchException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                String.format("unknown query type [%s]", instance.getType())));
     }
-    throw new UnsupportedOperationException(
-        String.format("unknown query type [%s]", instance.getType()));
   }
 
   @Override

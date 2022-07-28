@@ -17,6 +17,7 @@
 
 package org.apache.iotdb.db.protocol.mpprest.handler;
 
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.execution.IQueryExecution;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
@@ -33,7 +34,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import javax.ws.rs.core.Response;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -47,11 +47,12 @@ public class QueryDataSetHandler {
    */
   public static Response fillQueryDataSet(
       IQueryExecution queryExecution, Statement statement, int actualRowSizeLimit)
-      throws IOException {
+      throws IoTDBException {
     if (statement instanceof ShowStatement) {
       return fillShowPlanDataSet(queryExecution, actualRowSizeLimit);
     } else if (statement instanceof QueryStatement) {
-      if (((QueryStatement) statement).isAggregationQuery()) {
+      if (((QueryStatement) statement).isAggregationQuery()
+          && !((QueryStatement) statement).isGroupByTime()) {
         return fillAggregationPlanDataSet(queryExecution, actualRowSizeLimit);
       }
       return fillDataSetWithTimestamps(queryExecution, actualRowSizeLimit, 1);
@@ -67,7 +68,8 @@ public class QueryDataSetHandler {
   }
 
   public static Response fillDataSetWithTimestamps(
-      IQueryExecution queryExecution, final int actualRowSizeLimit, final long timePrecision) {
+      IQueryExecution queryExecution, final int actualRowSizeLimit, final long timePrecision)
+      throws IoTDBException {
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
         new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
     DatasetHeader header = queryExecution.getDatasetHeader();
@@ -81,7 +83,7 @@ public class QueryDataSetHandler {
   }
 
   public static Response fillAggregationPlanDataSet(
-      IQueryExecution queryExecution, final int actualRowSizeLimit) {
+      IQueryExecution queryExecution, final int actualRowSizeLimit) throws IoTDBException {
 
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
         new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
@@ -97,7 +99,7 @@ public class QueryDataSetHandler {
   }
 
   private static Response fillShowPlanDataSet(
-      IQueryExecution queryExecution, final int actualRowSizeLimit) throws IOException {
+      IQueryExecution queryExecution, final int actualRowSizeLimit) throws IoTDBException {
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet =
         new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
     initTargetDatasetOrderByOrderWithSourceDataSet(
@@ -135,10 +137,22 @@ public class QueryDataSetHandler {
       IQueryExecution queryExecution,
       int actualRowSizeLimit,
       org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet,
-      final long timePrecision) {
+      final long timePrecision)
+      throws IoTDBException {
     int fetched = 0;
     int columnNum = queryExecution.getOutputValueColumnCount();
-    while (fetched < actualRowSizeLimit) {
+    while (true) {
+      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
+        return Response.ok()
+            .entity(
+                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
+                    .message(
+                        String.format(
+                            "Dataset row size exceeded the given max row size (%d)",
+                            actualRowSizeLimit)))
+            .build();
+      }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent()) {
         break;
@@ -177,10 +191,22 @@ public class QueryDataSetHandler {
   private static Response fillQueryDataSetWithoutTimestamps(
       IQueryExecution queryExecution,
       int actualRowSizeLimit,
-      org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet) {
+      org.apache.iotdb.db.protocol.rest.model.QueryDataSet targetDataSet)
+      throws IoTDBException {
     int fetched = 0;
     int columnNum = queryExecution.getOutputValueColumnCount();
-    while (fetched < actualRowSizeLimit) {
+    while (true) {
+      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
+        return Response.ok()
+            .entity(
+                new org.apache.iotdb.db.protocol.rest.model.ExecutionStatus()
+                    .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
+                    .message(
+                        String.format(
+                            "Dataset row size exceeded the given max row size (%d)",
+                            actualRowSizeLimit)))
+            .build();
+      }
       Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
       if (!optionalTsBlock.isPresent()) {
         break;
@@ -210,7 +236,7 @@ public class QueryDataSetHandler {
   }
 
   public static Response fillGrafanaVariablesResult(
-      IQueryExecution queryExecution, Statement statement) {
+      IQueryExecution queryExecution, Statement statement) throws IoTDBException {
     List<String> results = new ArrayList<>();
     Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
     if (!optionalTsBlock.isPresent()) {
@@ -232,7 +258,8 @@ public class QueryDataSetHandler {
     return Response.ok().entity(results).build();
   }
 
-  public static Response fillGrafanaNodesResult(IQueryExecution queryExecution) throws IOException {
+  public static Response fillGrafanaNodesResult(IQueryExecution queryExecution)
+      throws IoTDBException {
     List<String> nodes = new ArrayList<>();
     Optional<TsBlock> optionalTsBlock = queryExecution.getBatchResult();
     if (!optionalTsBlock.isPresent()) {

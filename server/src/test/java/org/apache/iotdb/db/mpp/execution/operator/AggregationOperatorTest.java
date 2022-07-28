@@ -46,6 +46,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import io.airlift.units.Duration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,12 +56,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.junit.Assert.assertEquals;
 
 public class AggregationOperatorTest {
+
+  public static Duration TEST_TIME_SLICE = new Duration(500, TimeUnit.MILLISECONDS);
 
   private static final String AGGREGATION_OPERATOR_TEST_SG = "root.AggregationOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
@@ -86,7 +92,8 @@ public class AggregationOperatorTest {
 
   /** Try to aggregate unary intermediate result of one time series without group by interval. */
   @Test
-  public void testAggregateIntermediateResult1() throws IllegalPathException {
+  public void testAggregateIntermediateResult1()
+      throws IllegalPathException, ExecutionException, InterruptedException {
     List<AggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(AggregationType.COUNT);
     aggregationTypes.add(AggregationType.SUM);
@@ -104,8 +111,16 @@ public class AggregationOperatorTest {
     AggregationOperator aggregationOperator =
         initAggregationOperator(aggregationTypes, null, inputLocations);
     int count = 0;
-    while (aggregationOperator.hasNext()) {
+    while (true) {
+      ListenableFuture<?> blocked = aggregationOperator.isBlocked();
+      blocked.get();
+      if (!aggregationOperator.hasNext()) {
+        break;
+      }
       TsBlock resultTsBlock = aggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(500, resultTsBlock.getColumn(0).getLong(0));
       assertEquals(6524750.0, resultTsBlock.getColumn(1).getDouble(0), 0.0001);
       assertEquals(0, resultTsBlock.getColumn(2).getLong(0));
@@ -119,7 +134,8 @@ public class AggregationOperatorTest {
 
   /** Try to aggregate binary intermediate result of one time series without group by interval. */
   @Test
-  public void testAggregateIntermediateResult2() throws IllegalPathException {
+  public void testAggregateIntermediateResult2()
+      throws IllegalPathException, ExecutionException, InterruptedException {
     List<AggregationType> aggregationTypes = new ArrayList<>();
     aggregationTypes.add(AggregationType.AVG);
     aggregationTypes.add(AggregationType.FIRST_VALUE);
@@ -136,8 +152,16 @@ public class AggregationOperatorTest {
     AggregationOperator aggregationOperator =
         initAggregationOperator(aggregationTypes, null, inputLocations);
     int count = 0;
-    while (aggregationOperator.hasNext()) {
+    while (true) {
+      ListenableFuture<?> blocked = aggregationOperator.isBlocked();
+      blocked.get();
+      if (!aggregationOperator.hasNext()) {
+        break;
+      }
       TsBlock resultTsBlock = aggregationOperator.next();
+      if (resultTsBlock == null) {
+        continue;
+      }
       assertEquals(13049.5, resultTsBlock.getColumn(0).getDouble(0), 0.001);
       assertEquals(20000, resultTsBlock.getColumn(1).getInt(0));
       assertEquals(10499, resultTsBlock.getColumn(2).getInt(0));
@@ -147,7 +171,8 @@ public class AggregationOperatorTest {
   }
 
   @Test
-  public void testGroupByIntermediateResult1() throws IllegalPathException {
+  public void testGroupByIntermediateResult1()
+      throws IllegalPathException, ExecutionException, InterruptedException {
     int[][] result =
         new int[][] {
           {100, 100, 100, 99},
@@ -175,22 +200,34 @@ public class AggregationOperatorTest {
     AggregationOperator aggregationOperator =
         initAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
-    while (aggregationOperator.hasNext()) {
+    while (true) {
+      ListenableFuture<?> blocked = aggregationOperator.isBlocked();
+      blocked.get();
+      if (!aggregationOperator.hasNext()) {
+        break;
+      }
       TsBlock resultTsBlock = aggregationOperator.next();
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[0][count], resultTsBlock.getColumn(0).getLong(0));
-      assertEquals(result[1][count], resultTsBlock.getColumn(1).getDouble(0), 0.0001);
-      assertEquals(result[2][count], resultTsBlock.getColumn(2).getLong(0));
-      assertEquals(result[3][count], resultTsBlock.getColumn(3).getLong(0));
-      assertEquals(result[4][count], resultTsBlock.getColumn(4).getInt(0));
-      assertEquals(result[5][count], resultTsBlock.getColumn(5).getInt(0));
-      count++;
+      if (resultTsBlock == null) {
+        continue;
+      }
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][count], resultTsBlock.getColumn(0).getLong(pos));
+        assertEquals(result[1][count], resultTsBlock.getColumn(1).getDouble(pos), 0.0001);
+        assertEquals(result[2][count], resultTsBlock.getColumn(2).getLong(pos));
+        assertEquals(result[3][count], resultTsBlock.getColumn(3).getLong(pos));
+        assertEquals(result[4][count], resultTsBlock.getColumn(4).getInt(pos));
+        assertEquals(result[5][count], resultTsBlock.getColumn(5).getInt(pos));
+        count++;
+      }
     }
     assertEquals(4, count);
   }
 
   @Test
-  public void testGroupByIntermediateResult2() throws IllegalPathException {
+  public void testGroupByIntermediateResult2()
+      throws IllegalPathException, ExecutionException, InterruptedException {
     double[][] result =
         new double[][] {
           {20049.5, 20149.5, 6249.5, 8429.808},
@@ -214,13 +251,24 @@ public class AggregationOperatorTest {
     AggregationOperator aggregationOperator =
         initAggregationOperator(aggregationTypes, groupByTimeParameter, inputLocations);
     int count = 0;
-    while (aggregationOperator.hasNext()) {
+    while (true) {
+      ListenableFuture<?> blocked = aggregationOperator.isBlocked();
+      blocked.get();
+      if (!aggregationOperator.hasNext()) {
+        break;
+      }
       TsBlock resultTsBlock = aggregationOperator.next();
-      assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(0));
-      assertEquals(result[0][count], resultTsBlock.getColumn(0).getDouble(0), 0.001);
-      assertEquals((int) result[1][count], resultTsBlock.getColumn(1).getInt(0));
-      assertEquals((int) result[2][count], resultTsBlock.getColumn(2).getInt(0));
-      count++;
+      if (resultTsBlock == null) {
+        continue;
+      }
+      int positionCount = resultTsBlock.getPositionCount();
+      for (int pos = 0; pos < positionCount; pos++) {
+        assertEquals(100 * count, resultTsBlock.getTimeColumn().getLong(pos));
+        assertEquals(result[0][count], resultTsBlock.getColumn(0).getDouble(pos), 0.001);
+        assertEquals((int) result[1][count], resultTsBlock.getColumn(1).getInt(pos));
+        assertEquals((int) result[2][count], resultTsBlock.getColumn(2).getInt(pos));
+        count++;
+      }
     }
     assertEquals(4, count);
   }
@@ -252,6 +300,12 @@ public class AggregationOperatorTest {
     PlanNodeId planNodeId3 = new PlanNodeId("3");
     fragmentInstanceContext.addOperatorContext(
         3, planNodeId3, AggregationOperator.class.getSimpleName());
+    fragmentInstanceContext
+        .getOperatorContexts()
+        .forEach(
+            operatorContext -> {
+              operatorContext.setMaxRunTime(TEST_TIME_SLICE);
+            });
 
     MeasurementPath measurementPath1 =
         new MeasurementPath(AGGREGATION_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);

@@ -38,6 +38,9 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
   private final PartialPath partialPath;
   private final boolean isPrefixPath;
   private final int level;
+  private final String key;
+  private final String value;
+  private final boolean isContains;
 
   private boolean isFinished;
 
@@ -46,12 +49,18 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
       OperatorContext operatorContext,
       PartialPath partialPath,
       boolean isPrefixPath,
-      int level) {
+      int level,
+      String key,
+      String value,
+      boolean isContains) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.partialPath = partialPath;
     this.isPrefixPath = isPrefixPath;
     this.level = level;
+    this.key = key;
+    this.value = value;
+    this.isContains = isContains;
   }
 
   @Override
@@ -71,10 +80,19 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
         new TsBlockBuilder(HeaderConstant.countLevelTimeSeriesHeader.getRespDataTypes());
     Map<PartialPath, Integer> countMap;
     try {
-      countMap =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getSchemaRegion()
-              .getMeasurementCountGroupByLevel(partialPath, level, isPrefixPath);
+      if (key != null && value != null) {
+        countMap =
+            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+                .getSchemaRegion()
+                .getMeasurementCountGroupByLevel(
+                    partialPath, level, isPrefixPath, key, value, isContains);
+      } else {
+        countMap =
+            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+                .getSchemaRegion()
+                .getMeasurementCountGroupByLevel(partialPath, level, isPrefixPath);
+      }
+
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }
