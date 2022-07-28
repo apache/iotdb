@@ -21,10 +21,10 @@ package org.apache.iotdb.metrics.micrometer.reporter;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.utils.MetricsUtils;
+import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import io.micrometer.core.instrument.Clock;
@@ -40,45 +40,31 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public class IoTDBMeterRegistry extends StepMeterRegistry {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMeterRegistry.class);
   private static final MetricConfig.IoTDBReporterConfig ioTDBReporterConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig().getIoTDBReporterConfig();
-  private final Session session;
+  private final SessionPool sessionPool;
 
   public IoTDBMeterRegistry(StepRegistryConfig config, Clock clock) {
     super(config, clock);
-    session =
-        new Session(
+    this.sessionPool =
+        new SessionPool(
             ioTDBReporterConfig.getHost(),
             ioTDBReporterConfig.getPort(),
             ioTDBReporterConfig.getUsername(),
             ioTDBReporterConfig.getPassword(),
-            true);
-  }
-
-  @Override
-  public void start(ThreadFactory threadFactory) {
-    super.start(threadFactory);
-    try {
-      session.open();
-    } catch (IoTDBConnectionException e) {
-      logger.error("Failed to add session", e);
-    }
+            3);
+    IoTDBMetricsUtils.checkOrCreateStorageGroup(sessionPool);
   }
 
   @Override
   public void stop() {
     super.stop();
-    try {
-      if (session != null) {
-        session.close();
-      }
-    } catch (IoTDBConnectionException e) {
-      logger.error("Failed to close session.");
+    if (sessionPool != null) {
+      sessionPool.close();
     }
   }
 
@@ -143,12 +129,13 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
 
   private void updateValue(String name, Map<String, String> labels, Double value, Long time) {
     if (value != null) {
-      String deviceId = MetricsUtils.generatePath(name, labels);
+      String deviceId = IoTDBMetricsUtils.generatePath(name, labels);
       List<String> sensors = Collections.singletonList("value");
       List<TSDataType> dataTypes = Collections.singletonList(TSDataType.DOUBLE);
+      List<Object> values = Collections.singletonList(value);
 
       try {
-        session.insertRecord(deviceId, time, sensors, dataTypes, value);
+        sessionPool.insertRecord(deviceId, time, sensors, dataTypes, values);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         logger.warn("Failed to insert record");
       }
