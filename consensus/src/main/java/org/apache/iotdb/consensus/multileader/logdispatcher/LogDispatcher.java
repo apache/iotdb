@@ -315,7 +315,7 @@ public class LogDispatcher {
     }
 
     private long constructBatchFromWAL(
-        long currentIndex, long maxIndex, boolean useTimeoutWay, List<TLogBatch> logBatches) {
+        long currentIndex, long maxIndex, boolean limitWaitTime, List<TLogBatch> logBatches) {
       logger.debug(
           String.format(
               "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d, iteratorIndex: %d",
@@ -332,7 +332,7 @@ public class LogDispatcher {
           && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
         logger.debug("construct from WAL for one Entry, index : {}", currentIndex);
         try {
-          if (useTimeoutWay) {
+          if (limitWaitTime) {
             walEntryiterator.waitForNextReady(
                 config.getReplication().getMaxWalWaitTimeMs(), TimeUnit.MILLISECONDS);
           } else {
