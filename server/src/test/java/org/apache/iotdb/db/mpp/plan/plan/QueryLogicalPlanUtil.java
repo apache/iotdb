@@ -30,7 +30,6 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
@@ -768,9 +767,6 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
 
-    GreaterThanExpression timeFilter =
-        new GreaterThanExpression(
-            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
@@ -779,8 +775,7 @@ public class QueryLogicalPlanUtil {
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
-    LogicAndExpression predicate =
-        new LogicAndExpression(timeFilter, new LogicAndExpression(valueFilter1, valueFilter2));
+    LogicAndExpression predicate = new LogicAndExpression(valueFilter1, valueFilter2);
     FilterNode filterNode =
         new FilterNode(
             queryId.genPlanNodeId(),
