@@ -146,7 +146,7 @@ public class IoTDBConfigNodeIT {
   }
 
   @Test
-  public void removeAndStopConfigNodeTest() throws TException, IOException, InterruptedException {
+  public void removeAndStopConfigNodeTest() {
     TShowClusterResp clusterNodes;
     TSStatus status;
 
@@ -203,6 +203,8 @@ public class IoTDBConfigNodeIT {
       // test stop ConfigNode
       status = client.stopConfigNode(removedConfigNodeLocation);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+    }catch(Exception e){
+      e.printStackTrace();
     }
   }
 }
