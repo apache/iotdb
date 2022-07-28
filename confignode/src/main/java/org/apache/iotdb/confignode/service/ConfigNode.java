@@ -203,7 +203,7 @@ public class ConfigNode implements ConfigNodeMBean {
             conf.getReadConsistencyLevel());
 
     TEndPoint targetConfigNode = conf.getTargetConfigNode();
-    for (int retry = 0; retry < 10; retry++) {
+    for (int retry = 0; retry < 3; retry++) {
       TConfigNodeRegisterResp resp =
           (TConfigNodeRegisterResp)
               SyncConfigNodeClientPool.getInstance()
