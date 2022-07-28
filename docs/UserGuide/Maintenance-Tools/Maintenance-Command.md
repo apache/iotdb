@@ -52,6 +52,8 @@ Clear the cache of chunk, chunk metadata and timeseries metadata to release the 
 
 ```sql
 IoTDB> CLEAR CACHE
+IoTDB> CLEAR CACHE ON LOCAL
+IoTDB> CLEAR CACHE ON CLUSTER
 ```
 
 
