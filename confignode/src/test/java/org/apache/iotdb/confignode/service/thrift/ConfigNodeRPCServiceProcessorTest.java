@@ -1183,8 +1183,17 @@ public class ConfigNodeRPCServiceProcessorTest {
   @Test
   public void testShowRegion() throws TException, IllegalPathException, IOException {
     TSStatus status;
-    TShowRegionReq showRegionReq = new TShowRegionReq();
+    ByteBuffer buffer;
+    TSetStorageGroupReq setReq;
+    TSchemaPartitionReq schemaPartitionReq;
+    TSchemaPartitionResp schemaPartitionResp;
+    TDataPartitionReq dataPartitionReq;
+    TDataPartitionResp dataPartitionResp;
+    List<TRegionInfo> regionInfoList;
+    TShowRegionReq showRegionReq;
     TShowRegionResp showRegionResp;
+    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap;
+
     final String sg = "root.sg";
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -1197,16 +1206,8 @@ public class ConfigNodeRPCServiceProcessorTest {
     final int storageGroupNum = 2;
     final int seriesPartitionSlotNum = 4;
     final long timePartitionSlotNum = 6;
-
-    ByteBuffer buffer;
-    TSetStorageGroupReq setReq;
-    TSchemaPartitionReq schemaPartitionReq;
-    TSchemaPartitionResp schemaPartitionResp;
-    TDataPartitionReq dataPartitionReq;
-    TDataPartitionResp dataPartitionResp;
-    List<TRegionInfo> regionInfoList;
     List<String> sgs = Arrays.asList(sg + "0", sg + "1");
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap;
+
 
     // set StorageGroups
     for (int i = 0; i < 2; i++) {
@@ -1216,6 +1217,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     }
 
     // Test show Region, it should return an empty list
+    showRegionReq = new TShowRegionReq();
     showRegionReq.setStorageGroups(sgs);
     showRegionResp = processor.showRegion(showRegionReq);
     Assert.assertEquals(
