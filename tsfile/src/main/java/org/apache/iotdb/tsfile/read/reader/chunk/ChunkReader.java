@@ -99,6 +99,15 @@ public class ChunkReader implements IChunkReader {
     }
   }
 
+  public ChunkReader(Chunk chunk) {
+    this.filter = null;
+    this.chunkDataBuffer = chunk.getData();
+    this.deleteIntervalList = chunk.getDeleteIntervalList();
+    this.currentTimestamp = Long.MIN_VALUE;
+    chunkHeader = chunk.getHeader();
+    this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
+  }
+
   private void initAllPageReaders(Statistics chunkStatistic) throws IOException {
     // construct next satisfied page header
     while (chunkDataBuffer.remaining() > 0) {
@@ -138,7 +147,7 @@ public class ChunkReader implements IChunkReader {
     return pageReaderList.remove(0).getAllSatisfiedPageData();
   }
 
-  private void skipBytesInStreamByLength(int length) {
+  public void skipBytesInStreamByLength(int length) {
     chunkDataBuffer.position(chunkDataBuffer.position() + length);
   }
 
@@ -160,7 +169,7 @@ public class ChunkReader implements IChunkReader {
     return filter == null || filter.satisfy(pageHeader.getStatistics());
   }
 
-  private PageReader constructPageReaderForNextPage(PageHeader pageHeader) throws IOException {
+  public PageReader constructPageReaderForNextPage(PageHeader pageHeader) throws IOException {
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
 

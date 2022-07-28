@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.engine.compaction.performer.impl;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -15,7 +16,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -31,10 +31,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.Set;
 import java.util.TreeMap;
 
 public class FastCompactionPerformer implements ICrossCompactionPerformer {
@@ -54,6 +56,9 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
 
   private final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
 
+  // unseq reader of sensors in one device
+  private Map<String, IPointReader> unseqReaders = new HashMap<>();
+
   private final Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
       measurementChunkMetadataListMapIteratorCache =
           new TreeMap<>(
@@ -72,43 +77,71 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
         boolean isAligned = deviceInfo.right;
-        compactionWriter.startChunkGroup(device, isAligned);
-        getAllChunkMetadataByDevice(device);
+        for (int i = 0; i < seqFiles.size(); i++) {
+          TsFileResource seqFile = seqFiles.get(i);
+          boolean isLastFile = i == seqFiles.size() - 1;
+          if (!seqFile.mayContainsDevice(device) && !isLastFile) {
+            continue;
+          } else {
+            compactionWriter.startChunkGroup(device, isAligned);
+            if (isAligned) {
+              compactAlignedSeries();
+            } else {
+              compactNonAlignedSeries();
+            }
+          }
+        }
       }
     }
   }
 
-  private void getAllChunkMetadataByDevice(String deviceID) {
-    for (TsFileResource resource : seqFiles) {
-      TsFileSequenceReader seqReader =
-          readerCacheMap.computeIfAbsent(
-              resource,
-              tsFileResource -> {
-                try {
-                  return new TsFileSequenceReader(tsFileResource.getTsFilePath());
-                } catch (IOException e) {
-                  throw new RuntimeException(
-                      String.format("Failed to construct sequence reader for %s", resource));
-                }
-              });
-      Iterator<Map<String, List<ChunkMetadata>>> measurementChunkMetadataListMapIterator =
-          measurementChunkMetadataListMapIteratorCache.computeIfAbsent(
-              seqReader,
-              (tsFileSequenceReader -> {
-                try {
-                  return tsFileSequenceReader.getMeasurementChunkMetadataListMapIterator(deviceID);
-                } catch (IOException e) {
-                  throw new RuntimeException(
-                      "GetMeasurementChunkMetadataListMapIterator meets error. iterator create failed.");
-                }
-              }));
-    }
+  private Iterator<Map<String, List<ChunkMetadata>>> getAllChunkMetadataByDevice(
+      TsFileResource resource, String deviceID) {
+    return measurementChunkMetadataListMapIteratorCache.computeIfAbsent(
+        readerCacheMap.computeIfAbsent(
+            resource,
+            tsFileResource -> {
+              try {
+                return new TsFileSequenceReader(tsFileResource.getTsFilePath());
+              } catch (IOException e) {
+                throw new RuntimeException(
+                    String.format("Failed to construct sequence reader for %s", resource));
+              }
+            }),
+        (tsFileSequenceReader -> {
+          try {
+            return tsFileSequenceReader.getMeasurementChunkMetadataListMapIterator(deviceID);
+          } catch (IOException e) {
+            throw new RuntimeException(
+                "GetMeasurementChunkMetadataListMapIterator meets error. iterator create failed.");
+          }
+        }));
   }
 
   private void compactAlignedSeries() {}
 
-  private void compactNonAlignedSeries() {
+  private void compactNonAlignedSeries(TsFileResource seqFile, String deviceID)
+      throws IOException, IllegalPathException {
+    // get modified chunk metadata list of all sensors under this device in the seq file
+    Map<String, List<ChunkMetadata>> measurmentMetadataList =
+        readerCacheMap.get(seqFile).readChunkMetadataInDevice(deviceID);
+    for (Map.Entry<String, List<ChunkMetadata>> entry : measurmentMetadataList.entrySet()) {
+      QueryUtils.modifyChunkMetaData(
+          entry.getValue(), getModifications(seqFile, new PartialPath(deviceID, entry.getKey())));
+    }
+    Set<String> allMeasurements = measurmentMetadataList.keySet();
 
+    int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
+    // Map<String, MeasurementSchema> schemaMap = getMeasurementSchema(device, allMeasurements);
+
+    // assign all measurements to different sub tasks
+    Set<Integer>[] measurementsForEachSubTask = new HashSet[subTaskNums];
+    for (int idx = 0; idx < allMeasurements.size(); idx++) {
+      if (measurementsForEachSubTask[idx % subTaskNums] == null) {
+        measurementsForEachSubTask[idx % subTaskNums] = new HashSet<>();
+      }
+      measurementsForEachSubTask[idx % subTaskNums].add(idx++);
+    }
   }
 
   private AbstractCompactionWriter getCompactionWriter(
@@ -141,17 +174,31 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     this.unseqFiles = unseqFiles;
   }
 
-  public IPointReader[] getUnseqReaders(List<PartialPath> paths)
-          throws IOException, MetadataException {
-    // 将所有待合并序列在所有乱序文件里的所有Chunk依次放入ret列表数组里（ret数组长度为待合并序列数量），如有s0 s1 s2,其中s2在第1 3 5个乱序文件里都有好几个Chunk，则在ret[2]列表里存放该序列分别在1 3 5乱序文件的所有Chunk
-    List<Chunk>[] pathChunks = collectUnseqChunks(paths, unseqFiles);
-    // 创建每个待合并序列的乱序数据点Reader,将某待合并序列在所有乱序文件的所有Chunk的第一个数据点放入heap优先级队列里（越后面的Chunk说明数据越新，因此优先级越高）
-    IPointReader[] ret = new IPointReader[paths.size()];
-    for (int i = 0; i < paths.size(); i++) {
-      TSDataType dataType = IoTDB.metaManager.getSeriesType(paths.get(i));
-      ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
+  private Map<String, List<ChunkMetadata>> getModifiedChunkMetadataListInDevice(
+      TsFileResource seqFile, String deviceID, boolean isAligned) {
+    if (isAligned) {
+
+    } else {
+
     }
-    return ret;
+  }
+
+  public static IPointReader getUnseqReaders(PartialPath path) throws IOException {
+    // 将所有待合并序列在所有乱序文件里的所有Chunk依次放入ret列表数组里（ret数组长度为待合并序列数量），如有s0 s1 s2,其中s2在第1 3
+    // 5个乱序文件里都有好几个Chunk，则在ret[2]列表里存放该序列分别在1 3 5乱序文件的所有Chunk
+    List<Chunk> pathChunks = collectUnseqChunks(path, unseqFiles);
+
+    TSDataType dataType = pathChunks.get(pathChunks.size() - 1).getHeader().getDataType();
+    return new CachedUnseqResourceMergeReader(pathChunks, dataType);
+
+    // 创建每个待合并序列的乱序数据点Reader,将某待合并序列在所有乱序文件的所有Chunk的第一个数据点放入heap优先级队列里（越后面的Chunk说明数据越新，因此优先级越高）
+    //    IPointReader[] pointReaders = new IPointReader[paths.size()];
+    //    for (int i = 0; i < paths.size(); i++) {
+    //      TSDataType dataType = pathChunks[i].get(pathChunks[i].size() -
+    // 1).getHeader().getDataType();
+    //      pointReaders[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
+    //    }
+    //    return pointReaders;
   }
 
   public List<Chunk>[] collectUnseqChunks(
@@ -179,8 +226,6 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
       //将所有待合并序列在当前乱序文件里的ChunkMetadataList依次放入chunkMetaHeap队列，该队列元素为（待合并序列index,该序列在该乱序文件里的ChunkMetadataList）
       buildMetaHeap(paths, unseqReader, tsFileResource, chunkMetaHeap);
 
-      // read chunks order by their position
-      //将所有待合并序列在该乱序文件里的所有Chunk依次放入ret里，ret长度为待合并序列数量，每个元素存放该序列在该乱序文件里的所有Chunk（包含删除区间）
       // read all chunks of timeseries in the unseq file in order
       while (!chunkMetaHeap.isEmpty()) {
         MetaListEntry metaListEntry = chunkMetaHeap.poll();
@@ -196,12 +241,16 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     return ret;
   }
 
+  /**
+   * Put all the ChunkMetadataList of the timeseries to be compacted in the unseq file into the
+   * chunkMetaHeap queue.
+   */
   private void buildMetaHeap(
-          List<PartialPath> paths,
-          TsFileSequenceReader tsFileReader,
-          TsFileResource tsFileResource,
-          PriorityQueue<MetaListEntry> chunkMetaHeap)
-          throws IOException {
+      List<PartialPath> paths,
+      TsFileSequenceReader tsFileReader,
+      TsFileResource tsFileResource,
+      PriorityQueue<MetaListEntry> chunkMetaHeap)
+      throws IOException {
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = paths.get(i);
       List<ChunkMetadata> metaDataList = tsFileReader.getChunkMetadataList(path, true);
