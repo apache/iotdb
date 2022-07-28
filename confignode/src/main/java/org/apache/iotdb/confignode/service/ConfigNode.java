@@ -136,7 +136,7 @@ public class ConfigNode implements ConfigNodeMBean {
 
       if (!isJoinedCluster) {
         LOGGER.error(
-            "The current ConfigNode can't joined the cluster because leader's scheduling failed.");
+            "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
         stop();
       }
 
@@ -228,7 +228,7 @@ public class ConfigNode implements ConfigNodeMBean {
     }
 
     LOGGER.error(
-        "The current ConfigNode can't send register request to the Seed-ConfigNode after 10 retries!");
+        "The current ConfigNode can't send register request to the Seed-ConfigNode after all retries!");
     stop();
   }
 
