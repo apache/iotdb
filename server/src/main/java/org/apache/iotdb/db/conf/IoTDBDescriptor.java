@@ -1770,6 +1770,7 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
+    conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
   private static class IoTDBDescriptorHolder {

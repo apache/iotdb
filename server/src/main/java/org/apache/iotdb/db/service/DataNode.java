@@ -194,28 +194,14 @@ public class DataNode implements DataNodeMBean {
               .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
             config.setDataRegionConsensusProtocolClass(
                 dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass());
-            IoTDBStartCheck.getInstance()
-                .serializeConsensusProtocol(
-                    dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass(),
-                    TConsensusGroupType.DataRegion);
           }
 
           if (!IoTDBStartCheck.getInstance()
               .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
             config.setSchemaRegionConsensusProtocolClass(
                 dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
-            IoTDBStartCheck.getInstance()
-                .serializeConsensusProtocol(
-                    dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass(),
-                    TConsensusGroupType.SchemaRegion);
           }
-
-          config.setSeriesPartitionExecutorClass(
-              dataNodeRegisterResp.globalConfig.getSeriesPartitionExecutorClass());
-          config.setSeriesPartitionSlotNum(
-              dataNodeRegisterResp.globalConfig.getSeriesPartitionSlotNum());
-          config.setReadConsistencyLevel(
-              dataNodeRegisterResp.globalConfig.getReadConsistencyLevel());
+          IoTDBStartCheck.getInstance().serializeGlobalConfig(dataNodeRegisterResp.globalConfig);
 
           logger.info("Register to the cluster successfully");
           return;
