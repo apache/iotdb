@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
+import org.apache.iotdb.db.exception.metadata.MeasurementInsideTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -540,8 +541,7 @@ public class MTree implements Serializable {
     }
 
     if (isPathExistsWithinTemplate(path)) {
-      throw new MetadataException(
-          "Cannot delete a timeseries inside a template: " + path.toString());
+      throw new MeasurementInsideTemplateException(path.getFullPath());
     }
 
     IMeasurementMNode deletedNode = getMeasurementMNode(path);
@@ -1272,9 +1272,11 @@ public class MTree implements Serializable {
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
-  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, boolean traverseTemplate)
       throws MetadataException {
     CounterTraverser counter = new MeasurementCounter(root, pathPattern);
+    counter.setShouldTraverseTemplate(traverseTemplate);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getCount();
@@ -1286,7 +1288,7 @@ public class MTree implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return getAllTimeseriesCount(pathPattern, false);
+    return getAllTimeseriesCount(pathPattern, false, true);
   }
 
   /**

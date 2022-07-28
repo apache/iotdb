@@ -110,7 +110,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 | Metric   | Tag                                   | level     | 说明                                         | 示例                             |
 | -------- | ------------------------------------- | --------- | -------------------------------------------- | -------------------------------- |
-| quantity | name="timeSeries/storageGroup/device" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",} 1.0 |
+| quantity | name="timeSeries/storageGroup/device";<br/>name="timeSeries", type="normal/template"  | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",type="normal"} 1.0 |
 
 #### 4.3.6. 集群
 
