@@ -391,6 +391,7 @@ public class RegionMigrateService implements IService {
             Thread.sleep(SLEEP_MILLIS);
           }
           resp = removeRegionPeer(regionId, new Peer(regionId, oldPeerNode));
+          removePeerSucceed = true;
         } catch (Throwable e) {
           removePeerSucceed = false;
           taskLogger.error(
