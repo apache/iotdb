@@ -76,12 +76,12 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 4.3.1. 接入层
 
-| Metric              | Tag             | level     | 说明             | 示例                                         |
-| ------------------- | --------------- | --------- | ---------------- | -------------------------------------------- |
-| entry_seconds_count | name="接口名"   | important | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="接口名"   | important | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="接口名"   | important | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total      | name="pointsIn" | important | 系统累计写入点数 | quantity_total{name="pointsIn",} 1.0         |
+| Metric              | Tag                                                                                     | level     | 说明             | 示例                                                  |
+| ------------------- | --------------------------------------------------------------------------------------- | --------- | ---------------- | ----------------------------------------------------- |
+| entry_seconds_count | name="接口名"                                                                           | important | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0          |
+| entry_seconds_sum   | name="接口名"                                                                           | important | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024          |
+| entry_seconds_max   | name="接口名"                                                                           | important | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024          |
+| quantity_total      | name="pointsIn",<br> type="insertRow/insertAlignedRow/insertTablet/insertAlignedTablet" | important | 系统累计写入点数 | quantity_total{name="pointsIn",type="insertRow",} 1.0 |
 
 #### 4.3.2. Task
 
@@ -108,9 +108,9 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 4.3.5. 业务数据
 
-| Metric   | Tag                                   | level     | 说明                                         | 示例                             |
-| -------- | ------------------------------------- | --------- | -------------------------------------------- | -------------------------------- |
-| quantity | name="timeSeries/storageGroup/device";<br/>name="timeSeries", type="normal/template"  | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",type="normal"} 1.0 |
+| Metric   | Tag                                                                 | level     | 说明                                         | 示例                                          |
+| -------- | ------------------------------------------------------------------- | --------- | -------------------------------------------- | --------------------------------------------- |
+| quantity | name="timeSeries/storageGroup/device", type="total/normal/template" | important | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",type="normal"} 1.0 |
 
 #### 4.3.6. 集群
 

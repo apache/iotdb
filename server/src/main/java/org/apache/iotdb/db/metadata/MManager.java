@@ -355,7 +355,9 @@ public class MManager {
               return 0;
             },
             Tag.NAME.toString(),
-            "device");
+            "device",
+            Tag.TYPE.toString(),
+            "total");
 
     MetricsService.getInstance()
         .getMetricManager()
@@ -372,7 +374,9 @@ public class MManager {
               return 0;
             },
             Tag.NAME.toString(),
-            "storageGroup");
+            "storageGroup",
+            Tag.TYPE.toString(),
+            "total");
   }
 
   private void forceMlog() {
