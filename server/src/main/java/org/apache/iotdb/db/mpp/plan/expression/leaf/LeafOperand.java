@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.expression.leaf;
 
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
 
@@ -38,5 +39,10 @@ public abstract class LeafOperand extends Expression {
   public final void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     // nothing to do
+  }
+
+  @Override
+  public boolean isMappable(TypeProvider typeProvider) {
+    return true;
   }
 }

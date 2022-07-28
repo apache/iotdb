@@ -38,20 +38,20 @@ import org.apache.iotdb.confignode.consensus.request.auth.AuthorPlan;
 import org.apache.iotdb.confignode.consensus.request.read.CountStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetNodesInSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetPathsSetTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.read.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetAllSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetAllTemplateSetInfoPlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetPathsSetTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.read.template.GetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.AdjustMaxRegionGroupCountPlan;
 import org.apache.iotdb.confignode.consensus.request.write.ApplyConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
@@ -59,11 +59,12 @@ import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetDataReplicationFactorPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetSchemaReplicationFactorPlan;
-import org.apache.iotdb.confignode.consensus.request.write.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateProcedurePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.CreateSchemaTemplatePlan;
+import org.apache.iotdb.confignode.consensus.request.write.template.SetSchemaTemplatePlan;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
@@ -597,7 +598,7 @@ public class ConfigPhysicalPlanSerDeTest {
   public void CreateSchemaTemplatePlanTest() throws IOException, IllegalPathException {
     Template template = new Template(newCreateSchemaTemplateStatement("template_name"));
     CreateSchemaTemplatePlan createSchemaTemplatePlan0 =
-        new CreateSchemaTemplatePlan(Template.template2ByteBuffer(template).array());
+        new CreateSchemaTemplatePlan(template.serialize().array());
     CreateSchemaTemplatePlan createSchemaTemplatePlan1 =
         (CreateSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(createSchemaTemplatePlan0.serializeToByteBuffer());
@@ -621,7 +622,24 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void GetSchemaTemplatePlanTest() throws IOException {
-    GetSchemaTemplatePlan getSchemaTemplatePlan0 = new GetSchemaTemplatePlan();
+    GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan("template1");
+    GetSchemaTemplatePlan deserializedPlan =
+        (GetSchemaTemplatePlan)
+            ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan.serializeToByteBuffer());
+    Assert.assertEquals("template1", deserializedPlan.getTemplateName());
+  }
+
+  @Test
+  public void GetAllSchemaTemplatePlanTest() throws IOException {
+    GetAllSchemaTemplatePlan getAllSchemaTemplatePlan0 = new GetAllSchemaTemplatePlan();
+    Assert.assertTrue(
+        ConfigPhysicalPlan.Factory.create(getAllSchemaTemplatePlan0.serializeToByteBuffer())
+            instanceof GetAllSchemaTemplatePlan);
+  }
+
+  @Test
+  public void GetNodesInSchemaTemplatePlanTest() throws IOException {
+    GetSchemaTemplatePlan getSchemaTemplatePlan0 = new GetSchemaTemplatePlan("template_name_test");
     GetSchemaTemplatePlan getSchemaTemplatePlan1 =
         (GetSchemaTemplatePlan)
             ConfigPhysicalPlan.Factory.create(getSchemaTemplatePlan0.serializeToByteBuffer());
@@ -629,14 +647,11 @@ public class ConfigPhysicalPlanSerDeTest {
   }
 
   @Test
-  public void GetNodesInSchemaTemplatePlanTest() throws IOException {
-    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan0 =
-        new GetNodesInSchemaTemplatePlan("template_name_test");
-    GetNodesInSchemaTemplatePlan getNodesInSchemaTemplatePlan1 =
-        (GetNodesInSchemaTemplatePlan)
-            ConfigPhysicalPlan.Factory.create(
-                getNodesInSchemaTemplatePlan0.serializeToByteBuffer());
-    Assert.assertEquals(getNodesInSchemaTemplatePlan0, getNodesInSchemaTemplatePlan1);
+  public void GetAllTemplateSetInfoPlan() throws IOException {
+    GetAllTemplateSetInfoPlan getAllTemplateSetInfoPlan = new GetAllTemplateSetInfoPlan();
+    Assert.assertTrue(
+        ConfigPhysicalPlan.Factory.create(getAllTemplateSetInfoPlan.serializeToByteBuffer())
+            instanceof GetAllTemplateSetInfoPlan);
   }
 
   @Test

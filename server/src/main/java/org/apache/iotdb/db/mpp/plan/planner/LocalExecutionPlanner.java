@@ -46,7 +46,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.AggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.FilterOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LastQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
@@ -92,6 +92,7 @@ import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOp
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
@@ -108,6 +109,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.timer.ITimeSliceAllocator;
 import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -120,6 +122,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodeManageme
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsConvertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsCountNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.NodePathsSchemaScanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.PathsUsingTemplateScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaFetchScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.SchemaQueryMergeNode;
@@ -158,6 +161,9 @@ import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
 import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.literal.Literal;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -166,6 +172,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.lang3.Validate;
 
 import java.io.IOException;
@@ -404,6 +412,8 @@ public class LocalExecutionPlanner {
         return visitLevelTimeSeriesCount((LevelTimeSeriesCountNode) node, context);
       } else if (node instanceof NodePathsSchemaScanNode) {
         return visitNodePathsSchemaScan((NodePathsSchemaScanNode) node, context);
+      } else if (node instanceof PathsUsingTemplateScanNode) {
+        return visitPathsUsingTemplateScan((PathsUsingTemplateScanNode) node, context);
       }
       return visitPlan(node, context);
     }
@@ -427,7 +437,8 @@ public class LocalExecutionPlanner {
           node.getValue(),
           node.isContains(),
           node.isOrderByHeat(),
-          node.isPrefixPath());
+          node.isPrefixPath(),
+          node.getTemplateMap());
     }
 
     @Override
@@ -502,7 +513,13 @@ public class LocalExecutionPlanner {
               TimeSeriesCountOperator.class.getSimpleName());
       context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
       return new TimeSeriesCountOperator(
-          node.getPlanNodeId(), operatorContext, node.getPath(), node.isPrefixPath());
+          node.getPlanNodeId(),
+          operatorContext,
+          node.getPath(),
+          node.isPrefixPath(),
+          node.getKey(),
+          node.getValue(),
+          node.isContains());
     }
 
     @Override
@@ -519,7 +536,10 @@ public class LocalExecutionPlanner {
           operatorContext,
           node.getPath(),
           node.isPrefixPath(),
-          node.getLevel());
+          node.getLevel(),
+          node.getKey(),
+          node.getValue(),
+          node.isContains());
     }
 
     @Override
@@ -825,25 +845,118 @@ public class LocalExecutionPlanner {
 
     @Override
     public Operator visitFilter(FilterNode node, LocalExecutionPlanContext context) {
+      final Expression filterExpression = node.getPredicate();
+      final TypeProvider typeProvider = context.getTypeProvider();
+
+      // check whether predicate contains Non-Mappable UDF
+      if (!filterExpression.isMappable(typeProvider)) {
+        throw new UnsupportedOperationException("Filter can not contain Non-Mappable UDF");
+      }
+
+      final Expression[] projectExpressions = node.getOutputExpressions();
+      final Operator inputOperator = generateOnlyChildOperator(node, context);
+      final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
+      final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
+      final List<TSDataType> filterOutputDataTypes = new ArrayList<>(inputDataTypes);
       final OperatorContext operatorContext =
           context.instanceContext.addOperatorContext(
               context.getNextOperatorId(),
               node.getPlanNodeId(),
-              FilterOperator.class.getSimpleName());
-      final Operator inputOperator = generateOnlyChildOperator(node, context);
-      final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
-      final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
-
+              FilterAndProjectOperator.class.getSimpleName());
       context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
 
+      boolean hasNonMappableUDF = false;
+      for (Expression expression : projectExpressions) {
+        if (!expression.isMappable(typeProvider)) {
+          hasNonMappableUDF = true;
+          break;
+        }
+      }
+
+      // init UDTFContext;
+      UDTFContext filterContext = new UDTFContext(node.getZoneId());
+      filterContext.constructUdfExecutors(new Expression[] {filterExpression});
+
+      // records LeafColumnTransformer of filter
+      List<LeafColumnTransformer> filterLeafColumnTransformerList = new ArrayList<>();
+
+      // records common ColumnTransformer between filter and project expressions
+      List<ColumnTransformer> commonTransformerList = new ArrayList<>();
+
+      // records LeafColumnTransformer of project expressions
+      List<LeafColumnTransformer> projectLeafColumnTransformerList = new ArrayList<>();
+
+      // records subexpression -> ColumnTransformer for filter
+      Map<Expression, ColumnTransformer> filterExpressionColumnTransformerMap = new HashMap<>();
+
+      ColumnTransformer filterOutputTransformer =
+          filterExpression.constructColumnTransformer(
+              filterContext,
+              typeProvider,
+              filterLeafColumnTransformerList,
+              inputLocations,
+              filterExpressionColumnTransformerMap,
+              ImmutableMap.of(),
+              ImmutableList.of(),
+              ImmutableList.of(),
+              0);
+
+      List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
+
+      Map<Expression, ColumnTransformer> projectExpressionColumnTransformerMap = new HashMap<>();
+
+      // init project transformer when project expressions are all mappable
+      if (!hasNonMappableUDF) {
+        // init project UDTFContext
+        UDTFContext projectContext = new UDTFContext(node.getZoneId());
+        projectContext.constructUdfExecutors(projectExpressions);
+
+        for (Expression expression : projectExpressions) {
+          projectOutputTransformerList.add(
+              expression.constructColumnTransformer(
+                  projectContext,
+                  typeProvider,
+                  projectLeafColumnTransformerList,
+                  inputLocations,
+                  projectExpressionColumnTransformerMap,
+                  filterExpressionColumnTransformerMap,
+                  commonTransformerList,
+                  filterOutputDataTypes,
+                  inputLocations.size()));
+        }
+      }
+
+      Operator filter =
+          new FilterAndProjectOperator(
+              operatorContext,
+              inputOperator,
+              filterOutputDataTypes,
+              filterLeafColumnTransformerList,
+              filterOutputTransformer,
+              commonTransformerList,
+              projectLeafColumnTransformerList,
+              projectOutputTransformerList,
+              hasNonMappableUDF);
+
+      // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
+      if (!hasNonMappableUDF) {
+        return filter;
+      }
+
+      // has Non-Mappable UDF, we wrap a TransformOperator for further calculation
       try {
-        return new FilterOperator(
-            operatorContext,
-            inputOperator,
+        final OperatorContext transformContext =
+            context.instanceContext.addOperatorContext(
+                context.getNextOperatorId(),
+                node.getPlanNodeId(),
+                TransformOperator.class.getSimpleName());
+        context.getTimeSliceAllocator().recordExecutionWeight(transformContext, 1);
+        return new TransformOperator(
+            transformContext,
+            filter,
             inputDataTypes,
             inputLocations,
-            node.getPredicate(),
-            node.getOutputExpressions(),
+            projectExpressions,
             node.isKeepNull(),
             node.getZoneId(),
             context.getTypeProvider(),
@@ -1177,6 +1290,7 @@ public class LocalExecutionPlanner {
           node.getPlanNodeId(),
           operatorContext,
           node.getPatternTree(),
+          node.getTemplateMap(),
           ((SchemaDriverContext) (context.instanceContext.getDriverContext())).getSchemaRegion());
     }
 
@@ -1413,6 +1527,18 @@ public class LocalExecutionPlanner {
               .collect(Collectors.toList());
       Validate.isTrue(children.size() == 1);
       return children.get(0);
+    }
+
+    public Operator visitPathsUsingTemplateScan(
+        PathsUsingTemplateScanNode node, LocalExecutionPlanContext context) {
+      OperatorContext operatorContext =
+          context.instanceContext.addOperatorContext(
+              context.getNextOperatorId(),
+              node.getPlanNodeId(),
+              PathsUsingTemplateScanNode.class.getSimpleName());
+      context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+      return new PathsUsingTemplateScanOperator(
+          node.getPlanNodeId(), operatorContext, node.getTemplateId());
     }
   }
 

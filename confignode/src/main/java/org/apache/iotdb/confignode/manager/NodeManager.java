@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -40,8 +39,10 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
@@ -53,6 +54,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -216,28 +218,47 @@ public class NodeManager {
     return dataNodeLocations;
   }
 
-  public List<TDataNodesInfo> getRegisteredDataNodesInfoList() {
-    List<TDataNodesInfo> dataNodesLocations = new ArrayList<>();
+  public List<TDataNodeInfo> getRegisteredDataNodeInfoList() {
+    List<TDataNodeInfo> dataNodeInfoList = new ArrayList<>();
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes(-1);
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
           (dataNodeInfo) -> {
-            TDataNodesInfo tDataNodesLocation = new TDataNodesInfo();
+            TDataNodeInfo info = new TDataNodeInfo();
             int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
-            tDataNodesLocation.setDataNodeId(dataNodeId);
-            tDataNodesLocation.setStatus(
+            info.setDataNodeId(dataNodeId);
+            info.setStatus(
                 getLoadManager().getNodeCacheMap().get(dataNodeId).getNodeStatus().getStatus());
-            tDataNodesLocation.setRpcAddresss(
-                dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
-            tDataNodesLocation.setRpcPort(
-                dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
-            tDataNodesLocation.setDataRegionNum(0);
-            tDataNodesLocation.setSchemaRegionNum(0);
-            dataNodesLocations.add(tDataNodesLocation);
+            info.setRpcAddresss(dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
+            info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
+            info.setDataRegionNum(0);
+            info.setSchemaRegionNum(0);
+            dataNodeInfoList.add(info);
           });
     }
-    return dataNodesLocations;
+    return dataNodeInfoList;
   }
+
+  public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {
+    List<TConfigNodeInfo> configNodeInfoList = new ArrayList<>();
+    List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
+    if (registeredConfigNodes != null) {
+      registeredConfigNodes.forEach(
+          (configNodeLocation) -> {
+            TConfigNodeInfo info = new TConfigNodeInfo();
+            int configNodeId = configNodeLocation.getConfigNodeId();
+            info.setConfigNodeId(configNodeId);
+            info.setStatus(
+                getLoadManager().getNodeCacheMap().get(configNodeId).getNodeStatus().getStatus());
+            info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
+            info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
+            configNodeInfoList.add(info);
+          });
+    }
+    configNodeInfoList.sort(Comparator.comparingInt(TConfigNodeInfo::getConfigNodeId));
+    return configNodeInfoList;
+  }
+
   /**
    * Provides ConfigNodeGroup information for the newly registered ConfigNode
    *
