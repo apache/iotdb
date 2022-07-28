@@ -343,9 +343,17 @@ public class LoadManager {
                       dataNodeInfo.getLocation().getDataNodeId(),
                       empty -> new DataNodeHeartbeatCache()),
               regionGroupCacheMap);
+
+      THeartbeatReq heartbeatReq = genHeartbeatReq();
+      LOGGER.info(
+          "[genHeartbeatReq] dataNode={}, isNeedJudge={}, counter={}",
+          dataNodeInfo.getLocation().getDataNodeId(),
+          heartbeatReq.isNeedJudgeLeader(),
+          heartbeatCounter.get());
+
       AsyncDataNodeClientPool.getInstance()
           .getDataNodeHeartBeat(
-              dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
+              dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
   }
 
