@@ -46,73 +46,79 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+
 import org.influxdb.dto.QueryResult;
 
-import java.util.Map;
-import java.util.List;
-import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Arrays;
-
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public abstract class AbstractQueryHandler {
 
   abstract Map<String, Integer> getFieldOrders(
-          String database, String measurement, ServiceProvider serviceProvider, long sessionId);
+      String database, String measurement, ServiceProvider serviceProvider, long sessionId);
 
   abstract InfluxFunctionValue updateByIoTDBFunc(
-          InfluxFunction function, ServiceProvider serviceProvider, String path, long sessionid);
+      InfluxFunction function, ServiceProvider serviceProvider, String path, long sessionid);
 
   abstract QueryResult queryByConditions(
-          String querySql,
-          String database,
-          String measurement,
-          ServiceProvider serviceProvider,
-          Map<String, Integer> fieldOrders,
-          long sessionId) throws AuthException;
+      String querySql,
+      String database,
+      String measurement,
+      ServiceProvider serviceProvider,
+      Map<String, Integer> fieldOrders,
+      long sessionId)
+      throws AuthException;
 
   public final InfluxQueryResultRsp queryInfluxDB(
-          String database,
-          InfluxQueryOperator queryOperator,
-          long sessionId,
-          ServiceProvider serviceProvider) {
+      String database,
+      InfluxQueryOperator queryOperator,
+      long sessionId,
+      ServiceProvider serviceProvider) {
     String measurement = queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath();
     // The list of fields under the current measurement and the order of the specified rules
-    Map<String, Integer> fieldOrders = getFieldOrders(database, measurement, serviceProvider, sessionId);
+    Map<String, Integer> fieldOrders =
+        getFieldOrders(database, measurement, serviceProvider, sessionId);
     QueryResult queryResult;
     InfluxQueryResultRsp tsQueryResultRsp = new InfluxQueryResultRsp();
     try {
       // contain filter condition or have common query the result of by traversal.
       if (queryOperator.getWhereComponent() != null
-              || queryOperator.getSelectComponent().isHasCommonQuery()
-              || queryOperator.getSelectComponent().isHasOnlyTraverseFunction()) {
+          || queryOperator.getSelectComponent().isHasCommonQuery()
+          || queryOperator.getSelectComponent().isHasOnlyTraverseFunction()) {
         // step1 : generate query results
         queryResult =
-                queryExpr(
-                        queryOperator.getWhereComponent() != null
-                                ? queryOperator.getWhereComponent().getFilterOperator()
-                                : null,
-                        database,
-                        measurement,
-                        serviceProvider,
-                        fieldOrders,
-                        sessionId);
+            queryExpr(
+                queryOperator.getWhereComponent() != null
+                    ? queryOperator.getWhereComponent().getFilterOperator()
+                    : null,
+                database,
+                measurement,
+                serviceProvider,
+                fieldOrders,
+                sessionId);
         // step2 : select filter
         ProcessSelectComponent(queryResult, queryOperator.getSelectComponent());
       }
       // don't contain filter condition and only have function use iotdb function.
       else {
         queryResult =
-                queryFuncWithoutFilter(
-                        queryOperator.getSelectComponent(), database, measurement, serviceProvider, sessionId);
+            queryFuncWithoutFilter(
+                queryOperator.getSelectComponent(),
+                database,
+                measurement,
+                serviceProvider,
+                sessionId);
       }
       return tsQueryResultRsp
-              .setResultJsonString(JacksonUtils.bean2Json(queryResult))
-              .setStatus(RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS));
+          .setResultJsonString(JacksonUtils.bean2Json(queryResult))
+          .setStatus(RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS));
     } catch (AuthException e) {
       return tsQueryResultRsp.setStatus(
-              RpcUtils.getInfluxDBStatus(
-                      TSStatusCode.UNINITIALIZED_AUTH_ERROR.getStatusCode(), e.getMessage()));
+          RpcUtils.getInfluxDBStatus(
+              TSStatusCode.UNINITIALIZED_AUTH_ERROR.getStatusCode(), e.getMessage()));
     }
   }
 
@@ -123,21 +129,21 @@ public abstract class AbstractQueryHandler {
    * @return corresponding conditions
    */
   public IExpression getIExpressionForBasicFunctionOperator(
-          BasicFunctionOperator basicFunctionOperator) {
+      BasicFunctionOperator basicFunctionOperator) {
     return new SingleSeriesExpression(
-            basicFunctionOperator.getSinglePath(),
-            FilterUtils.filterTypeToFilter(
-                    basicFunctionOperator.getFilterType(), basicFunctionOperator.getValue()));
+        basicFunctionOperator.getSinglePath(),
+        FilterUtils.filterTypeToFilter(
+            basicFunctionOperator.getFilterType(), basicFunctionOperator.getValue()));
   }
 
   /**
    * further process the obtained query result through the query criteria of select
    *
-   * @param queryResult     query results to be processed
+   * @param queryResult query results to be processed
    * @param selectComponent select conditions to be filtered
    */
   public void ProcessSelectComponent(
-          QueryResult queryResult, InfluxSelectComponent selectComponent) {
+      QueryResult queryResult, InfluxSelectComponent selectComponent) {
 
     // get the row order map of the current data result first
     List<String> columns = queryResult.getResults().get(0).getSeries().get(0).getColumns();
@@ -159,7 +165,7 @@ public abstract class AbstractQueryHandler {
         if (expression instanceof FunctionExpression) {
           String functionName = ((FunctionExpression) expression).getFunctionName();
           functions.add(
-                  InfluxFunctionFactory.generateFunction(functionName, expression.getExpressions()));
+              InfluxFunctionFactory.generateFunction(functionName, expression.getExpressions()));
           newColumns.add(functionName);
         } else if (expression instanceof TimeSeriesOperand) {
           String columnName = ((TimeSeriesOperand) expression).getPath().getFullPath();
@@ -185,13 +191,13 @@ public abstract class AbstractQueryHandler {
               // selector function
               if (function instanceof InfluxSelector) {
                 ((InfluxSelector) function)
-                        .updateValueAndRelateValues(
-                                new InfluxFunctionValue(selectedValue, selectedTimestamp), value);
+                    .updateValueAndRelateValues(
+                        new InfluxFunctionValue(selectedValue, selectedTimestamp), value);
               } else {
                 // aggregate function
                 ((InfluxAggregator) function)
-                        .updateValueBruteForce(
-                                new InfluxFunctionValue(selectedValue, selectedTimestamp));
+                    .updateValueBruteForce(
+                        new InfluxFunctionValue(selectedValue, selectedTimestamp));
               }
             }
           }
@@ -238,9 +244,9 @@ public abstract class AbstractQueryHandler {
         if (expression instanceof TimeSeriesOperand) {
           // not star case
           if (!((TimeSeriesOperand) expression)
-                  .getPath()
-                  .getFullPath()
-                  .equals(InfluxSQLConstant.STAR)) {
+              .getPath()
+              .getFullPath()
+              .equals(InfluxSQLConstant.STAR)) {
             newColumns.add(((TimeSeriesOperand) expression).getPath().getFullPath());
           } else {
             newColumns.addAll(columns.subList(1, columns.size()));
@@ -258,7 +264,7 @@ public abstract class AbstractQueryHandler {
       values = newValues;
     }
     QueryResultUtils.updateQueryResultColumnValue(
-            queryResult, StringUtils.removeDuplicate(newColumns), values);
+        queryResult, StringUtils.removeDuplicate(newColumns), values);
   }
 
   /**
@@ -269,11 +275,11 @@ public abstract class AbstractQueryHandler {
    * @return select query result
    */
   public final QueryResult queryFuncWithoutFilter(
-          InfluxSelectComponent selectComponent,
-          String database,
-          String measurement,
-          ServiceProvider serviceProvider,
-          long sessionid) {
+      InfluxSelectComponent selectComponent,
+      String database,
+      String measurement,
+      ServiceProvider serviceProvider,
+      long sessionid) {
     // columns
     List<String> columns = new ArrayList<>();
     columns.add(InfluxSQLConstant.RESERVED_TIME);
@@ -285,7 +291,7 @@ public abstract class AbstractQueryHandler {
       if (expression instanceof FunctionExpression) {
         String functionName = ((FunctionExpression) expression).getFunctionName();
         functions.add(
-                InfluxFunctionFactory.generateFunction(functionName, expression.getExpressions()));
+            InfluxFunctionFactory.generateFunction(functionName, expression.getExpressions()));
         columns.add(functionName);
       }
     }
@@ -293,7 +299,8 @@ public abstract class AbstractQueryHandler {
     List<Object> value = new ArrayList<>();
     List<List<Object>> values = new ArrayList<>();
     for (InfluxFunction function : functions) {
-      InfluxFunctionValue functionValue = updateByIoTDBFunc(function, serviceProvider, path, sessionid);
+      InfluxFunctionValue functionValue =
+          updateByIoTDBFunc(function, serviceProvider, path, sessionid);
       //      InfluxFunctionValue functionValue = function.calculateByIoTDBFunc();
       if (value.size() == 0) {
         value.add(functionValue.getTimestamp());
@@ -320,43 +327,43 @@ public abstract class AbstractQueryHandler {
   }
 
   public QueryResult queryExpr(
-          FilterOperator operator,
-          String database,
-          String measurement,
-          ServiceProvider serviceProvider,
-          Map<String, Integer> fieldOrders,
-          Long sessionId)
-          throws AuthException {
+      FilterOperator operator,
+      String database,
+      String measurement,
+      ServiceProvider serviceProvider,
+      Map<String, Integer> fieldOrders,
+      Long sessionId)
+      throws AuthException {
     if (operator == null) {
       List<IExpression> expressions = new ArrayList<>();
       return queryByConditions(
-              expressions, database, measurement, serviceProvider, fieldOrders, sessionId);
+          expressions, database, measurement, serviceProvider, fieldOrders, sessionId);
     } else if (operator instanceof BasicFunctionOperator) {
       List<IExpression> iExpressions = new ArrayList<>();
       iExpressions.add(getIExpressionForBasicFunctionOperator((BasicFunctionOperator) operator));
       return queryByConditions(
-              iExpressions, database, measurement, serviceProvider, fieldOrders, sessionId);
+          iExpressions, database, measurement, serviceProvider, fieldOrders, sessionId);
     } else {
       FilterOperator leftOperator = operator.getChildren().get(0);
       FilterOperator rightOperator = operator.getChildren().get(1);
       if (operator.getFilterType() == FilterConstant.FilterType.KW_OR) {
         return QueryResultUtils.orQueryResultProcess(
-                queryExpr(leftOperator, database, measurement, serviceProvider, fieldOrders, sessionId),
-                queryExpr(
-                        rightOperator, database, measurement, serviceProvider, fieldOrders, sessionId));
+            queryExpr(leftOperator, database, measurement, serviceProvider, fieldOrders, sessionId),
+            queryExpr(
+                rightOperator, database, measurement, serviceProvider, fieldOrders, sessionId));
       } else if (operator.getFilterType() == FilterConstant.FilterType.KW_AND) {
         if (canMergeOperator(leftOperator) && canMergeOperator(rightOperator)) {
           List<IExpression> iExpressions1 = getIExpressionByFilterOperatorOperator(leftOperator);
           List<IExpression> iExpressions2 = getIExpressionByFilterOperatorOperator(rightOperator);
           iExpressions1.addAll(iExpressions2);
           return queryByConditions(
-                  iExpressions1, database, measurement, serviceProvider, fieldOrders, sessionId);
+              iExpressions1, database, measurement, serviceProvider, fieldOrders, sessionId);
         } else {
           return QueryResultUtils.andQueryResultProcess(
-                  queryExpr(
-                          leftOperator, database, measurement, serviceProvider, fieldOrders, sessionId),
-                  queryExpr(
-                          rightOperator, database, measurement, serviceProvider, fieldOrders, sessionId));
+              queryExpr(
+                  leftOperator, database, measurement, serviceProvider, fieldOrders, sessionId),
+              queryExpr(
+                  rightOperator, database, measurement, serviceProvider, fieldOrders, sessionId));
         }
       }
     }
@@ -370,13 +377,13 @@ public abstract class AbstractQueryHandler {
    * @return returns the results of the influxdb query
    */
   private QueryResult queryByConditions(
-          List<IExpression> expressions,
-          String database,
-          String measurement,
-          ServiceProvider serviceProvider,
-          Map<String, Integer> fieldOrders,
-          Long sessionId)
-          throws AuthException {
+      List<IExpression> expressions,
+      String database,
+      String measurement,
+      ServiceProvider serviceProvider,
+      Map<String, Integer> fieldOrders,
+      Long sessionId)
+      throws AuthException {
     // used to store the actual order according to the tag
     Map<Integer, SingleSeriesExpression> realTagOrders = new HashMap<>();
     // stores a list of conditions belonging to the field
@@ -405,10 +412,10 @@ public abstract class AbstractQueryHandler {
         // since it is the value in the path, you need to remove the quotation marks at the
         // beginning and end
         curQueryPath
-                .append(".")
-                .append(
-                        StringUtils.removeQuotation(
-                                FilterUtils.getFilterStringValue(realTagOrders.get(i).getFilter())));
+            .append(".")
+            .append(
+                StringUtils.removeQuotation(
+                    FilterUtils.getFilterStringValue(realTagOrders.get(i).getFilter())));
       } else {
         curQueryPath.append(".").append("*");
       }
@@ -422,11 +429,11 @@ public abstract class AbstractQueryHandler {
         realIotDBCondition.append(" and ");
       }
       realIotDBCondition
-              .append(singleSeriesExpression.getSeriesPath().getFullPath())
-              .append(" ")
-              .append((FilterUtils.getFilerSymbol(singleSeriesExpression.getFilter())))
-              .append(" ")
-              .append(FilterUtils.getFilterStringValue(singleSeriesExpression.getFilter()));
+          .append(singleSeriesExpression.getSeriesPath().getFullPath())
+          .append(" ")
+          .append((FilterUtils.getFilerSymbol(singleSeriesExpression.getFilter())))
+          .append(" ")
+          .append(FilterUtils.getFilterStringValue(singleSeriesExpression.getFilter()));
     }
     // actual query SQL statement
     String realQuerySql;
@@ -436,7 +443,8 @@ public abstract class AbstractQueryHandler {
       realQuerySql += " where " + realIotDBCondition;
     }
     realQuerySql += " align by device";
-    return queryByConditions(realQuerySql, database, measurement, serviceProvider, fieldOrders, sessionId);
+    return queryByConditions(
+        realQuerySql, database, measurement, serviceProvider, fieldOrders, sessionId);
   }
 
   /**
@@ -446,13 +454,12 @@ public abstract class AbstractQueryHandler {
    * @param filterOperator the syntax tree of query criteria needs to be generated
    * @return condition list
    */
-  public List<IExpression> getIExpressionByFilterOperatorOperator(
-          FilterOperator filterOperator) {
+  public List<IExpression> getIExpressionByFilterOperatorOperator(FilterOperator filterOperator) {
     if (filterOperator instanceof BasicFunctionOperator) {
       // It must be a non-or situation
       List<IExpression> expressions = new ArrayList<>();
       expressions.add(
-              getIExpressionForBasicFunctionOperator((BasicFunctionOperator) filterOperator));
+          getIExpressionForBasicFunctionOperator((BasicFunctionOperator) filterOperator));
       return expressions;
     } else {
       FilterOperator leftOperator = filterOperator.getChildren().get(0);
@@ -492,12 +499,11 @@ public abstract class AbstractQueryHandler {
     InfluxSelectComponent selectComponent = ((InfluxQueryOperator) operator).getSelectComponent();
     if (selectComponent.isHasMoreSelectorFunction() && selectComponent.isHasCommonQuery()) {
       throw new IllegalArgumentException(
-              "ERR: mixing multiple selector functions with tags or fields is not supported");
+          "ERR: mixing multiple selector functions with tags or fields is not supported");
     }
     if (selectComponent.isHasAggregationFunction() && selectComponent.isHasCommonQuery()) {
       throw new IllegalArgumentException(
-              "ERR: mixing aggregate and non-aggregate queries is not supported");
+          "ERR: mixing aggregate and non-aggregate queries is not supported");
     }
   }
-
 }

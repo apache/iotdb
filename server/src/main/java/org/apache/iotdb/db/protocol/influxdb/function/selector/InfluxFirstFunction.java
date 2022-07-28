@@ -53,7 +53,7 @@ public class InfluxFirstFunction extends InfluxSelector {
 
   @Override
   public void updateValueAndRelateValues(
-          InfluxFunctionValue functionValue, List<Object> relatedValues) {
+      InfluxFunctionValue functionValue, List<Object> relatedValues) {
     Object value = functionValue.getValue();
     Long timestamp = functionValue.getTimestamp();
     if (timestamp <= this.getTimestamp()) {

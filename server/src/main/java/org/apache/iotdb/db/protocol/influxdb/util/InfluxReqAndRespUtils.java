@@ -46,10 +46,10 @@ public class InfluxReqAndRespUtils {
     return influxOpenSessionResp;
   }
 
-  public static TSCloseSessionReq convertCloseSessionReq(InfluxCloseSessionReq influxCloseSessionReq) {
+  public static TSCloseSessionReq convertCloseSessionReq(
+      InfluxCloseSessionReq influxCloseSessionReq) {
     TSCloseSessionReq tsCloseSessionReq = new TSCloseSessionReq();
     tsCloseSessionReq.setSessionId(influxCloseSessionReq.getSessionId());
     return tsCloseSessionReq;
   }
-
 }

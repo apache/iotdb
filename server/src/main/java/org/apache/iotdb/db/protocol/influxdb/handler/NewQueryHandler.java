@@ -31,6 +31,7 @@ import org.apache.iotdb.db.service.thrift.impl.NewInfluxDBServiceImpl;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.QueryResult;
 
@@ -45,10 +46,10 @@ public class NewQueryHandler extends AbstractQueryHandler {
     tsExecuteStatementReq.setStatement(sql);
     tsExecuteStatementReq.setSessionId(sessionId);
     tsExecuteStatementReq.setStatementId(
-            NewInfluxDBServiceImpl.getClientRPCService().requestStatementId(sessionId));
+        NewInfluxDBServiceImpl.getClientRPCService().requestStatementId(sessionId));
     tsExecuteStatementReq.setFetchSize(InfluxConstant.DEFAULT_FETCH_SIZE);
     TSExecuteStatementResp executeStatementResp =
-            NewInfluxDBServiceImpl.getClientRPCService().executeStatement(tsExecuteStatementReq);
+        NewInfluxDBServiceImpl.getClientRPCService().executeStatement(tsExecuteStatementReq);
     TSStatus tsStatus = executeStatementResp.getStatus();
     if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new InfluxDBException(tsStatus.getMessage());
@@ -58,7 +59,7 @@ public class NewQueryHandler extends AbstractQueryHandler {
 
   @Override
   public Map<String, Integer> getFieldOrders(
-          String database, String measurement, ServiceProvider serviceProvider, long sessionID) {
+      String database, String measurement, ServiceProvider serviceProvider, long sessionID) {
     Map<String, Integer> fieldOrders = new HashMap<>();
     String showTimeseriesSql = "show timeseries root." + database + '.' + measurement + ".**";
     TSExecuteStatementResp executeStatementResp = executeStatement(showTimeseriesSql, sessionID);
@@ -80,96 +81,104 @@ public class NewQueryHandler extends AbstractQueryHandler {
 
   @Override
   public InfluxFunctionValue updateByIoTDBFunc(
-          InfluxFunction function, ServiceProvider serviceProvider, String path, long sessionid) {
+      InfluxFunction function, ServiceProvider serviceProvider, String path, long sessionid) {
     switch (function.getFunctionName()) {
-      case InfluxSQLConstant.COUNT: {
-        String functionSql =
-                StringUtils.generateFunctionSql(function.getFunctionName(), function.getParmaName(), path);
-        TSExecuteStatementResp tsExecuteStatementResp = executeStatement(functionSql, sessionid);
-        List<InfluxFunctionValue> list = QueryResultUtils.getInfluxFunctionValues(tsExecuteStatementResp);
-        for (InfluxFunctionValue influxFunctionValue : list) {
-          function.updateValueIoTDBFunc(influxFunctionValue);
-        }
-        break;
-      }
-      case InfluxSQLConstant.MEAN: {
-        String functionSqlCount =
-                StringUtils.generateFunctionSql("count", function.getParmaName(), path);
-        TSExecuteStatementResp tsExecuteStatementResp = executeStatement(functionSqlCount, sessionid);
-        List<InfluxFunctionValue> list = QueryResultUtils.getInfluxFunctionValues(tsExecuteStatementResp);
-        for (InfluxFunctionValue influxFunctionValue : list) {
-          function.updateValueIoTDBFunc(influxFunctionValue);
-        }
-        String functionSqlSum =
-                StringUtils.generateFunctionSql("sum", function.getParmaName(), path);
-        tsExecuteStatementResp = executeStatement(functionSqlSum, sessionid);
-        list = QueryResultUtils.getInfluxFunctionValues(tsExecuteStatementResp);
-        for (InfluxFunctionValue influxFunctionValue : list) {
-          function.updateValueIoTDBFunc(null, influxFunctionValue);
-        }
-        break;
-      }
-      case InfluxSQLConstant.SUM: {
-        String functionSql =
-                StringUtils.generateFunctionSql("sum", function.getParmaName(), path);
-        TSExecuteStatementResp tsExecuteStatementResp = executeStatement(functionSql, sessionid);
-        List<InfluxFunctionValue> list = QueryResultUtils.getInfluxFunctionValues(tsExecuteStatementResp);
-        for (InfluxFunctionValue influxFunctionValue : list) {
-          function.updateValueIoTDBFunc(influxFunctionValue);
-        }
-        break;
-      }
-      case InfluxSQLConstant.FIRST:
-      case InfluxSQLConstant.LAST: {
-        String functionSql;
-        String functionName;
-        if (function.getFunctionName().equals(InfluxSQLConstant.FIRST)) {
-          functionSql =
-                  StringUtils.generateFunctionSql("first_value", function.getParmaName(), path);
-          functionName = "first_value";
-        } else {
-          functionSql =
-                  StringUtils.generateFunctionSql("last_value", function.getParmaName(), path);
-          functionName = "last_value";
-        }
-        TSExecuteStatementResp tsExecuteStatementResp = executeStatement(functionSql, sessionid);
-        Map<String, Object> map = QueryResultUtils.getColumnNameAndValue(tsExecuteStatementResp);
-        for (String colume : map.keySet()) {
-          Object o = map.get(colume);
-          String fullPath = colume.substring(functionName.length() + 1, colume.length() - 1);
-          String devicePath = StringUtils.getDeviceByPath(fullPath);
-          String specificSql =
-                  String.format(
-                          "select %s from %s where %s=%s",
-                          function.getParmaName(),
-                          devicePath,
-                          fullPath,
-                          o);
-          TSExecuteStatementResp resp = executeStatement(specificSql, sessionid);
-          List<InfluxFunctionValue> list = QueryResultUtils.getInfluxFunctionValues(resp);
+      case InfluxSQLConstant.COUNT:
+        {
+          String functionSql =
+              StringUtils.generateFunctionSql(
+                  function.getFunctionName(), function.getParmaName(), path);
+          TSExecuteStatementResp tsExecuteStatementResp = executeStatement(functionSql, sessionid);
+          List<InfluxFunctionValue> list =
+              QueryResultUtils.getInfluxFunctionValues(tsExecuteStatementResp);
           for (InfluxFunctionValue influxFunctionValue : list) {
             function.updateValueIoTDBFunc(influxFunctionValue);
           }
+          break;
         }
-        break;
-      }
+      case InfluxSQLConstant.MEAN:
+        {
+          String functionSqlCount =
+              StringUtils.generateFunctionSql("count", function.getParmaName(), path);
+          TSExecuteStatementResp tsExecuteStatementResp =
+              executeStatement(functionSqlCount, sessionid);
+          List<InfluxFunctionValue> list =
+              QueryResultUtils.getInfluxFunctionValues(tsExecuteStatementResp);
+          for (InfluxFunctionValue influxFunctionValue : list) {
+            function.updateValueIoTDBFunc(influxFunctionValue);
+          }
+          String functionSqlSum =
+              StringUtils.generateFunctionSql("sum", function.getParmaName(), path);
+          tsExecuteStatementResp = executeStatement(functionSqlSum, sessionid);
+          list = QueryResultUtils.getInfluxFunctionValues(tsExecuteStatementResp);
+          for (InfluxFunctionValue influxFunctionValue : list) {
+            function.updateValueIoTDBFunc(null, influxFunctionValue);
+          }
+          break;
+        }
+      case InfluxSQLConstant.SUM:
+        {
+          String functionSql =
+              StringUtils.generateFunctionSql("sum", function.getParmaName(), path);
+          TSExecuteStatementResp tsExecuteStatementResp = executeStatement(functionSql, sessionid);
+          List<InfluxFunctionValue> list =
+              QueryResultUtils.getInfluxFunctionValues(tsExecuteStatementResp);
+          for (InfluxFunctionValue influxFunctionValue : list) {
+            function.updateValueIoTDBFunc(influxFunctionValue);
+          }
+          break;
+        }
+      case InfluxSQLConstant.FIRST:
+      case InfluxSQLConstant.LAST:
+        {
+          String functionSql;
+          String functionName;
+          if (function.getFunctionName().equals(InfluxSQLConstant.FIRST)) {
+            functionSql =
+                StringUtils.generateFunctionSql("first_value", function.getParmaName(), path);
+            functionName = "first_value";
+          } else {
+            functionSql =
+                StringUtils.generateFunctionSql("last_value", function.getParmaName(), path);
+            functionName = "last_value";
+          }
+          TSExecuteStatementResp tsExecuteStatementResp = executeStatement(functionSql, sessionid);
+          Map<String, Object> map = QueryResultUtils.getColumnNameAndValue(tsExecuteStatementResp);
+          for (String colume : map.keySet()) {
+            Object o = map.get(colume);
+            String fullPath = colume.substring(functionName.length() + 1, colume.length() - 1);
+            String devicePath = StringUtils.getDeviceByPath(fullPath);
+            String specificSql =
+                String.format(
+                    "select %s from %s where %s=%s",
+                    function.getParmaName(), devicePath, fullPath, o);
+            TSExecuteStatementResp resp = executeStatement(specificSql, sessionid);
+            List<InfluxFunctionValue> list = QueryResultUtils.getInfluxFunctionValues(resp);
+            for (InfluxFunctionValue influxFunctionValue : list) {
+              function.updateValueIoTDBFunc(influxFunctionValue);
+            }
+          }
+          break;
+        }
       case InfluxSQLConstant.MAX:
-      case InfluxSQLConstant.MIN: {
-        String functionSql;
-        if (function.getFunctionName().equals(InfluxSQLConstant.MAX)) {
-          functionSql =
-                  StringUtils.generateFunctionSql("max_value", function.getParmaName(), path);
-        } else {
-          functionSql =
-                  StringUtils.generateFunctionSql("min_value", function.getParmaName(), path);
+      case InfluxSQLConstant.MIN:
+        {
+          String functionSql;
+          if (function.getFunctionName().equals(InfluxSQLConstant.MAX)) {
+            functionSql =
+                StringUtils.generateFunctionSql("max_value", function.getParmaName(), path);
+          } else {
+            functionSql =
+                StringUtils.generateFunctionSql("min_value", function.getParmaName(), path);
+          }
+          TSExecuteStatementResp tsExecuteStatementResp = executeStatement(functionSql, sessionid);
+          List<InfluxFunctionValue> list =
+              QueryResultUtils.getInfluxFunctionValues(tsExecuteStatementResp);
+          for (InfluxFunctionValue influxFunctionValue : list) {
+            function.updateValueIoTDBFunc(influxFunctionValue);
+          }
+          break;
         }
-        TSExecuteStatementResp tsExecuteStatementResp = executeStatement(functionSql, sessionid);
-        List<InfluxFunctionValue> list = QueryResultUtils.getInfluxFunctionValues(tsExecuteStatementResp);
-        for (InfluxFunctionValue influxFunctionValue : list) {
-          function.updateValueIoTDBFunc(influxFunctionValue);
-        }
-        break;
-      }
       default:
         throw new IllegalStateException("Unexpected value: " + function.getFunctionName());
     }
@@ -178,12 +187,14 @@ public class NewQueryHandler extends AbstractQueryHandler {
 
   @Override
   public QueryResult queryByConditions(
-          String querySql, String database,
-          String measurement,
-          ServiceProvider serviceProvider,
-          Map<String, Integer> fieldOrders,
-          long sessionId) {
+      String querySql,
+      String database,
+      String measurement,
+      ServiceProvider serviceProvider,
+      Map<String, Integer> fieldOrders,
+      long sessionId) {
     TSExecuteStatementResp executeStatementResp = executeStatement(querySql, sessionId);
-    return QueryResultUtils.iotdbResultConvertInfluxResult(executeStatementResp, database, measurement, fieldOrders);
+    return QueryResultUtils.iotdbResultConvertInfluxResult(
+        executeStatementResp, database, measurement, fieldOrders);
   }
 }

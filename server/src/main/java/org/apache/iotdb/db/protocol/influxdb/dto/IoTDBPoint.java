@@ -28,6 +28,7 @@ import org.apache.iotdb.db.utils.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
 import org.influxdb.dto.Point;
 
 import java.util.ArrayList;
@@ -45,11 +46,11 @@ public class IoTDBPoint {
   private final List<Object> values;
 
   public IoTDBPoint(
-          String deviceId,
-          long time,
-          List<String> measurements,
-          List<TSDataType> types,
-          List<Object> values) {
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<Object> values) {
     this.deviceId = deviceId;
     this.time = time;
     this.measurements = measurements;
@@ -57,7 +58,8 @@ public class IoTDBPoint {
     this.values = values;
   }
 
-  public IoTDBPoint(String database, Point point, AbstractInfluxDBMetaManager metaManager, long sessionID) {
+  public IoTDBPoint(
+      String database, Point point, AbstractInfluxDBMetaManager metaManager, long sessionID) {
     String measurement = null;
     Map<String, String> tags = new HashMap<>();
     Map<String, Object> fields = new HashMap<>();
@@ -68,7 +70,7 @@ public class IoTDBPoint {
       reflectField.setAccessible(true);
       try {
         if ("java.util.concurrent.TimeUnit".equalsIgnoreCase(reflectField.getType().getName())
-                && "precision".equalsIgnoreCase(reflectField.getName())) {
+            && "precision".equalsIgnoreCase(reflectField.getName())) {
           precision = (TimeUnit) reflectField.get(point);
         }
       } catch (IllegalAccessException e) {
@@ -80,16 +82,16 @@ public class IoTDBPoint {
       reflectField.setAccessible(true);
       try {
         if ("java.util.Map".equalsIgnoreCase(reflectField.getType().getName())
-                && "fields".equalsIgnoreCase(reflectField.getName())) {
+            && "fields".equalsIgnoreCase(reflectField.getName())) {
           fields = (Map<String, Object>) reflectField.get(point);
         } else if ("java.util.Map".equalsIgnoreCase(reflectField.getType().getName())
-                && "tags".equalsIgnoreCase(reflectField.getName())) {
+            && "tags".equalsIgnoreCase(reflectField.getName())) {
           tags = (Map<String, String>) reflectField.get(point);
         } else if ("java.lang.String".equalsIgnoreCase(reflectField.getType().getName())
-                && "measurement".equalsIgnoreCase(reflectField.getName())) {
+            && "measurement".equalsIgnoreCase(reflectField.getName())) {
           measurement = (String) reflectField.get(point);
         } else if ("java.lang.Number".equalsIgnoreCase(reflectField.getType().getName())
-                && "time".equalsIgnoreCase(reflectField.getName())) {
+            && "time".equalsIgnoreCase(reflectField.getName())) {
           time = (Long) reflectField.get(point);
           time = TimeUnit.MILLISECONDS.convert(time, precision);
         }
@@ -141,17 +143,17 @@ public class IoTDBPoint {
   }
 
   public InsertRowPlan convertToInsertRowPlan()
-          throws IllegalPathException, IoTDBConnectionException, QueryProcessException {
+      throws IllegalPathException, IoTDBConnectionException, QueryProcessException {
     return new InsertRowPlan(
-            new PartialPath(getDeviceId()),
-            getTime(),
-            getMeasurements().toArray(new String[0]),
-            DataTypeUtils.getValueBuffer(getTypes(), getValues()),
-            false);
+        new PartialPath(getDeviceId()),
+        getTime(),
+        getMeasurements().toArray(new String[0]),
+        DataTypeUtils.getValueBuffer(getTypes(), getValues()),
+        false);
   }
 
   public TSInsertRecordReq convertToTSInsertRecordReq(long sessionID)
-          throws IoTDBConnectionException {
+      throws IoTDBConnectionException {
     TSInsertRecordReq tsInsertRecordReq = new TSInsertRecordReq();
     tsInsertRecordReq.setValues(DataTypeUtils.getValueBuffer(getTypes(), getValues()));
     tsInsertRecordReq.setMeasurements(getMeasurements());

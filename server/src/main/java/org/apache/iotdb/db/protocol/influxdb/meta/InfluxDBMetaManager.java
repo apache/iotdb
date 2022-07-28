@@ -36,6 +36,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
 import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 
@@ -67,15 +68,15 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
     try {
       QueryPlan queryPlan = (QueryPlan) planner.parseSQLToPhysicalPlan(SELECT_TAG_INFO_SQL);
       QueryContext queryContext =
-              serviceProvider.genQueryContext(
-                      queryId,
-                      true,
-                      System.currentTimeMillis(),
-                      SELECT_TAG_INFO_SQL,
-                      IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+          serviceProvider.genQueryContext(
+              queryId,
+              true,
+              System.currentTimeMillis(),
+              SELECT_TAG_INFO_SQL,
+              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
       QueryDataSet queryDataSet =
-              serviceProvider.createQueryDataSet(
-                      queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+          serviceProvider.createQueryDataSet(
+              queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
       while (queryDataSet.hasNext()) {
         List<Field> fields = queryDataSet.next().getFields();
         String databaseName = fields.get(0).getStringValue();
@@ -100,13 +101,13 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
         database2Measurement2TagOrders.put(databaseName, measurement2TagOrders);
       }
     } catch (QueryProcessException
-            | TException
-            | StorageEngineException
-            | SQLException
-            | IOException
-            | InterruptedException
-            | QueryFilterOptimizationException
-            | MetadataException e) {
+        | TException
+        | StorageEngineException
+        | SQLException
+        | IOException
+        | InterruptedException
+        | QueryFilterOptimizationException
+        | MetadataException e) {
       throw new InfluxDBException(e.getMessage());
     } finally {
       ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
@@ -117,7 +118,7 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
   public void setStorageGroup(String database, long sessionID) {
     try {
       SetStorageGroupPlan setStorageGroupPlan =
-              new SetStorageGroupPlan(new PartialPath("root." + database));
+          new SetStorageGroupPlan(new PartialPath("root." + database));
       serviceProvider.executeNonQuery(setStorageGroupPlan);
     } catch (QueryProcessException e) {
       // errCode = 300 means sg has already set
@@ -144,7 +145,6 @@ public class InfluxDBMetaManager extends AbstractInfluxDBMetaManager {
   private static class InfluxDBMetaManagerHolder {
     private static final InfluxDBMetaManager INSTANCE = new InfluxDBMetaManager();
 
-    private InfluxDBMetaManagerHolder() {
-    }
+    private InfluxDBMetaManagerHolder() {}
   }
 }

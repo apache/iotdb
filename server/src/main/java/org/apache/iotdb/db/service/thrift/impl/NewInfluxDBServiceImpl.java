@@ -45,6 +45,7 @@ import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+
 import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Point;
@@ -54,7 +55,7 @@ import java.util.List;
 
 public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
 
-  private final static ClientRPCServiceImpl clientRPCService = new ClientRPCServiceImpl();
+  private static final ClientRPCServiceImpl clientRPCService = new ClientRPCServiceImpl();
 
   private final AbstractInfluxDBMetaManager metaManager;
 
@@ -88,7 +89,7 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     List<InfluxTSStatus> tsStatusList = new ArrayList<>();
     int executeCode = TSStatusCode.SUCCESS_STATUS.getStatusCode();
     for (Point point :
-            InfluxLineParser.parserRecordsToPointsWithPrecision(req.lineProtocol, req.precision)) {
+        InfluxLineParser.parserRecordsToPointsWithPrecision(req.lineProtocol, req.precision)) {
       IoTDBPoint iotdbPoint = new IoTDBPoint(req.database, point, metaManager, req.sessionId);
       try {
         TSInsertRecordReq insertRecordReq = iotdbPoint.convertToTSInsertRecordReq(req.sessionId);
@@ -103,7 +104,8 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
 
   @Override
   public InfluxTSStatus createDatabase(InfluxCreateDatabaseReq req) {
-    TSStatus tsStatus = clientRPCService.setStorageGroup(req.sessionId, "root." + req.getDatabase());
+    TSStatus tsStatus =
+        clientRPCService.setStorageGroup(req.sessionId, "root." + req.getDatabase());
     if (tsStatus.getCode() == TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
       tsStatus.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       tsStatus.setMessage("Execute successfully");
@@ -116,7 +118,7 @@ public class NewInfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
     Operator operator = InfluxDBLogicalGenerator.generate(req.command);
     queryHandler.checkInfluxDBQueryOperator(operator);
     return queryHandler.queryInfluxDB(
-            req.database, (InfluxQueryOperator) operator, req.sessionId, IoTDB.serviceProvider);
+        req.database, (InfluxQueryOperator) operator, req.sessionId, IoTDB.serviceProvider);
   }
 
   @Override

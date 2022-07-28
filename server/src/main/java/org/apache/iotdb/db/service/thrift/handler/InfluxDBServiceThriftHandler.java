@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.service.thrift.handler;
 
 import org.apache.iotdb.db.service.thrift.impl.IInfluxDBServiceWithHandler;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
@@ -45,14 +46,14 @@ public class InfluxDBServiceThriftHandler implements TServerEventHandler {
 
   @Override
   public void deleteContext(
-          ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
     // release resources.
     impl.handleClientExit();
   }
 
   @Override
   public void processContext(
-          ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {
+      ServerContext serverContext, TTransport tTransport, TTransport tTransport1) {
     // nothing
   }
 }

@@ -26,16 +26,16 @@ import java.util.Map;
 public abstract class AbstractInfluxDBMetaManager {
 
   protected static final String SELECT_TAG_INFO_SQL =
-          "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
+      "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
 
   // TODO avoid OOM
   protected static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
-          new HashMap<>();
+      new HashMap<>();
 
   public static Map<String, Integer> getTagOrders(String database, String measurement) {
     Map<String, Integer> tagOrders = new HashMap<>();
     Map<String, Map<String, Integer>> measurement2TagOrders =
-            database2Measurement2TagOrders.get(database);
+        database2Measurement2TagOrders.get(database);
     if (measurement2TagOrders != null) {
       tagOrders = measurement2TagOrders.get(measurement);
     }
@@ -51,9 +51,10 @@ public abstract class AbstractInfluxDBMetaManager {
 
   abstract void updateTagInfoRecords(TagInfoRecords tagInfoRecords, long sessionID);
 
-  public final synchronized Map<String, Map<String, Integer>> createDatabase(String database, long sessionID) {
+  public final synchronized Map<String, Map<String, Integer>> createDatabase(
+      String database, long sessionID) {
     Map<String, Map<String, Integer>> measurement2TagOrders =
-            database2Measurement2TagOrders.get(database);
+        database2Measurement2TagOrders.get(database);
     if (measurement2TagOrders != null) {
       return measurement2TagOrders;
     }
@@ -64,14 +65,14 @@ public abstract class AbstractInfluxDBMetaManager {
   }
 
   public final synchronized Map<String, Integer> getTagOrdersWithAutoCreatingSchema(
-          String database, String measurement, long sessionID) {
+      String database, String measurement, long sessionID) {
     return createDatabase(database, sessionID).computeIfAbsent(measurement, m -> new HashMap<>());
   }
 
   public final synchronized String generatePath(
-          String database, String measurement, Map<String, String> tags, long sessionID) {
+      String database, String measurement, Map<String, String> tags, long sessionID) {
     Map<String, Integer> tagKeyToLayerOrders =
-            getTagOrdersWithAutoCreatingSchema(database, measurement, sessionID);
+        getTagOrdersWithAutoCreatingSchema(database, measurement, sessionID);
     // to support rollback if fails to persisting new tag info
     Map<String, Integer> newTagKeyToLayerOrders = new HashMap<>(tagKeyToLayerOrders);
     // record the layer orders of tag keys that the path contains
@@ -100,15 +101,14 @@ public abstract class AbstractInfluxDBMetaManager {
     }
 
     StringBuilder path =
-            new StringBuilder("root.").append(database).append(".").append(measurement);
+        new StringBuilder("root.").append(database).append(".").append(measurement);
     for (int i = 1; i <= tagNumber; ++i) {
       path.append(".")
-              .append(
-                      layerOrderToTagKeysInPath.containsKey(i)
-                              ? tags.get(layerOrderToTagKeysInPath.get(i))
-                              : InfluxConstant.PLACE_HOLDER);
+          .append(
+              layerOrderToTagKeysInPath.containsKey(i)
+                  ? tags.get(layerOrderToTagKeysInPath.get(i))
+                  : InfluxConstant.PLACE_HOLDER);
     }
     return path.toString();
   }
-
 }

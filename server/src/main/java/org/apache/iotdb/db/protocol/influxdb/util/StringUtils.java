@@ -33,7 +33,7 @@ public class StringUtils {
    */
   public static String removeQuotation(String str) {
     if ((str.charAt(0) == '"' && str.charAt(str.length() - 1) == '"')
-            || str.charAt(0) == '\'' && str.charAt(str.length() - 1) == '\'') {
+        || str.charAt(0) == '\'' && str.charAt(str.length() - 1) == '\'') {
       return str.substring(1, str.length() - 1);
     }
     return str;

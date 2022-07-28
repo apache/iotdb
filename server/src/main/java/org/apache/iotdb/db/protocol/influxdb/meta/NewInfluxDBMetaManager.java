@@ -27,17 +27,17 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.IoTDBJDBCDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+
 import org.influxdb.InfluxDBException;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 
 public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
 
@@ -55,10 +55,12 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
   public void recover() {
     long sessionID = 0;
     try {
-      TSOpenSessionResp tsOpenSessionResp = clientRPCService.openSession(
+      TSOpenSessionResp tsOpenSessionResp =
+          clientRPCService.openSession(
               new TSOpenSessionReq().setUsername("root").setPassword("root"));
       sessionID = tsOpenSessionResp.getSessionId();
-      TSExecuteStatementResp resp = NewQueryHandler.executeStatement(SELECT_TAG_INFO_SQL, sessionID);
+      TSExecuteStatementResp resp =
+          NewQueryHandler.executeStatement(SELECT_TAG_INFO_SQL, sessionID);
       IoTDBJDBCDataSet dataSet = QueryResultUtils.creatIoTJDBCDataset(resp);
       try {
         Map<String, Map<String, Integer>> measurement2TagOrders;
@@ -98,7 +100,7 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
   public void setStorageGroup(String database, long sessionID) {
     TSStatus status = clientRPCService.setStorageGroup(sessionID, "root." + database);
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-            || status.getCode() == TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
+        || status.getCode() == TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode()) {
       return;
     }
     throw new InfluxDBException(status.getMessage());
@@ -122,7 +124,6 @@ public class NewInfluxDBMetaManager extends AbstractInfluxDBMetaManager {
   private static class InfluxDBMetaManagerHolder {
     private static final NewInfluxDBMetaManager INSTANCE = new NewInfluxDBMetaManager();
 
-    private InfluxDBMetaManagerHolder() {
-    }
+    private InfluxDBMetaManagerHolder() {}
   }
 }
