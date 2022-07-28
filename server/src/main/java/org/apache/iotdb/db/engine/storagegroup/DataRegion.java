@@ -145,7 +145,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_OLD_TMP_FILE_SUFFIX;
-import static org.apache.iotdb.commons.conf.IoTDBConstant.ALTER_TMP_FILE_SUFFIX;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.db.qp.executor.PlanExecutor.operateClearCache;
@@ -437,9 +436,12 @@ public class DataRegion {
 
   /** recover from file */
   private void recover() throws DataRegionException {
+    boolean needRecoverAlter = needRecoverAlter();
     try {
-      recoverAlter();
-      recoverCompaction();
+      // Compaction and alter are mutually exclusive operations
+      if(!needRecoverAlter) {
+        recoverCompaction();
+      }
     } catch (Exception e) {
       throw new DataRegionException(e);
     }
@@ -556,6 +558,14 @@ public class DataRegion {
       lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
 
+    // recover alter option
+    try {
+      if(needRecoverAlter) {
+        recoverAlter();
+      }
+    } catch (IOException e) {
+      throw new DataRegionException(e);
+    }
     // recover and start timed compaction thread
     initCompaction();
 
@@ -582,6 +592,7 @@ public class DataRegion {
     if(!logFile.exists()) {
       return;
     }
+    logger.info("[recoverAlter] {} logFile:{}", logicalStorageGroupName + "-" + dataRegionId, logFile.getAbsolutePath());
     // wait lock
     if (!tsFileManager.rewriteLockWithTimeout(
             IoTDBDescriptor.getInstance().getConfig().getRewriteLockWaitTimeoutInMS())) {
@@ -625,6 +636,11 @@ public class DataRegion {
     }
   }
 
+  private boolean needRecoverAlter() {
+    File logFile = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlertingLogger.ALTERING_LOG_NAME);
+    return logFile.exists();
+  }
+
   /**
    * Find incomplete partition list <br/>
    * find list of incomplete tsfiles <br/>
@@ -641,6 +657,7 @@ public class DataRegion {
   private void checkTsFileAlteringStatusAndFix(Set<TsFileIdentifier> tsFileIdentifiers, AlertingLogger alteringLog) {
 
     if(tsFileIdentifiers == null || tsFileIdentifiers.isEmpty()) {
+      // all undone
       return;
     }
     Set<TsFileIdentifier> removeList = new HashSet<>();
@@ -650,26 +667,34 @@ public class DataRegion {
         if(filename == null || !filename.endsWith(TSFILE_SUFFIX)) {
           logger.error("[checkTsFileAlteringStatusAndFix] filename-{} not endWith .tsfile", filename);
         }
-        String alterFilePath = tsFileIdentifier.getFilePath().replace(TSFILE_SUFFIX, ALTER_TMP_FILE_SUFFIX);
-        String alterOldFilePath = tsFileIdentifier.getFilePath().replace(TSFILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX);
-        File alterTsFile = new File(alterFilePath);
-        File alterOldTsFile = new File(alterOldFilePath);
-        if(tsFileIdentifier.getFileFromDataDirs() != null) {
+        File alterTsFile = tsFileIdentifier.getAlterFileFromDataDirs();
+        File alterOldTsFile = tsFileIdentifier.getAlterOldFileFromDataDirs();
+        File tsFile = tsFileIdentifier.getFileFromDataDirs();
+        if(tsFile != null) {
           // 2. There is .tsfile
-          if(alterTsFile.exists()) {
+          if(alterTsFile != null && alterTsFile.exists()) {
             // 2.1, exists.alter - writing
+            logger.debug("[recoverAlter] {} status:writing delete:{}", logicalStorageGroupName + "-" + dataRegionId, alterTsFile.getAbsolutePath());
             FileUtils.delete(alterTsFile);
-          } else if(alterOldTsFile.exists()) {
+          } else if(alterOldTsFile != null && alterOldTsFile.exists()) {
             // 2.2, exist.alter.old - wait for delete
-            FileUtils.delete(alterOldTsFile);
+            logger.debug("[recoverAlter] {} status:wait for delete delete:{}", logicalStorageGroupName + "-" + dataRegionId, alterOldTsFile.getAbsolutePath());
+            TsFileResource tsFileResource = new TsFileResource(alterOldTsFile);
+            tsFileResource.close();
+            deleteTsFile(tsFileResource, logicalStorageGroupName + "-" + dataRegionId);
+            deleteModificationForSourceFile(
+                    new ArrayList<>(Collections.singletonList(tsFileResource)),
+                    logicalStorageGroupName + "-" + dataRegionId);
             removeList.add(tsFileIdentifier);
           }
         } else {
           // 1. There is no .tsfile
           if(alterTsFile.exists() && alterOldTsFile.exists()) {
             // 1.1, .alter.old exists and .alter exists - wait for completion
+            logger.debug("[recoverAlter] {} status:wait for completion for delete {}", logicalStorageGroupName + "-" + dataRegionId, alterTsFile.getName());
             TsFileResource targetTsFileResource = new TsFileResource(alterTsFile);
             TsFileResource tsFileResource = new TsFileResource(alterOldTsFile);
+            tsFileResource.close();
             // rename
             targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);
             // register .tsfile
@@ -689,7 +714,7 @@ public class DataRegion {
           }
         }
       } catch (Exception e) {
-        logger.error("checkTsFileAlteringStatusAndFix-{} error", tsFileIdentifier);
+        logger.error("checkTsFileAlteringStatusAndFix-{} error", e);
       }
     });
     tsFileIdentifiers.removeAll(removeList);
@@ -2306,7 +2331,7 @@ public class DataRegion {
     }
     // log timePartition start
     alertingLogger.startTimePartition(tsFileList, timePartition, sequence);
-    tsFileList.stream().filter(tsFileResource -> findUndoneResources(tsFileResource, undoneFiles))
+    tsFileList.stream().filter(tsFileResource -> findUndoneResourcesAndRemove(tsFileResource, undoneFiles))
         .forEach(
             tsFileResource -> {
               if (tsFileResource == null || !tsFileResource.isClosed()) {
@@ -2345,14 +2370,14 @@ public class DataRegion {
                       Collections.emptyList(),
                       new ArrayList<>(Collections.singletonList(targetTsFileResource)),
                       timePartition,
-                      sequence);
+                      true);
                 } else {
                   tsFileManager.replace(
                       Collections.emptyList(),
                       new ArrayList<>(Collections.singletonList(tsFileResource)),
                       new ArrayList<>(Collections.singletonList(targetTsFileResource)),
                       timePartition,
-                      sequence);
+                      false);
                 }
                 // check & delete tsfile from disk
                 checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource);
@@ -2364,24 +2389,29 @@ public class DataRegion {
               } catch (Exception e) {
                 // TODO
                 logger.error("[alter timeseries]", e);
-              } finally {
-
               }
             });
     alertingLogger.endTimePartition(timePartition);
   }
 
-  private boolean findUndoneResources(TsFileResource tsFileResource, Set<TsFileIdentifier> undoneFiles) {
+  private boolean findUndoneResourcesAndRemove(TsFileResource tsFileResource, Set<TsFileIdentifier> undoneFiles) {
 
-    if(undoneFiles == null) {
+    if(undoneFiles == null || undoneFiles.isEmpty()) {
+      // all undone
       return true;
     }
+    TsFileIdentifier undoneFile = null;
     Iterator<TsFileIdentifier> it = undoneFiles.iterator();
     while(it.hasNext()) {
       TsFileIdentifier next = it.next();
       if(next.getFilename().equals(tsFileResource.getTsFile().getName())) {
-        return true;
+        undoneFile = next;
+        break;
       }
+    }
+    if(undoneFile != null) {
+      undoneFiles.remove(undoneFile);
+      return true;
     }
     return false;
   }

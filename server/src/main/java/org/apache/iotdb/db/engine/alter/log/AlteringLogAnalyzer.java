@@ -1,9 +1,12 @@
 package org.apache.iotdb.db.engine.alter.log;
 
 import org.apache.iotdb.db.engine.compaction.log.TsFileIdentifier;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -11,6 +14,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -18,6 +22,8 @@ import java.util.Set;
  * altering log analyzer
  **/
 public class AlteringLogAnalyzer {
+
+    private static final Logger logger = LoggerFactory.getLogger(AlteringLogAnalyzer.class);
 
     private final File alterLogFile;
 
@@ -93,10 +99,10 @@ public class AlteringLogAnalyzer {
                     }
                     if(curLineStr.startsWith(AlertingLogger.FLAG_INIT_SELECTED_FILE)) {
                         // add tsfile list
-                        tsFileIdentifiers.add(TsFileIdentifier.getFileIdentifierFromOldInfoString(curLineStr.substring(AlertingLogger.FLAG_INIT_SELECTED_FILE.length() + TsFileIdentifier.INFO_SEPARATOR.length())));
+                        tsFileIdentifiers.add(TsFileIdentifier.getFileIdentifierFromInfoString(curLineStr.substring(AlertingLogger.FLAG_INIT_SELECTED_FILE.length() + TsFileIdentifier.INFO_SEPARATOR.length())));
                     } else if(curLineStr.startsWith(AlertingLogger.FLAG_DONE)) {
                         // remove done file
-                        tsFileIdentifiers.remove(TsFileIdentifier.getFileIdentifierFromOldInfoString(curLineStr.substring(AlertingLogger.FLAG_DONE.length() + TsFileIdentifier.INFO_SEPARATOR.length())));
+                        remove(tsFileIdentifiers, TsFileIdentifier.getFileIdentifierFromInfoString(curLineStr.substring(AlertingLogger.FLAG_DONE.length() + TsFileIdentifier.INFO_SEPARATOR.length())));
                     } else {
                         throw new IOException("alter.log parse fail, unknown line");
                     }
@@ -104,6 +110,23 @@ public class AlteringLogAnalyzer {
             }
         }
         return undoPartitionTsFiles;
+    }
+
+    private void remove(Set<TsFileIdentifier> tsFileIdentifiers, TsFileIdentifier endTsFileIdentifier) {
+
+        TsFileIdentifier moveObj = null;
+        Iterator<TsFileIdentifier> it = tsFileIdentifiers.iterator();
+        while(it.hasNext()) {
+            TsFileIdentifier next = it.next();
+            String filename = endTsFileIdentifier.getFilename();
+            String oldFileName = next.getFilename();
+            String preName = oldFileName.substring(0, oldFileName.length() - TsFileConstant.TSFILE_SUFFIX.length());
+            if (filename.startsWith(preName)) {
+                moveObj = next;
+                break;
+            }
+        }
+        tsFileIdentifiers.remove(moveObj);
     }
 
     public String getFullPath() {

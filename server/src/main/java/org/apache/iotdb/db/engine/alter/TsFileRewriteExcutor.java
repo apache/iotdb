@@ -117,6 +117,7 @@ public class TsFileRewriteExcutor {
       logger.warn("[alter timeseries] device({}) alignedChunkMetadatas is null", device);
       return;
     }
+    // TODO To be optimized: Non-target modification measurements are directly written to data
     List<IMeasurementSchema> schemaList = collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, isTargetDevice);
     AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemaList);
     TsFileAlignedSeriesReaderIterator readerIterator =
