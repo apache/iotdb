@@ -2100,7 +2100,7 @@ public class PlanExecutor implements IPlanExecutor {
 
     AUDIT_LOGGER.info("alter timeseries {} {} {}", fullPath, curEncoding, curCompressionType);
     if(IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
-      throw new QueryProcessException("This command is not supported in cluster model");
+      throw new QueryProcessException("This command is not supported in cluster mode");
     }
     // schema alter
     Pair<TSEncoding, CompressionType> oldPair =

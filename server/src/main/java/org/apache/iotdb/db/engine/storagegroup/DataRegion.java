@@ -610,7 +610,7 @@ public class DataRegion {
           (key, tsFileIdentifiers) -> {
             try {
               // check file
-              checkTsFileAlteringStatusAndFix(tsFileIdentifiers, alteringLog);
+              checkTsFileAlteringStatusAndFix(tsFileIdentifiers, alteringLog, logKey);
               // rewrite
               rewriteDataInTsFiles(
                   key.right
@@ -626,7 +626,7 @@ public class DataRegion {
                   logKey);
             } catch (Exception e) {
               // TODO If it fails, you need to check and repair ".tsfile"
-              logger.error("Alter failed. rewriteDataInTsFIles fail", e);
+              logger.error("Alter failed. rewriteDataInTsFiles fail", e);
             }
           });
       if (logFile.exists()) {
@@ -661,7 +661,7 @@ public class DataRegion {
    * 2.3, does exist - not started <br>
    */
   private void checkTsFileAlteringStatusAndFix(
-      Set<TsFileIdentifier> tsFileIdentifiers, AlertingLogger alteringLog) {
+      Set<TsFileIdentifier> tsFileIdentifiers, AlertingLogger alteringLog, String logKey) {
 
     if (tsFileIdentifiers == null || tsFileIdentifiers.isEmpty()) {
       // all undone
@@ -720,7 +720,7 @@ public class DataRegion {
                     .registerSealedTsFileResource(targetTsFileResource);
                 tsFileManager.keepOrderInsert(targetTsFileResource, tsFileIdentifier.isSequence());
                 // check target & delete old tsfile from disk
-                checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource);
+                checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource, logKey);
                 alteringLog.doneFile(tsFileResource);
                 removeList.add(tsFileIdentifier);
               } else {
