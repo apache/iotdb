@@ -291,4 +291,23 @@ public enum PlanNodeType {
         throw new IllegalArgumentException("Invalid node type: " + nodeType);
     }
   }
+
+  public static boolean isNonQuery(short nodeType) {
+    switch (nodeType) {
+      case 13: // INSERT_TABLET
+      case 14: // INSERT_ROW
+      case 15: // INSERT_ROWS
+      case 16: // INSERT_ROWS_OF_ONE_DEVICE
+      case 17: // INSERT_MULTI_TABLET
+      case 19: // CREATE_TIME_SERIES
+      case 21: // ALTER_TIME_SERIES
+      case 22: // CREATE_ALIGNED_TIME_SERIES
+      case 39: // CREATE_MULTI_TIME_SERIES
+      case 44: // DELETE_DATA
+      case 45: // DELETE_TIMESERIES
+        return true;
+      default:
+        return false;
+    }
+  }
 }

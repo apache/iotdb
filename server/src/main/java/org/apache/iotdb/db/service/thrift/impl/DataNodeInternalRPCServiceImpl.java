@@ -43,6 +43,7 @@ import org.apache.iotdb.consensus.common.response.ConsensusWriteResponse;
 import org.apache.iotdb.consensus.exception.PeerNotInConsensusGroupException;
 import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -199,6 +200,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         ConsensusGroupId.Factory.createFromTConsensusGroupId(req.getConsensusGroupId());
     TSendPlanNodeResp response = new TSendPlanNodeResp();
     ConsensusWriteResponse writeResponse;
+
+    // reject non-query operations when system is read-only
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      req.planNode.body.mark();
+      short planNodeType = req.planNode.body.getShort();
+      if (PlanNodeType.isNonQuery(planNodeType)) {
+        response.setAccepted(false);
+        response.setMessage("System is read-only");
+        return response;
+      }
+      req.planNode.body.reset();
+    }
 
     PlanNode planNode = PlanNodeType.deserialize(req.planNode.body);
     boolean hasFailedMeasurement = false;
