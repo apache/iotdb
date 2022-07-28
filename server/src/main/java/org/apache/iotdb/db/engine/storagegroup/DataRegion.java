@@ -2324,7 +2324,12 @@ public class DataRegion {
               null,
               logKey);
         } catch (IOException e) {
-          // TODO If it fails, stop the process?
+          /**
+           * TODO
+           * If an exception occurs in the operation of a single tsfile, you need to terminate the operation and return
+           * 1. The modified schema and rewritten tsfile need to provide rollback commands
+           * 2. The tsfile that has not been rewritten needs to provide a recovery command
+           */
           logger.error(
               "[alter timeseries] " + logKey + " timePartition " + timePartition + " error", e);
           throw e;
@@ -2416,8 +2421,6 @@ public class DataRegion {
             logKey,
             tsFileResource.getTsFilePath());
       } catch (Exception e) {
-        // TODO If it fails, you need to check and repair.Tsfile
-        // TODO If it fails, stop the process?
         logger.error("[alter timeseries] " + logKey + " error", e);
         throw e;
       }
