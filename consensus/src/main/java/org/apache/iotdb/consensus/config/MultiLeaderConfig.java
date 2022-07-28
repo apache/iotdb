@@ -202,6 +202,7 @@ public class MultiLeaderConfig {
     private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
+    private final long maxWalWaitTimeMs;
 
     private Replication(
         int maxPendingRequestNumPerNode,
@@ -209,13 +210,15 @@ public class MultiLeaderConfig {
         int maxPendingBatch,
         int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
-        long maxRetryWaitTimeMs) {
+        long maxRetryWaitTimeMs,
+        long maxWalWaitTimeMs) {
       this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
       this.maxRequestPerBatch = maxRequestPerBatch;
       this.maxPendingBatch = maxPendingBatch;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
+      this.maxWalWaitTimeMs = maxWalWaitTimeMs;
     }
 
     public int getMaxPendingRequestNumPerNode() {
@@ -242,6 +245,10 @@ public class MultiLeaderConfig {
       return maxRetryWaitTimeMs;
     }
 
+    public long getMaxWalWaitTimeMs() {
+      return maxWalWaitTimeMs;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
@@ -253,6 +260,7 @@ public class MultiLeaderConfig {
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
+      private long maxWalWaitTimeMs = TimeUnit.SECONDS.toMillis(1);
 
       public Replication.Builder setMaxPendingRequestNumPerNode(int maxPendingRequestNumPerNode) {
         this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
@@ -285,6 +293,10 @@ public class MultiLeaderConfig {
         return this;
       }
 
+      public void setMaxWalWaitTimeMs(long maxWalWaitTimeMs) {
+        this.maxWalWaitTimeMs = maxWalWaitTimeMs;
+      }
+
       public Replication build() {
         return new Replication(
             maxPendingRequestNumPerNode,
@@ -292,7 +304,8 @@ public class MultiLeaderConfig {
             maxPendingBatch,
             maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,
-            maxRetryWaitTimeMs);
+            maxRetryWaitTimeMs,
+            maxWalWaitTimeMs);
       }
     }
   }

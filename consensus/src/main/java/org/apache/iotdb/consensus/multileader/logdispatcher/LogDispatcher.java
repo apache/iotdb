@@ -50,6 +50,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
 /** Manage all asynchronous replication threads and corresponding async clients */
@@ -245,8 +246,8 @@ public class LogDispatcher {
           }
         }
       }
-      if (bufferedRequest.isEmpty()) { // only execute this after a restart
-        endIndex = constructBatchFromWAL(startIndex, impl.getIndex() + 1, logBatches);
+      if (bufferedRequest.isEmpty()) {
+        endIndex = constructBatchFromWAL(startIndex, impl.getIndex() + 1, true, logBatches);
         batch = new PendingBatch(startIndex, endIndex, logBatches);
         logger.debug(
             "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batch);
@@ -256,7 +257,7 @@ public class LogDispatcher {
         IndexedConsensusRequest prev = iterator.next();
         // Prevents gap between logs. For example, some requests are not written into the queue when
         // the queue is full. In this case, requests need to be loaded from the WAL
-        endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
+        endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), false, logBatches);
         if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
           batch = new PendingBatch(startIndex, endIndex, logBatches);
           logger.debug("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
@@ -272,7 +273,8 @@ public class LogDispatcher {
           // the queue is full. In this case, requests need to be loaded from the WAL
           if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
             endIndex =
-                constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
+                constructBatchFromWAL(
+                    prev.getSearchIndex(), current.getSearchIndex(), false, logBatches);
             if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
               batch = new PendingBatch(startIndex, endIndex, logBatches);
               logger.debug(
@@ -313,7 +315,7 @@ public class LogDispatcher {
     }
 
     private long constructBatchFromWAL(
-        long currentIndex, long maxIndex, List<TLogBatch> logBatches) {
+        long currentIndex, long maxIndex, boolean useTimeoutWay, List<TLogBatch> logBatches) {
       logger.debug(
           String.format(
               "DataRegion[%s]->%s: currentIndex: %d, maxIndex: %d, iteratorIndex: %d",
@@ -330,10 +332,17 @@ public class LogDispatcher {
           && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
         logger.debug("construct from WAL for one Entry, index : {}", currentIndex);
         try {
-          walEntryiterator.waitForNextReady();
+          if (useTimeoutWay) {
+            walEntryiterator.waitForNextReady(
+                config.getReplication().getMaxWalWaitTimeMs(), TimeUnit.MILLISECONDS);
+          } else {
+            walEntryiterator.waitForNextReady();
+          }
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("wait for next WAL entry is interrupted");
+        } catch (TimeoutException e) {
+          break;
         }
         IndexedConsensusRequest data = walEntryiterator.next();
         currentIndex = data.getSearchIndex();
