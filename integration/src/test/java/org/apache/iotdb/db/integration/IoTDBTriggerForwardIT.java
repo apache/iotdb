@@ -107,7 +107,7 @@ public class IoTDBTriggerForwardIT {
   }
 
   @Test
-  public void testForwardHTTPTrigger() throws InterruptedException {
+  public void testHTTPForwardTrigger() throws InterruptedException {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -144,7 +144,7 @@ public class IoTDBTriggerForwardIT {
   }
 
   @Test
-  public void testForwardMQTTTrigger() throws InterruptedException {
+  public void testMQTTForwardTrigger() throws InterruptedException {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");

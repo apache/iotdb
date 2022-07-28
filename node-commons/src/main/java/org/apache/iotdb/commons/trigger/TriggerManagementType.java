@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.commons.trigger;
 
-public enum TriggerOperationType {
+public enum TriggerManagementType {
   CREATE,
   DROP,
   START,

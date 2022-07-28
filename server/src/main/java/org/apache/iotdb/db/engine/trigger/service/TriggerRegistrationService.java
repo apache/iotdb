@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.trigger.ITriggerRegistrationService;
 import org.apache.iotdb.commons.trigger.TriggerClassLoader;
 import org.apache.iotdb.commons.trigger.TriggerClassLoaderManager;
 import org.apache.iotdb.commons.trigger.TriggerEvent;
-import org.apache.iotdb.commons.trigger.TriggerOperationType;
+import org.apache.iotdb.commons.trigger.TriggerManagementType;
 import org.apache.iotdb.commons.trigger.TriggerRegistrationInformation;
 import org.apache.iotdb.commons.trigger.api.Trigger;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
@@ -230,7 +230,7 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
     } catch (IOException e) {
       throw new TriggerManagementException(
           String.format(
-              "Failed to drop trigger %s because the operation plan was failed to log: %s",
+              "Failed to drop trigger %s because the operation type was failed to log: %s",
               registrationInformation.getTriggerName(), e));
     }
   }
@@ -403,7 +403,7 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
     for (TriggerRegistrationInformation registrationInformation :
         recoverRegistrationInfos(logFile)) {
       try {
-        if (TriggerOperationType.CREATE == registrationInformation.getOperationType()) {
+        if (TriggerManagementType.CREATE == registrationInformation.getManagementType()) {
           boolean stopped = registrationInformation.isStopped();
           doRegister(registrationInformation, tryGetMNode(registrationInformation.getFullPath()));
           if (stopped) {
@@ -426,7 +426,7 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
     try (TriggerLogReader reader = new TriggerLogReader(logFile)) {
       while (reader.hasNext()) {
         TriggerRegistrationInformation registrationInformation = reader.next();
-        switch (registrationInformation.getOperationType()) {
+        switch (registrationInformation.getManagementType()) {
           case CREATE:
             recoveredTriggerRegistrationInfo.put(
                 registrationInformation.getTriggerName(), registrationInformation);
@@ -446,7 +446,7 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
             break;
           default:
             throw new TriggerManagementException(
-                "Unrecognized trigger management operation plan is recovered.");
+                "Unrecognized trigger management operation type is recovered.");
         }
       }
     }

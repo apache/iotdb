@@ -36,13 +36,13 @@ public class TriggerRegistrationInformation {
   private Map<String, String> attributes = null;
 
   private volatile boolean isStopped;
-  private TriggerOperationType operationType;
+  private TriggerManagementType managementType;
 
   private TriggerRegistrationInformation() {}
 
-  private TriggerRegistrationInformation(String triggerName, TriggerOperationType operationType) {
+  private TriggerRegistrationInformation(String triggerName, TriggerManagementType managementType) {
     this.triggerName = triggerName;
-    this.operationType = operationType;
+    this.managementType = managementType;
   }
 
   public static TriggerRegistrationInformation getCreateInfo(
@@ -52,7 +52,7 @@ public class TriggerRegistrationInformation {
       String className,
       Map<String, String> attributes) {
     TriggerRegistrationInformation registrationInformation =
-        new TriggerRegistrationInformation(triggerName, TriggerOperationType.CREATE);
+        new TriggerRegistrationInformation(triggerName, TriggerManagementType.CREATE);
     registrationInformation.setEvent(event);
     registrationInformation.setFullPath(fullPath);
     registrationInformation.setClassName(className);
@@ -61,15 +61,15 @@ public class TriggerRegistrationInformation {
   }
 
   public static TriggerRegistrationInformation getDropInfo(String triggerName) {
-    return new TriggerRegistrationInformation(triggerName, TriggerOperationType.DROP);
+    return new TriggerRegistrationInformation(triggerName, TriggerManagementType.DROP);
   }
 
   public static TriggerRegistrationInformation getStartInfo(String triggerName) {
-    return new TriggerRegistrationInformation(triggerName, TriggerOperationType.START);
+    return new TriggerRegistrationInformation(triggerName, TriggerManagementType.START);
   }
 
   public static TriggerRegistrationInformation getStopInfo(String triggerName) {
-    return new TriggerRegistrationInformation(triggerName, TriggerOperationType.STOP);
+    return new TriggerRegistrationInformation(triggerName, TriggerManagementType.STOP);
   }
 
   public void markAsStarted() {
@@ -120,15 +120,15 @@ public class TriggerRegistrationInformation {
     return isStopped;
   }
 
-  public TriggerOperationType getOperationType() {
-    return operationType;
+  public TriggerManagementType getManagementType() {
+    return managementType;
   }
 
   public void serialize(ByteBuffer buffer) {
     buffer.mark();
-    buffer.put((byte) operationType.ordinal());
+    buffer.put((byte) managementType.ordinal());
     ReadWriteIOUtils.write(triggerName, buffer);
-    if (TriggerOperationType.CREATE == operationType) {
+    if (TriggerManagementType.CREATE == managementType) {
       ReadWriteIOUtils.write(triggerName, buffer);
       buffer.put(event.getId());
       ReadWriteIOUtils.write(fullPath.getFullPath(), buffer);
@@ -139,12 +139,12 @@ public class TriggerRegistrationInformation {
 
   public void deserialize(ByteBuffer buffer) throws IOException, IllegalPathException {
     int typeNum = buffer.get();
-    if (typeNum < 0 || typeNum >= TriggerOperationType.values().length) {
+    if (typeNum < 0 || typeNum >= TriggerManagementType.values().length) {
       throw new IOException("unrecognized log type: " + typeNum);
     }
-    operationType = TriggerOperationType.values()[typeNum];
+    managementType = TriggerManagementType.values()[typeNum];
     triggerName = ReadWriteIOUtils.readString(buffer);
-    if (TriggerOperationType.CREATE == operationType) {
+    if (TriggerManagementType.CREATE == managementType) {
       triggerName = ReadWriteIOUtils.readString(buffer);
       event = TriggerEvent.construct(buffer.get());
       fullPath = new PartialPath(ReadWriteIOUtils.readString(buffer));
