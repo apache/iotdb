@@ -125,6 +125,10 @@ CONCAT
     : C O N C A T
     ;
 
+CONFIGNODES
+    : C O N F I G N O D E S
+    ;
+
 CONFIGURATION
     : C O N F I G U R A T I O N
     ;

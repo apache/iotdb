@@ -16,33 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.concurrent;
 
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-/** A wrapper for {@link Runnable} logging errors when uncaught exception is thrown. */
-public abstract class WrappedRunnable implements Runnable {
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
+import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
+
+public class ShowConfigNodesStatement extends ShowStatement implements IConfigStatement {
 
   @Override
-  public final void run() {
-    try {
-      runMayThrow();
-    } catch (Throwable e) {
-      throw ScheduledExecutorUtil.propagate(e);
-    }
+  public QueryType getQueryType() {
+    return QueryType.READ;
   }
 
-  public abstract void runMayThrow() throws Throwable;
-
-  public static Runnable wrap(Runnable runnable) {
-    if (runnable instanceof WrappedRunnable) {
-      return runnable;
-    }
-    return new WrappedRunnable() {
-      @Override
-      public void runMayThrow() {
-        runnable.run();
-      }
-    };
+  @Override
+  public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
+    return visitor.visitShowConfigNodes(this, context);
   }
 }

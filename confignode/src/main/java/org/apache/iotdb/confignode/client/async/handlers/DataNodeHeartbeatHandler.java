@@ -66,7 +66,8 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
           .forEach(
               (consensusGroupId, isLeader) ->
                   regionGroupCacheMap
-                      .computeIfAbsent(consensusGroupId, empty -> new RegionGroupCache())
+                      .computeIfAbsent(
+                          consensusGroupId, empty -> new RegionGroupCache(consensusGroupId))
                       .cacheHeartbeatSample(
                           new RegionHeartbeatSample(
                               heartbeatResp.getHeartbeatTimestamp(),

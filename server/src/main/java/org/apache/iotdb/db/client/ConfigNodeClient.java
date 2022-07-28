@@ -69,6 +69,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -786,6 +787,22 @@ public class ConfigNodeClient
         showDataNodesResp.setStatus(showDataNodesResp.getStatus());
         if (!updateConfigNodeLeader(showDataNodesResp.getStatus())) {
           return showDataNodesResp;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
+  public TShowConfigNodesResp showConfigNodes() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TShowConfigNodesResp showConfigNodesResp = client.showConfigNodes();
+        if (!updateConfigNodeLeader(showConfigNodesResp.getStatus())) {
+          return showConfigNodesResp;
         }
       } catch (TException e) {
         configLeader = null;

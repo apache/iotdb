@@ -16,33 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.concurrent;
 
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+package org.apache.iotdb.db.auth;
 
-/** A wrapper for {@link Runnable} logging errors when uncaught exception is thrown. */
-public abstract class WrappedRunnable implements Runnable {
+import org.apache.iotdb.commons.auth.entity.Role;
+import org.apache.iotdb.commons.auth.entity.User;
 
-  @Override
-  public final void run() {
-    try {
-      runMayThrow();
-    } catch (Throwable e) {
-      throw ScheduledExecutorUtil.propagate(e);
-    }
-  }
+public interface IAuthorCache {
+  User getUserCache(String userName);
 
-  public abstract void runMayThrow() throws Throwable;
+  Role getRoleCache(String roleName);
 
-  public static Runnable wrap(Runnable runnable) {
-    if (runnable instanceof WrappedRunnable) {
-      return runnable;
-    }
-    return new WrappedRunnable() {
-      @Override
-      public void runMayThrow() {
-        runnable.run();
-      }
-    };
-  }
+  void putUserCache(String userName, User user);
+
+  void putRoleCache(String roleName, Role role);
+
+  boolean invalidateCache(String userName, String roleName);
 }

@@ -225,6 +225,7 @@ public class LoadManager {
                 0,
                 heartbeatInterval,
                 TimeUnit.MILLISECONDS);
+        LOGGER.info("Heartbeat service is started successfully.");
       }
 
       /* Start the load balancing service */
@@ -236,6 +237,7 @@ public class LoadManager {
                 0,
                 heartbeatInterval,
                 TimeUnit.MILLISECONDS);
+        LOGGER.info("LoadBalancing service is started successfully.");
       }
     }
   }
@@ -247,8 +249,10 @@ public class LoadManager {
       if (currentHeartbeatFuture != null) {
         currentHeartbeatFuture.cancel(false);
         currentHeartbeatFuture = null;
+        LOGGER.info("Heartbeat service is stopped successfully.");
         currentLoadBalancingFuture.cancel(false);
         currentLoadBalancingFuture = null;
+        LOGGER.info("LoadBalancing service is stopped successfully.");
       }
     }
   }
@@ -303,10 +307,12 @@ public class LoadManager {
                 dataNodeLocationMap.put(
                     onlineDataNode.getLocation().getDataNodeId(), onlineDataNode.getLocation()));
 
-    LOGGER.info("Begin to broadcast RegionRouteMap: {}", latestRegionRouteMap);
+    LOGGER.info("Begin to broadcast RegionRouteMap:");
+    long broadcastTime = System.currentTimeMillis();
+    printRegionRouteMap(broadcastTime, latestRegionRouteMap);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            new TRegionRouteReq(System.currentTimeMillis(), latestRegionRouteMap),
+            new TRegionRouteReq(broadcastTime, latestRegionRouteMap),
             dataNodeLocationMap,
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
             null);
@@ -333,6 +339,9 @@ public class LoadManager {
    * @param registeredDataNodes DataNodes that registered in cluster
    */
   private void pingRegisteredDataNodes(List<TDataNodeConfiguration> registeredDataNodes) {
+    // Generate heartbeat request
+    THeartbeatReq heartbeatReq = genHeartbeatReq();
+
     // Send heartbeat requests
     for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       DataNodeHeartbeatHandler handler =
@@ -345,7 +354,7 @@ public class LoadManager {
               regionGroupCacheMap);
       AsyncDataNodeClientPool.getInstance()
           .getDataNodeHeartBeat(
-              dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
+              dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
   }
 
@@ -409,6 +418,20 @@ public class LoadManager {
                     .getNodeStatus()
                     .equals(NodeStatus.Running))
         .collect(Collectors.toList());
+  }
+
+  public static void printRegionRouteMap(
+      long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> regionRouteMap) {
+    LOGGER.info("[latestRegionRouteMap] timestamp:{}", timestamp);
+    LOGGER.info("[latestRegionRouteMap] RegionRouteMap:");
+    for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> entry : regionRouteMap.entrySet()) {
+      LOGGER.info(
+          "[latestRegionRouteMap]\t {}={}",
+          entry.getKey(),
+          entry.getValue().getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toList()));
+    }
   }
 
   private ConsensusManager getConsensusManager() {

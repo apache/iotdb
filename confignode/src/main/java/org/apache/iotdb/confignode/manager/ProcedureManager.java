@@ -83,6 +83,7 @@ public class ProcedureManager {
             CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
             CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
         store.start();
+        LOGGER.info("ProcedureManager is started successfully.");
       }
     } else {
       if (executor.isRunning()) {
@@ -90,6 +91,7 @@ public class ProcedureManager {
         if (!executor.isRunning()) {
           executor.join();
           store.stop();
+          LOGGER.info("ProcedureManager is stopped successfully.");
         }
       }
     }
