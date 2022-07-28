@@ -82,4 +82,9 @@ public abstract class CompareBinaryExpression extends BinaryExpression {
 
     return TSDataType.BOOLEAN;
   }
+
+  @Override
+  public boolean isCompareBinaryExpression() {
+    return true;
+  }
 }

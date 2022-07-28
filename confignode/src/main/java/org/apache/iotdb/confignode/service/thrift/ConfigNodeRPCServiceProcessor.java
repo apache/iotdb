@@ -60,7 +60,6 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
-import org.apache.iotdb.confignode.rpc.thrift.TClusterNodeInfos;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
@@ -94,6 +93,8 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -181,8 +182,8 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TClusterNodeInfos getAllClusterNodeInfos() throws TException {
-    return configManager.getAllClusterNodeInfos();
+  public TShowClusterResp showCluster() throws TException {
+    return configManager.showCluster();
   }
 
   @Override
@@ -537,7 +538,9 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TRegionRouteMapResp getLatestRegionRouteMap() throws TException {
     TRegionRouteMapResp resp = configManager.getLatestRegionRouteMap();
-    LOGGER.info("Generate a latest RegionRouteMap: {}", resp);
+    configManager
+        .getLoadManager()
+        .printRegionRouteMap(resp.getTimestamp(), resp.getRegionRouteMap());
     return resp;
   }
 
@@ -548,11 +551,12 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TShowDataNodesResp showDataNodes() throws TException {
-    DataNodeConfigurationResp dataSet = (DataNodeConfigurationResp) configManager.showDataNodes();
-    TShowDataNodesResp showDataNodesResp = new TShowDataNodesResp();
-    showDataNodesResp.setStatus(dataSet.getStatus());
-    showDataNodesResp.setDataNodesInfoList(dataSet.getDataNodesInfoList());
-    return showDataNodesResp;
+    return configManager.showDataNodes();
+  }
+
+  @Override
+  public TShowConfigNodesResp showConfigNodes() throws TException {
+    return configManager.showConfigNodes();
   }
 
   public void handleClientExit() {}

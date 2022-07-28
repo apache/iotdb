@@ -110,7 +110,7 @@ public class NodeInfo implements SnapshotProcessor {
               Metric.CONFIG_NODE.toString(),
               MetricLevel.CORE,
               registeredConfigNodes,
-              o -> getRegisteredDataNodeCount(),
+              o -> getRegisteredConfigNodeCount(),
               Tag.NAME.toString(),
               "online");
       MetricsService.getInstance()
@@ -224,9 +224,9 @@ public class NodeInfo implements SnapshotProcessor {
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {
-        result.setDataNodeInfoMap(new HashMap<>(registeredDataNodes));
+        result.setDataNodeConfigurationMap(new HashMap<>(registeredDataNodes));
       } else {
-        result.setDataNodeInfoMap(
+        result.setDataNodeConfigurationMap(
             registeredDataNodes.get(dataNodeId) == null
                 ? new HashMap<>(0)
                 : Collections.singletonMap(dataNodeId, registeredDataNodes.get(dataNodeId)));
@@ -250,6 +250,17 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
+  /** Return the number of registered ConfigNodes */
+  public int getRegisteredConfigNodeCount() {
+    int result;
+    configNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = registeredConfigNodes.size();
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
   /** Return the number of total cpu cores in online DataNodes */
   public int getTotalCpuCoreCount() {
     int result = 0;

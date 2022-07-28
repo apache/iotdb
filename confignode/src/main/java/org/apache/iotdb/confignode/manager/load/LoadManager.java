@@ -35,10 +35,8 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
-import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
@@ -66,7 +64,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -228,6 +225,7 @@ public class LoadManager {
                 0,
                 heartbeatInterval,
                 TimeUnit.MILLISECONDS);
+        LOGGER.info("Heartbeat service is started successfully.");
       }
 
       /* Start the load balancing service */
@@ -239,6 +237,7 @@ public class LoadManager {
                 0,
                 heartbeatInterval,
                 TimeUnit.MILLISECONDS);
+        LOGGER.info("LoadBalancing service is started successfully.");
       }
     }
   }
@@ -250,8 +249,10 @@ public class LoadManager {
       if (currentHeartbeatFuture != null) {
         currentHeartbeatFuture.cancel(false);
         currentHeartbeatFuture = null;
+        LOGGER.info("Heartbeat service is stopped successfully.");
         currentLoadBalancingFuture.cancel(false);
         currentLoadBalancingFuture = null;
+        LOGGER.info("LoadBalancing service is stopped successfully.");
       }
     }
   }
@@ -299,30 +300,22 @@ public class LoadManager {
 
   private void broadcastLatestRegionRouteMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genLatestRegionRouteMap();
-    List<TDataNodeConfiguration> onlineDataNodes = getOnlineDataNodes(-1);
-    CountDownLatch latch = new CountDownLatch(onlineDataNodes.size());
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+    getOnlineDataNodes(-1)
+        .forEach(
+            onlineDataNode ->
+                dataNodeLocationMap.put(
+                    onlineDataNode.getLocation().getDataNodeId(), onlineDataNode.getLocation()));
 
-    LOGGER.info("Begin to broadcast RegionRouteMap: {}", latestRegionRouteMap);
-    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
-    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
-    AtomicInteger index = new AtomicInteger();
-    onlineDataNodes.forEach(
-        dataNodeInfo -> {
-          handlerMap.put(
-              index.get(),
-              new UpdateRegionRouteMapHandler(
-                  dataNodeInfo.getLocation(),
-                  latch,
-                  DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
-                  dataNodeLocations,
-                  index.get()));
-          dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
-        });
+    LOGGER.info("Begin to broadcast RegionRouteMap:");
+    long broadcastTime = System.currentTimeMillis();
+    printRegionRouteMap(broadcastTime, latestRegionRouteMap);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            new TRegionRouteReq(System.currentTimeMillis(), latestRegionRouteMap),
-            handlerMap,
-            dataNodeLocations);
+            new TRegionRouteReq(broadcastTime, latestRegionRouteMap),
+            dataNodeLocationMap,
+            DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
+            null);
     LOGGER.info("Broadcast the latest RegionRouteMap finished.");
   }
 
@@ -346,6 +339,9 @@ public class LoadManager {
    * @param registeredDataNodes DataNodes that registered in cluster
    */
   private void pingRegisteredDataNodes(List<TDataNodeConfiguration> registeredDataNodes) {
+    // Generate heartbeat request
+    THeartbeatReq heartbeatReq = genHeartbeatReq();
+
     // Send heartbeat requests
     for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       DataNodeHeartbeatHandler handler =
@@ -358,7 +354,7 @@ public class LoadManager {
               regionGroupCacheMap);
       AsyncDataNodeClientPool.getInstance()
           .getDataNodeHeartBeat(
-              dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
+              dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
   }
 
@@ -422,6 +418,20 @@ public class LoadManager {
                     .getNodeStatus()
                     .equals(NodeStatus.Running))
         .collect(Collectors.toList());
+  }
+
+  public static void printRegionRouteMap(
+      long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> regionRouteMap) {
+    LOGGER.info("[latestRegionRouteMap] timestamp:{}", timestamp);
+    LOGGER.info("[latestRegionRouteMap] RegionRouteMap:");
+    for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> entry : regionRouteMap.entrySet()) {
+      LOGGER.info(
+          "[latestRegionRouteMap]\t {}={}",
+          entry.getKey(),
+          entry.getValue().getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toList()));
+    }
   }
 
   private ConsensusManager getConsensusManager() {

@@ -48,6 +48,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
@@ -56,10 +57,12 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
@@ -267,6 +270,10 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(showDataNodesStatement, context);
   }
 
+  public R visitShowConfigNodes(ShowConfigNodesStatement showConfigNodesStatement, C context) {
+    return visitStatement(showConfigNodesStatement, context);
+  }
+
   public R visitShowVersion(ShowVersionStatement showVersionStatement, C context) {
     return visitStatement(showVersionStatement, context);
   }
@@ -294,5 +301,14 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement, C context) {
     return visitStatement(showPathSetTemplateStatement, context);
+  }
+
+  public R visitActivateTemplate(ActivateTemplateStatement activateTemplateStatement, C context) {
+    return visitStatement(activateTemplateStatement, context);
+  }
+
+  public R visitShowPathsUsingTemplate(
+      ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, C context) {
+    return visitStatement(showPathsUsingTemplateStatement, context);
   }
 }
