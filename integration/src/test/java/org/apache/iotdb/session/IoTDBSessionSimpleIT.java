@@ -1339,9 +1339,7 @@ public class IoTDBSessionSimpleIT {
       session.deleteTimeseries("root.sg.loc1.sector.x");
       fail();
     } catch (StatementExecutionException e) {
-      assertTrue(
-          e.getMessage()
-              .contains("Cannot delete a timeseries inside a template: root.sg.loc1.sector.x;"));
+      assertTrue(e.getMessage().contains("506: root.sg.loc1.sector.x;"));
     }
 
     session.close();
