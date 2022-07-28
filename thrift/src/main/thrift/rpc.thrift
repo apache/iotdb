@@ -200,6 +200,11 @@ struct TSFetchMetadataReq{
   3: optional string columnPath
 }
 
+struct TSGetSystemStatusResp {
+  1: required TSStatus status
+  2: required string systemStatus
+}
+
 struct TSGetTimeZoneResp {
   1: required TSStatus status
   2: required string timeZone
@@ -447,6 +452,8 @@ service TSIService {
   TSStatus cancelOperation(1:TSCancelOperationReq req);
 
   TSStatus closeOperation(1:TSCloseOperationReq req);
+
+  TSGetSystemStatusResp getSystemStatus(1:i64 sessionId);
 
   TSGetTimeZoneResp getTimeZone(1:i64 sessionId);
 

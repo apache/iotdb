@@ -36,6 +36,7 @@ import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSDropSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSGetSystemStatusResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
@@ -59,6 +60,7 @@ import org.apache.iotdb.service.rpc.thrift.TSSetUsingTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.SessionUtils;
+import org.apache.iotdb.session.util.SystemStatus;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -198,6 +200,24 @@ public class SessionConnection {
 
   protected TSIService.Iface getClient() {
     return client;
+  }
+
+  protected SystemStatus getSystemStatus() throws IoTDBConnectionException {
+    TSGetSystemStatusResp resp;
+    try {
+      resp = client.getSystemStatus(sessionId);
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          resp = client.getSystemStatus(sessionId);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(logForReconnectionFailure());
+      }
+    }
+    return SystemStatus.valueOf(resp.getSystemStatus());
   }
 
   protected void setTimeZone(String zoneId)

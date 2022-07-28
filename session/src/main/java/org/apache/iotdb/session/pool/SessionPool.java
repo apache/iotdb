@@ -24,6 +24,7 @@ import org.apache.iotdb.session.Config;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.util.SystemStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -2320,6 +2321,24 @@ public class SessionPool {
     }
 
     return false;
+  }
+
+  public SystemStatus getSystemStatus() throws IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        SystemStatus status = session.getSystemStatus();
+        putBack(session);
+        return status;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    return null;
   }
 
   public int getMaxSize() {

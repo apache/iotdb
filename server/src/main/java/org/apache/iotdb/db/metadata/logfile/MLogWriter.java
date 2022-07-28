@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -101,12 +102,24 @@ public class MLogWriter implements AutoCloseable {
   }
 
   private void sync() {
-    try {
-      logWriter.write(mlogBuffer);
-    } catch (IOException e) {
-      logger.error(
-          "MLog {} sync failed, change system mode to read-only", logFile.getAbsoluteFile(), e);
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
+    int retryCnt = 0;
+    mlogBuffer.mark();
+    while (true) {
+      try {
+        logWriter.write(mlogBuffer);
+        break;
+      } catch (IOException e) {
+        if (retryCnt < 3) {
+          logger.warn("MLog {} sync failed, retry it again", logFile.getAbsoluteFile(), e);
+          mlogBuffer.reset();
+          retryCnt++;
+        } else {
+          logger.error(
+              "MLog {} sync failed, change system mode to error", logFile.getAbsoluteFile(), e);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
+          break;
+        }
+      }
     }
     mlogBuffer.clear();
   }

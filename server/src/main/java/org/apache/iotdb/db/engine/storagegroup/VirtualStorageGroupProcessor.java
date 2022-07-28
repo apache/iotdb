@@ -23,6 +23,7 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
@@ -1192,24 +1193,34 @@ public class VirtualStorageGroupProcessor {
 
   private TsFileProcessor getOrCreateTsFileProcessor(long timeRangeId, boolean sequence) {
     TsFileProcessor tsFileProcessor = null;
-    try {
-      if (sequence) {
-        tsFileProcessor =
-            getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors, true);
-      } else {
-        tsFileProcessor =
-            getOrCreateTsFileProcessorIntern(timeRangeId, workUnsequenceTsFileProcessors, false);
+    int retryCnt = 0;
+    do {
+      try {
+        if (sequence) {
+          tsFileProcessor =
+              getOrCreateTsFileProcessorIntern(timeRangeId, workSequenceTsFileProcessors, true);
+        } else {
+          tsFileProcessor =
+              getOrCreateTsFileProcessorIntern(timeRangeId, workUnsequenceTsFileProcessors, false);
+        }
+      } catch (DiskSpaceInsufficientException e) {
+        logger.error(
+            "disk space is insufficient when creating TsFile processor, change system mode to read-only",
+            e);
+        IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+        break;
+      } catch (IOException e) {
+        if (retryCnt < 3) {
+          logger.warn("meet IOException when creating TsFileProcessor, retry it again", e);
+          retryCnt++;
+        } else {
+          logger.error(
+              "meet IOException when creating TsFileProcessor, change system mode to error", e);
+          IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.ERROR);
+          break;
+        }
       }
-    } catch (DiskSpaceInsufficientException e) {
-      logger.error(
-          "disk space is insufficient when creating TsFile processor, change system mode to read-only",
-          e);
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-    } catch (IOException e) {
-      logger.error(
-          "meet IOException when creating TsFileProcessor, change system mode to read-only", e);
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-    }
+    } while (tsFileProcessor == null);
     return tsFileProcessor;
   }
 
@@ -2302,7 +2313,6 @@ public class VirtualStorageGroupProcessor {
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } catch (IllegalPathException e) {
       logger.error(
@@ -2385,7 +2395,6 @@ public class VirtualStorageGroupProcessor {
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
           tsfileToBeInserted.getAbsolutePath(),
           tsfileToBeInserted.getParentFile().getName());
-      IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
       throw new LoadFileException(e);
     } catch (IllegalPathException e) {
       logger.error(
