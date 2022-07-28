@@ -2099,8 +2099,9 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException, IOException, MetadataException {
 
     AUDIT_LOGGER.info("alter timeseries {} {} {}", fullPath, curEncoding, curCompressionType);
-    // TODO check (clustr,encoding,compression)
-
+    if(IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new QueryProcessException("This command is not supported in cluster model");
+    }
     // schema alter
     Pair<TSEncoding, CompressionType> oldPair =
         IoTDB.schemaProcessor.alterTimeseries(fullPath, curEncoding, curCompressionType);

@@ -800,12 +800,10 @@ public class StorageEngine implements IService {
         if (!processorMap.containsKey(storageGroupPath)) {
           continue;
         }
-        logger.info("[alter timeseries] {} start", storageGroupPath);
         // process alter
         processorMap
             .get(storageGroupPath)
             .alterTimeseries(fullPath, curEncoding, curCompressionType);
-        logger.info("[alter timeseries] {} end", storageGroupPath);
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
