@@ -324,7 +324,9 @@ public class MManager {
             totalNormalSeriesNumber,
             AtomicLong::get,
             Tag.NAME.toString(),
-            "normal-timeSeries");
+            "timeSeries",
+            Tag.TYPE.toString(),
+            "normal");
 
     MetricsService.getInstance()
         .getMetricManager()
@@ -334,7 +336,9 @@ public class MManager {
             totalTemplateSeriesNumber,
             AtomicLong::get,
             Tag.NAME.toString(),
-            "template-timeSeries");
+            "timeSeries",
+            Tag.TYPE.toString(),
+            "template");
 
     MetricsService.getInstance()
         .getMetricManager()
