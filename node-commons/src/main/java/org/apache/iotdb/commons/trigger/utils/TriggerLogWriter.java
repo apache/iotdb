@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.commons.trigger.utils;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.trigger.TriggerRegistrationInformation;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

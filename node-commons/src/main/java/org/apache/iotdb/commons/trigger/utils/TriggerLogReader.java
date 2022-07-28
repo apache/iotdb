@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.trigger.utils;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.trigger.TriggerRegistrationInformation;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
