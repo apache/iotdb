@@ -189,7 +189,8 @@ public class IoTDBDDLVersionAdaptionIT {
   @Test
   public void showChildPaths() throws SQLException {
     String[] sqls = new String[] {"show child paths root.ln"};
-    Set<String>[] standards = new Set[] {new HashSet<>(Collections.singletonList("root.ln.wf01,"))};
+    Set<String>[] standards =
+        new Set[] {new HashSet<>(Collections.singletonList("root.ln.wf01,SG INTERNAL,"))};
     executeAndCheckResult(sqls, standards);
   }
 

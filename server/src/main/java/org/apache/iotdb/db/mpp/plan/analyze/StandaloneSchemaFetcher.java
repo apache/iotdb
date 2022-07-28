@@ -20,13 +20,13 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -43,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
@@ -81,11 +82,6 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     }
     schemaTree.setStorageGroups(new ArrayList<>(storageGroupSet));
     return schemaTree;
-  }
-
-  @Override
-  public SchemaTree fetchSchema(PathPatternTree patternTree, SchemaPartition schemaPartition) {
-    return fetchSchema(patternTree);
   }
 
   @Override
@@ -163,6 +159,21 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       schemaTree.mergeSchemaTree(missingSchemaTree);
     }
     return schemaTree;
+  }
+
+  @Override
+  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
+    return null;
+  }
+
+  @Override
+  public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
+    return null;
+  }
+
+  @Override
+  public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
+    return null;
   }
 
   @Override

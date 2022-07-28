@@ -20,16 +20,19 @@
 package org.apache.iotdb.confignode.procedure.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.SyncConfigNodeClientPool;
-import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
+import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -48,11 +51,16 @@ public class ConfigNodeProcedureEnv {
 
   private static final Logger LOG = LoggerFactory.getLogger(ConfigNodeProcedureEnv.class);
 
-  private final ReentrantLock addConfigNodeLock = new ReentrantLock();
+  /** add or remove node lock */
+  private final LockQueue nodeLock = new LockQueue();
+
+  private final ReentrantLock schedulerLock = new ReentrantLock();
 
   private final ConfigManager configManager;
 
   private final ProcedureScheduler scheduler;
+
+  private final DataNodeRemoveHandler dataNodeRemoveHandler;
 
   private static boolean skipForTest = false;
 
@@ -69,6 +77,7 @@ public class ConfigNodeProcedureEnv {
   public ConfigNodeProcedureEnv(ConfigManager configManager, ProcedureScheduler scheduler) {
     this.configManager = configManager;
     this.scheduler = scheduler;
+    this.dataNodeRemoveHandler = new DataNodeRemoveHandler(configManager);
   }
 
   public ConfigManager getConfigManager() {
@@ -108,23 +117,24 @@ public class ConfigNodeProcedureEnv {
     if (skipForTest) {
       return invalidCacheResult;
     }
-    List<TDataNodeInfo> allDataNodes = configManager.getNodeManager().getRegisteredDataNodes(-1);
+    List<TDataNodeConfiguration> allDataNodes =
+        configManager.getNodeManager().getRegisteredDataNodes(-1);
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(storageGroupName);
-    for (TDataNodeInfo dataNodeInfo : allDataNodes) {
+    for (TDataNodeConfiguration dataNodeConfiguration : allDataNodes) {
       final TSStatus invalidateSchemaStatus =
           SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNode(
-                  dataNodeInfo.getLocation().getInternalEndPoint(),
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeConfiguration.getLocation().getInternalEndPoint(),
                   invalidateCacheReq,
-                  DataNodeRequestType.invalidateSchemaCache);
+                  DataNodeRequestType.INVALIDATE_SCHEMA_CACHE);
       final TSStatus invalidatePartitionStatus =
           SyncDataNodeClientPool.getInstance()
-              .sendSyncRequestToDataNode(
-                  dataNodeInfo.getLocation().getInternalEndPoint(),
+              .sendSyncRequestToDataNodeWithRetry(
+                  dataNodeConfiguration.getLocation().getInternalEndPoint(),
                   invalidateCacheReq,
-                  DataNodeRequestType.invalidatePartitionCache);
+                  DataNodeRequestType.INVALIDATE_PARTITION_CACHE);
       if (!verifySucceed(invalidatePartitionStatus, invalidateSchemaStatus)) {
         LOG.error(
             "Invalidate cache failed, invalidate partition cache status is {}， invalidate schema cache status is {}",
@@ -146,15 +156,15 @@ public class ConfigNodeProcedureEnv {
    *
    * @param tConfigNodeLocation New ConfigNode's location
    */
-  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation) throws Exception {
+  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation) {
     List<TConfigNodeLocation> configNodeLocations =
         new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
     configNodeLocations.add(tConfigNodeLocation);
     SyncConfigNodeClientPool.getInstance()
-        .sendSyncRequestToConfigNode(
+        .sendSyncRequestToConfigNodeWithRetry(
             tConfigNodeLocation.getInternalEndPoint(),
             configNodeLocations,
-            ConfigNodeRequestType.addConsensusGroup);
+            ConfigNodeRequestType.ADD_CONSENSUS_GROUP);
   }
 
   /**
@@ -165,6 +175,59 @@ public class ConfigNodeProcedureEnv {
    */
   public void addConfigNodePeer(TConfigNodeLocation configNodeLocation) throws AddPeerException {
     configManager.getConsensusManager().addConfigNodePeer(configNodeLocation);
+  }
+
+  /**
+   * Remove peer in Leader node
+   *
+   * @param tConfigNodeLocation node is removed
+   * @throws ProcedureException if failed status
+   */
+  public void removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation)
+      throws ProcedureException {
+    TSStatus tsStatus = configManager.getNodeManager().removeConfigNodePeer(tConfigNodeLocation);
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ProcedureException(tsStatus.getMessage());
+    }
+  }
+
+  /**
+   * Remove Consensus Group in removed node
+   *
+   * @param tConfigNodeLocation config node location
+   * @throws ProcedureException if failed status
+   */
+  public void removeConsensusGroup(TConfigNodeLocation tConfigNodeLocation)
+      throws ProcedureException {
+    TSStatus tsStatus =
+        (TSStatus)
+            SyncConfigNodeClientPool.getInstance()
+                .sendSyncRequestToConfigNodeWithRetry(
+                    tConfigNodeLocation.getInternalEndPoint(),
+                    tConfigNodeLocation,
+                    ConfigNodeRequestType.REMOVE_CONSENSUS_GROUP);
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ProcedureException(tsStatus.getMessage());
+    }
+  }
+
+  /**
+   * Stop Config Node
+   *
+   * @param tConfigNodeLocation config node location
+   * @throws ProcedureException if failed status
+   */
+  public void stopConfigNode(TConfigNodeLocation tConfigNodeLocation) throws ProcedureException {
+    TSStatus tsStatus =
+        (TSStatus)
+            SyncConfigNodeClientPool.getInstance()
+                .sendSyncRequestToConfigNodeWithRetry(
+                    tConfigNodeLocation.getInternalEndPoint(),
+                    tConfigNodeLocation,
+                    ConfigNodeRequestType.STOP_CONFIG_NODE);
+    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new ProcedureException(tsStatus.getMessage());
+    }
   }
 
   /**
@@ -183,17 +246,37 @@ public class ConfigNodeProcedureEnv {
    */
   public void notifyRegisterSuccess(TConfigNodeLocation configNodeLocation) {
     SyncConfigNodeClientPool.getInstance()
-        .sendSyncRequestToConfigNode(
+        .sendSyncRequestToConfigNodeWithRetry(
             configNodeLocation.getInternalEndPoint(),
             null,
-            ConfigNodeRequestType.notifyRegisterSuccess);
+            ConfigNodeRequestType.NOTIFY_REGISTER_SUCCESS);
   }
 
-  public ReentrantLock getAddConfigNodeLock() {
-    return addConfigNodeLock;
+  /** notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced */
+  public void broadCastTheLatestConfigNodeGroup() {
+    AsyncDataNodeClientPool.getInstance()
+        .broadCastTheLatestConfigNodeGroup(
+            configManager.getNodeManager().getRegisteredDataNodeLocations(-1),
+            configManager.getNodeManager().getRegisteredConfigNodes());
+  }
+
+  public LockQueue getNodeLock() {
+    return nodeLock;
   }
 
   public ProcedureScheduler getScheduler() {
     return scheduler;
+  }
+
+  public LockQueue getRegionMigrateLock() {
+    return dataNodeRemoveHandler.getRegionMigrateLock();
+  }
+
+  public ReentrantLock getSchedulerLock() {
+    return schedulerLock;
+  }
+
+  public DataNodeRemoveHandler getDataNodeRemoveHandler() {
+    return dataNodeRemoveHandler;
   }
 }

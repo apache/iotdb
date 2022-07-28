@@ -325,7 +325,7 @@ Attention: Unsetting the template named 'templateName' from node at path 'prefix
 
 ### Data Manipulation Interface (DML Interface)
 
-##### Insert
+#### Insert
 
 It is recommended to use insertTablet to help improve write efficiency.
 
@@ -363,6 +363,17 @@ void insertTablets(Map<String, Tablet> tablet)
 ```
 
 * Insert a Record, which contains multiple measurement value of a device at a timestamp. This method is equivalent to providing a common interface for multiple data types of values. Later, the value can be cast to the original type through TSDataType.
+
+  The correspondence between the Object type and the TSDataType type is shown in the following table.
+
+  | TSDataType | Object         |
+  | ---------- | -------------- |
+  | BOOLEAN    | Boolean        |
+  | INT32      | Integer        |
+  | INT64      | Long           |
+  | FLOAT      | Float          |
+  | DOUBLE     | Double         |
+  | TEXT       | String, Binary |
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,

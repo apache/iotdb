@@ -43,7 +43,7 @@ ddlStatement
     | dropFunction | dropTrigger | dropContinuousQuery | dropSchemaTemplate
     | setTTL | unsetTTL | startTrigger | stopTrigger | setSchemaTemplate | unsetSchemaTemplate
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
-    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showRegion | showDataNodes
+    | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL | showCluster | showRegion | showDataNodes | showConfigNodes
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -261,11 +261,7 @@ showDevices
 
 // Show Timeseries
 showTimeseries
-    : SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
-    ;
-
-showWhereClause
-    : WHERE (attributePair | containsExpression)
+    : SHOW LATEST? TIMESERIES prefixPath? tagWhereClause? limitClause?
     ;
 
 // Show Child Paths
@@ -315,7 +311,12 @@ showRegion
 
 // Show Data Nodes
 showDataNodes
-    : SHOW  DATANODES
+    : SHOW DATANODES
+    ;
+
+// Show Config Nodes
+showConfigNodes
+    : SHOW CONFIGNODES
     ;
 
 // Show Schema Template
@@ -350,12 +351,16 @@ countDevices
 
 // Count Timeseries
 countTimeseries
-    : COUNT TIMESERIES prefixPath? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
+    : COUNT TIMESERIES prefixPath? tagWhereClause? (GROUP BY LEVEL operator_eq INTEGER_LITERAL)?
     ;
 
 // Count Nodes
 countNodes
     : COUNT NODES prefixPath LEVEL operator_eq INTEGER_LITERAL
+    ;
+
+tagWhereClause
+    : WHERE (attributePair | containsExpression)
     ;
 
 
@@ -379,11 +384,11 @@ intoPath
 
 specialClause
     : specialLimit #specialLimitStatement
-    | orderByTimeClause specialLimit? #orderByTimeStatement
-    | groupByTimeClause orderByTimeClause? specialLimit? #groupByTimeStatement
-    | groupByFillClause orderByTimeClause? specialLimit? #groupByFillStatement
-    | groupByLevelClause orderByTimeClause? specialLimit? #groupByLevelStatement
-    | fillClause orderByTimeClause? specialLimit? #fillStatement
+    | orderByClause specialLimit? #orderByTimeStatement
+    | groupByTimeClause orderByClause? specialLimit? #groupByTimeStatement
+    | groupByFillClause orderByClause? specialLimit? #groupByFillStatement
+    | groupByLevelClause orderByClause? specialLimit? #groupByLevelStatement
+    | fillClause orderByClause? specialLimit? #fillStatement
     ;
 
 specialLimit
@@ -407,8 +412,18 @@ disableAlign
     : DISABLE ALIGN
     ;
 
-orderByTimeClause
-    : ORDER BY TIME (DESC | ASC)?
+orderByClause
+    : ORDER BY orderByAttributeClause (COMMA orderByAttributeClause)*
+    ;
+
+orderByAttributeClause
+    : sortKey (DESC | ASC)
+    ;
+
+sortKey
+    : TIME
+    | TIMESERIES
+    | DEVICE
     ;
 
 groupByTimeClause

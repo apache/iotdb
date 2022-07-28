@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -31,6 +32,7 @@ import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -48,6 +51,8 @@ public class SchemaFetchScanOperator implements SourceOperator {
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
   private final PathPatternTree patternTree;
+  private final Map<Integer, Template> templateMap;
+
   private final ISchemaRegion schemaRegion;
 
   private TsBlock tsBlock;
@@ -57,11 +62,13 @@ public class SchemaFetchScanOperator implements SourceOperator {
       PlanNodeId planNodeId,
       OperatorContext context,
       PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
       ISchemaRegion schemaRegion) {
     this.sourceId = planNodeId;
     this.operatorContext = context;
     this.patternTree = patternTree;
     this.schemaRegion = schemaRegion;
+    this.templateMap = templateMap;
   }
 
   @Override
@@ -103,11 +110,14 @@ public class SchemaFetchScanOperator implements SourceOperator {
     SchemaTree schemaTree = new SchemaTree();
     List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
     for (PartialPath path : partialPathList) {
-      schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
+      schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(path, templateMap));
     }
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try {
+      // to indicate this binary data is storage group info
+      ReadWriteIOUtils.write((byte) 1, outputStream);
+
       schemaTree.serialize(outputStream);
     } catch (IOException e) {
       // Totally memory operation. This case won't happen.

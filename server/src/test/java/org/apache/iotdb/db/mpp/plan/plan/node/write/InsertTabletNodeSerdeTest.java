@@ -76,7 +76,7 @@ public class InsertTabletNodeSerdeTest {
 
     Assert.assertEquals(PlanNodeType.INSERT_TABLET.ordinal(), dataInputStream.readShort());
 
-    InsertTabletNode tmpNode = InsertTabletNode.deserialize(dataInputStream);
+    InsertTabletNode tmpNode = InsertTabletNode.deserializeFromWAL(dataInputStream);
     tmpNode.setPlanNodeId(insertTabletNode.getPlanNodeId());
 
     Assert.assertEquals(insertTabletNode, tmpNode);

@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.tsfile.read.common.block;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilderStatus;
 
 public class TsBlockBuilderStatus {
 
-  public static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES = 1024 * 1024;
+  public static final int DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES =
+      TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes();
 
   private final int maxTsBlockSizeInBytes;
 

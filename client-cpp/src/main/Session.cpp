@@ -906,11 +906,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
                                        vector<vector<char *>> &valuesList,
                                        bool sorted) {
 
-    if (sorted) {
-        if (!checkSorted(times)) {
-            throw BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
             index[i] = i;
@@ -962,11 +958,7 @@ void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
                                               vector<vector<char *>> &valuesList,
                                               bool sorted) {
 
-    if (sorted) {
-        if (!checkSorted(times)) {
-            throw BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
             index[i] = i;
@@ -1015,11 +1007,7 @@ void Session::insertTablet(Tablet &tablet) {
 }
 
 void Session::insertTablet(Tablet &tablet, bool sorted) {
-    if (sorted) {
-        if (!checkSorted(tablet)) {
-            throw BatchExecutionException("Times in Tablet are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(tablet)) {
         sortTablet(tablet);
     }
 
@@ -1085,11 +1073,7 @@ void Session::insertTablets(unordered_map<string, Tablet *> &tablets, bool sorte
         if (isFirstTabletAligned != item.second->isAligned) {
             throw BatchExecutionException("The tablets should be all aligned or non-aligned!");
         }
-        if (sorted) {
-            if (!checkSorted(*(item.second))) {
-                throw BatchExecutionException("Times in Tablet are not in ascending order");
-            }
-        } else {
+        if (!checkSorted(*(item.second))) {
             sortTablet(*(item.second));
         }
         request.prefixPaths.push_back(item.second->deviceId);

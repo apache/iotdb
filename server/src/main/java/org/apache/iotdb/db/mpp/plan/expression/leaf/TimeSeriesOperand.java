@@ -28,6 +28,9 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
@@ -36,6 +39,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -168,6 +172,32 @@ public class TimeSeriesOperand extends LeafOperand {
     }
 
     return expressionIntermediateLayerMap.get(this);
+  }
+
+  @Override
+  public ColumnTransformer constructColumnTransformer(
+      UDTFContext udtfContext,
+      TypeProvider typeProvider,
+      List<LeafColumnTransformer> leafList,
+      Map<String, List<InputLocation>> inputLocations,
+      Map<Expression, ColumnTransformer> cache,
+      Map<Expression, ColumnTransformer> hasSeen,
+      List<ColumnTransformer> commonTransformerList,
+      List<TSDataType> inputDataTypes,
+      int originSize) {
+    ColumnTransformer res =
+        cache.computeIfAbsent(
+            this,
+            e -> {
+              IdentityColumnTransformer identity =
+                  new IdentityColumnTransformer(
+                      TypeFactory.getType(typeProvider.getType(getExpressionString())),
+                      inputLocations.get(getExpressionString()).get(0).getValueColumnIndex());
+              leafList.add(identity);
+              return identity;
+            });
+    res.addReferenceCount();
+    return res;
   }
 
   @Override

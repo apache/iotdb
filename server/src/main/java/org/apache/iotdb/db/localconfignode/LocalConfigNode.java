@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -536,8 +537,8 @@ public class LocalConfigNode {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath pathPattern)
-      throws MetadataException {
+  public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
+      PartialPath pathPattern) throws MetadataException {
     return storageGroupSchemaManager.getChildNodePathInNextLevel(pathPattern);
   }
 
@@ -1198,7 +1199,7 @@ public class LocalConfigNode {
     List<String> rolePrivilegesList = new ArrayList<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
       if (authorStatement.getNodeName().getFullPath().equals("")
-          || AuthUtils.pathBelongsTo(
+          || AuthUtils.pathOrBelongsTo(
               authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
         rolePrivilegesList.add(pathPrivilege.toString());
       }
@@ -1230,7 +1231,7 @@ public class LocalConfigNode {
       List<String> rolePrivileges = new ArrayList<>();
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
         if (authorStatement.getNodeName().getFullPath().equals("")
-            || AuthUtils.pathBelongsTo(
+            || AuthUtils.pathOrBelongsTo(
                 authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
           rolePrivileges.add("");
           userPrivilegesList.add(pathPrivilege.toString());
@@ -1243,7 +1244,7 @@ public class LocalConfigNode {
         }
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
           if (authorStatement.getNodeName().getFullPath().equals("")
-              || AuthUtils.pathBelongsTo(
+              || AuthUtils.pathOrBelongsTo(
                   authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
             rolePrivileges.add(roleN);
             userPrivilegesList.add(pathPrivilege.toString());

@@ -48,8 +48,10 @@ public class HeaderConstant {
   public static final String COLUMN_DATA_REPLICATION_FACTOR = "data_replication_factor";
   public static final String COLUMN_TIME_PARTITION_INTERVAL = "time_partition_interval";
   public static final String COLUMN_CHILDPATHS = "child paths";
+  public static final String COLUMN_NODETYPES = "node types";
   public static final String COLUMN_CHILDNODES = "child nodes";
   public static final String COLUMN_VERSION = "version";
+  public static final String COLUMN_PATHS = "paths";
 
   // column names for count statement
   public static final String COLUMN_COLUMN = "column";
@@ -122,6 +124,15 @@ public class HeaderConstant {
   // dataset header for show schma template
   public static final DatasetHeader showSchemaTemplate;
 
+  // dataset header for show path set template
+  public static final DatasetHeader showPathSetTemplate;
+
+  // dataset header for show paths using template
+  public static final DatasetHeader showPathsUsingTemplate;
+
+  // dataset header for show confignodes
+  public static final DatasetHeader showConfigNodesHeader;
+
   static {
     countStorageGroupHeader =
         new DatasetHeader(
@@ -191,7 +202,10 @@ public class HeaderConstant {
             true);
     showChildPathsHeader =
         new DatasetHeader(
-            Collections.singletonList(new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT)), true);
+            Arrays.asList(
+                new ColumnHeader(COLUMN_CHILDPATHS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_NODETYPES, TSDataType.TEXT)),
+            true);
     showChildNodesHeader =
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader(COLUMN_CHILDNODES, TSDataType.TEXT)), true);
@@ -262,9 +276,21 @@ public class HeaderConstant {
   }
 
   static {
+    showConfigNodesHeader =
+        new DatasetHeader(
+            Arrays.asList(
+                new ColumnHeader(COLUMN_NODE_ID, TSDataType.INT32),
+                new ColumnHeader(COLUMN_STATUS, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
+            true);
+  }
+
+  static {
     showSchemaTemplate =
         new DatasetHeader(
-            Arrays.asList(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT)), true);
+            Collections.singletonList(new ColumnHeader(COLUMN_TEMPLATE_NAME, TSDataType.TEXT)),
+            true);
     showNodesInSchemaTemplate =
         new DatasetHeader(
             Arrays.asList(
@@ -273,5 +299,11 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_TIMESERIES_ENCODING, TSDataType.TEXT),
                 new ColumnHeader(COLUMN_TIMESERIES_COMPRESSION, TSDataType.TEXT)),
             true);
+    showPathSetTemplate =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT)), true);
+    showPathsUsingTemplate =
+        new DatasetHeader(
+            Collections.singletonList(new ColumnHeader(COLUMN_PATHS, TSDataType.TEXT)), true);
   }
 }

@@ -49,6 +49,8 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.memory.LayerMemoryAssigner;
@@ -86,6 +88,10 @@ public abstract class Expression {
   }
 
   public boolean isTimeSeriesGeneratingFunctionExpression() {
+    return false;
+  }
+
+  public boolean isCompareBinaryExpression() {
     return false;
   }
 
@@ -167,6 +173,19 @@ public abstract class Expression {
       TypeProvider typeProvider,
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException;
+
+  public abstract boolean isMappable(TypeProvider typeProvider);
+
+  public abstract ColumnTransformer constructColumnTransformer(
+      UDTFContext udtfContext,
+      TypeProvider typeProvider,
+      List<LeafColumnTransformer> leafList,
+      Map<String, List<InputLocation>> inputLocations,
+      Map<Expression, ColumnTransformer> cache,
+      Map<Expression, ColumnTransformer> hasSeen,
+      List<ColumnTransformer> commonTransformerList,
+      List<TSDataType> inputDataTypes,
+      int originSize);
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // isConstantOperand

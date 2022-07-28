@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.executor.SeriesPartitionExecutor;
-import org.apache.iotdb.confignode.client.SyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataPartitionPlan;
@@ -42,6 +42,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
 import org.apache.iotdb.confignode.consensus.response.DataPartitionResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaNodeManagementResp;
 import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
@@ -61,6 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -72,23 +74,22 @@ public class PartitionManager {
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
-  private static final int REGION_CLEANER_WORK_INTERVAL = 300;
-  private static final int REGION_CLEANER_WORK_INITIAL_DELAY = 10;
 
   private SeriesPartitionExecutor executor;
+
+  /** Region cleaner */
+  // Monitor for leadership change
+  private final Object scheduleMonitor = new Object();
+  // Try to delete Regions in every 10s
+  private static final int REGION_CLEANER_WORK_INTERVAL = 10;
   private final ScheduledExecutorService regionCleaner;
+  private Future<?> currentRegionCleanerFuture;
 
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
     this.regionCleaner =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Cleaner");
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-        regionCleaner,
-        this::clearDeletedRegions,
-        REGION_CLEANER_WORK_INITIAL_DELAY,
-        REGION_CLEANER_WORK_INTERVAL,
-        TimeUnit.SECONDS);
     setSeriesPartitionExecutor();
   }
 
@@ -396,6 +397,44 @@ public class PartitionManager {
     getConsensusManager().write(preDeleteStorageGroupPlan);
   }
 
+  public void addMetrics() {
+    partitionInfo.addMetrics();
+  }
+
+  /**
+   * Get TSeriesPartitionSlot
+   *
+   * @param devicePath Full path ending with device name
+   * @return SeriesPartitionSlot
+   */
+  public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
+    return executor.getSeriesPartitionSlot(devicePath);
+  }
+
+  public DataSet getRegionInfoList(GetRegionInfoListPlan req) {
+    return getConsensusManager().read(req).getDataset();
+  }
+
+  /**
+   * update region location
+   *
+   * @param req UpdateRegionLocationReq
+   * @return TSStatus
+   */
+  public TSStatus updateRegionLocation(UpdateRegionLocationPlan req) {
+    return getConsensusManager().write(req).getStatus();
+  }
+
+  /**
+   * get storage group for region
+   *
+   * @param regionId regionId
+   * @return storage group name
+   */
+  public String getRegionStorageGroup(TConsensusGroupId regionId) {
+    return partitionInfo.getRegionStorageGroup(regionId);
+  }
+
   /**
    * Called by {@link PartitionManager#regionCleaner} Delete regions of logical deleted storage
    * groups periodically.
@@ -414,22 +453,31 @@ public class PartitionManager {
     }
   }
 
-  public void addMetrics() {
-    partitionInfo.addMetrics();
+  public void startRegionCleaner() {
+    synchronized (scheduleMonitor) {
+      if (currentRegionCleanerFuture == null) {
+        /* Start the RegionCleaner service */
+        currentRegionCleanerFuture =
+            ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+                regionCleaner,
+                this::clearDeletedRegions,
+                0,
+                REGION_CLEANER_WORK_INTERVAL,
+                TimeUnit.SECONDS);
+        LOGGER.info("RegionCleaner is started successfully.");
+      }
+    }
   }
 
-  /**
-   * Get TSeriesPartitionSlot
-   *
-   * @param devicePath Full path ending with device name
-   * @return SeriesPartitionSlot
-   */
-  public TSeriesPartitionSlot getSeriesPartitionSlot(String devicePath) {
-    return executor.getSeriesPartitionSlot(devicePath);
-  }
-
-  public DataSet getRegionInfoList(GetRegionInfoListPlan req) {
-    return getConsensusManager().read(req).getDataset();
+  public void stopRegionCleaner() {
+    synchronized (scheduleMonitor) {
+      if (currentRegionCleanerFuture != null) {
+        /* Stop the RegionCleaner service */
+        currentRegionCleanerFuture.cancel(false);
+        currentRegionCleanerFuture = null;
+        LOGGER.info("RegionCleaner is stopped successfully.");
+      }
+    }
   }
 
   public ScheduledExecutorService getRegionCleaner() {

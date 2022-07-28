@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
@@ -44,6 +45,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -71,7 +73,7 @@ public class SchemaFetchScanOperatorTest {
     patternTree.constructTree();
 
     SchemaFetchScanOperator schemaFetchScanOperator =
-        new SchemaFetchScanOperator(null, null, patternTree, schemaRegion);
+        new SchemaFetchScanOperator(null, null, patternTree, Collections.emptyMap(), schemaRegion);
 
     Assert.assertTrue(schemaFetchScanOperator.hasNext());
 
@@ -80,7 +82,9 @@ public class SchemaFetchScanOperatorTest {
     Assert.assertFalse(schemaFetchScanOperator.hasNext());
 
     Binary binary = tsBlock.getColumn(0).getBinary(0);
-    SchemaTree schemaTree = SchemaTree.deserialize(new ByteArrayInputStream(binary.getValues()));
+    InputStream inputStream = new ByteArrayInputStream(binary.getValues());
+    Assert.assertEquals(1, ReadWriteIOUtils.readByte(inputStream));
+    SchemaTree schemaTree = SchemaTree.deserialize(inputStream);
 
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(

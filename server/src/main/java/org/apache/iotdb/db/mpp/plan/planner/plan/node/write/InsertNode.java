@@ -203,6 +203,13 @@ public abstract class InsertNode extends WritePlanNode {
       measurements[i] = measurementSchemas[i].getMeasurementId();
     }
   }
+
+  protected void deserializeMeasurementSchemas(ByteBuffer buffer) {
+    for (int i = 0; i < measurementSchemas.length; i++) {
+      measurementSchemas[i] = MeasurementSchema.deserializeFrom(buffer);
+      measurements[i] = measurementSchemas[i].getMeasurementId();
+    }
+  }
   // endregion
 
   public TRegionReplicaSet getRegionReplicaSet() {
@@ -249,6 +256,15 @@ public abstract class InsertNode extends WritePlanNode {
    */
   public void markFailedMeasurement(int index, Exception cause) {
     throw new UnsupportedOperationException();
+  }
+
+  public boolean hasValidMeasurements() {
+    for (Object o : measurements) {
+      if (o != null) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public boolean hasFailedMeasurements() {

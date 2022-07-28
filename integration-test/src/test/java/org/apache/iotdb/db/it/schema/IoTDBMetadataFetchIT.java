@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -278,7 +279,7 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] sqls = new String[] {"show child paths root.ln"};
-      String[] standards = new String[] {"root.ln.wf01,\n"};
+      String[] standards = new String[] {"root.ln.wf01,SG INTERNAL,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -333,6 +334,45 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls = new String[] {"COUNT TIMESERIES root.ln.**", "COUNT TIMESERIES"};
       String[] standards = new String[] {"4,\n", "8,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          while (resultSet.next()) {
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            builder.append("\n");
+          }
+          Assert.assertEquals(standard, builder.toString());
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
+  @Ignore(
+      value =
+          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
+  public void showCountTimeSeriesWithTag() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.sg.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
+      statement.execute(
+          "create timeseries root.sg1.d.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
+      String[] sqls =
+          new String[] {
+            "COUNT TIMESERIES root.sg.** where tag1 = v1",
+            "COUNT TIMESERIES where tag1 = v1",
+            "COUNT TIMESERIES where tag3 = v3"
+          };
+      String[] standards = new String[] {"1,\n", "2,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -438,6 +478,70 @@ public class IoTDBMetadataFetchIT {
                     "root.ln1.wf01.wt01,2,",
                     "root.ln2.wf01.wt01,2,")),
             new HashSet<>(Arrays.asList("root.ln.wf01,1,", "root.ln1.wf01,1,", "root.ln2.wf01,1,")),
+          };
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        Set<String> standard = standards[n];
+        try (ResultSet resultSet = statement.executeQuery(sql)) {
+          while (resultSet.next()) {
+            String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
+            Assert.assertTrue(standard.contains(string));
+            standard.remove(string);
+          }
+          assertEquals(0, standard.size());
+        } catch (SQLException e) {
+          e.printStackTrace();
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
+  @Ignore(
+      value =
+          "Old IoTDB service not support 'count timeseries by tag',Waiting for the old IoTDB to be removed.")
+  public void showCountTimeSeriesGroupByWithTag() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "create timeseries root.sg.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1', 'tag2'='v2')");
+      statement.execute(
+          "create timeseries root.sg1.d.status with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags('tag1'='v1')");
+      String[] sqls =
+          new String[] {
+            "COUNT TIMESERIES root.** where tag1 = v1 group by level=1",
+            "COUNT TIMESERIES root.** where tag2 = v2 group by level=3",
+            "COUNT TIMESERIES root.**.status where tag1 = v1 group by level=2",
+            "COUNT TIMESERIES root.** where tag3 = v3 group by level=2"
+          };
+      Set<String>[] standards =
+          new Set[] {
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln,0,", "root.ln1,0,", "root.ln2,0,", "root.sg,1,", "root.sg1,1,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,0,",
+                    "root.ln.wf01.wt02,0,",
+                    "root.ln1.wf01.wt01,0,",
+                    "root.ln2.wf01.wt01,0,",
+                    "root.sg.d.status,1,",
+                    "root.sg1.d.status,0,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01,0,",
+                    "root.ln1.wf01,0,",
+                    "root.ln2.wf01,0,",
+                    "root.sg.d,1,",
+                    "root.sg1.d,1,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01,0,",
+                    "root.ln1.wf01,0,",
+                    "root.ln2.wf01,0,",
+                    "root.sg.d,0,",
+                    "root.sg1.d,0,")),
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];

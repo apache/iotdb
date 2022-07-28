@@ -19,13 +19,9 @@
 
 package org.apache.iotdb.confignode.persistence.schema;
 
-import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaTemplatePlan;
-import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.io.IOUtils;
@@ -46,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TemplateTable {
@@ -55,78 +52,56 @@ public class TemplateTable {
   // StorageGroup read write lock
   private final ReentrantReadWriteLock templateReadWriteLock;
 
+  private final AtomicInteger templateIdGenerator;
   private final Map<String, Template> templateMap = new ConcurrentHashMap<>();
 
   private final String snapshotFileName = "template_info.bin";
 
-  public TemplateTable() throws IOException {
+  public TemplateTable() {
     templateReadWriteLock = new ReentrantReadWriteLock();
+    templateIdGenerator = new AtomicInteger(0);
   }
 
-  public TGetTemplateResp getMatchedTemplateByName(String name) {
-    TGetTemplateResp resp = new TGetTemplateResp();
+  public Template getTemplate(String name) throws MetadataException {
     try {
       templateReadWriteLock.readLock().lock();
       Template template = templateMap.get(name);
-      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-      resp.setTemplate(Template.template2ByteBuffer(template));
-    } catch (IOException e) {
-      LOGGER.warn("Error TemplateInfo name", e);
-      resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_NOT_EXIST.getStatusCode()));
+      if (template == null) {
+        throw new MetadataException(String.format("Template %s not exits", name));
+      }
+      return templateMap.get(name);
     } finally {
       templateReadWriteLock.readLock().unlock();
     }
-    return resp;
   }
 
-  public TGetAllTemplatesResp getAllTemplate() {
-    TGetAllTemplatesResp resp = new TGetAllTemplatesResp();
+  public List<Template> getAllTemplate() {
     try {
       templateReadWriteLock.readLock().lock();
-      List<ByteBuffer> templates = new ArrayList<>();
-      this.templateMap.values().stream()
-          .forEach(
-              item -> {
-                try {
-                  templates.add(Template.template2ByteBuffer(item));
-                } catch (IOException e) {
-                  resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
-                  throw new RuntimeException(e);
-                }
-              });
-      resp.setTemplateList(templates);
-      resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-    } catch (RuntimeException e) {
-      LOGGER.warn("Error TemplateInfo name", e);
-      resp.setStatus(new TSStatus(TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode()));
+      return new ArrayList<>(templateMap.values());
     } finally {
       templateReadWriteLock.readLock().unlock();
     }
-    return resp;
   }
 
-  public TSStatus createTemplate(CreateSchemaTemplatePlan createSchemaTemplatePlan) {
+  public void createTemplate(Template template) throws MetadataException {
     try {
-      templateReadWriteLock.readLock().lock();
-      Template template =
-          Template.byteBuffer2Template(ByteBuffer.wrap(createSchemaTemplatePlan.getTemplate()));
+      templateReadWriteLock.writeLock().lock();
       Template temp = this.templateMap.get(template.getName());
-      if (temp != null && template.getName().equalsIgnoreCase(temp.getName())) {
+      if (temp != null) {
         LOGGER.error(
             "Failed to create template, because template name {} is exists", template.getName());
-        return new TSStatus(TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode());
+        throw new MetadataException("Duplicated template name: " + temp.getName());
       }
+      template.setId(templateIdGenerator.getAndIncrement());
       this.templateMap.put(template.getName(), template);
-      return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    } catch (IOException | ClassNotFoundException e) {
-      LOGGER.warn("Error to create template", e);
-      return new TSStatus(TSStatusCode.CREATE_TEMPLATE_ERROR.getStatusCode());
     } finally {
-      templateReadWriteLock.readLock().unlock();
+      templateReadWriteLock.writeLock().unlock();
     }
   }
 
   private void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(templateIdGenerator.get(), outputStream);
     ReadWriteIOUtils.write(templateMap.size(), outputStream);
     for (Map.Entry<String, Template> entry : templateMap.entrySet()) {
       serializeTemplate(entry.getValue(), outputStream);
@@ -135,8 +110,7 @@ public class TemplateTable {
 
   private void serializeTemplate(Template template, OutputStream outputStream) {
     try {
-      ByteBuffer dataBuffer = template.serialize();
-      ReadWriteIOUtils.write(dataBuffer, outputStream);
+      template.serialize(outputStream);
     } catch (IOException e) {
       e.printStackTrace();
     }
@@ -144,6 +118,7 @@ public class TemplateTable {
 
   private void deserialize(InputStream inputStream) throws IOException {
     ByteBuffer byteBuffer = ByteBuffer.wrap(IOUtils.toByteArray(inputStream));
+    templateIdGenerator.set(ReadWriteIOUtils.readInt(byteBuffer));
     int size = ReadWriteIOUtils.readInt(byteBuffer);
     while (size > 0) {
       Template template = deserializeTemplate(byteBuffer);
@@ -154,9 +129,7 @@ public class TemplateTable {
 
   private Template deserializeTemplate(ByteBuffer byteBuffer) {
     Template template = new Template();
-    int length = ReadWriteIOUtils.readInt(byteBuffer);
-    byte[] data = ReadWriteIOUtils.readBytes(byteBuffer, length);
-    template.deserialize(ByteBuffer.wrap(data));
+    template.deserialize(byteBuffer);
     return template;
   }
 

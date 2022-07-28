@@ -27,35 +27,40 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
-import static org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator.initTimeRangeIterator;
+import static com.google.common.util.concurrent.Futures.successfulAsList;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 
 /**
  * AggregationOperator can process the situation: aggregation of intermediate aggregate result, it
- * will output one result based on time interval. One intermediate tsBlock input will only contain
- * the result of one time interval exactly.
+ * will output one tsBlock contain many results on aggregation time intervals. One intermediate
+ * tsBlock input will contain the result of many time intervals.
  */
 public class AggregationOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
-  private final List<Aggregator> aggregators;
-  private final List<Operator> children;
 
+  private final List<Operator> children;
   private final int inputOperatorsCount;
   private final TsBlock[] inputTsBlocks;
-  private final TsBlockBuilder tsBlockBuilder;
+  private final boolean[] canCallNext;
 
   private final ITimeRangeIterator timeRangeIterator;
   // current interval of aggregation window [curStartTime, curEndTime)
   private TimeRange curTimeRange;
+
+  private final List<Aggregator> aggregators;
+
+  // using for building result tsBlock
+  private final TsBlockBuilder resultTsBlockBuilder;
 
   public AggregationOperator(
       OperatorContext operatorContext,
@@ -65,18 +70,24 @@ public class AggregationOperator implements ProcessOperator {
       GroupByTimeParameter groupByTimeParameter,
       boolean outputPartialTimeWindow) {
     this.operatorContext = operatorContext;
-    this.aggregators = aggregators;
     this.children = children;
+    this.aggregators = aggregators;
 
     this.inputOperatorsCount = children.size();
     this.inputTsBlocks = new TsBlock[inputOperatorsCount];
+    this.canCallNext = new boolean[inputOperatorsCount];
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      canCallNext[i] = false;
+    }
+
+    this.timeRangeIterator =
+        initTimeRangeIterator(groupByTimeParameter, ascending, outputPartialTimeWindow);
+
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Aggregator aggregator : aggregators) {
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
-    tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.timeRangeIterator =
-        initTimeRangeIterator(groupByTimeParameter, ascending, outputPartialTimeWindow);
+    this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
   }
 
   @Override
@@ -86,46 +97,67 @@ public class AggregationOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
+    List<ListenableFuture<?>> listenableFutures = new ArrayList<>();
     for (int i = 0; i < inputOperatorsCount; i++) {
       ListenableFuture<?> blocked = children.get(i).isBlocked();
-      if (!blocked.isDone()) {
-        return blocked;
+      if (blocked.isDone()) {
+        canCallNext[i] = true;
+      } else {
+        if (isEmpty(i)) {
+          listenableFutures.add(blocked);
+          canCallNext[i] = true;
+        }
       }
     }
-    return NOT_BLOCKED;
-  }
-
-  @Override
-  public TsBlock next() {
-    // update input tsBlock
-    if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
-      curTimeRange = timeRangeIterator.nextTimeRange();
-    }
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      if (inputTsBlocks[i] != null) {
-        continue;
-      }
-      inputTsBlocks[i] = children.get(i).next();
-      if (inputTsBlocks[i] == null) {
-        return null;
-      }
-    }
-    // consume current input tsBlocks
-    for (Aggregator aggregator : aggregators) {
-      aggregator.reset();
-      aggregator.processTsBlocks(inputTsBlocks);
-    }
-    // output result from aggregator
-    curTimeRange = null;
-    for (int i = 0; i < inputOperatorsCount; i++) {
-      inputTsBlocks[i] = null;
-    }
-    return updateResultTsBlockFromAggregators(tsBlockBuilder, aggregators, timeRangeIterator);
+    return listenableFutures.isEmpty() ? NOT_BLOCKED : successfulAsList(listenableFutures);
   }
 
   @Override
   public boolean hasNext() {
     return curTimeRange != null || timeRangeIterator.hasNextTimeRange();
+  }
+
+  @Override
+  public TsBlock next() {
+    // start stopwatch
+    long maxRuntime = operatorContext.getMaxRunTime().roundTo(TimeUnit.NANOSECONDS);
+    long start = System.nanoTime();
+
+    // reset operator state
+    resultTsBlockBuilder.reset();
+
+    while (System.nanoTime() - start < maxRuntime
+        && (curTimeRange != null || timeRangeIterator.hasNextTimeRange())
+        && !resultTsBlockBuilder.isFull()) {
+      boolean hasCachedData = prepareInput();
+      if (!hasCachedData) {
+        break;
+      }
+
+      if (curTimeRange == null && timeRangeIterator.hasNextTimeRange()) {
+        // move to next time window
+        curTimeRange = timeRangeIterator.nextTimeRange();
+
+        // clear previous aggregation result
+        for (Aggregator aggregator : aggregators) {
+          aggregator.updateTimeRange(curTimeRange);
+        }
+      }
+
+      // calculate aggregation result on current time window
+      calculateNextAggregationResult();
+    }
+
+    if (resultTsBlockBuilder.getPositionCount() > 0) {
+      return resultTsBlockBuilder.build();
+    } else {
+      return null;
+    }
+  }
+
+  @Override
+  public boolean isFinished() {
+    return !this.hasNext();
   }
 
   @Override
@@ -135,30 +167,47 @@ public class AggregationOperator implements ProcessOperator {
     }
   }
 
-  @Override
-  public boolean isFinished() {
-    return !this.hasNext();
+  private boolean prepareInput() {
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (inputTsBlocks[i] != null) {
+        continue;
+      }
+      if (!canCallNext[i]) {
+        return false;
+      }
+
+      inputTsBlocks[i] = children.get(i).next();
+      canCallNext[i] = false;
+      if (inputTsBlocks[i] == null) {
+        return false;
+      }
+    }
+    return true;
   }
 
-  public static TsBlock updateResultTsBlockFromAggregators(
-      TsBlockBuilder tsBlockBuilder,
-      List<? extends Aggregator> aggregators,
-      ITimeRangeIterator timeRangeIterator) {
-    tsBlockBuilder.reset();
-    TimeColumnBuilder timeColumnBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    // Use start time of current time range as time column
-    timeColumnBuilder.writeLong(timeRangeIterator.currentOutputTime());
-    ColumnBuilder[] columnBuilders = tsBlockBuilder.getValueColumnBuilders();
-    int columnIndex = 0;
+  private void calculateNextAggregationResult() {
+    // consume current input tsBlocks
     for (Aggregator aggregator : aggregators) {
-      ColumnBuilder[] columnBuilder = new ColumnBuilder[aggregator.getOutputType().length];
-      columnBuilder[0] = columnBuilders[columnIndex++];
-      if (columnBuilder.length > 1) {
-        columnBuilder[1] = columnBuilders[columnIndex++];
-      }
-      aggregator.outputResult(columnBuilder);
+      aggregator.processTsBlocks(inputTsBlocks);
     }
-    tsBlockBuilder.declarePosition();
-    return tsBlockBuilder.build();
+
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      inputTsBlocks[i] = inputTsBlocks[i].skipFirst();
+      if (inputTsBlocks[i].isEmpty()) {
+        inputTsBlocks[i] = null;
+      }
+    }
+
+    // update result using aggregators
+    updateResultTsBlock();
+  }
+
+  private void updateResultTsBlock() {
+    curTimeRange = null;
+    appendAggregationResult(resultTsBlockBuilder, aggregators, timeRangeIterator);
+  }
+
+  private boolean isEmpty(int index) {
+    return inputTsBlocks[index] == null || inputTsBlocks[index].isEmpty();
   }
 }

@@ -231,4 +231,15 @@ public class StandaloneEnvConfig implements BaseConfig {
         .setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
     return this;
   }
+
+  @Override
+  public int getMaxTsBlockLineNumber() {
+    return TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber();
+  }
+
+  @Override
+  public BaseConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    TSFileDescriptor.getInstance().getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
+    return this;
+  }
 }

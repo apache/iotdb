@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
@@ -105,6 +107,8 @@ import java.util.Set;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_TEMPLATE;
+import static org.apache.iotdb.db.metadata.MetadataConstant.NON_TEMPLATE;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -154,6 +158,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   private String schemaRegionDirPath;
   private String storageGroupFullPath;
   private SchemaRegionId schemaRegionId;
+
+  private int templateId = NON_TEMPLATE;
 
   // the log file writer
   private boolean usingMLog = true;
@@ -213,6 +219,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     if (initialized) {
       return;
     }
+
+    templateId = NON_TEMPLATE;
 
     initDir();
 
@@ -355,6 +363,9 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   @Override
   public synchronized void clear() {
     try {
+
+      templateId = NON_TEMPLATE;
+
       if (this.mNodeCache != null) {
         this.mNodeCache.invalidateAll();
       }
@@ -414,6 +425,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       case UNSET_TEMPLATE:
         UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
         unsetSchemaTemplate(unsetTemplatePlan);
+        break;
+      case ACTIVATE_TEMPLATE_IN_CLUSTER:
+        ActivateTemplateInClusterPlan activateTemplateInClusterPlan =
+            (ActivateTemplateInClusterPlan) plan;
+        recoverActivatingSchemaTemplate(activateTemplateInClusterPlan);
         break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
@@ -860,11 +876,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     try {
       return mNodeCache.get(path);
     } catch (Exception e) {
-      if (e.getCause() instanceof MetadataException) {
-        if (!config.isAutoCreateSchemaEnabled()) {
-          throw new PathNotExistException(path.getFullPath());
-        }
-      } else {
+      if (!(e.getCause() instanceof MetadataException)) {
         throw e;
       }
     }
@@ -911,6 +923,17 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
   }
 
+  @Override
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
+      throws MetadataException {
+    return mtree.getAllTimeseriesCount(
+        pathPattern,
+        isPrefixMatch,
+        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
+        true);
+  }
+
   /**
    * To calculate the count of devices for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
@@ -945,6 +968,23 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
   }
 
+  @Override
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      String key,
+      String value,
+      boolean isContains)
+      throws MetadataException {
+    return mtree.getMeasurementCountGroupByLevel(
+        pathPattern,
+        level,
+        isPrefixMatch,
+        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
+        true);
+  }
+
   // endregion
 
   // region Interfaces for level Node info Query
@@ -968,7 +1008,8 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
+  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
     return mtree.getChildNodePathInNextLevel(pathPattern);
   }
 
@@ -1064,6 +1105,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
+  }
+
+  @Override
+  public List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
+    return mtree.fetchSchema(pathPattern, templateMap);
   }
 
   public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
@@ -1824,6 +1871,43 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
     }
     return mountedMNode;
   }
+
+  @Override
+  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+      throws MetadataException {
+    try {
+      if (plan.getPathSetTemplate().getFullPath().length() <= storageGroupFullPath.length()) {
+        templateId = plan.getTemplateId();
+      }
+
+      getDeviceNodeWithAutoCreate(plan.getActivatePath());
+
+      mtree.activateTemplate(plan.getActivatePath(), plan.getTemplateSetLevel(), template);
+      writeToMLog(plan);
+    } catch (IOException e) {
+      logger.error(e.getMessage(), e);
+      throw new MetadataException(e);
+    }
+  }
+
+  private void recoverActivatingSchemaTemplate(ActivateTemplateInClusterPlan plan) {
+    if (plan.getPathSetTemplate().getFullPath().length() <= storageGroupFullPath.length()) {
+      templateId = plan.getTemplateId();
+    }
+    mtree.activateTemplateWithoutCheck(
+        plan.getActivatePath(), plan.getTemplateSetLevel(), plan.getTemplateId(), plan.isAligned());
+  }
+
+  @Override
+  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+    if (this.templateId != NON_TEMPLATE
+        && templateId != ALL_TEMPLATE
+        && this.templateId != templateId) {
+      return Collections.emptyList();
+    }
+    return mtree.getPathsUsingTemplate(templateId);
+  }
+
   // endregion
 
   // region Interfaces for Trigger

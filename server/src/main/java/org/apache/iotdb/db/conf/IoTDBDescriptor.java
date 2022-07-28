@@ -412,9 +412,9 @@ public class IoTDBDescriptor {
       conf.setSubCompactionTaskNum(subtaskNum);
 
       conf.setQueryTimeoutThreshold(
-          Integer.parseInt(
+          Long.parseLong(
               properties.getProperty(
-                  "query_timeout_threshold", Integer.toString(conf.getQueryTimeoutThreshold()))));
+                  "query_timeout_threshold", Long.toString(conf.getQueryTimeoutThreshold()))));
 
       conf.setSessionTimeoutThreshold(
           Integer.parseInt(
@@ -1198,6 +1198,22 @@ public class IoTDBDescriptor {
                     "max_degree_of_index_node",
                     Integer.toString(
                         TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setMaxTsBlockSizeInBytes(
+            Integer.parseInt(
+                properties.getProperty(
+                    "max_tsblock_size_in_bytes",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockSizeInBytes()))));
+    TSFileDescriptor.getInstance()
+        .getConfig()
+        .setMaxTsBlockLineNumber(
+            Integer.parseInt(
+                properties.getProperty(
+                    "max_tsblock_line_number",
+                    Integer.toString(
+                        TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()))));
   }
 
   // Mqtt related
@@ -1723,6 +1739,12 @@ public class IoTDBDescriptor {
         Integer.parseInt(
             properties.getProperty(
                 "partition_cache_size", Integer.toString(conf.getPartitionCacheSize()))));
+
+    conf.setDriverTaskExecutionTimeSliceInMs(
+        Integer.parseInt(
+            properties.getProperty(
+                "driver_task_execution_time_slice_in_ms",
+                Integer.toString(conf.getDriverTaskExecutionTimeSliceInMs()))));
   }
 
   /** Get default encode algorithm by data type */

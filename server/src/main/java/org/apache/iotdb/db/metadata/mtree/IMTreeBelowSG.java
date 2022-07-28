@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mtree;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
@@ -136,7 +137,7 @@ public interface IMTreeBelowSG {
    *
    * @param pathPattern a path pattern or a full path, may contain wildcard
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return Pair.left contains all the satisfied paths Pair.right means the current offset or zero
+   * @return Pair.left contains all the satisfied path Pair.right means the current offset or zero
    *     if we don't set offset.
    */
   Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
@@ -163,7 +164,7 @@ public interface IMTreeBelowSG {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
+  Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException;
 
   /**
    * Get child node in the next level of the given path.
@@ -203,6 +204,15 @@ public interface IMTreeBelowSG {
   int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException;
 
   /**
+   * Get the count of timeseries matching the given path by tag.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   */
+  int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
+      throws MetadataException;
+
+  /**
    * Get the count of devices matching the given path. If using prefix match, the path pattern is
    * used to match prefix path. All timeseries start with the matched prefix path will be counted.
    *
@@ -228,6 +238,14 @@ public interface IMTreeBelowSG {
 
   Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
+
+  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      List<String> timeseries,
+      boolean hasTag)
+      throws MetadataException;
 
   /**
    * Get node by the path

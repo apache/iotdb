@@ -1044,7 +1044,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     try {
       return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), chunkType);
     } catch (Throwable t) {
-      logger.error("Exception happened while reading chunk header of {}", file, t);
+      logger.warn("Exception {} happened while reading chunk header of {}", t.getMessage(), file);
       throw t;
     }
   }
@@ -1059,7 +1059,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     try {
       return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize);
     } catch (Throwable t) {
-      logger.error("Exception happened while reading chunk header of {}", file, t);
+      logger.warn("Exception {} happened while reading chunk header of {}", t.getMessage(), file);
       throw t;
     }
   }
@@ -1075,7 +1075,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     try {
       return readData(position, dataSize);
     } catch (Throwable t) {
-      logger.error("Exception happened while reading chunk of {}", file, t);
+      logger.warn("Exception {} happened while reading chunk of {}", t.getMessage(), file);
       throw t;
     }
   }
@@ -1095,7 +1095,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               metaData.getOffsetOfChunkHeader() + header.getSerializedSize(), header.getDataSize());
       return new Chunk(header, buffer, metaData.getDeleteIntervalList(), metaData.getStatistics());
     } catch (Throwable t) {
-      logger.error("Exception happened while reading chunk of {}", file, t);
+      logger.warn("Exception {} happened while reading chunk of {}", t.getMessage(), file);
       throw t;
     }
   }
@@ -1126,7 +1126,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     try {
       return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, hasStatistic);
     } catch (Throwable t) {
-      logger.error("Exception happened while reading page header of {}", file, t);
+      logger.warn("Exception {} happened while reading page header of {}", t.getMessage(), file);
       throw t;
     }
   }
@@ -1244,7 +1244,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     try {
       return readData(start, (int) (end - start));
     } catch (Throwable t) {
-      logger.error("Exception happened while reading data of {}", file, t);
+      logger.warn("Exception {} happened while reading data of {}", t.getMessage(), file);
       throw t;
     }
   }

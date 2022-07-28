@@ -104,9 +104,15 @@ public class EnvironmentUtils {
 
     // deregister all user defined classes
     try {
-      UDFRegistrationService.getInstance().deregisterAll();
-      TriggerRegistrationService.getInstance().deregisterAll();
-      ContinuousQueryService.getInstance().deregisterAll();
+      if (UDFRegistrationService.getInstance() != null) {
+        UDFRegistrationService.getInstance().deregisterAll();
+      }
+      if (TriggerRegistrationService.getInstance() != null) {
+        TriggerRegistrationService.getInstance().deregisterAll();
+      }
+      if (ContinuousQueryService.getInstance() != null) {
+        ContinuousQueryService.getInstance().deregisterAll();
+      }
     } catch (UDFRegistrationException | TriggerManagementException | ContinuousQueryException e) {
       fail(e.getMessage());
     }

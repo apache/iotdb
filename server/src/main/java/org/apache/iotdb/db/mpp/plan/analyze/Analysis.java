@@ -20,17 +20,20 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FilterNullParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
@@ -124,9 +127,6 @@ public class Analysis {
   // a global time filter used in `initQueryDataSource` and filter push down
   private Filter globalTimeFilter;
 
-  // parameter of `WITHOUT NULL` clause
-  private FilterNullParameter filterNullParameter;
-
   // parameter of `FILL` clause
   private FillDescriptor fillDescriptor;
 
@@ -136,12 +136,20 @@ public class Analysis {
   // header of result dataset
   private DatasetHeader respDatasetHeader;
 
+  private OrderByParameter mergeOrderParameter;
+
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Schema Query Analysis
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
   // extra mesaage from config node, used for node management
-  private Set<String> matchedNodes;
+  private Set<TSchemaNode> matchedNodes;
+
+  // template and paths set template
+  private Pair<Template, List<PartialPath>> templateSetInfo;
+
+  // potential template used in timeseries query or fetch
+  private Map<Integer, Template> relatedTemplateInfo;
 
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
@@ -246,14 +254,6 @@ public class Analysis {
     }
     throw new IllegalArgumentException(
         String.format("GROUP BY LEVEL: Unknown input expression '%s'", expression));
-  }
-
-  public FilterNullParameter getFilterNullParameter() {
-    return filterNullParameter;
-  }
-
-  public void setFilterNullParameter(FilterNullParameter filterNullParameter) {
-    this.filterNullParameter = filterNullParameter;
   }
 
   public FillDescriptor getFillDescriptor() {
@@ -396,11 +396,35 @@ public class Analysis {
     this.deviceToIsRawDataSource = deviceToIsRawDataSource;
   }
 
-  public Set<String> getMatchedNodes() {
+  public Set<TSchemaNode> getMatchedNodes() {
     return matchedNodes;
   }
 
-  public void setMatchedNodes(Set<String> matchedNodes) {
+  public void setMatchedNodes(Set<TSchemaNode> matchedNodes) {
     this.matchedNodes = matchedNodes;
+  }
+
+  public OrderByParameter getMergeOrderParameter() {
+    return mergeOrderParameter;
+  }
+
+  public void setMergeOrderParameter(OrderByParameter mergeOrderParameter) {
+    this.mergeOrderParameter = mergeOrderParameter;
+  }
+
+  public Pair<Template, List<PartialPath>> getTemplateSetInfo() {
+    return templateSetInfo;
+  }
+
+  public void setTemplateSetInfo(Pair<Template, List<PartialPath>> templateSetInfo) {
+    this.templateSetInfo = templateSetInfo;
+  }
+
+  public Map<Integer, Template> getRelatedTemplateInfo() {
+    return relatedTemplateInfo;
+  }
+
+  public void setRelatedTemplateInfo(Map<Integer, Template> relatedTemplateInfo) {
+    this.relatedTemplateInfo = relatedTemplateInfo;
   }
 }

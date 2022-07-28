@@ -143,7 +143,9 @@ public class ConfigNodeConfig {
   private long heartbeatInterval = 1000;
 
   /** The routing policy of read/write requests */
-  private String routingPolicy = RouteBalancer.greedyPolicy;
+  private String routingPolicy = RouteBalancer.leaderPolicy;
+
+  private String readConsistencyLevel = "strong";
 
   public ConfigNodeConfig() {
     // empty constructor
@@ -441,5 +443,13 @@ public class ConfigNodeConfig {
 
   public void setRoutingPolicy(String routingPolicy) {
     this.routingPolicy = routingPolicy;
+  }
+
+  public String getReadConsistencyLevel() {
+    return readConsistencyLevel;
+  }
+
+  public void setReadConsistencyLevel(String readConsistencyLevel) {
+    this.readConsistencyLevel = readConsistencyLevel;
   }
 }
