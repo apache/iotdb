@@ -28,6 +28,7 @@ import org.apache.iotdb.db.protocol.influxdb.dto.IoTDBPoint;
 import org.apache.iotdb.db.protocol.influxdb.handler.AbstractQueryHandler;
 import org.apache.iotdb.db.protocol.influxdb.handler.QueryHandler;
 import org.apache.iotdb.db.protocol.influxdb.input.InfluxLineParser;
+import org.apache.iotdb.db.protocol.influxdb.meta.AbstractInfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.influxdb.operator.InfluxQueryOperator;
 import org.apache.iotdb.db.protocol.influxdb.sql.InfluxDBLogicalGenerator;
@@ -64,7 +65,7 @@ public class InfluxDBServiceImpl implements IInfluxDBServiceWithHandler {
 
   private final SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private final InfluxDBMetaManager metaManager;
+  private final AbstractInfluxDBMetaManager metaManager;
 
   private final AbstractQueryHandler queryHandler;
 
