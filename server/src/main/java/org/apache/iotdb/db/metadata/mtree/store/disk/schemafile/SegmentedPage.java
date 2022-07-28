@@ -185,6 +185,11 @@ public class SegmentedPage extends SchemaPage implements ISegmentedPage {
     ISegment<ByteBuffer, IMNode> newSeg = WrappedSegment.initAsSegment(allocSpareBufferSlice(size));
 
     if (newSeg == null) {
+      compactSegments();
+      newSeg = WrappedSegment.initAsSegment(allocSpareBufferSlice(size));
+    }
+
+    if (newSeg == null) {
       throw new SchemaPageOverflowException(pageIndex);
     }
 
