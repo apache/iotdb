@@ -422,11 +422,10 @@ public class IoTDBAlignByDeviceIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      // single device
 
       try (ResultSet resultSet =
           statement.executeQuery(
-              "select * from root.vehicle.d0 where s0 > 0 AND s1 < 200 align by device")) {
+              "select * from root.vehicle.* where s0 > 0 AND s1 < 200 align by device")) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
