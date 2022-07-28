@@ -139,12 +139,16 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   @Override
   public void notifyLeaderChanged(ConsensusGroupId groupId, TEndPoint newLeader) {
     if (currentNode.equals(newLeader)) {
-      LOGGER.info("Current node {} is Leader, start procedure manager.", newLeader);
+      LOGGER.info("Current node {} becomes Leader", newLeader);
       configManager.getProcedureManager().shiftExecutor(true);
       configManager.getLoadManager().start();
+      configManager.getPartitionManager().startRegionCleaner();
     } else {
+      LOGGER.info(
+          "Current node {} is not longer the leader, the new leader is {}", currentNode, newLeader);
       configManager.getProcedureManager().shiftExecutor(false);
       configManager.getLoadManager().stop();
+      configManager.getPartitionManager().stopRegionCleaner();
     }
   }
 
