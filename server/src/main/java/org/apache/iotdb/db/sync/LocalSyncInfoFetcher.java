@@ -41,7 +41,7 @@ import java.util.List;
 public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalSyncInfoFetcher.class);
-  private AbstractSyncInfo syncInfo = new LocalSyncInfo();
+  private AbstractSyncInfo syncInfo;
 
   private LocalSyncInfoFetcher() {
     syncInfo = new LocalSyncInfo();
@@ -152,5 +152,9 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
     return LocalSyncInfoFetcher.LocalSyncInfoFetcherHolder.INSTANCE;
   }
   // endregion
+
+  public void clear(){
+    syncInfo = null;
+  }
 
 }

@@ -330,7 +330,7 @@ public class SenderService implements IService {
         extPipePluginRegister.getAllPluginName().size(),
         extPipePluginRegister.getAllPluginName());
 
-    File senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SENDER_LOG_NAME);
+    File senderLog = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_LOG_NAME);
     if (senderLog.exists()) {
       try {
         recover();

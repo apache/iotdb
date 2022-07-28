@@ -38,8 +38,8 @@ public class SyncLogger {
 
   public void getBufferedWriter() throws IOException {
     if (pipeWriter == null || msgWriter == null) {
-      File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
-      File msgFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_MSG_LOG_NAME);
+      File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_LOG_NAME);
+      File msgFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_MSG_LOG_NAME);
       if (!logFile.getParentFile().exists()) {
         logFile.getParentFile().mkdirs();
       }

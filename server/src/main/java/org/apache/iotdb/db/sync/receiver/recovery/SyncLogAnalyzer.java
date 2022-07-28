@@ -62,13 +62,13 @@ public class SyncLogAnalyzer {
     this.pipeServerEnable = false;
     this.pipeSinks = new ConcurrentHashMap<>();
     this.pipes = new ArrayList<>();
-    File serviceLogFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_LOG_NAME);
+    File serviceLogFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_LOG_NAME);
     try (BufferedReader br = new BufferedReader(new FileReader(serviceLogFile))) {
       recoverPipe(br);
     } catch (IOException e) {
       logger.info("Receiver service log file not found");
     }
-    File msgLogFile = new File(SyncPathUtil.getSysDir(), SyncConstant.RECEIVER_MSG_LOG_NAME);
+    File msgLogFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_MSG_LOG_NAME);
     try (BufferedReader loadReader = new BufferedReader(new FileReader(msgLogFile))) {
       String line;
       int lineNum = 0;

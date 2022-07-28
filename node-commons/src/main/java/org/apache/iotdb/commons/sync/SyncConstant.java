@@ -34,6 +34,11 @@ public class SyncConstant {
   public static final String COMMIT_LOG_NAME = "commit.log";
   public static final Long DEFAULT_PIPE_LOG_SIZE_IN_BYTE = 10485760L;
 
+  // persistence
+
+  public static final String SYNC_LOG_NAME = "syncService.log";
+  public static final String SYNC_MSG_LOG_NAME = "syncMessage.log";
+
   /** sender */
 
   // dir structure
@@ -44,7 +49,6 @@ public class SyncConstant {
   public static final String MODS_OFFSET_FILE_SUFFIX = ".offset";
 
   // recover
-  public static final String SENDER_LOG_NAME = "senderService.log";
   public static final String PLAN_SERIALIZE_SPLIT_CHARACTER = ",";
   public static final String SENDER_LOG_SPLIT_CHARACTER = "#";
 
@@ -77,8 +81,6 @@ public class SyncConstant {
   /** receiver */
   public static final String RECEIVER_DIR_NAME = "receiver";
 
-  public static final String RECEIVER_LOG_NAME = "receiverService.log";
-  public static final String RECEIVER_MSG_LOG_NAME = "receiverMessage.log";
   public static final String IP_SEPARATOR = "\\.";
 
   // TODO: serialize AbstractReceiverInfo
