@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -112,17 +111,24 @@ public class TsFileRewriteExcutor {
     }
   }
 
-  private void rewriteAlgined(TsFileSequenceReader reader, TsFileIOWriter writer, String device, boolean isTargetDevice, String targetMeasurement) throws IOException {
+  private void rewriteAlgined(
+      TsFileSequenceReader reader,
+      TsFileIOWriter writer,
+      String device,
+      boolean isTargetDevice,
+      String targetMeasurement)
+      throws IOException {
     List<AlignedChunkMetadata> alignedChunkMetadatas = reader.getAlignedChunkMetadata(device);
-    if(alignedChunkMetadatas == null || alignedChunkMetadatas.isEmpty()) {
+    if (alignedChunkMetadatas == null || alignedChunkMetadatas.isEmpty()) {
       logger.warn("[alter timeseries] device({}) alignedChunkMetadatas is null", device);
       return;
     }
     // TODO To be optimized: Non-target modification measurements are directly written to data
-    List<IMeasurementSchema> schemaList = collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, isTargetDevice);
+    List<IMeasurementSchema> schemaList =
+        collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, isTargetDevice);
     AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemaList);
     TsFileAlignedSeriesReaderIterator readerIterator =
-            new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaList);
+        new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaList);
 
     while (readerIterator.hasNext()) {
       Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
@@ -142,13 +148,18 @@ public class TsFileRewriteExcutor {
     }
   }
 
-  private List<IMeasurementSchema> collectSchemaList(List<AlignedChunkMetadata> alignedChunkMetadatas, TsFileSequenceReader reader, String targetMeasurement, boolean isTargetDevice) throws IOException {
+  private List<IMeasurementSchema> collectSchemaList(
+      List<AlignedChunkMetadata> alignedChunkMetadatas,
+      TsFileSequenceReader reader,
+      String targetMeasurement,
+      boolean isTargetDevice)
+      throws IOException {
 
     Set<MeasurementSchema> schemaSet = new HashSet<>();
     Set<String> measurementSet = new HashSet<>();
     for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadatas) {
       List<IChunkMetadata> valueChunkMetadataList =
-              alignedChunkMetadata.getValueChunkMetadataList();
+          alignedChunkMetadata.getValueChunkMetadataList();
       for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
         if (chunkMetadata == null) {
           continue;
@@ -159,8 +170,11 @@ public class TsFileRewriteExcutor {
         measurementSet.add(chunkMetadata.getMeasurementUid());
         Chunk chunk = reader.readMemChunk((ChunkMetadata) chunkMetadata);
         ChunkHeader header = chunk.getHeader();
-        boolean findTarget = isTargetDevice && CommonUtils.equal(chunkMetadata.getMeasurementUid(), targetMeasurement);
-        MeasurementSchema measurementSchema = new MeasurementSchema(
+        boolean findTarget =
+            isTargetDevice
+                && CommonUtils.equal(chunkMetadata.getMeasurementUid(), targetMeasurement);
+        MeasurementSchema measurementSchema =
+            new MeasurementSchema(
                 header.getMeasurementID(),
                 header.getDataType(),
                 findTarget ? this.curEncoding : header.getEncodingType(),
@@ -175,7 +189,11 @@ public class TsFileRewriteExcutor {
   }
 
   private void rewriteNotAligned(
-      String device, TsFileSequenceReader reader, TsFileIOWriter writer, String targetMeasurement, boolean isTargetDevice)
+      String device,
+      TsFileSequenceReader reader,
+      TsFileIOWriter writer,
+      String targetMeasurement,
+      boolean isTargetDevice)
       throws IOException {
     Map<String, List<ChunkMetadata>> measurementMap = reader.readChunkMetadataInDevice(device);
     if (measurementMap == null) {
@@ -192,14 +210,13 @@ public class TsFileRewriteExcutor {
       boolean findTarget = isTargetDevice && CommonUtils.equal(measurementId, targetMeasurement);
       // target chunk writer
       ChunkWriterImpl chunkWriter =
-              new ChunkWriterImpl(
-                      new MeasurementSchema(
-                              measurementId,
-                              chunkMetadatas.get(0).getDataType(),
-                              curEncoding,
-                              curCompressionType));
-      for (ChunkMetadata chunkMetadata :
-              chunkMetadatas) {
+          new ChunkWriterImpl(
+              new MeasurementSchema(
+                  measurementId,
+                  chunkMetadatas.get(0).getDataType(),
+                  curEncoding,
+                  curCompressionType));
+      for (ChunkMetadata chunkMetadata : chunkMetadatas) {
         // old mem chunk
         Chunk currentChunk = reader.readMemChunk(chunkMetadata);
         if (!findTarget) {
