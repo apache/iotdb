@@ -24,14 +24,12 @@
 ## New Features
 
 * [IOTDB-2602] "Without null" supports filtering based on partial columns
-* [IOTDB-2893] Double live for 0.13
 * [IOTDB-3873] Aligned timeseries support single point fill query
 * [ISSUE-6171] Support createTimeseriesOfTemplate in Session
 * [IOTDB-3742] Support COUNT NODES by root.**
 
 ## Improvements
 
-* [IOTDB-2754] SessionPool auto redirect IoTDB instance
 * [IOTDB-2820] Update UserGuide SQL about Trigger
 * [IOTDB-2837] Add check and sort for NumpyTablet to make sure timestamps are ordered
 * [IOTDB-2838] Check and auto correct endian type for NumpyTablet
