@@ -131,15 +131,27 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
     // using bitMap in valuePageReaders to indicate whether columns of current row are all null.
     byte[] bitmask = new byte[(timeBatch.length - 1) / 8 + 1];
-    Arrays.fill(bitmask, (byte) 0xFF);
+    Arrays.fill(bitmask, (byte) 0x00);
+    boolean[][] isDeleted = new boolean[valueCount][timeBatch.length];
+    boolean[] allDeleted = new boolean[timeBatch.length];
+    Arrays.fill(allDeleted, true);
     for (int columnIndex = 0; columnIndex < valueCount; columnIndex++) {
       ValuePageReader pageReader = valuePageReaderList.get(columnIndex);
       if (pageReader != null) {
         byte[] bitmap = pageReader.getBitmap();
         for (int i = 0, n = bitmask.length; i < n; i++) {
-          bitmask[i] = (byte) ((bitmap[i] & 0xFF) | bitmask[i]);
+          bitmask[i] = (byte) (bitmap[i] | bitmask[i]);
+        }
+        pageReader.fillIsDeleted(timeBatch, isDeleted[columnIndex]);
+        for (int i = 0, n = allDeleted.length; i < n; i++) {
+          allDeleted[i] = (allDeleted[i] && isDeleted[columnIndex][i]);
         }
       }
+    }
+
+    // use delete to update keepCurrentRow
+    for (int i = 0, n = keepCurrentRow.length; i < n; i++) {
+      keepCurrentRow[i] = (keepCurrentRow[i] && !allDeleted[i]);
     }
 
     for (int i = 0, n = bitmask.length; i < n; i++) {
@@ -171,7 +183,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       ValuePageReader pageReader = valuePageReaderList.get(i);
       if (pageReader != null) {
         pageReader.writeColumnBuilderWithNextBatch(
-            timeBatch, builder.getColumnBuilder(i), keepCurrentRow);
+            timeBatch, builder.getColumnBuilder(i), keepCurrentRow, isDeleted[i]);
       } else {
         for (int j = 0; j < timeBatch.length; j++) {
           if (keepCurrentRow[j]) {

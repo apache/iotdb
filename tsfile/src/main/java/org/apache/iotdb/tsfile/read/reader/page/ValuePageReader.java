@@ -241,7 +241,10 @@ public class ValuePageReader {
   }
 
   public void writeColumnBuilderWithNextBatch(
-      long[] timeBatch, ColumnBuilder columnBuilder, boolean[] keepCurrentRow) {
+      long[] timeBatch,
+      ColumnBuilder columnBuilder,
+      boolean[] keepCurrentRow,
+      boolean[] isDeleted) {
     if (valueBuffer == null) {
       for (int i = 0, n = timeBatch.length; i < n; i++) {
         if (keepCurrentRow[i]) {
@@ -260,38 +263,62 @@ public class ValuePageReader {
       switch (dataType) {
         case BOOLEAN:
           boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
-            columnBuilder.writeBoolean(aBoolean);
+          if (keepCurrentRow[i]) {
+            if (isDeleted[i]) {
+              columnBuilder.appendNull();
+            } else {
+              columnBuilder.writeBoolean(aBoolean);
+            }
           }
           break;
         case INT32:
           int anInt = valueDecoder.readInt(valueBuffer);
-          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
-            columnBuilder.writeInt(anInt);
+          if (keepCurrentRow[i]) {
+            if (isDeleted[i]) {
+              columnBuilder.appendNull();
+            } else {
+              columnBuilder.writeInt(anInt);
+            }
           }
           break;
         case INT64:
           long aLong = valueDecoder.readLong(valueBuffer);
-          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
-            columnBuilder.writeLong(aLong);
+          if (keepCurrentRow[i]) {
+            if (isDeleted[i]) {
+              columnBuilder.appendNull();
+            } else {
+              columnBuilder.writeLong(aLong);
+            }
           }
           break;
         case FLOAT:
           float aFloat = valueDecoder.readFloat(valueBuffer);
-          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
-            columnBuilder.writeFloat(aFloat);
+          if (keepCurrentRow[i]) {
+            if (isDeleted[i]) {
+              columnBuilder.appendNull();
+            } else {
+              columnBuilder.writeFloat(aFloat);
+            }
           }
           break;
         case DOUBLE:
           double aDouble = valueDecoder.readDouble(valueBuffer);
-          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
-            columnBuilder.writeDouble(aDouble);
+          if (keepCurrentRow[i]) {
+            if (isDeleted[i]) {
+              columnBuilder.appendNull();
+            } else {
+              columnBuilder.writeDouble(aDouble);
+            }
           }
           break;
         case TEXT:
           Binary aBinary = valueDecoder.readBinary(valueBuffer);
-          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
-            columnBuilder.writeBinary(aBinary);
+          if (keepCurrentRow[i]) {
+            if (isDeleted[i]) {
+              columnBuilder.appendNull();
+            } else {
+              columnBuilder.writeBinary(aBinary);
+            }
           }
           break;
         default:
@@ -327,6 +354,12 @@ public class ValuePageReader {
       }
     }
     return false;
+  }
+
+  public void fillIsDeleted(long[] timestamp, boolean[] isDeleted) {
+    for (int i = 0, n = timestamp.length; i < n; i++) {
+      isDeleted[i] = isDeleted(timestamp[i]);
+    }
   }
 
   public TSDataType getDataType() {
