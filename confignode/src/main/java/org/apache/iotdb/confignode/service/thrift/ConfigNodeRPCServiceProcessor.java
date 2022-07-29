@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.service.thrift;
 
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -522,6 +523,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
       }
     }
     return configManager.flush(req);
+  }
+
+  @Override
+  public TSStatus clearCache(TClearCacheReq req) throws TException {
+    return configManager.clearCache(req);
   }
 
   @Override
