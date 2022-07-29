@@ -31,12 +31,14 @@ import org.influxdb.InfluxDBException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class TagInfoRecords {
 
   private static final String TAG_INFO_DEVICE_ID = "root.TAG_INFO";
   private static final List<String> TAG_INFO_MEASUREMENTS = new ArrayList<>();
   private static final List<TSDataType> TAG_INFO_TYPES = new ArrayList<>();
+  private static final AtomicLong TAG_TIME_STAMPS = new AtomicLong();
 
   static {
     TAG_INFO_MEASUREMENTS.add("database_name");
@@ -67,7 +69,7 @@ public class TagInfoRecords {
   public void add(String database, String measurement, String tag, int order) {
     deviceIds.add(TAG_INFO_DEVICE_ID);
     // Multiple adjacent records, possibly with the same timestamp
-    times.add(System.currentTimeMillis());
+    times.add(TAG_TIME_STAMPS.getAndIncrement());
     measurementsList.add(TAG_INFO_MEASUREMENTS);
     typesList.add(TAG_INFO_TYPES);
 
@@ -82,18 +84,11 @@ public class TagInfoRecords {
   public List<InsertRowPlan> convertToInsertRowPlans() {
     ArrayList<InsertRowPlan> insertRowPlans = new ArrayList<>();
     for (int i = 0; i < deviceIds.size(); i++) {
-      // Prevent later inserted records from overwriting previous records
-      long now = 0;
-      if (now != times.get(i)) {
-        now = times.get(i);
-      } else {
-        now = times.get(i) + 1;
-      }
       try {
         insertRowPlans.add(
             new InsertRowPlan(
                 new PartialPath(deviceIds.get(i)),
-                now,
+                times.get(i),
                 measurementsList.get(i).toArray(new String[0]),
                 DataTypeUtils.getValueBuffer(typesList.get(i), valuesList.get(i)),
                 false));
@@ -111,13 +106,7 @@ public class TagInfoRecords {
     for (int i = 0; i < deviceIds.size(); i++) {
       TSInsertRecordReq tsInsertRecordReq = new TSInsertRecordReq();
       tsInsertRecordReq.setSessionId(sessionID);
-      // Prevent later inserted records from overwriting previous records
-      if (now != times.get(i)) {
-        now = times.get(i);
-      } else {
-        now = times.get(i) + 1;
-      }
-      tsInsertRecordReq.setTimestamp(now);
+      tsInsertRecordReq.setTimestamp(times.get(i));
       tsInsertRecordReq.setIsAligned(false);
       tsInsertRecordReq.setPrefixPath(deviceIds.get(i));
       tsInsertRecordReq.setMeasurements(measurementsList.get(i));
