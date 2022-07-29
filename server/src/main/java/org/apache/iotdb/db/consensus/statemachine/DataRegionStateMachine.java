@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
+import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -117,8 +118,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   private InsertNode cacheAndGetLatestInsertNode(long syncIndex, InsertNode insertNode) {
+    lock.lock();
     try {
-      lock.lock();
       requestCache.add(new InsertNodeWrapper(syncIndex, insertNode));
       while (!(requestCache.size() >= MAX_REQUEST_CACHE_SIZE
           && requestCache.peek().getSyncIndex() == syncIndex)) {
@@ -175,10 +176,13 @@ public class DataRegionStateMachine extends BaseStateMachine {
           innerNode.setSearchIndex(indexedRequest.getSearchIndex());
           insertNodes.add(innerNode);
         }
-        //        planNode = mergeInsertNodes(insertNodes);
-        planNode =
-            cacheAndGetLatestInsertNode(
-                indexedRequest.getSyncIndex(), mergeInsertNodes(insertNodes));
+        if (indexedRequest.getSearchIndex() == ConsensusReqReader.DEFAULT_SEARCH_INDEX) {
+          planNode =
+              cacheAndGetLatestInsertNode(
+                  indexedRequest.getSyncIndex(), mergeInsertNodes(insertNodes));
+        } else {
+          planNode = mergeInsertNodes(insertNodes);
+        }
       } else {
         planNode = getPlanNode(request);
       }
