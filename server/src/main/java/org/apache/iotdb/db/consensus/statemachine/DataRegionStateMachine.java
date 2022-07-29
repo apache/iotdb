@@ -179,10 +179,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
         planNode =
             cacheAndGetLatestInsertNode(
                 indexedRequest.getSyncIndex(), mergeInsertNodes(insertNodes));
-        // TODO: tmp way to do the test
-        if (planNode == null) {
-          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        }
       } else {
         planNode = getPlanNode(request);
       }
