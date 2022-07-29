@@ -46,26 +46,26 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-// TODO add them back while deleting old standalone
 @RunWith(IoTDBTestRunner.class)
+// TODO add them back while deleting old standalone
 @Category({ClusterIT.class})
-public class IoTDBLastQueryWithoutLastCacheIT {
+public class IoTDBAlignedLastQueryIT {
 
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
-  protected static boolean enableLastCache;
+  protected static int maxTsBlockLineNumber;
 
   @BeforeClass
   public static void setUp() throws Exception {
     enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    enableLastCache = ConfigFactory.getConfig().isLastCacheEnabled();
+    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableLastCache(false);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
     EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
   }
@@ -76,9 +76,10 @@ public class IoTDBLastQueryWithoutLastCacheIT {
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setEnableLastCache(enableLastCache);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
   }
 
+  // ----------------------------------------Last Query-----------------------------------------
   @Test
   public void selectAllAlignedLastTest() {
     Set<String> retSet =
@@ -138,7 +139,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
         Statement statement = connection.createStatement()) {
 
       try (ResultSet resultSet =
-          statement.executeQuery("select last * from root.sg1.* order by timeseries asc")) {
+          statement.executeQuery("select last * from root.sg1.*  order by timeseries asc")) {
         int cnt = 0;
         while (resultSet.next()) {
           String ans =
@@ -312,6 +313,7 @@ public class IoTDBLastQueryWithoutLastCacheIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
+      // 1 4 5
       try (ResultSet resultSet =
           statement.executeQuery(
               "select last d2.s5, d1.s4, d2.s1, d1.s5, d2.s4, d1.s1 from root.sg1 where time > 30 order by timeseries asc")) {

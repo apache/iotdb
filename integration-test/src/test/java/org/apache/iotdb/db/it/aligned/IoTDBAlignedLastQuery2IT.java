@@ -28,10 +28,10 @@ import org.junit.BeforeClass;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-// TODO add them back while deleting old standalone
 @RunWith(IoTDBTestRunner.class)
+// TODO add them back while deleting old standalone
 @Category({ClusterIT.class})
-public class IoTDBLastQueryWithoutLastCache2IT extends IoTDBLastQueryWithoutLastCacheIT {
+public class IoTDBAlignedLastQuery2IT extends IoTDBAlignedLastQueryIT {
 
   private static int numOfPointsPerPage;
 
@@ -40,13 +40,14 @@ public class IoTDBLastQueryWithoutLastCache2IT extends IoTDBLastQueryWithoutLast
     enableSeqSpaceCompaction = ConfigFactory.getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction = ConfigFactory.getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction = ConfigFactory.getConfig().isEnableCrossSpaceCompaction();
-    enableLastCache = ConfigFactory.getConfig().isLastCacheEnabled();
     numOfPointsPerPage = ConfigFactory.getConfig().getMaxNumberOfPointsInPage();
+    maxTsBlockLineNumber = ConfigFactory.getConfig().getMaxTsBlockLineNumber();
+
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
-    ConfigFactory.getConfig().setEnableLastCache(false);
-    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(3);
+    ConfigFactory.getConfig().setMaxNumberOfPointsInPage(2);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(3);
     EnvFactory.getEnv().initBeforeClass();
     AlignedWriteUtil.insertData();
   }
@@ -57,7 +58,7 @@ public class IoTDBLastQueryWithoutLastCache2IT extends IoTDBLastQueryWithoutLast
     ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    ConfigFactory.getConfig().setEnableLastCache(enableLastCache);
     ConfigFactory.getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
+    ConfigFactory.getConfig().setMaxTsBlockLineNumber(maxTsBlockLineNumber);
   }
 }
