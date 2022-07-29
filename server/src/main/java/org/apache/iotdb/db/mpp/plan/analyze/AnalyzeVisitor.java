@@ -52,6 +52,8 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -112,6 +114,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
@@ -773,10 +776,29 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private Analysis analyzeLast(
       Analysis analysis, List<MeasurementPath> allSelectedPath, ISchemaTree schemaTree) {
-    Set<Expression> sourceExpressions =
-        allSelectedPath.stream()
-            .map(TimeSeriesOperand::new)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
+    Set<Expression> sourceExpressions;
+    List<SortItem> sortItemList = analysis.getMergeOrderParameter().getSortItemList();
+    if (sortItemList.size() > 0) {
+      checkState(
+          sortItemList.size() == 1 && sortItemList.get(0).getSortKey() == SortKey.TIMESERIES,
+          "Last queries only support sorting by timeseries now.");
+      boolean isAscending = sortItemList.get(0).getOrdering() == Ordering.ASC;
+      sourceExpressions =
+          allSelectedPath.stream()
+              .map(TimeSeriesOperand::new)
+              .sorted(
+                  (o1, o2) ->
+                      isAscending
+                          ? o1.getExpressionString().compareTo(o2.getExpressionString())
+                          : o2.getExpressionString().compareTo(o1.getExpressionString()))
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+    } else {
+      sourceExpressions =
+          allSelectedPath.stream()
+              .map(TimeSeriesOperand::new)
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
     sourceExpressions.forEach(
         expression -> ExpressionAnalyzer.updateTypeProvider(expression, typeProvider));
     analysis.setSourceExpressions(sourceExpressions);

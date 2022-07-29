@@ -67,7 +67,7 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_VALUE;
-import static org.apache.iotdb.db.mpp.execution.operator.LastQueryUtil.satisfyFilter;
+import static org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil.satisfyFilter;
 
 public class LastQueryExecutor {
 
