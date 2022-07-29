@@ -21,6 +21,7 @@ package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.DataRegionId;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
@@ -33,13 +34,20 @@ import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDeviceNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -98,34 +106,78 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public TSStatus write(IConsensusRequest request) {
-    TSStatus status;
     PlanNode planNode;
     try {
       if (request instanceof IndexedConsensusRequest) {
-        status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        IndexedConsensusRequest indexedConsensusRequest = (IndexedConsensusRequest) request;
-        for (IConsensusRequest innerRequest : indexedConsensusRequest.getRequests()) {
-          planNode = getPlanNode(innerRequest);
-          if (planNode instanceof InsertNode) {
-            ((InsertNode) planNode)
-                .setSearchIndex(((IndexedConsensusRequest) request).getSearchIndex());
-          }
-          TSStatus subStatus = write(planNode);
-          if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            status.setCode(subStatus.getCode());
-            status.setMessage(subStatus.getMessage());
-          }
-          status.addToSubStatus(subStatus);
+        IndexedConsensusRequest indexedRequest = (IndexedConsensusRequest) request;
+        List<InsertNode> insertNodes = new ArrayList<>(indexedRequest.getRequests().size());
+        for (IConsensusRequest req : indexedRequest.getRequests()) {
+          // PlanNode in IndexedConsensusRequest should always be InsertNode
+          InsertNode innerNode = (InsertNode) getPlanNode(req);
+          innerNode.setSearchIndex(indexedRequest.getSearchIndex());
+          insertNodes.add(innerNode);
         }
+        planNode = mergeInsertNodes(insertNodes);
       } else {
         planNode = getPlanNode(request);
-        status = write(planNode);
       }
-      return status;
+      return write(planNode);
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       return new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
     }
+  }
+
+  /**
+   * Merge insert nodes sharing same search index ( e.g. tablet-100, tablet-100, tablet-100 will be
+   * merged to one multi-tablet). <br>
+   * Notice: the continuity of insert nodes sharing same search index should be protected by the
+   * upper layer.
+   */
+  private InsertNode mergeInsertNodes(List<InsertNode> insertNodes) {
+    int size = insertNodes.size();
+    if (size == 0) {
+      throw new RuntimeException();
+    }
+    if (size == 1) {
+      return insertNodes.get(0);
+    }
+
+    InsertNode result;
+    if (insertNodes.get(0) instanceof InsertTabletNode) { // merge to InsertMultiTabletsNode
+      List<Integer> index = new ArrayList<>(size);
+      List<InsertTabletNode> insertTabletNodes = new ArrayList<>(size);
+      int i = 0;
+      for (InsertNode insertNode : insertNodes) {
+        insertTabletNodes.add((InsertTabletNode) insertNode);
+        index.add(i);
+        i++;
+      }
+      result =
+          new InsertMultiTabletsNode(insertNodes.get(0).getPlanNodeId(), index, insertTabletNodes);
+    } else { // merge to InsertRowsNode or InsertRowsOfOneDeviceNode
+      boolean sameDevice = true;
+      PartialPath device = insertNodes.get(0).getDevicePath();
+      List<Integer> index = new ArrayList<>(size);
+      List<InsertRowNode> insertRowNodes = new ArrayList<>(size);
+      int i = 0;
+      for (InsertNode insertNode : insertNodes) {
+        if (sameDevice && !insertNode.getDevicePath().equals(device)) {
+          sameDevice = false;
+        }
+        insertRowNodes.add((InsertRowNode) insertNode);
+        index.add(i);
+        i++;
+      }
+      result =
+          sameDevice
+              ? new InsertRowsOfOneDeviceNode(
+                  insertNodes.get(0).getPlanNodeId(), index, insertRowNodes)
+              : new InsertRowsNode(insertNodes.get(0).getPlanNodeId(), index, insertRowNodes);
+    }
+    result.setSearchIndex(insertNodes.get(0).getSearchIndex());
+    result.setDevicePath(insertNodes.get(0).getDevicePath());
+    return result;
   }
 
   protected TSStatus write(PlanNode planNode) {

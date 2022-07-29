@@ -344,7 +344,7 @@ public class LogDispatcher {
         currentIndex = data.getSearchIndex();
         iteratorIndex = currentIndex;
         for (IConsensusRequest innerRequest : data.getRequests()) {
-          logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), true));
+          logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), currentIndex, true));
         }
         if (currentIndex == maxIndex - 1) {
           break;
@@ -356,7 +356,8 @@ public class LogDispatcher {
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, List<TLogBatch> logBatches) {
       for (IConsensusRequest innerRequest : request.getRequests()) {
-        logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), false));
+        logBatches.add(
+            new TLogBatch(innerRequest.serializeToByteBuffer(), request.getSearchIndex(), false));
       }
     }
   }
