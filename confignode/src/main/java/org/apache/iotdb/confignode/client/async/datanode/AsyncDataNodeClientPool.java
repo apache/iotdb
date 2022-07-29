@@ -342,10 +342,12 @@ public class AsyncDataNodeClientPool {
       TEndPoint endPoint, THeartbeatReq req, DataNodeHeartbeatHandler handler) {
     AsyncDataNodeInternalServiceClient client;
     try {
-      client = clientManager.borrowClient(endPoint);
-      client.getDataNodeHeartBeat(req, handler);
-    } catch (Exception e) {
-      LOGGER.error("Asking DataNode: {}, for heartbeat failed", endPoint, e);
+      client = clientManager.purelyBorrowClient(endPoint);
+      if (client != null) {
+        client.getDataNodeHeartBeat(req, handler);
+      }
+    } catch (Exception ignore) {
+      // Just ignore
     }
   }
 

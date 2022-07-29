@@ -24,12 +24,7 @@ import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class AsyncConfigNodeClientPool {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncConfigNodeClientPool.class);
 
   private final IClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager;
 
@@ -49,10 +44,12 @@ public class AsyncConfigNodeClientPool {
       TEndPoint endPoint, long timestamp, ConfigNodeHeartbeatHandler handler) {
     AsyncConfigNodeIServiceClient client;
     try {
-      client = clientManager.borrowClient(endPoint);
-      client.getConfigNodeHeartBeat(timestamp, handler);
-    } catch (Exception e) {
-      LOGGER.error("Asking ConfigNode: {}, for heartbeat failed", endPoint, e);
+      client = clientManager.purelyBorrowClient(endPoint);
+      if (client != null) {
+        client.getConfigNodeHeartBeat(timestamp, handler);
+      }
+    } catch (Exception ignore) {
+      // Just ignore
     }
   }
 

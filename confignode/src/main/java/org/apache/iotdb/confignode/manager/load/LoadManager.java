@@ -376,7 +376,6 @@ public class LoadManager {
 
       ConfigNodeHeartbeatHandler handler =
           new ConfigNodeHeartbeatHandler(
-              configNodeLocation,
               (ConfigNodeHeartbeatCache)
                   nodeCacheMap.computeIfAbsent(
                       configNodeLocation.getConfigNodeId(),
