@@ -599,7 +599,7 @@ public class ExpressionAnalyzer {
   public static List<Expression> removeWildcardInHavingExpression(
       Expression predicate,
       List<PartialPath> prefixPaths,
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       TypeProvider typeProvider) {
     if (predicate instanceof TernaryExpression) {
       List<Expression> firstExpressions =
@@ -881,7 +881,7 @@ public class ExpressionAnalyzer {
   public static List<Expression> removeWildcardInHavingExpressionByDevice(
       Expression predicate,
       PartialPath devicePath,
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       TypeProvider typeProvider) {
     if (predicate instanceof TernaryExpression) {
       List<Expression> firstExpressions =
