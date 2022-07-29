@@ -115,6 +115,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
@@ -2325,6 +2326,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     flushStatement.setStorageGroups(storageGroups);
     return flushStatement;
+  }
+
+  // Clear Cache
+
+  @Override
+  public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
+    ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
+
+    if (ctx.LOCAL() != null) {
+      clearCacheStatement.setCluster(false);
+    } else {
+      clearCacheStatement.setCluster(true);
+    }
+    return clearCacheStatement;
   }
 
   // show region

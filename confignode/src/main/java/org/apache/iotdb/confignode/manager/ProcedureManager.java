@@ -246,7 +246,7 @@ public class ProcedureManager {
               if (procedure instanceof RegionMigrateProcedure) {
                 RegionMigrateProcedure regionMigrateProcedure = (RegionMigrateProcedure) procedure;
                 if (regionMigrateProcedure.getConsensusGroupId().equals(req.getRegionId())) {
-                  regionMigrateProcedure.notifyTheRegionMigrateFinished();
+                  regionMigrateProcedure.notifyTheRegionMigrateFinished(req);
                 }
               }
             });

@@ -31,6 +31,10 @@ import org.apache.iotdb.db.mpp.plan.planner.distribution.DistributionPlanner;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.LogicalQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 
 import org.junit.Assert;
@@ -57,6 +61,9 @@ public class LastQueryTest {
 
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(1, distributedQueryPlan.getInstances().size());
+    Assert.assertTrue(
+        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0)
+            instanceof LastQueryNode);
   }
 
   @Test
@@ -72,6 +79,14 @@ public class LastQueryTest {
 
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(2, distributedQueryPlan.getInstances().size());
+    PlanNode rootNode =
+        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+    Assert.assertTrue(rootNode instanceof LastQueryMergeNode);
+    rootNode
+        .getChildren()
+        .forEach(
+            child ->
+                Assert.assertTrue(child instanceof LastQueryNode || child instanceof ExchangeNode));
   }
 
   @Test
@@ -88,6 +103,14 @@ public class LastQueryTest {
 
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(3, distributedQueryPlan.getInstances().size());
+    PlanNode rootNode =
+        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+    Assert.assertTrue(rootNode instanceof LastQueryMergeNode);
+    rootNode
+        .getChildren()
+        .forEach(
+            child ->
+                Assert.assertTrue(child instanceof LastQueryNode || child instanceof ExchangeNode));
   }
 
   @Test
@@ -104,6 +127,42 @@ public class LastQueryTest {
 
     DistributedQueryPlan distributedQueryPlan = planner.planFragments();
     Assert.assertEquals(2, distributedQueryPlan.getInstances().size());
+    PlanNode rootNode =
+        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+    Assert.assertTrue(rootNode instanceof LastQueryMergeNode);
+    rootNode
+        .getChildren()
+        .forEach(
+            child ->
+                Assert.assertTrue(child instanceof LastQueryNode || child instanceof ExchangeNode));
+  }
+
+  @Test
+  public void testLastQuery2Series2DiffRegion() throws IllegalPathException {
+    String d3s1Path = "root.sg.d22.s1";
+    String d4s1Path = "root.sg.d55555.s1";
+    MPPQueryContext context =
+        new MPPQueryContext(
+            "",
+            new QueryId("test_last_2_series_2_diff_region"),
+            null,
+            new TEndPoint(),
+            new TEndPoint());
+    DistributionPlanner planner =
+        new DistributionPlanner(
+            Util.constructAnalysis(),
+            constructLastQuery(Arrays.asList(d3s1Path, d4s1Path), context));
+
+    DistributedQueryPlan distributedQueryPlan = planner.planFragments();
+    Assert.assertEquals(2, distributedQueryPlan.getInstances().size());
+    PlanNode rootNode =
+        distributedQueryPlan.getInstances().get(0).getFragment().getRoot().getChildren().get(0);
+    Assert.assertTrue(rootNode instanceof LastQueryCollectNode);
+    rootNode
+        .getChildren()
+        .forEach(
+            child ->
+                Assert.assertTrue(child instanceof LastQueryNode || child instanceof ExchangeNode));
   }
 
   private LogicalQueryPlan constructLastQuery(List<String> paths, MPPQueryContext context)

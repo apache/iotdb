@@ -58,6 +58,7 @@ public class ConfigNode implements ConfigNodeMBean {
           "%s:%s=%s",
           ConfigNodeConstant.CONFIGNODE_PACKAGE, ConfigNodeConstant.JMX_TYPE, "ConfigNode");
 
+  private static final int scheduleWaitingRetryNum = 20;
   private final RegisterManager registerManager = new RegisterManager();
 
   private ConfigManager configManager;
@@ -74,12 +75,11 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Activating {}...", ConfigNodeConstant.GLOBAL_NAME);
 
     try {
-      // Init ConfigManager
-      initConfigManager();
       // Set up internal services
       setUpInternalServices();
-      // Add some Metrics for configManager
-      configManager.addMetrics();
+      // Init ConfigManager
+      initConfigManager();
+
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         setUpRPCService();
@@ -119,6 +119,27 @@ public class ConfigNode implements ConfigNodeMBean {
           "{} has registered successfully. Waiting for the leader's scheduling to join the cluster.",
           ConfigNodeConstant.GLOBAL_NAME);
 
+      boolean isJoinedCluster = false;
+      for (int retry = 0; retry < scheduleWaitingRetryNum; retry++) {
+        if (configManager.getConsensusManager().getConsensusImpl().getAllConsensusGroupIds().size()
+            > 0) {
+          isJoinedCluster = true;
+          break;
+        }
+
+        try {
+          TimeUnit.MILLISECONDS.sleep(1000);
+        } catch (InterruptedException e) {
+          LOGGER.warn("Waiting leader's scheduling is interrupted.");
+        }
+      }
+
+      if (!isJoinedCluster) {
+        LOGGER.error(
+            "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
+        stop();
+      }
+
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
@@ -139,8 +160,9 @@ public class ConfigNode implements ConfigNodeMBean {
       } catch (IOException e2) {
         LOGGER.error("Meet error when stop ConfigNode!", e);
       }
-      System.exit(-1);
     }
+    // Add some Metrics for configManager
+    configManager.addMetrics();
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
@@ -163,7 +185,7 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   /** Register Non-seed ConfigNode when first startup */
-  private void registerConfigNode() throws StartupException {
+  private void registerConfigNode() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
@@ -183,7 +205,7 @@ public class ConfigNode implements ConfigNodeMBean {
             conf.getReadConsistencyLevel());
 
     TEndPoint targetConfigNode = conf.getTargetConfigNode();
-    while (true) {
+    for (int retry = 0; retry < 3; retry++) {
       TConfigNodeRegisterResp resp =
           (TConfigNodeRegisterResp)
               SyncConfigNodeClientPool.getInstance()
@@ -191,7 +213,7 @@ public class ConfigNode implements ConfigNodeMBean {
                       targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
       if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
-        break;
+        return;
       } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         targetConfigNode = resp.getStatus().getRedirectNode();
         LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
@@ -206,6 +228,10 @@ public class ConfigNode implements ConfigNodeMBean {
         throw new StartupException("Register ConfigNode failed!");
       }
     }
+
+    LOGGER.error(
+        "The current ConfigNode can't send register request to the Seed-ConfigNode after all retries!");
+    stop();
   }
 
   private void setUpRPCService() throws StartupException {
@@ -225,6 +251,7 @@ public class ConfigNode implements ConfigNodeMBean {
       configManager.close();
     }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
+    System.exit(-1);
   }
 
   private static class ConfigNodeHolder {

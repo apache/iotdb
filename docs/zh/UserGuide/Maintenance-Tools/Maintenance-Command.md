@@ -48,10 +48,12 @@ IoTDB> FULL MERGE
 ## CLEAR CACHE
 
 
-手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。
+手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。在集群模式下，我们提供了清空单个节点缓存、清空整个集群缓存命令。
 
 ```sql
 IoTDB> CLEAR CACHE
+IoTDB> CLEAR CACHE ON LOCAL
+IoTDB> CLEAR CACHE ON CLUSTER
 ```
 
 ## SET STSTEM TO READONLY / WRITABLE

@@ -17,42 +17,51 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.internal;
+package org.apache.iotdb.db.mpp.plan.statement.sys;
 
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.constant.StatementType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
 import java.util.List;
 
-public class LastPointFetchStatement extends Statement {
+public class ClearCacheStatement extends Statement implements IConfigStatement {
 
-  private final List<MeasurementPath> selectedPaths;
+  private static final Logger logger = LoggerFactory.getLogger(ClearCacheStatement.class);
 
-  // used for fetch data partition
-  private final List<String> storageGroups;
+  private boolean isCluster;
 
-  public LastPointFetchStatement(List<MeasurementPath> selectedPaths, List<String> storageGroups) {
-    this.selectedPaths = selectedPaths;
-    this.storageGroups = storageGroups;
+  public ClearCacheStatement(StatementType clearCacheType) {
+    this.statementType = clearCacheType;
   }
 
-  public List<MeasurementPath> getSelectedPaths() {
-    return selectedPaths;
+  public boolean isCluster() {
+    return isCluster;
   }
 
-  public List<String> getStorageGroups() {
-    return storageGroups;
+  public void setCluster(boolean isCluster) {
+    this.isCluster = isCluster;
   }
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return selectedPaths;
+  public QueryType getQueryType() {
+    return QueryType.WRITE;
+  }
+
+  @Override
+  public List<PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitLastPointFetch(this, context);
+    return visitor.visitClearCache(this, context);
   }
 }

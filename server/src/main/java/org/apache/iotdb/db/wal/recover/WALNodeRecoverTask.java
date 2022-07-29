@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -110,6 +111,11 @@ public class WALNodeRecoverTask implements Runnable {
       long[] indexInfo = recoverLastFile();
       long lastVersionId = indexInfo[0];
       long lastSearchIndex = indexInfo[1];
+      // update disk usage
+      long totalSize =
+          Arrays.stream(WALFileUtils.listAllWALFiles(logDirectory)).mapToLong(File::length).sum();
+      WALManager.getInstance().addTotalDiskUsage(totalSize);
+      // register wal node
       WALManager.getInstance()
           .registerWALNode(
               logDirectory.getName(),
