@@ -21,8 +21,8 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -34,12 +34,12 @@ import java.util.Map;
  */
 public interface ISchemaFetcher {
 
-  SchemaTree fetchSchema(PathPatternTree patternTree);
+  ISchemaTree fetchSchema(PathPatternTree patternTree);
 
-  SchemaTree fetchSchemaWithAutoCreate(
+  ISchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned);
 
-  SchemaTree fetchSchemaListWithAutoCreate(
+  ISchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,
       List<String[]> measurements,
       List<TSDataType[]> tsDataTypes,
