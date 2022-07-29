@@ -65,7 +65,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private DataRegion region;
 
   private static final int MAX_REQUEST_CACHE_SIZE = 5;
-  private static final long CACHE_WINDOW_TIME_IN_MS = 1000;
+  private static final long CACHE_WINDOW_TIME_IN_MS = 10_000;
   private final PriorityQueue<InsertNodeWrapper> requestCache;
   private final ReentrantLock lock = new ReentrantLock();
   private final Condition cacheCondition = lock.newCondition();
@@ -128,6 +128,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
           boolean timeoutTriggered =
               !cacheCondition.await(CACHE_WINDOW_TIME_IN_MS, TimeUnit.MILLISECONDS);
           if (timeoutTriggered) {
+            logger.warn("wait next write request timeout. {}", requestCache.peek().syncIndex);
             break;
           }
         } catch (InterruptedException e) {
