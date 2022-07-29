@@ -26,6 +26,7 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -38,6 +39,7 @@ import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrder
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
 
+@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class}) // TODO After old StandAlone remove
 public class IoTDBHavingIT {
