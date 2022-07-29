@@ -96,7 +96,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cost_task_seconds_sum   | name="inner_compaction/cross_compaction/flush"                                | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
 | data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written{name="compaction",type="total",} 10240                                     |
 | data_read               | name="compaction"                                                             | important | The size of data read in compaction                      | data_read={name="compaction",} 10240                                                    |
-| compaction_task_count   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/total"  | important | The number of compaction task                            | compaction_task_count{name="inner_compaction",type="sequence",} 1                       |
+| compaction_task_count   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | The number of compaction task                            | compaction_task_count{name="inner_compaction",type="sequence",} 1                       |
 
 #### 4.3.3. Memory Usage
 
