@@ -417,7 +417,7 @@ orderByClause
     ;
 
 orderByAttributeClause
-    : sortKey (DESC | ASC)
+    : sortKey (DESC | ASC)?
     ;
 
 sortKey

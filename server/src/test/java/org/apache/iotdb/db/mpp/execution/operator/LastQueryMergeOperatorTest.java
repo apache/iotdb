@@ -19,324 +19,378 @@
 package org.apache.iotdb.db.mpp.execution.operator;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
-import org.apache.iotdb.db.mpp.execution.operator.process.LastQueryMergeOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.UpdateLastCacheOperator;
-import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.query.reader.series.SeriesReaderTestUtil;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Sets;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.Comparator;
 import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class LastQueryMergeOperatorTest {
 
-  private static final String SERIES_SCAN_OPERATOR_TEST_SG = "root.LastQueryMergeOperatorTest";
-  private final List<String> deviceIds = new ArrayList<>();
-  private final List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-
-  private final List<TsFileResource> seqResources = new ArrayList<>();
-  private final List<TsFileResource> unSeqResources = new ArrayList<>();
   private ExecutorService instanceNotificationExecutor;
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
-    SeriesReaderTestUtil.setUp(
-        measurementSchemas, deviceIds, seqResources, unSeqResources, SERIES_SCAN_OPERATOR_TEST_SG);
     this.instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
   }
 
   @After
   public void tearDown() throws IOException {
-    SeriesReaderTestUtil.tearDown(seqResources, unSeqResources);
     instanceNotificationExecutor.shutdown();
   }
 
   @Test
-  public void testLastQueryMergeOperatorTestWithoutCachedValue() {
-    try {
-      List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
-      MeasurementPath measurementPath1 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      List<Aggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
-      MeasurementPath measurementPath2 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
-      Set<String> allSensors = Sets.newHashSet("sensor0", "sensor1");
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesAggregationScanOperator.class.getSimpleName());
-      PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, UpdateLastCacheOperator.class.getSimpleName());
+  public void testLastQueryMergeOperatorDesc() {
 
-      PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesAggregationScanOperator.class.getSimpleName());
-      PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
-          4, planNodeId4, UpdateLastCacheOperator.class.getSimpleName());
+    QueryId queryId = new QueryId("stub_query");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    PlanNodeId planNodeId1 = new PlanNodeId("1");
+    fragmentInstanceContext.addOperatorContext(
+        1, planNodeId1, LastQueryMergeOperator.class.getSimpleName());
 
-      PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId5, LastQueryMergeOperator.class.getSimpleName());
+    fragmentInstanceContext
+        .getOperatorContexts()
+        .forEach(operatorContext -> operatorContext.setMaxRunTime(TEST_TIME_SLICE));
 
-      fragmentInstanceContext
-          .getOperatorContexts()
-          .forEach(
-              operatorContext -> {
-                operatorContext.setMaxRunTime(TEST_TIME_SLICE);
-              });
+    Operator operator1 =
+        new Operator() {
 
-      SeriesAggregationScanOperator seriesAggregationScanOperator1 =
-          new SeriesAggregationScanOperator(
-              planNodeId1,
-              measurementPath1,
-              allSensors,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              aggregators1,
-              null,
-              false,
-              null);
-      seriesAggregationScanOperator1.initQueryDataSource(
-          new QueryDataSource(seqResources, unSeqResources));
+          private final long[][] timeArray = new long[][] {{3, 4, 5, 3}, {5, 4, 4, 6}};
+          private final String[][] timeSeriesArray =
+              new String[][] {
+                {"root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d1.s3", "root.sg.d1.s4"},
+                {"root.sg.d2.s1", "root.sg.d2.s2", "root.sg.d2.s3", "root.sg.d2.s4"}
+              };
+          private final String[][] valueArray =
+              new String[][] {{"3", "4", "5", "3"}, {"5", "4", "4", "6"}};
+          private final String[][] dataTypeArray =
+              new String[][] {
+                {"INT32", "INT32", "INT32", "INT32"}, {"INT32", "INT32", "INT32", "INT32"}
+              };
 
-      UpdateLastCacheOperator updateLastCacheOperator1 =
-          new UpdateLastCacheOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
-              seriesAggregationScanOperator1,
-              measurementPath1,
-              measurementPath1.getSeriesType(),
-              null,
-              false);
+          private int index = 1;
 
-      SeriesAggregationScanOperator seriesAggregationScanOperator2 =
-          new SeriesAggregationScanOperator(
-              planNodeId3,
-              measurementPath2,
-              allSensors,
-              fragmentInstanceContext.getOperatorContexts().get(2),
-              aggregators2,
-              null,
-              false,
-              null);
-      seriesAggregationScanOperator2.initQueryDataSource(
-          new QueryDataSource(seqResources, unSeqResources));
+          @Override
+          public OperatorContext getOperatorContext() {
+            return null;
+          }
 
-      UpdateLastCacheOperator updateLastCacheOperator2 =
-          new UpdateLastCacheOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
-              seriesAggregationScanOperator2,
-              measurementPath2,
-              measurementPath2.getSeriesType(),
-              null,
-              false);
+          @Override
+          public TsBlock next() {
+            TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
+            for (int i = timeArray[index].length - 1; i >= 0; i--) {
+              LastQueryUtil.appendLastValue(
+                  builder,
+                  timeArray[index][i],
+                  timeSeriesArray[index][i],
+                  valueArray[index][i],
+                  dataTypeArray[index][i]);
+            }
+            index--;
+            return builder.build();
+          }
 
-      LastQueryMergeOperator lastQueryMergeOperator =
-          new LastQueryMergeOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4),
-              ImmutableList.of(updateLastCacheOperator1, updateLastCacheOperator2));
+          @Override
+          public boolean hasNext() {
+            return index >= 0;
+          }
 
-      int count = 0;
-      while (!lastQueryMergeOperator.isFinished()) {
-        assertTrue(lastQueryMergeOperator.isBlocked().isDone());
-        assertTrue(lastQueryMergeOperator.hasNext());
-        TsBlock result = lastQueryMergeOperator.next();
-        if (result == null) {
-          continue;
-        }
-        assertEquals(3, result.getValueColumnCount());
+          @Override
+          public boolean isFinished() {
+            return !hasNext();
+          }
+        };
 
-        for (int i = 0; i < result.getPositionCount(); i++) {
-          assertEquals(499, result.getTimeByIndex(i));
-          assertEquals(
-              SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor" + count,
-              result.getColumn(0).getBinary(i).toString());
-          assertEquals("10499", result.getColumn(1).getBinary(i).toString());
-          assertEquals(TSDataType.INT32.name(), result.getColumn(2).getBinary(i).toString());
-          count++;
-        }
+    Operator operator2 =
+        new Operator() {
+
+          private final long[][] timeArray = new long[][] {{2, 3, 3, 2}, {5, 4, 4, 6}};
+          private final String[][] timeSeriesArray =
+              new String[][] {
+                {"root.sg.d2.s1", "root.sg.d2.s2", "root.sg.d2.s3", "root.sg.d2.s4"},
+                {"root.sg.d3.s1", "root.sg.d3.s2", "root.sg.d3.s3", "root.sg.d3.s4"}
+              };
+          private final String[][] valueArray =
+              new String[][] {{"2", "3", "3", "2"}, {"5", "4", "4", "6"}};
+          private final String[][] dataTypeArray =
+              new String[][] {
+                {"INT32", "INT32", "INT32", "INT32"}, {"INT32", "INT32", "INT32", "INT32"}
+              };
+
+          private int index = 1;
+
+          @Override
+          public OperatorContext getOperatorContext() {
+            return null;
+          }
+
+          @Override
+          public TsBlock next() {
+            TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
+            for (int i = timeArray[index].length - 1; i >= 0; i--) {
+              LastQueryUtil.appendLastValue(
+                  builder,
+                  timeArray[index][i],
+                  timeSeriesArray[index][i],
+                  valueArray[index][i],
+                  dataTypeArray[index][i]);
+            }
+            index--;
+            return builder.build();
+          }
+
+          @Override
+          public boolean hasNext() {
+            return index >= 0;
+          }
+
+          @Override
+          public boolean isFinished() {
+            return !hasNext();
+          }
+        };
+
+    LastQueryMergeOperator lastQueryMergeOperator =
+        new LastQueryMergeOperator(
+            fragmentInstanceContext.getOperatorContexts().get(0),
+            ImmutableList.of(operator1, operator2),
+            Comparator.reverseOrder());
+
+    final long[] timeArray = new long[] {3, 4, 5, 3, 5, 4, 4, 6, 5, 4, 4, 6};
+    final String[] timeSeriesArray =
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d1.s3",
+          "root.sg.d1.s4",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2",
+          "root.sg.d2.s3",
+          "root.sg.d2.s4",
+          "root.sg.d3.s1",
+          "root.sg.d3.s2",
+          "root.sg.d3.s3",
+          "root.sg.d3.s4"
+        };
+    final String[] valueArray =
+        new String[] {"3", "4", "5", "3", "5", "4", "4", "6", "5", "4", "4", "6"};
+    final String[] dataTypeArray =
+        new String[] {
+          "INT32", "INT32", "INT32", "INT32", "INT32", "INT32", "INT32", "INT32", "INT32", "INT32",
+          "INT32", "INT32"
+        };
+
+    int count = timeArray.length - 1;
+    while (!lastQueryMergeOperator.isFinished()) {
+      assertTrue(lastQueryMergeOperator.isBlocked().isDone());
+      TsBlock result = lastQueryMergeOperator.next();
+      if (result == null) {
+        continue;
       }
+      assertEquals(3, result.getValueColumnCount());
 
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-      fail();
+      for (int i = 0; i < result.getPositionCount(); i++) {
+        assertEquals(timeArray[count], result.getTimeByIndex(i));
+        assertEquals(timeSeriesArray[count], result.getColumn(0).getBinary(i).toString());
+        assertEquals(valueArray[count], result.getColumn(1).getBinary(i).toString());
+        assertEquals(dataTypeArray[count], result.getColumn(2).getBinary(i).toString());
+        count--;
+      }
     }
+    assertEquals(-1, count);
   }
 
   @Test
-  public void testUpdateLastCacheOperatorTestWithCachedValue() {
-    try {
-      List<Aggregator> aggregators1 = LastQueryUtil.createAggregators(TSDataType.INT32);
-      MeasurementPath measurementPath1 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor0", TSDataType.INT32);
-      List<Aggregator> aggregators2 = LastQueryUtil.createAggregators(TSDataType.INT32);
-      MeasurementPath measurementPath2 =
-          new MeasurementPath(SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor1", TSDataType.INT32);
-      Set<String> allSensors = Sets.newHashSet("sensor0", "sensor1");
-      QueryId queryId = new QueryId("stub_query");
-      FragmentInstanceId instanceId =
-          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
-      FragmentInstanceStateMachine stateMachine =
-          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
-      FragmentInstanceContext fragmentInstanceContext =
-          createFragmentInstanceContext(instanceId, stateMachine);
-      PlanNodeId planNodeId1 = new PlanNodeId("1");
-      fragmentInstanceContext.addOperatorContext(
-          1, planNodeId1, SeriesAggregationScanOperator.class.getSimpleName());
-      PlanNodeId planNodeId2 = new PlanNodeId("2");
-      fragmentInstanceContext.addOperatorContext(
-          2, planNodeId2, UpdateLastCacheOperator.class.getSimpleName());
+  public void testLastQueryMergeOperatorAsc() {
 
-      PlanNodeId planNodeId3 = new PlanNodeId("3");
-      fragmentInstanceContext.addOperatorContext(
-          3, planNodeId3, SeriesAggregationScanOperator.class.getSimpleName());
-      PlanNodeId planNodeId4 = new PlanNodeId("4");
-      fragmentInstanceContext.addOperatorContext(
-          4, planNodeId4, UpdateLastCacheOperator.class.getSimpleName());
+    QueryId queryId = new QueryId("stub_query");
+    FragmentInstanceId instanceId =
+        new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+    FragmentInstanceStateMachine stateMachine =
+        new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+    FragmentInstanceContext fragmentInstanceContext =
+        createFragmentInstanceContext(instanceId, stateMachine);
+    PlanNodeId planNodeId1 = new PlanNodeId("1");
+    fragmentInstanceContext.addOperatorContext(
+        1, planNodeId1, LastQueryMergeOperator.class.getSimpleName());
 
-      PlanNodeId planNodeId5 = new PlanNodeId("5");
-      fragmentInstanceContext.addOperatorContext(
-          5, planNodeId4, LastCacheScanOperator.class.getSimpleName());
+    fragmentInstanceContext
+        .getOperatorContexts()
+        .forEach(operatorContext -> operatorContext.setMaxRunTime(TEST_TIME_SLICE));
 
-      PlanNodeId planNodeId6 = new PlanNodeId("6");
-      fragmentInstanceContext.addOperatorContext(
-          6, planNodeId6, LastQueryMergeOperator.class.getSimpleName());
+    Operator operator1 =
+        new Operator() {
 
-      fragmentInstanceContext
-          .getOperatorContexts()
-          .forEach(
-              operatorContext -> {
-                operatorContext.setMaxRunTime(TEST_TIME_SLICE);
-              });
+          private final long[][] timeArray = new long[][] {{3, 4, 5, 3}, {5, 4, 4, 6}};
+          private final String[][] timeSeriesArray =
+              new String[][] {
+                {"root.sg.d1.s1", "root.sg.d1.s2", "root.sg.d1.s3", "root.sg.d1.s4"},
+                {"root.sg.d2.s1", "root.sg.d2.s2", "root.sg.d2.s3", "root.sg.d2.s4"}
+              };
+          private final String[][] valueArray =
+              new String[][] {{"3", "4", "5", "3"}, {"5", "4", "4", "6"}};
+          private final String[][] dataTypeArray =
+              new String[][] {
+                {"INT32", "INT32", "INT32", "INT32"}, {"INT32", "INT32", "INT32", "INT32"}
+              };
 
-      SeriesAggregationScanOperator seriesAggregationScanOperator1 =
-          new SeriesAggregationScanOperator(
-              planNodeId1,
-              measurementPath1,
-              allSensors,
-              fragmentInstanceContext.getOperatorContexts().get(0),
-              aggregators1,
-              null,
-              false,
-              null);
-      seriesAggregationScanOperator1.initQueryDataSource(
-          new QueryDataSource(seqResources, unSeqResources));
+          private int index = 0;
 
-      UpdateLastCacheOperator updateLastCacheOperator1 =
-          new UpdateLastCacheOperator(
-              fragmentInstanceContext.getOperatorContexts().get(1),
-              seriesAggregationScanOperator1,
-              measurementPath1,
-              measurementPath1.getSeriesType(),
-              null,
-              false);
+          @Override
+          public OperatorContext getOperatorContext() {
+            return null;
+          }
 
-      SeriesAggregationScanOperator seriesAggregationScanOperator2 =
-          new SeriesAggregationScanOperator(
-              planNodeId3,
-              measurementPath2,
-              allSensors,
-              fragmentInstanceContext.getOperatorContexts().get(2),
-              aggregators2,
-              null,
-              false,
-              null);
-      seriesAggregationScanOperator2.initQueryDataSource(
-          new QueryDataSource(seqResources, unSeqResources));
+          @Override
+          public TsBlock next() {
+            TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
+            for (int i = 0, size = timeArray[index].length; i < size; i++) {
+              LastQueryUtil.appendLastValue(
+                  builder,
+                  timeArray[index][i],
+                  timeSeriesArray[index][i],
+                  valueArray[index][i],
+                  dataTypeArray[index][i]);
+            }
+            index++;
+            return builder.build();
+          }
 
-      UpdateLastCacheOperator updateLastCacheOperator2 =
-          new UpdateLastCacheOperator(
-              fragmentInstanceContext.getOperatorContexts().get(3),
-              seriesAggregationScanOperator2,
-              measurementPath2,
-              measurementPath2.getSeriesType(),
-              null,
-              false);
+          @Override
+          public boolean hasNext() {
+            return index < 2;
+          }
 
-      TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(6);
+          @Override
+          public boolean isFinished() {
+            return !hasNext();
+          }
+        };
 
-      LastQueryUtil.appendLastValue(
-          builder, 499, SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor2", "10499", "INT32");
-      LastQueryUtil.appendLastValue(
-          builder, 499, SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor3", "10499", "INT32");
-      LastQueryUtil.appendLastValue(
-          builder, 499, SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor4", "10499", "INT32");
+    Operator operator2 =
+        new Operator() {
 
-      TsBlock tsBlock = builder.build();
+          private final long[][] timeArray = new long[][] {{2, 3, 3, 2}, {5, 4, 4, 6}};
+          private final String[][] timeSeriesArray =
+              new String[][] {
+                {"root.sg.d2.s1", "root.sg.d2.s2", "root.sg.d2.s3", "root.sg.d2.s4"},
+                {"root.sg.d3.s1", "root.sg.d3.s2", "root.sg.d3.s3", "root.sg.d3.s4"}
+              };
+          private final String[][] valueArray =
+              new String[][] {{"2", "3", "3", "2"}, {"5", "4", "4", "6"}};
+          private final String[][] dataTypeArray =
+              new String[][] {
+                {"INT32", "INT32", "INT32", "INT32"}, {"INT32", "INT32", "INT32", "INT32"}
+              };
 
-      LastCacheScanOperator lastCacheScanOperator =
-          new LastCacheScanOperator(
-              fragmentInstanceContext.getOperatorContexts().get(4), planNodeId5, tsBlock);
+          private int index = 0;
 
-      LastQueryMergeOperator lastQueryMergeOperator =
-          new LastQueryMergeOperator(
-              fragmentInstanceContext.getOperatorContexts().get(5),
-              ImmutableList.of(
-                  updateLastCacheOperator1, updateLastCacheOperator2, lastCacheScanOperator));
+          @Override
+          public OperatorContext getOperatorContext() {
+            return null;
+          }
 
-      int count = 0;
-      while (!lastQueryMergeOperator.isFinished()) {
-        assertTrue(lastQueryMergeOperator.isBlocked().isDone());
-        assertTrue(lastQueryMergeOperator.hasNext());
-        TsBlock result = lastQueryMergeOperator.next();
-        if (result == null) {
-          continue;
-        }
-        assertEquals(3, result.getValueColumnCount());
+          @Override
+          public TsBlock next() {
+            TsBlockBuilder builder = LastQueryUtil.createTsBlockBuilder(4);
+            for (int i = 0, size = timeArray[index].length; i < size; i++) {
+              LastQueryUtil.appendLastValue(
+                  builder,
+                  timeArray[index][i],
+                  timeSeriesArray[index][i],
+                  valueArray[index][i],
+                  dataTypeArray[index][i]);
+            }
+            index++;
+            return builder.build();
+          }
 
-        for (int i = 0; i < result.getPositionCount(); i++) {
-          assertEquals(499, result.getTimeByIndex(i));
-          assertEquals(
-              SERIES_SCAN_OPERATOR_TEST_SG + ".device0.sensor" + count,
-              result.getColumn(0).getBinary(i).toString());
-          assertEquals("10499", result.getColumn(1).getBinary(i).toString());
-          assertEquals(TSDataType.INT32.name(), result.getColumn(2).getBinary(i).toString());
-          count++;
-        }
+          @Override
+          public boolean hasNext() {
+            return index < 2;
+          }
+
+          @Override
+          public boolean isFinished() {
+            return !hasNext();
+          }
+        };
+
+    LastQueryMergeOperator lastQueryMergeOperator =
+        new LastQueryMergeOperator(
+            fragmentInstanceContext.getOperatorContexts().get(0),
+            ImmutableList.of(operator1, operator2),
+            Comparator.naturalOrder());
+
+    final long[] timeArray = new long[] {3, 4, 5, 3, 5, 4, 4, 6, 5, 4, 4, 6};
+    final String[] timeSeriesArray =
+        new String[] {
+          "root.sg.d1.s1",
+          "root.sg.d1.s2",
+          "root.sg.d1.s3",
+          "root.sg.d1.s4",
+          "root.sg.d2.s1",
+          "root.sg.d2.s2",
+          "root.sg.d2.s3",
+          "root.sg.d2.s4",
+          "root.sg.d3.s1",
+          "root.sg.d3.s2",
+          "root.sg.d3.s3",
+          "root.sg.d3.s4"
+        };
+    final String[] valueArray =
+        new String[] {"3", "4", "5", "3", "5", "4", "4", "6", "5", "4", "4", "6"};
+    final String[] dataTypeArray =
+        new String[] {
+          "INT32", "INT32", "INT32", "INT32", "INT32", "INT32", "INT32", "INT32", "INT32", "INT32",
+          "INT32", "INT32"
+        };
+
+    int count = 0;
+    while (!lastQueryMergeOperator.isFinished()) {
+      assertTrue(lastQueryMergeOperator.isBlocked().isDone());
+      TsBlock result = lastQueryMergeOperator.next();
+      if (result == null) {
+        continue;
       }
+      assertEquals(3, result.getValueColumnCount());
 
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-      fail();
+      for (int i = 0; i < result.getPositionCount(); i++) {
+        assertEquals(timeArray[count], result.getTimeByIndex(i));
+        assertEquals(timeSeriesArray[count], result.getColumn(0).getBinary(i).toString());
+        assertEquals(valueArray[count], result.getColumn(1).getBinary(i).toString());
+        assertEquals(dataTypeArray[count], result.getColumn(2).getBinary(i).toString());
+        count++;
+      }
     }
+
+    assertEquals(timeArray.length, count);
   }
 }
