@@ -57,11 +57,11 @@ import org.apache.iotdb.confignode.consensus.response.StorageGroupSchemaResp;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -416,17 +416,17 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   }
 
   @Override
-  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
-    TConfigNodeRegisterResp resp = configManager.registerConfigNode(req);
+  public TSStatus registerConfigNode(TConfigNodeRegisterReq req) throws TException {
+    TSStatus status = configManager.registerConfigNode(req);
 
     // Print log to record the ConfigNode that performs the RegisterConfigNodeRequest
-    LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, resp);
+    LOGGER.info("Execute RegisterConfigNodeRequest {} with result {}", req, status);
 
-    return resp;
+    return status;
   }
 
   @Override
-  public TSStatus addConsensusGroup(TConfigNodeRegisterResp registerResp) {
+  public TSStatus addConsensusGroup(TAddConsensusGroupReq registerResp) {
     return configManager.addConsensusGroup(registerResp.getConfigNodeList());
   }
 
