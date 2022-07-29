@@ -113,6 +113,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private InsertNode cacheAndGetLatestInsertNode(long syncIndex, InsertNode insertNode) {
     synchronized (requestCache) {
       requestCache.add(new InsertNodeWrapper(syncIndex, insertNode));
+      //      while(!(requestCache.size() >= MAX_REQUEST_CACHE_SIZE &&
+      // requestCache.peek().getSyncIndex() == syncIndex)) {
+      //        requestCache.wait();
+      //      }
       if (requestCache.size() >= MAX_REQUEST_CACHE_SIZE) {
         return requestCache.poll().getInsertNode();
       } else {
@@ -157,10 +161,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
           innerNode.setSearchIndex(indexedRequest.getSearchIndex());
           insertNodes.add(innerNode);
         }
-        //        planNode = mergeInsertNodes(insertNodes);
-        planNode =
-            cacheAndGetLatestInsertNode(
-                indexedRequest.getSyncIndex(), mergeInsertNodes(insertNodes));
+        planNode = mergeInsertNodes(insertNodes);
+        //        planNode =
+        //            cacheAndGetLatestInsertNode(
+        //                indexedRequest.getSyncIndex(), mergeInsertNodes(insertNodes));
         // TODO: tmp way to do the test
         if (planNode == null) {
           return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
