@@ -75,12 +75,11 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Activating {}...", ConfigNodeConstant.GLOBAL_NAME);
 
     try {
-      // Init ConfigManager
-      initConfigManager();
       // Set up internal services
       setUpInternalServices();
-      // Add some Metrics for configManager
-      configManager.addMetrics();
+      // Init ConfigManager
+      initConfigManager();
+
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         setUpRPCService();
@@ -162,6 +161,8 @@ public class ConfigNode implements ConfigNodeMBean {
         LOGGER.error("Meet error when stop ConfigNode!", e);
       }
     }
+    // Add some Metrics for configManager
+    configManager.addMetrics();
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
