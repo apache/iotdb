@@ -58,6 +58,7 @@ public class ConfigNode implements ConfigNodeMBean {
           "%s:%s=%s",
           ConfigNodeConstant.CONFIGNODE_PACKAGE, ConfigNodeConstant.JMX_TYPE, "ConfigNode");
 
+  private static final int scheduleWaitingRetryNum = 20;
   private final RegisterManager registerManager = new RegisterManager();
 
   private ConfigManager configManager;
@@ -120,7 +121,7 @@ public class ConfigNode implements ConfigNodeMBean {
           ConfigNodeConstant.GLOBAL_NAME);
 
       boolean isJoinedCluster = false;
-      for (int retry = 0; retry < 20; retry++) {
+      for (int retry = 0; retry < scheduleWaitingRetryNum; retry++) {
         if (configManager.getConsensusManager().getConsensusImpl().getAllConsensusGroupIds().size()
             > 0) {
           isJoinedCluster = true;
