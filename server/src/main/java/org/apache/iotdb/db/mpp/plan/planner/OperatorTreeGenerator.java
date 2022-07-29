@@ -682,7 +682,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       case PREVIOUS:
         context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
         return new FillOperator(
-            operatorContext, getPreviousFill(inputColumns, inputDataTypes), child);
+            operatorContext, getPreviousFill(inputColumns, inputDataTypes, false), child);
+      case PREVIOUS_UNTIL_LAST:
+        return new FillOperator(
+            operatorContext, getPreviousFill(inputColumns, inputDataTypes, true), child);
       case LINEAR:
         context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
         return new LinearFillOperator(
@@ -726,27 +729,28 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     return constantFill;
   }
 
-  private IFill[] getPreviousFill(int inputColumns, List<TSDataType> inputDataTypes) {
+  private IFill[] getPreviousFill(
+      int inputColumns, List<TSDataType> inputDataTypes, boolean isPreviousUntilLast) {
     IFill[] previousFill = new IFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
       switch (inputDataTypes.get(i)) {
         case BOOLEAN:
-          previousFill[i] = new BooleanPreviousFill();
+          previousFill[i] = new BooleanPreviousFill(isPreviousUntilLast);
           break;
         case TEXT:
-          previousFill[i] = new BinaryPreviousFill();
+          previousFill[i] = new BinaryPreviousFill(isPreviousUntilLast);
           break;
         case INT32:
-          previousFill[i] = new IntPreviousFill();
+          previousFill[i] = new IntPreviousFill(isPreviousUntilLast);
           break;
         case INT64:
-          previousFill[i] = new LongPreviousFill();
+          previousFill[i] = new LongPreviousFill(isPreviousUntilLast);
           break;
         case FLOAT:
-          previousFill[i] = new FloatPreviousFill();
+          previousFill[i] = new FloatPreviousFill(isPreviousUntilLast);
           break;
         case DOUBLE:
-          previousFill[i] = new DoublePreviousFill();
+          previousFill[i] = new DoublePreviousFill(isPreviousUntilLast);
           break;
         default:
           throw new IllegalArgumentException("Unknown data type: " + inputDataTypes.get(i));
