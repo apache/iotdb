@@ -34,10 +34,10 @@ public class BinaryPreviousFill implements IFill {
   // whether previous value is null
   private boolean previousIsNull = true;
   // PREVIOUS is false
-  private boolean isPreviousUntilLast = false;
+  private boolean previousIsUntilLast = false;
 
-  public BinaryPreviousFill(boolean isPreviousUntilLast) {
-    this.isPreviousUntilLast = isPreviousUntilLast;
+  public BinaryPreviousFill(boolean previousIsUntilLast) {
+    this.previousIsUntilLast = previousIsUntilLast;
   }
 
   @Override
@@ -65,7 +65,7 @@ public class BinaryPreviousFill implements IFill {
       }
     } else {
       int index = valueColumn.getPositionCount();
-      if (isPreviousUntilLast) {
+      if (previousIsUntilLast) {
         for (int count = index - 1; count >= 0; count--) {
           if (!valueColumn.isNull(count)) {
             index = count;

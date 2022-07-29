@@ -730,27 +730,27 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
   }
 
   private IFill[] getPreviousFill(
-      int inputColumns, List<TSDataType> inputDataTypes, boolean isPreviousUntilLast) {
+      int inputColumns, List<TSDataType> inputDataTypes, boolean previousIsUntilLast) {
     IFill[] previousFill = new IFill[inputColumns];
     for (int i = 0; i < inputColumns; i++) {
       switch (inputDataTypes.get(i)) {
         case BOOLEAN:
-          previousFill[i] = new BooleanPreviousFill(isPreviousUntilLast);
+          previousFill[i] = new BooleanPreviousFill(previousIsUntilLast);
           break;
         case TEXT:
-          previousFill[i] = new BinaryPreviousFill(isPreviousUntilLast);
+          previousFill[i] = new BinaryPreviousFill(previousIsUntilLast);
           break;
         case INT32:
-          previousFill[i] = new IntPreviousFill(isPreviousUntilLast);
+          previousFill[i] = new IntPreviousFill(previousIsUntilLast);
           break;
         case INT64:
-          previousFill[i] = new LongPreviousFill(isPreviousUntilLast);
+          previousFill[i] = new LongPreviousFill(previousIsUntilLast);
           break;
         case FLOAT:
-          previousFill[i] = new FloatPreviousFill(isPreviousUntilLast);
+          previousFill[i] = new FloatPreviousFill(previousIsUntilLast);
           break;
         case DOUBLE:
-          previousFill[i] = new DoublePreviousFill(isPreviousUntilLast);
+          previousFill[i] = new DoublePreviousFill(previousIsUntilLast);
           break;
         default:
           throw new IllegalArgumentException("Unknown data type: " + inputDataTypes.get(i));

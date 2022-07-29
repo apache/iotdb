@@ -33,10 +33,10 @@ public class BooleanPreviousFill implements IFill {
   // whether previous value is null
   private boolean previousIsNull = true;
   // PREVIOUS is false
-  private boolean isPreviousUntilLast = false;
+  private boolean previousIsUntilLast = false;
 
-  public BooleanPreviousFill(boolean isPreviousUntilLast) {
-    this.isPreviousUntilLast = isPreviousUntilLast;
+  public BooleanPreviousFill(boolean previousIsUntilLast) {
+    this.previousIsUntilLast = previousIsUntilLast;
   }
 
   @Override
@@ -64,7 +64,7 @@ public class BooleanPreviousFill implements IFill {
       }
     } else {
       int index = valueColumn.getPositionCount();
-      if (isPreviousUntilLast) {
+      if (previousIsUntilLast) {
         for (int count = index - 1; count >= 0; count--) {
           if (!valueColumn.isNull(count)) {
             index = count;
