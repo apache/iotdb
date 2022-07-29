@@ -33,12 +33,18 @@ import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class AlignedPageReader implements IPageReader, IAlignedPageReader {
+
+  private static final Logger logger = LoggerFactory.getLogger(AlignedPageReader.class);
 
   private final TimePageReader timePageReader;
   private final List<ValuePageReader> valuePageReaderList;
@@ -111,26 +117,47 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   public TsBlock getAllSatisfiedData() throws IOException {
     builder.reset();
     long[] timeBatch = timePageReader.getNextTimeBatch();
-    byte[][] bitMaps = new byte[valueCount][];
-    for (int i = 0; i < valueCount; i++) {
-      ValuePageReader pageReader = valuePageReaderList.get(i);
-      if (pageReader != null) {
-        bitMaps[i] = pageReader.getBitmap();
-      }
-    }
 
     // if all the sub sensors' value are null in current row, just discard it
     // if !filter.satisfy, discard this row
     boolean[] keepCurrentRow = new boolean[timeBatch.length];
-    for (int i = 0; i < timeBatch.length; i++) {
-      byte b = 0;
-      for (int j = 0; j < valueCount; j++) {
-        if (bitMaps[j] == null) {
-          continue;
-        }
-        b = (byte) (b | ((bitMaps[j][i / 8] & 0xFF) & (MASK >>> (i % 8))));
+    if (filter == null) {
+      Arrays.fill(keepCurrentRow, true);
+    } else {
+      for (int i = 0, n = timeBatch.length; i < n; i++) {
+        keepCurrentRow[i] = filter.satisfy(timeBatch[i], null);
       }
-      keepCurrentRow[i] = (b != 0) && (filter == null || filter.satisfy(timeBatch[i], null));
+    }
+
+    // using bitMap in valuePageReaders to indicate whether columns of current row are all null.
+    byte[] bitmask = new byte[(timeBatch.length - 1) / 8 + 1];
+    Arrays.fill(bitmask, (byte) 0xFF);
+    for (int columnIndex = 0; columnIndex < valueCount; columnIndex++) {
+      ValuePageReader pageReader = valuePageReaderList.get(columnIndex);
+      if (pageReader != null) {
+        byte[] bitmap = pageReader.getBitmap();
+        for (int i = 0, n = bitmask.length; i < n; i++) {
+          bitmask[i] = (byte) ((bitmap[i] & 0xFF) & bitmask[i]);
+        }
+      }
+    }
+
+    for (int i = 0, n = bitmask.length; i < n; i++) {
+      logger.info("timestamp is : {}", timeBatch[i]);
+      logger.info("bitmask[{}] is : {}", i, bitmask[i]);
+      if (bitmask[i] == (byte) 0xFF) {
+        // 8 rows are not all null, do nothing
+      } else if (bitmask[i] == (byte) 0x00) {
+        for (int j = 0; j < 8 && (i * 8 + j < keepCurrentRow.length); j++) {
+          keepCurrentRow[i * 8 + j] = false;
+        }
+      } else {
+        for (int j = 0; j < 8 && (i * 8 + j < keepCurrentRow.length); j++) {
+          if (((bitmask[i] & 0xFF) & (MASK >>> j)) == 0) {
+            keepCurrentRow[i * 8 + j] = false;
+          }
+        }
+      }
     }
 
     // construct time column
@@ -143,19 +170,14 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
     // construct value columns
     for (int i = 0; i < valueCount; i++) {
-      TsPrimitiveType[] values = null;
-      boolean isCurrentColumnNull = true;
       ValuePageReader pageReader = valuePageReaderList.get(i);
       if (pageReader != null) {
-        values = pageReader.nextValueBatch(timeBatch);
-        isCurrentColumnNull = false;
-      }
-      for (int j = 0; j < timeBatch.length; j++) {
-        if (keepCurrentRow[j]) {
-          if (isCurrentColumnNull || values[j] == null) {
+        pageReader.writeColumnBuilderWithNextBatch(
+            timeBatch, builder.getColumnBuilder(i), keepCurrentRow);
+      } else {
+        for (int j = 0; j < timeBatch.length; j++) {
+          if (keepCurrentRow[j]) {
             builder.getColumnBuilder(i).appendNull();
-          } else {
-            builder.getColumnBuilder(i).writeTsPrimitiveType(values[j]);
           }
         }
       }

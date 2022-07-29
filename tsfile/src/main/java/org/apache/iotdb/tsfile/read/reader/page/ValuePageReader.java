@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -237,6 +238,66 @@ public class ValuePageReader {
       }
     }
     return valueBatch;
+  }
+
+  public void writeColumnBuilderWithNextBatch(
+      long[] timeBatch, ColumnBuilder columnBuilder, boolean[] keepCurrentRow) {
+    if (valueBuffer == null) {
+      for (int i = 0, n = timeBatch.length; i < n; i++) {
+        if (keepCurrentRow[i]) {
+          columnBuilder.appendNull();
+        }
+      }
+      return;
+    }
+    for (int i = 0, n = timeBatch.length; i < n; i++) {
+      if (((bitmap[i / 8] & 0xFF) & (MASK >>> (i % 8))) == 0) {
+        if (keepCurrentRow[i]) {
+          columnBuilder.appendNull();
+        }
+        continue;
+      }
+      switch (dataType) {
+        case BOOLEAN:
+          boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
+          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
+            columnBuilder.writeBoolean(aBoolean);
+          }
+          break;
+        case INT32:
+          int anInt = valueDecoder.readInt(valueBuffer);
+          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
+            columnBuilder.writeInt(anInt);
+          }
+          break;
+        case INT64:
+          long aLong = valueDecoder.readLong(valueBuffer);
+          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
+            columnBuilder.writeLong(aLong);
+          }
+          break;
+        case FLOAT:
+          float aFloat = valueDecoder.readFloat(valueBuffer);
+          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
+            columnBuilder.writeFloat(aFloat);
+          }
+          break;
+        case DOUBLE:
+          double aDouble = valueDecoder.readDouble(valueBuffer);
+          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
+            columnBuilder.writeDouble(aDouble);
+          }
+          break;
+        case TEXT:
+          Binary aBinary = valueDecoder.readBinary(valueBuffer);
+          if (!isDeleted(timeBatch[i]) && keepCurrentRow[i]) {
+            columnBuilder.writeBinary(aBinary);
+          }
+          break;
+        default:
+          throw new UnSupportedDataTypeException(String.valueOf(dataType));
+      }
+    }
   }
 
   public Statistics getStatistics() {
