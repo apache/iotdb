@@ -417,7 +417,7 @@ orderByClause
     ;
 
 orderByAttributeClause
-    : sortKey (DESC | ASC)
+    : sortKey (DESC | ASC)?
     ;
 
 sortKey
@@ -644,7 +644,7 @@ flush
 
 // Clear Cache
 clearCache
-    : CLEAR CACHE
+    : CLEAR CACHE (ON (LOCAL | CLUSTER))?
     ;
 
 // Settle

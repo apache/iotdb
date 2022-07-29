@@ -65,6 +65,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTempl
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
@@ -260,6 +261,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitFlush(FlushStatement flushStatement, C context) {
     return visitStatement(flushStatement, context);
+  }
+
+  public R visitClearCache(ClearCacheStatement clearCacheStatement, C context) {
+    return visitStatement(clearCacheStatement, context);
   }
 
   public R visitShowRegion(ShowRegionStatement showRegionStatement, C context) {

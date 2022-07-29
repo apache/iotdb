@@ -33,7 +33,6 @@
         <cli.test.skip>false</cli.test.skip>
         <cli.it.skip>${cli.test.skip}</cli.it.skip>
         <cli.ut.skip>${cli.test.skip}</cli.ut.skip>
-        <commons-csv.version>1.9.0</commons-csv.version>
     </properties>
     <dependencies>
         <dependency>
@@ -64,7 +63,6 @@
         <dependency>
             <groupId>me.tongfei</groupId>
             <artifactId>progressbar</artifactId>
-            <version>${progressbar.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jline</groupId>
@@ -90,7 +88,6 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
-            <version>${commons-csv.version}</version>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>

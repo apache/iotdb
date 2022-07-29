@@ -41,6 +41,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.buffer.IWALBuffer;
 import org.apache.iotdb.db.wal.buffer.WALBuffer;
 import org.apache.iotdb.db.wal.buffer.WALEntry;
@@ -302,8 +303,10 @@ public class WALNode implements IWALNode {
       // delete files
       int deletedFilesNum = 0;
       for (int i = 0; i < endFileIndex; ++i) {
+        long fileSize = filesToDelete[i].length();
         if (filesToDelete[i].delete()) {
           deletedFilesNum++;
+          WALManager.getInstance().subtractTotalDiskUsage(fileSize);
         } else {
           logger.info(
               "Fail to delete outdated wal file {} of wal node-{}.", filesToDelete[i], identifier);
