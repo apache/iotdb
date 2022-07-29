@@ -217,7 +217,6 @@
         <google.java.format.version>1.7</google.java.format.version>
         <!-- caffeine cache -->
         <caffeine>2.9.1</caffeine>
-        <jackson-databind.version>2.12.6.1</jackson-databind.version>
         <commons-csv.version>1.9.0</commons-csv.version>
         <commons-lang.version>2.6</commons-lang.version>
         <influxdb-java.version>2.21</influxdb-java.version>
@@ -615,11 +614,6 @@
                 <groupId>com.github.ben-manes.caffeine</groupId>
                 <artifactId>caffeine</artifactId>
                 <version>${caffeine}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson-databind.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.awaitility</groupId>
