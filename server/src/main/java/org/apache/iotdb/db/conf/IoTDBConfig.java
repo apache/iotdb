@@ -954,6 +954,9 @@ public class IoTDBConfig {
   /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 100;
 
+  /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
+  private long multiLeaderMaxWalBufferSize = 10 * 1024 * 1024 * 1024L;
+
   IoTDBConfig() {}
 
   public float getUdfMemoryBudgetInMB() {
@@ -3030,5 +3033,13 @@ public class IoTDBConfig {
 
   public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
+  }
+
+  public long getMultiLeaderMaxWalBufferSize() {
+    return multiLeaderMaxWalBufferSize;
+  }
+
+  public void setMultiLeaderMaxWalBufferSize(long multiLeaderMaxWalBufferSize) {
+    this.multiLeaderMaxWalBufferSize = multiLeaderMaxWalBufferSize;
   }
 }

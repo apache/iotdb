@@ -110,6 +110,17 @@ public class MultiLeaderServerImpl {
    */
   public TSStatus write(IConsensusRequest request) {
     synchronized (stateMachine) {
+      if (needToThrottleDown()) {
+        logger.info(
+            "[Throttle Down] index:{}, safeIndex:{}",
+            getIndex(),
+            getCurrentSafelyDeletedSearchIndex());
+        try {
+          stateMachine.wait(config.getReplication().getThrottleTimeOutMs());
+        } catch (InterruptedException e) {
+          logger.error("Failed to throttle down because ", e);
+        }
+      }
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
@@ -216,5 +227,13 @@ public class MultiLeaderServerImpl {
 
   public MultiLeaderConfig getConfig() {
     return config;
+  }
+
+  public boolean needToThrottleDown() {
+    return false;
+  }
+
+  public boolean needToThrottleUp() {
+    return false;
   }
 }

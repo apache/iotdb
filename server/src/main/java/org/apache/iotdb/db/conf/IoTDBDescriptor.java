@@ -1066,6 +1066,15 @@ public class IoTDBDescriptor {
     if (deleteWalFilesPeriod > 0) {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
+
+    long multiLeaderMaxBufferSize =
+        Long.parseLong(
+            properties.getProperty(
+                "multiLeader_max_wal_buffer_size_in_byte",
+                Long.toString(conf.getMultiLeaderMaxWalBufferSize())));
+    if (multiLeaderMaxBufferSize > 0) {
+      conf.setMultiLeaderMaxWalBufferSize(multiLeaderMaxBufferSize);
+    }
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {

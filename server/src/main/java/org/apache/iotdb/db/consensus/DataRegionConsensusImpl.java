@@ -77,6 +77,10 @@ public class DataRegionConsensusImpl {
                                           conf.getThriftServerAwaitTimeForStopService())
                                       .setThriftMaxFrameSize(conf.getThriftMaxFrameSize())
                                       .build())
+                              .setReplication(
+                                  MultiLeaderConfig.Replication.newBuilder()
+                                      .setMaxWalBufferSize(conf.getMultiLeaderMaxWalBufferSize())
+                                      .build())
                               .build())
                       .setRatisConfig(
                           RatisConfig.newBuilder()
