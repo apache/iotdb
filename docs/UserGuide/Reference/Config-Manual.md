@@ -526,6 +526,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 10000 |
 |Effective|After restarting system|
 
+* schema_query_fetch_size
+
+|Name| schema_query_fetch_size |
+|:---:|:---|
+|Description| The default max size amount of schema record returned in one schema query(e.g. show timeseries). |
+|Type|Int32|
+|Default| 100000 |
+|Effective|After restarting system|
+
 * enable\_stat\_monitor
 
 |Name| enable\_stat\_monitor |

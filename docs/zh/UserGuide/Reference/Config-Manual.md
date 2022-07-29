@@ -748,6 +748,15 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 10 |
 |改后生效方式|重启服务生效|
 
+* schema_query_fetch_size
+
+|名字| schema_query_fetch_size |
+|:---:|:---|
+|描述| 默认的一次元数据查询返回的最大条目数，例如show timeseries。|
+|类型|Int32|
+|默认值| 100000 |
+|改后生效方式|重启服务生效|
+
 ### 升级配置
 
 * update\_thread\_num
