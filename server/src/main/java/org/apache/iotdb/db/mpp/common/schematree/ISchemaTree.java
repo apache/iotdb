@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 
-public interface SchemaTree {
+public interface ISchemaTree {
   /**
    * Return all measurement paths for given path pattern and filter the result by slimit and offset.
    *

@@ -41,7 +41,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SchemaTreeTest {
+public class ClusterSchemaTreeTest {
 
   @Test
   public void testSchemaTreeVisitor() throws Exception {
@@ -392,12 +392,12 @@ public class SchemaTreeTest {
 
   @Test
   public void testSearchDeviceInfo() throws Exception {
-    SchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
+    ISchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
 
     testSearchDeviceInfo(schemaTree);
   }
 
-  private void testSearchDeviceInfo(SchemaTree schemaTree) throws Exception {
+  private void testSearchDeviceInfo(ISchemaTree schemaTree) throws Exception {
     PartialPath devicePath = new PartialPath("root.sg.d1");
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -426,7 +426,7 @@ public class SchemaTreeTest {
 
   @Test
   public void testGetMatchedDevices() throws Exception {
-    SchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
+    ISchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
 
     List<DeviceSchemaInfo> deviceSchemaInfoList =
         schemaTree.getMatchedDevices(new PartialPath("root.sg.d2.a"), false);
@@ -466,7 +466,7 @@ public class SchemaTreeTest {
     root.serialize(outputStream);
 
     ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-    SchemaTree schemaTree = ClusterSchemaTree.deserialize(inputStream);
+    ISchemaTree schemaTree = ClusterSchemaTree.deserialize(inputStream);
 
     Pair<List<MeasurementPath>, Integer> visitResult =
         schemaTree.searchMeasurementPaths(new PartialPath("root.sg.**.status"), 2, 1, true);

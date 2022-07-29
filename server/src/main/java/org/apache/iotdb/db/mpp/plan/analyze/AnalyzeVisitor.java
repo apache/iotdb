@@ -37,8 +37,8 @@ import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -172,7 +172,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // request schema fetch API
       logger.info("{} fetch query schema...", getLogHeader());
-      SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
       logger.info("{} fetch schema done", getLogHeader());
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
@@ -423,7 +423,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private List<Pair<Expression, String>> analyzeSelect(
-      QueryStatement queryStatement, SchemaTree schemaTree) {
+      QueryStatement queryStatement, ISchemaTree schemaTree) {
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
     boolean isGroupByLevel = queryStatement.isGroupByLevel();
     ColumnPaginationController paginationController =
@@ -478,7 +478,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return outputExpressions;
   }
 
-  private Set<PartialPath> analyzeFrom(QueryStatement queryStatement, SchemaTree schemaTree) {
+  private Set<PartialPath> analyzeFrom(QueryStatement queryStatement, ISchemaTree schemaTree) {
     // device path patterns in FROM clause
     List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
 
@@ -495,7 +495,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private List<Pair<Expression, String>> analyzeSelect(
       QueryStatement queryStatement,
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       Set<PartialPath> deviceList,
       Map<String, Set<Expression>> deviceToTransformExpressions,
       Map<String, Set<String>> deviceToMeasurementsMap) {
@@ -647,7 +647,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return isHasRawDataInputAggregation;
   }
 
-  private Expression analyzeWhere(QueryStatement queryStatement, SchemaTree schemaTree) {
+  private Expression analyzeWhere(QueryStatement queryStatement, ISchemaTree schemaTree) {
     List<Expression> rewrittenPredicates =
         ExpressionAnalyzer.removeWildcardInQueryFilter(
             queryStatement.getWhereCondition().getPredicate(),
@@ -659,7 +659,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Expression analyzeWhereSplitByDevice(
-      QueryStatement queryStatement, PartialPath devicePath, SchemaTree schemaTree) {
+      QueryStatement queryStatement, PartialPath devicePath, ISchemaTree schemaTree) {
     List<Expression> rewrittenPredicates =
         ExpressionAnalyzer.removeWildcardInQueryFilterByDevice(
             queryStatement.getWhereCondition().getPredicate(),
@@ -774,7 +774,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Analysis analyzeLast(
-      Analysis analysis, List<MeasurementPath> allSelectedPath, SchemaTree schemaTree) {
+      Analysis analysis, List<MeasurementPath> allSelectedPath, ISchemaTree schemaTree) {
     Set<Expression> sourceExpressions =
         allSelectedPath.stream()
             .map(TimeSeriesOperand::new)
@@ -804,7 +804,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
 
-  private DataPartition fetchDataPartitionByDevices(Set<String> deviceSet, SchemaTree schemaTree) {
+  private DataPartition fetchDataPartitionByDevices(Set<String> deviceSet, ISchemaTree schemaTree) {
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
     for (String devicePath : deviceSet) {
       DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
@@ -1197,7 +1197,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.constructTree();
       // request schema fetch API
       logger.info("{} fetch query schema...", getLogHeader());
-      SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
       logger.info("{} fetch schema done", getLogHeader());
       List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
 
@@ -1430,7 +1430,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.appendPathPattern(pathPattern);
     }
 
-    SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
     analysis.setSchemaTree(schemaTree);
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();

@@ -29,8 +29,8 @@ import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -86,7 +86,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public SchemaTree fetchSchemaWithAutoCreate(
+  public ISchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
 
@@ -120,7 +120,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public SchemaTree fetchSchemaListWithAutoCreate(
+  public ISchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePathList,
       List<String[]> measurementsList,
       List<TSDataType[]> tsDataTypesList,
@@ -181,7 +181,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   public void invalidAllCache() {}
 
   private Pair<List<String>, List<TSDataType>> checkMissingMeasurements(
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       PartialPath devicePath,
       String[] measurements,
       TSDataType[] tsDataTypes) {
@@ -205,7 +205,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   }
 
   private ClusterSchemaTree checkAndAutoCreateMissingMeasurements(
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       PartialPath devicePath,
       String[] measurements,
       TSDataType[] tsDataTypes,

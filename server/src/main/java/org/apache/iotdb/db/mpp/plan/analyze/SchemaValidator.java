@@ -21,7 +21,7 @@ package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sql.SemanticException;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.BatchInsertNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 
@@ -32,9 +32,9 @@ public class SchemaValidator {
           ? ClusterSchemaFetcher.getInstance()
           : StandaloneSchemaFetcher.getInstance();
 
-  public static SchemaTree validate(InsertNode insertNode) {
+  public static ISchemaTree validate(InsertNode insertNode) {
 
-    SchemaTree schemaTree;
+    ISchemaTree schemaTree;
     if (insertNode instanceof BatchInsertNode) {
       BatchInsertNode batchInsertNode = (BatchInsertNode) insertNode;
       schemaTree =

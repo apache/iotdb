@@ -47,7 +47,7 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
-public class ClusterSchemaTree implements SchemaTree {
+public class ClusterSchemaTree implements ISchemaTree {
 
   private List<String> storageGroups;
 
