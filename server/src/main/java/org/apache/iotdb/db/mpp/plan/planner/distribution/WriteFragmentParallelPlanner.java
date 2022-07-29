@@ -66,7 +66,7 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
               queryContext.getQueryType(),
               queryContext.getTimeOut());
       instance.setDataRegionAndHost(split.getRegionReplicaSet());
-//      instance.setHostDataNode(fakeSelectDataNode(split.getRegionReplicaSet()));
+      //      instance.setHostDataNode(fakeSelectDataNode(split.getRegionReplicaSet()));
       ret.add(instance);
     }
     return ret;
