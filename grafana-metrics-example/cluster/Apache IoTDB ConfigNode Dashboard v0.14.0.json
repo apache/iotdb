@@ -1170,7 +1170,7 @@
           "exemplar": true,
           "expr": "sys_cpu_load{instance=\"$instance\",name=\"system\"}",
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "System CPU Load",
           "refId": "A"
         }
       ],
@@ -1252,7 +1252,7 @@
           "exemplar": true,
           "expr": "sys_total_physical_memory_size{instance=\"$instance\", name=\"system\"}-sys_free_physical_memory_size{instance=\"$instance\", name=\"system\"}",
           "interval": "",
-          "legendFormat": "use_physical_memory",
+          "legendFormat": "Used physical memory",
           "refId": "A"
         },
         {
@@ -1264,7 +1264,7 @@
           "expr": "sys_total_physical_memory_size{instance=\"$instance\", name=\"system\"}",
           "hide": false,
           "interval": "",
-          "legendFormat": "total_physical_memory",
+          "legendFormat": "Total physical memory",
           "refId": "B"
         }
       ],
@@ -1347,7 +1347,7 @@
           "exemplar": true,
           "expr": "sys_disk_total_space{instance=\"$instance\", name=\"system\"}-sys_disk_free_space{instance=\"$instance\", name=\"system\"}",
           "interval": "",
-          "legendFormat": "used_disk_space",
+          "legendFormat": "Used disk space",
           "refId": "A"
         },
         {
@@ -1359,7 +1359,7 @@
           "expr": "sys_disk_total_space{instance=\"$instance\", name=\"system\"}",
           "hide": false,
           "interval": "",
-          "legendFormat": "total_disk_space",
+          "legendFormat": "Total disk space",
           "refId": "B"
         }
       ],
