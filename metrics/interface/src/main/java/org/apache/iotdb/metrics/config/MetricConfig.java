@@ -152,6 +152,11 @@ public class MetricConfig {
     ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
   }
 
+  public void updateInstance(String instanceHost, Integer instancePort) {
+    this.instanceHost = instanceHost;
+    this.instancePort = instancePort;
+  }
+
   public Boolean getEnableMetric() {
     return enableMetric;
   }
@@ -220,16 +225,8 @@ public class MetricConfig {
     return instanceHost;
   }
 
-  public void setInstanceHost(String instanceHost) {
-    this.instanceHost = instanceHost;
-  }
-
   public Integer getInstancePort() {
     return instancePort;
-  }
-
-  public void setInstancePort(Integer instancePort) {
-    this.instancePort = instancePort;
   }
 
   @Override

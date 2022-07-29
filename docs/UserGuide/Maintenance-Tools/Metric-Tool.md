@@ -78,12 +78,13 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 4.3.1. API
 
-| Metric              | Tag                                                                                     | level     | Description                              | Sample                                                |
-| ------------------- | --------------------------------------------------------------------------------------- | --------- | ---------------------------------------- | ----------------------------------------------------- |
-| entry_seconds_count | name="interface name"                                                                   | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0          |
-| entry_seconds_sum   | name="interface name"                                                                   | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024          |
-| entry_seconds_max   | name="interface name"                                                                   | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024          |
-| quantity_total      | name="pointsIn",<br> type="insertRow/insertAlignedRow/insertTablet/insertAlignedTablet" | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",type="insertRow",} 1.0 |
+| Metric              | Tag                      | level     | Description                              | Sample                                       |
+| ------------------- | ------------------------ | --------- | ---------------------------------------- | -------------------------------------------- |
+| entry_seconds_count | name="{{interface}}"     | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum   | name="{{interface}}"     | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max   | name="{{interface}}"     | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
+| quantity_total      | name="pointsIn"          | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
+| thrift_connections  | name="{{thriftService}}" | core      | current number of thrift connections     | thrift_connections{name="RPC",} 1.0          |
 
 #### 4.3.2. Task
 | Metric                  | Tag                                                                          | level     | Description                                              | Sample                                                                                  |

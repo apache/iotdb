@@ -927,6 +927,10 @@ public class IoTDBDescriptor {
     } finally {
       // update all data seriesPath
       conf.updatePath();
+      // update instance in metric
+      MetricConfigDescriptor.getInstance()
+          .getMetricConfig()
+          .updateInstance(conf.getRpcAddress(), conf.getRpcPort());
     }
   }
 
