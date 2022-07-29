@@ -22,9 +22,9 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
@@ -57,6 +57,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
+import org.apache.iotdb.mpp.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -161,29 +162,33 @@ public class ClusterSchemaManager {
    */
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
 
-    if (!getStorageGroupNames().contains(setTTLPlan.getStorageGroup())) {
+    Map<String, TStorageGroupSchema> storageSchemaMap =
+        clusterSchemaInfo.getMatchedStorageGroupSchemasByOneName(
+            setTTLPlan.getStorageGroupPathPattern());
+
+    if (storageSchemaMap.isEmpty()) {
       return RpcUtils.getStatus(
           TSStatusCode.STORAGE_GROUP_NOT_EXIST,
-          "storageGroup " + setTTLPlan.getStorageGroup() + " does not exist");
+          "Path [" + new PartialPath(setTTLPlan.getStorageGroupPathPattern()) + "] does not exist");
     }
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    Set<TDataNodeLocation> dataNodeLocations =
-        getPartitionManager()
-            .getStorageGroupRelatedDataNodes(
-                setTTLPlan.getStorageGroup(), TConsensusGroupType.DataRegion);
-    dataNodeLocations.forEach(
-        dataNodeLocation ->
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation));
-    if (dataNodeLocations.size() > 0) {
-      // TODO: Use procedure to protect SetTTL on DataNodes
-      AsyncDataNodeClientPool.getInstance()
-          .sendAsyncRequestToDataNodeWithRetry(
-              new TSetTTLReq(setTTLPlan.getStorageGroup(), setTTLPlan.getTTL()),
-              dataNodeLocationMap,
-              DataNodeRequestType.SET_TTL,
-              null);
+    for (String storageGroup : storageSchemaMap.keySet()) {
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+      Set<TDataNodeLocation> dataNodeLocations =
+          getPartitionManager()
+              .getStorageGroupRelatedDataNodes(storageGroup, TConsensusGroupType.DataRegion);
+      dataNodeLocations.forEach(
+          dataNodeLocation ->
+              dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation));
+      if (dataNodeLocations.size() > 0) {
+        // TODO: Use procedure to protect SetTTL on DataNodes
+        AsyncDataNodeClientPool.getInstance()
+            .sendAsyncRequestToDataNodeWithRetry(
+                new TSetTTLReq(storageGroup, setTTLPlan.getTTL()),
+                dataNodeLocationMap,
+                DataNodeRequestType.SET_TTL,
+                null);
+      }
     }
-
     return getConsensusManager().write(setTTLPlan).getStatus();
   }
 

@@ -337,6 +337,11 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
+struct TSetTTLReq {
+  1: required list<string> storageGroupPathPattern
+  2: required i64 TTL
+}
+
 service IConfigNodeRPCService {
 
   /* DataNode */
@@ -357,7 +362,7 @@ service IConfigNodeRPCService {
 
   common.TSStatus deleteStorageGroups(TDeleteStorageGroupsReq req)
 
-  common.TSStatus setTTL(common.TSetTTLReq req)
+  common.TSStatus setTTL(TSetTTLReq req)
 
   common.TSStatus setSchemaReplicationFactor(TSetSchemaReplicationFactorReq req)
 

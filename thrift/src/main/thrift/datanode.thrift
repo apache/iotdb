@@ -203,6 +203,11 @@ struct TUpdateTemplateReq{
     2: required binary templateInfo
 }
 
+struct TSetTTLReq {
+  1: required string storageGroup
+  2: required i64 TTL
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -332,7 +337,7 @@ service IDataNodeRPCService {
 
   common.TSStatus flush(common.TFlushReq req)
 
-  common.TSStatus setTTL(common.TSetTTLReq req)
+  common.TSStatus setTTL(TSetTTLReq req)
   /**
    * configNode will notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
    *
