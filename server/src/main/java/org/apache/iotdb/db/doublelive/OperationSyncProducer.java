@@ -36,7 +36,9 @@ public class OperationSyncProducer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncProducer.class);
   private static final Integer RETRY = 3;
-  private final ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>> operationSyncQueues;
+  private final ArrayList<
+          BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
+      operationSyncQueues;
   private final OperationSyncLogService dmlLogService;
 
   public OperationSyncProducer(
@@ -47,13 +49,21 @@ public class OperationSyncProducer {
     this.dmlLogService = operationSyncDMLLogService;
   }
 
-  public void put(Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType> planPair) {
+  public void put(
+      Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType> planPair,
+      String deviceName) {
     ByteBuffer headBuffer;
     headBuffer = planPair.left;
     headBuffer.position(0);
+    int index;
+    if (deviceName == null) {
+      index = 0;
+    } else {
+      index = deviceName.hashCode() % operationSyncQueues.size();
+    }
     for (int i = 0; i < RETRY; i++) {
       // retry 3 times
-      if (operationSyncQueues.get(0).offer(planPair)) {
+      if (operationSyncQueues.get(index).offer(planPair)) {
         return;
       }
     }
