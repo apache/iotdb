@@ -845,6 +845,11 @@ public class IoTDBDescriptor {
                   "operation_sync_consumer_concurrency_size",
                   String.valueOf(conf.getOperationSyncConsumerConcurrencySize()))));
 
+      conf.setSchemaQueryFetchSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "schema_query_fetch_size", String.valueOf(conf.getSchemaQueryFetchSize()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()

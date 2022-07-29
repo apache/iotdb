@@ -19,6 +19,7 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -31,7 +32,7 @@ public class ShowTimeSeriesOperator extends ShowOperator {
   private boolean isContains;
   private String key;
   private String value;
-  private int limit = 1000;
+  private int limit = IoTDBDescriptor.getInstance().getConfig().getSchemaQueryFetchSize();
   private int offset = 0;
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private final boolean orderByHeat;

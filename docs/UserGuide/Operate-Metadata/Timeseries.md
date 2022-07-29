@@ -86,7 +86,7 @@ IoTDB> delete timeseries root.ln.wf02.*
   
 Timeseries information includes: timeseries path, alias of measurement, storage group it belongs to, data type, encoding type, compression type, tags and attributes.
 
-The default size of result set is 1000. To query more child paths, please use ```limit``` and ```offset```.
+The default size of result set is 100000. To query more child paths, please use ```limit``` and ```offset```.
 
  
 Examples:
