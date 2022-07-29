@@ -136,7 +136,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
         }
       }
       cacheCondition.signalAll();
-      return requestCache.poll().getInsertNode();
+      InsertNodeWrapper wrapper = requestCache.poll();
+      logger.info("queue size {}, syncIndex = {}", requestCache.size(), wrapper.getSyncIndex());
+      return wrapper.getInsertNode();
     } finally {
       lock.unlock();
     }
