@@ -575,7 +575,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort((short) PlanNodeType.INSERT_ROW.ordinal());
+    buffer.putShort(PlanNodeType.INSERT_ROW.getNodeType());
     subSerialize(buffer);
   }
 
