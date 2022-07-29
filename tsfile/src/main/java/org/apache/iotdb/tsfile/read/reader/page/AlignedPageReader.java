@@ -137,14 +137,12 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
       if (pageReader != null) {
         byte[] bitmap = pageReader.getBitmap();
         for (int i = 0, n = bitmask.length; i < n; i++) {
-          bitmask[i] = (byte) ((bitmap[i] & 0xFF) & bitmask[i]);
+          bitmask[i] = (byte) ((bitmap[i] & 0xFF) | bitmask[i]);
         }
       }
     }
 
     for (int i = 0, n = bitmask.length; i < n; i++) {
-      logger.info("timestamp is : {}", timeBatch[i]);
-      logger.info("bitmask[{}] is : {}", i, bitmask[i]);
       if (bitmask[i] == (byte) 0xFF) {
         // 8 rows are not all null, do nothing
       } else if (bitmask[i] == (byte) 0x00) {
