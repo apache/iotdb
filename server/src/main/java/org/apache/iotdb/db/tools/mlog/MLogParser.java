@@ -227,6 +227,7 @@ public class MLogParser {
             break;
           case PRUNE_TEMPLATE:
             mLogTxtWriter.pruneTemplate((PruneTemplatePlan) plan);
+            break;
           case SET_TEMPLATE:
             mLogTxtWriter.setTemplate((SetTemplatePlan) plan);
             break;
