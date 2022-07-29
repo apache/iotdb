@@ -260,7 +260,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
               throw e;
             }
           }
-          deviceList.retainAll(measurementNotExistDevices);
+          deviceList.removeAll(measurementNotExistDevices);
         }
 
         Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
