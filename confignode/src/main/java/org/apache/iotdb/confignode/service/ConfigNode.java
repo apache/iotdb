@@ -206,10 +206,10 @@ public class ConfigNode implements ConfigNodeMBean {
     TEndPoint targetConfigNode = conf.getTargetConfigNode();
     for (int retry = 0; retry < 3; retry++) {
       TSStatus status =
-              (TSStatus)
-                      SyncConfigNodeClientPool.getInstance()
-                              .sendSyncRequestToConfigNodeWithRetry(
-                                      targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
+          (TSStatus)
+              SyncConfigNodeClientPool.getInstance()
+                  .sendSyncRequestToConfigNodeWithRetry(
+                      targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         break;
       } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
