@@ -121,6 +121,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     lock.lock();
     try {
       requestCache.add(new InsertNodeWrapper(syncIndex, insertNode));
+      cacheCondition.signalAll();
       while (!(requestCache.size() >= MAX_REQUEST_CACHE_SIZE
           && requestCache.peek().getSyncIndex() == syncIndex)) {
         try {
@@ -133,7 +134,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
           Thread.currentThread().interrupt();
         }
       }
-      cacheCondition.notifyAll();
+      cacheCondition.signalAll();
       return requestCache.poll().getInsertNode();
     } finally {
       lock.unlock();
