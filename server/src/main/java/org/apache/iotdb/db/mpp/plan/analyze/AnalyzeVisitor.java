@@ -35,7 +35,6 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
-import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -63,7 +62,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
@@ -834,19 +832,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
       }
     }
-  }
-
-  @Override
-  public Analysis visitLastPointFetch(LastPointFetchStatement statement, MPPQueryContext context) {
-    context.setQueryType(QueryType.READ);
-
-    Analysis analysis = new Analysis();
-    analysis.setStatement(statement);
-
-    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
-    schemaTree.setStorageGroups(statement.getStorageGroups());
-
-    return analyzeLast(analysis, statement.getSelectedPaths(), schemaTree);
   }
 
   @Override
