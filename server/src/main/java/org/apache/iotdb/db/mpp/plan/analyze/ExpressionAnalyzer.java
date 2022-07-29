@@ -588,7 +588,7 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Concat suffix path in WHERE clause with the prefix path in the FROM clause. And then, bind
+   * Concat suffix path in Having clause with the prefix path in the FROM clause. And then, bind
    * schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in Expression.
    *
    * @param prefixPaths prefix paths in the FROM clause
@@ -663,7 +663,6 @@ public class ExpressionAnalyzer {
       if (!filterPath.getFirstNode().equals(SQLConstant.ROOT)) {
         prefixPaths.forEach(prefix -> concatPaths.add(prefix.concatPath(filterPath)));
       } else {
-        // do nothing in the case of "where root.d1.s1 > 5"
         concatPaths.add(filterPath);
       }
 
