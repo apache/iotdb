@@ -22,19 +22,17 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
@@ -51,6 +49,7 @@ public class SubCompactionTask implements Callable<Void> {
   private final QueryContext queryContext;
   private final QueryDataSource queryDataSource;
   private final AbstractCompactionWriter compactionWriter;
+  private final Map<String, MeasurementSchema> schemaMap;
   private final int taskId;
 
   public SubCompactionTask(
@@ -59,26 +58,22 @@ public class SubCompactionTask implements Callable<Void> {
       QueryContext queryContext,
       QueryDataSource queryDataSource,
       AbstractCompactionWriter compactionWriter,
+      Map<String, MeasurementSchema> schemaMap,
       int taskId) {
     this.device = device;
     this.measurementList = measurementList;
     this.queryContext = queryContext;
     this.queryDataSource = queryDataSource;
     this.compactionWriter = compactionWriter;
+    this.schemaMap = schemaMap;
     this.taskId = taskId;
   }
 
   @Override
   public Void call() throws Exception {
     for (String measurement : measurementList) {
-      List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-      try {
-        measurementSchemas.add(
-            IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
-      } catch (PathNotExistException e) {
-        logger.info("A deleted path is skipped: {}", e.getMessage());
-        continue;
-      }
+      List<IMeasurementSchema> measurementSchemas =
+          Collections.singletonList(schemaMap.get(measurement));
 
       IBatchReader dataBatchReader =
           CompactionUtils.constructReader(

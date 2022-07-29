@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
@@ -94,7 +93,7 @@ public class InnerSpaceCompactionUtils {
 
   private static void checkThreadInterrupted(TsFileResource tsFileResource)
       throws InterruptedException {
-    if (Thread.currentThread().isInterrupted()) {
+    if (Thread.currentThread().isInterrupted() || !IoTDB.activated) {
       throw new InterruptedException(
           String.format(
               "[Compaction] compaction for target file %s abort", tsFileResource.toString()));
@@ -119,15 +118,8 @@ public class InnerSpaceCompactionUtils {
       // dead-loop.
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
           seriesIterator.getMetadataListForCurrentSeries();
-      try {
-        measurementSchema = IoTDB.metaManager.getSeriesSchema(p);
-      } catch (PathNotExistException e) {
-        logger.info("A deleted path is skipped: {}", e.getMessage());
-        continue;
-      }
       SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
-          new SingleSeriesCompactionExecutor(
-              p, measurementSchema, readerAndChunkMetadataList, writer, targetResource);
+          new SingleSeriesCompactionExecutor(p, readerAndChunkMetadataList, writer, targetResource);
       compactionExecutorOfCurrentTimeSeries.execute();
     }
   }
