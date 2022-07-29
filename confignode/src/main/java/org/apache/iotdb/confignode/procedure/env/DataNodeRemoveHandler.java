@@ -175,8 +175,10 @@ public class DataNodeRemoveHandler {
                 originalDataNode.getInternalEndPoint(),
                 migrateRegionReq,
                 DataNodeRequestType.MIGRATE_REGION);
-    LOGGER.debug(
-        "send region {} migrate action to {}, wait it finished", regionId, originalDataNode);
+    LOGGER.info(
+        "send region {} migrate action to {}, wait it finished",
+        regionId,
+        originalDataNode.getInternalEndPoint());
     return status;
   }
 
@@ -191,7 +193,7 @@ public class DataNodeRemoveHandler {
       TConsensusGroupId regionId,
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode) {
-    LOGGER.debug(
+    LOGGER.info(
         "start to update region {} location from {} to {} when it migrate succeed",
         regionId,
         originalDataNode.getInternalEndPoint().getIp(),
@@ -258,7 +260,7 @@ public class DataNodeRemoveHandler {
             .addToRegionConsensusGroup(
                 // TODO replace with real ttl
                 regionReplicaNodes, regionId, destDataNode, storageGroup, Long.MAX_VALUE);
-    LOGGER.debug("send add region {} consensus group to {}", regionId, destDataNode);
+    LOGGER.info("send add region {} consensus group to {}", regionId, destDataNode);
     if (isFailed(status)) {
       LOGGER.error(
           "add new node {} to region {} consensus group failed,  result: {}",
