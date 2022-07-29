@@ -41,7 +41,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class SchemaTreeTest {
+public class ClusterSchemaTreeTest {
 
   @Test
   public void testSchemaTreeVisitor() throws Exception {
@@ -392,12 +392,12 @@ public class SchemaTreeTest {
 
   @Test
   public void testSearchDeviceInfo() throws Exception {
-    SchemaTree schemaTree = new SchemaTree(generateSchemaTree());
+    ISchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
 
     testSearchDeviceInfo(schemaTree);
   }
 
-  private void testSearchDeviceInfo(SchemaTree schemaTree) throws Exception {
+  private void testSearchDeviceInfo(ISchemaTree schemaTree) throws Exception {
     PartialPath devicePath = new PartialPath("root.sg.d1");
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -426,7 +426,7 @@ public class SchemaTreeTest {
 
   @Test
   public void testGetMatchedDevices() throws Exception {
-    SchemaTree schemaTree = new SchemaTree(generateSchemaTree());
+    ISchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
 
     List<DeviceSchemaInfo> deviceSchemaInfoList =
         schemaTree.getMatchedDevices(new PartialPath("root.sg.d2.a"), false);
@@ -466,7 +466,7 @@ public class SchemaTreeTest {
     root.serialize(outputStream);
 
     ByteArrayInputStream inputStream = new ByteArrayInputStream(outputStream.toByteArray());
-    SchemaTree schemaTree = SchemaTree.deserialize(inputStream);
+    ISchemaTree schemaTree = ClusterSchemaTree.deserialize(inputStream);
 
     Pair<List<MeasurementPath>, Integer> visitResult =
         schemaTree.searchMeasurementPaths(new PartialPath("root.sg.**.status"), 2, 1, true);
@@ -478,7 +478,7 @@ public class SchemaTreeTest {
 
   @Test
   public void testAppendMeasurementPath() throws Exception {
-    SchemaTree schemaTree = new SchemaTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     List<MeasurementPath> measurementPathList = generateMeasurementPathList();
 
     schemaTree.appendMeasurementPaths(measurementPathList);
@@ -530,8 +530,8 @@ public class SchemaTreeTest {
 
   @Test
   public void testMergeSchemaTree() throws Exception {
-    SchemaTree schemaTree = new SchemaTree();
-    for (SchemaTree tree : generateSchemaTrees()) {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    for (ClusterSchemaTree tree : generateSchemaTrees()) {
       schemaTree.mergeSchemaTree(tree);
     }
 
@@ -540,8 +540,8 @@ public class SchemaTreeTest {
 
   @Test
   public void testMergeSchemaTreeAndSearchDeviceSchemaInfo() throws Exception {
-    SchemaTree schemaTree = new SchemaTree();
-    for (SchemaTree tree : generateSchemaTrees()) {
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
+    for (ClusterSchemaTree tree : generateSchemaTrees()) {
       schemaTree.mergeSchemaTree(tree);
     }
     PartialPath devicePath = new PartialPath("root.sg.d99999");
@@ -551,9 +551,9 @@ public class SchemaTreeTest {
     schemaTree.searchDeviceSchemaInfo(devicePath, measurements);
   }
 
-  private List<SchemaTree> generateSchemaTrees() throws Exception {
-    List<SchemaTree> schemaTreeList = new ArrayList<>();
-    SchemaTree schemaTree;
+  private List<ClusterSchemaTree> generateSchemaTrees() throws Exception {
+    List<ClusterSchemaTree> schemaTreeList = new ArrayList<>();
+    ClusterSchemaTree schemaTree;
     List<MeasurementPath> measurementPathList = generateMeasurementPathList();
     List<MeasurementPath> list;
     for (int i = 0; i < 6; i += 2) {
@@ -561,7 +561,7 @@ public class SchemaTreeTest {
       list.add(measurementPathList.get(i));
       list.add(measurementPathList.get(i + 1));
 
-      schemaTree = new SchemaTree();
+      schemaTree = new ClusterSchemaTree();
       schemaTree.appendMeasurementPaths(list);
       schemaTreeList.add(schemaTree);
     }

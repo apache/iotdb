@@ -48,7 +48,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
@@ -308,14 +307,6 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     return planBuilder.getRoot();
   }
 
-  public PlanNode visitLastPointFetch(
-      LastPointFetchStatement lastPointFetchStatement, MPPQueryContext context) {
-    LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
-    return planBuilder
-        .planLast(analysis.getSourceExpressions(), null, new OrderByParameter())
-        .getRoot();
-  }
-
   @Override
   public PlanNode visitCreateTimeseries(
       CreateTimeSeriesStatement createTimeSeriesStatement, MPPQueryContext context) {
@@ -538,7 +529,11 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
     LogicalPlanBuilder planBuilder = new LogicalPlanBuilder(context);
     return planBuilder
         .planTimeSeriesCountSource(
-            countTimeSeriesStatement.getPartialPath(), countTimeSeriesStatement.isPrefixPath())
+            countTimeSeriesStatement.getPartialPath(),
+            countTimeSeriesStatement.isPrefixPath(),
+            countTimeSeriesStatement.getKey(),
+            countTimeSeriesStatement.getValue(),
+            countTimeSeriesStatement.isContains())
         .planCountMerge()
         .getRoot();
   }
@@ -551,7 +546,10 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         .planLevelTimeSeriesCountSource(
             countLevelTimeSeriesStatement.getPartialPath(),
             countLevelTimeSeriesStatement.isPrefixPath(),
-            countLevelTimeSeriesStatement.getLevel())
+            countLevelTimeSeriesStatement.getLevel(),
+            countLevelTimeSeriesStatement.getKey(),
+            countLevelTimeSeriesStatement.getValue(),
+            countLevelTimeSeriesStatement.isContains())
         .planCountMerge()
         .getRoot();
   }

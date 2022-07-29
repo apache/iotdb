@@ -16,10 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process;
+package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
+import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
 import com.google.common.util.concurrent.Futures;
@@ -27,7 +28,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.List;
 
-public class LastQueryMergeOperator implements ProcessOperator {
+public class LastQueryCollectOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
@@ -37,7 +38,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   private int currentIndex;
 
-  public LastQueryMergeOperator(OperatorContext operatorContext, List<Operator> children) {
+  public LastQueryCollectOperator(OperatorContext operatorContext, List<Operator> children) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.inputOperatorsCount = children.size();
@@ -74,14 +75,14 @@ public class LastQueryMergeOperator implements ProcessOperator {
   }
 
   @Override
-  public boolean isFinished() {
-    return !hasNext();
-  }
-
-  @Override
   public void close() throws Exception {
     for (Operator child : children) {
       child.close();
     }
+  }
+
+  @Override
+  public boolean isFinished() {
+    return !hasNext();
   }
 }

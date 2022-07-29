@@ -48,10 +48,12 @@ IoTDB> FULL MERGE
 
 ## CLEAR CACHE
 
-Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint.
+Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint. In cluster mode, we provide commands to clear a single node cache and clear the cluster cache.
 
 ```sql
 IoTDB> CLEAR CACHE
+IoTDB> CLEAR CACHE ON LOCAL
+IoTDB> CLEAR CACHE ON CLUSTER
 ```
 
 
@@ -309,6 +311,44 @@ IoTDB> show datanodes
 |     4|Unknown|127.0.0.1|6669|            0|              0|
 |     5|Running|127.0.0.1|6671|            0|              0|
 +------+-------+---------+----+-------------+---------------+
+Total line number = 3
+It costs 0.009s
+```
+
+### Show all ConfigNode information
+
+Currently, IoTDB supports ConfigNode query using the following SQL：
+
+```
+SHOW CONFIGNODES
+```
+
+Eg :
+
+```
+IoTDB> show confignodes
++------+-------+-------+-----+
+|NodeID| Status|   Host| Port|
++------+-------+-------+-----+
+|     0|Running|0.0.0.0|22277|
+|     1|Running|0.0.0.0|22279|
+|     2|Running|0.0.0.0|22281|
++------+-------+-------+-----+
+Total line number = 3
+It costs 0.030s
+```
+
+After a ConfigNode is stopped, its status will change, as shown below:
+
+```
+IoTDB> show confignodes
++------+-------+-------+-----+
+|NodeID| Status|   Host| Port|
++------+-------+-------+-----+
+|     0|Running|0.0.0.0|22277|
+|     1|Running|0.0.0.0|22279|
+|     2|Unknown|0.0.0.0|22281|
++------+-------+-------+-----+
 Total line number = 3
 It costs 0.009s
 ```

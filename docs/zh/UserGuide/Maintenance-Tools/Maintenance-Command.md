@@ -48,10 +48,12 @@ IoTDB> FULL MERGE
 ## CLEAR CACHE
 
 
-手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。
+手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。在集群模式下，我们提供了清空单个节点缓存、清空整个集群缓存命令。
 
 ```sql
 IoTDB> CLEAR CACHE
+IoTDB> CLEAR CACHE ON LOCAL
+IoTDB> CLEAR CACHE ON CLUSTER
 ```
 
 ## SET STSTEM TO READONLY / WRITABLE
@@ -306,6 +308,44 @@ IoTDB> show datanodes
 |     4|Unknown|127.0.0.1|6669|            0|              0|
 |     5|Running|127.0.0.1|6671|            0|              0|
 +------+-------+---------+----+-------------+---------------+
+Total line number = 3
+It costs 0.009s
+```
+
+### 查看ConfigNode节点信息
+
+当前 IoTDB 支持使用如下 SQL 查看 ConfigNode的信息：
+
+```
+SHOW CONFIGNODES
+```
+
+示例：
+
+```
+IoTDB> show confignodes
++------+-------+-------+-----+
+|NodeID| Status|   Host| Port|
++------+-------+-------+-----+
+|     0|Running|0.0.0.0|22277|
+|     1|Running|0.0.0.0|22279|
+|     2|Running|0.0.0.0|22281|
++------+-------+-------+-----+
+Total line number = 3
+It costs 0.030s
+```
+
+停止一个节点之后，节点的状态会发生改变，状态显示如下：
+
+```
+IoTDB> show confignodes
++------+-------+-------+-----+
+|NodeID| Status|   Host| Port|
++------+-------+-------+-----+
+|     0|Running|0.0.0.0|22277|
+|     1|Running|0.0.0.0|22279|
+|     2|Unknown|0.0.0.0|22281|
++------+-------+-------+-----+
 Total line number = 3
 It costs 0.009s
 ```

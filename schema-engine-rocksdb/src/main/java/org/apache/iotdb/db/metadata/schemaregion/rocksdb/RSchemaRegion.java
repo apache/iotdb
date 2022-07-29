@@ -856,6 +856,13 @@ public class RSchemaRegion implements ISchemaRegion {
     return getCountByNodeType(new Character[] {NODE_TYPE_MEASUREMENT}, pathPattern.getNodes());
   }
 
+  @Override
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
+      throws MetadataException {
+    return getMatchedMeasurementPathWithTags(pathPattern.getNodes()).size();
+  }
+
   @TestOnly
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
     return getAllTimeseriesCount(pathPattern, false);
@@ -927,6 +934,63 @@ public class RSchemaRegion implements ISchemaRegion {
           }
           return true;
         };
+    traverseOutcomeBasins(
+        pathPattern.getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
+
+    return result;
+  }
+
+  @Override
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      String key,
+      String value,
+      boolean isContains)
+      throws MetadataException {
+    Map<PartialPath, Integer> result = new ConcurrentHashMap<>();
+    Map<MeasurementPath, Pair<Map<String, String>, Map<String, String>>> measurementPathsAndTags =
+        getMatchedMeasurementPathWithTags(pathPattern.getNodes());
+    BiFunction<byte[], byte[], Boolean> function;
+    if (!measurementPathsAndTags.isEmpty()) {
+      function =
+          (a, b) -> {
+            String k = new String(a);
+            String partialName = splitToPartialNameByLevel(k, level);
+            if (partialName != null) {
+              PartialPath path = null;
+              try {
+                path = new PartialPath(partialName);
+              } catch (IllegalPathException e) {
+                logger.warn(e.getMessage());
+              }
+              if (!measurementPathsAndTags.keySet().contains(partialName)) {
+                result.put(path, result.get(path));
+              } else {
+                result.putIfAbsent(path, 0);
+                result.put(path, result.get(path) + 1);
+              }
+            }
+            return true;
+          };
+    } else {
+      function =
+          (a, b) -> {
+            String k = new String(a);
+            String partialName = splitToPartialNameByLevel(k, level);
+            if (partialName != null) {
+              PartialPath path = null;
+              try {
+                path = new PartialPath(partialName);
+              } catch (IllegalPathException e) {
+                logger.warn(e.getMessage());
+              }
+              result.putIfAbsent(path, 0);
+            }
+            return true;
+          };
+    }
     traverseOutcomeBasins(
         pathPattern.getNodes(), MAX_PATH_DEPTH, function, new Character[] {NODE_TYPE_MEASUREMENT});
 

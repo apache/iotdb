@@ -18,17 +18,20 @@
  */
 package org.apache.iotdb.confignode.client.async.datanode;
 
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.ConfigNodeClientPoolFactory;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
+import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
 import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
@@ -114,6 +117,15 @@ public class AsyncDataNodeClientPool {
                     dataNodeLocationMap,
                     dataNodeResponseStatus);
             break;
+          case CLEAR_CACHE:
+            handler =
+                new ClearCacheHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
           case UPDATE_REGION_ROUTE_MAP:
             handler =
                 new UpdateRegionRouteMapHandler(
@@ -150,6 +162,9 @@ public class AsyncDataNodeClientPool {
     try {
       client = clientManager.borrowClient(dataNodeLocation.getInternalEndPoint());
       switch (handler.getDataNodeRequestType()) {
+        case SET_TTL:
+          client.setTTL((TSetTTLReq) req, (SetTTLHandler) handler);
+          break;
         case CREATE_DATA_REGIONS:
           client.createDataRegion((TCreateDataRegionReq) req, (CreateRegionHandler) handler);
           break;
@@ -165,6 +180,9 @@ public class AsyncDataNodeClientPool {
         case FLUSH:
           client.flush((TFlushReq) req, (FlushHandler) handler);
           break;
+        case CLEAR_CACHE:
+          client.clearCache((TClearCacheReq) req, (ClearCacheHandler) handler);
+          break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
           break;
@@ -173,6 +191,9 @@ public class AsyncDataNodeClientPool {
               (TUpdateConfigNodeGroupReq) req, (UpdateConfigNodeGroupHandler) handler);
           break;
         default:
+          LOGGER.error(
+              "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
+              handler.getDataNodeRequestType());
       }
     } catch (Exception e) {
       LOGGER.warn(
@@ -319,7 +340,6 @@ public class AsyncDataNodeClientPool {
    */
   public void getDataNodeHeartBeat(
       TEndPoint endPoint, THeartbeatReq req, DataNodeHeartbeatHandler handler) {
-    // TODO: Add a retry logic
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);

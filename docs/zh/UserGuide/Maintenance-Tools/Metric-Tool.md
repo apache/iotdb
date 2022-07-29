@@ -76,14 +76,14 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 #### 4.3.1. 接入层
 
-| Metric              | Tag             | level     | 说明             | 示例                                         |
-| ------------------- | --------------- | --------- | ---------------- | -------------------------------------------- |
-| entry_seconds_count | name="{{interface}}"   | important | 接口累计访问次数 | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="{{interface}}"   | important | 接口累计耗时(s)  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="{{interface}}"   | important | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total      | name="pointsIn" | important | 系统累计写入点数 | quantity_total{name="pointsIn",} 1.0         |
-| thrift_connections  | name="{{thriftService}}" | core | thrift当前连接数 | thrift_connections{name="RPC",} 1.0 |
-| thrift_active_threads | name="{{thriftThread}}" | core | thrift worker线程数 | thrift_active_threads{name="RPC",} 1.0 |
+| Metric                | Tag                      | level     | 说明                | 示例                                         |
+| --------------------- | ------------------------ | --------- | ------------------- | -------------------------------------------- |
+| entry_seconds_count   | name="{{interface}}"     | important | 接口累计访问次数    | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum     | name="{{interface}}"     | important | 接口累计耗时(s)     | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max     | name="{{interface}}"     | important | 接口最大耗时(s)     | entry_seconds_max{name="openSession",} 0.024 |
+| quantity_total        | name="pointsIn"          | important | 系统累计写入点数    | quantity_total{name="pointsIn",} 1.0         |
+| thrift_connections    | name="{{thriftService}}" | core      | thrift当前连接数    | thrift_connections{name="RPC",} 1.0          |
+| thrift_active_threads | name="{{thriftThread}}"  | core      | thrift worker线程数 | thrift_active_threads{name="RPC",} 1.0       |
 
 #### 4.3.2. Task
 
@@ -95,6 +95,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | cost_task_seconds_sum   | name="inner_compaction/cross_compaction/flush"                                | important | 任务累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                                                         |
 | data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | 合并文件时写入量                | data_written{name="compaction",type="total",} 10240                                                |
 | data_read               | name="compaction"                                                             | important | 合并文件时的读取量              | data_read={name="compaction",} 10240                                                               |
+| compaction_task_count   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | 合并任务个数                    | compaction_task_count{name="inner_compaction",type="sequence",} 1                                  |
 
 #### 4.3.3. 内存占用
 
