@@ -134,7 +134,7 @@ public class Session {
 
   // The version number of the client which used for compatibility in the server
   protected Version version;
-  
+
   public Session(String host, int rpcPort) {
     this(
         host,
