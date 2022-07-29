@@ -114,9 +114,9 @@ public class MultiLeaderServerImpl {
           buildIndexedConsensusRequestForLocalRequest(request);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
         logger.info(
-            "DataRegion[{}]: index after build: safeIndex: {}, searchIndex: {}",
+            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
             thisNode.getGroupId(),
-            indexedConsensusRequest.getSafelyDeletedSearchIndex(),
+            getCurrentSafelyDeletedSearchIndex(),
             indexedConsensusRequest.getSearchIndex());
       }
       // TODO wal and memtable
@@ -174,6 +174,7 @@ public class MultiLeaderServerImpl {
       for (int i = 0; i < size; i++) {
         configuration.add(Peer.deserialize(buffer));
       }
+      logger.info("Recover multiLeader, configuration: {}", configuration);
     } catch (IOException e) {
       logger.error("Unexpected error occurs when recovering configuration", e);
     }

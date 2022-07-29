@@ -222,7 +222,7 @@ public class LogDispatcher {
       PendingBatch batch;
       List<TLogBatch> logBatches = new ArrayList<>();
       long startIndex = syncStatus.getNextSendingIndex();
-      logger.debug("get batch. startIndex: {}", startIndex);
+      logger.debug("[GetBatch] startIndex: {}", startIndex);
       long endIndex;
       if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
         // Use drainTo instead of poll to reduce lock overhead
@@ -302,6 +302,11 @@ public class LogDispatcher {
         AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
         TSyncLogReq req =
             new TSyncLogReq(peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
+        logger.debug(
+            "Send Batch[startIndex:{}, endIndex:{}] to ConsensusGroup:{}",
+            batch.getStartIndex(),
+            batch.getEndIndex(),
+            peer.getGroupId().convertToTConsensusGroupId());
         client.syncLog(req, handler);
       } catch (IOException | TException e) {
         logger.error("Can not sync logs to peer {} because", peer, e);
