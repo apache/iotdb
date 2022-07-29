@@ -23,7 +23,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.concurrent.BlockingQueue;
 
 /**
@@ -33,22 +35,37 @@ import java.util.concurrent.BlockingQueue;
 public class OperationSyncProducer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncProducer.class);
-
-  private final BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-      operationSyncQueue;
+  private static final Integer RETRY = 3;
+  private final ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>> operationSyncQueues;
+  private final OperationSyncLogService dmlLogService;
 
   public OperationSyncProducer(
-      BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-          operationSyncQueue) {
-    this.operationSyncQueue = operationSyncQueue;
+      ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
+          operationSyncQueue,
+      OperationSyncLogService operationSyncDMLLogService) {
+    this.operationSyncQueues = operationSyncQueue;
+    this.dmlLogService = operationSyncDMLLogService;
   }
 
   public void put(Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType> planPair) {
+    ByteBuffer headBuffer;
+    headBuffer = planPair.left;
+    headBuffer.position(0);
+    for (int i = 0; i < RETRY; i++) {
+      // retry 3 times
+      if (operationSyncQueues.get(0).offer(planPair)) {
+        return;
+      }
+    }
     try {
-      planPair.left.position(0);
-      operationSyncQueue.put(planPair);
-    } catch (InterruptedException e) {
-      LOGGER.error("OperationSync cache failed.", e);
+      // must set buffer position to limit() before serialization
+      headBuffer.position(headBuffer.limit());
+      dmlLogService.acquireLogWriter();
+      dmlLogService.write(headBuffer);
+    } catch (IOException e) {
+      LOGGER.error("OperationSyncConsumer can't serialize physicalPlan", e);
+    } finally {
+      dmlLogService.releaseLogWriter();
     }
   }
 }

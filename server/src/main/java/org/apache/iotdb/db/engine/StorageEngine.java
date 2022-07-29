@@ -98,14 +98,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -122,7 +115,7 @@ public class StorageEngine implements IService {
   private static OperationSyncProducer operationSyncProducer;
   private static OperationSyncDDLProtector operationSyncDDLProtector;
   private static OperationSyncLogService operationSyncDDLLogService;
-
+  private static ThreadPoolExecutor threadPool;
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
@@ -170,33 +163,42 @@ public class StorageEngine implements IService {
               config.getSecondaryPassword(),
               5,
               config.isRpcThriftCompressionEnable());
-
+      threadPool =
+          new ThreadPoolExecutor(
+              5,
+              5,
+              3,
+              TimeUnit.SECONDS,
+              new ArrayBlockingQueue<Runnable>(3),
+              new ThreadPoolExecutor.AbortPolicy());
       // create operationSyncDDLProtector and operationSyncDDLLogService
       operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncsessionPool);
-      new Thread(operationSyncDDLProtector).start();
+      threadPool.execute(new Thread(operationSyncDDLProtector));
       operationSyncDDLLogService =
           new OperationSyncLogService("OperationSyncDDLLog", operationSyncDDLProtector);
-      new Thread(operationSyncDDLLogService).start();
-
+      threadPool.execute(new Thread(operationSyncDDLLogService));
       // create OperationSyncProducer
-      BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-          blockingQueue = new ArrayBlockingQueue<>(config.getOperationSyncProducerCacheSize());
-      operationSyncProducer = new OperationSyncProducer(blockingQueue);
-
-      // create OperationSyncDMLProtector and OperationSyncDMLLogService
+      int cacheNum =config.getOperationSyncProducerCacheNum();
+      ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>> arrayListBlockQueue =new ArrayList<>(cacheNum);
+      for (int i = 0; i <cacheNum ; i++) {
+                BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
+                blockingQueue = new ArrayBlockingQueue<>(config.getOperationSyncProducerCacheSize());
+        arrayListBlockQueue.add(blockingQueue);
+      }
       OperationSyncDMLProtector operationSyncDMLProtector =
-          new OperationSyncDMLProtector(operationSyncDDLProtector, operationSyncProducer);
-      new Thread(operationSyncDMLProtector).start();
+          new OperationSyncDMLProtector(operationSyncDDLProtector, operationSyncsessionPool);
+      threadPool.execute(new Thread(operationSyncDMLProtector));
       OperationSyncLogService operationSyncDMLLogService =
           new OperationSyncLogService("OperationSyncDMLLog", operationSyncDMLProtector);
-      new Thread(operationSyncDMLLogService).start();
-
+      operationSyncProducer = new OperationSyncProducer(arrayListBlockQueue, operationSyncDMLLogService);
+      // create OperationSyncDMLProtector and OperationSyncDMLLogService
+      threadPool.execute(new Thread(operationSyncDMLLogService));
       // create OperationSyncConsumer
-      for (int i = 0; i < config.getOperationSyncConsumerConcurrencySize(); i++) {
+      for (int i = 0; i < cacheNum; i++) {
         OperationSyncConsumer consumer =
             new OperationSyncConsumer(
-                blockingQueue, operationSyncsessionPool, operationSyncDMLLogService);
-        new Thread(consumer).start();
+                    arrayListBlockQueue.get(i), operationSyncsessionPool, operationSyncDMLLogService);
+        threadPool.execute(new Thread(consumer));
       }
 
       logger.info("Successfully initialize OperationSync!");
@@ -205,6 +207,7 @@ public class StorageEngine implements IService {
       operationSyncProducer = null;
       operationSyncDDLProtector = null;
       operationSyncDDLLogService = null;
+      threadPool = null;
     }
   }
 

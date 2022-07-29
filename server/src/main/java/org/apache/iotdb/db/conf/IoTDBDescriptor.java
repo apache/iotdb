@@ -839,6 +839,12 @@ public class IoTDBDescriptor {
                   "operation_sync_producer_cache_size",
                   String.valueOf(conf.getOperationSyncProducerCacheSize()))));
 
+      conf.setOperationSyncProducerCacheNum(
+              Integer.parseInt(
+                      properties.getProperty(
+                              "operation_sync_producer_cache_num",
+                              String.valueOf(conf.getOperationSyncProducerCacheNum()))));
+
       conf.setOperationSyncConsumerConcurrencySize(
           Integer.parseInt(
               properties.getProperty(

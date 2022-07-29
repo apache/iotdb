@@ -20,6 +20,7 @@ package org.apache.iotdb.db.doublelive;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.util.SystemStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -39,10 +40,10 @@ public class OperationSyncConsumer implements Runnable {
 
   public OperationSyncConsumer(
       BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-          OperationSyncQueue,
+          operationSyncQueue,
       SessionPool operationSyncSessionPool,
       OperationSyncLogService dmlLogService) {
-    this.OperationSyncQueue = OperationSyncQueue;
+    this.OperationSyncQueue = operationSyncQueue;
     this.operationSyncSessionPool = operationSyncSessionPool;
     this.dmlLogService = dmlLogService;
   }
@@ -61,22 +62,29 @@ public class OperationSyncConsumer implements Runnable {
         LOGGER.error("OperationSyncConsumer been interrupted: ", e);
         continue;
       }
-
+      boolean isLife = false;
+      try {
+        isLife = operationSyncSessionPool.getSystemStatus() == SystemStatus.NORMAL;
+      } catch (IoTDBConnectionException e) {
+        e.printStackTrace();
+      } catch (Exception e) {
+        LOGGER.warn("Survival status is error");
+      }
       headBuffer.position(0);
       boolean transmitStatus = false;
-      try {
-        headBuffer.position(0);
-        transmitStatus = operationSyncSessionPool.operationSyncTransmit(headBuffer);
-      } catch (IoTDBConnectionException connectionException) {
-        // warn IoTDBConnectionException and do serialization
-        LOGGER.warn(
-            "OperationSyncConsumer can't transmit because network failure", connectionException);
-      } catch (Exception e) {
-        // The PhysicalPlan has internal error, reject transmit
-        LOGGER.error("OperationSyncConsumer can't transmit", e);
-        continue;
+      if (isLife) {
+        try {
+          transmitStatus = operationSyncSessionPool.operationSyncTransmit(headBuffer);
+        } catch (IoTDBConnectionException connectionException) {
+          // warn IoTDBConnectionException and do serialization
+          LOGGER.warn(
+              "OperationSyncConsumer can't transmit because network failure", connectionException);
+        } catch (Exception e) {
+          // The PhysicalPlan has internal error, reject transmit
+          LOGGER.error("OperationSyncConsumer can't transmit", e);
+          continue;
+        }
       }
-
       if (!transmitStatus) {
         try {
           // must set buffer position to limit() before serialization
