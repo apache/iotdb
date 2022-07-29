@@ -117,49 +117,49 @@ public class RunLengthEncodedColumn implements Column {
   }
 
   @Override
-  public boolean[] getBoolean() {
+  public boolean[] getBooleans() {
     boolean[] res = new boolean[positionCount];
     Arrays.fill(res, value.getBoolean(0));
     return res;
   }
 
   @Override
-  public int[] getInt() {
+  public int[] getInts() {
     int[] res = new int[positionCount];
     Arrays.fill(res, value.getInt(0));
     return res;
   }
 
   @Override
-  public long[] getLong() {
+  public long[] getLongs() {
     long[] res = new long[positionCount];
     Arrays.fill(res, value.getLong(0));
     return res;
   }
 
   @Override
-  public float[] getFloat() {
+  public float[] getFloats() {
     float[] res = new float[positionCount];
     Arrays.fill(res, value.getFloat(0));
     return res;
   }
 
   @Override
-  public double[] getDouble() {
+  public double[] getDoubles() {
     double[] res = new double[positionCount];
     Arrays.fill(res, value.getDouble(0));
     return res;
   }
 
   @Override
-  public Binary[] getBinary() {
+  public Binary[] getBinaries() {
     Binary[] res = new Binary[positionCount];
     Arrays.fill(res, value.getBinary(0));
     return res;
   }
 
   @Override
-  public Object[] getObject() {
+  public Object[] getObjects() {
     Object[] res = new Object[positionCount];
     Arrays.fill(res, value.getObject(0));
     return res;

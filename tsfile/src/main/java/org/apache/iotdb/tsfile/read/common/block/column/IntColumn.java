@@ -85,7 +85,7 @@ public class IntColumn implements Column {
   }
 
   @Override
-  public int[] getInt() {
+  public int[] getInts() {
     return values;
   }
 

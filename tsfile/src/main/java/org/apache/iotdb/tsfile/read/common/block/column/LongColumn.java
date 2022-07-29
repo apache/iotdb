@@ -85,7 +85,7 @@ public class LongColumn implements Column {
   }
 
   @Override
-  public long[] getLong() {
+  public long[] getLongs() {
     return values;
   }
 

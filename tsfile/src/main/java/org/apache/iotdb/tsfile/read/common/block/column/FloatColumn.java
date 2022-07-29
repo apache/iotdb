@@ -85,7 +85,7 @@ public class FloatColumn implements Column {
   }
 
   @Override
-  public float[] getFloat() {
+  public float[] getFloats() {
     return values;
   }
 

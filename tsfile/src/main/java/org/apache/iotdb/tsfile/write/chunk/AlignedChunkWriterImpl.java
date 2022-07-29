@@ -184,22 +184,22 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
       TSDataType tsDataType = chunkWriter.getDataType();
       switch (tsDataType) {
         case TEXT:
-          chunkWriter.write(times, column.getBinary(), column.isNull(), batchSize, arrayOffset);
+          chunkWriter.write(times, column.getBinaries(), column.isNull(), batchSize, arrayOffset);
           break;
         case DOUBLE:
-          chunkWriter.write(times, column.getDouble(), column.isNull(), batchSize, arrayOffset);
+          chunkWriter.write(times, column.getDoubles(), column.isNull(), batchSize, arrayOffset);
           break;
         case BOOLEAN:
-          chunkWriter.write(times, column.getBoolean(), column.isNull(), batchSize, arrayOffset);
+          chunkWriter.write(times, column.getBooleans(), column.isNull(), batchSize, arrayOffset);
           break;
         case INT64:
-          chunkWriter.write(times, column.getLong(), column.isNull(), batchSize, arrayOffset);
+          chunkWriter.write(times, column.getLongs(), column.isNull(), batchSize, arrayOffset);
           break;
         case INT32:
-          chunkWriter.write(times, column.getInt(), column.isNull(), batchSize, arrayOffset);
+          chunkWriter.write(times, column.getInts(), column.isNull(), batchSize, arrayOffset);
           break;
         case FLOAT:
-          chunkWriter.write(times, column.getFloat(), column.isNull(), batchSize, arrayOffset);
+          chunkWriter.write(times, column.getFloats(), column.isNull(), batchSize, arrayOffset);
           break;
         default:
           throw new UnsupportedOperationException("Unknown data type " + tsDataType);

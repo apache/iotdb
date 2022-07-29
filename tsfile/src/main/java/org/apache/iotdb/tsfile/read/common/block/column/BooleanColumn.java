@@ -86,7 +86,7 @@ public class BooleanColumn implements Column {
   }
 
   @Override
-  public boolean[] getBoolean() {
+  public boolean[] getBooleans() {
     return values;
   }
 

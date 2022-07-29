@@ -66,37 +66,37 @@ public interface Column {
   }
 
   /** Gets the boolean array. */
-  default boolean[] getBoolean() {
+  default boolean[] getBooleans() {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /** Gets the little endian int array. */
-  default int[] getInt() {
+  default int[] getInts() {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /** Gets the little endian long array. */
-  default long[] getLong() {
+  default long[] getLongs() {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /** Gets the float array. */
-  default float[] getFloat() {
+  default float[] getFloats() {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /** Gets the double array. */
-  default double[] getDouble() {
+  default double[] getDoubles() {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /** Gets the Binary list. */
-  default Binary[] getBinary() {
+  default Binary[] getBinaries() {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
   /** Gets the Object array. */
-  default Object[] getObject() {
+  default Object[] getObjects() {
     throw new UnsupportedOperationException(getClass().getName());
   }
 
@@ -120,7 +120,9 @@ public interface Column {
    */
   boolean isNull(int position);
 
+  /** Returns the array to determine whether each position of the column is null or not. */
   boolean[] isNull();
+
   /** Returns the number of positions in this block. */
   int getPositionCount();
 

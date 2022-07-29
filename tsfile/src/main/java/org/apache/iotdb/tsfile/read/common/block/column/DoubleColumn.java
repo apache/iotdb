@@ -86,7 +86,7 @@ public class DoubleColumn implements Column {
   }
 
   @Override
-  public double[] getDouble() {
+  public double[] getDoubles() {
     return values;
   }
 

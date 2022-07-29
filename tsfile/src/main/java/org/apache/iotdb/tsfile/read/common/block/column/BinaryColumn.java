@@ -87,7 +87,7 @@ public class BinaryColumn implements Column {
   }
 
   @Override
-  public Binary[] getBinary() {
+  public Binary[] getBinaries() {
     return values;
   }
 
