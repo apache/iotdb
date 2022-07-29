@@ -40,7 +40,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import java.io.IOException;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -203,7 +202,7 @@ public class IoTDBConfigNodeIT {
       // test stop ConfigNode
       status = client.stopConfigNode(removedConfigNodeLocation);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    }catch(Exception e){
+    } catch (Exception e) {
       e.printStackTrace();
     }
   }
