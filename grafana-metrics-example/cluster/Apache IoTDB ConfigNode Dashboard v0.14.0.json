@@ -1102,7 +1102,7 @@
           "custom": {
             "axisLabel": "",
             "axisPlacement": "auto",
-            "axisSoftMax": 100,
+            "axisSoftMax": 0,
             "axisSoftMin": 0,
             "barAlignment": 0,
             "drawStyle": "line",
@@ -1138,7 +1138,8 @@
                 "value": null
               }
             ]
-          }
+          },
+		  "unit": "percent"
         },
         "overrides": []
       },
@@ -1217,10 +1218,6 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           },
