@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 
 public class ValuePageReader {
@@ -367,6 +368,6 @@ public class ValuePageReader {
   }
 
   public byte[] getBitmap() {
-    return bitmap;
+    return Arrays.copyOf(bitmap, bitmap.length);
   }
 }
