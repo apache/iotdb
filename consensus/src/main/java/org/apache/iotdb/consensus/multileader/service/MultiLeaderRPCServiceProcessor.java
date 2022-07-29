@@ -70,29 +70,32 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
       List<TSStatus> statuses = new ArrayList<>();
       // We use synchronized to ensure atomicity of executing multiple logs
       if (!req.getBatches().isEmpty()) {
-        synchronized (impl.getStateMachine()) {
-          List<IConsensusRequest> consensusRequests = new ArrayList<>();
-          long currentSearchIndex = req.getBatches().get(0).getSearchIndex();
-          for (TLogBatch batch : req.getBatches()) {
-            IConsensusRequest request =
-                batch.isFromWAL()
-                    ? new MultiLeaderConsensusRequest(batch.data)
-                    : new ByteBufferConsensusRequest(batch.data);
-            // merge TLogBatch with same search index into one request
-            if (batch.getSearchIndex() != currentSearchIndex) {
-              statuses.add(
-                  impl.getStateMachine()
-                      .write(impl.buildIndexedConsensusRequestForRemoteRequest(consensusRequests)));
-              consensusRequests = new ArrayList<>();
-            }
-            consensusRequests.add(request);
-          }
-          // write last request
-          if (!consensusRequests.isEmpty()) {
+        List<IConsensusRequest> consensusRequests = new ArrayList<>();
+        long currentSearchIndex = req.getBatches().get(0).getSearchIndex();
+        for (TLogBatch batch : req.getBatches()) {
+          IConsensusRequest request =
+              batch.isFromWAL()
+                  ? new MultiLeaderConsensusRequest(batch.data)
+                  : new ByteBufferConsensusRequest(batch.data);
+          // merge TLogBatch with same search index into one request
+          if (batch.getSearchIndex() != currentSearchIndex) {
             statuses.add(
                 impl.getStateMachine()
-                    .write(impl.buildIndexedConsensusRequestForRemoteRequest(consensusRequests)));
+                    .write(
+                        impl.buildIndexedConsensusRequestForRemoteRequest(
+                            currentSearchIndex, consensusRequests)));
+            consensusRequests = new ArrayList<>();
+            currentSearchIndex = batch.getSearchIndex();
           }
+          consensusRequests.add(request);
+        }
+        // write last request
+        if (!consensusRequests.isEmpty()) {
+          statuses.add(
+              impl.getStateMachine()
+                  .write(
+                      impl.buildIndexedConsensusRequestForRemoteRequest(
+                          currentSearchIndex, consensusRequests)));
         }
       }
       logger.debug("Execute TSyncLogReq for {} with result {}", req.consensusGroupId, statuses);

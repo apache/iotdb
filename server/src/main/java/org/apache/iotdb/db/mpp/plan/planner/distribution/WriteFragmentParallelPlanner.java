@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.IFragmentParallelPlaner;
@@ -64,8 +66,20 @@ public class WriteFragmentParallelPlanner implements IFragmentParallelPlaner {
               queryContext.getQueryType(),
               queryContext.getTimeOut());
       instance.setDataRegionAndHost(split.getRegionReplicaSet());
+//      instance.setHostDataNode(fakeSelectDataNode(split.getRegionReplicaSet()));
       ret.add(instance);
     }
     return ret;
+  }
+
+  private TDataNodeLocation fakeSelectDataNode(TRegionReplicaSet regionReplicaSet) {
+    String[] candidate = new String[] {"172.20.31.41", "172.20.31.42", "172.20.31.43"};
+    int targetIndex = regionReplicaSet.regionId.id % 3;
+    for (TDataNodeLocation location : regionReplicaSet.getDataNodeLocations()) {
+      if (location.internalEndPoint.getIp().equals(candidate[targetIndex])) {
+        return location;
+      }
+    }
+    return null;
   }
 }

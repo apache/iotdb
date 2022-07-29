@@ -42,12 +42,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDevic
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.PriorityQueue;
 
 public class DataRegionStateMachine extends BaseStateMachine {
 
@@ -58,8 +60,12 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   private DataRegion region;
 
+  private static final int MAX_REQUEST_CACHE_SIZE = 50;
+  private final PriorityQueue<InsertNodeWrapper> requestCache;
+
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
+    this.requestCache = new PriorityQueue<>();
   }
 
   @Override
@@ -104,6 +110,40 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
   }
 
+  private InsertNode cacheAndGetLatestInsertNode(long syncIndex, InsertNode insertNode) {
+    synchronized (requestCache) {
+      requestCache.add(new InsertNodeWrapper(syncIndex, insertNode));
+      if (requestCache.size() >= MAX_REQUEST_CACHE_SIZE) {
+        return requestCache.poll().getInsertNode();
+      } else {
+        return null;
+      }
+    }
+  }
+
+  private static class InsertNodeWrapper implements Comparable<InsertNodeWrapper> {
+    private final long syncIndex;
+    private final InsertNode insertNode;
+
+    public InsertNodeWrapper(long syncIndex, InsertNode insertNode) {
+      this.syncIndex = syncIndex;
+      this.insertNode = insertNode;
+    }
+
+    @Override
+    public int compareTo(@NotNull InsertNodeWrapper o) {
+      return Long.compare(syncIndex, o.syncIndex);
+    }
+
+    public long getSyncIndex() {
+      return syncIndex;
+    }
+
+    public InsertNode getInsertNode() {
+      return insertNode;
+    }
+  }
+
   @Override
   public TSStatus write(IConsensusRequest request) {
     PlanNode planNode;
@@ -118,6 +158,12 @@ public class DataRegionStateMachine extends BaseStateMachine {
           insertNodes.add(innerNode);
         }
         planNode = mergeInsertNodes(insertNodes);
+        //        planNode = cacheAndGetLatestInsertNode(
+        //                indexedRequest.getSyncIndex(), mergeInsertNodes(insertNodes));
+        // TODO: tmp way to do the test
+        if (planNode == null) {
+          return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        }
       } else {
         planNode = getPlanNode(request);
       }

@@ -29,11 +29,20 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   /** we do not need to serialize these two fields as they are useless in other nodes. */
   private final long searchIndex;
 
+  private final long syncIndex;
   private final List<IConsensusRequest> requests;
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
     this.requests = requests;
+    this.syncIndex = -1L;
+  }
+
+  public IndexedConsensusRequest(
+      long searchIndex, long syncIndex, List<IConsensusRequest> requests) {
+    this.searchIndex = searchIndex;
+    this.requests = requests;
+    this.syncIndex = syncIndex;
   }
 
   @Override
@@ -47,6 +56,10 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public long getSearchIndex() {
     return searchIndex;
+  }
+
+  public long getSyncIndex() {
+    return syncIndex;
   }
 
   @Override

@@ -186,8 +186,9 @@ public class MultiLeaderServerImpl {
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
-      List<IConsensusRequest> requests) {
-    return new IndexedConsensusRequest(ConsensusReqReader.DEFAULT_SEARCH_INDEX, requests);
+      long syncIndex, List<IConsensusRequest> requests) {
+    return new IndexedConsensusRequest(
+        ConsensusReqReader.DEFAULT_SEARCH_INDEX, syncIndex, requests);
   }
 
   /**
