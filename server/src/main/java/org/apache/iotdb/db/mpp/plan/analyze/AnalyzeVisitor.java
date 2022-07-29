@@ -35,6 +35,7 @@ import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -842,7 +843,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     Analysis analysis = new Analysis();
     analysis.setStatement(statement);
 
-    SchemaTree schemaTree = new SchemaTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     schemaTree.setStorageGroups(statement.getStorageGroups());
 
     return analyzeLast(analysis, statement.getSelectedPaths(), schemaTree);

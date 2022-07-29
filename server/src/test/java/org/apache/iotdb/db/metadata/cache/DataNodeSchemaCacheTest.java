@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.cache;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -174,7 +175,7 @@ public class DataNodeSchemaCacheTest {
   }
 
   private SchemaTree generateSchemaTree1() throws IllegalPathException {
-    SchemaTree schemaTree = new SchemaTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
 
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s1"),
@@ -196,7 +197,7 @@ public class DataNodeSchemaCacheTest {
   }
 
   private SchemaTree generateSchemaTree2() throws IllegalPathException {
-    SchemaTree schemaTree = new SchemaTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
 
     schemaTree.appendSingleMeasurement(
         new PartialPath("root.sg1.d1.s3"),

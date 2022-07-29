@@ -27,6 +27,7 @@ import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
 import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
@@ -61,10 +62,10 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   }
 
   @Override
-  public SchemaTree fetchSchema(PathPatternTree patternTree) {
+  public ClusterSchemaTree fetchSchema(PathPatternTree patternTree) {
     patternTree.constructTree();
     Set<String> storageGroupSet = new HashSet<>();
-    SchemaTree schemaTree = new SchemaTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     List<PartialPath> pathPatterns = patternTree.getAllPathPatterns();
     try {
       for (PartialPath pathPattern : pathPatterns) {
@@ -87,7 +88,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
   @Override
   public SchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
-    SchemaTree schemaTree = new SchemaTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
 
     PathPatternTree patternTree = new PathPatternTree();
     for (String measurement : measurements) {
@@ -98,7 +99,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       return schemaTree;
     }
 
-    SchemaTree fetchedSchemaTree;
+    ClusterSchemaTree fetchedSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
       fetchedSchemaTree = fetchSchema(patternTree);
@@ -109,7 +110,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     fetchedSchemaTree = fetchSchema(patternTree);
     schemaTree.mergeSchemaTree(fetchedSchemaTree);
 
-    SchemaTree missingSchemaTree =
+    ClusterSchemaTree missingSchemaTree =
         checkAndAutoCreateMissingMeasurements(
             fetchedSchemaTree, devicePath, measurements, tsDataTypes, aligned);
 
@@ -124,7 +125,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       List<String[]> measurementsList,
       List<TSDataType[]> tsDataTypesList,
       List<Boolean> isAlignedList) {
-    SchemaTree schemaTree = new SchemaTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     PathPatternTree patternTree = new PathPatternTree();
     for (int i = 0; i < devicePathList.size(); i++) {
       for (String measurement : measurementsList.get(i)) {
@@ -136,7 +137,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       return schemaTree;
     }
 
-    SchemaTree fetchedSchemaTree;
+    ClusterSchemaTree fetchedSchemaTree;
 
     if (!config.isAutoCreateSchemaEnabled()) {
       fetchedSchemaTree = fetchSchema(patternTree);
@@ -147,7 +148,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     fetchedSchemaTree = fetchSchema(patternTree);
     schemaTree.mergeSchemaTree(fetchedSchemaTree);
 
-    SchemaTree missingSchemaTree;
+    ClusterSchemaTree missingSchemaTree;
     for (int i = 0; i < devicePathList.size(); i++) {
       missingSchemaTree =
           checkAndAutoCreateMissingMeasurements(
@@ -203,7 +204,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     return new Pair<>(missingMeasurements, dataTypesOfMissingMeasurement);
   }
 
-  private SchemaTree checkAndAutoCreateMissingMeasurements(
+  private ClusterSchemaTree checkAndAutoCreateMissingMeasurements(
       SchemaTree schemaTree,
       PartialPath devicePath,
       String[] measurements,
@@ -217,7 +218,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     List<TSDataType> dataTypesOfMissingMeasurement = checkResult.right;
 
     if (missingMeasurements.isEmpty()) {
-      return new SchemaTree();
+      return new ClusterSchemaTree();
     }
 
     internalCreateTimeseries(
@@ -227,7 +228,7 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
     for (String measurement : missingMeasurements) {
       patternTree.appendFullPath(devicePath, measurement);
     }
-    SchemaTree reFetchSchemaTree = fetchSchema(patternTree);
+    ClusterSchemaTree reFetchSchemaTree = fetchSchema(patternTree);
 
     Pair<List<String>, List<TSDataType>> recheckResult =
         checkMissingMeasurements(
