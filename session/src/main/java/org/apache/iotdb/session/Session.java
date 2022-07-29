@@ -135,23 +135,6 @@ public class Session {
   // The version number of the client which used for compatibility in the server
   protected Version version;
 
-  public static void main(String args[])
-      throws IoTDBConnectionException, StatementExecutionException {
-    Session session = new Session("127.0.0.1", 6667);
-    session.open();
-
-    long timestamp = 1649949302008L;
-    for (int i = 0; i < 10000; i++) {
-      String sql =
-          String.format(
-              "insert into root.sg.d1(time,s1,s2,s3,s4) values(%d,%d,%d,%d,%d);",
-              timestamp, i * 10 + 1, i * 10 + 2, i * 10 + 3, i * 10 + 4);
-      session.executeNonQueryStatement(sql);
-      timestamp++;
-    }
-    session.close();
-  }
-
   public Session(String host, int rpcPort) {
     this(
         host,

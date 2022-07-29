@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.consensus.common.request;
 
-import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
-
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Objects;
@@ -31,18 +29,10 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   /** we do not need to serialize these two fields as they are useless in other nodes. */
   private final long searchIndex;
 
-  private final long safelyDeletedSearchIndex;
-
   private final List<IConsensusRequest> requests;
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
-    this(searchIndex, ConsensusReqReader.DEFAULT_SAFELY_DELETED_SEARCH_INDEX, requests);
-  }
-
-  public IndexedConsensusRequest(
-      long searchIndex, long safelyDeletedSearchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
-    this.safelyDeletedSearchIndex = safelyDeletedSearchIndex;
     this.requests = requests;
   }
 
@@ -59,10 +49,6 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     return searchIndex;
   }
 
-  public long getSafelyDeletedSearchIndex() {
-    return safelyDeletedSearchIndex;
-  }
-
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -72,13 +58,11 @@ public class IndexedConsensusRequest implements IConsensusRequest {
       return false;
     }
     IndexedConsensusRequest that = (IndexedConsensusRequest) o;
-    return searchIndex == that.searchIndex
-        && safelyDeletedSearchIndex == that.safelyDeletedSearchIndex
-        && requests.equals(that.requests);
+    return searchIndex == that.searchIndex && requests.equals(that.requests);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(searchIndex, safelyDeletedSearchIndex, requests);
+    return Objects.hash(searchIndex, requests);
   }
 }

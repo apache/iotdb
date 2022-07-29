@@ -338,6 +338,9 @@ service IDataNodeRPCService {
   common.TSStatus flush(common.TFlushReq req)
 
   common.TSStatus setTTL(TSetTTLReq req)
+
+  common.TSStatus clearCache(common.TClearCacheReq req)
+
   /**
    * configNode will notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
    *

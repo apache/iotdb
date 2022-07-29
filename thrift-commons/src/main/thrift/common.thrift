@@ -102,6 +102,10 @@ struct TFlushReq {
    3: optional i32 dataNodeId
 }
 
+struct TClearCacheReq {
+   1: optional i32 dataNodeId
+}
+
 // for node management
 struct TSchemaNode {
   1: required string nodeName

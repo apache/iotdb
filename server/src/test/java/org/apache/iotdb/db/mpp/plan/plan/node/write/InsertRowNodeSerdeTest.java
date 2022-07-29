@@ -46,7 +46,7 @@ public class InsertRowNodeSerdeTest {
     insertRowNode.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertRowNode, InsertRowNode.deserialize(byteBuffer));
 
@@ -55,7 +55,7 @@ public class InsertRowNodeSerdeTest {
     insertRowNode.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertRowNode, InsertRowNode.deserialize(byteBuffer));
 
@@ -64,7 +64,7 @@ public class InsertRowNodeSerdeTest {
     insertRowNode.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), byteBuffer.getShort());
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), byteBuffer.getShort());
 
     Assert.assertEquals(insertRowNode, InsertRowNode.deserialize(byteBuffer));
   }
@@ -83,7 +83,7 @@ public class InsertRowNodeSerdeTest {
 
     DataInputStream dataInputStream = new DataInputStream(new ByteArrayInputStream(bytes));
 
-    Assert.assertEquals(PlanNodeType.INSERT_ROW.ordinal(), dataInputStream.readShort());
+    Assert.assertEquals(PlanNodeType.INSERT_ROW.getNodeType(), dataInputStream.readShort());
 
     InsertRowNode tmpNode = InsertRowNode.deserializeFromWAL(dataInputStream);
     tmpNode.setPlanNodeId(insertRowNode.getPlanNodeId());

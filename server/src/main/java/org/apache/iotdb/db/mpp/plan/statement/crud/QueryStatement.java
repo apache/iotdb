@@ -298,6 +298,9 @@ public class QueryStatement extends Statement {
         throw new SemanticException(
             "Sorting by device is only supported in ALIGN BY DEVICE queries.");
       }
+      if (isOrderByTime()) {
+        throw new SemanticException("Sorting by time is not yet supported in last queries.");
+      }
     }
 
     if (!isAlignByDevice() && !isLastQuery()) {

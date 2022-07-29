@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -269,6 +270,8 @@ public interface IManager {
   TSStatus dropFunction(String udfName);
 
   TSStatus flush(TFlushReq req);
+
+  TSStatus clearCache(TClearCacheReq req);
 
   /**
    * Get the latest RegionRouteMap

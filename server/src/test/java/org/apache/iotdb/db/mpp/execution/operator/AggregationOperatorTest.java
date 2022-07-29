@@ -65,7 +65,7 @@ import static org.junit.Assert.assertEquals;
 
 public class AggregationOperatorTest {
 
-  public static Duration TEST_TIME_SLICE = new Duration(500, TimeUnit.MILLISECONDS);
+  public static Duration TEST_TIME_SLICE = new Duration(50000, TimeUnit.MILLISECONDS);
 
   private static final String AGGREGATION_OPERATOR_TEST_SG = "root.AggregationOperatorTest";
   private final List<String> deviceIds = new ArrayList<>();
