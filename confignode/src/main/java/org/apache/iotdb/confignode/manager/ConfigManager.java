@@ -701,7 +701,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      TSStatus errorStatus = checkConfigNodeProperties(req);
+      TSStatus errorStatus = checkConfigNodeGlobalConfig(req);
       if (errorStatus != null) {
         return errorStatus;
       }
@@ -713,56 +713,48 @@ public class ConfigManager implements IManager {
     return status;
   }
 
-  private TSStatus checkConfigNodeProperties(TConfigNodeRegisterReq req) {
+  private TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
+    final String errorPrefix = "Reject register, please ensure that the parameter ";
+    final String errorSuffix = " is consistent with the Seed-ConfigNode.";
+
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     TSStatus errorStatus = new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode());
     if (!req.getDataRegionConsensusProtocolClass()
         .equals(conf.getDataRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
-          "Reject register, please ensure that the data_region_consensus_protocol_class "
-              + "are consistent.");
+          errorPrefix + "data_region_consensus_protocol_class" + errorSuffix);
     }
     if (!req.getSchemaRegionConsensusProtocolClass()
         .equals(conf.getSchemaRegionConsensusProtocolClass())) {
       return errorStatus.setMessage(
-          "Reject register, please ensure that the schema_region_consensus_protocol_class "
-              + "are consistent.");
+          errorPrefix + "schema_region_consensus_protocol_class" + errorSuffix);
     }
     if (req.getSeriesPartitionSlotNum() != conf.getSeriesPartitionSlotNum()) {
-      return errorStatus.setMessage(
-          "Reject register, please ensure that the series_partition_slot_num are consistent.");
+      return errorStatus.setMessage(errorPrefix + "series_partition_slot_num" + errorSuffix);
     }
     if (!req.getSeriesPartitionExecutorClass().equals(conf.getSeriesPartitionExecutorClass())) {
-      return errorStatus.setMessage(
-          "Reject register, please ensure that the series_partition_executor_class are consistent.");
+      return errorStatus.setMessage(errorPrefix + "series_partition_executor_class" + errorSuffix);
     }
     if (req.getDefaultTTL() != CommonDescriptor.getInstance().getConfig().getDefaultTTL()) {
-      return errorStatus.setMessage(
-          "Reject register, please ensure that the default_ttl are consistent.");
+      return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
-      return errorStatus.setMessage(
-          "Reject register, please ensure that the time_partition_interval are consistent.");
+      return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
     if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
-      return errorStatus.setMessage(
-          "Reject register, please ensure that the schema_replication_factor are consistent.");
+      return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
     }
     if (req.getSchemaRegionPerDataNode() != conf.getSchemaRegionPerDataNode()) {
-      return errorStatus.setMessage(
-          "Reject register, please ensure that the schema_region_per_data_node are consistent.");
+      return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
     }
     if (req.getDataReplicationFactor() != conf.getDataReplicationFactor()) {
-      return errorStatus.setMessage(
-          "Reject register, please ensure that the data_replication_factor are consistent.");
+      return errorStatus.setMessage(errorPrefix + "data_replication_factor" + errorSuffix);
     }
     if (req.getDataRegionPerProcessor() != conf.getDataRegionPerProcessor()) {
-      return errorStatus.setMessage(
-          "Reject register, please ensure that the data_region_per_processor are consistent.");
+      return errorStatus.setMessage(errorPrefix + "data_region_per_processor" + errorSuffix);
     }
     if (!req.getReadConsistencyLevel().equals(conf.getReadConsistencyLevel())) {
-      return errorStatus.setMessage(
-          "Reject register, please ensure that the read_consistency_level are consistent.");
+      return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
     }
     return null;
   }

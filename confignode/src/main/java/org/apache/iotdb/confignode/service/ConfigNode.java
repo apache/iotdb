@@ -195,7 +195,7 @@ public class ConfigNode implements ConfigNodeMBean {
         targetConfigNode = status.getRedirectNode();
         LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
       } else if (status.getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
-        LOGGER.error("Configuration may not be consistent, {}", req);
+        LOGGER.error(status.getMessage());
         throw new StartupException("Configuration are not consistent!");
       }
 
