@@ -63,7 +63,7 @@ public class DataRegionConsensusImpl {
                           MultiLeaderConfig.newBuilder()
                               .setRpc(
                                   RPC.newBuilder()
-                                      .setConnectionTimeoutInMs(conf.getConnectionTimeoutInMS())
+                                      .setConnectiMonTimeoutInMs(conf.getConnectionTimeoutInMS())
                                       .setRpcSelectorThreadNum(conf.getRpcSelectorThreadNum())
                                       .setRpcMinConcurrentClientNum(
                                           conf.getRpcMinConcurrentClientNum())

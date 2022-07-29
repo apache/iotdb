@@ -61,6 +61,7 @@ public class MultiLeaderServerImpl {
   private final AtomicLong index;
   private final LogDispatcher logDispatcher;
   private final MultiLeaderConfig config;
+  private final ConsensusReqReader reader;
 
   public MultiLeaderServerImpl(
       String storageDir,
@@ -80,9 +81,7 @@ public class MultiLeaderServerImpl {
     }
     this.config = config;
     this.logDispatcher = new LogDispatcher(this, clientManager);
-    // restart
-    ConsensusReqReader reader =
-        (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
+    reader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     long currentSearchIndex = reader.getCurrentSearchIndex();
     if (1 == configuration.size()) {
       // only one configuration means single replica.
@@ -230,10 +229,12 @@ public class MultiLeaderServerImpl {
   }
 
   public boolean needToThrottleDown() {
-    return false;
+    return reader.getTotalSize() > config.getReplication().getMaxWalBufferSize();
   }
 
   public boolean needToThrottleUp() {
-    return false;
+    return reader.getTotalSize()
+        < config.getReplication().getMaxWalBufferSize()
+            - config.getReplication().getThrottleWalSize();
   }
 }
