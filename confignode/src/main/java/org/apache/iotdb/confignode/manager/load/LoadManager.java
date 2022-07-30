@@ -257,16 +257,6 @@ public class LoadManager {
     }
   }
 
-  /** loop body of the heartbeat thread */
-  private void heartbeatLoopBody() {
-    if (getConsensusManager().isLeader()) {
-      // Send heartbeat requests to all the registered DataNodes
-      pingRegisteredDataNodes(getNodeManager().getRegisteredDataNodes(-1));
-      // Send heartbeat requests to all the registered ConfigNodes
-      pingRegisteredConfigNodes(getNodeManager().getRegisteredConfigNodes());
-    }
-  }
-
   private void updateNodeLoadStatistic() {
     AtomicBoolean isNeedBroadcast = new AtomicBoolean(false);
 
@@ -319,6 +309,18 @@ public class LoadManager {
     LOGGER.info("Broadcast the latest RegionRouteMap finished.");
   }
 
+  /** loop body of the heartbeat thread */
+  private void heartbeatLoopBody() {
+    if (getConsensusManager().isLeader()) {
+      // Generate HeartbeatReq
+      THeartbeatReq heartbeatReq = genHeartbeatReq();
+      // Send heartbeat requests to all the registered DataNodes
+      pingRegisteredDataNodes(heartbeatReq, getNodeManager().getRegisteredDataNodes(-1));
+      // Send heartbeat requests to all the registered ConfigNodes
+      pingRegisteredConfigNodes(heartbeatReq, getNodeManager().getRegisteredConfigNodes());
+    }
+  }
+
   private THeartbeatReq genHeartbeatReq() {
     /* Generate heartbeat request */
     THeartbeatReq heartbeatReq = new THeartbeatReq();
@@ -338,10 +340,8 @@ public class LoadManager {
    *
    * @param registeredDataNodes DataNodes that registered in cluster
    */
-  private void pingRegisteredDataNodes(List<TDataNodeConfiguration> registeredDataNodes) {
-    // Generate heartbeat request
-    THeartbeatReq heartbeatReq = genHeartbeatReq();
-
+  private void pingRegisteredDataNodes(
+      THeartbeatReq heartbeatReq, List<TDataNodeConfiguration> registeredDataNodes) {
     // Send heartbeat requests
     for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       DataNodeHeartbeatHandler handler =
@@ -363,8 +363,8 @@ public class LoadManager {
    *
    * @param registeredConfigNodes ConfigNodes that registered in cluster
    */
-  private void pingRegisteredConfigNodes(List<TConfigNodeLocation> registeredConfigNodes) {
-
+  private void pingRegisteredConfigNodes(
+      THeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
       if (configNodeLocation.getInternalEndPoint().equals(currentNode)) {
@@ -384,7 +384,7 @@ public class LoadManager {
       AsyncConfigNodeClientPool.getInstance()
           .getConfigNodeHeartBeat(
               configNodeLocation.getInternalEndPoint(),
-              genHeartbeatReq().getHeartbeatTimestamp(),
+              heartbeatReq.getHeartbeatTimestamp(),
               handler);
     }
   }

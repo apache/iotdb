@@ -125,28 +125,28 @@ public class ValueChunkWriter {
     pageWriter.write(time, value, isNull);
   }
 
-  public void write(long[] timestamps, int[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, int[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void write(long[] timestamps, long[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, long[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void write(long[] timestamps, boolean[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, boolean[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void write(long[] timestamps, float[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, float[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void write(long[] timestamps, double[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, double[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
-  public void write(long[] timestamps, Binary[] values, int batchSize) {
-    pageWriter.write(timestamps, values, batchSize);
+  public void write(long[] timestamps, Binary[] values, boolean[] isNull, int batchSize, int pos) {
+    pageWriter.write(timestamps, values, isNull, batchSize, pos);
   }
 
   public void writeEmptyPageToPageBuffer() {
