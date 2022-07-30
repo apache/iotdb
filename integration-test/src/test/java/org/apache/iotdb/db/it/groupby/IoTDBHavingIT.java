@@ -26,20 +26,18 @@ import org.apache.iotdb.itbase.category.ClusterIT;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 
-import static org.apache.iotdb.db.constant.TestConstant.firstValue;
-import static org.apache.iotdb.db.constant.TestConstant.lastValue;
 import static org.apache.iotdb.db.it.utils.TestUtils.assertTestFail;
 import static org.apache.iotdb.db.it.utils.TestUtils.prepareData;
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
 import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualWithDescOrderTest;
 import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.apache.iotdb.itbase.constant.TestConstant.count;
+import static org.apache.iotdb.itbase.constant.TestConstant.sum;
 
-@Ignore
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class}) // TODO After old StandAlone remove
 public class IoTDBHavingIT {
@@ -124,12 +122,15 @@ public class IoTDBHavingIT {
     assertTestFail(
         "select count(s1) from root.** group by ([1,3),1ms), level=1 having sum(d1.s1) > 1",
         "416: Having: when used with GroupByLevel, all paths in expression of Having and Select should have only one node");
+
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having sum(s1) > 1",
         "416: Having: when used with GroupByLevel, all paths in expression of Having and Select should have only one node");
+
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having sum(s1) + s1 > 1",
         "416: Raw data and aggregation result hybrid calculation is not supported");
+
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having s1 + 1 > 1",
         "416: Expression of HAVING clause must to be an Aggregation");
@@ -138,95 +139,108 @@ public class IoTDBHavingIT {
   @Test
   public void groupByTimeWithHavingTest() {
     String[] expectedHeader = new String[] {TIMESTAMP_STR, count("root.test.sg1.s1")};
-    String[] retArray =
-        new String[] {
-          "2,5.5,4.4,",
-          "6,null,null,",
-          "10,10.1,10.1,",
-          "14,null,null,",
-          "18,20.2,20.2,",
-          "22,null,null,",
-          "26,null,null,"
-        };
+    String[] retArray = new String[] {"1,1,", "5,1,", "9,2,"};
     resultSetEqualWithDescOrderTest(
-        "select count(sg1.s1) from root.test.**"
-            + "GROUP BY ([1,11), 1ms)"
+        "select count(sg1.s1) from root.** "
+            + "GROUP BY ([1,11), 2ms) "
             + "Having count(sg1.s2) > 1",
         expectedHeader,
         retArray);
+
+    resultSetEqualWithDescOrderTest(
+        "select count(sg1.s1) from root.**"
+            + "GROUP BY ([1,11), 2ms) "
+            + "Having count(sg1.s2) > 2",
+        expectedHeader,
+        new String[] {});
+  }
+
+  @Test
+  public void groupByTimeAlignByDeviceWithHavingTest() {
+    String[] expectedHeader = new String[] {TIMESTAMP_STR, "Device", count("s1"), count("s2")};
+    String[] retArray =
+        new String[] {
+          "1,root.test.sg1,1,2,",
+          "5,root.test.sg1,1,2,",
+          "9,root.test.sg1,2,2,",
+          "1,root.test.sg2,2,2,",
+          "5,root.test.sg2,1,2,",
+          "9,root.test.sg2,2,2,",
+        };
+    resultSetEqualTest(
+        "select count(s1), count(s2) from root.** "
+            + "GROUP BY ([1,11), 2ms) "
+            + "Having count(s2) > 1 "
+            + "Align by device",
+        expectedHeader,
+        retArray);
+
+    resultSetEqualTest(
+        "select count(s1), count(s2) from root.** "
+            + "GROUP BY ([1,11), 2ms) "
+            + "Having count(s2) > 2 "
+            + "Align by device",
+        expectedHeader,
+        new String[] {});
   }
 
   @Test
   public void groupByLevelWithHavingTest() {
     String[] expectedHeader =
-        new String[] {
-          TIMESTAMP_STR,
-          lastValue("root.ln.wf01.wt01.temperature"),
-          firstValue("root.ln.wf01.wt01.temperature")
-        };
-    String[] retArray =
-        new String[] {
-          "2,5.5,4.4,",
-          "6,null,null,",
-          "10,10.1,10.1,",
-          "14,null,null,",
-          "18,20.2,20.2,",
-          "22,null,null,",
-          "26,null,null,"
-        };
+        new String[] {count("root.test.*.s1"), count("root.test.*.s2"), sum("root.test.*.s3")};
+    String[] retArray = new String[] {"14,14,87.0,"};
     resultSetEqualWithDescOrderTest(
-        "select last_value(temperature), first_value(temperature) from root.ln.wf01.wt01 where time > 3 "
-            + "GROUP BY ([2,30), 4ms)",
+        "select count(s1), count(s2), sum(s3) from root.** "
+            + "GROUP BY level=1 "
+            + "Having sum(s3) > 80",
         expectedHeader,
         retArray);
+
+    resultSetEqualWithDescOrderTest(
+        "select count(s1), count(s2), sum(s3) from root.** "
+            + "GROUP BY level=1 "
+            + "Having sum(s3) > 90",
+        expectedHeader,
+        new String[] {});
   }
 
   @Test
   public void groupByTimeLevelWithHavingTest() {
     String[] expectedHeader =
         new String[] {
-          TIMESTAMP_STR,
-          lastValue("root.ln.wf01.wt01.temperature"),
-          firstValue("root.ln.wf01.wt01.temperature")
+          TIMESTAMP_STR, count("root.test.*.s1"), count("root.test.*.s2"),
         };
     String[] retArray =
         new String[] {
-          "2,5.5,4.4,",
-          "6,null,null,",
-          "10,10.1,10.1,",
-          "14,null,null,",
-          "18,20.2,20.2,",
-          "22,null,null,",
-          "26,null,null,"
+          "1,4,4,", "5,2,4,", "9,4,4,",
         };
     resultSetEqualWithDescOrderTest(
-        "select last_value(temperature), first_value(temperature) from root.ln.wf01.wt01 where time > 3 "
-            + "GROUP BY ([2,30), 4ms)",
+        "select count(s1), count(s2) from root.** "
+            + "GROUP BY ([1,11),2ms), level=1 "
+            + "Having count(s2)>2",
         expectedHeader,
         retArray);
+
+    resultSetEqualWithDescOrderTest(
+        "select count(s1), count(s2) from root.** "
+            + "GROUP BY ([1,11),2ms), level=1 "
+            + "Having count(s2)>4",
+        expectedHeader,
+        new String[] {});
   }
 
   @Test
-  public void allClauseTest() {
+  public void groupByTimeLevelWithHavingLimitTest() {
     String[] expectedHeader =
         new String[] {
-          TIMESTAMP_STR,
-          lastValue("root.ln.wf01.wt01.temperature"),
-          firstValue("root.ln.wf01.wt01.temperature")
+          TIMESTAMP_STR, count("root.test.*.s1"), count("root.test.*.s2"),
         };
-    String[] retArray =
-        new String[] {
-          "2,5.5,4.4,",
-          "6,null,null,",
-          "10,10.1,10.1,",
-          "14,null,null,",
-          "18,20.2,20.2,",
-          "22,null,null,",
-          "26,null,null,"
-        };
-    resultSetEqualWithDescOrderTest(
-        "select last_value(temperature), first_value(temperature) from root.ln.wf01.wt01 where time > 3 "
-            + "GROUP BY ([2,30), 4ms)",
+    String[] retArray = new String[] {"5,2,4,"};
+    resultSetEqualTest(
+        "select count(s1), count(s2) from root.** "
+            + "GROUP BY ([1,11),2ms), level=1 "
+            + "Having count(s2) > 1 "
+            + "Limit 1 offset 1",
         expectedHeader,
         retArray);
   }
