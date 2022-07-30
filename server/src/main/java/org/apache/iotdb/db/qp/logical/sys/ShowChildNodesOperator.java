@@ -19,6 +19,7 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -30,7 +31,7 @@ public class ShowChildNodesOperator extends ShowOperator {
 
   private PartialPath path;
 
-  private int limit = 1000;
+  private int limit = IoTDBDescriptor.getInstance().getConfig().getSchemaQueryFetchSize();
   private int offset = 0;
 
   public ShowChildNodesOperator(int tokenIntType, PartialPath path) {
