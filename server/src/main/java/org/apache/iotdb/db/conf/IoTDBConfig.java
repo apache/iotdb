@@ -849,7 +849,7 @@ public class IoTDBConfig {
   private int operationSyncConsumerConcurrencySize = 4;
 
   // The max record num returned in one schema query.
-  private int schemaQueryFetchSize = 100000;
+  private int schemaQueryFetchSize = 10000000;
 
   public IoTDBConfig() {
     // empty constructor
