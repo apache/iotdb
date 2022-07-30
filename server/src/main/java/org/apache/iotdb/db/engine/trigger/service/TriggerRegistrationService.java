@@ -512,7 +512,7 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
 
   private static TriggerRegistrationService INSTANCE = null;
 
-  public static TriggerRegistrationService setUpAndGetInstance(
+  public static synchronized TriggerRegistrationService setUpAndGetInstance(
       String systemDir, String libRoot, int tLogBufferSize, boolean enableIDTable) {
     if (INSTANCE == null) {
       INSTANCE = new TriggerRegistrationService(systemDir, libRoot, tLogBufferSize, enableIDTable);

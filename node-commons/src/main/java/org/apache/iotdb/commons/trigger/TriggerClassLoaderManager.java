@@ -83,7 +83,7 @@ public class TriggerClassLoaderManager {
 
   private static TriggerClassLoaderManager INSTANCE = null;
 
-  public static TriggerClassLoaderManager setUpAndGetInstance(String triggerLibRoot) {
+  public static synchronized TriggerClassLoaderManager setUpAndGetInstance(String triggerLibRoot) {
     if (INSTANCE == null) {
       INSTANCE = new TriggerClassLoaderManager(triggerLibRoot);
     }
