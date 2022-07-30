@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -56,7 +56,7 @@ public class Analysis {
 
   private SchemaPartition schemaPartition;
 
-  private SchemaTree schemaTree;
+  private ISchemaTree schemaTree;
 
   // map from output column name (for every node) to its datatype
   private TypeProvider typeProvider;
@@ -188,11 +188,11 @@ public class Analysis {
     this.schemaPartition = schemaPartition;
   }
 
-  public SchemaTree getSchemaTree() {
+  public ISchemaTree getSchemaTree() {
     return schemaTree;
   }
 
-  public void setSchemaTree(SchemaTree schemaTree) {
+  public void setSchemaTree(ISchemaTree schemaTree) {
     this.schemaTree = schemaTree;
   }
 

@@ -23,8 +23,8 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -107,7 +107,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
   }
 
   private void fetchSchema() throws MetadataException {
-    SchemaTree schemaTree = new SchemaTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
     for (PartialPath path : partialPathList) {
       schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(path, templateMap));

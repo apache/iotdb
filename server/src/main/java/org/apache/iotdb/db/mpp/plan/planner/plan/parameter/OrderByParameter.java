@@ -46,6 +46,10 @@ public class OrderByParameter {
     return sortItemList;
   }
 
+  public boolean isEmpty() {
+    return sortItemList.isEmpty();
+  }
+
   public void serializeAttributes(ByteBuffer byteBuffer) {
     ReadWriteIOUtils.write(sortItemList.size(), byteBuffer);
     for (SortItem sortItem : sortItemList) {

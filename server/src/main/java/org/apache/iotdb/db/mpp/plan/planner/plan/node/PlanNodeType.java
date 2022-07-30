@@ -48,7 +48,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ExchangeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FillNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.ProjectNode;
@@ -56,6 +55,9 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SlidingWindowAggre
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.SortNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TransformNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryCollectNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryMergeNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.sink.FragmentSinkNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
@@ -124,11 +126,13 @@ public enum PlanNodeType {
   DELETE_TIMESERIES((short) 45),
   LAST_QUERY_SCAN((short) 46),
   ALIGNED_LAST_QUERY_SCAN((short) 47),
-  LAST_QUERY_MERGE((short) 48),
-  NODE_PATHS_COUNT((short) 49),
-  INTERNAL_CREATE_TIMESERIES((short) 50),
-  ACTIVATE_TEMPLATE((short) 51),
-  PATHS_USING_TEMPLATE_SCAN((short) 52);
+  LAST_QUERY((short) 48),
+  LAST_QUERY_MERGE((short) 49),
+  LAST_QUERY_COLLECT((short) 50),
+  NODE_PATHS_COUNT((short) 51),
+  INTERNAL_CREATE_TIMESERIES((short) 52),
+  ACTIVATE_TEMPLATE((short) 53),
+  PATHS_USING_TEMPLATE_SCAN((short) 54);
 
   public static final int BYTES = Short.BYTES;
 
@@ -136,6 +140,10 @@ public enum PlanNodeType {
 
   PlanNodeType(short nodeType) {
     this.nodeType = nodeType;
+  }
+
+  public short getNodeType() {
+    return nodeType;
   }
 
   public void serialize(ByteBuffer buffer) {
@@ -266,14 +274,18 @@ public enum PlanNodeType {
       case 47:
         return AlignedLastQueryScanNode.deserialize(buffer);
       case 48:
-        return LastQueryMergeNode.deserialize(buffer);
+        return LastQueryNode.deserialize(buffer);
       case 49:
-        return NodePathsCountNode.deserialize(buffer);
+        return LastQueryMergeNode.deserialize(buffer);
       case 50:
-        return InternalCreateTimeSeriesNode.deserialize(buffer);
+        return LastQueryCollectNode.deserialize(buffer);
       case 51:
-        return ActivateTemplateNode.deserialize(buffer);
+        return NodePathsCountNode.deserialize(buffer);
       case 52:
+        return InternalCreateTimeSeriesNode.deserialize(buffer);
+      case 53:
+        return ActivateTemplateNode.deserialize(buffer);
+      case 54:
         return PathsUsingTemplateScanNode.deserialize(buffer);
       default:
         throw new IllegalArgumentException("Invalid node type: " + nodeType);

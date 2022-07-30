@@ -195,16 +195,19 @@ public class NodeInfo implements SnapshotProcessor {
    * @return TSStatus
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
+    LOGGER.info("there are {} data node in cluster before remove some", registeredDataNodes.size());
     try {
       dataNodeInfoReadWriteLock.writeLock().lock();
       req.getDataNodeLocations()
           .forEach(
               removeDataNodes -> {
                 registeredDataNodes.remove(removeDataNodes.getDataNodeId());
+                LOGGER.info("removed the datanode {} from cluster", removeDataNodes);
               });
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
+    LOGGER.info("there are {} data node in cluster after remove some", registeredDataNodes.size());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 

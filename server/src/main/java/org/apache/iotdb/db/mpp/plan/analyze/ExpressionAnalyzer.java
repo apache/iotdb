@@ -24,8 +24,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.MeasurementNotExistException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.binary.BinaryExpression;
@@ -332,7 +332,7 @@ public class ExpressionAnalyzer {
    * @return the expression list after binding schema
    */
   public static List<Expression> removeWildcardInExpression(
-      Expression expression, SchemaTree schemaTree) {
+      Expression expression, ISchemaTree schemaTree) {
     if (expression instanceof TernaryExpression) {
       List<Expression> firstExpressions =
           removeWildcardInExpression(
@@ -406,7 +406,7 @@ public class ExpressionAnalyzer {
   public static List<Expression> removeWildcardInQueryFilter(
       Expression predicate,
       List<PartialPath> prefixPaths,
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       TypeProvider typeProvider) {
     if (predicate instanceof TernaryExpression) {
       List<Expression> firstExpressions =
@@ -509,7 +509,7 @@ public class ExpressionAnalyzer {
   public static List<Expression> concatDeviceAndRemoveWildcard(
       Expression expression,
       PartialPath devicePath,
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       TypeProvider typeProvider) {
     if (expression instanceof TernaryExpression) {
       List<Expression> firstExpressions =
@@ -595,7 +595,7 @@ public class ExpressionAnalyzer {
   public static List<Expression> removeWildcardInQueryFilterByDevice(
       Expression predicate,
       PartialPath devicePath,
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       TypeProvider typeProvider) {
     if (predicate instanceof TernaryExpression) {
       List<Expression> firstExpressions =

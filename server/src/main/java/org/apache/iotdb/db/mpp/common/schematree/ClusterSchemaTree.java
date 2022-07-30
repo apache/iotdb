@@ -47,17 +47,17 @@ import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_ENTITY_NODE;
 import static org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode.SCHEMA_MEASUREMENT_NODE;
 
-public class SchemaTree {
+public class ClusterSchemaTree implements ISchemaTree {
 
   private List<String> storageGroups;
 
   private final SchemaNode root;
 
-  public SchemaTree() {
+  public ClusterSchemaTree() {
     root = new SchemaInternalNode(PATH_ROOT);
   }
 
-  public SchemaTree(SchemaNode root) {
+  public ClusterSchemaTree(SchemaNode root) {
     this.root = root;
   }
 
@@ -68,6 +68,7 @@ public class SchemaTree {
    * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return Left: all measurement paths; Right: remaining series offset
    */
+  @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(
       PartialPath pathPattern, int slimit, int soffset, boolean isPrefixMatch) {
     SchemaTreeMeasurementVisitor visitor =
@@ -75,6 +76,7 @@ public class SchemaTree {
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
+  @Override
   public Pair<List<MeasurementPath>, Integer> searchMeasurementPaths(PartialPath pathPattern) {
     SchemaTreeMeasurementVisitor visitor =
         new SchemaTreeMeasurementVisitor(
@@ -86,6 +88,7 @@ public class SchemaTree {
     return new Pair<>(visitor.getAllResult(), visitor.getNextOffset());
   }
 
+  @Override
   public List<MeasurementPath> getAllMeasurement() {
     return searchMeasurementPaths(ALL_MATCH_PATTERN, 0, 0, false).left;
   }
@@ -96,16 +99,19 @@ public class SchemaTree {
    * @param pathPattern the pattern of the target devices.
    * @return A HashSet instance which stores info of the devices matching the given path pattern.
    */
+  @Override
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch) {
     SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, isPrefixMatch);
     return visitor.getAllResult();
   }
 
+  @Override
   public List<DeviceSchemaInfo> getMatchedDevices(PartialPath pathPattern) {
     SchemaTreeDeviceVisitor visitor = new SchemaTreeDeviceVisitor(root, pathPattern, false);
     return visitor.getAllResult();
   }
 
+  @Override
   public DeviceSchemaInfo searchDeviceSchemaInfo(
       PartialPath devicePath, List<String> measurements) {
 
@@ -182,7 +188,7 @@ public class SchemaTree {
     }
   }
 
-  public void mergeSchemaTree(SchemaTree schemaTree) {
+  public void mergeSchemaTree(ClusterSchemaTree schemaTree) {
     traverseAndMerge(this.root, null, schemaTree.root);
   }
 
@@ -220,7 +226,7 @@ public class SchemaTree {
     root.serialize(outputStream);
   }
 
-  public static SchemaTree deserialize(InputStream inputStream) throws IOException {
+  public static ClusterSchemaTree deserialize(InputStream inputStream) throws IOException {
 
     byte nodeType;
     int childNum;
@@ -257,7 +263,7 @@ public class SchemaTree {
         stack.push(internalNode);
       }
     }
-    return new SchemaTree(stack.poll());
+    return new ClusterSchemaTree(stack.poll());
   }
 
   /**
@@ -268,6 +274,7 @@ public class SchemaTree {
    * @param pathName only full path, cannot be path pattern
    * @return storage group in the given path
    */
+  @Override
   public String getBelongedStorageGroup(String pathName) {
     for (String storageGroup : storageGroups) {
       if (PathUtils.isStartWith(pathName, storageGroup)) {
@@ -277,10 +284,12 @@ public class SchemaTree {
     throw new RuntimeException("No matched storage group. Please check the path " + pathName);
   }
 
+  @Override
   public String getBelongedStorageGroup(PartialPath path) {
     return getBelongedStorageGroup(path.getFullPath());
   }
 
+  @Override
   public List<String> getStorageGroups() {
     return storageGroups;
   }
@@ -294,6 +303,7 @@ public class SchemaTree {
     return root;
   }
 
+  @Override
   public boolean isEmpty() {
     return root.getChildren() == null || root.getChildren().size() == 0;
   }
