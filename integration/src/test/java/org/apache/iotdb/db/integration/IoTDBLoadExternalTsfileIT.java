@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
+import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -150,6 +151,7 @@ public class IoTDBLoadExternalTsfileIT {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(prevCompactionThread);
     IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(prevVirtualPartitionNum);
+    HashVirtualPartitioner.getInstance().reset();
   }
 
   @Test
