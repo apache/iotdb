@@ -309,7 +309,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
           String.format(
               "Blocking pull pipe data number %s error, because %s", commitSerialNumber + 1, e));
     }
-//    outputDeque.addFirst(pipeData);
+    //    outputDeque.addFirst(pipeData);
     commitDeque.offer(pipeData);
     pullSerialNumber = pipeData.getSerialNumber();
     return pipeData;
@@ -333,7 +333,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     while (commitSerialNumber < serialNumber) {
       commitSerialNumber += 1;
       try {
-//        PipeData commitData = pullOnePipeData(commitSerialNumber);
+        //        PipeData commitData = pullOnePipeData(commitSerialNumber);
         PipeData commitData = commitDeque.poll();
         if (commitData == null) {
           continue;

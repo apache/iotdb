@@ -184,47 +184,47 @@ public class ExtPipePluginManager {
         break;
       }
       if (pipeData != null && pipeData.getSerialNumber() > lastPipeDataSerialNumber) {
-//      List<PipeData> pipeDataList = tsFilePipe.pull(Long.MAX_VALUE);
-//      if ((pipeDataList != null)
-//          && (!pipeDataList.isEmpty())
-//          && (pipeDataList.get(pipeDataList.size() - 1).getSerialNumber()
-//              > lastPipeDataSerialNumber)) {
-//        for (PipeData pipeData : pipeDataList) {
-          long pipeDataSerialNumber = pipeData.getSerialNumber();
-          if (pipeDataSerialNumber <= lastPipeDataSerialNumber) {
-            continue;
-          }
-          lastPipeDataSerialNumber = pipeData.getSerialNumber();
+        //      List<PipeData> pipeDataList = tsFilePipe.pull(Long.MAX_VALUE);
+        //      if ((pipeDataList != null)
+        //          && (!pipeDataList.isEmpty())
+        //          && (pipeDataList.get(pipeDataList.size() - 1).getSerialNumber()
+        //              > lastPipeDataSerialNumber)) {
+        //        for (PipeData pipeData : pipeDataList) {
+        long pipeDataSerialNumber = pipeData.getSerialNumber();
+        if (pipeDataSerialNumber <= lastPipeDataSerialNumber) {
+          continue;
+        }
+        lastPipeDataSerialNumber = pipeData.getSerialNumber();
 
-          // extract the Tsfile PipeData
-          if (pipeData instanceof TsFilePipeData) {
-            logger.info(String.format("Get pipedata {%s}", pipeData));
-            TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
+        // extract the Tsfile PipeData
+        if (pipeData instanceof TsFilePipeData) {
+          logger.info(String.format("Get pipedata {%s}", pipeData));
+          TsFilePipeData tsFilePipeData = (TsFilePipeData) pipeData;
 
-            String sgName = tsFilePipeData.getStorageGroupName();
-//            String tsFileFullName = tsFilePipeData.getTsFilePath();
-            String tsFileFullName = null;
-            try {
-              tsFileFullName = tsFilePipeData.getTsFiles(true).get(0).getPath();
-            } catch (FileNotFoundException e) {
-              logger.error(String.format("Can not find tsFile of pipeData %s.", pipeData));
-            }
-            try {
-              pipeOpManager.appendTsFile(sgName, tsFileFullName, pipeDataSerialNumber);
-            } catch (IOException e) {
-              logger.error("monitorPipeData(), Can not append TsFile: {}" + tsFileFullName);
-            }
+          String sgName = tsFilePipeData.getStorageGroupName();
+          //            String tsFileFullName = tsFilePipeData.getTsFilePath();
+          String tsFileFullName = null;
+          try {
+            tsFileFullName = tsFilePipeData.getTsFiles(true).get(0).getPath();
+          } catch (FileNotFoundException e) {
+            logger.error(String.format("Can not find tsFile of pipeData %s.", pipeData));
           }
-//        }
+          try {
+            pipeOpManager.appendTsFile(sgName, tsFileFullName, pipeDataSerialNumber);
+          } catch (IOException e) {
+            logger.error("monitorPipeData(), Can not append TsFile: {}" + tsFileFullName);
+          }
+        }
+        //        }
       }
 
       checkCommitIndex();
 
-//      try {
-//        Thread.sleep(2_000); // 2 seconds
-//      } catch (InterruptedException e) {
-//        break;
-//      }
+      //      try {
+      //        Thread.sleep(2_000); // 2 seconds
+      //      } catch (InterruptedException e) {
+      //        break;
+      //      }
     }
 
     logger.info("monitorPipeData exits. Thread={}", Thread.currentThread().getName());
@@ -244,7 +244,7 @@ public class ExtPipePluginManager {
       return;
     }
 
-//    extPipePlugin.drop();
+    //    extPipePlugin.drop();
     extPipePlugin.stop();
   }
 
