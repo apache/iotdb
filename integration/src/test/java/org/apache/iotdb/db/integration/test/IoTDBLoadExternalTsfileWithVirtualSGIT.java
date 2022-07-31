@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.integration.test;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -52,7 +51,6 @@ public class IoTDBLoadExternalTsfileWithVirtualSGIT extends IoTDBLoadExternalTsf
         IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
     EnvironmentUtils.envSetUp();
     StorageEngine.getInstance().reset();
-    HashVirtualPartitioner.getInstance().reset();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData(insertSequenceSqls);
   }
