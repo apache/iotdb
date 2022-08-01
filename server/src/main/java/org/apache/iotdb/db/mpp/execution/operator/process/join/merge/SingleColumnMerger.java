@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.merge;
+package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -106,6 +106,48 @@ public class SingleColumnMerger implements ColumnMerger {
           columnBuilder.appendNull();
         }
       }
+    }
+    // update the index after merging
+    updatedInputIndex[tsBlockIndex] = index;
+  }
+
+  @Override
+  public void mergeColumn(
+      TsBlock[] inputTsBlocks,
+      int[] inputIndex,
+      int[] updatedInputIndex,
+      long currentTime,
+      ColumnBuilder columnBuilder) {
+    mergeOneColumn(
+        inputTsBlocks, inputIndex, updatedInputIndex, currentTime, columnBuilder, location);
+  }
+
+  public static void mergeOneColumn(
+      TsBlock[] inputTsBlocks,
+      int[] inputIndex,
+      int[] updatedInputIndex,
+      long currentTime,
+      ColumnBuilder columnBuilder,
+      InputLocation location) {
+    int tsBlockIndex = location.getTsBlockIndex();
+    int columnIndex = location.getValueColumnIndex();
+
+    int index = inputIndex[tsBlockIndex];
+    // input column is empty or current time of input column is already larger than currentEndTime
+    // just appendNull
+    if (ColumnMerger.empty(tsBlockIndex, inputTsBlocks, inputIndex)
+        || inputTsBlocks[tsBlockIndex].getTimeByIndex(index) != currentTime) {
+      columnBuilder.appendNull();
+    } else {
+      // read from input column and write it into columnBuilder
+      Column valueColumn = inputTsBlocks[tsBlockIndex].getColumn(columnIndex);
+
+      if (valueColumn.isNull(index)) {
+        columnBuilder.appendNull();
+      } else {
+        columnBuilder.write(valueColumn, index);
+      }
+      index++;
     }
     // update the index after merging
     updatedInputIndex[tsBlockIndex] = index;
