@@ -684,6 +684,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         return new FillOperator(
             operatorContext, getPreviousFill(inputColumns, inputDataTypes, false), child);
       case PREVIOUS_UNTIL_LAST:
+        context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
         return new FillOperator(
             operatorContext, getPreviousFill(inputColumns, inputDataTypes, true), child);
       case LINEAR:
