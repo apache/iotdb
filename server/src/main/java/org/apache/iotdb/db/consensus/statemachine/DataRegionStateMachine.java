@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.StepTracker;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -33,7 +34,6 @@ import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
-import org.apache.iotdb.db.mpp.plan.StepTracker;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -253,7 +253,12 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   protected TSStatus write(PlanNode planNode) {
-    return planNode.accept(new DataExecutionVisitor(), region);
+    long startTime = System.nanoTime();
+    try {
+      return planNode.accept(new DataExecutionVisitor(), region);
+    } finally {
+      StepTracker.trace("StateMachineWrite", startTime, System.nanoTime());
+    }
   }
 
   @Override

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan;
+package org.apache.iotdb.commons;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,18 +27,24 @@ import java.util.Map;
 
 class Metric {
   private static final Logger logger = LoggerFactory.getLogger(Metric.class);
-  private static final int PRINT_RATE = 1000;
+  private static final int DEFAULT_PRINT_RATE = 1000;
 
   public String stepName;
   public long invokeCount;
   public long totalTime;
   public long lastCycleTime;
+  public int printRate;
 
   public Metric(String stepName) {
+    this(stepName, DEFAULT_PRINT_RATE);
+  }
+
+  public Metric(String stepName, int printRate) {
     this.stepName = stepName;
     this.invokeCount = 0;
     this.totalTime = 0;
     this.lastCycleTime = 0;
+    this.printRate = printRate;
   }
 
   public void trace(long startTime, long endTime) {
@@ -47,7 +53,7 @@ class Metric {
   }
 
   public void tryPrint() {
-    if (invokeCount % PRINT_RATE == 0) {
+    if (invokeCount % printRate == 0) {
       logger.info(
           String.format(
               "step metrics [%d]-[%s] - Total: %d, SUM: %.2fms, AVG: %fms, Last%dAVG: %fms",
@@ -56,8 +62,8 @@ class Metric {
               invokeCount,
               totalTime * 1.0 / 1000000,
               totalTime * 1.0 / 1000000 / invokeCount,
-              PRINT_RATE,
-              (totalTime * 1.0 - lastCycleTime) / 1000000 / PRINT_RATE));
+              printRate,
+              (totalTime * 1.0 - lastCycleTime) / 1000000 / printRate));
       lastCycleTime = totalTime;
     }
   }
@@ -71,6 +77,17 @@ public class StepTracker {
       metrics.set(new HashMap<>());
     }
     metrics.get().computeIfAbsent(stepName, Metric::new).trace(startTime, endTime);
+    metrics.get().get(stepName).tryPrint();
+  }
+
+  public static void trace(String stepName, int printRate, long startTime, long endTime) {
+    if (metrics.get() == null) {
+      metrics.set(new HashMap<>());
+    }
+    metrics
+        .get()
+        .computeIfAbsent(stepName, key -> new Metric(stepName, printRate))
+        .trace(startTime, endTime);
     metrics.get().get(stepName).tryPrint();
   }
 
