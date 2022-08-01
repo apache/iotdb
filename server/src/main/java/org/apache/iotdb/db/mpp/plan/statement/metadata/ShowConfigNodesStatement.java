@@ -17,42 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.statement.internal;
+package org.apache.iotdb.db.mpp.plan.statement.metadata;
 
-import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.mpp.plan.statement.Statement;
+import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.statement.IConfigStatement;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 
-import java.util.List;
-
-public class LastPointFetchStatement extends Statement {
-
-  private final List<MeasurementPath> selectedPaths;
-
-  // used for fetch data partition
-  private final List<String> storageGroups;
-
-  public LastPointFetchStatement(List<MeasurementPath> selectedPaths, List<String> storageGroups) {
-    this.selectedPaths = selectedPaths;
-    this.storageGroups = storageGroups;
-  }
-
-  public List<MeasurementPath> getSelectedPaths() {
-    return selectedPaths;
-  }
-
-  public List<String> getStorageGroups() {
-    return storageGroups;
-  }
+public class ShowConfigNodesStatement extends ShowStatement implements IConfigStatement {
 
   @Override
-  public List<? extends PartialPath> getPaths() {
-    return selectedPaths;
+  public QueryType getQueryType() {
+    return QueryType.READ;
   }
 
   @Override
   public <R, C> R accept(StatementVisitor<R, C> visitor, C context) {
-    return visitor.visitLastPointFetch(this, context);
+    return visitor.visitShowConfigNodes(this, context);
   }
 }

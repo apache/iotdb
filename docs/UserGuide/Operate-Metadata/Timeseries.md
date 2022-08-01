@@ -275,7 +275,7 @@ ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4)
 SHOW TIMESERIES (<`PathPattern`>)? WhereClause
 ```
 
-  returns all the timeseries information that satisfy the where condition and match the pathPattern. SQL statements are as follows:
+returns all the timeseries information that satisfy the where condition and match the pathPattern. SQL statements are as follows:
 
 ```
 ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
@@ -302,6 +302,52 @@ It costs 0.005s
 +------------------------+-----+-------------+--------+--------+-----------+-----------------------+----------+
 Total line number = 1
 It costs 0.004s
+```
+
+- count timeseries using tags
+
+```
+COUNT TIMESERIES (<`PathPattern`>)? WhereClause
+COUNT TIMESERIES (<`PathPattern`>)? WhereClause GROUP BY LEVEL=<INTEGER>
+```
+
+returns all the number of timeseries that satisfy the where condition and match the pathPattern. SQL statements are as follows:
+
+```
+count timeseries
+count timeseries root.** where unit = c
+count timeseries root.** where unit = c group by level = 2
+```
+
+The results are shown below respectly :
+
+```
+IoTDB> count timeseries
++-----------------+
+|count(timeseries)|
++-----------------+
+|                6|
++-----------------+
+Total line number = 1
+It costs 0.019s
+IoTDB> count timeseries root.** where unit = c
++-----------------+
+|count(timeseries)|
++-----------------+
+|                2|
++-----------------+
+Total line number = 1
+It costs 0.020s
+IoTDB> count timeseries root.** where unit = c group by level = 2
++--------------+-----------------+
+|        column|count(timeseries)|
++--------------+-----------------+
+|  root.ln.wf02|                2|
+|  root.ln.wf01|                0|
+|root.sgcc.wf03|                0|
++--------------+-----------------+
+Total line number = 3
+It costs 0.011s
 ```
 
 > Notice that, we only support one condition in the where clause. Either it's an equal filter or it is an `contains` filter. In both case, the property in the where condition must be a tag.

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowRegionStatement;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchem
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 
@@ -119,6 +121,11 @@ public class ConfigTaskVisitor
   }
 
   @Override
+  public IConfigTask visitClearCache(ClearCacheStatement clearCacheStatement, TaskContext context) {
+    return new ClearCacheTask(clearCacheStatement);
+  }
+
+  @Override
   public IConfigTask visitDropFunction(
       DropFunctionStatement dropFunctionStatement, TaskContext context) {
     return new DropFunctionTask(dropFunctionStatement);
@@ -169,6 +176,12 @@ public class ConfigTaskVisitor
   public IConfigTask visitShowDataNodes(
       ShowDataNodesStatement showDataNodesStatement, TaskContext context) {
     return new ShowDataNodesTask(showDataNodesStatement);
+  }
+
+  @Override
+  public IConfigTask visitShowConfigNodes(
+      ShowConfigNodesStatement showConfigNodesStatement, TaskContext context) {
+    return new ShowConfigNodesTask(showConfigNodesStatement);
   }
 
   public static class TaskContext {}

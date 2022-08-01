@@ -29,12 +29,12 @@ public abstract class WrappedCallable<V> implements Callable<V> {
   public final V call() {
     try {
       return callMayThrow();
-    } catch (Exception e) {
+    } catch (Throwable e) {
       throw ScheduledExecutorUtil.propagate(e);
     }
   }
 
-  public abstract V callMayThrow() throws Exception;
+  public abstract V callMayThrow() throws Throwable;
 
   public static <V> Callable<V> wrap(Callable<V> callable) {
     if (callable instanceof WrappedCallable) {

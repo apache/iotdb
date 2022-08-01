@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.confignode.manager;
 
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
@@ -49,6 +50,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
@@ -269,6 +271,8 @@ public interface IManager {
 
   TSStatus flush(TFlushReq req);
 
+  TSStatus clearCache(TClearCacheReq req);
+
   /**
    * Get the latest RegionRouteMap
    *
@@ -283,6 +287,9 @@ public interface IManager {
 
   /** Show DataNodes */
   TShowDataNodesResp showDataNodes();
+
+  /** Show ConfigNodes */
+  TShowConfigNodesResp showConfigNodes();
 
   /**
    * create schema template

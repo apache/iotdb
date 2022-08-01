@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,10 +31,15 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class RegionGroupCache implements IRegionGroupCache {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(RegionGroupCache.class);
+
   // TODO: This class might be split into SchemaRegionGroupCache and DataRegionGroupCache
 
   private static final int maximumWindowSize = 100;
   // Map<DataNodeId(where a RegionReplica resides), LinkedList<RegionHeartbeatSample>>
+
+  private final TConsensusGroupId consensusGroupId;
+
   private final Map<Integer, LinkedList<RegionHeartbeatSample>> slidingWindow;
 
   // Indicates the version of the statistics
@@ -37,7 +47,9 @@ public class RegionGroupCache implements IRegionGroupCache {
   // The DataNode where the leader resides
   private final AtomicInteger leaderDataNodeId;
 
-  public RegionGroupCache() {
+  public RegionGroupCache(TConsensusGroupId consensusGroupId) {
+    this.consensusGroupId = consensusGroupId;
+
     this.slidingWindow = new ConcurrentHashMap<>();
 
     this.versionTimestamp = new AtomicLong(0);

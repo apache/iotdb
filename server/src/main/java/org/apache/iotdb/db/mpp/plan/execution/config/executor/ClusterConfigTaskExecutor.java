@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -33,6 +34,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionResp;
@@ -47,6 +49,7 @@ import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.execution.config.CountStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.SetStorageGroupTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowClusterTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.ShowConfigNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowDataNodesTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowNodesInSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.ShowPathSetTemplateTask;
@@ -286,6 +289,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> clearCache(TClearCacheReq tClearCacheReq) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      TSStatus tsStatus = client.clearCache(tClearCacheReq);
+      // Get response or throw exception
+      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(new StatementExecutionException(tsStatus));
+      }
+    } catch (IOException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> showCluster() {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     TShowClusterResp showClusterResp = new TShowClusterResp();
@@ -382,6 +405,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
     }
     // build TSBlock
     ShowDataNodesTask.buildTSBlock(showDataNodesResp, future);
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showConfigNodes() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TShowConfigNodesResp showConfigNodesResp = new TShowConfigNodesResp();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      showConfigNodesResp = client.showConfigNodes();
+      if (showConfigNodesResp.getStatus().getCode()
+          != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.setException(new StatementExecutionException(showConfigNodesResp.getStatus()));
+        return future;
+      }
+    } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    // build TSBlock
+    ShowConfigNodesTask.buildTSBlock(showConfigNodesResp, future);
     return future;
   }
 

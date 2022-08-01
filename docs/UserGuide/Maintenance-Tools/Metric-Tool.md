@@ -78,14 +78,14 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 4.3.1. API
 
-| Metric              | Tag                   | level     | Description                              | Sample                                       |
-| ------------------- | --------------------- | --------- | ---------------------------------------- | -------------------------------------------- |
-| entry_seconds_count | name="{{interface}}" | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="{{interface}}" | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="{{interface}}" | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total      | name="pointsIn"       | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
-| thrift_connections  | name="{{thriftService}}" | core | current number of thrift connections | thrift_connections{name="RPC",} 1.0 |
-| thrift_active_threads | name="{{thriftThread}}" | core | current number if thrift worker threads | thrift_active_threads{name="RPC",} 1.0 |
+| Metric                | Tag                      | level     | Description                              | Sample                                       |
+| --------------------- | ------------------------ | --------- | ---------------------------------------- | -------------------------------------------- |
+| entry_seconds_count   | name="{{interface}}"     | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum     | name="{{interface}}"     | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max     | name="{{interface}}"     | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
+| quantity_total        | name="pointsIn"          | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
+| thrift_connections    | name="{{thriftService}}" | core      | current number of thrift connections     | thrift_connections{name="RPC",} 1.0          |
+| thrift_active_threads | name="{{thriftThread}}"  | core      | current number if thrift worker threads  | thrift_active_threads{name="RPC",} 1.0       |
 
 #### 4.3.2. Task
 | Metric                  | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
@@ -96,6 +96,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cost_task_seconds_sum   | name="inner_compaction/cross_compaction/flush"                                | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
 | data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written{name="compaction",type="total",} 10240                                     |
 | data_read               | name="compaction"                                                             | important | The size of data read in compaction                      | data_read={name="compaction",} 10240                                                    |
+| compaction_task_count   | name = "inner_compaction/cross_compaction", type="sequence/unsequence/cross"  | important | The number of compaction task                            | compaction_task_count{name="inner_compaction",type="sequence",} 1                       |
 
 #### 4.3.3. Memory Usage
 

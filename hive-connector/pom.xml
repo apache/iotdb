@@ -70,7 +70,6 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>[${guava.version},)</version>
         </dependency>
         <!-- force upgrade the dependency of hive-serde-->
         <dependency>

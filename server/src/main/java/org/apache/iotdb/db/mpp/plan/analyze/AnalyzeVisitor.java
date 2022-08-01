@@ -36,8 +36,8 @@ import org.apache.iotdb.db.mpp.common.header.ColumnHeader;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
@@ -52,6 +52,8 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertMultiTabletsStatement;
@@ -62,7 +64,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
@@ -113,6 +114,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.commons.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_RESULT_NODES;
@@ -171,7 +173,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
       // request schema fetch API
       logger.info("{} fetch query schema...", getLogHeader());
-      SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
       logger.info("{} fetch schema done", getLogHeader());
       // If there is no leaf node in the schema tree, the query should be completed immediately
       if (schemaTree.isEmpty()) {
@@ -422,13 +424,14 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private List<Pair<Expression, String>> analyzeSelect(
-      QueryStatement queryStatement, SchemaTree schemaTree) {
+      QueryStatement queryStatement, ISchemaTree schemaTree) {
     List<Pair<Expression, String>> outputExpressions = new ArrayList<>();
+    boolean isGroupByLevel = queryStatement.isGroupByLevel();
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(),
             queryStatement.getSeriesOffset(),
-            queryStatement.isLastQuery() || queryStatement.isGroupByLevel());
+            queryStatement.isLastQuery() || isGroupByLevel);
 
     for (ResultColumn resultColumn : queryStatement.getSelectComponent().getResultColumns()) {
       boolean hasAlias = resultColumn.hasAlias();
@@ -445,22 +448,28 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
           continue;
         }
         if (paginationController.hasCurLimit()) {
-          Expression expressionWithoutAlias =
-              ExpressionAnalyzer.removeAliasFromExpression(expression);
-          String alias =
-              !Objects.equals(expressionWithoutAlias, expression)
-                  ? expression.getExpressionString()
-                  : null;
-          alias = hasAlias ? resultColumn.getAlias() : alias;
-          outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
-          if (queryStatement.isGroupByLevel()
-              && resultColumn.getExpression() instanceof FunctionExpression) {
-            queryStatement
-                .getGroupByLevelComponent()
-                .updateIsCountStar((FunctionExpression) resultColumn.getExpression());
+          if (isGroupByLevel) {
+            ExpressionAnalyzer.updateTypeProvider(expression, typeProvider);
+            expression.inferTypes(typeProvider);
+            outputExpressions.add(new Pair<>(expression, resultColumn.getAlias()));
+            if (resultColumn.getExpression() instanceof FunctionExpression) {
+              queryStatement
+                  .getGroupByLevelComponent()
+                  .updateIsCountStar((FunctionExpression) resultColumn.getExpression());
+            }
+          } else {
+            Expression expressionWithoutAlias =
+                ExpressionAnalyzer.removeAliasFromExpression(expression);
+            String alias =
+                !Objects.equals(expressionWithoutAlias, expression)
+                    ? expression.getExpressionString()
+                    : null;
+            alias = hasAlias ? resultColumn.getAlias() : alias;
+
+            ExpressionAnalyzer.updateTypeProvider(expressionWithoutAlias, typeProvider);
+            expressionWithoutAlias.inferTypes(typeProvider);
+            outputExpressions.add(new Pair<>(expressionWithoutAlias, alias));
           }
-          ExpressionAnalyzer.updateTypeProvider(expressionWithoutAlias, typeProvider);
-          expressionWithoutAlias.inferTypes(typeProvider);
           paginationController.consumeLimit();
         } else {
           break;
@@ -470,7 +479,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return outputExpressions;
   }
 
-  private Set<PartialPath> analyzeFrom(QueryStatement queryStatement, SchemaTree schemaTree) {
+  private Set<PartialPath> analyzeFrom(QueryStatement queryStatement, ISchemaTree schemaTree) {
     // device path patterns in FROM clause
     List<PartialPath> devicePatternList = queryStatement.getFromComponent().getPrefixPaths();
 
@@ -487,7 +496,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private List<Pair<Expression, String>> analyzeSelect(
       QueryStatement queryStatement,
-      SchemaTree schemaTree,
+      ISchemaTree schemaTree,
       Set<PartialPath> deviceList,
       Map<String, Set<Expression>> deviceToTransformExpressions,
       Map<String, Set<String>> deviceToMeasurementsMap) {
@@ -639,7 +648,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return isHasRawDataInputAggregation;
   }
 
-  private Expression analyzeWhere(QueryStatement queryStatement, SchemaTree schemaTree) {
+  private Expression analyzeWhere(QueryStatement queryStatement, ISchemaTree schemaTree) {
     List<Expression> rewrittenPredicates =
         ExpressionAnalyzer.removeWildcardInQueryFilter(
             queryStatement.getWhereCondition().getPredicate(),
@@ -651,7 +660,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Expression analyzeWhereSplitByDevice(
-      QueryStatement queryStatement, PartialPath devicePath, SchemaTree schemaTree) {
+      QueryStatement queryStatement, PartialPath devicePath, ISchemaTree schemaTree) {
     List<Expression> rewrittenPredicates =
         ExpressionAnalyzer.removeWildcardInQueryFilterByDevice(
             queryStatement.getWhereCondition().getPredicate(),
@@ -681,6 +690,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     rawPathToGroupedPathMap.putAll(groupByLevelController.getRawPathToGroupedPathMap());
 
     Map<Expression, Set<Expression>> groupByLevelExpressions = new LinkedHashMap<>();
+    outputExpressions.clear();
     ColumnPaginationController paginationController =
         new ColumnPaginationController(
             queryStatement.getSeriesLimit(), queryStatement.getSeriesOffset(), false);
@@ -690,32 +700,57 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         continue;
       }
       if (paginationController.hasCurLimit()) {
-        groupByLevelExpressions.put(
-            groupedExpression, rawGroupByLevelExpressions.get(groupedExpression));
+        Pair<Expression, String> outputExpression =
+            removeAliasFromExpression(
+                groupedExpression,
+                groupByLevelController.getAlias(groupedExpression.getExpressionString()));
+        Expression groupedExpressionWithoutAlias = outputExpression.left;
+
+        Set<Expression> rawExpressions = rawGroupByLevelExpressions.get(groupedExpression);
+        rawExpressions.forEach(
+            expression -> ExpressionAnalyzer.updateTypeProvider(expression, typeProvider));
+        rawExpressions.forEach(expression -> expression.inferTypes(typeProvider));
+
+        Set<Expression> rawExpressionsWithoutAlias =
+            rawExpressions.stream()
+                .map(ExpressionAnalyzer::removeAliasFromExpression)
+                .collect(Collectors.toSet());
+        rawExpressionsWithoutAlias.forEach(
+            expression -> ExpressionAnalyzer.updateTypeProvider(expression, typeProvider));
+        rawExpressionsWithoutAlias.forEach(expression -> expression.inferTypes(typeProvider));
+
+        groupByLevelExpressions.put(groupedExpressionWithoutAlias, rawExpressionsWithoutAlias);
+
+        TSDataType dataType =
+            typeProvider.getType(
+                new ArrayList<>(groupByLevelExpressions.get(groupedExpressionWithoutAlias))
+                    .get(0)
+                    .getExpressionString());
+        typeProvider.setType(groupedExpression.getExpressionString(), dataType);
+        typeProvider.setType(groupedExpressionWithoutAlias.getExpressionString(), dataType);
+        outputExpressions.add(outputExpression);
         paginationController.consumeLimit();
       } else {
         break;
       }
     }
 
-    // reset outputExpressions & transformExpressions after applying SLIMIT/SOFFSET
-    outputExpressions.clear();
-    for (Expression groupedExpression : groupByLevelExpressions.keySet()) {
-      TSDataType dataType =
-          typeProvider.getType(
-              new ArrayList<>(groupByLevelExpressions.get(groupedExpression))
-                  .get(0)
-                  .getExpressionString());
-      typeProvider.setType(groupedExpression.getExpressionString(), dataType);
-      outputExpressions.add(
-          new Pair<>(
-              groupedExpression,
-              groupByLevelController.getAlias(groupedExpression.getExpressionString())));
-    }
+    // reset transformExpressions after applying SLIMIT/SOFFSET
     transformExpressions.clear();
     transformExpressions.addAll(
         groupByLevelExpressions.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
     return groupByLevelExpressions;
+  }
+
+  private Pair<Expression, String> removeAliasFromExpression(
+      Expression rawExpression, String rawAlias) {
+    Expression expressionWithoutAlias = ExpressionAnalyzer.removeAliasFromExpression(rawExpression);
+    String alias =
+        !Objects.equals(expressionWithoutAlias, rawExpression)
+            ? rawExpression.getExpressionString()
+            : null;
+    alias = rawAlias == null ? alias : rawAlias;
+    return new Pair<>(expressionWithoutAlias, alias);
   }
 
   private DatasetHeader analyzeOutput(
@@ -740,11 +775,30 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   private Analysis analyzeLast(
-      Analysis analysis, List<MeasurementPath> allSelectedPath, SchemaTree schemaTree) {
-    Set<Expression> sourceExpressions =
-        allSelectedPath.stream()
-            .map(TimeSeriesOperand::new)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
+      Analysis analysis, List<MeasurementPath> allSelectedPath, ISchemaTree schemaTree) {
+    Set<Expression> sourceExpressions;
+    List<SortItem> sortItemList = analysis.getMergeOrderParameter().getSortItemList();
+    if (sortItemList.size() > 0) {
+      checkState(
+          sortItemList.size() == 1 && sortItemList.get(0).getSortKey() == SortKey.TIMESERIES,
+          "Last queries only support sorting by timeseries now.");
+      boolean isAscending = sortItemList.get(0).getOrdering() == Ordering.ASC;
+      sourceExpressions =
+          allSelectedPath.stream()
+              .map(TimeSeriesOperand::new)
+              .sorted(
+                  (o1, o2) ->
+                      isAscending
+                          ? o1.getExpressionString().compareTo(o2.getExpressionString())
+                          : o2.getExpressionString().compareTo(o1.getExpressionString()))
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+    } else {
+      sourceExpressions =
+          allSelectedPath.stream()
+              .map(TimeSeriesOperand::new)
+              .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
     sourceExpressions.forEach(
         expression -> ExpressionAnalyzer.updateTypeProvider(expression, typeProvider));
     analysis.setSourceExpressions(sourceExpressions);
@@ -770,7 +824,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     return analysis;
   }
 
-  private DataPartition fetchDataPartitionByDevices(Set<String> deviceSet, SchemaTree schemaTree) {
+  private DataPartition fetchDataPartitionByDevices(Set<String> deviceSet, ISchemaTree schemaTree) {
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
     for (String devicePath : deviceSet) {
       DataPartitionQueryParam queryParam = new DataPartitionQueryParam();
@@ -800,19 +854,6 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             "ALIGN BY DEVICE: the data types of the same measurement column should be the same across devices.");
       }
     }
-  }
-
-  @Override
-  public Analysis visitLastPointFetch(LastPointFetchStatement statement, MPPQueryContext context) {
-    context.setQueryType(QueryType.READ);
-
-    Analysis analysis = new Analysis();
-    analysis.setStatement(statement);
-
-    SchemaTree schemaTree = new SchemaTree();
-    schemaTree.setStorageGroups(statement.getStorageGroups());
-
-    return analyzeLast(analysis, statement.getSelectedPaths(), schemaTree);
   }
 
   @Override
@@ -1163,7 +1204,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.constructTree();
       // request schema fetch API
       logger.info("{} fetch query schema...", getLogHeader());
-      SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+      ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
       logger.info("{} fetch schema done", getLogHeader());
       List<MeasurementPath> allSelectedPath = schemaTree.getAllMeasurement();
 
@@ -1396,7 +1437,7 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       patternTree.appendPathPattern(pathPattern);
     }
 
-    SchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
+    ISchemaTree schemaTree = schemaFetcher.fetchSchema(patternTree);
     analysis.setSchemaTree(schemaTree);
 
     Map<String, List<DataPartitionQueryParam>> sgNameToQueryParamsMap = new HashMap<>();
