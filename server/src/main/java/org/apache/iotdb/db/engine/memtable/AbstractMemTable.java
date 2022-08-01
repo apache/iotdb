@@ -190,7 +190,9 @@ public abstract class AbstractMemTable implements IMemTable {
               Metric.QUANTITY.toString(),
               MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
-              METRIC_POINT_IN);
+              METRIC_POINT_IN,
+              Tag.TYPE.toString(),
+              "insertRow");
     }
   }
 
@@ -239,7 +241,9 @@ public abstract class AbstractMemTable implements IMemTable {
               Metric.QUANTITY.toString(),
               MetricLevel.IMPORTANT,
               Tag.NAME.toString(),
-              METRIC_POINT_IN);
+              METRIC_POINT_IN,
+              Tag.TYPE.toString(),
+              "insertAlignedRow");
     }
   }
 
@@ -262,7 +266,9 @@ public abstract class AbstractMemTable implements IMemTable {
                 Metric.QUANTITY.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
-                METRIC_POINT_IN);
+                METRIC_POINT_IN,
+                Tag.TYPE.toString(),
+                "insertTablet");
       }
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
@@ -288,7 +294,9 @@ public abstract class AbstractMemTable implements IMemTable {
                 Metric.QUANTITY.toString(),
                 MetricLevel.IMPORTANT,
                 Tag.NAME.toString(),
-                METRIC_POINT_IN);
+                METRIC_POINT_IN,
+                Tag.TYPE.toString(),
+                "insertAlignedTablet");
       }
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
