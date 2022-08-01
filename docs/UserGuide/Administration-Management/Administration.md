@@ -286,6 +286,7 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |privilege Name|Interpretation|
 |:---|:---|
 |SET\_STORAGE\_GROUP|set storage groups; path dependent|
+|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|
 |CREATE\_TIMESERIES|create timeseries; path dependent|
 |INSERT\_TIMESERIES|insert data; path dependent|
 |READ\_TIMESERIES|query data; path dependent|
