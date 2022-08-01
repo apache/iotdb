@@ -182,9 +182,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
               requests.get(0).getSyncIndex(), insertNodesInAllRequests, resultHandler);
       StepTracker.trace("cacheAndGet", startTime, System.nanoTime());
       if (insertNodeWrapper != null) {
-        for (InsertNode insertNode : insertNodeWrapper.getInsertNodes()) {
-          statuses.add(write(insertNode));
-        }
+        //        for (InsertNode insertNode : insertNodeWrapper.getInsertNodes()) {
+        //          statuses.add(write(insertNode));
+        //        }
         insertNodeWrapper.resultHandler.onComplete(new TSyncLogRes(statuses));
       }
     } catch (IllegalArgumentException e) {
