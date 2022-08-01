@@ -120,16 +120,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
       List<InsertNode> insertNodes,
       AsyncMethodCallback<TSyncLogRes> resultHandler) {
     synchronized (requestCache) {
-      long startTime = System.nanoTime();
-      try {
-        requestCache.add(new InsertNodeWrapper(syncIndex, insertNodes, resultHandler));
-        if (requestCache.size() == MAX_REQUEST_CACHE_SIZE) {
-          return requestCache.poll();
-        }
-        return null;
-      } finally {
-        StepTracker.trace("cacheAndGet", startTime, System.nanoTime());
+      requestCache.add(new InsertNodeWrapper(syncIndex, insertNodes, resultHandler));
+      if (requestCache.size() == MAX_REQUEST_CACHE_SIZE) {
+        return requestCache.poll();
       }
+      return null;
     }
   }
 
@@ -181,9 +176,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
         }
         insertNodesInAllRequests.add(mergeInsertNodes(insertNodesInOneRequest));
       }
+      long startTime = System.nanoTime();
       InsertNodeWrapper insertNodeWrapper =
           cacheAndGetLatestInsertNode(
               requests.get(0).getSyncIndex(), insertNodesInAllRequests, resultHandler);
+      StepTracker.trace("cacheAndGet", startTime, System.nanoTime());
       if (insertNodeWrapper != null) {
         for (InsertNode insertNode : insertNodeWrapper.getInsertNodes()) {
           statuses.add(write(insertNode));
