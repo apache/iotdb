@@ -24,6 +24,7 @@ import org.apache.iotdb.db.mpp.plan.statement.StatementNode;
 import org.apache.iotdb.db.mpp.plan.statement.StatementVisitor;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeletePartitionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -123,6 +124,12 @@ public class ConfigTaskVisitor
   @Override
   public IConfigTask visitClearCache(ClearCacheStatement clearCacheStatement, TaskContext context) {
     return new ClearCacheTask(clearCacheStatement);
+  }
+
+  @Override
+  public IConfigTask visitDeletePartition(
+      DeletePartitionStatement deletePartitionStatement, TaskContext context) {
+    return new DeletePartitionTask(deletePartitionStatement);
   }
 
   @Override

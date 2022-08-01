@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDeletePartitionReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -529,6 +530,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus clearCache(TClearCacheReq req) throws TException {
     return configManager.clearCache(req);
+  }
+
+  @Override
+  public TSStatus deletePartition(TDeletePartitionReq tDeleteReq) throws TException {
+    return configManager.deletePartition(tDeleteReq);
   }
 
   @Override

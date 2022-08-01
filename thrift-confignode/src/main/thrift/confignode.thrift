@@ -435,6 +435,10 @@ service IConfigNodeRPCService {
 
   common.TSStatus clearCache(common.TClearCacheReq req)
 
+  /* DeletePartition */
+
+  common.TSStatus deletePartition(common.TDeletePartitionReq req)
+
   /* Cluster Tools */
 
   TShowClusterResp showCluster()

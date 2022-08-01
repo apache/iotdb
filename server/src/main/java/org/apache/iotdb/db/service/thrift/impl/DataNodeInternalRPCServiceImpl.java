@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDeletePartitionReq;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -50,6 +51,7 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
@@ -494,6 +496,25 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TimeSeriesMetadataCache.getInstance().clear();
     BloomFilterCache.getInstance().clear();
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus deletePartition(TDeletePartitionReq tDeletePartitionReq) throws TException {
+    String storageGroup = tDeletePartitionReq.getStorageGroup();
+    TimePartitionFilter filter =
+        (storageGroupName, partitionId) ->
+            storageGroupName.equals(storageGroup)
+                && tDeletePartitionReq.getPartitionId().contains(partitionId);
+
+    PartialPath storageGroupPath;
+    try {
+      storageGroupPath = new PartialPath(storageGroup);
+      StorageEngineV2.getInstance().removePartitions(storageGroupPath, filter);
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+    }
+    return RpcUtils.getStatus(TSStatusCode.PATH_NOT_EXIST_ERROR);
   }
 
   @Override

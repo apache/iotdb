@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.client.async.datanode;
 import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDeletePartitionReq;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
@@ -34,6 +35,7 @@ import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
 import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
 import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
+import org.apache.iotdb.confignode.client.async.handlers.DeletePartitionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
@@ -136,6 +138,15 @@ public class AsyncDataNodeClientPool {
                 new UpdateConfigNodeGroupHandler(
                     countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
             break;
+          case DELETE_PARTITION:
+            handler =
+                new DeletePartitionHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
           default:
             return;
         }
@@ -189,6 +200,9 @@ public class AsyncDataNodeClientPool {
         case BROADCAST_LATEST_CONFIG_NODE_GROUP:
           client.updateConfigNodeGroup(
               (TUpdateConfigNodeGroupReq) req, (UpdateConfigNodeGroupHandler) handler);
+          break;
+        case DELETE_PARTITION:
+          client.deletePartition((TDeletePartitionReq) req, (DeletePartitionHandler) handler);
           break;
         default:
           LOGGER.error(

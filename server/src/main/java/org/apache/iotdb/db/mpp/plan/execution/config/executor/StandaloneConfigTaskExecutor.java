@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
+import org.apache.iotdb.common.rpc.thrift.TDeletePartitionReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -28,6 +29,8 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
+import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
@@ -246,6 +249,25 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     } else {
       future.setException(new StatementExecutionException(tsStatus));
     }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> deletePartition(TDeletePartitionReq tDeletePartitionReq) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try {
+      String storageGroup = tDeletePartitionReq.getStorageGroup();
+      TimePartitionFilter filter =
+          (storageGroupName, partitionId) ->
+              storageGroupName.equals(storageGroup)
+                  && tDeletePartitionReq.getPartitionId().contains(partitionId);
+      PartialPath storageGroupPath = new PartialPath(storageGroup);
+      StorageEngineV2.getInstance().removePartitions(storageGroupPath, filter);
+    } catch (Exception e) {
+      future.setException(e);
+      return future;
+    }
+    future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     return future;
   }
 

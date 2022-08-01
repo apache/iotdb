@@ -39,6 +39,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesSt
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeletePartitionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
@@ -260,6 +261,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitClearCache(ClearCacheStatement clearCacheStatement, C context) {
     return visitStatement(clearCacheStatement, context);
+  }
+
+  public R visitDeletePartition(DeletePartitionStatement deletePartitionStatement, C context) {
+    return visitStatement(deletePartitionStatement, context);
   }
 
   public R visitShowRegion(ShowRegionStatement showRegionStatement, C context) {

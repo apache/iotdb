@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDeletePartitionReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -272,6 +273,8 @@ public interface IManager {
   TSStatus flush(TFlushReq req);
 
   TSStatus clearCache(TClearCacheReq req);
+
+  TSStatus deletePartition(TDeletePartitionReq req);
 
   /**
    * Get the latest RegionRouteMap

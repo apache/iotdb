@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
+import org.apache.iotdb.common.rpc.thrift.TDeletePartitionReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
@@ -64,6 +65,8 @@ public interface IConfigTaskExecutor {
   SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq);
 
   SettableFuture<ConfigTaskResult> clearCache(TClearCacheReq tClearCacheReq);
+
+  SettableFuture<ConfigTaskResult> deletePartition(TDeletePartitionReq tDeletePartitionReq);
 
   SettableFuture<ConfigTaskResult> showCluster();
 

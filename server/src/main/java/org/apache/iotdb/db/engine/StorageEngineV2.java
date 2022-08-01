@@ -28,6 +28,7 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.utils.TestOnly;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.DataRegion.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.DataRegionException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -563,6 +565,14 @@ public class StorageEngineV2 implements IService {
       }
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  public void removePartitions(PartialPath storageGroupPath, TimePartitionFilter filter) {
+    for (DataRegion dataRegion : dataRegionMap.values()) {
+      if (dataRegion.getLogicalStorageGroupName().equals(storageGroupPath.getFullPath())) {
+        dataRegion.removePartitions(filter);
+      }
+    }
   }
 
   public void setTTL(List<DataRegionId> dataRegionIdList, long dataTTL) {

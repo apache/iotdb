@@ -334,6 +334,8 @@ service IDataNodeRPCService {
 
   common.TSStatus clearCache(common.TClearCacheReq req)
 
+  common.TSStatus deletePartition(common.TDeletePartitionReq req)
+
   common.TSStatus setTTL(common.TSetTTLReq req)
   /**
    * configNode will notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced

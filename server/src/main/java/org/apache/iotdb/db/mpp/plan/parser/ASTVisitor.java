@@ -90,6 +90,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CountTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateAlignedTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeletePartitionStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
@@ -142,6 +143,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -2342,6 +2344,17 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return clearCacheStatement;
   }
 
+  @Override
+  public Statement visitDeletePartition(IoTDBSqlParser.DeletePartitionContext ctx) {
+    DeletePartitionStatement deletePartitionStatement = new DeletePartitionStatement();
+    deletePartitionStatement.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
+    Set<Long> idSet = new HashSet<>();
+    for (TerminalNode terminalNode : ctx.INTEGER_LITERAL()) {
+      idSet.add(Long.parseLong(terminalNode.getText()));
+    }
+    deletePartitionStatement.setPartitionIds(idSet);
+    return deletePartitionStatement;
+  }
   // show region
 
   @Override

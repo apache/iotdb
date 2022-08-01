@@ -106,6 +106,11 @@ struct TClearCacheReq {
    1: optional i32 dataNodeId
 }
 
+struct TDeletePartitionReq {
+  1: required string storageGroup
+  2: required list<i64> PartitionId
+}
+
 struct TSetTTLReq {
   1: required string storageGroup
   2: required i64 TTL
