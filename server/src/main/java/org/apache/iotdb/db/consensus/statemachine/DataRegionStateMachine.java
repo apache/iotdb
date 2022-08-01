@@ -50,6 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -64,11 +65,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   private static final int MAX_REQUEST_CACHE_SIZE = 5;
   private static final long CACHE_WINDOW_TIME_IN_MS = 10_000;
-  private final PriorityQueue<InsertNodeWrapper> requestCache;
+  private final PriorityQueue<InsertNode> requestCache;
 
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
-    this.requestCache = new PriorityQueue<>();
+    this.requestCache = new PriorityQueue<>(Comparator.comparingLong(InsertNode::getSyncIndex));
   }
 
   @Override
@@ -114,9 +115,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   private InsertNode cacheAndGetLatestInsertNode(long syncIndex, InsertNode insertNode) {
-
+    insertNode.setSyncIndex(syncIndex);
     synchronized (requestCache) {
-      requestCache.add(new InsertNodeWrapper(syncIndex, insertNode));
+      requestCache.add(insertNode);
       requestCache.notifyAll();
       while (!(requestCache.size() >= MAX_REQUEST_CACHE_SIZE
           && requestCache.peek().getSyncIndex() == syncIndex)) {
@@ -127,11 +128,34 @@ public class DataRegionStateMachine extends BaseStateMachine {
         }
       }
       requestCache.notifyAll();
-      InsertNodeWrapper wrapper = requestCache.poll();
-      logger.info("queue size {}, syncIndex = {}", requestCache.size(), wrapper.getSyncIndex());
-      return wrapper.getInsertNode();
+      InsertNode nextNode = requestCache.poll();
+      //      logger.info("queue size {}, syncIndex = {}", requestCache.size(),
+      // nextNode.getSyncIndex());
+      return nextNode;
     }
   }
+
+  //  private InsertNode cacheAndGetLatestInsertNode2(long syncIndex, InsertNode insertNode) {
+  //    insertNode.setSyncIndex(syncIndex);
+  //    synchronized (requestCache) {
+  //      requestCache.add(insertNode);
+  //      if (requestCache.size() == MAX_REQUEST_CACHE_SIZE) {
+  //        if (insertNode == requestCache.peek()) {
+  //          return requestCache.poll();
+  //        } else {
+  //          requestCache.poll().notify();
+  //        }
+  //      }
+  //    }
+  //
+  //    synchronized (requestCache) {
+  //      try {
+  //        insertNode.wait(CACHE_WINDOW_TIME_IN_MS);
+  //      } catch (InterruptedException e) {
+  //        Thread.currentThread().interrupt();
+  //      }
+  //    }
+  //  }
 
   private static class InsertNodeWrapper implements Comparable<InsertNodeWrapper> {
     private final long syncIndex;
