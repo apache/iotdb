@@ -40,7 +40,6 @@ import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
@@ -247,9 +246,9 @@ public interface IManager {
   /**
    * Register ConfigNode when it is first startup
    *
-   * @return TConfigNodeRegisterResp
+   * @return TSStatus
    */
-  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req);
+  TSStatus registerConfigNode(TConfigNodeRegisterReq req);
 
   /**
    * Add Consensus Group in new node.
