@@ -62,6 +62,9 @@ public class PipeOpSgManager {
     opBlock.setBeginIndex(nextIndex);
     opBlockMap.put(nextIndex, opBlock);
     dataCount += opBlock.getDataCount();
+    logger.info(
+        String.format(
+            "%s add beginIndex %d, dataCount %d", storageGroupName, this.beginIndex, dataCount));
   }
 
   /**
@@ -78,6 +81,10 @@ public class PipeOpSgManager {
       return null;
     }
 
+    logger.info(
+        String.format(
+            "require %s %d, now beginIndex %d, now dataCount %d",
+            storageGroupName, beginIndex, this.beginIndex, dataCount));
     Map.Entry<Long, AbstractOpBlock> opBlockEntry = opBlockMap.floorEntry(beginIndex);
     if ((opBlockEntry == null)) {
       logger.error(
@@ -161,6 +168,9 @@ public class PipeOpSgManager {
       }
     }
 
+    logger.info(
+        String.format(
+            "%s del beginIndex %d, dataCount %d", storageGroupName, beginIndex, dataCount));
     return filePipeSerialNumberList;
   }
 }

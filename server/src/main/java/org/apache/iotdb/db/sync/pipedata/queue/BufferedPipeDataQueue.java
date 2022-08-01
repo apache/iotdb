@@ -64,6 +64,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
 
   private long pullSerialNumber;
   private long commitSerialNumber;
+  private BlockingDeque<PipeData> commitDeque;
   private DataOutputStream commitLogWriter;
   private long currentCommitLogSize;
 
@@ -76,6 +77,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     this.outputDeque = new LinkedBlockingDeque<>();
     this.pullSerialNumber = Long.MIN_VALUE;
     this.commitSerialNumber = Long.MIN_VALUE;
+    this.commitDeque = new LinkedBlockingDeque<>();
 
     recover();
   }
@@ -207,6 +209,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
       logger.error(String.format("Record pipe data %s error, because %s.", pipeData, e));
       return false;
     }
+    logger.info(String.format("Offer PipeData %s.", pipeData));
     return true;
   }
 
@@ -295,6 +298,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     PipeData pipeData = null;
     try {
       synchronized (waitLock) {
+        logger.info("Taking PipeData.");
         while ((pipeData = pullOnePipeData(commitSerialNumber)) == null) {
           waitLock.wait();
           waitLock.notifyAll();
@@ -305,7 +309,8 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
           String.format(
               "Blocking pull pipe data number %s error, because %s", commitSerialNumber + 1, e));
     }
-    outputDeque.addFirst(pipeData);
+    //    outputDeque.addFirst(pipeData);
+    commitDeque.offer(pipeData);
     pullSerialNumber = pipeData.getSerialNumber();
     return pipeData;
   }
@@ -328,7 +333,8 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     while (commitSerialNumber < serialNumber) {
       commitSerialNumber += 1;
       try {
-        PipeData commitData = pullOnePipeData(commitSerialNumber);
+        //        PipeData commitData = pullOnePipeData(commitSerialNumber);
+        PipeData commitData = commitDeque.poll();
         if (commitData == null) {
           continue;
         }

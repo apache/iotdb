@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +74,7 @@ public class ExtPipePlugin {
   private ExtPipePluginConfiguration configuration;
 
   private volatile boolean alive = false;
+  private volatile boolean isDrop = false;
   private List<DataTransmissionTask> dataTransmissionTasks;
   private ExecutorService executorService;
 
@@ -82,11 +84,14 @@ public class ExtPipePlugin {
   private Map<String, Map<String, AtomicInteger>> writerInvocationFailures;
   private int timestampDivisor;
 
+  private Map<Integer, IExternalPipeSinkWriter> thread2Writer;
+
   public ExtPipePlugin(
       String extPipeTypeName, Map<String, String> sinkParams, PipeOpManager pipeOpManager) {
     this.extPipeTypeName = extPipeTypeName;
     this.sinkParams = sinkParams;
     this.pipeOpManager = pipeOpManager;
+    this.thread2Writer = new HashMap<>();
 
     String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
     switch (timePrecision) {
@@ -192,7 +197,9 @@ public class ExtPipePlugin {
     // == Start threads that will run external PiPeSink plugin
     dataTransmissionTasks = new ArrayList<>(threadNum);
     for (int i = 0; i < threadNum; i++) {
-      IExternalPipeSinkWriter writer = pipeSinkWriterFactory.get();
+      //      IExternalPipeSinkWriter writer = pipeSinkWriterFactory.get();
+      IExternalPipeSinkWriter writer =
+          thread2Writer.computeIfAbsent(i, o -> pipeSinkWriterFactory.get());
       DataTransmissionTask dataTransmissionTask =
           new DataTransmissionTask(writer, i, configuration);
       dataTransmissionTasks.add(dataTransmissionTask);
@@ -204,14 +211,19 @@ public class ExtPipePlugin {
     logger.info("External pipe " + extPipeTypeName + " finish START.");
   }
 
-  /** Stop all working threads */
   public void stop() {
+    alive = false;
+  }
+
+  /** drop all working threads */
+  public void drop() {
     if (!alive) {
       String errMsg = "Error: External pipe " + extPipeTypeName + " has not started.";
       logger.error(errMsg);
       throw new IllegalStateException(errMsg);
     }
     alive = false;
+    isDrop = true;
 
     executorService.shutdown();
     boolean isExecutorServiceTerminated = false;
@@ -476,11 +488,13 @@ public class ExtPipePlugin {
         }
       }
 
-      try {
-        writer.close();
-      } catch (IOException e) {
-        handleExceptionsThrownByWriter("close", e);
-        logger.info("Exception happened when closing the writer", e);
+      if (isDrop) {
+        try {
+          writer.close();
+        } catch (IOException e) {
+          handleExceptionsThrownByWriter("close", e);
+          logger.info("Exception happened when closing the writer", e);
+        }
       }
 
       logger.info("ExternalPipeWorker exits. Thread={}", Thread.currentThread().getName());

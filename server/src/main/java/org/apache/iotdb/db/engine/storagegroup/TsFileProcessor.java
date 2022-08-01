@@ -990,6 +990,7 @@ public class TsFileProcessor {
         // flushing memTable in System module.
         addAMemtableIntoFlushingList(tmpMemTable);
         if (tsFileSyncManager.isEnableSync()) {
+          logger.info(String.format("Sync catchs tsFile %s", tsFileResource.getTsFilePath()));
           tsFileSyncManager.collectRealTimeTsFile(tsFileResource.getTsFile());
         }
         logger.info("Memtable {} has been added to flushing list", tmpMemTable);

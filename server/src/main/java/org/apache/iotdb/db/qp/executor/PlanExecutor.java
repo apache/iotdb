@@ -277,6 +277,11 @@ public class PlanExecutor implements IPlanExecutor {
 
   private ThreadPoolExecutor insertionPool;
 
+  private long loadMinTime = Long.MAX_VALUE;
+  private long loadMaxTime = Long.MIN_VALUE;
+  private long loadMinInterval = Long.MAX_VALUE;
+  private long loadMaxInterval = Long.MIN_VALUE;
+
   private static final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
 
   public PlanExecutor() throws QueryProcessException {
@@ -1429,6 +1434,10 @@ public class PlanExecutor implements IPlanExecutor {
     } else {
       loadFile(file, plan);
     }
+    System.out.println(new Date(loadMinTime));
+    System.out.println(new Date(loadMaxTime));
+    System.out.println(loadMinInterval);
+    System.out.println(loadMaxInterval);
   }
 
   private void loadDir(File curFile, OperateFilePlan plan) throws QueryProcessException {
@@ -1505,6 +1514,16 @@ public class PlanExecutor implements IPlanExecutor {
                 "Cannot load file %s because the file's version is old which needs to be upgraded.",
                 file.getAbsolutePath()));
       }
+
+      long minTime = Long.MAX_VALUE, maxTime = Long.MIN_VALUE;
+      for (String device : tsFileResource.getDevices()) {
+        minTime = Math.min(minTime, tsFileResource.getStartTime(device));
+        maxTime = Math.max(maxTime, tsFileResource.getEndTime(device));
+      }
+      loadMinTime = Math.min(minTime, loadMinTime);
+      loadMaxTime = Math.max(maxTime, loadMaxTime);
+      loadMinInterval = Math.min(maxTime - minTime, loadMinInterval);
+      loadMaxInterval = Math.max(maxTime - minTime, loadMaxInterval);
 
       // create schemas if they doesn't exist
       if (plan.isAutoCreateSchema()) {

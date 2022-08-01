@@ -88,6 +88,7 @@ public class PipeOpManager {
     }
 
     TsFileOpBlock tsfileDataSrcEntry = new TsFileOpBlock(sgName, tsFilename, pipeDataSerialNumber);
+    logger.info(String.format("OpManager add %s", tsFilename));
     appendDataSrc(sgName, tsfileDataSrcEntry);
   }
 
