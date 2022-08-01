@@ -26,6 +26,7 @@ import org.apache.iotdb.commons.auth.entity.Role;
 import org.apache.iotdb.commons.auth.entity.User;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
@@ -49,10 +50,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class ClusterAuthorityFetcher implements IAuthorityFetcher {
   private static final Logger logger = LoggerFactory.getLogger(ClusterAuthorityFetcher.class);
@@ -300,6 +303,10 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
         authorStatement.getPassWord() == null ? "" : authorStatement.getPassWord(),
         authorStatement.getNewPassword() == null ? "" : authorStatement.getNewPassword(),
         AuthUtils.strToPermissions(authorStatement.getPrivilegeList()),
-        authorStatement.getNodeName() == null ? "" : authorStatement.getNodeName().getFullPath());
+        authorStatement.getNodeNameList() == null
+            ? Collections.emptyList()
+            : authorStatement.getNodeNameList().stream()
+                .map(PartialPath::getFullPath)
+                .collect(Collectors.toList()));
   }
 }

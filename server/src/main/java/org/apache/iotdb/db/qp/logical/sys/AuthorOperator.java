@@ -26,6 +26,8 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
+import java.util.List;
+
 /**
  * this class maintains information in Author statement, including CREATE, DROP, GRANT and REVOKE.
  */
@@ -37,7 +39,7 @@ public class AuthorOperator extends Operator {
   private String password;
   private String newPassword;
   private String[] privilegeList;
-  private PartialPath nodeName;
+  private List<PartialPath> nodeNameList;
 
   /**
    * AuthorOperator Constructor with AuthorType.
@@ -107,12 +109,12 @@ public class AuthorOperator extends Operator {
     this.privilegeList = authorizationList;
   }
 
-  public PartialPath getNodeName() {
-    return nodeName;
+  public List<PartialPath> getNodeNameList() {
+    return nodeNameList;
   }
 
-  public void setNodeNameList(PartialPath nodePath) {
-    this.nodeName = nodePath;
+  public void setNodeNameList(List<PartialPath> nodePath) {
+    this.nodeNameList = nodePath;
   }
 
   @Override
@@ -120,7 +122,7 @@ public class AuthorOperator extends Operator {
       throws QueryProcessException {
     try {
       return new AuthorPlan(
-          authorType, userName, roleName, password, newPassword, privilegeList, nodeName);
+          authorType, userName, roleName, password, newPassword, privilegeList, nodeNameList);
     } catch (AuthException e) {
       throw new QueryProcessException(e.getMessage());
     }
