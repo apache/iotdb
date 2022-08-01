@@ -372,7 +372,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               req.getPassword(),
               req.getNewPassword(),
               req.getPermissions(),
-              req.getNodeName());
+              req.getNodeNameList());
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
     }
@@ -396,7 +396,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
               req.getPassword(),
               req.getNewPassword(),
               req.getPermissions(),
-              req.getNodeName());
+              req.getNodeNameList());
     } catch (AuthException e) {
       LOGGER.error(e.getMessage());
     }
