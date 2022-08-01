@@ -23,10 +23,8 @@ package org.apache.iotdb.db.it;
 import org.apache.iotdb.it.env.EnvFactory;
 import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -61,12 +59,12 @@ public class IoTDBTtlIT {
       try {
         statement.execute("SET TTL TO root.TTL_SG1 1000");
       } catch (SQLException e) {
-        Assert.fail(e.getMessage());
+        assertEquals(322, e.getErrorCode());
       }
       try {
         statement.execute("UNSET TTL TO root.TTL_SG1");
       } catch (SQLException e) {
-        Assert.fail(e.getMessage());
+        assertEquals(322, e.getErrorCode());
       }
 
       statement.execute("SET STORAGE GROUP TO root.TTL_SG1");
@@ -132,11 +130,8 @@ public class IoTDBTtlIT {
               String.format(
                   "INSERT INTO root.TTL_SG1(timestamp, s1) VALUES (%d, %d)", now - 500000 + i, i));
         } catch (SQLException e) {
-          if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
-            caught = true;
-          }
+          assertEquals(305, e.getErrorCode());
         }
-        assertTrue(caught);
       }
 
       Thread.sleep(1000);
@@ -221,11 +216,8 @@ public class IoTDBTtlIT {
                   "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)",
                   now - 500000 + i, i));
         } catch (SQLException e) {
-          if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
-            caught = true;
-          }
+          assertEquals(305, e.getErrorCode());
         }
-        assertTrue(caught);
       }
       for (int i = 100; i < 200; i++) {
         boolean caught = false;
@@ -235,11 +227,8 @@ public class IoTDBTtlIT {
                   "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)",
                   now - 500000 + i, i));
         } catch (SQLException e) {
-          if (TSStatusCode.OUT_OF_TTL_ERROR.getStatusCode() == e.getErrorCode()) {
-            caught = true;
-          }
+          assertEquals(305, e.getErrorCode());
         }
-        assertTrue(caught);
       }
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.**")) {
