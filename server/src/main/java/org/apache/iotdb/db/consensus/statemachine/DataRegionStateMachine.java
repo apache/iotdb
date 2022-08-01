@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
+import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -44,13 +44,14 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDevic
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
+import org.apache.thrift.async.AsyncMethodCallback;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -65,11 +66,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   private static final int MAX_REQUEST_CACHE_SIZE = 5;
   private static final long CACHE_WINDOW_TIME_IN_MS = 10_000;
-  private final PriorityQueue<InsertNode> requestCache;
+  private final PriorityQueue<InsertNodeWrapper> requestCache;
 
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
-    this.requestCache = new PriorityQueue<>(Comparator.comparingLong(InsertNode::getSyncIndex));
+    this.requestCache = new PriorityQueue<>();
   }
 
   @Override
@@ -114,56 +115,31 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
   }
 
-  private InsertNode cacheAndGetLatestInsertNode(long syncIndex, InsertNode insertNode) {
-    insertNode.setSyncIndex(syncIndex);
+  private InsertNodeWrapper cacheAndGetLatestInsertNode(
+      long syncIndex,
+      List<InsertNode> insertNodes,
+      AsyncMethodCallback<TSyncLogRes> resultHandler) {
     synchronized (requestCache) {
-      requestCache.add(insertNode);
-      requestCache.notifyAll();
-      while (!(requestCache.size() >= MAX_REQUEST_CACHE_SIZE
-          && requestCache.peek().getSyncIndex() == syncIndex)) {
-        try {
-          requestCache.wait(CACHE_WINDOW_TIME_IN_MS);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-        }
+      requestCache.add(new InsertNodeWrapper(syncIndex, insertNodes, resultHandler));
+      if (requestCache.size() == MAX_REQUEST_CACHE_SIZE) {
+        return requestCache.poll();
       }
-      requestCache.notifyAll();
-      InsertNode nextNode = requestCache.poll();
-      //      logger.info("queue size {}, syncIndex = {}", requestCache.size(),
-      // nextNode.getSyncIndex());
-      return nextNode;
+      return null;
     }
   }
 
-  //  private InsertNode cacheAndGetLatestInsertNode2(long syncIndex, InsertNode insertNode) {
-  //    insertNode.setSyncIndex(syncIndex);
-  //    synchronized (requestCache) {
-  //      requestCache.add(insertNode);
-  //      if (requestCache.size() == MAX_REQUEST_CACHE_SIZE) {
-  //        if (insertNode == requestCache.peek()) {
-  //          return requestCache.poll();
-  //        } else {
-  //          requestCache.poll().notify();
-  //        }
-  //      }
-  //    }
-  //
-  //    synchronized (requestCache) {
-  //      try {
-  //        insertNode.wait(CACHE_WINDOW_TIME_IN_MS);
-  //      } catch (InterruptedException e) {
-  //        Thread.currentThread().interrupt();
-  //      }
-  //    }
-  //  }
-
   private static class InsertNodeWrapper implements Comparable<InsertNodeWrapper> {
     private final long syncIndex;
-    private final InsertNode insertNode;
+    private final List<InsertNode> insertNodes;
+    private final AsyncMethodCallback<TSyncLogRes> resultHandler;
 
-    public InsertNodeWrapper(long syncIndex, InsertNode insertNode) {
+    public InsertNodeWrapper(
+        long syncIndex,
+        List<InsertNode> insertNode,
+        AsyncMethodCallback<TSyncLogRes> resultHandler) {
       this.syncIndex = syncIndex;
-      this.insertNode = insertNode;
+      this.insertNodes = insertNode;
+      this.resultHandler = resultHandler;
     }
 
     @Override
@@ -175,8 +151,43 @@ public class DataRegionStateMachine extends BaseStateMachine {
       return syncIndex;
     }
 
-    public InsertNode getInsertNode() {
-      return insertNode;
+    public List<InsertNode> getInsertNodes() {
+      return insertNodes;
+    }
+
+    public AsyncMethodCallback<TSyncLogRes> getResultHandler() {
+      return resultHandler;
+    }
+  }
+
+  public void multiLeaderWriteAsync(
+      List<IndexedConsensusRequest> requests, AsyncMethodCallback<TSyncLogRes> resultHandler) {
+    List<TSStatus> statuses = new LinkedList<>();
+    try {
+      List<InsertNode> insertNodesInAllRequests = new LinkedList<>();
+      for (IndexedConsensusRequest indexedRequest : requests) {
+        List<InsertNode> insertNodesInOneRequest =
+            new ArrayList<>(indexedRequest.getRequests().size());
+        for (IConsensusRequest req : indexedRequest.getRequests()) {
+          // PlanNode in IndexedConsensusRequest should always be InsertNode
+          InsertNode innerNode = (InsertNode) getPlanNode(req);
+          innerNode.setSearchIndex(indexedRequest.getSearchIndex());
+          insertNodesInOneRequest.add(innerNode);
+        }
+        insertNodesInAllRequests.add(mergeInsertNodes(insertNodesInOneRequest));
+      }
+      InsertNodeWrapper insertNodeWrapper =
+          cacheAndGetLatestInsertNode(
+              requests.get(0).getSyncIndex(), insertNodesInAllRequests, resultHandler);
+      if (insertNodeWrapper != null) {
+        for (InsertNode insertNode : insertNodeWrapper.getInsertNodes()) {
+          statuses.add(write(insertNode));
+        }
+        insertNodeWrapper.resultHandler.onComplete(new TSyncLogRes(statuses));
+      }
+    } catch (IllegalArgumentException e) {
+      logger.error(e.getMessage(), e);
+      resultHandler.onError(e);
     }
   }
 
@@ -193,15 +204,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
           innerNode.setSearchIndex(indexedRequest.getSearchIndex());
           insertNodes.add(innerNode);
         }
-        if (indexedRequest.getSearchIndex() == ConsensusReqReader.DEFAULT_SEARCH_INDEX) {
-          long cacheRequestStartTime = System.nanoTime();
-          planNode =
-              cacheAndGetLatestInsertNode(
-                  indexedRequest.getSyncIndex(), mergeInsertNodes(insertNodes));
-          StepTracker.trace("cacheAndQueueRequest", cacheRequestStartTime, System.nanoTime());
-        } else {
-          planNode = mergeInsertNodes(insertNodes);
-        }
+        planNode = mergeInsertNodes(insertNodes);
       } else {
         planNode = getPlanNode(request);
       }

@@ -77,8 +77,6 @@ public abstract class InsertNode extends WritePlanNode {
    */
   protected long searchIndex = NO_CONSENSUS_INDEX;
 
-  protected long syncIndex = NO_CONSENSUS_INDEX;
-
   /** Physical address of data region after splitting */
   protected TRegionReplicaSet dataRegionReplicaSet;
 
@@ -153,14 +151,6 @@ public abstract class InsertNode extends WritePlanNode {
 
   public long getSearchIndex() {
     return searchIndex;
-  }
-
-  public void setSyncIndex(long syncIndex) {
-    this.syncIndex = syncIndex;
-  }
-
-  public long getSyncIndex() {
-    return syncIndex;
   }
 
   /** Search index should start from 1 */

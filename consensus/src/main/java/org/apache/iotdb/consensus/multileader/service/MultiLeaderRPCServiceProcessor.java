@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
 import org.apache.iotdb.consensus.multileader.MultiLeaderConsensus;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
@@ -38,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIService.AsyncIface {
@@ -67,7 +69,7 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
         resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
         return;
       }
-      List<TSStatus> statuses = new ArrayList<>();
+      List<IndexedConsensusRequest> indexedConsensusRequests = new LinkedList<>();
       // We use synchronized to ensure atomicity of executing multiple logs
       if (!req.getBatches().isEmpty()) {
         List<IConsensusRequest> consensusRequests = new ArrayList<>();
@@ -79,11 +81,9 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
                   : new ByteBufferConsensusRequest(batch.data);
           // merge TLogBatch with same search index into one request
           if (batch.getSearchIndex() != currentSearchIndex) {
-            statuses.add(
-                impl.getStateMachine()
-                    .write(
-                        impl.buildIndexedConsensusRequestForRemoteRequest(
-                            currentSearchIndex, consensusRequests)));
+            indexedConsensusRequests.add(
+                impl.buildIndexedConsensusRequestForRemoteRequest(
+                    currentSearchIndex, consensusRequests));
             consensusRequests = new ArrayList<>();
             currentSearchIndex = batch.getSearchIndex();
           }
@@ -91,15 +91,12 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
         }
         // write last request
         if (!consensusRequests.isEmpty()) {
-          statuses.add(
-              impl.getStateMachine()
-                  .write(
-                      impl.buildIndexedConsensusRequestForRemoteRequest(
-                          currentSearchIndex, consensusRequests)));
+          indexedConsensusRequests.add(
+              impl.buildIndexedConsensusRequestForRemoteRequest(
+                  currentSearchIndex, consensusRequests));
         }
+        impl.getStateMachine().multiLeaderWriteAsync(indexedConsensusRequests, resultHandler);
       }
-      logger.debug("Execute TSyncLogReq for {} with result {}", req.consensusGroupId, statuses);
-      resultHandler.onComplete(new TSyncLogRes(statuses));
     } catch (Exception e) {
       resultHandler.onError(e);
     }
