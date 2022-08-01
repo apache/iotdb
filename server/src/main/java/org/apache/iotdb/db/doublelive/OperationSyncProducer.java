@@ -57,9 +57,9 @@ public class OperationSyncProducer {
     headBuffer.position(0);
     int index;
     if (deviceName == null) {
-      index = 0;
+      index = operationSyncQueues.size();
     } else {
-      index = deviceName.hashCode() % operationSyncQueues.size();
+      index = deviceName.hashCode() % (operationSyncQueues.size() - 1);
     }
     for (int i = 0; i < RETRY; i++) {
       // retry 3 times

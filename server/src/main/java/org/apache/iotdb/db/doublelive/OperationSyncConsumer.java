@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.doublelive;
 
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
-import org.apache.iotdb.session.util.SystemStatus;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -62,17 +62,9 @@ public class OperationSyncConsumer implements Runnable {
         LOGGER.error("OperationSyncConsumer been interrupted: ", e);
         continue;
       }
-      boolean isLife = false;
-      try {
-        isLife = operationSyncSessionPool.getSystemStatus() == SystemStatus.NORMAL;
-      } catch (IoTDBConnectionException e) {
-        e.printStackTrace();
-      } catch (Exception e) {
-        LOGGER.warn("Survival status is error");
-      }
       headBuffer.position(0);
       boolean transmitStatus = false;
-      if (isLife) {
+      if (StorageEngine.isSecondaryLife()) {
         try {
           transmitStatus = operationSyncSessionPool.operationSyncTransmit(headBuffer);
         } catch (IoTDBConnectionException connectionException) {

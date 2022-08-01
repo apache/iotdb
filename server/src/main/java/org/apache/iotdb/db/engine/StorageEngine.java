@@ -66,10 +66,12 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ThreadUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.pool.SessionPool;
+import org.apache.iotdb.session.util.SystemStatus;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -84,17 +86,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.ConcurrentModificationException;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -112,6 +105,8 @@ public class StorageEngine implements IService {
   private static OperationSyncProducer operationSyncProducer;
   private static OperationSyncDDLProtector operationSyncDDLProtector;
   private static OperationSyncLogService operationSyncDDLLogService;
+  private static boolean isSecondaryLife;
+
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
    * TimestampPrecision
@@ -139,6 +134,7 @@ public class StorageEngine implements IService {
   private ScheduledExecutorService seqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService unseqMemtableTimedFlushCheckThread;
   private ScheduledExecutorService tsFileTimedCloseCheckThread;
+  private ScheduledExecutorService secondaryCheckThread;
 
   private TsFileFlushPolicy fileFlushPolicy = new DirectFlushPolicy();
   private ExecutorService recoveryThreadPool;
@@ -169,11 +165,14 @@ public class StorageEngine implements IService {
               new ArrayBlockingQueue<Runnable>(3),
               new ThreadPoolExecutor.AbortPolicy());
       // create operationSyncDDLProtector and operationSyncDDLLogService
+      secondaryCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("secondary-Check");
+      secondaryCheckThread.scheduleAtFixedRate(this::checkSecondaryIsLife, 0, 30, TimeUnit.SECONDS);
       operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncsessionPool);
-      threadPool.execute(new Thread(operationSyncDDLProtector));
+      threadPool.execute(operationSyncDDLProtector);
       operationSyncDDLLogService =
           new OperationSyncLogService("OperationSyncDDLLog", operationSyncDDLProtector);
-      threadPool.execute(new Thread(operationSyncDDLLogService));
+      threadPool.execute(operationSyncDDLLogService);
       // create OperationSyncProducer
       ArrayList<BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
           arrayListBlockQueue = new ArrayList<>(cacheNum);
@@ -184,19 +183,19 @@ public class StorageEngine implements IService {
       }
       OperationSyncDMLProtector operationSyncDMLProtector =
           new OperationSyncDMLProtector(operationSyncDDLProtector, operationSyncsessionPool);
-      threadPool.execute(new Thread(operationSyncDMLProtector));
+      threadPool.execute(operationSyncDMLProtector);
       OperationSyncLogService operationSyncDMLLogService =
           new OperationSyncLogService("OperationSyncDMLLog", operationSyncDMLProtector);
       operationSyncProducer =
           new OperationSyncProducer(arrayListBlockQueue, operationSyncDMLLogService);
       // create OperationSyncDMLProtector and OperationSyncDMLLogService
-      threadPool.execute(new Thread(operationSyncDMLLogService));
+      threadPool.execute(operationSyncDMLLogService);
       // create OperationSyncConsumer
       for (int i = 0; i < cacheNum; i++) {
         OperationSyncConsumer consumer =
             new OperationSyncConsumer(
                 arrayListBlockQueue.get(i), operationSyncsessionPool, operationSyncDMLLogService);
-        threadPool.execute(new Thread(consumer));
+        threadPool.execute(consumer);
       }
 
       logger.info("Successfully initialize OperationSync!");
@@ -253,8 +252,7 @@ public class StorageEngine implements IService {
         break;
       case DMLPlan:
         // Put into OperationSyncProducer
-        operationSyncProducer.put(
-            new Pair<>(buffer, planType), getOperationSyncProducerCacheIndex(physicalPlan));
+        operationSyncProducer.put(new Pair<>(buffer, planType), getDeviceNameByPlan(physicalPlan));
     }
   }
 
@@ -274,11 +272,15 @@ public class StorageEngine implements IService {
     return result;
   }
 
-  public static String getOperationSyncProducerCacheIndex(PhysicalPlan plan) {
+  public static String getDeviceNameByPlan(PhysicalPlan plan) {
     if (plan instanceof InsertPlan) {
       return ((InsertPlan) plan).getDevicePath().getDevice();
     }
     return null;
+  }
+
+  public static boolean isSecondaryLife() {
+    return isSecondaryLife;
   }
 
   public static long getTimePartitionInterval() {
@@ -399,6 +401,14 @@ public class StorageEngine implements IService {
     logger.info("start ttl check thread successfully.");
 
     startTimedService();
+  }
+
+  private void checkSecondaryIsLife() {
+    try {
+      isSecondaryLife = operationSyncsessionPool.getSystemStatus() == SystemStatus.NORMAL;
+    } catch (IoTDBConnectionException e) {
+      isSecondaryLife = false;
+    }
   }
 
   private void checkTTL() {

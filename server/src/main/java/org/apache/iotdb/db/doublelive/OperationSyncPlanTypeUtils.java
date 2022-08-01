@@ -21,21 +21,7 @@ package org.apache.iotdb.db.doublelive;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeactivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 
 public class OperationSyncPlanTypeUtils {
 
@@ -54,7 +40,14 @@ public class OperationSyncPlanTypeUtils {
         || plan instanceof DropTemplatePlan
         || plan instanceof PruneTemplatePlan
         || plan instanceof SetTemplatePlan
-        || plan instanceof UnsetTemplatePlan) {
+        || plan instanceof UnsetTemplatePlan
+        || plan instanceof SetTTLPlan
+        || plan instanceof CreateContinuousQueryPlan
+        || plan instanceof DataAuthPlan
+        || plan instanceof DropContinuousQueryPlan
+        || plan instanceof ChangeAliasPlan
+        || plan instanceof ChangeTagOffsetPlan) {
+
       return OperationSyncPlanType.DDLPlan;
     } else if (plan instanceof DeletePlan || plan instanceof InsertPlan) {
       return OperationSyncPlanType.DMLPlan;
