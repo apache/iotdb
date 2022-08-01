@@ -120,11 +120,16 @@ public class DataRegionStateMachine extends BaseStateMachine {
       List<InsertNode> insertNodes,
       AsyncMethodCallback<TSyncLogRes> resultHandler) {
     synchronized (requestCache) {
-      requestCache.add(new InsertNodeWrapper(syncIndex, insertNodes, resultHandler));
-      if (requestCache.size() == MAX_REQUEST_CACHE_SIZE) {
-        return requestCache.poll();
+      long startTime = System.nanoTime();
+      try {
+        requestCache.add(new InsertNodeWrapper(syncIndex, insertNodes, resultHandler));
+        if (requestCache.size() == MAX_REQUEST_CACHE_SIZE) {
+          return requestCache.poll();
+        }
+        return null;
+      } finally {
+        StepTracker.trace("cacheAndGet", startTime, System.nanoTime());
       }
-      return null;
     }
   }
 
