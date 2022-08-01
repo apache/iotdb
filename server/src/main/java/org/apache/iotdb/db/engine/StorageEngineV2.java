@@ -209,6 +209,9 @@ public class StorageEngineV2 implements IService {
   public static TTimePartitionSlot getTimePartitionSlot(long time) {
     TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot();
     if (enablePartition) {
+      if (timePartitionInterval == -1) {
+        initTimePartition();
+      }
       timePartitionSlot.setStartTime(time - time % timePartitionInterval);
     } else {
       timePartitionSlot.setStartTime(0);
