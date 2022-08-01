@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
 import org.apache.iotdb.db.engine.snapshot.SnapshotTaker;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
+import org.apache.iotdb.db.mpp.plan.StepTracker;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertMultiTabletsNode;
@@ -181,9 +182,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
           insertNodes.add(innerNode);
         }
         if (indexedRequest.getSearchIndex() == ConsensusReqReader.DEFAULT_SEARCH_INDEX) {
+          long cacheRequestStartTime = System.nanoTime();
           planNode =
               cacheAndGetLatestInsertNode(
                   indexedRequest.getSyncIndex(), mergeInsertNodes(insertNodes));
+          StepTracker.trace("cacheAndQueueRequest", cacheRequestStartTime, System.nanoTime());
         } else {
           planNode = mergeInsertNodes(insertNodes);
         }
