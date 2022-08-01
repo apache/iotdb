@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
@@ -52,7 +53,6 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.exception.WALException;
 import org.apache.iotdb.db.wal.recover.WALRecoverManager;
-import org.apache.iotdb.mpp.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -678,10 +678,25 @@ public class StorageEngineV2 implements IService {
     dataRegionMap.put(regionId, newRegion);
   }
 
+  //  public TSStatus setTTL(TSetTTLReq req) {
+  //    Map<String, List<DataRegionId>> localDataRegionInfo =
+  //        StorageEngineV2.getInstance().getLocalDataRegionInfo();
+  //    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
+  //    for (DataRegionId dataRegionId : dataRegionIdList) {
+  //      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
+  //      if (dataRegion != null) {
+  //        dataRegion.setDataTTL(req.TTL);
+  //      }
+  //    }
+  //    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  //  }
+
   public TSStatus setTTL(TSetTTLReq req) {
     Map<String, List<DataRegionId>> localDataRegionInfo =
         StorageEngineV2.getInstance().getLocalDataRegionInfo();
-    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
+    List<DataRegionId> dataRegionIdList = new ArrayList<>();
+    req.storageGroupPathPattern.forEach(
+        storageGroup -> dataRegionIdList.addAll(localDataRegionInfo.get(storageGroup)));
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {

@@ -111,3 +111,8 @@ struct TSchemaNode {
   1: required string nodeName
   2: required byte nodeType
 }
+
+struct TSetTTLReq {
+  1: required list<string> storageGroupPathPattern
+  2: required i64 TTL
+}
