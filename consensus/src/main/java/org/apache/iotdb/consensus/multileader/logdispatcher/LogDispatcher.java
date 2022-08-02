@@ -120,6 +120,7 @@ public class LogDispatcher {
                 .add(
                     new IndexedConsensusRequest(
                         request.buildSerializedRequests(), request.getSearchIndex()));
+            thread.countQueue();
           } else {
             logger.debug(
                 "{}: Log queue of {} is full, ignore the log to this node",
@@ -147,6 +148,7 @@ public class LogDispatcher {
 
     private ConsensusReqReader.ReqIterator walEntryiterator;
     private long iteratorIndex = 1;
+    private int queueCount = 0;
 
     public LogDispatcherThread(Peer peer, MultiLeaderConfig config) {
       this.peer = peer;
@@ -158,6 +160,14 @@ public class LogDispatcher {
               impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()));
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryiterator = reader.getReqIterator(iteratorIndex);
+    }
+
+    public void countQueue() {
+      this.queueCount++;
+      logger.debug(
+          String.format(
+              "DataRegion[%s]->%s: total request from queue - [%d]",
+              peer.getGroupId().getId(), peer.getEndpoint().ip, queueCount));
     }
 
     public IndexController getController() {
