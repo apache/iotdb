@@ -170,6 +170,55 @@ public class IoTDBAuthorizationIT {
   }
 
   @Test
+  public void testSetDeleteSG() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER sgtest 'sgtest'");
+
+      boolean caught = false;
+      try (Connection userCon =
+              DriverManager.getConnection(
+                  Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "sgtest", "sgtest");
+          Statement userStmt = userCon.createStatement()) {
+
+        try {
+          userStmt.execute("SET STORAGE GROUP TO root.sgtest");
+        } catch (SQLException e) {
+          caught = true;
+        }
+        assertTrue(caught);
+
+        adminStmt.execute("GRANT USER sgtest PRIVILEGES SET_STORAGE_GROUP ON root.sgtest");
+
+        try {
+          userStmt.execute("SET STORAGE GROUP TO root.sgtest");
+        } catch (SQLException e) {
+          fail(e.getMessage());
+        }
+
+        caught = false;
+        try {
+          userStmt.execute("DELETE STORAGE GROUP root.sgtest");
+        } catch (SQLException e) {
+          caught = true;
+        }
+        assertTrue(caught);
+
+        adminStmt.execute("GRANT USER sgtest PRIVILEGES DELETE_STORAGE_GROUP ON root.sgtest");
+
+        try {
+          userStmt.execute("DELETE STORAGE GROUP root.sgtest");
+        } catch (SQLException e) {
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
   public void testTriggerPrivileges() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection adminCon =
