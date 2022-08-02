@@ -16,13 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.merge;
+package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
-public interface TimeComparator {
+public class DescTimeComparator implements TimeComparator {
 
-  /** @return true if time is satisfied with endTime, otherwise false */
-  boolean satisfyCurEndTime(long time, long endTime);
+  /** @return if order by time desc, return true if time >= endTime, otherwise false */
+  @Override
+  public boolean satisfyCurEndTime(long time, long endTime) {
+    return time >= endTime;
+  }
 
-  /** @return min(time1, time2) if order by time asc, max(time1, time2) if order by desc */
-  long getCurrentEndTime(long time1, long time2);
+  @Override
+  public long getCurrentEndTime(long time1, long time2) {
+    return Math.max(time1, time2);
+  }
 }

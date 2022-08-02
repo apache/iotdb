@@ -16,18 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.merge;
+package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
-public class AscTimeComparator implements TimeComparator {
+public interface TimeComparator {
 
-  /** @return if order by time asc, return true if time <= endTime, otherwise false */
-  @Override
-  public boolean satisfyCurEndTime(long time, long endTime) {
-    return time <= endTime;
-  }
+  /** @return true if time is satisfied with endTime, otherwise false */
+  boolean satisfyCurEndTime(long time, long endTime);
 
-  @Override
-  public long getCurrentEndTime(long time1, long time2) {
-    return Math.min(time1, time2);
-  }
+  /** @return min(time1, time2) if order by time asc, max(time1, time2) if order by desc */
+  long getCurrentEndTime(long time1, long time2);
 }
