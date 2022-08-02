@@ -852,6 +852,9 @@ public class IoTDBConfig {
   // OperationSyncConsumer concurrency size
   private int operationSyncConsumerConcurrencySize = 4;
 
+  // The max record num returned in one schema query.
+  private int schemaQueryFetchSize = 10000000;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2725,5 +2728,13 @@ public class IoTDBConfig {
 
   public void setOperationSyncConsumerConcurrencySize(int operationSyncConsumerConcurrencySize) {
     this.operationSyncConsumerConcurrencySize = operationSyncConsumerConcurrencySize;
+  }
+
+  public int getSchemaQueryFetchSize() {
+    return schemaQueryFetchSize;
+  }
+
+  public void setSchemaQueryFetchSize(int schemaQueryFetchSize) {
+    this.schemaQueryFetchSize = schemaQueryFetchSize;
   }
 }

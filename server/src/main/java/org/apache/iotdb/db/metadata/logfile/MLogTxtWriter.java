@@ -419,7 +419,9 @@ public class MLogTxtWriter implements AutoCloseable {
     // OperationType,templateName,isAlign[,measurementPath,dataType,encoding,compressor]
     StringBuilder buf = new StringBuilder();
     buf.append(MetadataOperationType.APPEND_TEMPLATE);
+    buf.append(",");
     buf.append(plan.getName());
+    buf.append(",");
     buf.append(plan.isAligned());
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       buf.append(
@@ -441,8 +443,10 @@ public class MLogTxtWriter implements AutoCloseable {
     // OperationType,templateName[,measurementPath]
     StringBuilder buf = new StringBuilder();
     buf.append(MetadataOperationType.PRUNE_TEMPLATE);
+    buf.append(",");
     buf.append(plan.getName());
     for (int i = 0; i < plan.getPrunedMeasurements().size(); i++) {
+      buf.append(",");
       buf.append(plan.getPrunedMeasurements().get(i));
     }
     buf.append(LINE_SEPARATOR);

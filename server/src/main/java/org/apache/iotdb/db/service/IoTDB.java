@@ -62,6 +62,7 @@ public class IoTDB implements IoTDBMBean {
   private static final RegisterManager registerManager = new RegisterManager();
   public static MManager metaManager = MManager.getInstance();
   public static ServiceProvider serviceProvider;
+  public static volatile boolean activated = false;
   private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
@@ -125,6 +126,7 @@ public class IoTDB implements IoTDBMBean {
     // reset config
     config.setAutoCreateSchemaEnabled(prevIsAutoCreateSchemaEnabled);
     config.setEnablePartialInsert(prevIsEnablePartialInsert);
+    activated = true;
 
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
@@ -238,6 +240,7 @@ public class IoTDB implements IoTDBMBean {
     PrimitiveArrayManager.close();
     SystemInfo.getInstance().close();
     JMXService.deregisterMBean(mbeanName);
+    activated = false;
     logger.info("IoTDB is deactivated.");
   }
 

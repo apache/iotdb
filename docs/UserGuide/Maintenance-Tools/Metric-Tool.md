@@ -78,22 +78,23 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 4.3.1. API
 
-| Metric              | Tag                   | level     | Description                              | Sample                                       |
-| ------------------- | --------------------- | --------- | ---------------------------------------- | -------------------------------------------- |
-| entry_seconds_count | name="interface name" | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
-| entry_seconds_sum   | name="interface name" | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
-| entry_seconds_max   | name="interface name" | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
-| quantity_total      | name="pointsIn"       | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
+| Metric              | Tag                      | level     | Description                              | Sample                                       |
+| ------------------- | ------------------------ | --------- | ---------------------------------------- | -------------------------------------------- |
+| entry_seconds_count | name="{{interface}}"     | important | The total request count of the interface | entry_seconds_count{name="openSession",} 1.0 |
+| entry_seconds_sum   | name="{{interface}}"     | important | The total cost seconds of the interface  | entry_seconds_sum{name="openSession",} 0.024 |
+| entry_seconds_max   | name="{{interface}}"     | important | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
+| quantity_total      | name="pointsIn"          | important | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
+| thrift_connections  | name="{{thriftService}}" | core      | current number of thrift connections     | thrift_connections{name="RPC",} 1.0          |
 
 #### 4.3.2. Task
-| Metric                  | Tag                                                                           | level     | Description                                              | Sample                                                                                  |
-| ----------------------- | ----------------------------------------------------------------------------- | --------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| queue                   | name="compaction_inner/compaction_cross/flush",<br />status="running/waiting" | important | The count of current tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
-| cost_task_seconds_count | name="compaction/flush"                                                       | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
-| cost_task_seconds_max   | name="compaction/flush"                                                       | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
-| cost_task_seconds_sum   | name="compaction/flush"                                                       | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
-| data_written            | name="compaction", <br />type="aligned/not-aligned/total"                     | important | The size of data written in compaction                   | data_written{name="compaction",type="total",} 10240                                     |
-| data_read               | name="compaction"                                                             | important | The size of data read in compaction                      | data_read={name="compaction",} 10240                                                    |
+| Metric                  | Tag                                                                          | level     | Description                                              | Sample                                                                                  |
+| ----------------------- | ---------------------------------------------------------------------------- | --------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| queue                   | name="compaction_inner/compaction_cross/flush",<br/>status="running/waiting" | important | The count of current tasks in running and waiting status | queue{name="flush",status="waiting",} 0.0<br/>queue{name="flush",status="running",} 0.0 |
+| cost_task_seconds_count | name="compaction/flush"                                                      | important | The total count of tasks occurs till now                 | cost_task_seconds_count{name="flush",} 1.0                                              |
+| cost_task_seconds_max   | name="compaction/flush"                                                      | important | The seconds of the longest task takes till now           | cost_task_seconds_max{name="flush",} 0.363                                              |
+| cost_task_seconds_sum   | name="compaction/flush"                                                      | important | The total cost seconds of all tasks till now             | cost_task_seconds_sum{name="flush",} 0.363                                              |
+| data_written            | name="compaction", <br />type="aligned/not-aligned/total"                    | important | The size of data written in compaction                   | data_written{name="compaction",type="total",} 10240                                     |
+| data_read               | name="compaction"                                                            | important | The size of data read in compaction                      | data_read={name="compaction",} 10240                                                    |
 
 #### 4.3.3. Memory Usage
 
@@ -109,9 +110,9 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 
 #### 4.3.5. Business Data
 
-| Metric   | Tag                                   | level     | Description                                                   | Sample                           |
-| -------- | ------------------------------------- | --------- | ------------------------------------------------------------- | -------------------------------- |
-| quantity | name="storageGroup/device";<br/>name="timeSeries", type="normal/template" | important | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",type="normal"} 1.0 |
+| Metric   | Tag                                                                 | level     | Description                                                   | Sample                                        |
+| -------- | ------------------------------------------------------------------- | --------- | ------------------------------------------------------------- | --------------------------------------------- |
+| quantity | name="timeSeries/storageGroup/device", type="total/normal/template" | important | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",type="normal"} 1.0 |
 
 #### 4.3.6. Cluster
 
