@@ -92,7 +92,6 @@ public class NodeInfo implements SnapshotProcessor {
       new ConcurrentSkipListMap<>();
 
   // For remove or draining DataNode
-  // TODO: implement
   private final Set<TDataNodeLocation> drainingDataNodes = new HashSet<>();
 
   private final String snapshotFileName = "node_info.bin";
