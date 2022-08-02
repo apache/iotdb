@@ -97,7 +97,7 @@ public class StorageEngine implements IService {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
-  private static final long HEARTBEAT_CHECK_INTERVAL= 30L;
+  private static final long HEARTBEAT_CHECK_INTERVAL = 30L;
 
   /* OperationSync module */
   private static final boolean isEnableOperationSync =
@@ -165,8 +165,10 @@ public class StorageEngine implements IService {
               new ArrayBlockingQueue<Runnable>(3),
               new ThreadPoolExecutor.AbortPolicy());
       // create operationSyncDDLProtector and operationSyncDDLLogService
-      ScheduledExecutorService secondaryCheckThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("secondary-Check");
-      secondaryCheckThread.scheduleAtFixedRate(this::checkSecondaryIsLife, 0L, HEARTBEAT_CHECK_INTERVAL, TimeUnit.SECONDS);
+      ScheduledExecutorService secondaryCheckThread =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("secondary-Check");
+      secondaryCheckThread.scheduleAtFixedRate(
+          this::checkSecondaryIsLife, 0L, HEARTBEAT_CHECK_INTERVAL, TimeUnit.SECONDS);
       operationSyncDDLProtector = new OperationSyncDDLProtector(operationSyncsessionPool);
       threadPool.execute(operationSyncDDLProtector);
       operationSyncDDLLogService =
