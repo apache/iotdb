@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -114,7 +115,7 @@ public class NodeInfo implements SnapshotProcessor {
               Tag.NAME.toString(),
               "total",
               Tag.STATUS.toString(),
-              "registered");
+              NodeStatus.Registered.toString());
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
@@ -125,7 +126,7 @@ public class NodeInfo implements SnapshotProcessor {
               Tag.NAME.toString(),
               "total",
               Tag.STATUS.toString(),
-              "registered");
+              NodeStatus.Registered.toString());
     }
   }
 

@@ -249,7 +249,6 @@ public class LoadManager {
 
   /** Stop the heartbeat service and the load balancing service */
   public void stop() {
-    LOGGER.info("Remove loadManager metrics");
     removeMetrics();
     LOGGER.debug("Stop Heartbeat Service and LoadBalancing Service of LoadManager");
     synchronized (scheduleMonitor) {
@@ -455,6 +454,24 @@ public class LoadManager {
     if (allConfigNodes == null) {
       return 0;
     }
+    for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
+      String name =
+          "EndPoint("
+              + configNodeLocation.getInternalEndPoint().ip
+              + ":"
+              + configNodeLocation.getInternalEndPoint().port
+              + ")";
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CLUSTER_NODE_STATUS.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              name,
+              Tag.TYPE.toString(),
+              "ConfigNode")
+          .set(1);
+    }
     return allConfigNodes.size();
   }
 
@@ -462,6 +479,25 @@ public class LoadManager {
     List<TDataNodeConfiguration> allDataNodes = getOnlineDataNodes(-1);
     if (allDataNodes == null) {
       return 0;
+    }
+    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
+      TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
+      String name =
+          "EndPoint("
+              + dataNodeLocation.getClientRpcEndPoint().ip
+              + ":"
+              + dataNodeLocation.getClientRpcEndPoint().port
+              + ")";
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CLUSTER_NODE_STATUS.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              name,
+              Tag.TYPE.toString(),
+              "DataNode")
+          .set(1);
     }
     return allDataNodes.size();
   }
@@ -471,6 +507,24 @@ public class LoadManager {
     if (allConfigNodes == null) {
       return 0;
     }
+    for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
+      String name =
+          "EndPoint("
+              + configNodeLocation.getInternalEndPoint().ip
+              + ":"
+              + configNodeLocation.getInternalEndPoint().port
+              + ")";
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CLUSTER_NODE_STATUS.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              name,
+              Tag.TYPE.toString(),
+              "ConfigNode")
+          .set(0);
+    }
     return allConfigNodes.size();
   }
 
@@ -478,6 +532,25 @@ public class LoadManager {
     List<TDataNodeConfiguration> allDataNodes = getUnknownDataNodes(-1);
     if (allDataNodes == null) {
       return 0;
+    }
+    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
+      TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
+      String name =
+          "EndPoint("
+              + dataNodeLocation.getClientRpcEndPoint().ip
+              + ":"
+              + dataNodeLocation.getClientRpcEndPoint().port
+              + ")";
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CLUSTER_NODE_STATUS.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              name,
+              Tag.TYPE.toString(),
+              "DataNode")
+          .set(0);
     }
     return allDataNodes.size();
   }
@@ -492,7 +565,7 @@ public class LoadManager {
               Tag.NAME.toString(),
               "total",
               Tag.STATUS.toString(),
-              "online")
+              NodeStatus.Online.toString())
           .set(getRunningConfigNodesNum());
       MetricsService.getInstance()
           .getMetricManager()
@@ -502,7 +575,7 @@ public class LoadManager {
               Tag.NAME.toString(),
               "total",
               Tag.STATUS.toString(),
-              "online")
+              NodeStatus.Online.toString())
           .set(getRunningDataNodesNum());
       MetricsService.getInstance()
           .getMetricManager()
@@ -512,7 +585,7 @@ public class LoadManager {
               Tag.NAME.toString(),
               "total",
               Tag.STATUS.toString(),
-              "unknown")
+              NodeStatus.Unknown.toString())
           .set(getUnknownConfigNodesNum());
       MetricsService.getInstance()
           .getMetricManager()
@@ -522,7 +595,7 @@ public class LoadManager {
               Tag.NAME.toString(),
               "total",
               Tag.STATUS.toString(),
-              "unknown")
+              NodeStatus.Unknown.toString())
           .set(getUnknownDataNodesNum());
     }
   }
@@ -535,7 +608,7 @@ public class LoadManager {
             Tag.NAME.toString(),
             "total",
             Tag.STATUS.toString(),
-            "online");
+            NodeStatus.Online.toString());
     MetricsService.getInstance()
         .getMetricManager()
         .removeGauge(
@@ -543,7 +616,7 @@ public class LoadManager {
             Tag.NAME.toString(),
             "total",
             Tag.STATUS.toString(),
-            "online");
+            NodeStatus.Online.toString());
     MetricsService.getInstance()
         .getMetricManager()
         .removeGauge(
@@ -551,7 +624,7 @@ public class LoadManager {
             Tag.NAME.toString(),
             "total",
             Tag.STATUS.toString(),
-            "unknown");
+            NodeStatus.Unknown.toString());
     MetricsService.getInstance()
         .getMetricManager()
         .removeGauge(
@@ -559,7 +632,7 @@ public class LoadManager {
             Tag.NAME.toString(),
             "total",
             Tag.STATUS.toString(),
-            "unknown");
+            NodeStatus.Unknown.toString());
   }
 
   public static void printRegionRouteMap(
