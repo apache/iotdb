@@ -332,11 +332,11 @@ service IDataNodeRPCService {
 
   /* Maintenance Tools */
 
-  common.TSStatus merge(common.TMergeReq req)
+  common.TSStatus merge()
 
   common.TSStatus flush(common.TFlushReq req)
 
-  common.TSStatus clearCache(common.TClearCacheReq req)
+  common.TSStatus clearCache()
 
   /**
    * Config node will Set the TTL for the storage group on a list of data nodes.

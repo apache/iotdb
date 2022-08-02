@@ -2315,7 +2315,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   }
 
   // Merge
-
   @Override
   public Statement visitMerge(IoTDBSqlParser.MergeContext ctx) {
     MergeStatement mergeStatement = new MergeStatement(StatementType.MERGE);

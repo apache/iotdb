@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.sys;
 
-import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
+import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;

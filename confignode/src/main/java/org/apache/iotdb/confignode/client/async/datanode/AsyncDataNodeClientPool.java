@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.confignode.client.async.datanode;
 
-import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
-import org.apache.iotdb.common.rpc.thrift.TMergeReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -191,13 +189,13 @@ public class AsyncDataNodeClientPool {
           break;
         case MERGE:
         case FULL_MERGE:
-          client.merge((TMergeReq) req, (MergeHandler) handler);
+          client.merge((MergeHandler) handler);
           break;
         case FLUSH:
           client.flush((TFlushReq) req, (FlushHandler) handler);
           break;
         case CLEAR_CACHE:
-          client.clearCache((TClearCacheReq) req, (ClearCacheHandler) handler);
+          client.clearCache((ClearCacheHandler) handler);
           break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
