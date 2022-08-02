@@ -297,6 +297,24 @@ public class PhysicalPlanSerializeTest {
   }
 
   @Test
+  public void AlterTimeSeriesPlanSerializeSetTypeTest() throws IOException, IllegalPathException {
+    AlterTimeSeriesPlan alterTimeSeriesPlan =
+            new AlterTimeSeriesPlan(
+                    new PartialPath("root.sg.d1.s1"),
+                    AlterType.SET_TYPE,
+                    Collections.singletonMap("root.sg.d1.s1", "root.sg.device1.temperature"),
+                    null,
+                    null,
+                    null,
+                    TSEncoding.PLAIN,
+                    CompressionType.SNAPPY);
+
+    ByteBuffer byteBuffer = serializePlan(alterTimeSeriesPlan);
+    PhysicalPlan result = Factory.create(byteBuffer);
+    Assert.assertEquals(alterTimeSeriesPlan, result);
+  }
+
+  @Test
   public void loadConfigurationPlanSerializeTest()
       throws QueryProcessException, IOException, IllegalPathException {
     Properties[] properties = new Properties[2];

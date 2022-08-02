@@ -126,9 +126,11 @@ public class TsFileRewriteExcutor {
     // TODO To be optimized: Non-target modification measurements are directly written to data
     List<IMeasurementSchema> schemaList =
         collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, isTargetDevice);
+    List<IMeasurementSchema> schemaOldList =
+            collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, false);
     AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemaList);
     TsFileAlignedSeriesReaderIterator readerIterator =
-        new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaList);
+        new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaOldList);
 
     while (readerIterator.hasNext()) {
       Pair<AlignedChunkReader, Long> chunkReaderAndChunkSize = readerIterator.nextReader();
@@ -143,12 +145,12 @@ public class TsFileRewriteExcutor {
           targetTsFileResource.updateEndTime(device, time);
           batchDataIterator.next();
         }
-        chunkWriter.writeToFileWriter(writer);
       }
     }
+    chunkWriter.writeToFileWriter(writer);
   }
 
-  private List<IMeasurementSchema> collectSchemaList(
+  protected List<IMeasurementSchema> collectSchemaList(
       List<AlignedChunkMetadata> alignedChunkMetadatas,
       TsFileSequenceReader reader,
       String targetMeasurement,
@@ -222,7 +224,7 @@ public class TsFileRewriteExcutor {
         if (!findTarget) {
           // skip
           writer.writeChunk(currentChunk, chunkMetadata);
-          return;
+          continue;
         }
         IChunkReader chunkReader = new ChunkReader(currentChunk, null);
         while (chunkReader.hasNextSatisfiedPage()) {
