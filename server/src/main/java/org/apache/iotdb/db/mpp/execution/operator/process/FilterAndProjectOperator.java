@@ -139,13 +139,13 @@ public class FilterAndProjectOperator implements ProcessOperator {
     // construct result TsBlock of filter
     int rowCount = 0;
     for (int i = 0, n = resultColumns.size(); i < n; i++) {
+      Column curColumn = resultColumns.get(i);
       for (int j = 0; j < positionCount; j++) {
         if (!filterColumn.isNull(j) && filterColumn.getBoolean(j)) {
           if (i == 0) {
             rowCount++;
             timeBuilder.writeLong(originTimeColumn.getLong(j));
           }
-          Column curColumn = resultColumns.get(i);
           if (curColumn.isNull(j)) {
             columnBuilders[i].appendNull();
           } else {

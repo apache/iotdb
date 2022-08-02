@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.merge;
+package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
@@ -38,7 +38,8 @@ public interface ColumnMerger {
   }
 
   /**
-   * merge columns belonging to same series into one column
+   * merge columns belonging to same series into one column, merge until each input column's time is
+   * larger than currentEndTime
    *
    * @param inputTsBlocks all source TsBlocks, some of which will contain source column
    * @param inputIndex start index for each source TsBlock and size of it is equal to inputTsBlocks,
@@ -56,5 +57,24 @@ public interface ColumnMerger {
       int[] updatedInputIndex,
       TimeColumnBuilder timeBuilder,
       long currentEndTime,
+      ColumnBuilder columnBuilder);
+
+  /**
+   * merge columns belonging to same series into one column, merge just one row whose time is equal
+   * to currentTime
+   *
+   * @param inputTsBlocks all source TsBlocks, some of which will contain source column
+   * @param inputIndex start index for each source TsBlock and size of it is equal to inputTsBlocks,
+   *     we should only read from this array and not update it because others will use the start
+   *     index value in inputIndex array
+   * @param updatedInputIndex current index for each source TsBlock after merging
+   * @param currentTime merge just one row whose time is equal to currentTime
+   * @param columnBuilder used to write merged value into
+   */
+  void mergeColumn(
+      TsBlock[] inputTsBlocks,
+      int[] inputIndex,
+      int[] updatedInputIndex,
+      long currentTime,
       ColumnBuilder columnBuilder);
 }
