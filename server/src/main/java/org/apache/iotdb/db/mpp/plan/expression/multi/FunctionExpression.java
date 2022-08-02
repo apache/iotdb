@@ -30,10 +30,6 @@ import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.IdentityColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.multi.MappableUDFColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.MultiInputColumnIntermediateLayer;
@@ -53,7 +49,6 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.type.TypeFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
 
@@ -319,88 +314,6 @@ public class FunctionExpression extends Expression {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     }
     memoryAssigner.increaseExpressionReference(this);
-  }
-
-  @Override
-  public ColumnTransformer constructColumnTransformer(
-      UDTFContext udtfContext,
-      TypeProvider typeProvider,
-      List<LeafColumnTransformer> leafList,
-      Map<String, List<InputLocation>> inputLocations,
-      Map<Expression, ColumnTransformer> cache,
-      Map<Expression, ColumnTransformer> hasSeen,
-      List<ColumnTransformer> commonTransformerList,
-      List<TSDataType> inputDataTypes,
-      int originSize) {
-    if (!cache.containsKey(this)) {
-      if (hasSeen.containsKey(this)) {
-        IdentityColumnTransformer identity =
-            new IdentityColumnTransformer(
-                TypeFactory.getType(typeProvider.getType(getExpressionString())),
-                originSize + commonTransformerList.size());
-        ColumnTransformer columnTransformer = hasSeen.get(this);
-        columnTransformer.addReferenceCount();
-        commonTransformerList.add(columnTransformer);
-        inputDataTypes.add(typeProvider.getType(getExpressionString()));
-        leafList.add(identity);
-        cache.put(this, identity);
-      } else {
-        if (isBuiltInAggregationFunctionExpression) {
-          IdentityColumnTransformer identity =
-              new IdentityColumnTransformer(
-                  TypeFactory.getType(typeProvider.getType(getExpressionString())),
-                  inputLocations.get(getExpressionString()).get(0).getValueColumnIndex());
-          leafList.add(identity);
-          cache.put(this, identity);
-        } else {
-          ColumnTransformer[] inputColumnTransformers =
-              expressions.stream()
-                  .map(
-                      expression ->
-                          expression.constructColumnTransformer(
-                              udtfContext,
-                              typeProvider,
-                              leafList,
-                              inputLocations,
-                              cache,
-                              hasSeen,
-                              commonTransformerList,
-                              inputDataTypes,
-                              originSize))
-                  .toArray(ColumnTransformer[]::new);
-
-          TSDataType[] inputTransformerDataTypes =
-              expressions.stream()
-                  .map(expression -> expression.inferTypes(typeProvider))
-                  .toArray(TSDataType[]::new);
-
-          UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(this);
-
-          // Mappable UDF does not need PointCollector, so memoryBudget and queryId is not
-          // needed.
-          executor.beforeStart(
-              0,
-              0,
-              expressions.stream().map(Expression::toString).collect(Collectors.toList()),
-              expressions.stream()
-                  .map(f -> typeProvider.getType(f.toString()))
-                  .collect(Collectors.toList()),
-              functionAttributes);
-
-          cache.put(
-              this,
-              new MappableUDFColumnTransformer(
-                  TypeFactory.getType(typeProvider.getType(getExpressionString())),
-                  inputColumnTransformers,
-                  inputTransformerDataTypes,
-                  udtfContext.getExecutorByFunctionExpression(this)));
-        }
-      }
-    }
-
-    ColumnTransformer res = cache.get(this);
-    res.addReferenceCount();
-    return res;
   }
 
   @Override

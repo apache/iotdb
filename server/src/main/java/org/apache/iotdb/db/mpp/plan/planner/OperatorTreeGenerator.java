@@ -105,6 +105,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ColumnTransformerVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
@@ -862,8 +863,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // records subexpression -> ColumnTransformer for filter
     Map<Expression, ColumnTransformer> filterExpressionColumnTransformerMap = new HashMap<>();
 
-    ColumnTransformer filterOutputTransformer =
-        filterExpression.constructColumnTransformer(
+    ColumnTransformerVisitor filterVisitor =
+        new ColumnTransformerVisitor(
             filterContext,
             typeProvider,
             filterLeafColumnTransformerList,
@@ -873,6 +874,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             ImmutableList.of(),
             ImmutableList.of(),
             0);
+
+    ColumnTransformer filterOutputTransformer = filterVisitor.process(filterExpression);
 
     List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
 
@@ -884,18 +887,20 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       UDTFContext projectContext = new UDTFContext(node.getZoneId());
       projectContext.constructUdfExecutors(projectExpressions);
 
+      ColumnTransformerVisitor projectVisitor =
+          new ColumnTransformerVisitor(
+              projectContext,
+              typeProvider,
+              projectLeafColumnTransformerList,
+              inputLocations,
+              projectExpressionColumnTransformerMap,
+              filterExpressionColumnTransformerMap,
+              commonTransformerList,
+              filterOutputDataTypes,
+              inputLocations.size());
+
       for (Expression expression : projectExpressions) {
-        projectOutputTransformerList.add(
-            expression.constructColumnTransformer(
-                projectContext,
-                typeProvider,
-                projectLeafColumnTransformerList,
-                inputLocations,
-                projectExpressionColumnTransformerMap,
-                filterExpressionColumnTransformerMap,
-                commonTransformerList,
-                filterOutputDataTypes,
-                inputLocations.size()));
+        projectOutputTransformerList.add(projectVisitor.process(expression));
       }
     }
 
