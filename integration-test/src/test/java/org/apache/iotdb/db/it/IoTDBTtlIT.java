@@ -35,8 +35,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -73,6 +72,7 @@ public class IoTDBTtlIT {
         statement.execute("SET TTL TO root.TTL_SG1.s1 1000");
       } catch (SQLException e) {
         e.printStackTrace();
+        fail(e.getMessage());
       }
 
       statement.execute("SET STORAGE GROUP TO root.TTL_SG2");
@@ -81,17 +81,20 @@ public class IoTDBTtlIT {
         statement.execute("SET TTL TO root.TTL_SG2.s1 1000");
       } catch (SQLException e) {
         e.printStackTrace();
+        fail(e.getMessage());
       }
 
       try {
         statement.execute("SET TTL TO root.** 1000");
       } catch (SQLException e) {
         e.printStackTrace();
+        fail(e.getMessage());
       }
       try {
         statement.execute("UNSET TTL TO root.**");
       } catch (SQLException e) {
         e.printStackTrace();
+        fail(e.getMessage());
       }
 
       long now = System.currentTimeMillis();
