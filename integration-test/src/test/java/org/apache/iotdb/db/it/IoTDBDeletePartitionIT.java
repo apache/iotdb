@@ -41,18 +41,44 @@ import static org.junit.Assert.assertEquals;
 @Category({LocalStandaloneIT.class, ClusterIT.class})
 public class IoTDBDeletePartitionIT {
 
-  private static int partitionInterval = 100;
+  private static int partitionInterval = 1;
 
   @Before
   public void setUp() throws Exception {
     ConfigFactory.getConfig().setEnablePartition(true);
     ConfigFactory.getConfig().setPartitionInterval(partitionInterval);
+    EnvFactory.getEnv().initBeforeClass();
   }
 
   @After
   public void tearDown() throws Exception {
     ConfigFactory.getConfig().setEnablePartition(false);
     ConfigFactory.getConfig().setPartitionInterval(-1);
+    EnvFactory.getEnv().cleanAfterClass();
+  }
+
+  @Test
+  public void testDeletePartition() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("set storage group to root.test");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1000,true)");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2000,true)");
+      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(3000,true)");
+      statement.execute("DELETE PARTITION root.test 1,2");
+
+      int cnt = 0;
+      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
+        while (resultSet.next()) {
+          cnt++;
+        }
+      }
+      assertEquals(1, cnt);
+
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 
   @Test
@@ -71,60 +97,6 @@ public class IoTDBDeletePartitionIT {
       statement.execute("flush");
       try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
         assertEquals(true, resultSet.next());
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Test
-  public void testRemovePartitionAndInsertUnSeqDataAndMerge() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to root.test");
-      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
-      statement.execute("select * from root.test.wf02.wt02");
-      statement.execute("DELETE PARTITION root.test 0");
-      statement.execute("select * from root.test.wf02.wt02");
-      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
-        assertEquals(true, resultSet.next());
-      }
-      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(3,true)");
-      statement.execute("merge");
-      int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
-        while (resultSet.next()) {
-          count++;
-        }
-        assertEquals(2, count);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Test
-  public void testRemovePartitionAndInsertUnSeqDataAndUnSeqDataMerge() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("set storage group to root.test");
-      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
-      statement.execute("select * from root.test.wf02.wt02");
-      statement.execute("DELETE PARTITION root.test 0");
-      statement.execute("select * from root.test.wf02.wt02");
-      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1,true)");
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
-        assertEquals(true, resultSet.next());
-      }
-      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2,true)");
-      statement.execute("merge");
-      int count = 0;
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
-        while (resultSet.next()) {
-          count++;
-        }
-        assertEquals(2, count);
       }
     } catch (Exception e) {
       e.printStackTrace();
