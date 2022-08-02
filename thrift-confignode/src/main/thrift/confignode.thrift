@@ -174,7 +174,7 @@ struct TAuthorizerReq {
   4: required string password
   5: required string newPassword
   6: required set<i32> permissions
-  7: required string nodeName
+  7: required list<string> nodeNameList
 }
 
 struct TAuthorizerResp {
