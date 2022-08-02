@@ -132,7 +132,7 @@ public class MultiLeaderConfig {
 
     public static class Builder {
       private int rpcSelectorThreadNum = 1;
-      private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
+      private int rpcMinConcurrentClientNum = 16;
       private int rpcMaxConcurrentClientNum = 65535;
       private int thriftServerAwaitTimeForStopService = 60;
       private boolean isRpcThriftCompressionEnabled = false;
