@@ -1612,9 +1612,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         throw new SQLParserException("Invalid prefix path");
       }
       nodeNameList =
-          ctx.prefixPath().stream()
-              .map(prefixPath -> parsePrefixPath(prefixPath))
-              .collect(Collectors.toList());
+          ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
     }
     authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
@@ -1628,9 +1626,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
     List<PartialPath> nodeNameList =
-        ctx.prefixPath().stream()
-            .map(prefixPath -> parsePrefixPath(prefixPath))
-            .collect(Collectors.toList());
+        ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
     authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
@@ -1664,9 +1660,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         throw new SQLParserException("Invalid prefix path");
       }
       nodeNameList =
-          ctx.prefixPath().stream()
-              .map(prefixPath -> parsePrefixPath(prefixPath))
-              .collect(Collectors.toList());
+          ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
     }
     authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
@@ -1680,9 +1674,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
     List<PartialPath> nodeNameList =
-        ctx.prefixPath().stream()
-            .map(prefixPath -> parsePrefixPath(prefixPath))
-            .collect(Collectors.toList());
+        ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
     authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
@@ -1738,9 +1730,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         new AuthorStatement(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
     List<PartialPath> nodeNameList =
-        ctx.prefixPath().stream()
-            .map(prefixPath -> parsePrefixPath(prefixPath))
-            .collect(Collectors.toList());
+        ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
     authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
@@ -1753,9 +1743,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
         new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     List<PartialPath> nodeNameList =
-        ctx.prefixPath().stream()
-            .map(prefixPath -> parsePrefixPath(prefixPath))
-            .collect(Collectors.toList());
+        ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
     authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
