@@ -30,7 +30,7 @@ public interface IClientManager<K, V> {
   V borrowClient(K node) throws IOException;
 
   // Get a V client of the K node from the Manager while
-  // no exception is thrown and no log is printed.
+  // no exceptions will be thrown and no logs will be printed.
   // This interface is mainly used to process the cluster heartbeat.
   V purelyBorrowClient(K node);
 

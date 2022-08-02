@@ -30,15 +30,10 @@ import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 public class AsyncDataNodeHeartbeatServiceClient extends IDataNodeRPCService.AsyncClient {
-
-  private static final Logger logger =
-      LoggerFactory.getLogger(AsyncDataNodeHeartbeatServiceClient.class);
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncDataNodeHeartbeatServiceClient> clientManager;

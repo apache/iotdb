@@ -30,15 +30,10 @@ import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 public class AsyncConfigNodeHeartbeatServiceClient extends IConfigNodeRPCService.AsyncClient {
-
-  private static final Logger logger =
-      LoggerFactory.getLogger(AsyncConfigNodeHeartbeatServiceClient.class);
 
   private final TEndPoint endpoint;
   private final ClientManager<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> clientManager;
@@ -98,7 +93,6 @@ public class AsyncConfigNodeHeartbeatServiceClient extends IConfigNodeRPCService
       checkReady();
       return true;
     } catch (Exception e) {
-      logger.info("Unexpected exception occurs in {} :", this, e);
       return false;
     }
   }
