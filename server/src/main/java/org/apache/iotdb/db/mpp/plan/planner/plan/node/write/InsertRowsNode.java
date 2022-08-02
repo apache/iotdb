@@ -125,6 +125,9 @@ public class InsertRowsNode extends InsertNode implements BatchInsertNode {
       if (!insertRowNode.validateAndSetSchema(schemaTree)) {
         return false;
       }
+      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
+      }
     }
     return true;
   }

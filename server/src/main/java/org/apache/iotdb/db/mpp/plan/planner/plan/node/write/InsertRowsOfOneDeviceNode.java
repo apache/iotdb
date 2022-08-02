@@ -148,6 +148,9 @@ public class InsertRowsOfOneDeviceNode extends InsertNode implements BatchInsert
       if (!insertRowNode.validateAndSetSchema(schemaTree)) {
         return false;
       }
+      if (!this.hasFailedMeasurements() && insertRowNode.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertRowNode.failedMeasurementIndex2Info;
+      }
     }
     storeMeasurementsAndDataType();
     return true;
