@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.merge;
+package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -24,8 +24,6 @@ import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 
 import java.util.List;
-
-import static org.apache.iotdb.db.mpp.execution.operator.process.merge.SingleColumnMerger.mergeOneColumn;
 
 /** has more than one input column, but these columns' time is not overlapped */
 public class NonOverlappedMultiColumnMerger implements ColumnMerger {
@@ -62,7 +60,7 @@ public class NonOverlappedMultiColumnMerger implements ColumnMerger {
     // move to next InputLocation if current InputLocation's column has been consumed up
     moveToNextIfNecessary(inputTsBlocks);
     // merge current column
-    mergeOneColumn(
+    SingleColumnMerger.mergeOneColumn(
         inputTsBlocks,
         inputIndex,
         updatedInputIndex,
@@ -71,6 +69,25 @@ public class NonOverlappedMultiColumnMerger implements ColumnMerger {
         columnBuilder,
         inputLocations.get(index),
         comparator);
+  }
+
+  @Override
+  public void mergeColumn(
+      TsBlock[] inputTsBlocks,
+      int[] inputIndex,
+      int[] updatedInputIndex,
+      long currentTime,
+      ColumnBuilder columnBuilder) {
+    // move to next InputLocation if current InputLocation's column has been consumed up
+    moveToNextIfNecessary(inputTsBlocks);
+    // merge current column
+    SingleColumnMerger.mergeOneColumn(
+        inputTsBlocks,
+        inputIndex,
+        updatedInputIndex,
+        currentTime,
+        columnBuilder,
+        inputLocations.get(index));
   }
 
   private void moveToNextIfNecessary(TsBlock[] inputTsBlocks) {

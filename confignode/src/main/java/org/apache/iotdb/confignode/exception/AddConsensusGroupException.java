@@ -16,18 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.merge;
+package org.apache.iotdb.confignode.exception;
 
-public class AscTimeComparator implements TimeComparator {
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 
-  /** @return if order by time asc, return true if time <= endTime, otherwise false */
-  @Override
-  public boolean satisfyCurEndTime(long time, long endTime) {
-    return time <= endTime;
-  }
+public class AddConsensusGroupException extends ConfigNodeException {
 
-  @Override
-  public long getCurrentEndTime(long time1, long time2) {
-    return Math.min(time1, time2);
+  public AddConsensusGroupException(TConfigNodeLocation configNodeLocation) {
+    super(String.format("Add ConsensusGroup to: %s failed.", configNodeLocation.toString()));
   }
 }

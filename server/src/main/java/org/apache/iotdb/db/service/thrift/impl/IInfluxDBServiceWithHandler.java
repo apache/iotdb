@@ -16,26 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.cluster;
+package org.apache.iotdb.db.service.thrift.impl;
 
-/** Node status for showing cluster */
-public enum NodeStatus {
-  // Node registered
-  Registered("Registered"),
-  // Node online ,right now Online is Running
-  Online("Online"),
-  // Node running properly
-  Running("Running"),
-  // Node connection failure
-  Unknown("Unknown");
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
 
-  private final String status;
-
-  NodeStatus(String status) {
-    this.status = status;
-  }
-
-  public String getStatus() {
-    return status;
-  }
+public interface IInfluxDBServiceWithHandler extends InfluxDBService.Iface {
+  void handleClientExit();
 }

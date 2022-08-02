@@ -16,26 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.commons.cluster;
+package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
-/** Node status for showing cluster */
-public enum NodeStatus {
-  // Node registered
-  Registered("Registered"),
-  // Node online ,right now Online is Running
-  Online("Online"),
-  // Node running properly
-  Running("Running"),
-  // Node connection failure
-  Unknown("Unknown");
+public class AscTimeComparator implements TimeComparator {
 
-  private final String status;
-
-  NodeStatus(String status) {
-    this.status = status;
+  /** @return if order by time asc, return true if time <= endTime, otherwise false */
+  @Override
+  public boolean satisfyCurEndTime(long time, long endTime) {
+    return time <= endTime;
   }
 
-  public String getStatus() {
-    return status;
+  @Override
+  public long getCurrentEndTime(long time1, long time2) {
+    return Math.min(time1, time2);
   }
 }
