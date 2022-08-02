@@ -17,24 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config;
+package org.apache.iotdb.db.mpp.plan.execution.config.metadata.template;
 
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class DropFunctionTask implements IConfigTask {
+public class CreateSchemaTemplateTask implements IConfigTask {
 
-  private final String udfName;
+  private final CreateSchemaTemplateStatement createSchemaTemplateStatement;
 
-  public DropFunctionTask(DropFunctionStatement dropFunctionStatement) {
-    udfName = dropFunctionStatement.getUdfName();
+  public CreateSchemaTemplateTask(CreateSchemaTemplateStatement createSchemaTemplateStatement) {
+    this.createSchemaTemplateStatement = createSchemaTemplateStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.dropFunction(udfName);
+    return configTaskExecutor.createSchemaTemplate(this.createSchemaTemplateStatement);
   }
 }

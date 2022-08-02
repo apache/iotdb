@@ -425,11 +425,11 @@ service IConfigNodeRPCService {
 
   common.TSStatus dropFunction(TDropFunctionReq req)
 
-  /* Flush */
+  /* Maintenance Tools */
+
+  common.TSStatus merge(common.TMergeReq req)
 
   common.TSStatus flush(common.TFlushReq req)
-
-  /* ClearCache */
 
   common.TSStatus clearCache(common.TClearCacheReq req)
 

@@ -118,6 +118,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -2325,6 +2326,36 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
+  // Merge
+
+  @Override
+  public Statement visitMerge(IoTDBSqlParser.MergeContext ctx) {
+    MergeStatement mergeStatement = new MergeStatement(StatementType.MERGE);
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException("MERGE ON CLUSTER is not supported in standalone mode");
+    }
+    if (ctx.LOCAL() != null) {
+      mergeStatement.setCluster(false);
+    } else {
+      mergeStatement.setCluster(true);
+    }
+    return mergeStatement;
+  }
+
+  @Override
+  public Statement visitFullMerge(IoTDBSqlParser.FullMergeContext ctx) {
+    MergeStatement mergeStatement = new MergeStatement(StatementType.FULL_MERGE);
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException("FULL MERGE ON CLUSTER is not supported in standalone mode");
+    }
+    if (ctx.LOCAL() != null) {
+      mergeStatement.setCluster(false);
+    } else {
+      mergeStatement.setCluster(true);
+    }
+    return mergeStatement;
+  }
+
   // Flush
 
   @Override
@@ -2357,7 +2388,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
     ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
-
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException("CLEAR CACHE ON CLUSTER is not supported in standalone mode");
+    }
     if (ctx.LOCAL() != null) {
       clearCacheStatement.setCluster(false);
     } else {

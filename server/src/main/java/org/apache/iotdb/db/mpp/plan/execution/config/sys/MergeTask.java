@@ -17,26 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config;
+package org.apache.iotdb.db.mpp.plan.execution.config.sys;
 
+import org.apache.iotdb.common.rpc.thrift.TMergeReq;
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class SetTTLTask implements IConfigTask {
+public class MergeTask implements IConfigTask {
 
-  protected final SetTTLStatement statement;
-  protected String taskName;
+  private MergeStatement mergeStatement;
 
-  public SetTTLTask(SetTTLStatement statement) {
-    this.statement = statement;
-    this.taskName = "set ttl";
+  public MergeTask(MergeStatement mergeStatement) {
+    this.mergeStatement = mergeStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.setTTL(statement, taskName);
+    TMergeReq mergeReq = new TMergeReq();
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if (mergeStatement.isCluster()) {
+      mergeReq.setDataNodeId(-1);
+    } else {
+      mergeReq.setDataNodeId(config.getDataNodeId());
+    }
+    return configTaskExecutor.merge(mergeReq);
   }
 }

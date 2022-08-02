@@ -17,37 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config;
+package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DropFunctionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class ClearCacheTask implements IConfigTask {
+public class DropFunctionTask implements IConfigTask {
 
-  private ClearCacheStatement clearCacheStatement;
+  private final String udfName;
 
-  public ClearCacheTask(ClearCacheStatement clearCacheStatement) {
-    this.clearCacheStatement = clearCacheStatement;
+  public DropFunctionTask(DropFunctionStatement dropFunctionStatement) {
+    udfName = dropFunctionStatement.getUdfName();
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    TClearCacheReq tClearCacheReq = new TClearCacheReq();
-
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    if (clearCacheStatement.isCluster()) {
-      tClearCacheReq.setDataNodeId(-1);
-    } else {
-      tClearCacheReq.setDataNodeId(config.getDataNodeId());
-    }
-    // If the action is executed successfully, return the Future.
-    // If your operation is async, you can return the corresponding future directly.
-    return configTaskExecutor.clearCache(tClearCacheReq);
+    return configTaskExecutor.dropFunction(udfName);
   }
 }

@@ -96,6 +96,10 @@ enum TRegionMigrateFailedType {
   CreateRegionFailed
 }
 
+struct TMergeReq {
+  1: optional i32 dataNodeId
+}
+
 struct TFlushReq {
    1: optional string isSeq
    2: optional list<string> storageGroups

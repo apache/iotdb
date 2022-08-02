@@ -629,12 +629,12 @@ usernameWithRoot
 
 // Merge
 merge
-    : MERGE
+    : MERGE (ON (LOCAL | CLUSTER))?
     ;
 
 // Full Merge
 fullMerge
-    : FULL MERGE
+    : FULL MERGE (ON (LOCAL | CLUSTER))?
     ;
 
 // Flush

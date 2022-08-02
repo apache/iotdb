@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TMergeReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
@@ -353,12 +354,102 @@ public class NodeManager {
                 + ".");
   }
 
+<<<<<<< HEAD
+  public List<TSStatus> flush(TFlushReq req) {
+=======
+  public List<TConfigNodeLocation> getRegisteredConfigNodes() {
+    return nodeInfo.getRegisteredConfigNodes();
+  }
+
+  private ConsensusManager getConsensusManager() {
+    return configManager.getConsensusManager();
+  }
+
+  private ClusterSchemaManager getClusterSchemaManager() {
+    return configManager.getClusterSchemaManager();
+  }
+
+  public void registerListener(final ChangeServerListener serverListener) {
+    listeners.add(serverListener);
+  }
+
+  public boolean unregisterListener(final ChangeServerListener serverListener) {
+    return listeners.remove(serverListener);
+  }
+
+  /** TODO: wait data node register, wait */
+  public void waitForDataNodes() {
+    listeners.stream().forEach(serverListener -> serverListener.waiting());
+  }
+
+  private class ServerStartListenerThread extends Thread implements ChangeServerListener {
+    private boolean changed = false;
+
+    ServerStartListenerThread() {
+      setDaemon(true);
+    }
+
+    @Override
+    public void addDataNode(TDataNodeLocation DataNodeInfo) {
+      serverChanged();
+    }
+
+    @Override
+    public void removeDataNode(TDataNodeLocation dataNodeInfo) {
+      // TODO: When removing a datanode, do the following
+      //  configManager.getLoadManager().removeNodeHeartbeatHandCache(dataNodeId);
+      serverChanged();
+    }
+
+    private synchronized void serverChanged() {
+      changed = true;
+      this.notify();
+    }
+
+    @Override
+    public void run() {
+      while (!configManager.isStopped()) {}
+    }
+  }
+
+  /** TODO: For listener for add or remove data node */
+  public interface ChangeServerListener {
+
+    /** Started waiting on DataNode to check */
+    default void waiting() {};
+
+    /**
+     * The server has joined the cluster
+     *
+     * @param dataNodeInfo datanode info
+     */
+    void addDataNode(final TDataNodeLocation dataNodeInfo);
+
+    /**
+     * remove data node
+     *
+     * @param dataNodeInfo data node info
+     */
+    void removeDataNode(final TDataNodeLocation dataNodeInfo);
+  }
+
+  public List<TSStatus> merge(TMergeReq req) {
+>>>>>>> cee9e756ef (add merge)
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            req, dataNodeLocationMap, DataNodeRequestType.MERGE, dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
   public List<TSStatus> flush(TFlushReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
-
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
             req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);

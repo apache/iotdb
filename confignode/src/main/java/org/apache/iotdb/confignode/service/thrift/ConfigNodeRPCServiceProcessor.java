@@ -21,6 +21,7 @@ package org.apache.iotdb.confignode.service.thrift;
 import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
+import org.apache.iotdb.common.rpc.thrift.TMergeReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -508,6 +509,11 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TSStatus dropFunction(TDropFunctionReq req) throws TException {
     return configManager.dropFunction(req.getUdfName());
+  }
+
+  @Override
+  public TSStatus merge(TMergeReq req) throws TException {
+    return configManager.merge(req);
   }
 
   @Override
