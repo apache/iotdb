@@ -164,7 +164,7 @@ public class LogDispatcher {
 
     public void countQueue() {
       this.queueCount++;
-      logger.debug(
+      logger.info(
           String.format(
               "DataRegion[%s]->%s: total request from queue - [%d]",
               peer.getGroupId().getId(), peer.getEndpoint().ip, queueCount));
