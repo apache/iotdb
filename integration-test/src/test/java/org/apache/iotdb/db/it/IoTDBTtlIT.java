@@ -173,7 +173,7 @@ public class IoTDBTtlIT {
       for (int i = 100; i < 200; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
+                "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 10000000 + i, i));
       }
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.TTL_SG3")) {
@@ -192,7 +192,7 @@ public class IoTDBTtlIT {
       for (int i = 300; i < 400; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 100000 + i, i));
+                "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 10000000 + i, i));
       }
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.TTL_SG4")) {
@@ -203,7 +203,7 @@ public class IoTDBTtlIT {
         assertEquals(200, cnt);
       }
 
-      statement.execute("SET TTL TO root.sg.** 10000");
+      statement.execute("SET TTL TO root.sg.** 100000");
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.sg.**")) {
         int cnt = 0;
         while (resultSet.next()) {
@@ -217,7 +217,7 @@ public class IoTDBTtlIT {
           statement.execute(
               String.format(
                   "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)",
-                  now - 500000 + i, i));
+                  now - 5000000 + i, i));
         } catch (SQLException e) {
           assertEquals(400, e.getErrorCode());
         }
@@ -228,7 +228,7 @@ public class IoTDBTtlIT {
           statement.execute(
               String.format(
                   "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)",
-                  now - 500000 + i, i));
+                  now - 5000000 + i, i));
         } catch (SQLException e) {
           assertEquals(400, e.getErrorCode());
         }
