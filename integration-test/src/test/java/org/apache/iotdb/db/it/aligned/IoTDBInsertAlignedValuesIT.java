@@ -301,11 +301,7 @@ public class IoTDBInsertAlignedValuesIT {
           "insert into root.sg1.d1(time, s1, s2) aligned values(10, 2, 2), (11, 3, '3'), (12,12.11,false);");
       fail();
     } catch (SQLException e) {
-      assertTrue(
-          e.getMessage(),
-          e.getMessage()
-              .contains(
-                  "failed to insert measurements [s2] caused by data type is not consistent"));
+      assertTrue(e.getMessage(), e.getMessage().contains("data type is not consistent"));
     }
   }
 }
