@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process.merge;
+package org.apache.iotdb.db.mpp.execution.operator.process.join.merge;
 
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -91,6 +91,60 @@ public class MultiColumnMerger implements ColumnMerger {
       if (!appendValue) {
         columnBuilder.appendNull();
       }
+    }
+  }
+
+  @Override
+  public void mergeColumn(
+      TsBlock[] inputTsBlocks,
+      int[] inputIndex,
+      int[] updatedInputIndex,
+      long currentTime,
+      ColumnBuilder columnBuilder) {
+
+    // init startIndex for each input locations
+    for (InputLocation inputLocation : inputLocations) {
+      int tsBlockIndex = inputLocation.getTsBlockIndex();
+      updatedInputIndex[tsBlockIndex] = inputIndex[tsBlockIndex];
+    }
+
+    // record whether current row already has value to be appended
+    boolean appendValue = false;
+    // we don't use MinHeap here to choose the right column, because inputLocations.size() won't
+    // be very large.
+    // Assuming inputLocations.size() will be less than 5, performance of for-loop may be better
+    // than PriorityQueue.
+    for (InputLocation location : inputLocations) {
+      int tsBlockIndex = location.getTsBlockIndex();
+      int columnIndex = location.getValueColumnIndex();
+      int index = updatedInputIndex[tsBlockIndex];
+
+      // current location's input column is not empty
+      if (!ColumnMerger.empty(tsBlockIndex, inputTsBlocks, updatedInputIndex)) {
+        TimeColumn timeColumn = inputTsBlocks[tsBlockIndex].getTimeColumn();
+        Column valueColumn = inputTsBlocks[tsBlockIndex].getColumn(columnIndex);
+        // time of current location's input column is equal to current row's time
+        if (timeColumn.getLong(index) == currentTime) {
+          // value of current location's input column is not null
+          if (!valueColumn.isNull(index)) {
+            columnBuilder.write(valueColumn, index);
+            appendValue = true;
+          }
+          // increase the index
+          index++;
+          // update the index after merging
+          updatedInputIndex[tsBlockIndex] = index;
+          // we can safely set appendValue to true and then break the loop, because these input
+          // columns' time is not overlapped
+          if (appendValue) {
+            break;
+          }
+        }
+      }
+    }
+    // all input columns are null at current row, so just append a null
+    if (!appendValue) {
+      columnBuilder.appendNull();
     }
   }
 }

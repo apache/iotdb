@@ -21,6 +21,9 @@ package org.apache.iotdb.db.engine.compaction.writer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -99,13 +102,25 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
     writeDataPoint(timestamp, value, subTaskId);
-    checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
+    if (measurementPointCountArray[subTaskId] % 10 == 0) {
+      checkChunkSizeAndMayOpenANewChunk(
+          fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
+    }
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
   }
 
   @Override
-  public void write(long[] timestamps, Object values) {}
+  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException {
+    // todo control time range of target tsfile
+    checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
+    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
+    chunkWriter.write(timestamps, columns, batchSize);
+    checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
+    isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
+    isEmptyFile[seqFileIndexArray[subTaskId]] = false;
+  }
 
   @Override
   public void endFile() throws IOException {

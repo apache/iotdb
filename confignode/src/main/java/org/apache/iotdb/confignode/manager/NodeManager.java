@@ -42,8 +42,6 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -259,25 +257,6 @@ public class NodeManager {
     }
     configNodeInfoList.sort(Comparator.comparingInt(TConfigNodeInfo::getConfigNodeId));
     return configNodeInfoList;
-  }
-
-  /**
-   * Provides ConfigNodeGroup information for the newly registered ConfigNode
-   *
-   * @param req TConfigNodeRegisterReq
-   * @return TConfigNodeRegisterResp with PartitionRegionId and online ConfigNodes
-   */
-  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
-    TConfigNodeRegisterResp resp = new TConfigNodeRegisterResp();
-
-    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-
-    // Return PartitionRegionId
-    resp.setPartitionRegionId(
-        getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
-
-    resp.setConfigNodeList(nodeInfo.getRegisteredConfigNodes());
-    return resp;
   }
 
   /**

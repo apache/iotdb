@@ -175,6 +175,7 @@ import java.io.File;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -184,6 +185,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TIME_PATH;
 import static org.apache.iotdb.db.qp.constant.SQLConstant.TOK_KILL_QUERY;
@@ -1974,15 +1976,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     String privilege = parsePrivilege(ctx.privileges())[0];
 
-    PartialPath prefixPath;
+    List<PartialPath> prefixPath;
     if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
-      prefixPath = new PartialPath(path);
+      prefixPath = Collections.singletonList(new PartialPath(path));
     } else {
       if (ctx.prefixPath() == null) {
         throw new SQLParserException("Invalid prefix path");
       }
-      prefixPath = parsePrefixPath(ctx.prefixPath());
+      prefixPath =
+          ctx.prefixPath().stream().map(path -> parsePrefixPath(path)).collect(Collectors.toList());
     }
     authorOperator.setNodeNameList(prefixPath);
     return authorOperator;
@@ -1996,7 +1999,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_ROLE);
     authorOperator.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(prefixPath -> parsePrefixPath(prefixPath))
+            .collect(Collectors.toList());
+    authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
   }
 
@@ -2022,17 +2029,20 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     String privilege = parsePrivilege(ctx.privileges())[0];
 
-    PartialPath prefixPath;
+    List<PartialPath> nodeNameList;
     if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
-      prefixPath = new PartialPath(path);
+      nodeNameList = Collections.singletonList(new PartialPath(path));
     } else {
       if (ctx.prefixPath() == null) {
         throw new SQLParserException("Invalid prefix path");
       }
-      prefixPath = parsePrefixPath(ctx.prefixPath());
+      nodeNameList =
+          ctx.prefixPath().stream()
+              .map(prefixPath -> parsePrefixPath(prefixPath))
+              .collect(Collectors.toList());
     }
-    authorOperator.setNodeNameList(prefixPath);
+    authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
   }
 
@@ -2044,7 +2054,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE);
     authorOperator.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(prefixPath -> parsePrefixPath(prefixPath))
+            .collect(Collectors.toList());
+    authorOperator.setNodeNameList(nodeNameList);
     return authorOperator;
   }
 
@@ -2100,7 +2114,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     AuthorOperator operator =
         new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
     operator.setUserName(parseIdentifier(ctx.userName.getText()));
-    operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(prefixPath -> parsePrefixPath(prefixPath))
+            .collect(Collectors.toList());
+    operator.setNodeNameList(nodeNameList);
     return operator;
   }
 
@@ -2111,7 +2129,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     AuthorOperator operator =
         new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
     operator.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(prefixPath -> parsePrefixPath(prefixPath))
+            .collect(Collectors.toList());
+    operator.setNodeNameList(nodeNameList);
     return operator;
   }
 

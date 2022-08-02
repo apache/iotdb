@@ -142,6 +142,10 @@ public enum PlanNodeType {
     this.nodeType = nodeType;
   }
 
+  public short getNodeType() {
+    return nodeType;
+  }
+
   public void serialize(ByteBuffer buffer) {
     ReadWriteIOUtils.write(nodeType, buffer);
   }

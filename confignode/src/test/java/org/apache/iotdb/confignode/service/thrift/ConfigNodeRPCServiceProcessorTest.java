@@ -667,7 +667,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "passwd",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     authorizerReq.setUserName("tempuser1");
@@ -689,14 +689,20 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // list user
     authorizerReq =
         new TAuthorizerReq(
-            AuthorOperator.AuthorType.LIST_USER.ordinal(), "", "", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.LIST_USER.ordinal(),
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -713,7 +719,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     authorizerReq.setRoleName("temprole1");
@@ -729,14 +735,20 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // list role
     authorizerReq =
         new TAuthorizerReq(
-            AuthorOperator.AuthorType.LIST_ROLE.ordinal(), "", "", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.LIST_ROLE.ordinal(),
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -753,11 +765,13 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "newpwd",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
     // grant user
+    List<String> nodeNameList = new ArrayList<>();
+    nodeNameList.add("root.ln.**");
     authorizerReq =
         new TAuthorizerReq(
             AuthorOperator.AuthorType.GRANT_USER.ordinal(),
@@ -766,7 +780,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             privilegeList,
-            "root.ln.**");
+            nodeNameList);
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -785,7 +799,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             privilegeList,
-            "root.ln.**");
+            nodeNameList);
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -798,7 +812,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            nodeNameList);
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -811,7 +825,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             revokePrivilege,
-            "root.ln.**");
+            nodeNameList);
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -824,7 +838,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             revokePrivilege,
-            "root.ln.**");
+            nodeNameList);
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -837,7 +851,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "root.ln.**");
+            nodeNameList);
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -853,7 +867,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -869,7 +883,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "root.ln.**");
+            nodeNameList);
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -886,7 +900,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -902,7 +916,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -919,7 +933,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -937,7 +951,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     status = processor.operatePermission(authorizerReq);
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -950,7 +964,7 @@ public class ConfigNodeRPCServiceProcessorTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -1021,7 +1035,13 @@ public class ConfigNodeRPCServiceProcessorTest {
     // clean user
     TAuthorizerReq authorizerReq =
         new TAuthorizerReq(
-            AuthorOperator.AuthorType.LIST_USER.ordinal(), "", "", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.LIST_USER.ordinal(),
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     TAuthorizerResp authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -1037,7 +1057,7 @@ public class ConfigNodeRPCServiceProcessorTest {
                 "",
                 "",
                 new HashSet<>(),
-                "");
+                new ArrayList<>());
         status = processor.operatePermission(authorizerReq);
         Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       }
@@ -1046,7 +1066,13 @@ public class ConfigNodeRPCServiceProcessorTest {
     // clean role
     authorizerReq =
         new TAuthorizerReq(
-            AuthorOperator.AuthorType.LIST_ROLE.ordinal(), "", "", "", "", new HashSet<>(), "");
+            AuthorOperator.AuthorType.LIST_ROLE.ordinal(),
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     authorizerResp = processor.queryPermission(authorizerReq);
     status = authorizerResp.getStatus();
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -1061,7 +1087,7 @@ public class ConfigNodeRPCServiceProcessorTest {
               "",
               "",
               new HashSet<>(),
-              "");
+              new ArrayList<>());
       status = processor.operatePermission(authorizerReq);
       Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     }

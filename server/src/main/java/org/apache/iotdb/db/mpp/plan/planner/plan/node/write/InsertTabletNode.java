@@ -790,7 +790,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public void serializeToWAL(IWALByteBufferView buffer, int start, int end) {
-    buffer.putShort((short) PlanNodeType.INSERT_TABLET.ordinal());
+    buffer.putShort(PlanNodeType.INSERT_TABLET.getNodeType());
     subSerialize(buffer, start, end);
   }
 

@@ -100,7 +100,7 @@ We use `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` to grant us
 
 ```
 GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
-GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc1.**, root.sgcc2.**
 GRANT USER `ln_write_user` PRIVILEGES CREATE_USER
 ```
 The execution result is as follows:
@@ -108,7 +108,7 @@ The execution result is as follows:
 ```
 IoTDB> GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-IoTDB> GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+IoTDB> GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc1.**, root.sgcc2.**
 Msg: The statement is executed successfully.
 IoTDB> GRANT USER `ln_write_user` PRIVILEGES CREATE_USER
 Msg: The statement is executed successfully.
@@ -126,7 +126,7 @@ After granting user privileges, we could use `REVOKE USER <userName> PRIVILEGES 
 
 ```
 REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
-REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc1.**, root.sgcc2.**
 REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 ```
 
@@ -135,7 +135,7 @@ The execution result is as follows:
 ```
 REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc1.**, root.sgcc2.**
 Msg: The statement is executed successfully.
 REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 Msg: The statement is executed successfully.
@@ -182,28 +182,28 @@ Eg: IoTDB > DROP ROLE `admin`;
 * Grant User Privileges
 
 ```
-GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+GRANT USER <userName> PRIVILEGES <privileges> ON <nodeNames>;  
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES on root.ln.**, root.sgcc.**;
 ```
 
 - Grant User All Privileges
 
 ```
-GRANT USER <userName> PRIVILEGES ALL ON <nodeName>; 
-Eg: IoTDB > grant user renyuhua privileges all on root.**
+GRANT USER <userName> PRIVILEGES ALL ON <nodeNames>; 
+Eg: IoTDB > grant user renyuhua privileges all on root.sgcc.**, root.**;
 ```
 
 * Grant Role Privileges
 
 ```
-GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES ON root.sgcc.**, root.ln.**;
 ```
 
 - Grant Role All Privileges
 
 ```
-GRANT ROLE <roleName> PRIVILEGES ALL ON <nodeName>;  
+GRANT ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
 Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
 ```
 
@@ -217,28 +217,28 @@ Eg: IoTDB > GRANT `temprole` TO tempuser;
 * Revoke User Privileges
 
 ```
-REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;   
+REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeNames>;   
 Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
 ```
 
 * Revoke User All Privileges
 
 ```
-REVOKE USER <userName> PRIVILEGES ALL ON <nodeName>; 
+REVOKE USER <userName> PRIVILEGES ALL ON <nodeNames>; 
 Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
 ```
 
 * Revoke Role Privileges
 
 ```
-REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
+REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
 ```
 
 * Revoke All Role Privileges
 
 ```
-REVOKE ROLE <roleName> PRIVILEGES ALL ON <nodeName>;  
+REVOKE ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
 Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
 ```
 
@@ -266,8 +266,8 @@ Eg: IoTDB > LIST ROLE
 * List Related Privileges of Users(On Specific Path)
 
 ```
-LIST PRIVILEGES USER <username> ON <path>;
-Eg: IoTDB> LIST PRIVILEGES USER `tempuser` ON root.ln.**;
+LIST PRIVILEGES USER <username> ON <paths>;
+Eg: IoTDB> LIST PRIVILEGES USER `tempuser` ON root.ln.**, root.ln.wf01.**;
 +--------+-----------------------------------+
 |    role|                          privilege|
 +--------+-----------------------------------+
@@ -297,8 +297,8 @@ Eg: IoTDB > LIST ROLE PRIVILEGES `actor`;
 * List Related Privileges of Roles(On Specific Path)
 
 ```
-LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.**;
+LIST PRIVILEGES ROLE <roleName> ON <paths>;    
+Eg: IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.**, root.ln.wf01.wt01.**;
 +-----------------------------------+
 |                          privilege|
 +-----------------------------------+

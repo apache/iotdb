@@ -141,6 +141,9 @@ public class InsertMultiTabletsNode extends InsertNode implements BatchInsertNod
       if (!insertTabletNode.validateAndSetSchema(schemaTree)) {
         return false;
       }
+      if (!this.hasFailedMeasurements() && insertTabletNode.hasFailedMeasurements()) {
+        this.failedMeasurementIndex2Info = insertTabletNode.failedMeasurementIndex2Info;
+      }
     }
     return true;
   }
