@@ -137,19 +137,40 @@ public class kafkaTest {
     try {
       kw.open();
 
-      String[] Timeseries = {"root", "a", "b"};
+      String[] Timeseries = {"root", "vehicle", "d0", "s0"};
       kw.createTimeSeries(Timeseries, DataType.BOOLEAN);
       kw.insertBoolean(Timeseries, 123, true);
+
+      Timeseries[3] = "s1";
+      kw.createTimeSeries(Timeseries, DataType.TEXT);
+      kw.insertText(Timeseries, 123, "txt");
+
+      Timeseries[3] = "s2";
+      kw.createTimeSeries(Timeseries, DataType.INT32);
+      kw.insertInt32(Timeseries, 123, 15);
+
+      Timeseries[3] = "s3";
+      kw.createTimeSeries(Timeseries, DataType.INT64);
+      kw.insertInt64(Timeseries, 123, 166666);
+
+      Timeseries[3] = "s4";
+      kw.createTimeSeries(Timeseries, DataType.FLOAT);
+      kw.insertFloat(Timeseries, 123, 1.5f);
+
+      Timeseries[3] = "s5";
+      kw.createTimeSeries(Timeseries, DataType.DOUBLE);
+      kw.insertDouble(Timeseries, 123, 1.33);
+
       kw.delete(Timeseries, 123);
       kw.deleteTimeSeries(Timeseries);
 
-      String[] Timeseries2 = {"root", "a", "c"};
-      kw.createTimeSeries(Timeseries2, DataType.VECTOR);
-      kw.insertVector(
-          Timeseries2,
-          new DataType[] {DataType.DOUBLE, DataType.TEXT},
-          133,
-          new Object[] {12.3, "testing"});
+      // String[] Timeseries2 = {"root", "a", "c"};
+      // kw.createTimeSeries(Timeseries2, DataType.VECTOR);
+      //      kw.insertVector(
+      //          Timeseries2,
+      //          new DataType[] {DataType.DOUBLE, DataType.TEXT},
+      //          133,
+      //          new Object[] {12.3, "testing"});
 
       kw.flush();
       System.out.println("\n\n-----------------------------------------\n\n");
@@ -181,19 +202,40 @@ public class kafkaTest {
     try {
       kw2.open();
 
-      String[] Timeseries = {"root", "a", "b"};
+      String[] Timeseries = {"root", "vehicle", "d0", "s0"};
       kw2.createTimeSeries(Timeseries, DataType.BOOLEAN);
       kw2.insertBoolean(Timeseries, 123, true);
+
+      Timeseries[3] = "s1";
+      kw2.createTimeSeries(Timeseries, DataType.TEXT);
+      kw2.insertText(Timeseries, 123, "txt");
+
+      Timeseries[3] = "s2";
+      kw2.createTimeSeries(Timeseries, DataType.INT32);
+      kw2.insertInt32(Timeseries, 123, 15);
+
+      Timeseries[3] = "s3";
+      kw2.createTimeSeries(Timeseries, DataType.INT64);
+      kw2.insertInt64(Timeseries, 123, 166666);
+
+      Timeseries[3] = "s4";
+      kw2.createTimeSeries(Timeseries, DataType.FLOAT);
+      kw2.insertFloat(Timeseries, 123, 1.5f);
+
+      Timeseries[3] = "s5";
+      kw2.createTimeSeries(Timeseries, DataType.DOUBLE);
+      kw2.insertDouble(Timeseries, 123, 1.33);
+
       kw2.delete(Timeseries, 123);
       kw2.deleteTimeSeries(Timeseries);
 
-      String[] Timeseries2 = {"root", "a", "c"};
-      kw2.createTimeSeries(Timeseries2, DataType.VECTOR);
-      kw2.insertVector(
-          Timeseries2,
-          new DataType[] {DataType.DOUBLE, DataType.TEXT},
-          133,
-          new Object[] {12.3, "testing"});
+      // String[] Timeseries2 = {"root", "a", "c"};
+      // kw2.createTimeSeries(Timeseries2, DataType.VECTOR);
+      //      kw2.insertVector(
+      //          Timeseries2,
+      //          new DataType[] {DataType.DOUBLE, DataType.TEXT},
+      //          133,
+      //          new Object[] {12.3, "testing"});
 
       kw2.flush();
       System.out.println("\n\n-----------------------------------------\n\n");

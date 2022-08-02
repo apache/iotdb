@@ -10,13 +10,14 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Properties;
 
 public class KafkaWriter implements IExternalPipeSinkWriter {
 
   private final Map<String, String> kafkaParams;
-  private ExternalPipeSinkWriterStatus status;
+  private final ExternalPipeSinkWriterStatus status;
   private KafkaProducer<String, String> producer = null;
 
   public KafkaWriter(Map<String, String> kafkaParams) {
@@ -71,12 +72,12 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
   private void insertData(String[] path, long time, Object value, DataType type)
       throws IOException {
     String data;
-    String Timeseries = String.join(".", path);
+    String Storage_group = String.join(".", Arrays.copyOfRange(path, 0, path.length - 1));
     if (this.kafkaParams.containsKey("means")
         && this.kafkaParams.get("means").equals("with-type")) {
-      data = Timeseries + ':' + time + ':' + type + ':' + value;
+      data = Storage_group + ',' + time + ',' + path[path.length - 1] + ',' + type + ',' + value;
     } else {
-      data = Timeseries + ':' + time + ':' + value;
+      data = Storage_group + ',' + time + ',' + path[path.length - 1] + ',' + value;
     }
     kafka_send(data);
   }
@@ -105,6 +106,7 @@ public class KafkaWriter implements IExternalPipeSinkWriter {
     insertData(path, time, value, DataType.TEXT);
   }
 
+  /** To do because there's only one path, which shall be many. */
   public void insertVector(String[] path, DataType[] dataTypes, long time, Object[] values)
       throws IOException {
     String Timeseries = String.join(".", path);

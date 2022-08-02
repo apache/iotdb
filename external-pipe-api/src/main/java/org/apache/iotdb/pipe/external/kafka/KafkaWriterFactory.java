@@ -37,9 +37,7 @@ public class KafkaWriterFactory implements IExternalPipeSinkWriterFactory {
     }
 
     String int_format = "^\\d*$";
-    if (sinkParams.containsKey("means")
-        && sinkParams.get("means").equals("non-serial")
-        && sinkParams.containsKey("partition")) {
+    if (sinkParams.containsKey("partition")) {
       if (!Pattern.matches(int_format, sinkParams.get("partition"))) {
         throw new Exception("Incorrect partition format.");
       }
