@@ -75,6 +75,6 @@ public class DataNodeHeartbeatHandler implements AsyncMethodCallback<THeartbeatR
 
   @Override
   public void onError(Exception e) {
-    // Just ignore
+    // Do nothing
   }
 }

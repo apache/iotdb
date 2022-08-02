@@ -97,7 +97,6 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
       checkReady();
       return true;
     } catch (Exception e) {
-      // TODO: Hide this log
       logger.info("Unexpected exception occurs in {} :", this, e);
       return false;
     }

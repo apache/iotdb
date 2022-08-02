@@ -33,7 +33,6 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
 import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
 import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
@@ -44,7 +43,6 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
-import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 
@@ -331,24 +329,6 @@ public class AsyncDataNodeClientPool {
     req.setRegionReplicaSet(regionReplicaSet);
     req.setTtl(TTL);
     return req;
-  }
-
-  /**
-   * Only used in LoadManager
-   *
-   * @param endPoint The specific DataNode
-   */
-  public void getDataNodeHeartBeat(
-      TEndPoint endPoint, THeartbeatReq req, DataNodeHeartbeatHandler handler) {
-    AsyncDataNodeInternalServiceClient client;
-    try {
-      client = clientManager.purelyBorrowClient(endPoint);
-      if (client != null) {
-        client.getDataNodeHeartBeat(req, handler);
-      }
-    } catch (Exception ignore) {
-      // Just ignore
-    }
   }
 
   /**
