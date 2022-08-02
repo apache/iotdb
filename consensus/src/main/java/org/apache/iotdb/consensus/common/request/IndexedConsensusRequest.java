@@ -68,7 +68,7 @@ public class IndexedConsensusRequest implements IConsensusRequest {
 
   public List<ByteBuffer> buildSerializedRequests() {
     List<ByteBuffer> result = new LinkedList<>();
-    this.requests.forEach(r -> this.serializedRequests.add(r.serializeToByteBuffer()));
+    this.requests.forEach(r -> result.add(r.serializeToByteBuffer()));
     return result;
   }
 
