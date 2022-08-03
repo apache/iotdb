@@ -184,6 +184,10 @@ public abstract class Expression {
   public abstract void bindInputLayerColumnIndexWithExpression(
       Map<String, List<InputLocation>> inputLocations);
 
+  public Integer getInputColumnIndex() {
+    return inputColumnIndex;
+  }
+
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
   // TODO: remove after MPP finish

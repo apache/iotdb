@@ -26,7 +26,6 @@ import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.SingleInputColumnMultiReferenceIntermediateLayer;
@@ -160,48 +159,9 @@ public abstract class UnaryExpression extends Expression {
   }
 
   @Override
-  public IntermediateLayer constructIntermediateLayer(
-      long queryId,
-      UDTFContext udtfContext,
-      QueryDataSetInputLayer rawTimeSeriesInputLayer,
-      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
-      TypeProvider typeProvider,
-      LayerMemoryAssigner memoryAssigner)
-      throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
-
-      IntermediateLayer parentLayerPointReader =
-          expression.constructIntermediateLayer(
-              queryId,
-              udtfContext,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              typeProvider,
-              memoryAssigner);
-      Transformer transformer = constructTransformer(parentLayerPointReader.constructPointReader());
-
-      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
-      // yet. And since a ConstantLayerPointReader won't produce too much IO,
-      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1 || isConstantOperand()
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
-    }
-
-    return expressionIntermediateLayerMap.get(this);
-  }
-
-  @Override
   public boolean isMappable(TypeProvider typeProvider) {
     return expression.isMappable(typeProvider);
   }
-
-  protected abstract Transformer constructTransformer(LayerPointReader pointReader);
 
   @Override
   public final void concat(List<PartialPath> prefixPaths, List<Expression> resultExpressions) {
