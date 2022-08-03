@@ -102,13 +102,13 @@ struct TFlushReq {
    3: optional i32 dataNodeId
 }
 
-struct TSetTTLReq {
-  1: required string storageGroup
-  2: required i64 TTL
-}
-
 // for node management
 struct TSchemaNode {
   1: required string nodeName
   2: required byte nodeType
+}
+
+struct TSetTTLReq {
+  1: required list<string> storageGroupPathPattern
+  2: required i64 TTL
 }
