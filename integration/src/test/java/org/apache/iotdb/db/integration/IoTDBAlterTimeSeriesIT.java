@@ -20,11 +20,11 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,8 +38,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBAlterTimeSeriesIT {
@@ -67,32 +65,39 @@ public class IoTDBAlterTimeSeriesIT {
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.alterTimeSeriesTest");
       try {
-        statement.execute("CREATE TIMESERIES root.alterTimeSeriesTest.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
-        statement.execute("CREATE TIMESERIES root.alterTimeSeriesTest.s2 WITH DATATYPE=INT64,ENCODING=PLAIN");
+        statement.execute(
+            "CREATE TIMESERIES root.alterTimeSeriesTest.s1 WITH DATATYPE=INT64,ENCODING=PLAIN");
+        statement.execute(
+            "CREATE TIMESERIES root.alterTimeSeriesTest.s2 WITH DATATYPE=INT64,ENCODING=PLAIN");
       } catch (SQLException e) {
         // ignore
       }
 
       for (int i = 1; i <= 1000; i++) {
         statement.execute(
-                String.format("INSERT INTO root.alterTimeSeriesTest(timestamp,s1,s2) VALUES (%d,%d,%d)", i, i, i));
+            String.format(
+                "INSERT INTO root.alterTimeSeriesTest(timestamp,s1,s2) VALUES (%d,%d,%d)",
+                i, i, i));
       }
       statement.execute("FLUSH");
       ResultSet resultSetP = statement.executeQuery("show timeseries root.alterTimeSeriesTest.s1");
-      while(resultSetP.next()) {
+      while (resultSetP.next()) {
         assertEquals(resultSetP.getString("encoding"), "PLAIN");
         assertEquals(resultSetP.getString("compression"), "SNAPPY");
       }
-      statement.execute("alter timeseries root.alterTimeSeriesTest.s1 settype encoding=gorilla,compression=gzip");
+      statement.execute(
+          "alter timeseries root.alterTimeSeriesTest.s1 settype encoding=gorilla,compression=gzip");
 
       ResultSet resultSetAL = statement.executeQuery("show timeseries root.alterTimeSeriesTest.s1");
-      while(resultSetAL.next()) {
+      while (resultSetAL.next()) {
         assertEquals(resultSetAL.getString("encoding"), "GORILLA");
         assertEquals(resultSetAL.getString("compression"), "GZIP");
       }
       for (int i = 1001; i <= 1010; i++) {
         statement.execute(
-                String.format("INSERT INTO root.alterTimeSeriesTest(timestamp,s1,s2) VALUES (%d,%d,%d)", i, i, i));
+            String.format(
+                "INSERT INTO root.alterTimeSeriesTest(timestamp,s1,s2) VALUES (%d,%d,%d)",
+                i, i, i));
       }
 
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.alterTimeSeriesTest")) {
@@ -113,5 +118,4 @@ public class IoTDBAlterTimeSeriesIT {
       }
     }
   }
-
 }

@@ -2325,10 +2325,10 @@ public class DataRegion {
               logKey);
         } catch (IOException e) {
           /**
-           * TODO
-           * If an exception occurs in the operation of a single tsfile, you need to terminate the operation and return
-           * 1. The modified schema and rewritten tsfile need to provide rollback commands
-           * 2. The tsfile that has not been rewritten needs to provide a recovery command
+           * TODO If an exception occurs in the operation of a single tsfile, you need to terminate
+           * the operation and return 1. The modified schema and rewritten tsfile need to provide
+           * rollback commands 2. The tsfile that has not been rewritten needs to provide a recovery
+           * command
            */
           logger.error(
               "[alter timeseries] " + logKey + " timePartition " + timePartition + " error", e);

@@ -127,7 +127,7 @@ public class TsFileRewriteExcutor {
     List<IMeasurementSchema> schemaList =
         collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, isTargetDevice);
     List<IMeasurementSchema> schemaOldList =
-            collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, false);
+        collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, false);
     AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemaList);
     TsFileAlignedSeriesReaderIterator readerIterator =
         new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaOldList);
