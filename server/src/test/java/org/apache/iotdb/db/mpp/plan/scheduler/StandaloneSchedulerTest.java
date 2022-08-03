@@ -157,7 +157,6 @@ public class StandaloneSchedulerTest {
             stateMachine,
             Collections.singletonList(fragmentInstance),
             QueryType.WRITE,
-            executor,
             null,
             null);
     try {
@@ -261,7 +260,6 @@ public class StandaloneSchedulerTest {
             stateMachine,
             Collections.singletonList(fragmentInstance),
             QueryType.WRITE,
-            executor,
             null,
             null);
     try {
@@ -375,7 +373,6 @@ public class StandaloneSchedulerTest {
             stateMachine,
             Collections.singletonList(fragmentInstance),
             QueryType.WRITE,
-            executor,
             null,
             null);
     try {
@@ -428,7 +425,6 @@ public class StandaloneSchedulerTest {
             stateMachine,
             Collections.singletonList(fragmentInstance),
             QueryType.WRITE,
-            executor,
             null,
             null);
     try {
@@ -510,7 +506,6 @@ public class StandaloneSchedulerTest {
             stateMachine,
             Collections.singletonList(fragmentInstance),
             QueryType.WRITE,
-            executor,
             null,
             null);
     try {
