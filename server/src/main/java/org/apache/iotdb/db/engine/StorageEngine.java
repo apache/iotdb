@@ -94,7 +94,6 @@ import java.util.stream.Collectors;
 
 public class StorageEngine implements IService {
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
-
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
   private static final long HEARTBEAT_CHECK_INTERVAL = 30L;
@@ -198,7 +197,6 @@ public class StorageEngine implements IService {
                 arrayListBlockQueue.get(i), operationSyncsessionPool, operationSyncDMLLogService);
         threadPool.execute(consumer);
       }
-
       logger.info("Successfully initialize OperationSync!");
     } else {
       operationSyncsessionPool = null;

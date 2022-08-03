@@ -46,8 +46,8 @@ public class OperationSyncPlanTypeUtils {
         || plan instanceof DataAuthPlan
         || plan instanceof DropContinuousQueryPlan
         || plan instanceof ChangeAliasPlan
-        || plan instanceof ChangeTagOffsetPlan) {
-
+        || plan instanceof ChangeTagOffsetPlan
+        || plan instanceof AuthorPlan) {
       return OperationSyncPlanType.DDLPlan;
     } else if (plan instanceof DeletePlan || plan instanceof InsertPlan) {
       return OperationSyncPlanType.DMLPlan;

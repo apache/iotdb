@@ -52,14 +52,19 @@ public class OperationSyncProducer {
   public void put(
       Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType> planPair,
       String deviceName) {
+
     ByteBuffer headBuffer;
     headBuffer = planPair.left;
     headBuffer.position(0);
     int index;
     if (deviceName == null) {
-      index = operationSyncQueues.size();
+      index = operationSyncQueues.size() - 1;
     } else {
-      index = deviceName.hashCode() % (operationSyncQueues.size() - 1);
+      try {
+        index = Math.abs(deviceName.hashCode()) % (operationSyncQueues.size() - 1);
+      } catch (Exception e) {
+        index = 1;
+      }
     }
     for (int i = 0; i < RETRY; i++) {
       // retry 3 times
