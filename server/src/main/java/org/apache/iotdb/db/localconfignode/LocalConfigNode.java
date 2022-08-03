@@ -56,6 +56,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -1302,6 +1303,15 @@ public class LocalConfigNode {
   public boolean checkUserPrivileges(String username, String path, int permission)
       throws AuthException {
     return iAuthorizer.checkUserPrivileges(username, path, permission);
+  }
+
+  public TSStatus executeMergeOperation() {
+    try {
+      storageEngine.mergeAll();
+    } catch (StorageEngineException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public TSStatus executeFlushOperation(TFlushReq tFlushReq) {

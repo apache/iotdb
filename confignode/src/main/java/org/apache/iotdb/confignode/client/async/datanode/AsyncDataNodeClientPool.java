@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.client.async.datanode;
 
-import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
@@ -36,6 +35,7 @@ import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
+import org.apache.iotdb.confignode.client.async.handlers.MergeHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
@@ -102,6 +102,16 @@ public class AsyncDataNodeClientPool {
           case DROP_FUNCTION:
             handler =
                 new FunctionManagementHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
+          case FULL_MERGE:
+          case MERGE:
+            handler =
+                new MergeHandler(
                     countDownLatch,
                     requestType,
                     targetDataNode,
@@ -177,11 +187,15 @@ public class AsyncDataNodeClientPool {
         case DROP_FUNCTION:
           client.dropFunction((TDropFunctionRequest) req, (FunctionManagementHandler) handler);
           break;
+        case MERGE:
+        case FULL_MERGE:
+          client.merge((MergeHandler) handler);
+          break;
         case FLUSH:
           client.flush((TFlushReq) req, (FlushHandler) handler);
           break;
         case CLEAR_CACHE:
-          client.clearCache((TClearCacheReq) req, (ClearCacheHandler) handler);
+          client.clearCache((ClearCacheHandler) handler);
           break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
