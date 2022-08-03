@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.consensus.common.Peer;
+import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
 import org.apache.iotdb.consensus.multileader.MultiLeaderServerImpl;
@@ -210,11 +211,18 @@ public class LogDispatcher {
       logger.info("{}: Dispatcher for {} exits", impl.getThisNode(), peer);
     }
 
+    public void updateSafelyDeletedSearchIndex() {
+      // update safely deleted search index to delete outdated info,
+      // indicating that insert nodes whose search index are before this value can be deleted
+      // safely
+      reader.setSafelyDeletedSearchIndex(impl.getCurrentSafelyDeletedSearchIndex());
+    }
+
     public PendingBatch getBatch() {
       PendingBatch batch;
       List<TLogBatch> logBatches = new ArrayList<>();
       long startIndex = syncStatus.getNextSendingIndex();
-      logger.debug("get batch. startIndex: {}", startIndex);
+      logger.debug("[GetBatch] startIndex: {}", startIndex);
       long endIndex;
       if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
         // Use drainTo instead of poll to reduce lock overhead
@@ -294,6 +302,11 @@ public class LogDispatcher {
         AsyncMultiLeaderServiceClient client = clientManager.borrowClient(peer.getEndpoint());
         TSyncLogReq req =
             new TSyncLogReq(peer.getGroupId().convertToTConsensusGroupId(), batch.getBatches());
+        logger.debug(
+            "Send Batch[startIndex:{}, endIndex:{}] to ConsensusGroup:{}",
+            batch.getStartIndex(),
+            batch.getEndIndex(),
+            peer.getGroupId().convertToTConsensusGroupId());
         client.syncLog(req, handler);
       } catch (IOException | TException e) {
         logger.error("Can not sync logs to peer {} because", peer, e);
@@ -330,7 +343,9 @@ public class LogDispatcher {
         IndexedConsensusRequest data = walEntryiterator.next();
         currentIndex = data.getSearchIndex();
         iteratorIndex = currentIndex;
-        logBatches.add(new TLogBatch(data.serializeToByteBuffer()));
+        for (IConsensusRequest innerRequest : data.getRequests()) {
+          logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), currentIndex, true));
+        }
         if (currentIndex == maxIndex - 1) {
           break;
         }
@@ -340,7 +355,10 @@ public class LogDispatcher {
 
     private void constructBatchIndexedFromConsensusRequest(
         IndexedConsensusRequest request, List<TLogBatch> logBatches) {
-      logBatches.add(new TLogBatch(request.serializeToByteBuffer()));
+      for (IConsensusRequest innerRequest : request.getRequests()) {
+        logBatches.add(
+            new TLogBatch(innerRequest.serializeToByteBuffer(), request.getSearchIndex(), false));
+      }
     }
   }
 }

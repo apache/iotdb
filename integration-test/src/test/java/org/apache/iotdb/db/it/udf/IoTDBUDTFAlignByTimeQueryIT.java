@@ -20,14 +20,13 @@ package org.apache.iotdb.db.it.udf;
 
 import org.apache.iotdb.it.env.ConfigFactory;
 import org.apache.iotdb.it.env.EnvFactory;
-import org.apache.iotdb.it.env.IoTDBTestRunner;
+import org.apache.iotdb.it.framework.IoTDBTestRunner;
 import org.apache.iotdb.itbase.category.ClusterIT;
 import org.apache.iotdb.itbase.category.LocalStandaloneIT;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -706,9 +705,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
     }
   }
 
-  // todo: add back when fixed
   @Test
-  @Ignore
   public void queryWithValueFilter9() {
     String sqlStr =
         "select max(s1), max(s2) from root.vehicle.d4"
@@ -742,9 +739,7 @@ public class IoTDBUDTFAlignByTimeQueryIT {
     }
   }
 
-  // todo: add back when fixed
   @Test
-  @Ignore
   public void queryWithValueFilter10() {
     String sqlStr =
         "select terminate(s1), terminate(s2) from root.vehicle.d4"

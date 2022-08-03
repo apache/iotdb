@@ -45,6 +45,11 @@ public class NullLiteral extends Literal {
   }
 
   @Override
+  public String getDataTypeString() {
+    return "NULL";
+  }
+
+  @Override
   public Binary getBinary() {
     return new Binary("null");
   }

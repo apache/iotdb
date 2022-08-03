@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.confignode.persistence;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TNodeResource;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 
 import org.apache.commons.io.FileUtils;
@@ -63,11 +64,10 @@ public class NodeInfoTest {
   public void testSnapshot() throws TException, IOException {
 
     RegisterDataNodePlan registerDataNodePlan =
-        new RegisterDataNodePlan(new TDataNodeInfo(generateTDataNodeLocation(1), 16, 34359738368L));
+        new RegisterDataNodePlan(generateTDataNodeConfiguration(1));
     nodeInfo.registerDataNode(registerDataNodePlan);
 
-    registerDataNodePlan =
-        new RegisterDataNodePlan(new TDataNodeInfo(generateTDataNodeLocation(2), 16, 34359738368L));
+    registerDataNodePlan = new RegisterDataNodePlan(generateTDataNodeConfiguration(2));
     nodeInfo.registerDataNode(registerDataNodePlan);
 
     Set<TDataNodeLocation> drainingDataNodes_before = new HashSet<>();
@@ -78,7 +78,7 @@ public class NodeInfoTest {
     nodeInfo.setDrainingDataNodes(drainingDataNodes_before);
 
     int nextId = nodeInfo.getNextNodeId();
-    List<TDataNodeInfo> onlineDataNodes_before = nodeInfo.getOnlineDataNodes(-1);
+    List<TDataNodeConfiguration> onlineDataNodes_before = nodeInfo.getRegisteredDataNodes(-1);
 
     nodeInfo.processTakeSnapshot(snapshotDir);
     nodeInfo.clear();
@@ -89,8 +89,14 @@ public class NodeInfoTest {
     Set<TDataNodeLocation> drainingDataNodes_after = nodeInfo.getDrainingDataNodes();
     Assert.assertEquals(drainingDataNodes_before, drainingDataNodes_after);
 
-    List<TDataNodeInfo> onlineDataNodes_after = nodeInfo.getOnlineDataNodes(-1);
+    List<TDataNodeConfiguration> onlineDataNodes_after = nodeInfo.getRegisteredDataNodes(-1);
     Assert.assertEquals(onlineDataNodes_before, onlineDataNodes_after);
+  }
+
+  private TDataNodeConfiguration generateTDataNodeConfiguration(int flag) {
+    TDataNodeLocation location = generateTDataNodeLocation(flag);
+    TNodeResource resource = new TNodeResource(16, 34359738368L);
+    return new TDataNodeConfiguration(location, resource);
   }
 
   private TDataNodeLocation generateTDataNodeLocation(int flag) {

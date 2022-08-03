@@ -43,9 +43,14 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   private static final Logger logger = LoggerFactory.getLogger(FixedRateFragInsStateTracker.class);
 
+  private static final long SAME_STATE_PRINT_RATE_IN_MS = 10 * 60 * 1000;
+
   // TODO: (xingtanzjr) consider how much Interval is OK for state tracker
   private static final long STATE_FETCH_INTERVAL_IN_MS = 500;
   private ScheduledFuture<?> trackTask;
+  private volatile FragmentInstanceState lastState;
+  private volatile long durationToLastPrintInMS;
+  private volatile boolean aborted;
 
   public FixedRateFragInsStateTracker(
       QueryStateMachine stateMachine,
@@ -54,10 +59,14 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       List<FragmentInstance> instances,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     super(stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
+    this.aborted = false;
   }
 
   @Override
-  public void start() {
+  public synchronized void start() {
+    if (aborted) {
+      return;
+    }
     trackTask =
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
             scheduledExecutor,
@@ -68,9 +77,19 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   }
 
   @Override
-  public void abort() {
+  public synchronized void abort() {
+    aborted = true;
+    logger.info("start to abort state tracker");
     if (trackTask != null) {
-      trackTask.cancel(true);
+      logger.info("start to cancel fixed rate tracking task");
+      boolean cancelResult = trackTask.cancel(true);
+      if (!cancelResult) {
+        logger.error("cancel state tracking task failed. {}", trackTask.isCancelled());
+      } else {
+        logger.info("cancellation succeeds");
+      }
+    } else {
+      logger.info("trackTask not started");
     }
   }
 
@@ -78,7 +97,13 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
     for (FragmentInstance instance : instances) {
       try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
         FragmentInstanceState state = fetchState(instance);
-        logger.info("State is {}", state);
+        if (needPrintState(lastState, state, durationToLastPrintInMS)) {
+          logger.info("State is {}", state);
+          lastState = state;
+          durationToLastPrintInMS = 0;
+        } else {
+          durationToLastPrintInMS += STATE_FETCH_INTERVAL_IN_MS;
+        }
 
         if (state != null) {
           stateMachine.updateFragInstanceState(instance.getId(), state);
@@ -88,5 +113,13 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
         logger.error("error happened while fetching query state", e);
       }
     }
+  }
+
+  private boolean needPrintState(
+      FragmentInstanceState previous, FragmentInstanceState current, long durationToLastPrintInMS) {
+    if (current != previous) {
+      return true;
+    }
+    return durationToLastPrintInMS >= SAME_STATE_PRINT_RATE_IN_MS;
   }
 }

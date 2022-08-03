@@ -352,7 +352,7 @@ public class TemplateUT {
         Collections.singletonList(12345L));
 
     SessionDataSet res =
-        session.executeRawDataQuery(Collections.singletonList("root.sg.v1.*"), 0L, 999L);
+        session.executeRawDataQuery(Collections.singletonList("root.sg.v1.*"), 0L, 999L, 60000);
     while (res.hasNext()) {
       RowRecord rec = res.next();
       // correspond to x, y, append
@@ -366,7 +366,8 @@ public class TemplateUT {
         Collections.singletonList(TSDataType.INT64),
         Collections.singletonList(12345L));
 
-    res = session.executeRawDataQuery(Collections.singletonList("root.sg.v1.d0.*"), 0L, 999L);
+    res =
+        session.executeRawDataQuery(Collections.singletonList("root.sg.v1.d0.*"), 0L, 999L, 60000);
     while (res.hasNext()) {
       RowRecord rec = res.next();
       // x is not inside template

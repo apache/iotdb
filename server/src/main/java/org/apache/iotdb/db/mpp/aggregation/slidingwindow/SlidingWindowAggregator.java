@@ -66,7 +66,7 @@ public abstract class SlidingWindowAggregator extends Aggregator {
       valueColumn[i] = tsBlock.getColumn(inputLocation.getValueColumnIndex());
     }
     processPartialResult(new PartialAggregationResult(timeColumn, valueColumn));
-    return tsBlock.getPositionCount();
+    return 1;
   }
 
   @Override

@@ -85,6 +85,15 @@ public abstract class InsertPlan extends PhysicalPlan {
     this.measurements = measurements;
   }
 
+  public boolean hasValidMeasurements() {
+    for (Object o : measurements) {
+      if (o != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public TSDataType[] getDataTypes() {
     return dataTypes;
   }

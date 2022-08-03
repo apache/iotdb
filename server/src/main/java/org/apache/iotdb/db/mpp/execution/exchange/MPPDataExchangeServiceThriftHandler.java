@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.utils.MetricLevel;
+
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
@@ -31,12 +36,29 @@ public class MPPDataExchangeServiceThriftHandler implements TServerEventHandler 
 
   @Override
   public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateGauge(
+            Metric.THRIFT_CONNECTIONS.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            "MPPDataExchange")
+        .incr(1L);
     return null;
   }
 
   @Override
   public void deleteContext(
-      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {}
+      ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateGauge(
+            Metric.THRIFT_CONNECTIONS.toString(),
+            MetricLevel.CORE,
+            Tag.NAME.toString(),
+            "MPPDataExchange")
+        .decr(1L);
+  }
 
   @Override
   public void processContext(

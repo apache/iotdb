@@ -1630,4 +1630,9 @@ public class TsFileProcessor {
   public IMemTable getWorkMemTable() {
     return workMemTable;
   }
+
+  @TestOnly
+  public ConcurrentLinkedDeque<IMemTable> getFlushingMemTable() {
+    return flushingMemTables;
+  }
 }

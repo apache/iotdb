@@ -23,15 +23,20 @@ namespace py iotdb.thrift.confignode
 
 // DataNode
 struct TDataNodeRegisterReq {
-  1: required common.TDataNodeInfo dataNodeInfo
+  1: required common.TDataNodeConfiguration dataNodeConfiguration
   // Map<StorageGroupName, TStorageGroupSchema>
   // DataNode can use statusMap to report its status to the ConfigNode when restart
   2: optional map<string, TStorageGroupSchema> statusMap
 }
 
-struct TDataNodeActiveReq {
-  1: required common.TDataNodeLocation location
-  2: required i32 dataNodeId
+struct TDataNodeRemoveReq {
+  1: required list<common.TDataNodeLocation> dataNodeLocations
+}
+
+struct TRegionMigrateResultReportReq {
+  1: required common.TConsensusGroupId regionId
+  2: required common.TSStatus migrateResult
+  3: optional map<common.TDataNodeLocation, common.TRegionMigrateFailedType> failedNodeAndReason
 }
 
 struct TGlobalConfig {
@@ -40,6 +45,7 @@ struct TGlobalConfig {
   3: required i32 seriesPartitionSlotNum
   4: required string seriesPartitionExecutorClass
   5: required i64 timePartitionInterval
+  6: required string readConsistencyLevel
 }
 
 struct TDataNodeRegisterResp {
@@ -47,12 +53,17 @@ struct TDataNodeRegisterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional i32 dataNodeId
   4: optional TGlobalConfig globalConfig
+  5: optional binary templateInfo
 }
 
-struct TDataNodeInfoResp {
+struct TDataNodeRemoveResp {
+  1: required common.TSStatus status
+  2: optional map<common.TDataNodeLocation, common.TSStatus> nodeToStatus
+}
+struct TDataNodeConfigurationResp {
   1: required common.TSStatus status
   // map<DataNodeId, DataNodeLocation>
-  2: optional map<i32, common.TDataNodeInfo> dataNodeInfoMap
+  2: optional map<i32, common.TDataNodeConfiguration> dataNodeConfigurationMap
 }
 
 // StorageGroup
@@ -109,10 +120,17 @@ struct TSchemaPartitionReq {
   1: required binary pathPatternTree
 }
 
+// TODO: Replace this by TSchemaPartitionTableResp
 struct TSchemaPartitionResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
+}
+
+struct TSchemaPartitionTableResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, TConsensusGroupId>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, common.TConsensusGroupId>> schemaPartitionTable
 }
 
 // Node Management
@@ -126,7 +144,7 @@ struct TSchemaNodeManagementResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, TRegionReplicaSet>>
   2: optional map<string, map<common.TSeriesPartitionSlot, common.TRegionReplicaSet>> schemaRegionMap
-  3: optional set<string> matchedNode
+  3: optional set<common.TSchemaNode> matchedNode
 }
 
 // Data
@@ -135,10 +153,17 @@ struct TDataPartitionReq {
   1: required map<string, map<common.TSeriesPartitionSlot, list<common.TTimePartitionSlot>>> partitionSlotsMap
 }
 
+// TODO: Replace this by TDataPartitionTableResp
 struct TDataPartitionResp {
   1: required common.TSStatus status
   // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TRegionReplicaSet>>>>
   2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TRegionReplicaSet>>>> dataPartitionMap
+}
+
+struct TDataPartitionTableResp {
+  1: required common.TSStatus status
+  // map<StorageGroupName, map<TSeriesPartitionSlot, map<TTimePartitionSlot, list<TConsensusGroupId>>>>
+  2: optional map<string, map<common.TSeriesPartitionSlot, map<common.TTimePartitionSlot, list<common.TConsensusGroupId>>>> dataPartitionTable
 }
 
 // Authorize
@@ -149,7 +174,7 @@ struct TAuthorizerReq {
   4: required string password
   5: required string newPassword
   6: required set<i32> permissions
-  7: required string nodeName
+  7: required list<string> nodeNameList
 }
 
 struct TAuthorizerResp {
@@ -199,20 +224,11 @@ struct TConfigNodeRegisterReq {
   9: required double schemaRegionPerDataNode
   10: required i32 dataReplicationFactor
   11: required double dataRegionPerProcessor
+  12: required string readConsistencyLevel
 }
 
-struct TConfigNodeRegisterResp {
-  1: required common.TSStatus status
-  2: optional common.TConsensusGroupId partitionRegionId
-  3: optional list<common.TConfigNodeLocation> configNodeList
-}
-
-// Show cluster
-struct TClusterNodeInfos {
-  1: required common.TSStatus status
-  2: required list<common.TConfigNodeLocation> configNodeList
-  3: required list<common.TDataNodeLocation> dataNodeList
-  4: required map<i32, string> nodeStatus
+struct TAddConsensusGroupReq {
+  1: required list<common.TConfigNodeLocation> configNodeList
 }
 
 // UDF
@@ -226,14 +242,106 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
-// show regions
+// Show cluster
+struct TShowClusterResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: required list<common.TDataNodeLocation> dataNodeList
+  4: required map<i32, string> nodeStatus
+}
+
+// Show datanodes
+struct TDataNodeInfo {
+  1: required i32 dataNodeId
+  2: required string status
+  3: required string rpcAddresss
+  4: required i32 rpcPort
+  5: required i32 dataRegionNum
+  6: required i32 schemaRegionNum
+}
+
+struct TShowDataNodesResp {
+  1: required common.TSStatus status
+  2: optional list<TDataNodeInfo> dataNodesInfoList
+}
+
+// Show confignodes
+struct TConfigNodeInfo {
+  1: required i32 configNodeId
+  2: required string status
+  3: required string internalAddress
+  4: required i32 internalPort
+}
+
+struct TShowConfigNodesResp {
+  1: required common.TSStatus status
+  2: optional list<TConfigNodeInfo> configNodesInfoList
+}
+
+// Show regions
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
+  2: optional list<string> storageGroups
+}
+
+struct TRegionInfo {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required string storageGroup
+  3: required i32 dataNodeId
+  4: required string clientRpcIp
+  5: required i32 clientRpcPort
+  6: required i64 seriesSlots
+  7: required i64 timeSlots
+  8: optional string status
 }
 
 struct TShowRegionResp {
   1: required common.TSStatus status
-  2: optional list<common.TRegionInfo> regionInfoList;
+  2: optional list<TRegionInfo> regionInfoList;
+}
+
+// Routing
+struct TRegionRouteMapResp {
+  1: required common.TSStatus status
+  // For version stamp
+  2: optional i64 timestamp
+  // The routing policy of read/write requests for each RegionGroup is based on the order in the TRegionReplicaSet.
+  // The replica with higher sorting result in TRegionReplicaSet will have higher priority.
+  3: optional map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
+}
+
+// Template
+struct TCreateSchemaTemplateReq {
+  1: required string name
+  2: required binary serializedTemplate
+}
+
+struct TGetAllTemplatesResp {
+  1: required common.TSStatus status
+  2: optional list<binary> templateList
+}
+
+struct TGetTemplateResp {
+  1: required common.TSStatus status
+  2: optional binary template
+}
+
+struct TSetSchemaTemplateReq {
+  1: required string name
+  2: required string path
+}
+struct TGetPathsSetTemplatesResp {
+  1: required common.TSStatus status
+  2: optional list<string> pathList
+}
+
+// Maintenance Tools
+struct TMergeReq {
+  1: optional i32 dataNodeId
+}
+
+struct TClearCacheReq {
+   1: optional i32 dataNodeId
 }
 
 service IConfigNodeRPCService {
@@ -242,12 +350,11 @@ service IConfigNodeRPCService {
 
   TDataNodeRegisterResp registerDataNode(TDataNodeRegisterReq req)
 
-  common.TSStatus activeDataNode(TDataNodeActiveReq req)
+  TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req)
 
-  TDataNodeInfoResp getDataNodeInfo(i32 dataNodeId)
+  TDataNodeConfigurationResp getDataNodeConfiguration(i32 dataNodeId)
 
-  /* Show Cluster */
-  TClusterNodeInfos getAllClusterNodeInfos()
+  common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
 
   /* StorageGroup */
 
@@ -271,9 +378,15 @@ service IConfigNodeRPCService {
 
   /* Schema */
 
+  // TODO: Replace this by getSchemaPartitionTable
   TSchemaPartitionResp getSchemaPartition(TSchemaPartitionReq req)
 
+  TSchemaPartitionTableResp getSchemaPartitionTable(TSchemaPartitionReq req)
+
+  // TODO: Replace this by getOrCreateSchemaPartitionTable
   TSchemaPartitionResp getOrCreateSchemaPartition(TSchemaPartitionReq req)
+
+  TSchemaPartitionTableResp getOrCreateSchemaPartitionTable(TSchemaPartitionReq req)
 
   /* Node Management */
 
@@ -281,9 +394,15 @@ service IConfigNodeRPCService {
 
   /* Data */
 
+  // TODO: Replace this by getDataPartitionTable
   TDataPartitionResp getDataPartition(TDataPartitionReq req)
 
+  TDataPartitionTableResp getDataPartitionTable(TDataPartitionReq req)
+
+  // TODO: Replace this by getOrCreateDataPartitionTable
   TDataPartitionResp getOrCreateDataPartition(TDataPartitionReq req)
+
+  TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
   /* Authorize */
 
@@ -297,13 +416,15 @@ service IConfigNodeRPCService {
 
   /* ConfigNode */
 
-  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
+  common.TSStatus registerConfigNode(TConfigNodeRegisterReq req)
 
-  common.TSStatus addConsensusGroup(TConfigNodeRegisterResp req)
+  common.TSStatus addConsensusGroup(TAddConsensusGroupReq req)
 
   common.TSStatus notifyRegisterSuccess()
 
   common.TSStatus removeConfigNode(common.TConfigNodeLocation configNodeLocation)
+
+  common.TSStatus removeConsensusGroup(common.TConfigNodeLocation configNodeLocation)
 
   common.TSStatus stopConfigNode(common.TConfigNodeLocation configNodeLocation)
 
@@ -313,16 +434,43 @@ service IConfigNodeRPCService {
 
   common.TSStatus dropFunction(TDropFunctionReq req)
 
-  /* Flush */
+  /* Maintenance Tools */
+
+  common.TSStatus merge(TMergeReq req)
 
   common.TSStatus flush(common.TFlushReq req)
 
-  /* Show Region */
+  common.TSStatus clearCache(TClearCacheReq req)
+
+  /* Cluster Tools */
+
+  TShowClusterResp showCluster()
+
+  TShowDataNodesResp showDataNodes()
+
+  TShowConfigNodesResp showConfigNodes()
 
   TShowRegionResp showRegion(TShowRegionReq req)
 
+  /* Routing */
+
+  TRegionRouteMapResp getLatestRegionRouteMap()
+
   /* Get confignode heartbeat */
+
   i64 getConfigNodeHeartBeat(i64 timestamp)
+
+  /* Template */
+
+  common.TSStatus createSchemaTemplate(TCreateSchemaTemplateReq req)
+
+  TGetAllTemplatesResp getAllTemplates()
+
+  TGetTemplateResp getTemplate(string req)
+
+  common.TSStatus setSchemaTemplate(TSetSchemaTemplateReq req)
+
+  TGetPathsSetTemplatesResp getPathsSetTemplate(string req)
 
 }
 

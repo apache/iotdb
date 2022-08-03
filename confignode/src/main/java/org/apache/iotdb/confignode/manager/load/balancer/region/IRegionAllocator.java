@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.manager.load.balancer.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
 import java.util.List;
@@ -41,7 +41,7 @@ public interface IRegionAllocator {
    * @return The optimal TRegionReplicaSet derived by the specific algorithm
    */
   TRegionReplicaSet allocateRegion(
-      List<TDataNodeInfo> onlineDataNodes,
+      List<TDataNodeConfiguration> onlineDataNodes,
       List<TRegionReplicaSet> allocatedRegions,
       int replicationFactor,
       TConsensusGroupId consensusGroupId);

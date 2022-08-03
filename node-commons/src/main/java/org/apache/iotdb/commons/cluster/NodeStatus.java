@@ -20,6 +20,10 @@ package org.apache.iotdb.commons.cluster;
 
 /** Node status for showing cluster */
 public enum NodeStatus {
+  // Node registered
+  Registered("Registered"),
+  // Node online ,right now Online is Running
+  Online("Online"),
   // Node running properly
   Running("Running"),
   // Node connection failure

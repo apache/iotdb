@@ -209,7 +209,7 @@ public class SessionPoolTest {
       service.submit(
           () -> {
             try {
-              SessionDataSetWrapper wrapper = pool.executeRawDataQuery(pathList, no, no + 1);
+              SessionDataSetWrapper wrapper = pool.executeRawDataQuery(pathList, no, no + 1, 60000);
               if (wrapper.hasNext()) {
                 Assert.assertEquals(no, wrapper.sessionDataSet.next().getTimestamp());
               }

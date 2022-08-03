@@ -53,6 +53,7 @@ keyWords
     | CLEAR
     | CLUSTER
     | CONCAT
+    | CONFIGNODES
     | CONFIGURATION
     | CONTINUOUS
     | COUNT
@@ -61,6 +62,7 @@ keyWords
     | CQS
     | CREATE
     | DATA
+    | DATANODES
     | DEBUG
     | DELETE
     | DESC
