@@ -146,7 +146,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetTTLPlanTest() throws IOException {
-    SetTTLPlan req0 = new SetTTLPlan("root.sg0", Long.MAX_VALUE);
+    SetTTLPlan req0 = new SetTTLPlan(Arrays.asList("root", "sg0"), Long.MAX_VALUE);
     SetTTLPlan req1 = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
