@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.trigger;
 
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
+import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.trigger.exception.TriggerExecutionException;
 import org.apache.iotdb.commons.trigger.exception.TriggerManagementException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -33,7 +34,7 @@ public interface ITriggerRegistrationService extends IService {
       String triggerName,
       TriggerEvent event,
       PartialPath fullPath,
-      String classPath,
+      String className,
       Map<String, String> attributes)
       throws TriggerManagementException, TriggerExecutionException;
 
@@ -44,4 +45,9 @@ public interface ITriggerRegistrationService extends IService {
   void inactivate(String triggerName) throws TriggerManagementException;
 
   QueryDataSet show();
+
+  @Override
+  default ServiceType getID() {
+    return ServiceType.TRIGGER_REGISTRATION_SERVICE;
+  }
 }

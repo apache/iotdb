@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.trigger.ITriggerRegistrationService;
 import org.apache.iotdb.commons.trigger.TriggerClassLoader;
 import org.apache.iotdb.commons.trigger.TriggerClassLoaderManager;
@@ -74,15 +73,15 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TriggerRegistrationService.class);
 
+  private final boolean enableIDTable;
   private final String logFileDir;
   private final String logFileName;
   private final int tLogBufferSize;
   private final String temporaryLogFileName;
   private final String libRoot;
-  private final boolean enableIDTable;
-  private final ConcurrentHashMap<String, TriggerExecutor> executors;
-
   private TriggerLogWriter logWriter;
+
+  private final ConcurrentHashMap<String, TriggerExecutor> executors;
 
   private TriggerRegistrationService(
       String systemDir, String libRoot, int tLogBufferSize, boolean enableIDTable) {
@@ -100,14 +99,14 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
       String triggerName,
       TriggerEvent event,
       PartialPath fullPath,
-      String classPath,
+      String className,
       Map<String, String> attributes)
       throws TriggerManagementException, TriggerExecutionException {
     IMNode imNode = tryGetMNode(fullPath);
-    checkIfRegistered(triggerName, classPath, imNode);
+    checkIfRegistered(triggerName, className, imNode);
     TriggerRegistrationInformation registrationInformation =
         TriggerRegistrationInformation.getCreateInfo(
-            triggerName, event, fullPath, classPath, attributes);
+            triggerName, event, fullPath, className, attributes);
     tryAppendRegistrationLog(registrationInformation);
     doRegister(registrationInformation, imNode);
   }
@@ -401,7 +400,7 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
 
   private void doRecoveryFromLogFile(File logFile) throws IOException, TriggerManagementException {
     for (TriggerRegistrationInformation registrationInformation :
-        recoverRegistrationInfos(logFile)) {
+        recoverRegistrationInfo(logFile)) {
       try {
         if (TriggerManagementType.CREATE == registrationInformation.getManagementType()) {
           boolean stopped = registrationInformation.isStopped();
@@ -419,7 +418,7 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
     }
   }
 
-  private Collection<TriggerRegistrationInformation> recoverRegistrationInfos(File logFile)
+  private Collection<TriggerRegistrationInformation> recoverRegistrationInfo(File logFile)
       throws IOException, TriggerManagementException {
     Map<String, TriggerRegistrationInformation> recoveredTriggerRegistrationInfo = new HashMap<>();
 
@@ -437,12 +436,16 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
           case START:
             registrationInformation =
                 recoveredTriggerRegistrationInfo.get(registrationInformation.getTriggerName());
-            registrationInformation.markAsStarted();
+            if (registrationInformation != null) {
+              registrationInformation.markAsStarted();
+            }
             break;
           case STOP:
             registrationInformation =
                 recoveredTriggerRegistrationInfo.get(registrationInformation.getTriggerName());
-            registrationInformation.markAsStopped();
+            if (registrationInformation != null) {
+              registrationInformation.markAsStopped();
+            }
             break;
           default:
             throw new TriggerManagementException(
@@ -499,11 +502,6 @@ public class TriggerRegistrationService implements ITriggerRegistrationService {
   public TriggerRegistrationInformation getRegistrationInformation(String triggerName)
       throws TriggerManagementException {
     return getTriggerExecutorWithExistenceCheck(triggerName).getRegistrationInformation();
-  }
-
-  @Override
-  public ServiceType getID() {
-    return ServiceType.TRIGGER_REGISTRATION_SERVICE;
   }
 
   public int executorSize() {
