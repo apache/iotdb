@@ -37,7 +37,7 @@ public class AuthorStatement extends Statement implements IConfigStatement {
   private String password;
   private String newPassword;
   private String[] privilegeList;
-  private PartialPath nodeName;
+  private List<PartialPath> nodeNameList;
 
   /**
    * AuthorOperator Constructor with AuthorType.
@@ -158,12 +158,12 @@ public class AuthorStatement extends Statement implements IConfigStatement {
     this.privilegeList = privilegeList;
   }
 
-  public PartialPath getNodeName() {
-    return nodeName;
+  public List<PartialPath> getNodeNameList() {
+    return nodeNameList != null ? nodeNameList : Collections.emptyList();
   }
 
-  public void setNodeNameList(PartialPath nodePath) {
-    this.nodeName = nodePath;
+  public void setNodeNameList(List<PartialPath> nodeNameList) {
+    this.nodeNameList = nodeNameList;
   }
 
   @Override
@@ -204,6 +204,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
 
   @Override
   public List<PartialPath> getPaths() {
-    return nodeName != null ? Collections.singletonList(nodeName) : Collections.emptyList();
+    return nodeNameList != null ? nodeNameList : Collections.emptyList();
   }
 }

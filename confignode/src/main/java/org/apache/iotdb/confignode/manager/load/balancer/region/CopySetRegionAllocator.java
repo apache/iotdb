@@ -19,7 +19,7 @@
 package org.apache.iotdb.confignode.manager.load.balancer.region;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
-import org.apache.iotdb.common.rpc.thrift.TDataNodeInfo;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
@@ -33,8 +33,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Allocate Region by CopySet algorithm. Reference:
- * https://www.usenix.org/conference/atc13/technical-sessions/presentation/cidon
+ * Allocate Region by CopySet algorithm. Reference: <a
+ * href="https://www.usenix.org/conference/atc13/technical-sessions/presentation/cidon">...</a>
  */
 public class CopySetRegionAllocator implements IRegionAllocator {
 
@@ -50,7 +50,7 @@ public class CopySetRegionAllocator implements IRegionAllocator {
 
   @Override
   public TRegionReplicaSet allocateRegion(
-      List<TDataNodeInfo> onlineDataNodes,
+      List<TDataNodeConfiguration> onlineDataNodes,
       List<TRegionReplicaSet> allocatedRegions,
       int replicationFactor,
       TConsensusGroupId consensusGroupId) {
@@ -79,15 +79,15 @@ public class CopySetRegionAllocator implements IRegionAllocator {
   }
 
   private void buildWeightList(
-      List<TDataNodeInfo> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions) {
+      List<TDataNodeConfiguration> onlineDataNodes, List<TRegionReplicaSet> allocatedRegions) {
 
     // TODO: The remaining disk capacity of DataNode can also be calculated into the weightList
-
+    this.weightList.clear();
     int maximumRegionNum = 0;
     Map<TDataNodeLocation, Integer> countMap = new HashMap<>();
-    for (TDataNodeInfo dataNodeInfo : onlineDataNodes) {
-      maxId = Math.max(maxId, dataNodeInfo.getLocation().getDataNodeId());
-      countMap.put(dataNodeInfo.getLocation(), 0);
+    for (TDataNodeConfiguration dataNodeConfiguration : onlineDataNodes) {
+      maxId = Math.max(maxId, dataNodeConfiguration.getLocation().getDataNodeId());
+      countMap.put(dataNodeConfiguration.getLocation(), 0);
     }
     for (TRegionReplicaSet regionReplicaSet : allocatedRegions) {
       for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {

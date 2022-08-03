@@ -22,13 +22,12 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.constant.CrossCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.CrossSpaceCompactionResource;
-import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceCompactionFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.RewriteCompactionFileSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -39,11 +38,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
@@ -115,9 +115,19 @@ public class CompactionUtils {
           tsFileResource);
     }
     // update each target mods file.
-    for (TsFileResource tsFileResource : targetResources) {
-      updateOneTargetMods(
-          tsFileResource, seqFileInfoMap.get(tsFileResource.getTsFile().getName()), unseqResources);
+    for (TsFileResource targetResource : targetResources) {
+      TsFileResource seqFile = seqFileInfoMap.get(targetResource.getTsFile().getName());
+      Set<Modification> modifications = new HashSet<>();
+      if (seqFile != null) {
+        // get compaction mods from its corresponding source seq file
+        modifications.addAll(ModificationFile.getCompactionMods(seqFile).getModifications());
+      }
+      // get compaction mods from all source unseq files
+      for (TsFileResource unseqFile : unseqResources) {
+        modifications.addAll(ModificationFile.getCompactionMods(unseqFile).getModifications());
+      }
+
+      updateOneTargetMods(targetResource, modifications);
     }
   }
 
@@ -127,15 +137,20 @@ public class CompactionUtils {
    */
   public static void combineModsInInnerCompaction(
       Collection<TsFileResource> sourceFiles, TsFileResource targetTsFile) throws IOException {
-    List<Modification> modifications = new ArrayList<>();
+    Set<Modification> modifications = new HashSet<>();
     for (TsFileResource mergeTsFile : sourceFiles) {
       try (ModificationFile sourceCompactionModificationFile =
           ModificationFile.getCompactionMods(mergeTsFile)) {
         modifications.addAll(sourceCompactionModificationFile.getModifications());
       }
     }
+    updateOneTargetMods(targetTsFile, modifications);
+  }
+
+  private static void updateOneTargetMods(
+      TsFileResource targetFile, Set<Modification> modifications) throws IOException {
     if (!modifications.isEmpty()) {
-      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetTsFile)) {
+      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetFile)) {
         for (Modification modification : modifications) {
           // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
           // change after compaction
@@ -144,27 +159,6 @@ public class CompactionUtils {
         }
       }
     }
-  }
-
-  private static void updateOneTargetMods(
-      TsFileResource targetFile, TsFileResource seqFile, List<TsFileResource> unseqFiles)
-      throws IOException {
-    // write mods in the seq file
-    if (seqFile != null) {
-      ModificationFile seqCompactionModificationFile = ModificationFile.getCompactionMods(seqFile);
-      for (Modification modification : seqCompactionModificationFile.getModifications()) {
-        targetFile.getModFile().write(modification);
-      }
-    }
-    // write mods in all unseq files
-    for (TsFileResource unseqFile : unseqFiles) {
-      ModificationFile compactionUnseqModificationFile =
-          ModificationFile.getCompactionMods(unseqFile);
-      for (Modification modification : compactionUnseqModificationFile.getModifications()) {
-        targetFile.getModFile().write(modification);
-      }
-    }
-    targetFile.getModFile().close();
   }
 
   public static void deleteCompactionModsFile(
@@ -202,8 +196,7 @@ public class CompactionUtils {
   public static boolean deleteTsFile(TsFileResource seqFile) {
     try {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.setStatus(TsFileResourceStatus.DELETED);
-      seqFile.delete();
+      seqFile.remove();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
       return false;
@@ -229,7 +222,7 @@ public class CompactionUtils {
     }
   }
 
-  public static ICrossSpaceMergeFileSelector getCrossSpaceFileSelector(
+  public static ICrossSpaceCompactionFileSelector getCrossSpaceFileSelector(
       long budget, CrossSpaceCompactionResource resource) {
     CrossCompactionSelector strategy =
         IoTDBDescriptor.getInstance().getConfig().getCrossCompactionSelector();

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import javax.annotation.Nullable;
@@ -62,14 +62,14 @@ public class GroupByLevelNode extends MultiChildNode {
   // Its value will be null if there is no `group by time` clause.
   @Nullable protected GroupByTimeParameter groupByTimeParameter;
 
-  protected OrderBy scanOrder;
+  protected Ordering scanOrder;
 
   public GroupByLevelNode(
       PlanNodeId id,
       List<PlanNode> children,
       List<GroupByLevelDescriptor> groupByLevelDescriptors,
       GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id, children);
     this.groupByLevelDescriptors = groupByLevelDescriptors;
     this.groupByTimeParameter = groupByTimeParameter;
@@ -80,7 +80,7 @@ public class GroupByLevelNode extends MultiChildNode {
       PlanNodeId id,
       List<GroupByLevelDescriptor> groupByLevelDescriptors,
       GroupByTimeParameter groupByTimeParameter,
-      OrderBy scanOrder) {
+      Ordering scanOrder) {
     super(id);
     this.groupByLevelDescriptors = groupByLevelDescriptors;
     this.groupByTimeParameter = groupByTimeParameter;
@@ -173,7 +173,7 @@ public class GroupByLevelNode extends MultiChildNode {
     if (isNull == 1) {
       groupByTimeParameter = GroupByTimeParameter.deserialize(byteBuffer);
     }
-    OrderBy scanOrder = OrderBy.values()[ReadWriteIOUtils.readInt(byteBuffer)];
+    Ordering scanOrder = Ordering.values()[ReadWriteIOUtils.readInt(byteBuffer)];
     PlanNodeId planNodeId = PlanNodeId.deserialize(byteBuffer);
     return new GroupByLevelNode(
         planNodeId, groupByLevelDescriptors, groupByTimeParameter, scanOrder);
@@ -184,7 +184,7 @@ public class GroupByLevelNode extends MultiChildNode {
     return groupByTimeParameter;
   }
 
-  public OrderBy getScanOrder() {
+  public Ordering getScanOrder() {
     return scanOrder;
   }
 

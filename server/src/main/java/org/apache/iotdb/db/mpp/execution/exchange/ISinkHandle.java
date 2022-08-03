@@ -68,6 +68,16 @@ public interface ISinkHandle {
   /**
    * Abort the sink handle. Discard all tsblocks which may still be in the memory buffer and cancel
    * the future returned by {@link #isFull()}.
+   *
+   * <p>Should only be called in abnormal case
    */
   void abort();
+
+  /**
+   * Close the sink handle. Discard all tsblocks which may still be in the memory buffer and
+   * complete the future returned by {@link #isFull()}.
+   *
+   * <p>Should only be called in normal case.
+   */
+  void close();
 }

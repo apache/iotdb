@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.AuthException;
@@ -50,8 +51,12 @@ import org.apache.iotdb.commons.utils.AuthUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -81,6 +86,8 @@ import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.sync.sender.manager.SchemaSyncManager;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -98,6 +105,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
@@ -536,8 +544,8 @@ public class LocalConfigNode {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Pair<Set<String>, Set<PartialPath>> getChildNodePathInNextLevel(PartialPath pathPattern)
-      throws MetadataException {
+  public Pair<Set<TSchemaNode>, Set<PartialPath>> getChildNodePathInNextLevel(
+      PartialPath pathPattern) throws MetadataException {
     return storageGroupSchemaManager.getChildNodePathInNextLevel(pathPattern);
   }
 
@@ -1053,8 +1061,10 @@ public class LocalConfigNode {
     String password = authorStatement.getPassWord();
     String newPassword = authorStatement.getNewPassword();
     Set<Integer> permissions = AuthUtils.strToPermissions(authorStatement.getPrivilegeList());
-    PartialPath partialPath = authorStatement.getNodeName();
-    String nodeName = partialPath == null ? null : partialPath.getFullPath();
+    List<String> nodeNameList =
+        authorStatement.getNodeNameList().stream()
+            .map(PartialPath::getFullPath)
+            .collect(Collectors.toList());
     switch (authorType) {
       case UPDATE_USER:
         iAuthorizer.updateUserPassword(userName, newPassword);
@@ -1073,12 +1083,16 @@ public class LocalConfigNode {
         break;
       case GRANT_ROLE:
         for (int i : permissions) {
-          iAuthorizer.grantPrivilegeToRole(roleName, nodeName, i);
+          for (String path : nodeNameList) {
+            iAuthorizer.grantPrivilegeToRole(roleName, path, i);
+          }
         }
         break;
       case GRANT_USER:
         for (int i : permissions) {
-          iAuthorizer.grantPrivilegeToUser(userName, nodeName, i);
+          for (String path : nodeNameList) {
+            iAuthorizer.grantPrivilegeToUser(userName, path, i);
+          }
         }
         break;
       case GRANT_ROLE_TO_USER:
@@ -1086,12 +1100,16 @@ public class LocalConfigNode {
         break;
       case REVOKE_USER:
         for (int i : permissions) {
-          iAuthorizer.revokePrivilegeFromUser(userName, nodeName, i);
+          for (String path : nodeNameList) {
+            iAuthorizer.revokePrivilegeFromUser(userName, path, i);
+          }
         }
         break;
       case REVOKE_ROLE:
         for (int i : permissions) {
-          iAuthorizer.revokePrivilegeFromRole(roleName, nodeName, i);
+          for (String path : nodeNameList) {
+            iAuthorizer.revokePrivilegeFromRole(roleName, path, i);
+          }
         }
         break;
       case REVOKE_ROLE_FROM_USER:
@@ -1195,16 +1213,20 @@ public class LocalConfigNode {
     } catch (AuthException e) {
       throw new AuthException(e);
     }
-    List<String> rolePrivilegesList = new ArrayList<>();
+    Set<String> rolePrivilegeSet = new HashSet<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-      if (authorStatement.getNodeName().getFullPath().equals("")
-          || AuthUtils.pathBelongsTo(
-              authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
-        rolePrivilegesList.add(pathPrivilege.toString());
+      if (authorStatement.getNodeNameList().isEmpty()) {
+        rolePrivilegeSet.add(pathPrivilege.toString());
+        continue;
+      }
+      for (PartialPath path : authorStatement.getNodeNameList()) {
+        if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+          rolePrivilegeSet.add(pathPrivilege.toString());
+        }
       }
     }
 
-    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
+    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, new ArrayList<>(rolePrivilegeSet));
     return permissionInfo;
   }
 
@@ -1228,27 +1250,45 @@ public class LocalConfigNode {
       }
     } else {
       List<String> rolePrivileges = new ArrayList<>();
+      Set<String> userPrivilegeSet = new HashSet<>();
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-        if (authorStatement.getNodeName().getFullPath().equals("")
-            || AuthUtils.pathBelongsTo(
-                authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
+        if (authorStatement.getNodeNameList().isEmpty()
+            && !userPrivilegeSet.contains(pathPrivilege.toString())) {
           rolePrivileges.add("");
-          userPrivilegesList.add(pathPrivilege.toString());
+          userPrivilegeSet.add(pathPrivilege.toString());
+          continue;
+        }
+        for (PartialPath path : authorStatement.getNodeNameList()) {
+          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())
+              && !userPrivilegeSet.contains(pathPrivilege.toString())) {
+            rolePrivileges.add("");
+            userPrivilegeSet.add(pathPrivilege.toString());
+          }
         }
       }
+      userPrivilegesList.addAll(userPrivilegeSet);
       for (String roleN : user.getRoleList()) {
         Role role = iAuthorizer.getRole(roleN);
         if (roleN == null) {
           continue;
         }
+        Set<String> rolePrivilegeSet = new HashSet<>();
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-          if (authorStatement.getNodeName().getFullPath().equals("")
-              || AuthUtils.pathBelongsTo(
-                  authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
+          if (authorStatement.getNodeNameList().isEmpty()
+              && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
             rolePrivileges.add(roleN);
-            userPrivilegesList.add(pathPrivilege.toString());
+            rolePrivilegeSet.add(pathPrivilege.toString());
+            continue;
+          }
+          for (PartialPath path : authorStatement.getNodeNameList()) {
+            if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())
+                && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
+              rolePrivileges.add(roleN);
+              rolePrivilegeSet.add(pathPrivilege.toString());
+            }
           }
         }
+        userPrivilegesList.addAll(rolePrivilegeSet);
       }
       permissionInfo.put(IoTDBConstant.COLUMN_ROLE, rolePrivileges);
     }
@@ -1265,7 +1305,23 @@ public class LocalConfigNode {
     return iAuthorizer.checkUserPrivileges(username, path, permission);
   }
 
+  public TSStatus executeMergeOperation() {
+    try {
+      storageEngine.mergeAll();
+    } catch (StorageEngineException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
   public TSStatus executeFlushOperation(TFlushReq tFlushReq) {
     return storageEngine.operateFlush(tFlushReq);
+  }
+
+  public TSStatus executeClearCacheOperation() {
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 }

@@ -23,6 +23,7 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.exception.sql.StatementAnalyzeException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
@@ -81,7 +82,7 @@ public class GroupByLevelController {
     }
 
     PartialPath rawPath = ((TimeSeriesOperand) expression.getExpressions().get(0)).getPath();
-    PartialPath groupedPath = generatePartialPathByLevel(isCountStar, rawPath.getNodes(), levels);
+    PartialPath groupedPath = generatePartialPathByLevel(isCountStar, rawPath, levels);
 
     checkDatatypeConsistency(
         groupedPath.getFullPath(), ((FunctionExpression) expression).getFunctionName(), rawPath);
@@ -179,7 +180,8 @@ public class GroupByLevelController {
    * @return result partial path
    */
   public PartialPath generatePartialPathByLevel(
-      boolean isCountStar, String[] nodes, int[] pathLevels) {
+      boolean isCountStar, PartialPath rawPath, int[] pathLevels) {
+    String[] nodes = rawPath.getNodes();
     Set<Integer> levelSet = new HashSet<>();
     for (int level : pathLevels) {
       levelSet.add(level);
@@ -200,7 +202,15 @@ public class GroupByLevelController {
     } else {
       transformedNodes.add(nodes[nodes.length - 1]);
     }
-    return new PartialPath(transformedNodes.toArray(new String[0]));
+
+    MeasurementPath groupedPath =
+        new MeasurementPath(
+            new PartialPath(transformedNodes.toArray(new String[0])),
+            ((MeasurementPath) rawPath).getMeasurementSchema());
+    if (rawPath.isMeasurementAliasExists()) {
+      groupedPath.setMeasurementAlias(rawPath.getMeasurementAlias());
+    }
+    return groupedPath;
   }
 
   public Map<Expression, Set<Expression>> getGroupedPathMap() {

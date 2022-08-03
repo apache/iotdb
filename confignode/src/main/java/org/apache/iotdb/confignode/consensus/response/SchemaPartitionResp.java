@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -87,6 +88,24 @@ public class SchemaPartitionResp implements DataSet {
           });
 
       resp.setSchemaRegionMap(schemaPartitionMap);
+    }
+
+    return resp;
+  }
+
+  public TSchemaPartitionTableResp convertToRpcSchemaPartitionTableResp() {
+    TSchemaPartitionTableResp resp = new TSchemaPartitionTableResp();
+    resp.setStatus(status);
+
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      Map<String, Map<TSeriesPartitionSlot, TConsensusGroupId>> schemaPartitionMap =
+          new ConcurrentHashMap<>();
+
+      schemaPartition.forEach(
+          (storageGroup, schemaPartitionTable) ->
+              schemaPartitionMap.put(storageGroup, schemaPartitionTable.getSchemaPartitionMap()));
+
+      resp.setSchemaPartitionTable(schemaPartitionMap);
     }
 
     return resp;

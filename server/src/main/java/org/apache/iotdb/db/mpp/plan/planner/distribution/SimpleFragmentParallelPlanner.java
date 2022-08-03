@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.mpp.plan.planner.distribution;
 
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
@@ -89,7 +91,8 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
             new PlanFragment(fragment.getId(), rootCopy),
             fragment.getId().genFragmentInstanceId(),
             timeFilter,
-            queryContext.getQueryType());
+            queryContext.getQueryType(),
+            queryContext.getTimeOut());
 
     // Get the target region for origin PlanFragment, then its instance will be distributed one
     // of them.
@@ -100,9 +103,35 @@ public class SimpleFragmentParallelPlanner implements IFragmentParallelPlaner {
     // redirected
     // to another host when scheduling
     fragmentInstance.setDataRegionAndHost(regionReplicaSet);
+    fragmentInstance.setHostDataNode(selectTargetDataNode(regionReplicaSet));
+
     fragmentInstance.getFragment().setTypeProvider(analysis.getTypeProvider());
     instanceMap.putIfAbsent(fragment.getId(), fragmentInstance);
     fragmentInstanceList.add(fragmentInstance);
+  }
+
+  private TDataNodeLocation selectTargetDataNode(TRegionReplicaSet regionReplicaSet) {
+    if (regionReplicaSet == null
+        || regionReplicaSet.getDataNodeLocations() == null
+        || regionReplicaSet.getDataNodeLocations().size() == 0) {
+      throw new IllegalArgumentException(
+          String.format("regionReplicaSet is invalid: %s", regionReplicaSet));
+    }
+    String readConsistencyLevel =
+        IoTDBDescriptor.getInstance().getConfig().getReadConsistencyLevel();
+    // TODO: (Chen Rongzhao) need to make the values of ReadConsistencyLevel as static variable or
+    // enums
+    boolean selectRandomDataNode = "weak".equals(readConsistencyLevel);
+    int targetIndex;
+    if (!selectRandomDataNode || queryContext.getSession() == null) {
+      targetIndex = 0;
+    } else {
+      targetIndex =
+          (int)
+              (queryContext.getSession().getSessionId()
+                  % regionReplicaSet.getDataNodeLocationsSize());
+    }
+    return regionReplicaSet.getDataNodeLocations().get(targetIndex);
   }
 
   private void calculateNodeTopologyBetweenInstance() {

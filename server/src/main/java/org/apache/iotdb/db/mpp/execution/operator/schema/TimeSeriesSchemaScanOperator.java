@@ -20,6 +20,7 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
 import org.apache.iotdb.db.mpp.execution.driver.SchemaDriverContext;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
@@ -41,6 +42,8 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private boolean orderByHeat;
 
+  private Map<Integer, Template> templateMap;
+
   public TimeSeriesSchemaScanOperator(
       PlanNodeId planNodeId,
       OperatorContext operatorContext,
@@ -51,12 +54,14 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
       String value,
       boolean isContains,
       boolean orderByHeat,
-      boolean isPrefixPath) {
+      boolean isPrefixPath,
+      Map<Integer, Template> templateMap) {
     super(planNodeId, operatorContext, limit, offset, partialPath, isPrefixPath);
     this.isContains = isContains;
     this.key = key;
     this.value = value;
     this.orderByHeat = orderByHeat;
+    this.templateMap = templateMap;
   }
 
   public String getKey() {
@@ -93,7 +98,10 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
 
   // ToDo @xinzhongtianxia remove this temporary converter after mpp online
   private ShowTimeSeriesPlan convertToPhysicalPlan() {
-    return new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, orderByHeat);
+    ShowTimeSeriesPlan plan =
+        new ShowTimeSeriesPlan(partialPath, isContains, key, value, limit, offset, false);
+    plan.setRelatedTemplate(templateMap);
+    return plan;
   }
 
   private void setColumns(ShowTimeSeriesResult series, TsBlockBuilder builder) {
@@ -118,8 +126,14 @@ public class TimeSeriesSchemaScanOperator extends SchemaQueryScanOperator {
   }
 
   private String mapToString(Map<String, String> map) {
-    return map.entrySet().stream()
-        .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
-        .collect(Collectors.joining(","));
+    String content =
+        map.entrySet().stream()
+            .map(e -> "\"" + e.getKey() + "\"" + ":" + "\"" + e.getValue() + "\"")
+            .collect(Collectors.joining(","));
+    if (content.isEmpty()) {
+      return "null";
+    } else {
+      return "{" + content + "}";
+    }
   }
 }

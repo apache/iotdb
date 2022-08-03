@@ -58,8 +58,12 @@
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
-            <version>${awaitility.version}</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>rewrite-tsfile-tool</artifactId>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
     <dependencyManagement>

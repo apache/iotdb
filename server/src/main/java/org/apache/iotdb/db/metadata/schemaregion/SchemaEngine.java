@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
@@ -32,7 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.MTreeAboveSG;
+import org.apache.iotdb.db.metadata.mtree.ConfigMTree;
 import org.apache.iotdb.db.metadata.rescon.SchemaResourceManager;
 import org.apache.iotdb.db.metadata.visitor.SchemaExecutionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
@@ -61,15 +62,15 @@ public class SchemaEngine {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  private MTreeAboveSG sharedPrefixTree;
+  private ConfigMTree sharedPrefixTree;
 
   private Map<SchemaRegionId, ISchemaRegion> schemaRegionMap;
   private SchemaEngineMode schemaRegionStoredMode;
 
   private ScheduledExecutorService timedForceMLogThread;
 
-  public void write(SchemaRegionId schemaRegionId, PlanNode planNode) {
-    planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
+  public TSStatus write(SchemaRegionId schemaRegionId, PlanNode planNode) {
+    return planNode.accept(new SchemaExecutionVisitor(), schemaRegionMap.get(schemaRegionId));
   }
 
   private static class SchemaEngineManagerHolder {
@@ -102,7 +103,7 @@ public class SchemaEngine {
     SchemaResourceManager.initSchemaResource();
 
     schemaRegionMap = new ConcurrentHashMap<>();
-    sharedPrefixTree = new MTreeAboveSG();
+    sharedPrefixTree = new ConfigMTree();
 
     Map<PartialPath, List<SchemaRegionId>> schemaRegionInfo = initSchemaRegion();
 

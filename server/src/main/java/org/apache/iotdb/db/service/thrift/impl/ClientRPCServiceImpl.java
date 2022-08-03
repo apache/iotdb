@@ -20,6 +20,7 @@ package org.apache.iotdb.db.service.thrift.impl;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.utils.PathUtils;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -27,6 +28,7 @@ import org.apache.iotdb.db.auth.AuthorizerManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
+import org.apache.iotdb.db.metadata.template.TemplateQueryType;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.plan.Coordinator;
 import org.apache.iotdb.db.mpp.plan.analyze.ClusterPartitionFetcher;
@@ -50,6 +52,8 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateMultiTimeSeriesStat
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
@@ -99,6 +103,8 @@ import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
 
 import io.airlift.concurrent.SetThreadName;
 import org.apache.thrift.TException;
@@ -110,6 +116,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.apache.iotdb.db.service.basic.ServiceProvider.AUDIT_LOGGER;
 import static org.apache.iotdb.db.service.basic.ServiceProvider.CONFIG;
@@ -542,6 +549,11 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
           StatementGenerator.createStatement(
               statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
 
+      if (s == null) {
+        return RpcUtils.getTSExecuteStatementResp(
+            RpcUtils.getStatus(
+                TSStatusCode.SQL_PARSE_ERROR, "This operation type is not supported"));
+      }
       // permission check
       TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -560,7 +572,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               statement,
               PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              SCHEMA_FETCHER,
+              req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && result.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
@@ -597,7 +610,60 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus executeBatchStatement(TSExecuteBatchStatementReq req) {
-    throw new UnsupportedOperationException();
+    long t1 = System.currentTimeMillis();
+    List<TSStatus> results = new ArrayList<>();
+    boolean isAllSuccessful = true;
+    if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+      return getNotLoggedInStatus();
+    }
+
+    for (int i = 0; i < req.getStatements().size(); i++) {
+      String statement = req.getStatements().get(i);
+      try {
+        Statement s =
+            StatementGenerator.createStatement(
+                statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
+        if (s == null) {
+          return RpcUtils.getStatus(
+              TSStatusCode.EXECUTE_STATEMENT_ERROR, "This operation type is not supported");
+        }
+        // permission check
+        TSStatus status = AuthorityChecker.checkAuthority(s, req.sessionId);
+        if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          return status;
+        }
+
+        QUERY_FREQUENCY_RECORDER.incrementAndGet();
+        AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, s);
+
+        long queryId = SESSION_MANAGER.requestQueryId(false);
+        long t2 = System.currentTimeMillis();
+        // create and cache dataset
+        ExecutionResult result =
+            COORDINATOR.execute(
+                s,
+                queryId,
+                SESSION_MANAGER.getSessionInfo(req.sessionId),
+                statement,
+                PARTITION_FETCHER,
+                SCHEMA_FETCHER,
+                config.getQueryTimeoutThreshold());
+        addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+        results.add(result.status);
+      } catch (Exception e) {
+        LOGGER.error("Error occurred when executing executeBatchStatement: ", e);
+        TSStatus status =
+            onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_BATCH_STATEMENT);
+        if (status.getCode() != TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
+          isAllSuccessful = false;
+        }
+        results.add(status);
+      }
+    }
+    addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
+    return isAllSuccessful
+        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
+        : RpcUtils.getStatus(results);
   }
 
   @Override
@@ -1078,7 +1144,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              SCHEMA_FETCHER,
+              req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException("error code: " + result.status);
@@ -1138,7 +1205,8 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
               SESSION_MANAGER.getSessionInfo(req.sessionId),
               "",
               PARTITION_FETCHER,
-              SCHEMA_FETCHER);
+              SCHEMA_FETCHER,
+              req.getTimeout());
 
       if (result.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         throw new RuntimeException("error code: " + result.status);
@@ -1179,8 +1247,45 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSStatus createSchemaTemplate(TSCreateSchemaTemplateReq req) {
-    // todo: check measurement using isLegalSingleMeasurements()
-    throw new UnsupportedOperationException();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} create schema template {}",
+            SESSION_MANAGER.getCurrSessionId(),
+            req.getName());
+      }
+
+      // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
+      CreateSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (IoTDBException e) {
+      return onIoTDBException(e, OperationType.CREATE_SCHEMA_TEMPLATE, e.getErrorCode());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.CREATE_SCHEMA_TEMPLATE, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override
@@ -1196,12 +1301,155 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
 
   @Override
   public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) {
-    throw new UnsupportedOperationException();
+    TSQueryTemplateResp resp = new TSQueryTemplateResp();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        resp.setStatus(getNotLoggedInStatus());
+        return resp;
+      }
+
+      Statement statement = StatementGenerator.createStatement(req);
+      if (statement == null) {
+        resp.setStatus(
+            RpcUtils.getStatus(
+                TSStatusCode.UNSUPPORTED_OPERATION,
+                TemplateQueryType.values()[req.getQueryType()].name() + "has not been supported."));
+        return resp;
+      }
+      switch (TemplateQueryType.values()[req.getQueryType()]) {
+        case SHOW_MEASUREMENTS:
+          resp.setQueryType(TemplateQueryType.SHOW_MEASUREMENTS.ordinal());
+          break;
+        case SHOW_TEMPLATES:
+          resp.setQueryType(TemplateQueryType.SHOW_TEMPLATES.ordinal());
+          break;
+        case SHOW_SET_TEMPLATES:
+          resp.setQueryType(TemplateQueryType.SHOW_SET_TEMPLATES.ordinal());
+          break;
+        case SHOW_USING_TEMPLATES:
+          resp.setQueryType(TemplateQueryType.SHOW_USING_TEMPLATES.ordinal());
+          break;
+      }
+      return executeTemplateQueryStatement(statement, req, resp);
+    } catch (Exception e) {
+      resp.setStatus(
+          onNPEOrUnexpectedException(
+              e, OperationType.EXECUTE_QUERY_STATEMENT, TSStatusCode.EXECUTE_STATEMENT_ERROR));
+      return resp;
+    }
+  }
+
+  private TSQueryTemplateResp executeTemplateQueryStatement(
+      Statement statement, TSQueryTemplateReq req, TSQueryTemplateResp resp) {
+    long startTime = System.currentTimeMillis();
+    try {
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        resp.setStatus(status);
+        return resp;
+      }
+
+      QUERY_FREQUENCY_RECORDER.incrementAndGet();
+      AUDIT_LOGGER.debug("Session {} execute Query: {}", req.sessionId, statement);
+
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      // create and cache dataset
+      ExecutionResult executionResult =
+          COORDINATOR.execute(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              null,
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER,
+              config.getQueryTimeoutThreshold());
+
+      if (executionResult.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()
+          && executionResult.status.code != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        resp.setStatus(executionResult.status);
+        return resp;
+      }
+
+      IQueryExecution queryExecution = COORDINATOR.getQueryExecution(queryId);
+
+      try (SetThreadName threadName = new SetThreadName(executionResult.queryId.getId())) {
+        List<String> result = new ArrayList<>();
+        while (queryExecution.hasNextResult()) {
+          Optional<TsBlock> tsBlock;
+          try {
+            tsBlock = queryExecution.getBatchResult();
+          } catch (IoTDBException e) {
+            throw new RuntimeException("Fetch Schema failed. ", e);
+          }
+          if (!tsBlock.isPresent() || tsBlock.get().isEmpty()) {
+            break;
+          }
+          Column column = tsBlock.get().getColumn(0);
+          for (int i = 0; i < column.getPositionCount(); i++) {
+            result.add(column.getBinary(i).getStringValue());
+          }
+        }
+        resp.setMeasurements(result);
+        resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
+        return resp;
+      }
+    } catch (Exception e) {
+      resp.setStatus(
+          onQueryException(e, "\"" + statement + "\". " + OperationType.EXECUTE_STATEMENT));
+      return null;
+    } finally {
+      addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+      long costTime = System.currentTimeMillis() - startTime;
+      if (costTime >= CONFIG.getSlowQueryThreshold()) {
+        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
+      }
+    }
   }
 
   @Override
   public TSStatus setSchemaTemplate(TSSetSchemaTemplateReq req) throws TException {
-    throw new UnsupportedOperationException();
+    try {
+      if (!SESSION_MANAGER.checkLogin(req.getSessionId())) {
+        return getNotLoggedInStatus();
+      }
+
+      if (AUDIT_LOGGER.isDebugEnabled()) {
+        AUDIT_LOGGER.debug(
+            "Session-{} set schema template {}.{}",
+            SESSION_MANAGER.getCurrSessionId(),
+            req.getTemplateName(),
+            req.getPrefixPath());
+      }
+
+      // Step 1: transfer from TSCreateSchemaTemplateReq to Statement
+
+      SetSchemaTemplateStatement statement = StatementGenerator.createStatement(req);
+
+      // permission check
+      TSStatus status = AuthorityChecker.checkAuthority(statement, req.sessionId);
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return status;
+      }
+
+      // Step 2: call the coordinator
+      long queryId = SESSION_MANAGER.requestQueryId(false);
+      ExecutionResult result =
+          COORDINATOR.execute(
+              statement,
+              queryId,
+              SESSION_MANAGER.getSessionInfo(req.sessionId),
+              "",
+              PARTITION_FETCHER,
+              SCHEMA_FETCHER);
+
+      return result.status;
+    } catch (IllegalPathException e) {
+      return onIoTDBException(e, OperationType.EXECUTE_STATEMENT, e.getErrorCode());
+    } catch (Exception e) {
+      return onNPEOrUnexpectedException(
+          e, OperationType.EXECUTE_STATEMENT, TSStatusCode.EXECUTE_STATEMENT_ERROR);
+    }
   }
 
   @Override

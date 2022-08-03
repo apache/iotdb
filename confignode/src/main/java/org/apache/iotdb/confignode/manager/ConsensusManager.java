@@ -28,7 +28,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlan;
-import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.statemachine.PartitionRegionStateMachine;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -151,17 +150,15 @@ public class ConsensusManager {
   /**
    * Remove a ConfigNode Peer out of PartitionRegion
    *
-   * @param removeConfigNodePlan RemoveConfigNodeReq
+   * @param tConfigNodeLocation config node location
    * @return True if successfully removePeer. False if another ConfigNode is being removed to the
    *     PartitionRegion
    */
-  public boolean removeConfigNodePeer(RemoveConfigNodePlan removeConfigNodePlan) {
+  public boolean removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation) {
     return consensusImpl
         .removePeer(
             consensusGroupId,
-            new Peer(
-                consensusGroupId,
-                removeConfigNodePlan.getConfigNodeLocation().getConsensusEndPoint()))
+            new Peer(consensusGroupId, tConfigNodeLocation.getConsensusEndPoint()))
         .isSuccess();
   }
 
@@ -184,9 +181,10 @@ public class ConsensusManager {
     for (int retry = 0; retry < 50; retry++) {
       Peer leaderPeer = consensusImpl.getLeader(consensusGroupId);
       if (leaderPeer != null) {
-        List<TConfigNodeLocation> onlineConfigNodes = getNodeManager().getRegisteredConfigNodes();
+        List<TConfigNodeLocation> registeredConfigNodes =
+            getNodeManager().getRegisteredConfigNodes();
         TConfigNodeLocation leaderLocation =
-            onlineConfigNodes.stream()
+            registeredConfigNodes.stream()
                 .filter(leader -> leader.getConsensusEndPoint().equals(leaderPeer.getEndpoint()))
                 .findFirst()
                 .orElse(null);

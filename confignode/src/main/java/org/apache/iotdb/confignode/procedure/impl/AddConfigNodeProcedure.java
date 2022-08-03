@@ -22,14 +22,9 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureSuspendedException;
-import org.apache.iotdb.confignode.procedure.exception.ProcedureYieldException;
-import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.state.AddConfigNodeState;
-import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
 import org.slf4j.Logger;
@@ -40,8 +35,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /** add config node procedure */
-public class AddConfigNodeProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, AddConfigNodeState> {
+public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeState> {
   private static final Logger LOG = LoggerFactory.getLogger(AddConfigNodeProcedure.class);
   private static final int retryThreshold = 5;
 
@@ -57,8 +51,7 @@ public class AddConfigNodeProcedure
   }
 
   @Override
-  protected Flow executeFromState(ConfigNodeProcedureEnv env, AddConfigNodeState state)
-      throws ProcedureSuspendedException, ProcedureYieldException, InterruptedException {
+  protected Flow executeFromState(ConfigNodeProcedureEnv env, AddConfigNodeState state) {
     if (tConfigNodeLocation == null) {
       return Flow.NO_MORE_STATE;
     }
@@ -80,6 +73,7 @@ public class AddConfigNodeProcedure
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
           env.applyConfigNode(tConfigNodeLocation);
+          env.broadCastTheLatestConfigNodeGroup();
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {
@@ -101,12 +95,15 @@ public class AddConfigNodeProcedure
 
   @Override
   protected void rollbackState(ConfigNodeProcedureEnv env, AddConfigNodeState state)
-      throws IOException, InterruptedException {
+      throws ProcedureException {
     switch (state) {
       case ADD_CONSENSUS_GROUP:
+        env.removeConsensusGroup(tConfigNodeLocation);
+        LOG.info("Rollback add consensus group:{}", tConfigNodeLocation);
+        break;
       case ADD_PEER:
+        env.removeConfigNodePeer(tConfigNodeLocation);
         LOG.info("Rollback remove peer:{}", tConfigNodeLocation);
-        // TODO: if remove consensus group and remove peer
         break;
     }
   }
@@ -119,33 +116,6 @@ public class AddConfigNodeProcedure
         return true;
     }
     return false;
-  }
-
-  @Override
-  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    if (configNodeProcedureEnv.getAddConfigNodeLock().tryLock()) {
-      LOG.info("{} acquire lock.", getProcId());
-      return ProcedureLockState.LOCK_ACQUIRED;
-    }
-    SimpleProcedureScheduler simpleProcedureScheduler =
-        (SimpleProcedureScheduler) configNodeProcedureEnv.getScheduler();
-    simpleProcedureScheduler.addWaiting(this);
-    LOG.info("{} wait for lock.", getProcId());
-    return ProcedureLockState.LOCK_EVENT_WAIT;
-  }
-
-  @Override
-  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    LOG.info("{} release lock.", getProcId());
-    configNodeProcedureEnv.getAddConfigNodeLock().unlock();
-    SimpleProcedureScheduler simpleProcedureScheduler =
-        (SimpleProcedureScheduler) configNodeProcedureEnv.getScheduler();
-    simpleProcedureScheduler.releaseWaiting();
-  }
-
-  @Override
-  protected boolean holdLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    return configNodeProcedureEnv.getAddConfigNodeLock().isHeldByCurrentThread();
   }
 
   @Override

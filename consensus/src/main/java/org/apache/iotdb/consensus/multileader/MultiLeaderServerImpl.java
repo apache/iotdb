@@ -25,7 +25,6 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
-import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.config.MultiLeaderConfig;
@@ -45,6 +44,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -84,6 +84,10 @@ public class MultiLeaderServerImpl {
     ConsensusReqReader reader =
         (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     long currentSearchIndex = reader.getCurrentSearchIndex();
+    if (1 == configuration.size()) {
+      // only one configuration means single replica.
+      reader.setSafelyDeletedSearchIndex(Long.MAX_VALUE);
+    }
     this.index = new AtomicLong(currentSearchIndex);
   }
 
@@ -110,9 +114,9 @@ public class MultiLeaderServerImpl {
           buildIndexedConsensusRequestForLocalRequest(request);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
         logger.info(
-            "DataRegion[{}]: index after build: safeIndex: {}, searchIndex: {}",
+            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
             thisNode.getGroupId(),
-            indexedConsensusRequest.getSafelyDeletedSearchIndex(),
+            getCurrentSafelyDeletedSearchIndex(),
             indexedConsensusRequest.getSearchIndex());
       }
       // TODO wal and memtable
@@ -170,6 +174,7 @@ public class MultiLeaderServerImpl {
       for (int i = 0; i < size; i++) {
         configuration.add(Peer.deserialize(buffer));
       }
+      logger.info("Recover multiLeader, configuration: {}", configuration);
     } catch (IOException e) {
       logger.error("Unexpected error occurs when recovering configuration", e);
     }
@@ -177,14 +182,12 @@ public class MultiLeaderServerImpl {
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
-    return new IndexedConsensusRequest(
-        index.incrementAndGet(), getCurrentSafelyDeletedSearchIndex(), request);
+    return new IndexedConsensusRequest(index.incrementAndGet(), Collections.singletonList(request));
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
-      ByteBufferConsensusRequest request) {
-    return new IndexedConsensusRequest(
-        ConsensusReqReader.DEFAULT_SEARCH_INDEX, getCurrentSafelyDeletedSearchIndex(), request);
+      List<IConsensusRequest> requests) {
+    return new IndexedConsensusRequest(ConsensusReqReader.DEFAULT_SEARCH_INDEX, requests);
   }
 
   /**

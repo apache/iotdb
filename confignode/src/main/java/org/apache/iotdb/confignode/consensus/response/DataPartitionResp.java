@@ -26,6 +26,7 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
+import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -102,6 +103,35 @@ public class DataPartitionResp implements DataSet {
           });
 
       resp.setDataPartitionMap(dataPartitionMap);
+    }
+
+    return resp;
+  }
+
+  public TDataPartitionTableResp convertToTDataPartitionTableResp() {
+    TDataPartitionTableResp resp = new TDataPartitionTableResp();
+    resp.setStatus(status);
+
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>>
+          dataPartitionMap = new ConcurrentHashMap<>();
+
+      dataPartition.forEach(
+          (storageGroup, dataPartitionTable) -> {
+            Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TConsensusGroupId>>>
+                seriesPartitionSlotMap = new ConcurrentHashMap<>();
+
+            dataPartitionTable
+                .getDataPartitionMap()
+                .forEach(
+                    (seriesPartitionSlot, seriesPartitionTable) ->
+                        seriesPartitionSlotMap.put(
+                            seriesPartitionSlot, seriesPartitionTable.getSeriesPartitionMap()));
+
+            dataPartitionMap.put(storageGroup, seriesPartitionSlotMap);
+          });
+
+      resp.setDataPartitionTable(dataPartitionMap);
     }
 
     return resp;

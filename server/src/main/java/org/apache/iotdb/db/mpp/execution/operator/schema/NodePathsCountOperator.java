@@ -71,19 +71,20 @@ public class NodePathsCountOperator implements ProcessOperator {
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    ListenableFuture<?> blocked = child.isBlocked();
-    while (child.hasNext() && blocked.isDone()) {
-      TsBlock tsBlock = child.next();
-      if (null != tsBlock && !tsBlock.isEmpty()) {
-        for (int i = 0; i < tsBlock.getPositionCount(); i++) {
-          String path = tsBlock.getColumn(0).getBinary(i).toString();
-          nodePaths.add(path);
+    while (!child.isFinished()) {
+      ListenableFuture<?> blocked = child.isBlocked();
+      if (!blocked.isDone()) {
+        return blocked;
+      }
+      if (child.hasNext()) {
+        TsBlock tsBlock = child.next();
+        if (null != tsBlock && !tsBlock.isEmpty()) {
+          for (int i = 0; i < tsBlock.getPositionCount(); i++) {
+            String path = tsBlock.getColumn(0).getBinary(i).toString();
+            nodePaths.add(path);
+          }
         }
       }
-      blocked = child.isBlocked();
-    }
-    if (!blocked.isDone()) {
-      return blocked;
     }
     return NOT_BLOCKED;
   }

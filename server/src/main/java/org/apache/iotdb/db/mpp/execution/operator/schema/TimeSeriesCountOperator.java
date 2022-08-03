@@ -34,6 +34,9 @@ public class TimeSeriesCountOperator implements SourceOperator {
   private final OperatorContext operatorContext;
   private final PartialPath partialPath;
   private final boolean isPrefixPath;
+  private final String key;
+  private final String value;
+  private final boolean isContains;
 
   private boolean isFinished;
 
@@ -46,11 +49,17 @@ public class TimeSeriesCountOperator implements SourceOperator {
       PlanNodeId sourceId,
       OperatorContext operatorContext,
       PartialPath partialPath,
-      boolean isPrefixPath) {
+      boolean isPrefixPath,
+      String key,
+      String value,
+      boolean isContains) {
     this.sourceId = sourceId;
     this.operatorContext = operatorContext;
     this.partialPath = partialPath;
     this.isPrefixPath = isPrefixPath;
+    this.key = key;
+    this.value = value;
+    this.isContains = isContains;
   }
 
   @Override
@@ -65,10 +74,17 @@ public class TimeSeriesCountOperator implements SourceOperator {
         new TsBlockBuilder(HeaderConstant.countTimeSeriesHeader.getRespDataTypes());
     int count = 0;
     try {
-      count =
-          ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
-              .getSchemaRegion()
-              .getAllTimeseriesCount(partialPath, isPrefixPath);
+      if (key != null && value != null) {
+        count =
+            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+                .getSchemaRegion()
+                .getAllTimeseriesCount(partialPath, isPrefixPath, key, value, isContains);
+      } else {
+        count =
+            ((SchemaDriverContext) operatorContext.getInstanceContext().getDriverContext())
+                .getSchemaRegion()
+                .getAllTimeseriesCount(partialPath, isPrefixPath);
+      }
     } catch (MetadataException e) {
       throw new RuntimeException(e.getMessage(), e);
     }

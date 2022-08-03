@@ -41,16 +41,6 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
 
   private LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
 
-  private static final class StandaloneAuthorityFetcherHolder {
-    private static final StandaloneAuthorityFetcher INSTANCE = new StandaloneAuthorityFetcher();
-
-    private StandaloneAuthorityFetcherHolder() {}
-  }
-
-  public static StandaloneAuthorityFetcher getInstance() {
-    return StandaloneAuthorityFetcher.StandaloneAuthorityFetcherHolder.INSTANCE;
-  }
-
   @Override
   public TSStatus checkUser(String username, String password) {
     try {
@@ -127,5 +117,10 @@ public class StandaloneAuthorityFetcher implements IAuthorityFetcher {
       future.setException(e);
     }
     return future;
+  }
+
+  @Override
+  public IAuthorCache getAuthorCache() {
+    throw new UnsupportedOperationException("AuthorCache in Standalone is not supported.");
   }
 }

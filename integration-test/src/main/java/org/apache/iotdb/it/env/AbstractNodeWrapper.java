@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.it.env;
 
+import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseNodeWrapper;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.file.PathUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.management.MBeanServerConnection;
 import javax.management.remote.JMXConnector;
@@ -49,8 +49,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -59,25 +61,29 @@ import java.util.stream.Stream;
 import static org.junit.Assert.fail;
 
 public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
-  private static final Logger logger = LoggerFactory.getLogger(AbstractNodeWrapper.class);
+  private static final Logger logger = IoTDBTestLogger.logger;
+  private static final String javaCmd =
+      System.getProperty("java.home")
+          + File.separator
+          + "bin"
+          + File.separator
+          + (SystemUtils.IS_OS_WINDOWS ? "java.exe" : "java");
   private final String templateNodePath =
       System.getProperty("user.dir") + File.separator + "target" + File.separator + "template-node";
-  private final String templateNodeLibPath =
+  protected static final String templateNodeLibPath =
       System.getProperty("user.dir")
           + File.separator
           + "target"
           + File.separator
           + "template-node-share"
           + File.separator
-          + "lib";
-  private final File NULL_FILE =
-      SystemUtils.IS_OS_WINDOWS ? new File("nul") : new File("/dev/null");
+          + "lib"
+          + File.separator
+          + "*";
   protected final String testClassName;
   protected final String testMethodName;
   protected final int[] portList;
-  private final int jmxPort;
-  private final String jmxUserName = "root";
-  private final String jmxPassword = "passw!d";
+  protected final int jmxPort;
   private final String TAB = "  ";
   private Process instance;
 
@@ -115,33 +121,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
               }
             });
       }
-      Path destLibPath = Paths.get(destPath, "lib");
-      FileUtils.forceMkdir(destLibPath.toFile());
-      // Create hard link for libs to decrease copy size
-      try (Stream<Path> s = Files.walk(Paths.get(this.templateNodeLibPath))) {
-        s.forEach(
-            source -> {
-              if (source.toFile().isFile()) {
-                Path destination =
-                    Paths.get(
-                        destLibPath.toString(),
-                        source.toString().substring(this.templateNodeLibPath.length()));
-                try {
-                  Files.createLink(destination, source);
-                } catch (IOException e) {
-                  throw new RuntimeException(e);
-                }
-              }
-            });
-      }
-      String startScriptPath = getStartScriptPath();
-      String stopScriptPath = getStopScriptPath();
-      if (!new File(startScriptPath).setExecutable(true)) {
-        logger.error("Change {} to executable failed.", startScriptPath);
-      }
-      if (!new File(stopScriptPath).setExecutable(true)) {
-        logger.error("Change {} to executable failed.", stopScriptPath);
-      }
       // Make sure the log dir exist, as the first file is output by starting script directly.
       FileUtils.createParentDirectories(new File(getLogPath()));
     } catch (IOException ex) {
@@ -174,10 +153,36 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
   public void start() {
     try {
       File stdoutFile = new File(getLogPath());
+      List<String> startCmd = new ArrayList<>();
+      startCmd.add(javaCmd);
+      if (!SystemUtils.IS_JAVA_1_8) {
+        startCmd.add("--add-opens=java.base/java.util.concurrent=ALL-UNNAMED");
+        startCmd.add("--add-opens=java.base/java.lang=ALL-UNNAMED");
+        startCmd.add("--add-opens=java.base/java.util=ALL-UNNAMED");
+        startCmd.add("--add-opens=java.base/java.nio=ALL-UNNAMED");
+        startCmd.add("--add-opens=java.base/java.io=ALL-UNNAMED");
+        startCmd.add("--add-opens=java.base/java.net=ALL-UNNAMED");
+      }
+      startCmd.addAll(
+          Arrays.asList(
+              "-Dcom.sun.management.jmxremote.port=" + jmxPort,
+              "-Dcom.sun.management.jmxremote.rmi.port=" + jmxPort,
+              "-Djava.rmi.server.randomIDs=true",
+              "-Dcom.sun.management.jmxremote.ssl=false",
+              "-Dcom.sun.management.jmxremote.authenticate=false",
+              "-Djava.rmi.server.hostname=" + getIp(),
+              "-Xms200m",
+              "-Xmx200m",
+              "-XX:MaxDirectMemorySize=200m",
+              "-Djdk.nio.maxCachedBufferSize=262144"));
+      addStartCmdParams(startCmd);
+      FileUtils.write(
+          stdoutFile, String.join(" ", startCmd) + "\n\n", StandardCharsets.UTF_8, true);
       ProcessBuilder processBuilder =
-          new ProcessBuilder(getStartScriptPath())
-              .redirectOutput(stdoutFile)
-              .redirectError(stdoutFile);
+          new ProcessBuilder(startCmd)
+              .redirectOutput(ProcessBuilder.Redirect.appendTo(stdoutFile))
+              .redirectError(ProcessBuilder.Redirect.appendTo(stdoutFile));
+      processBuilder.environment().put("CLASSPATH", templateNodeLibPath);
       this.instance = processBuilder.start();
       logger.info("In test {} {} started.", getTestLogDirName(), getId());
     } catch (IOException ex) {
@@ -191,25 +196,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       return;
     }
     this.instance.destroy();
-    // In Windows, the IoTDB process is started as a subprocess of the original batch script with a
-    // new pid, so we need to kill the new subprocess as well.
-    if (SystemUtils.IS_OS_WINDOWS) {
-      ProcessBuilder processBuilder =
-          new ProcessBuilder(getStopScriptPath())
-              .redirectOutput(NULL_FILE)
-              .redirectError(NULL_FILE);
-      processBuilder.environment().put("CONSOLE_LOG_LEVEL", "DEBUG");
-      Process p = null;
-      try {
-        p = processBuilder.start();
-        p.waitFor(5, TimeUnit.SECONDS);
-      } catch (IOException | InterruptedException e) {
-        logger.error("Stop instance in Windows failed", e);
-        if (p != null) {
-          p.destroyForcibly();
-        }
-      }
-    }
   }
 
   @Override
@@ -238,12 +224,6 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       try (FileWriter confOutput = new FileWriter(configPath)) {
         configProperties.store(confOutput, null);
       }
-      // Change JMX config
-      Path path = Paths.get(getEnvConfigPath());
-      String content = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
-      content = content.replaceAll("JMX_LOCAL=\"true\"", "JMX_LOCAL=\"false\"");
-      content = content.replaceAll("JMX_PORT=\"\\d+\"", String.format("JMX_PORT=\"%d\"", jmxPort));
-      Files.write(path, content.getBytes(StandardCharsets.UTF_8));
     } catch (IOException ex) {
       fail("Change the config of data node failed. " + ex);
     }
@@ -270,13 +250,9 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
 
   protected abstract String getConfigPath();
 
-  protected abstract String getEnvConfigPath();
-
   protected abstract void updateConfig(Properties properties);
 
-  protected abstract String getStartScriptPath();
-
-  protected abstract String getStopScriptPath();
+  protected abstract void addStartCmdParams(List<String> params);
 
   private String getLogPath() {
     return getLogDirPath() + File.separator + getId() + ".log";
@@ -292,7 +268,7 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
         + getTestLogDirName();
   }
 
-  private String getNodePath() {
+  protected String getNodePath() {
     return System.getProperty("user.dir") + File.separator + "target" + File.separator + getId();
   }
 
@@ -307,10 +283,8 @@ public abstract class AbstractNodeWrapper implements BaseNodeWrapper {
       logger.error("Construct JMX URL failed", e);
       return;
     }
-    Map<String, Object> environment =
-        Collections.singletonMap(JMXConnector.CREDENTIALS, new String[] {jmxUserName, jmxPassword});
 
-    try (JMXConnector connector = JMXConnectorFactory.connect(url, environment)) {
+    try (JMXConnector connector = JMXConnectorFactory.connect(url)) {
       MBeanServerConnection mbsc = connector.getMBeanServerConnection();
       ThreadMXBean tmbean =
           ManagementFactory.newPlatformMXBeanProxy(

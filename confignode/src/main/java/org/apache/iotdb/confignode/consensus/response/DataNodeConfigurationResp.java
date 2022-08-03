@@ -18,54 +18,40 @@
  */
 package org.apache.iotdb.confignode.consensus.response;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.List;
+import java.util.Map;
 
 public class DataNodeConfigurationResp implements DataSet {
 
   private TSStatus status;
-  private List<TConfigNodeLocation> configNodeList;
-  private Integer dataNodeId;
-  private TGlobalConfig globalConfig;
+  private Map<Integer, TDataNodeConfiguration> dataNodeConfigurationMap;
 
   public DataNodeConfigurationResp() {
-    this.dataNodeId = null;
-    this.globalConfig = null;
-  }
-
-  public TSStatus getStatus() {
-    return status;
+    // empty constructor
   }
 
   public void setStatus(TSStatus status) {
     this.status = status;
   }
 
-  public void setConfigNodeList(List<TConfigNodeLocation> configNodeList) {
-    this.configNodeList = configNodeList;
+  public TSStatus getStatus() {
+    return status;
   }
 
-  public void setDataNodeId(Integer dataNodeId) {
-    this.dataNodeId = dataNodeId;
+  public void setDataNodeConfigurationMap(
+      Map<Integer, TDataNodeConfiguration> dataNodeConfigurationMap) {
+    this.dataNodeConfigurationMap = dataNodeConfigurationMap;
   }
 
-  public void setGlobalConfig(TGlobalConfig globalConfig) {
-    this.globalConfig = globalConfig;
-  }
-
-  public void convertToRpcDataNodeRegisterResp(TDataNodeRegisterResp resp) {
+  public void convertToRpcDataNodeLocationResp(TDataNodeConfigurationResp resp) {
     resp.setStatus(status);
-    resp.setConfigNodeList(configNodeList);
-    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
-        || status.getCode() == TSStatusCode.DATANODE_ALREADY_REGISTERED.getStatusCode()) {
-      resp.setDataNodeId(dataNodeId);
-      resp.setGlobalConfig(globalConfig);
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      resp.setDataNodeConfigurationMap(dataNodeConfigurationMap);
     }
   }
 }

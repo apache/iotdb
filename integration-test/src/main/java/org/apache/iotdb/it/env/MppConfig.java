@@ -191,4 +191,17 @@ public class MppConfig implements BaseConfig {
     engineProperties.setProperty("primitive_array_size", String.valueOf(primitiveArraySize));
     return this;
   }
+
+  @Override
+  public BaseConfig setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+    engineProperties.setProperty(
+        "avg_series_point_number_threshold", String.valueOf(avgSeriesPointNumberThreshold));
+    return this;
+  }
+
+  @Override
+  public BaseConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
+    engineProperties.setProperty("max_tsblock_line_number", String.valueOf(maxTsBlockLineNumber));
+    return this;
+  }
 }

@@ -23,24 +23,41 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.common.block.column.BinaryColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 public class SchemaFetchMergeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
   private final List<Operator> children;
-
   private final int childrenCount;
+
   private int currentIndex;
 
-  public SchemaFetchMergeOperator(OperatorContext operatorContext, List<Operator> children) {
+  private boolean isReadingStorageGroupInfo;
+
+  private final List<String> storageGroupList;
+
+  public SchemaFetchMergeOperator(
+      OperatorContext operatorContext, List<Operator> children, List<String> storageGroupList) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.childrenCount = children.size();
+
     this.currentIndex = 0;
+
+    this.isReadingStorageGroupInfo = true;
+
+    this.storageGroupList = storageGroupList;
   }
 
   @Override
@@ -50,6 +67,11 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
+    if (isReadingStorageGroupInfo) {
+      isReadingStorageGroupInfo = false;
+      return generateStorageGroupInfo();
+    }
+
     if (children.get(currentIndex).hasNext()) {
       return children.get(currentIndex).next();
     } else {
@@ -60,12 +82,14 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
 
   @Override
   public boolean hasNext() {
-    return currentIndex < childrenCount;
+    return isReadingStorageGroupInfo || currentIndex < childrenCount;
   }
 
   @Override
   public ListenableFuture<?> isBlocked() {
-    return children.get(currentIndex).isBlocked();
+    return isReadingStorageGroupInfo || currentIndex >= children.size()
+        ? NOT_BLOCKED
+        : children.get(currentIndex).isBlocked();
   }
 
   @Override
@@ -78,5 +102,26 @@ public class SchemaFetchMergeOperator implements ProcessOperator {
     for (Operator child : children) {
       child.close();
     }
+  }
+
+  private TsBlock generateStorageGroupInfo() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try {
+      // to indicate this binary data is storage group info
+      ReadWriteIOUtils.write((byte) 0, outputStream);
+
+      ReadWriteIOUtils.write(storageGroupList.size(), outputStream);
+      for (String storageGroup : storageGroupList) {
+        ReadWriteIOUtils.write(storageGroup, outputStream);
+      }
+    } catch (IOException e) {
+      // Totally memory operation. This case won't happen.
+    }
+    return new TsBlock(
+        new TimeColumn(1, new long[] {0}),
+        new BinaryColumn(
+            1,
+            Optional.of(new boolean[] {false}),
+            new Binary[] {new Binary(outputStream.toByteArray())}));
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.schemaregion;
 
+import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
@@ -58,6 +59,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplateInClusterPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
@@ -864,6 +866,17 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
   }
 
+  @Override
+  public int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, String key, String value, boolean isContains)
+      throws MetadataException {
+    return mtree.getAllTimeseriesCount(
+        pathPattern,
+        isPrefixMatch,
+        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
+        true);
+  }
+
   /**
    * To calculate the count of devices for given path pattern. If using prefix match, the path
    * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
@@ -898,6 +911,23 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
   }
 
+  @Override
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      String key,
+      String value,
+      boolean isContains)
+      throws MetadataException {
+    return mtree.getMeasurementCountGroupByLevel(
+        pathPattern,
+        level,
+        isPrefixMatch,
+        tagManager.getMatchedTimeseriesInIndex(key, value, isContains),
+        true);
+  }
+
   // endregion
 
   // region Interfaces for level Node info Query
@@ -921,7 +951,8 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
    * @param pathPattern The given path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
+  public Set<TSchemaNode> getChildNodePathInNextLevel(PartialPath pathPattern)
+      throws MetadataException {
     return mtree.getChildNodePathInNextLevel(pathPattern);
   }
 
@@ -1005,6 +1036,12 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
       PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
+  }
+
+  @Override
+  public List<MeasurementPath> fetchSchema(
+      PartialPath pathPattern, Map<Integer, Template> templateMap) throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   public Pair<List<ShowTimeSeriesResult>, Integer> showTimeseries(
@@ -1796,6 +1833,17 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     } finally {
       mtree.unPinMNode(node);
     }
+  }
+
+  @Override
+  public void activateSchemaTemplate(ActivateTemplateInClusterPlan plan, Template template)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<String> getPathsUsingTemplate(int templateId) throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   public IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.ConstantIntermediateLayer;
@@ -57,6 +58,11 @@ public class ConstantOperand extends LeafOperand {
   public ConstantOperand(ByteBuffer byteBuffer) {
     dataType = TSDataType.deserializeFrom(byteBuffer);
     valueString = ReadWriteIOUtils.readString(byteBuffer);
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitConstantOperand(this, context);
   }
 
   public TSDataType getDataType() {

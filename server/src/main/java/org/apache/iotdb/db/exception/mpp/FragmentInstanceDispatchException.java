@@ -19,8 +19,21 @@
 
 package org.apache.iotdb.db.exception.mpp;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
+
 public class FragmentInstanceDispatchException extends Exception {
+
+  private TSStatus failureStatus;
+
   public FragmentInstanceDispatchException(Throwable t) {
     super(t);
+  }
+
+  public FragmentInstanceDispatchException(TSStatus failureStatus) {
+    this.failureStatus = failureStatus;
+  }
+
+  public TSStatus getFailureStatus() {
+    return failureStatus;
   }
 }
