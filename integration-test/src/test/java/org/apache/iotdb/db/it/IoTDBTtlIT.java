@@ -173,7 +173,8 @@ public class IoTDBTtlIT {
       for (int i = 100; i < 200; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)", now - 10000000 + i, i));
+                "INSERT INTO root.sg.TTL_SG3(timestamp, s1) VALUES (%d, %d)",
+                now - 10000000 + i, i));
       }
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.TTL_SG3")) {
@@ -192,7 +193,8 @@ public class IoTDBTtlIT {
       for (int i = 300; i < 400; i++) {
         statement.execute(
             String.format(
-                "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)", now - 10000000 + i, i));
+                "INSERT INTO root.sg.TTL_SG4(timestamp, s1) VALUES (%d, %d)",
+                now - 10000000 + i, i));
       }
 
       try (ResultSet resultSet = statement.executeQuery("SELECT s1 FROM root.sg.TTL_SG4")) {
