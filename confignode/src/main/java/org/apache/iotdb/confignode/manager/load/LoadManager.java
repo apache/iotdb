@@ -155,6 +155,7 @@ public class LoadManager {
     // Persist the allocation result
     getConsensusManager().write(createRegionGroupsPlan);
     // Broadcast the latest RegionRouteMap
+    LOGGER.info("Broadcast because new Regions created");
     broadcastLatestRegionRouteMap();
   }
 
@@ -303,6 +304,7 @@ public class LoadManager {
 
     if (existFailDownDataNode.get()) {
       // The RegionRouteMap must be broadcast if some DataNodes fail down
+      LOGGER.info("Broadcast because some DataNodes down");
       isNeedBroadcast = true;
     }
 
@@ -310,12 +312,14 @@ public class LoadManager {
       // Check the condition of leader routing policy
       if (existChangeLeaderSchemaRegionGroup.get()) {
         // Broadcast the RegionRouteMap if some SchemaRegionGroups change their leader
+        LOGGER.info("Broadcast because SchemaRegion change leader");
         isNeedBroadcast = true;
       }
       if (!conf.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.MultiLeaderConsensus)
           && existChangeLeaderDataRegionGroup.get()) {
         // Broadcast the RegionRouteMap if some DataRegionGroups change their leader
         // and the consensus protocol isn't MultiLeader
+        LOGGER.info("Broadcast because DataRegion change leader");
         isNeedBroadcast = true;
       }
     }
@@ -439,44 +443,44 @@ public class LoadManager {
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
     return getNodeManager().getRegisteredConfigNodes().stream()
         .filter(
-            registeredConfigNode ->
-                nodeCacheMap
-                    .get(registeredConfigNode.getConfigNodeId())
-                    .getNodeStatus()
-                    .equals(NodeStatus.Running))
+            registeredConfigNode -> {
+              int configNodeId = registeredConfigNode.getConfigNodeId();
+              return nodeCacheMap.containsKey(configNodeId)
+                  && nodeCacheMap.get(configNodeId).getNodeStatus().equals(NodeStatus.Running);
+            })
         .collect(Collectors.toList());
   }
 
   public List<TDataNodeConfiguration> getOnlineDataNodes(int dataNodeId) {
     return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
         .filter(
-            registeredDataNode ->
-                nodeCacheMap
-                    .get(registeredDataNode.getLocation().getDataNodeId())
-                    .getNodeStatus()
-                    .equals(NodeStatus.Running))
+            registeredDataNode -> {
+              int id = registeredDataNode.getLocation().getDataNodeId();
+              return nodeCacheMap.containsKey(id)
+                  && nodeCacheMap.get(id).getNodeStatus().equals(NodeStatus.Running);
+            })
         .collect(Collectors.toList());
   }
 
   public List<TConfigNodeLocation> getUnknownConfigNodes() {
     return getNodeManager().getRegisteredConfigNodes().stream()
         .filter(
-            registeredConfigNode ->
-                nodeCacheMap
-                    .get(registeredConfigNode.getConfigNodeId())
-                    .getNodeStatus()
-                    .equals(NodeStatus.Unknown))
+            registeredConfigNode -> {
+              int configNodeId = registeredConfigNode.getConfigNodeId();
+              return nodeCacheMap.containsKey(configNodeId)
+                  && nodeCacheMap.get(configNodeId).getNodeStatus().equals(NodeStatus.Unknown);
+            })
         .collect(Collectors.toList());
   }
 
   public List<TDataNodeConfiguration> getUnknownDataNodes(int dataNodeId) {
     return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
         .filter(
-            registeredDataNode ->
-                nodeCacheMap
-                    .get(registeredDataNode.getLocation().getDataNodeId())
-                    .getNodeStatus()
-                    .equals(NodeStatus.Unknown))
+            registeredDataNode -> {
+              int id = registeredDataNode.getLocation().getDataNodeId();
+              return nodeCacheMap.containsKey(id)
+                  && nodeCacheMap.get(id).getNodeStatus().equals(NodeStatus.Unknown);
+            })
         .collect(Collectors.toList());
   }
 
