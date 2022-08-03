@@ -736,8 +736,6 @@ public class IoTDBConfig {
   // wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private int queryCacheSizeInMetric = 50;
-
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
@@ -931,7 +929,7 @@ public class IoTDBConfig {
   private int triggerForwardMQTTPoolSize = 4;
 
   /** ThreadPool size for read operation in coordinator */
-  private int coordinatorReadExecutorSize = 50;
+  private int coordinatorReadExecutorSize = 20;
 
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;

@@ -80,10 +80,9 @@ public class ClusterScheduler implements IScheduler {
     if (queryType == QueryType.READ) {
       this.stateTracker =
           new FixedRateFragInsStateTracker(
-              stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
+              stateMachine, scheduledExecutor, instances, internalServiceClientManager);
       this.queryTerminator =
           new SimpleQueryTerminator(
-              executor,
               scheduledExecutor,
               queryContext.getQueryId(),
               instances,
