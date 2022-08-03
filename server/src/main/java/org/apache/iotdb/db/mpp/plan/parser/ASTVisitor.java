@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.mpp.plan.parser;
 
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.path.PartialPath;
@@ -97,6 +98,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
@@ -105,12 +107,15 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
@@ -144,6 +149,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -151,6 +157,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
@@ -187,7 +194,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   /** Data Definition Language (DDL) */
 
   // Create Timeseries ========================================================================
-
   @Override
   public Statement visitCreateNonAlignedTimeseries(
       IoTDBSqlParser.CreateNonAlignedTimeseriesContext ctx) {
@@ -519,8 +525,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
           new ShowTimeSeriesStatement(
               new PartialPath(SQLConstant.getSingleRootArray()), orderByHeat);
     }
-    if (ctx.showWhereClause() != null) {
-      parseShowWhereClause(ctx.showWhereClause(), showTimeSeriesStatement);
+    if (ctx.tagWhereClause() != null) {
+      parseTagWhereClause(ctx.tagWhereClause(), showTimeSeriesStatement);
     }
     if (ctx.limitClause() != null) {
       parseLimitClause(ctx.limitClause(), showTimeSeriesStatement);
@@ -528,19 +534,34 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return showTimeSeriesStatement;
   }
 
-  private void parseShowWhereClause(
-      IoTDBSqlParser.ShowWhereClauseContext ctx, ShowTimeSeriesStatement statement) {
+  private void parseTagWhereClause(IoTDBSqlParser.TagWhereClauseContext ctx, Statement statement) {
     IoTDBSqlParser.AttributeValueContext attributeValueContext;
+    String key;
+    String value;
+    boolean isContains;
     if (ctx.containsExpression() != null) {
-      statement.setContains(true);
+      isContains = true;
       attributeValueContext = ctx.containsExpression().attributeValue();
-      statement.setKey(parseAttributeKey(ctx.containsExpression().attributeKey()));
+      key = parseAttributeKey(ctx.containsExpression().attributeKey());
     } else {
-      statement.setContains(false);
+      isContains = false;
       attributeValueContext = ctx.attributePair().attributeValue();
-      statement.setKey(parseAttributeKey(ctx.attributePair().attributeKey()));
+      key = parseAttributeKey(ctx.attributePair().attributeKey());
     }
-    statement.setValue(parseAttributeValue(attributeValueContext));
+    value = parseAttributeValue(attributeValueContext);
+    if (statement instanceof ShowTimeSeriesStatement) {
+      ((ShowTimeSeriesStatement) statement).setContains(isContains);
+      ((ShowTimeSeriesStatement) statement).setKey(key);
+      ((ShowTimeSeriesStatement) statement).setValue(value);
+    } else if (statement instanceof CountTimeSeriesStatement) {
+      ((CountTimeSeriesStatement) statement).setContains(isContains);
+      ((CountTimeSeriesStatement) statement).setKey(key);
+      ((CountTimeSeriesStatement) statement).setValue(value);
+    } else if (statement instanceof CountLevelTimeSeriesStatement) {
+      ((CountLevelTimeSeriesStatement) statement).setContains(isContains);
+      ((CountLevelTimeSeriesStatement) statement).setKey(key);
+      ((CountLevelTimeSeriesStatement) statement).setValue(value);
+    }
   }
 
   // Show Storage Group
@@ -591,6 +612,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   // Count TimeSeries ========================================================================
   @Override
   public Statement visitCountTimeseries(CountTimeseriesContext ctx) {
+    Statement statement;
     PartialPath path;
     if (ctx.prefixPath() != null) {
       path = parsePrefixPath(ctx.prefixPath());
@@ -599,9 +621,14 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
     if (ctx.INTEGER_LITERAL() != null) {
       int level = Integer.parseInt(ctx.INTEGER_LITERAL().getText());
-      return new CountLevelTimeSeriesStatement(path, level);
+      statement = new CountLevelTimeSeriesStatement(path, level);
+    } else {
+      statement = new CountTimeSeriesStatement(path);
     }
-    return new CountTimeSeriesStatement(path);
+    if (ctx.tagWhereClause() != null) {
+      parseTagWhereClause(ctx.tagWhereClause(), statement);
+    }
+    return statement;
   }
 
   // Count Nodes ========================================================================
@@ -1575,17 +1602,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
 
     String privilege = parsePrivilege(ctx.privileges())[0];
-    PartialPath prefixPath;
-    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+    List<PartialPath> nodeNameList;
+    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
-      prefixPath = new PartialPath(path);
+      nodeNameList = Collections.singletonList(new PartialPath(path));
     } else {
       if (ctx.prefixPath() == null) {
         throw new SQLParserException("Invalid prefix path");
       }
-      prefixPath = parsePrefixPath(ctx.prefixPath());
+      nodeNameList =
+          ctx.prefixPath().stream()
+              .map(prefixPath -> parsePrefixPath(prefixPath))
+              .collect(Collectors.toList());
     }
-    authorStatement.setNodeNameList(prefixPath);
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -1596,7 +1626,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.GRANT_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(prefixPath -> parsePrefixPath(prefixPath))
+            .collect(Collectors.toList());
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -1620,17 +1654,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
     String privilege = parsePrivilege(ctx.privileges())[0];
 
-    PartialPath prefixPath;
-    if (privilege.equalsIgnoreCase("CREATE_USER")) {
+    List<PartialPath> nodeNameList;
+    if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
-      prefixPath = new PartialPath(path);
+      nodeNameList = Collections.singletonList(new PartialPath(path));
     } else {
       if (ctx.prefixPath() == null) {
         throw new SQLParserException("Invalid prefix path");
       }
-      prefixPath = parsePrefixPath(ctx.prefixPath());
+      nodeNameList =
+          ctx.prefixPath().stream()
+              .map(prefixPath -> parsePrefixPath(prefixPath))
+              .collect(Collectors.toList());
     }
-    authorStatement.setNodeNameList(prefixPath);
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -1641,7 +1678,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.REVOKE_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(prefixPath -> parsePrefixPath(prefixPath))
+            .collect(Collectors.toList());
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -1695,7 +1736,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement =
         new AuthorStatement(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
-    authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(prefixPath -> parsePrefixPath(prefixPath))
+            .collect(Collectors.toList());
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -1706,7 +1751,11 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement =
         new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream()
+            .map(prefixPath -> parsePrefixPath(prefixPath))
+            .collect(Collectors.toList());
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -2303,6 +2352,20 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return flushStatement;
   }
 
+  // Clear Cache
+
+  @Override
+  public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
+    ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
+
+    if (ctx.LOCAL() != null) {
+      clearCacheStatement.setCluster(false);
+    } else {
+      clearCacheStatement.setCluster(true);
+    }
+    return clearCacheStatement;
+  }
+
   // show region
 
   @Override
@@ -2339,10 +2402,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     return new ShowDataNodesStatement();
   }
 
+  // show confignodes
+
+  @Override
+  public Statement visitShowConfigNodes(IoTDBSqlParser.ShowConfigNodesContext ctx) {
+    return new ShowConfigNodesStatement();
+  }
+
+  // schema template
+
   @Override
   public Statement visitCreateSchemaTemplate(IoTDBSqlParser.CreateSchemaTemplateContext ctx) {
-    CreateSchemaTemplateStatement createTemplateStatement = new CreateSchemaTemplateStatement();
-    String name = parseIdentifier(ctx.templateName.getText());
+    String name = parseIdentifier(parseIdentifier(ctx.templateName.getText()));
     List<List<String>> measurementsList = new ArrayList<List<String>>();
     List<List<TSDataType>> dataTypesList = new ArrayList<List<TSDataType>>();
     List<List<TSEncoding>> encodingsList = new ArrayList<List<TSEncoding>>();
@@ -2384,10 +2455,8 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
       }
     }
 
-    createTemplateStatement =
-        new CreateSchemaTemplateStatement(
-            name, measurementsList, dataTypesList, encodingsList, compressorsList);
-    return createTemplateStatement;
+    return new CreateSchemaTemplateStatement(
+        name, measurementsList, dataTypesList, encodingsList, compressorsList);
   }
 
   void parseAttributeClause(
@@ -2481,37 +2550,42 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitShowSchemaTemplates(IoTDBSqlParser.ShowSchemaTemplatesContext ctx) {
-    ShowSchemaTemplateStatement showSchemaTemplateStatement = new ShowSchemaTemplateStatement();
-    return showSchemaTemplateStatement;
+    return new ShowSchemaTemplateStatement();
   }
 
   @Override
   public Statement visitShowNodesInSchemaTemplate(
       IoTDBSqlParser.ShowNodesInSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.children.get(0).getText();
-    ShowNodesInSchemaTemplateStatement showNodesInSchemaTemplateStatement =
-        new ShowNodesInSchemaTemplateStatement(templateName);
-    return showNodesInSchemaTemplateStatement;
+    String templateName = parseIdentifier(ctx.templateName.getText());
+    return new ShowNodesInSchemaTemplateStatement(templateName);
   }
 
   @Override
   public Statement visitSetSchemaTemplate(IoTDBSqlParser.SetSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.children.get(0).getText();
-    String path = ctx.getText();
-    SetSchemaTemplateStatement statement = null;
-    try {
-      statement = new SetSchemaTemplateStatement(templateName, path);
-    } catch (IllegalPathException e) {
-      throw new SQLParserException("set template: path error.");
-    }
-    return statement;
+    String templateName = parseIdentifier(ctx.templateName.getText());
+    return new SetSchemaTemplateStatement(templateName, parsePrefixPath(ctx.prefixPath()));
   }
 
   @Override
   public Statement visitShowPathsSetSchemaTemplate(
       IoTDBSqlParser.ShowPathsSetSchemaTemplateContext ctx) {
-    String templateName = ctx.templateName.children.get(0).getText();
-    ShowPathSetTemplateStatement statement = new ShowPathSetTemplateStatement(templateName);
+    String templateName = parseIdentifier(ctx.templateName.getText());
+    return new ShowPathSetTemplateStatement(templateName);
+  }
+
+  @Override
+  public Statement visitCreateTimeseriesOfSchemaTemplate(
+      IoTDBSqlParser.CreateTimeseriesOfSchemaTemplateContext ctx) {
+    ActivateTemplateStatement statement = new ActivateTemplateStatement();
+    statement.setPath(parsePrefixPath(ctx.prefixPath()));
     return statement;
   }
+
+  @Override
+  public Statement visitShowPathsUsingSchemaTemplate(
+      IoTDBSqlParser.ShowPathsUsingSchemaTemplateContext ctx) {
+    return new ShowPathsUsingTemplateStatement(parseIdentifier(ctx.templateName.getText()));
+  }
+
+  // schema template
 }

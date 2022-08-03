@@ -53,6 +53,7 @@ struct TDataNodeRegisterResp {
   2: required list<common.TConfigNodeLocation> configNodeList
   3: optional i32 dataNodeId
   4: optional TGlobalConfig globalConfig
+  5: optional binary templateInfo
 }
 
 struct TDataNodeRemoveResp {
@@ -173,7 +174,7 @@ struct TAuthorizerReq {
   4: required string password
   5: required string newPassword
   6: required set<i32> permissions
-  7: required string nodeName
+  7: required list<string> nodeNameList
 }
 
 struct TAuthorizerResp {
@@ -226,18 +227,8 @@ struct TConfigNodeRegisterReq {
   12: required string readConsistencyLevel
 }
 
-struct TConfigNodeRegisterResp {
-  1: required common.TSStatus status
-  2: optional common.TConsensusGroupId partitionRegionId
-  3: optional list<common.TConfigNodeLocation> configNodeList
-}
-
-// Show cluster
-struct TClusterNodeInfos {
-  1: required common.TSStatus status
-  2: required list<common.TConfigNodeLocation> configNodeList
-  3: required list<common.TDataNodeLocation> dataNodeList
-  4: required map<i32, string> nodeStatus
+struct TAddConsensusGroupReq {
+  1: required list<common.TConfigNodeLocation> configNodeList
 }
 
 // UDF
@@ -251,23 +242,65 @@ struct TDropFunctionReq {
   1: required string udfName
 }
 
-// show regions
+// Show cluster
+struct TShowClusterResp {
+  1: required common.TSStatus status
+  2: required list<common.TConfigNodeLocation> configNodeList
+  3: required list<common.TDataNodeLocation> dataNodeList
+  4: required map<i32, string> nodeStatus
+}
+
+// Show datanodes
+struct TDataNodeInfo {
+  1: required i32 dataNodeId
+  2: required string status
+  3: required string rpcAddresss
+  4: required i32 rpcPort
+  5: required i32 dataRegionNum
+  6: required i32 schemaRegionNum
+}
+
+struct TShowDataNodesResp {
+  1: required common.TSStatus status
+  2: optional list<TDataNodeInfo> dataNodesInfoList
+}
+
+// Show confignodes
+struct TConfigNodeInfo {
+  1: required i32 configNodeId
+  2: required string status
+  3: required string internalAddress
+  4: required i32 internalPort
+}
+
+struct TShowConfigNodesResp {
+  1: required common.TSStatus status
+  2: optional list<TConfigNodeInfo> configNodesInfoList
+}
+
+// Show regions
 struct TShowRegionReq {
   1: optional common.TConsensusGroupType consensusGroupType;
   2: optional list<string> storageGroups
 }
 
+struct TRegionInfo {
+  1: required common.TConsensusGroupId consensusGroupId
+  2: required string storageGroup
+  3: required i32 dataNodeId
+  4: required string clientRpcIp
+  5: required i32 clientRpcPort
+  6: required i64 seriesSlots
+  7: required i64 timeSlots
+  8: optional string status
+}
+
 struct TShowRegionResp {
   1: required common.TSStatus status
-  2: optional list<common.TRegionInfo> regionInfoList;
+  2: optional list<TRegionInfo> regionInfoList;
 }
 
-// show datanodes
-struct TShowDataNodesResp {
-  1: required common.TSStatus status
-  2: optional list<common.TDataNodesInfo> dataNodesInfoList
-}
-
+// Routing
 struct TRegionRouteMapResp {
   1: required common.TSStatus status
   // For version stamp
@@ -276,7 +309,6 @@ struct TRegionRouteMapResp {
   // The replica with higher sorting result in TRegionReplicaSet will have higher priority.
   3: optional map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
 }
-
 
 // Template
 struct TCreateSchemaTemplateReq {
@@ -314,9 +346,6 @@ service IConfigNodeRPCService {
   TDataNodeConfigurationResp getDataNodeConfiguration(i32 dataNodeId)
 
   common.TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req)
-
-  /* Show Cluster */
-  TClusterNodeInfos getAllClusterNodeInfos()
 
   /* StorageGroup */
 
@@ -378,9 +407,9 @@ service IConfigNodeRPCService {
 
   /* ConfigNode */
 
-  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
+  common.TSStatus registerConfigNode(TConfigNodeRegisterReq req)
 
-  common.TSStatus addConsensusGroup(TConfigNodeRegisterResp req)
+  common.TSStatus addConsensusGroup(TAddConsensusGroupReq req)
 
   common.TSStatus notifyRegisterSuccess()
 
@@ -400,7 +429,17 @@ service IConfigNodeRPCService {
 
   common.TSStatus flush(common.TFlushReq req)
 
-  /* Show Region */
+  /* ClearCache */
+
+  common.TSStatus clearCache(common.TClearCacheReq req)
+
+  /* Cluster Tools */
+
+  TShowClusterResp showCluster()
+
+  TShowDataNodesResp showDataNodes()
+
+  TShowConfigNodesResp showConfigNodes()
 
   TShowRegionResp showRegion(TShowRegionReq req)
 
@@ -411,10 +450,6 @@ service IConfigNodeRPCService {
   /* Get confignode heartbeat */
 
   i64 getConfigNodeHeartBeat(i64 timestamp)
-
-  /* Show DataNodes */
-
-  TShowDataNodesResp showDataNodes()
 
   /* Template */
 

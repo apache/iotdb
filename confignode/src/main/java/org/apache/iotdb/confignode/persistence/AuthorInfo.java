@@ -50,6 +50,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -145,7 +146,7 @@ public class AuthorInfo implements SnapshotProcessor {
     String password = authorPlan.getPassword();
     String newPassword = authorPlan.getNewPassword();
     Set<Integer> permissions = authorPlan.getPermissions();
-    String nodeName = authorPlan.getNodeName();
+    List<String> nodeNameList = authorPlan.getNodeNameList();
     try {
       switch (authorType) {
         case UpdateUser:
@@ -165,12 +166,16 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case GrantRole:
           for (int i : permissions) {
-            authorizer.grantPrivilegeToRole(roleName, nodeName, i);
+            for (String path : nodeNameList) {
+              authorizer.grantPrivilegeToRole(roleName, path, i);
+            }
           }
           break;
         case GrantUser:
           for (int i : permissions) {
-            authorizer.grantPrivilegeToUser(userName, nodeName, i);
+            for (String path : nodeNameList) {
+              authorizer.grantPrivilegeToUser(userName, path, i);
+            }
           }
           break;
         case GrantRoleToUser:
@@ -178,12 +183,16 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case RevokeUser:
           for (int i : permissions) {
-            authorizer.revokePrivilegeFromUser(userName, nodeName, i);
+            for (String path : nodeNameList) {
+              authorizer.revokePrivilegeFromUser(userName, path, i);
+            }
           }
           break;
         case RevokeRole:
           for (int i : permissions) {
-            authorizer.revokePrivilegeFromRole(roleName, nodeName, i);
+            for (String path : nodeNameList) {
+              authorizer.revokePrivilegeFromRole(roleName, path, i);
+            }
           }
           break;
         case RevokeRoleFromUser:
@@ -291,15 +300,20 @@ public class AuthorInfo implements SnapshotProcessor {
     } catch (AuthException e) {
       throw new AuthException(e);
     }
-    List<String> rolePrivilegesList = new ArrayList<>();
+    Set<String> rolePrivilegesSet = new HashSet<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-      if (plan.getNodeName().equals("")
-          || AuthUtils.pathOrBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
-        rolePrivilegesList.add(pathPrivilege.toString());
+      if (plan.getNodeNameList().isEmpty()) {
+        rolePrivilegesSet.add(pathPrivilege.toString());
+        continue;
+      }
+      for (String path : plan.getNodeNameList()) {
+        if (AuthUtils.pathOrBelongsTo(path, pathPrivilege.getPath())) {
+          rolePrivilegesSet.add(pathPrivilege.toString());
+        }
       }
     }
 
-    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
+    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, new ArrayList<>(rolePrivilegesSet));
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
@@ -329,25 +343,45 @@ public class AuthorInfo implements SnapshotProcessor {
       }
     } else {
       List<String> rolePrivileges = new ArrayList<>();
+      Set<String> userPrivilegeSet = new HashSet<>();
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-        if (plan.getNodeName().equals("")
-            || AuthUtils.pathOrBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
+        if (plan.getNodeNameList().isEmpty()
+            && !userPrivilegeSet.contains(pathPrivilege.toString())) {
           rolePrivileges.add("");
-          userPrivilegesList.add(pathPrivilege.toString());
+          userPrivilegeSet.add(pathPrivilege.toString());
+          continue;
+        }
+        for (String path : plan.getNodeNameList()) {
+          if (AuthUtils.pathOrBelongsTo(path, pathPrivilege.getPath())
+              && !userPrivilegeSet.contains(pathPrivilege.toString())) {
+            rolePrivileges.add("");
+            userPrivilegeSet.add(pathPrivilege.toString());
+          }
         }
       }
+      userPrivilegesList.addAll(userPrivilegeSet);
       for (String roleN : user.getRoleList()) {
         Role role = authorizer.getRole(roleN);
         if (roleN == null) {
           continue;
         }
+        Set<String> rolePrivilegeSet = new HashSet<>();
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-          if (plan.getNodeName().equals("")
-              || AuthUtils.pathOrBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
-            rolePrivileges.add(roleN);
-            userPrivilegesList.add(pathPrivilege.toString());
+          if (plan.getNodeNameList().isEmpty()
+              && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
+            rolePrivileges.add("");
+            rolePrivilegeSet.add(pathPrivilege.toString());
+            continue;
+          }
+          for (String path : plan.getNodeNameList()) {
+            if (AuthUtils.pathOrBelongsTo(path, pathPrivilege.getPath())
+                && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
+              rolePrivileges.add(roleN);
+              rolePrivilegeSet.add(pathPrivilege.toString());
+            }
           }
         }
+        userPrivilegesList.addAll(rolePrivilegeSet);
       }
       permissionInfo.put(IoTDBConstant.COLUMN_ROLE, rolePrivileges);
     }
@@ -388,10 +422,8 @@ public class AuthorInfo implements SnapshotProcessor {
   public TPermissionInfoResp getUserPermissionInfo(String username) throws AuthException {
     TPermissionInfoResp result = new TPermissionInfoResp();
     TUserResp tUserResp = new TUserResp();
-    TRoleResp tRoleResp = new TRoleResp();
     Map<String, TRoleResp> tRoleRespMap = new HashMap();
     List<String> userPrivilegeList = new ArrayList<>();
-    List<String> rolePrivilegeList = new ArrayList<>();
 
     // User permission information
     User user = authorizer.getUser(username);
@@ -411,14 +443,13 @@ public class AuthorInfo implements SnapshotProcessor {
     if (user.getRoleList() != null) {
       for (String roleName : user.getRoleList()) {
         Role role = authorizer.getRole(roleName);
-        tRoleResp.setRoleName(roleName);
+        List<String> rolePrivilegeList = new ArrayList<>();
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
           rolePrivilegeList.add(pathPrivilege.getPath());
           String privilegeIdList = pathPrivilege.getPrivileges().toString();
           rolePrivilegeList.add(privilegeIdList.substring(1, privilegeIdList.length() - 1));
         }
-        tRoleResp.setPrivilegeList(rolePrivilegeList);
-        tRoleRespMap.put(roleName, tRoleResp);
+        tRoleRespMap.put(roleName, new TRoleResp(roleName, rolePrivilegeList));
       }
     }
     result.setUserInfo(tUserResp);

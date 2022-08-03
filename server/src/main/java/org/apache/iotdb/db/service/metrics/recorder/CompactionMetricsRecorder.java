@@ -153,7 +153,7 @@ public class CompactionMetricsRecorder {
                   Metric.COMPACTION_TASK_COUNT.toString(),
                   MetricLevel.IMPORTANT,
                   Tag.NAME.toString(),
-                  "inner_compaction_count",
+                  "inner_compaction",
                   Tag.TYPE.toString(),
                   ((InnerSpaceCompactionTask) task).isSequence() ? "sequence" : "unsequence");
         } else {
@@ -164,7 +164,9 @@ public class CompactionMetricsRecorder {
                   Metric.COMPACTION_TASK_COUNT.toString(),
                   MetricLevel.IMPORTANT,
                   Tag.NAME.toString(),
-                  "cross_compaction_count");
+                  "cross_compaction",
+                  Tag.TYPE.toString(),
+                  "cross");
         }
         break;
       default:

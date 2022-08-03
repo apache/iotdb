@@ -35,10 +35,8 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
-import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
@@ -56,6 +54,11 @@ import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCac
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.enums.Metric;
+import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
@@ -66,7 +69,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -228,6 +230,7 @@ public class LoadManager {
                 0,
                 heartbeatInterval,
                 TimeUnit.MILLISECONDS);
+        LOGGER.info("Heartbeat service is started successfully.");
       }
 
       /* Start the load balancing service */
@@ -239,30 +242,24 @@ public class LoadManager {
                 0,
                 heartbeatInterval,
                 TimeUnit.MILLISECONDS);
+        LOGGER.info("LoadBalancing service is started successfully.");
       }
     }
   }
 
   /** Stop the heartbeat service and the load balancing service */
   public void stop() {
+    removeMetrics();
     LOGGER.debug("Stop Heartbeat Service and LoadBalancing Service of LoadManager");
     synchronized (scheduleMonitor) {
       if (currentHeartbeatFuture != null) {
         currentHeartbeatFuture.cancel(false);
         currentHeartbeatFuture = null;
+        LOGGER.info("Heartbeat service is stopped successfully.");
         currentLoadBalancingFuture.cancel(false);
         currentLoadBalancingFuture = null;
+        LOGGER.info("LoadBalancing service is stopped successfully.");
       }
-    }
-  }
-
-  /** loop body of the heartbeat thread */
-  private void heartbeatLoopBody() {
-    if (getConsensusManager().isLeader()) {
-      // Send heartbeat requests to all the registered DataNodes
-      pingRegisteredDataNodes(getNodeManager().getRegisteredDataNodes(-1));
-      // Send heartbeat requests to all the registered ConfigNodes
-      pingRegisteredConfigNodes(getNodeManager().getRegisteredConfigNodes());
     }
   }
 
@@ -295,35 +292,40 @@ public class LoadManager {
     if (isNeedBroadcast.get()) {
       broadcastLatestRegionRouteMap();
     }
+    addMetrics();
   }
 
   private void broadcastLatestRegionRouteMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genLatestRegionRouteMap();
-    List<TDataNodeConfiguration> onlineDataNodes = getOnlineDataNodes(-1);
-    CountDownLatch latch = new CountDownLatch(onlineDataNodes.size());
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+    getOnlineDataNodes(-1)
+        .forEach(
+            onlineDataNode ->
+                dataNodeLocationMap.put(
+                    onlineDataNode.getLocation().getDataNodeId(), onlineDataNode.getLocation()));
 
-    LOGGER.info("Begin to broadcast RegionRouteMap: {}", latestRegionRouteMap);
-    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
-    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
-    AtomicInteger index = new AtomicInteger();
-    onlineDataNodes.forEach(
-        dataNodeInfo -> {
-          handlerMap.put(
-              index.get(),
-              new UpdateRegionRouteMapHandler(
-                  dataNodeInfo.getLocation(),
-                  latch,
-                  DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
-                  dataNodeLocations,
-                  index.get()));
-          dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
-        });
+    LOGGER.info("Begin to broadcast RegionRouteMap:");
+    long broadcastTime = System.currentTimeMillis();
+    printRegionRouteMap(broadcastTime, latestRegionRouteMap);
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            new TRegionRouteReq(System.currentTimeMillis(), latestRegionRouteMap),
-            handlerMap,
-            dataNodeLocations);
+            new TRegionRouteReq(broadcastTime, latestRegionRouteMap),
+            dataNodeLocationMap,
+            DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
+            null);
     LOGGER.info("Broadcast the latest RegionRouteMap finished.");
+  }
+
+  /** loop body of the heartbeat thread */
+  private void heartbeatLoopBody() {
+    if (getConsensusManager().isLeader()) {
+      // Generate HeartbeatReq
+      THeartbeatReq heartbeatReq = genHeartbeatReq();
+      // Send heartbeat requests to all the registered DataNodes
+      pingRegisteredDataNodes(heartbeatReq, getNodeManager().getRegisteredDataNodes(-1));
+      // Send heartbeat requests to all the registered ConfigNodes
+      pingRegisteredConfigNodes(heartbeatReq, getNodeManager().getRegisteredConfigNodes());
+    }
   }
 
   private THeartbeatReq genHeartbeatReq() {
@@ -345,7 +347,8 @@ public class LoadManager {
    *
    * @param registeredDataNodes DataNodes that registered in cluster
    */
-  private void pingRegisteredDataNodes(List<TDataNodeConfiguration> registeredDataNodes) {
+  private void pingRegisteredDataNodes(
+      THeartbeatReq heartbeatReq, List<TDataNodeConfiguration> registeredDataNodes) {
     // Send heartbeat requests
     for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
       DataNodeHeartbeatHandler handler =
@@ -358,7 +361,7 @@ public class LoadManager {
               regionGroupCacheMap);
       AsyncDataNodeClientPool.getInstance()
           .getDataNodeHeartBeat(
-              dataNodeInfo.getLocation().getInternalEndPoint(), genHeartbeatReq(), handler);
+              dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
   }
 
@@ -367,8 +370,8 @@ public class LoadManager {
    *
    * @param registeredConfigNodes ConfigNodes that registered in cluster
    */
-  private void pingRegisteredConfigNodes(List<TConfigNodeLocation> registeredConfigNodes) {
-
+  private void pingRegisteredConfigNodes(
+      THeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
       if (configNodeLocation.getInternalEndPoint().equals(currentNode)) {
@@ -388,7 +391,7 @@ public class LoadManager {
       AsyncConfigNodeClientPool.getInstance()
           .getConfigNodeHeartBeat(
               configNodeLocation.getInternalEndPoint(),
-              genHeartbeatReq().getHeartbeatTimestamp(),
+              heartbeatReq.getHeartbeatTimestamp(),
               handler);
     }
   }
@@ -422,6 +425,228 @@ public class LoadManager {
                     .getNodeStatus()
                     .equals(NodeStatus.Running))
         .collect(Collectors.toList());
+  }
+
+  public List<TConfigNodeLocation> getUnknownConfigNodes() {
+    return getNodeManager().getRegisteredConfigNodes().stream()
+        .filter(
+            registeredConfigNode ->
+                nodeCacheMap
+                    .get(registeredConfigNode.getConfigNodeId())
+                    .getNodeStatus()
+                    .equals(NodeStatus.Unknown))
+        .collect(Collectors.toList());
+  }
+
+  public List<TDataNodeConfiguration> getUnknownDataNodes(int dataNodeId) {
+    return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
+        .filter(
+            registeredDataNode ->
+                nodeCacheMap
+                    .get(registeredDataNode.getLocation().getDataNodeId())
+                    .getNodeStatus()
+                    .equals(NodeStatus.Unknown))
+        .collect(Collectors.toList());
+  }
+
+  public int getRunningConfigNodesNum() {
+    List<TConfigNodeLocation> allConfigNodes = getOnlineConfigNodes();
+    if (allConfigNodes == null) {
+      return 0;
+    }
+    for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
+      String name =
+          "EndPoint("
+              + configNodeLocation.getInternalEndPoint().ip
+              + ":"
+              + configNodeLocation.getInternalEndPoint().port
+              + ")";
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CLUSTER_NODE_STATUS.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              name,
+              Tag.TYPE.toString(),
+              "ConfigNode")
+          .set(1);
+    }
+    return allConfigNodes.size();
+  }
+
+  public int getRunningDataNodesNum() {
+    List<TDataNodeConfiguration> allDataNodes = getOnlineDataNodes(-1);
+    if (allDataNodes == null) {
+      return 0;
+    }
+    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
+      TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
+      String name =
+          "EndPoint("
+              + dataNodeLocation.getClientRpcEndPoint().ip
+              + ":"
+              + dataNodeLocation.getClientRpcEndPoint().port
+              + ")";
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CLUSTER_NODE_STATUS.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              name,
+              Tag.TYPE.toString(),
+              "DataNode")
+          .set(1);
+    }
+    return allDataNodes.size();
+  }
+
+  public int getUnknownConfigNodesNum() {
+    List<TConfigNodeLocation> allConfigNodes = getUnknownConfigNodes();
+    if (allConfigNodes == null) {
+      return 0;
+    }
+    for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
+      String name =
+          "EndPoint("
+              + configNodeLocation.getInternalEndPoint().ip
+              + ":"
+              + configNodeLocation.getInternalEndPoint().port
+              + ")";
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CLUSTER_NODE_STATUS.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              name,
+              Tag.TYPE.toString(),
+              "ConfigNode")
+          .set(0);
+    }
+    return allConfigNodes.size();
+  }
+
+  public int getUnknownDataNodesNum() {
+    List<TDataNodeConfiguration> allDataNodes = getUnknownDataNodes(-1);
+    if (allDataNodes == null) {
+      return 0;
+    }
+    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
+      TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
+      String name =
+          "EndPoint("
+              + dataNodeLocation.getClientRpcEndPoint().ip
+              + ":"
+              + dataNodeLocation.getClientRpcEndPoint().port
+              + ")";
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CLUSTER_NODE_STATUS.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              name,
+              Tag.TYPE.toString(),
+              "DataNode")
+          .set(0);
+    }
+    return allDataNodes.size();
+  }
+
+  public void addMetrics() {
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CONFIG_NODE.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "total",
+              Tag.STATUS.toString(),
+              NodeStatus.Online.toString())
+          .set(getRunningConfigNodesNum());
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.DATA_NODE.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "total",
+              Tag.STATUS.toString(),
+              NodeStatus.Online.toString())
+          .set(getRunningDataNodesNum());
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.CONFIG_NODE.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "total",
+              Tag.STATUS.toString(),
+              NodeStatus.Unknown.toString())
+          .set(getUnknownConfigNodesNum());
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateGauge(
+              Metric.DATA_NODE.toString(),
+              MetricLevel.CORE,
+              Tag.NAME.toString(),
+              "total",
+              Tag.STATUS.toString(),
+              NodeStatus.Unknown.toString())
+          .set(getUnknownDataNodesNum());
+    }
+  }
+
+  public void removeMetrics() {
+    MetricsService.getInstance()
+        .getMetricManager()
+        .removeGauge(
+            Metric.CONFIG_NODE.toString(),
+            Tag.NAME.toString(),
+            "total",
+            Tag.STATUS.toString(),
+            NodeStatus.Online.toString());
+    MetricsService.getInstance()
+        .getMetricManager()
+        .removeGauge(
+            Metric.DATA_NODE.toString(),
+            Tag.NAME.toString(),
+            "total",
+            Tag.STATUS.toString(),
+            NodeStatus.Online.toString());
+    MetricsService.getInstance()
+        .getMetricManager()
+        .removeGauge(
+            Metric.CONFIG_NODE.toString(),
+            Tag.NAME.toString(),
+            "total",
+            Tag.STATUS.toString(),
+            NodeStatus.Unknown.toString());
+    MetricsService.getInstance()
+        .getMetricManager()
+        .removeGauge(
+            Metric.DATA_NODE.toString(),
+            Tag.NAME.toString(),
+            "total",
+            Tag.STATUS.toString(),
+            NodeStatus.Unknown.toString());
+  }
+
+  public static void printRegionRouteMap(
+      long timestamp, Map<TConsensusGroupId, TRegionReplicaSet> regionRouteMap) {
+    LOGGER.info("[latestRegionRouteMap] timestamp:{}", timestamp);
+    LOGGER.info("[latestRegionRouteMap] RegionRouteMap:");
+    for (Map.Entry<TConsensusGroupId, TRegionReplicaSet> entry : regionRouteMap.entrySet()) {
+      LOGGER.info(
+          "[latestRegionRouteMap]\t {}={}",
+          entry.getKey(),
+          entry.getValue().getDataNodeLocations().stream()
+              .map(TDataNodeLocation::getDataNodeId)
+              .collect(Collectors.toList()));
+    }
   }
 
   private ConsensusManager getConsensusManager() {

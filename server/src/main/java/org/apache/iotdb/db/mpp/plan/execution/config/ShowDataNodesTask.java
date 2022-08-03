@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
@@ -53,22 +53,19 @@ public class ShowDataNodesTask implements IConfigTask {
     TsBlockBuilder builder =
         new TsBlockBuilder(HeaderConstant.showDataNodesHeader.getRespDataTypes());
     if (showDataNodesResp.getDataNodesInfoList() != null) {
-      for (TDataNodesInfo tDataNodesLocation : showDataNodesResp.getDataNodesInfoList()) {
+      for (TDataNodeInfo dataNodeInfo : showDataNodesResp.getDataNodesInfoList()) {
         builder.getTimeColumnBuilder().writeLong(0L);
-        builder.getColumnBuilder(0).writeInt(tDataNodesLocation.getDataNodeId());
+        builder.getColumnBuilder(0).writeInt(dataNodeInfo.getDataNodeId());
         builder
             .getColumnBuilder(1)
             .writeBinary(
-                Binary.valueOf(
-                    tDataNodesLocation.getStatus() == null ? "" : tDataNodesLocation.getStatus()));
+                Binary.valueOf(dataNodeInfo.getStatus() == null ? "" : dataNodeInfo.getStatus()));
 
-        builder
-            .getColumnBuilder(2)
-            .writeBinary(Binary.valueOf(tDataNodesLocation.getRpcAddresss()));
-        builder.getColumnBuilder(3).writeInt(tDataNodesLocation.getRpcPort());
-        builder.getColumnBuilder(4).writeInt(tDataNodesLocation.getDataRegionNum());
+        builder.getColumnBuilder(2).writeBinary(Binary.valueOf(dataNodeInfo.getRpcAddresss()));
+        builder.getColumnBuilder(3).writeInt(dataNodeInfo.getRpcPort());
+        builder.getColumnBuilder(4).writeInt(dataNodeInfo.getDataRegionNum());
 
-        builder.getColumnBuilder(5).writeInt(tDataNodesLocation.getSchemaRegionNum());
+        builder.getColumnBuilder(5).writeInt(dataNodeInfo.getSchemaRegionNum());
         builder.declarePosition();
       }
     }

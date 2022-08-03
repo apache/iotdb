@@ -39,16 +39,24 @@ public class WALRecoverWriter {
   }
 
   public void recover(WALMetaData metaData) throws IOException {
-    if (!readTailMagic().equals(MAGIC_STRING)) {
-      // truncate broken data
-      int size = metaData.getBuffersSize().stream().mapToInt(Integer::intValue).sum();
-      try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ)) {
-        channel.truncate(size);
+    // locate broken data
+    int truncateSize;
+    if (logFile.length() < MAGIC_STRING_BYTES) { // file without magic string
+      truncateSize = 0;
+    } else {
+      if (readTailMagic().equals(MAGIC_STRING)) { // complete file
+        return;
+      } else { // file with broken magic string
+        truncateSize = metaData.getBuffersSize().stream().mapToInt(Integer::intValue).sum();
       }
-      // flush metadata
-      try (WALWriter walWriter = new WALWriter(logFile)) {
-        walWriter.updateMetaData(metaData);
-      }
+    }
+    // truncate broken data
+    try (FileChannel channel = FileChannel.open(logFile.toPath(), StandardOpenOption.APPEND)) {
+      channel.truncate(truncateSize);
+    }
+    // flush metadata
+    try (WALWriter walWriter = new WALWriter(logFile)) {
+      walWriter.updateMetaData(metaData);
     }
   }
 

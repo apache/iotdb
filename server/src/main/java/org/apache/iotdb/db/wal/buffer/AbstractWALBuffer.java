@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.wal.buffer;
 
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.io.WALWriter;
 import org.apache.iotdb.db.wal.utils.WALFileStatus;
 import org.apache.iotdb.db.wal.utils.WALFileUtils;
@@ -82,6 +83,7 @@ public abstract class AbstractWALBuffer implements IWALBuffer {
     File currentFile = currentWALFileWriter.getLogFile();
     String currentName = currentFile.getName();
     currentWALFileWriter.close();
+    WALManager.getInstance().addTotalDiskUsage(currentWALFileWriter.size());
     if (WALFileUtils.parseStatusCode(currentName) != fileStatus) {
       String targetName =
           WALFileUtils.getLogFileName(

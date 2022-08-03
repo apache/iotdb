@@ -27,15 +27,14 @@ import java.util.concurrent.CountDownLatch;
 
 public abstract class AbstractRetryHandler {
 
-  protected final int index;
-
   protected CountDownLatch countDownLatch;
-  /**
-   * Map<Index, TDataNodeLocation> The DataNode that successfully execute the request will be
-   * removed from this map
-   */
-  protected Map<Integer, TDataNodeLocation> dataNodeLocations;
 
+  /**
+   * Map<DataNodeId, TDataNodeLocation> The DataNode that successfully execute the request will be
+   * removed from this list
+   */
+  protected Map<Integer, TDataNodeLocation> dataNodeLocationMap;
+  /** Request type to DataNode */
   protected DataNodeRequestType dataNodeRequestType;
   /** Target DataNode */
   protected TDataNodeLocation targetDataNode;
@@ -44,32 +43,14 @@ public abstract class AbstractRetryHandler {
       CountDownLatch countDownLatch,
       DataNodeRequestType dataNodeRequestType,
       TDataNodeLocation targetDataNode,
-      Map<Integer, TDataNodeLocation> dataNodeLocations,
-      int index) {
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap) {
     this.countDownLatch = countDownLatch;
-    this.dataNodeLocations = dataNodeLocations;
+    this.dataNodeLocationMap = dataNodeLocationMap;
     this.dataNodeRequestType = dataNodeRequestType;
     this.targetDataNode = targetDataNode;
-    this.index = index;
-  }
-
-  public void setCountDownLatch(CountDownLatch countDownLatch) {
-    this.countDownLatch = countDownLatch;
-  }
-
-  public CountDownLatch getCountDownLatch() {
-    return countDownLatch;
-  }
-
-  public Map<Integer, TDataNodeLocation> getDataNodeLocations() {
-    return dataNodeLocations;
   }
 
   public DataNodeRequestType getDataNodeRequestType() {
     return dataNodeRequestType;
-  }
-
-  public int getIndex() {
-    return index;
   }
 }

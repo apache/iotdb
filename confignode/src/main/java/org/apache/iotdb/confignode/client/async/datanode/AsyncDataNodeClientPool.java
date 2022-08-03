@@ -18,21 +18,26 @@
  */
 package org.apache.iotdb.confignode.client.async.datanode;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
+import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.client.ConfigNodeClientPoolFactory;
+import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
+import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
 import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.async.handlers.SetTTLHandler;
+import org.apache.iotdb.confignode.client.async.handlers.UpdateConfigNodeGroupHandler;
 import org.apache.iotdb.confignode.client.async.handlers.UpdateRegionRouteMapHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.mpp.rpc.thrift.TCreateDataRegionReq;
@@ -41,6 +46,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TCreateSchemaRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TDropFunctionRequest;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +55,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /** Asynchronously send RPC requests to DataNodes. See mpp.thrift for more details. */
 public class AsyncDataNodeClientPool {
@@ -72,38 +77,77 @@ public class AsyncDataNodeClientPool {
    * receive the requests
    *
    * @param req request
-   * @param handlerMap Map<index, Handler>
-   * @param dataNodeLocations ConcurrentHashMap<index, TDataNodeLocation> The specific DataNodes
+   * @param dataNodeLocationMap Map<DataNodeId, TDataNodeLocation>
+   * @param requestType DataNodeRequestType
+   * @param dataNodeResponseStatus response list.Used by CREATE_FUNCTION,DROP_FUNCTION and FLUSH
    */
   public void sendAsyncRequestToDataNodeWithRetry(
       Object req,
-      Map<Integer, AbstractRetryHandler> handlerMap,
-      Map<Integer, TDataNodeLocation> dataNodeLocations) {
-    CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocations.size());
-    if (dataNodeLocations.isEmpty()) {
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap,
+      DataNodeRequestType requestType,
+      List<TSStatus> dataNodeResponseStatus) {
+    if (dataNodeLocationMap.isEmpty()) {
       return;
     }
     for (int retry = 0; retry < retryNum; retry++) {
-      AbstractRetryHandler handler = null;
-      for (Map.Entry<Integer, TDataNodeLocation> entry : dataNodeLocations.entrySet()) {
-        handler = handlerMap.get(entry.getKey());
-        // If it is not the first request, then prove that this operation is a retry.
-        // The count of countDownLatch needs to be updated
-        if (retry != 0) {
-          handler.setCountDownLatch(countDownLatch);
+      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
+      for (TDataNodeLocation targetDataNode : dataNodeLocationMap.values()) {
+        AbstractRetryHandler handler;
+        switch (requestType) {
+          case SET_TTL:
+            handler =
+                new SetTTLHandler(countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+            break;
+          case CREATE_FUNCTION:
+          case DROP_FUNCTION:
+            handler =
+                new FunctionManagementHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
+          case FLUSH:
+            handler =
+                new FlushHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
+          case CLEAR_CACHE:
+            handler =
+                new ClearCacheHandler(
+                    countDownLatch,
+                    requestType,
+                    targetDataNode,
+                    dataNodeLocationMap,
+                    dataNodeResponseStatus);
+            break;
+          case UPDATE_REGION_ROUTE_MAP:
+            handler =
+                new UpdateRegionRouteMapHandler(
+                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+            break;
+          case BROADCAST_LATEST_CONFIG_NODE_GROUP:
+            handler =
+                new UpdateConfigNodeGroupHandler(
+                    countDownLatch, requestType, targetDataNode, dataNodeLocationMap);
+            break;
+          default:
+            return;
         }
-        // send request
-        sendAsyncRequestToDataNode(entry.getValue(), req, handler, retry);
+        sendAsyncRequestToDataNode(targetDataNode, req, handler, retry);
       }
       try {
-        handler.getCountDownLatch().await();
+        countDownLatch.await();
       } catch (InterruptedException e) {
-        LOGGER.error("Interrupted during {} on ConfigNode", handler.getDataNodeRequestType());
+        LOGGER.error("Interrupted during {} on ConfigNode", requestType);
       }
       // Check if there is a node that fails to send the request, and retry if there is one
-      if (!handler.getDataNodeLocations().isEmpty()) {
-        countDownLatch = new CountDownLatch(handler.getDataNodeLocations().size());
-      } else {
+      if (dataNodeLocationMap.isEmpty()) {
         break;
       }
     }
@@ -121,18 +165,11 @@ public class AsyncDataNodeClientPool {
         case SET_TTL:
           client.setTTL((TSetTTLReq) req, (SetTTLHandler) handler);
           break;
-        case CREATE_REGIONS:
-          TConsensusGroupType regionType =
-              ((CreateRegionHandler) handler).getConsensusGroupId().getType();
-          if (regionType.equals(TConsensusGroupType.SchemaRegion)) {
-            client.createSchemaRegion(
-                (TCreateSchemaRegionReq) ((Map<Integer, Object>) req).get(handler.getIndex()),
-                (CreateRegionHandler) handler);
-          } else if (regionType.equals(TConsensusGroupType.DataRegion)) {
-            client.createDataRegion(
-                (TCreateDataRegionReq) ((Map<Integer, Object>) req).get(handler.getIndex()),
-                (CreateRegionHandler) handler);
-          }
+        case CREATE_DATA_REGIONS:
+          client.createDataRegion((TCreateDataRegionReq) req, (CreateRegionHandler) handler);
+          break;
+        case CREATE_SCHEMA_REGIONS:
+          client.createSchemaRegion((TCreateSchemaRegionReq) req, (CreateRegionHandler) handler);
           break;
         case CREATE_FUNCTION:
           client.createFunction((TCreateFunctionRequest) req, (FunctionManagementHandler) handler);
@@ -143,11 +180,20 @@ public class AsyncDataNodeClientPool {
         case FLUSH:
           client.flush((TFlushReq) req, (FlushHandler) handler);
           break;
+        case CLEAR_CACHE:
+          client.clearCache((TClearCacheReq) req, (ClearCacheHandler) handler);
+          break;
         case UPDATE_REGION_ROUTE_MAP:
           client.updateRegionCache((TRegionRouteReq) req, (UpdateRegionRouteMapHandler) handler);
           break;
+        case BROADCAST_LATEST_CONFIG_NODE_GROUP:
+          client.updateConfigNodeGroup(
+              (TUpdateConfigNodeGroupReq) req, (UpdateConfigNodeGroupHandler) handler);
+          break;
         default:
-          return;
+          LOGGER.error(
+              "Unexpected DataNode Request Type: {} when sendAsyncRequestToDataNode",
+              handler.getDataNodeRequestType());
       }
     } catch (Exception e) {
       LOGGER.warn(
@@ -167,61 +213,107 @@ public class AsyncDataNodeClientPool {
    */
   public void createRegions(
       CreateRegionGroupsPlan createRegionGroupsPlan, Map<String, Long> ttlMap) {
-
-    // Number of regions to be created
-    int regionNum = 0;
-    // Assign an independent index to each Region
-    for (Map.Entry<String, List<TRegionReplicaSet>> entry :
-        createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
-      for (TRegionReplicaSet regionReplicaSet : entry.getValue()) {
-        regionNum += regionReplicaSet.getDataNodeLocationsSize();
+    // Because different requests will be sent to the same node when createRegions,
+    // so for CreateRegions use Map<index, TDataNodeLocation>
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+    int index = 0;
+    // Count the datanodes to be sent
+    for (List<TRegionReplicaSet> regionReplicaSets :
+        createRegionGroupsPlan.getRegionGroupMap().values()) {
+      for (TRegionReplicaSet regionReplicaSet : regionReplicaSets) {
+        for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
+          dataNodeLocationMap.put(index++, dataNodeLocation);
+        }
       }
     }
-    Map<Integer, AbstractRetryHandler> handlerMap = new ConcurrentHashMap<>();
-    ConcurrentHashMap<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
-    Map<Integer, Object> req = new ConcurrentHashMap<>();
-    AtomicInteger index = new AtomicInteger();
-    CountDownLatch latch = new CountDownLatch(regionNum);
-    createRegionGroupsPlan
-        .getRegionGroupMap()
-        .forEach(
-            (storageGroup, regionReplicaSets) -> {
-              // Enumerate each RegionReplicaSet
-              regionReplicaSets.forEach(
-                  regionReplicaSet -> {
-                    // Enumerate each Region
-                    regionReplicaSet
-                        .getDataNodeLocations()
-                        .forEach(
-                            dataNodeLocation -> {
-                              handlerMap.put(
-                                  index.get(),
-                                  new CreateRegionHandler(
-                                      index.get(),
-                                      latch,
-                                      regionReplicaSet.getRegionId(),
-                                      dataNodeLocation,
-                                      dataNodeLocations));
+    if (dataNodeLocationMap.isEmpty()) {
+      return;
+    }
+    for (int retry = 0; retry < retryNum; retry++) {
+      index = 0;
+      CountDownLatch countDownLatch = new CountDownLatch(dataNodeLocationMap.size());
+      for (Map.Entry<String, List<TRegionReplicaSet>> entry :
+          createRegionGroupsPlan.getRegionGroupMap().entrySet()) {
+        // Enumerate each RegionReplicaSet
+        for (TRegionReplicaSet regionReplicaSet : entry.getValue()) {
+          // Enumerate each Region
+          for (TDataNodeLocation targetDataNode : regionReplicaSet.getDataNodeLocations()) {
+            if (dataNodeLocationMap.containsKey(index)) {
+              AbstractRetryHandler handler;
+              switch (regionReplicaSet.getRegionId().getType()) {
+                case SchemaRegion:
+                  handler =
+                      new CreateRegionHandler(
+                          countDownLatch,
+                          DataNodeRequestType.CREATE_SCHEMA_REGIONS,
+                          regionReplicaSet.regionId,
+                          targetDataNode,
+                          dataNodeLocationMap,
+                          index++);
+                  sendAsyncRequestToDataNode(
+                      targetDataNode,
+                      genCreateSchemaRegionReq(entry.getKey(), regionReplicaSet),
+                      handler,
+                      retry);
+                  break;
+                case DataRegion:
+                  handler =
+                      new CreateRegionHandler(
+                          countDownLatch,
+                          DataNodeRequestType.CREATE_DATA_REGIONS,
+                          regionReplicaSet.regionId,
+                          targetDataNode,
+                          dataNodeLocationMap,
+                          index++);
+                  sendAsyncRequestToDataNode(
+                      targetDataNode,
+                      genCreateDataRegionReq(
+                          entry.getKey(), regionReplicaSet, ttlMap.get(entry.getKey())),
+                      handler,
+                      retry);
+                  break;
+                default:
+                  return;
+              }
+            } else {
+              index++;
+            }
+          }
+        }
+      }
+      try {
+        countDownLatch.await();
+      } catch (InterruptedException e) {
+        LOGGER.error("Interrupted during createRegions on ConfigNode");
+      }
+      // Check if there is a node that fails to send the request, and
+      // retry if there is one
+      if (dataNodeLocationMap.isEmpty()) {
+        break;
+      }
+    }
+  }
 
-                              switch (regionReplicaSet.getRegionId().getType()) {
-                                case SchemaRegion:
-                                  req.put(
-                                      index.get(),
-                                      genCreateSchemaRegionReq(storageGroup, regionReplicaSet));
-                                  break;
-                                case DataRegion:
-                                  req.put(
-                                      index.get(),
-                                      genCreateDataRegionReq(
-                                          storageGroup,
-                                          regionReplicaSet,
-                                          ttlMap.get(storageGroup)));
-                              }
-                              dataNodeLocations.put(index.getAndIncrement(), dataNodeLocation);
-                            });
-                  });
-            });
-    sendAsyncRequestToDataNodeWithRetry(req, handlerMap, dataNodeLocations);
+  /**
+   * notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
+   *
+   * @param registeredDataNodeLocationMap Map<Integer, TDataNodeLocation>
+   * @param registeredConfigNodes List<TConfigNodeLocation>
+   */
+  public void broadCastTheLatestConfigNodeGroup(
+      Map<Integer, TDataNodeLocation> registeredDataNodeLocationMap,
+      List<TConfigNodeLocation> registeredConfigNodes) {
+    if (registeredDataNodeLocationMap != null) {
+      TUpdateConfigNodeGroupReq updateConfigNodeGroupReq =
+          new TUpdateConfigNodeGroupReq(registeredConfigNodes);
+      LOGGER.info("Begin to broadcast the latest configNodeGroup: {}", registeredConfigNodes);
+      sendAsyncRequestToDataNodeWithRetry(
+          updateConfigNodeGroupReq,
+          registeredDataNodeLocationMap,
+          DataNodeRequestType.BROADCAST_LATEST_CONFIG_NODE_GROUP,
+          null);
+      LOGGER.info("Broadcast the latest configNodeGroup finished.");
+    }
   }
 
   private TCreateSchemaRegionReq genCreateSchemaRegionReq(
@@ -244,11 +336,10 @@ public class AsyncDataNodeClientPool {
   /**
    * Only used in LoadManager
    *
-   * @param endPoint
+   * @param endPoint The specific DataNode
    */
   public void getDataNodeHeartBeat(
       TEndPoint endPoint, THeartbeatReq req, DataNodeHeartbeatHandler handler) {
-    // TODO: Add a retry logic
     AsyncDataNodeInternalServiceClient client;
     try {
       client = clientManager.borrowClient(endPoint);

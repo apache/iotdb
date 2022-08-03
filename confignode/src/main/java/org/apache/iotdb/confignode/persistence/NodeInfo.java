@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -91,7 +92,6 @@ public class NodeInfo implements SnapshotProcessor {
       new ConcurrentSkipListMap<>();
 
   // For remove or draining DataNode
-  // TODO: implement
   private final Set<TDataNodeLocation> drainingDataNodes = new HashSet<>();
 
   private final String snapshotFileName = "node_info.bin";
@@ -110,9 +110,11 @@ public class NodeInfo implements SnapshotProcessor {
               Metric.CONFIG_NODE.toString(),
               MetricLevel.CORE,
               registeredConfigNodes,
-              o -> getRegisteredDataNodeCount(),
+              o -> getRegisteredConfigNodeCount(),
               Tag.NAME.toString(),
-              "online");
+              "total",
+              Tag.STATUS.toString(),
+              NodeStatus.Registered.toString());
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
@@ -121,7 +123,9 @@ public class NodeInfo implements SnapshotProcessor {
               registeredDataNodes,
               Map::size,
               Tag.NAME.toString(),
-              "online");
+              "total",
+              Tag.STATUS.toString(),
+              NodeStatus.Registered.toString());
     }
   }
 
@@ -195,16 +199,19 @@ public class NodeInfo implements SnapshotProcessor {
    * @return TSStatus
    */
   public TSStatus removeDataNode(RemoveDataNodePlan req) {
+    LOGGER.info("there are {} data node in cluster before remove some", registeredDataNodes.size());
     try {
       dataNodeInfoReadWriteLock.writeLock().lock();
       req.getDataNodeLocations()
           .forEach(
               removeDataNodes -> {
                 registeredDataNodes.remove(removeDataNodes.getDataNodeId());
+                LOGGER.info("removed the datanode {} from cluster", removeDataNodes);
               });
     } finally {
       dataNodeInfoReadWriteLock.writeLock().unlock();
     }
+    LOGGER.info("there are {} data node in cluster after remove some", registeredDataNodes.size());
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
   }
 
@@ -224,9 +231,9 @@ public class NodeInfo implements SnapshotProcessor {
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {
-        result.setDataNodeInfoMap(new HashMap<>(registeredDataNodes));
+        result.setDataNodeConfigurationMap(new HashMap<>(registeredDataNodes));
       } else {
-        result.setDataNodeInfoMap(
+        result.setDataNodeConfigurationMap(
             registeredDataNodes.get(dataNodeId) == null
                 ? new HashMap<>(0)
                 : Collections.singletonMap(dataNodeId, registeredDataNodes.get(dataNodeId)));
@@ -250,6 +257,17 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
+  /** Return the number of registered ConfigNodes */
+  public int getRegisteredConfigNodeCount() {
+    int result;
+    configNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = registeredConfigNodes.size();
+    } finally {
+      configNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
   /** Return the number of total cpu cores in online DataNodes */
   public int getTotalCpuCoreCount() {
     int result = 0;

@@ -88,18 +88,6 @@ struct TDataNodeConfiguration {
   2: required TNodeResource resource
 }
 
-// For show regions
-struct TRegionInfo {
-  1: required TConsensusGroupId consensusGroupId
-  2: required string storageGroup
-  3: required i32 dataNodeId
-  4: required string clientRpcIp
-  5: required i32 clientRpcPort
-  6: required i64 seriesSlots
-  7: required i64 timeSlots
-  8: optional string status
-}
-
 enum TRegionMigrateFailedType {
   AddPeerFailed,
   RemovePeerFailed,
@@ -114,22 +102,17 @@ struct TFlushReq {
    3: optional i32 dataNodeId
 }
 
-struct TDataNodesInfo {
-  1: required i32 dataNodeId
-  2: required string status
-  3: required string rpcAddresss
-  4: required i32 rpcPort
-  5: required i32 dataRegionNum
-  6: required i32 schemaRegionNum
-}
-
-struct TSetTTLReq {
-  1: required string storageGroup
-  2: required i64 TTL
+struct TClearCacheReq {
+   1: optional i32 dataNodeId
 }
 
 // for node management
 struct TSchemaNode {
   1: required string nodeName
   2: required byte nodeType
+}
+
+struct TSetTTLReq {
+  1: required list<string> storageGroupPathPattern
+  2: required i64 TTL
 }

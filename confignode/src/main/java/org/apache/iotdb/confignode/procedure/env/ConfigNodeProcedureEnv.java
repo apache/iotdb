@@ -24,15 +24,18 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
+import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
+import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -155,15 +158,21 @@ public class ConfigNodeProcedureEnv {
    *
    * @param tConfigNodeLocation New ConfigNode's location
    */
-  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation) {
+  public void addConsensusGroup(TConfigNodeLocation tConfigNodeLocation)
+      throws AddConsensusGroupException {
     List<TConfigNodeLocation> configNodeLocations =
         new ArrayList<>(configManager.getNodeManager().getRegisteredConfigNodes());
     configNodeLocations.add(tConfigNodeLocation);
-    SyncConfigNodeClientPool.getInstance()
-        .sendSyncRequestToConfigNodeWithRetry(
-            tConfigNodeLocation.getInternalEndPoint(),
-            configNodeLocations,
-            ConfigNodeRequestType.ADD_CONSENSUS_GROUP);
+    TSStatus status =
+        (TSStatus)
+            SyncConfigNodeClientPool.getInstance()
+                .sendSyncRequestToConfigNodeWithRetry(
+                    tConfigNodeLocation.getInternalEndPoint(),
+                    new TAddConsensusGroupReq(configNodeLocations),
+                    ConfigNodeRequestType.ADD_CONSENSUS_GROUP);
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new AddConsensusGroupException(tConfigNodeLocation);
+    }
   }
 
   /**
@@ -249,6 +258,14 @@ public class ConfigNodeProcedureEnv {
             configNodeLocation.getInternalEndPoint(),
             null,
             ConfigNodeRequestType.NOTIFY_REGISTER_SUCCESS);
+  }
+
+  /** notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced */
+  public void broadCastTheLatestConfigNodeGroup() {
+    AsyncDataNodeClientPool.getInstance()
+        .broadCastTheLatestConfigNodeGroup(
+            configManager.getNodeManager().getRegisteredDataNodeLocations(-1),
+            configManager.getNodeManager().getRegisteredConfigNodes());
   }
 
   public LockQueue getNodeLock() {

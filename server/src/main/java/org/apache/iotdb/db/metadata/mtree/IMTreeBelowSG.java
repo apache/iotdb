@@ -204,6 +204,15 @@ public interface IMTreeBelowSG {
   int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException;
 
   /**
+   * Get the count of timeseries matching the given path by tag.
+   *
+   * @param pathPattern a path pattern or a full path, may contain wildcard
+   */
+  int getAllTimeseriesCount(
+      PartialPath pathPattern, boolean isPrefixMatch, List<String> timeseries, boolean hasTag)
+      throws MetadataException;
+
+  /**
    * Get the count of devices matching the given path. If using prefix match, the path pattern is
    * used to match prefix path. All timeseries start with the matched prefix path will be counted.
    *
@@ -229,6 +238,14 @@ public interface IMTreeBelowSG {
 
   Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
       PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException;
+
+  Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern,
+      int level,
+      boolean isPrefixMatch,
+      List<String> timeseries,
+      boolean hasTag)
+      throws MetadataException;
 
   /**
    * Get node by the path
