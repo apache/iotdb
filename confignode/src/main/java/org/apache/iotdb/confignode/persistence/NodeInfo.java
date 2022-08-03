@@ -268,6 +268,21 @@ public class NodeInfo implements SnapshotProcessor {
     }
     return result;
   }
+
+  /** Return the number of registered ConfigNodes */
+  public int getRegisteredNodeCount() {
+    int result;
+    configNodeInfoReadWriteLock.readLock().lock();
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = registeredConfigNodes.size() + registeredDataNodes.size();
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+      configNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
   /** Return the number of total cpu cores in online DataNodes */
   public int getTotalCpuCoreCount() {
     int result = 0;
