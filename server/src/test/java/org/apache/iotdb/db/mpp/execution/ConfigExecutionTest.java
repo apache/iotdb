@@ -65,8 +65,7 @@ public class ConfigExecutionTest {
   public void normalConfigTaskWithResultTest() {
     TsBlock tsBlock =
         new TsBlock(
-            new TimeColumn(1, new long[] {0}),
-            new IntColumn(1, Optional.of(new boolean[] {false}), new int[] {1}));
+            new TimeColumn(1, new long[] {0}), new IntColumn(1, Optional.empty(), new int[] {1}));
     DatasetHeader datasetHeader =
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader("TestValue", TSDataType.INT32)), false);
