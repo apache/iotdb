@@ -41,18 +41,14 @@ public class ConsumerThreadSync implements Runnable {
   private final KafkaConsumer<String, String> consumer;
   private final SessionPool pool;
   private boolean is_open = true;
+  private boolean is_shut = false;
   private final boolean single_partition;
-  private final KafkaLoaderLogManager logManager;
 
   public ConsumerThreadSync(
-      KafkaConsumer<String, String> consumer,
-      SessionPool pool,
-      boolean single_partition,
-      KafkaLoaderLogManager logManager) {
+      KafkaConsumer<String, String> consumer, SessionPool pool, boolean single_partition) {
     this.consumer = consumer;
     this.pool = pool;
     this.single_partition = single_partition;
-    this.logManager = logManager;
   }
 
   /**
@@ -62,12 +58,15 @@ public class ConsumerThreadSync implements Runnable {
   private void handleDatas(List<String> datas) {
     int size = datas.size();
     List<String> deviceIds = new ArrayList<>(size);
-    List<String> deviceStringIds = new ArrayList<>(size);
     List<Long> times = new ArrayList<>(size);
     List<List<String>> measurementsList = new ArrayList<>(size);
     List<List<TSDataType>> typesList = new ArrayList<>(size);
     List<List<Object>> valuesList = new ArrayList<>(size);
+
+    List<String> deviceStringIds = new ArrayList<>(size);
+    List<Long> stringTimes = new ArrayList<>(size);
     List<List<String>> valuesStringList = new ArrayList<>(size);
+    List<List<String>> measurementsStringList = new ArrayList<>(size);
 
     Map<String, Integer> deleteMap = new HashMap<>();
 
@@ -108,9 +107,9 @@ public class ConsumerThreadSync implements Runnable {
       if (is_string_insert) {
         deviceStringIds.add(device);
         valuesStringList.add(Arrays.asList(dataArray[3].split(":")));
-        times.add(time);
-        measurementsList.add(measurements);
-        break;
+        stringTimes.add(time);
+        measurementsStringList.add(measurements);
+        continue;
       }
 
       List<Object> values = new ArrayList<>();
@@ -151,7 +150,7 @@ public class ConsumerThreadSync implements Runnable {
     }
 
     try {
-      pool.insertRecords(deviceStringIds, times, measurementsList, valuesStringList);
+      pool.insertRecords(deviceStringIds, stringTimes, measurementsStringList, valuesStringList);
     } catch (Exception e) {
       logger.error(
           "Kafka sync string insertion failure, data batch = \n{}", String.join("\n", datas), e);
@@ -177,11 +176,16 @@ public class ConsumerThreadSync implements Runnable {
   }
 
   public void close() {
+    this.is_shut = true;
     this.is_open = false;
   }
 
   public void open() {
     this.is_open = true;
+  }
+
+  public void pause() {
+    this.is_open = false;
   }
 
   @Override
@@ -194,11 +198,12 @@ public class ConsumerThreadSync implements Runnable {
           datas.add(record.value());
         }
         handleDatas(datas);
-        if (records.count() > 0) {
-          logManager.writeOffset();
-        }
       } while (this.is_open);
       logger.info("One consumer thread shut down.\n");
+      if (is_shut) {
+        this.consumer.close();
+        logger.info("One consumer closed.\n");
+      }
     } catch (Exception e) {
       logger.error(e.getMessage());
     }

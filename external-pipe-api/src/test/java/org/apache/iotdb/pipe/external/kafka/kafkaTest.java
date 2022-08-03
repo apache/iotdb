@@ -1,6 +1,7 @@
 package org.apache.iotdb.pipe.external.kafka;
 
 import org.apache.iotdb.pipe.external.api.DataType;
+import org.apache.iotdb.session.pool.SessionPool;
 
 import org.junit.Test;
 
@@ -110,10 +111,37 @@ public class kafkaTest {
           e.getMessage()
               + "\nbrokers/1.1.1.1:8000,localhost:65535, topic/IoTDB, means/serial, partition/x");
     }
+
+    Map<String, String> sourceParams = new HashMap<>();
+    ConsumerValidator cv = new ConsumerValidator();
+    sourceParams.put("brokers", "localhost:8000");
+    sourceParams.put("topic", "IoTDB");
+    sourceParams.put("offset", "earliest");
+    try {
+      cv.validate_params(sourceParams);
+      System.out.println("Correct!\nbrokers/localhost:8000, topic/IoTDB, offset/earliest");
+    } catch (Exception e) {
+      System.out.println(e.getMessage() + "\nbrokers/localhost:8000, topic/IoTDB, offset/earliest");
+    }
+
+    sourceParams.put("offset", "latest");
+    try {
+      cv.validate_params(sourceParams);
+      System.out.println("Correct!\nbrokers/localhost:8000, topic/IoTDB, offset/latest");
+    } catch (Exception e) {
+      System.out.println(e.getMessage() + "\nbrokers/localhost:8000, topic/IoTDB, offset/latest");
+    }
+
+    sourceParams.put("offset", "none");
+    try {
+      cv.validate_params(sourceParams);
+      System.out.println("Correct!\nbrokers/localhost:8000, topic/IoTDB, offset/none");
+    } catch (Exception e) {
+      System.out.println(e.getMessage() + "\nbrokers/localhost:8000, topic/IoTDB, offset/none");
+    }
   }
 
-  @Test
-  public void full_Test() {
+  private void send_to_kafka_no_type() {
     Map<String, String> sinkParams = new HashMap<>();
     KafkaWriterFactory kf = new KafkaWriterFactory();
 
@@ -161,7 +189,13 @@ public class kafkaTest {
       kw.createTimeSeries(Timeseries, DataType.DOUBLE);
       kw.insertDouble(Timeseries, 123, 1.33);
 
-      kw.delete(Timeseries, 123);
+      Timeseries[3] = "s1";
+      kw.createTimeSeries(Timeseries, DataType.TEXT);
+      kw.insertText(Timeseries, 124, "txt");
+
+      kw.delete(Timeseries, 124);
+
+      Timeseries[3] = "s2";
       kw.deleteTimeSeries(Timeseries);
 
       // String[] Timeseries2 = {"root", "a", "c"};
@@ -180,9 +214,15 @@ public class kafkaTest {
     } catch (Exception e) {
       System.out.println("Pipe writing failed!");
     }
+  }
 
+  private void send_to_kafka_with_type() {
+    Map<String, String> sinkParams = new HashMap<>();
+    KafkaWriterFactory kf = new KafkaWriterFactory();
+
+    sinkParams.put("brokers", "localhost:9092");
+    sinkParams.put("topic", "IoTDB");
     sinkParams.put("means", "with-type");
-    sinkParams.put("key", "test");
 
     try {
       kf.validateSinkParams(sinkParams);
@@ -202,7 +242,7 @@ public class kafkaTest {
     try {
       kw2.open();
 
-      String[] Timeseries = {"root", "vehicle", "d0", "s0"};
+      String[] Timeseries = {"root", "vehicle", "d1", "s0"};
       kw2.createTimeSeries(Timeseries, DataType.BOOLEAN);
       kw2.insertBoolean(Timeseries, 123, true);
 
@@ -226,7 +266,13 @@ public class kafkaTest {
       kw2.createTimeSeries(Timeseries, DataType.DOUBLE);
       kw2.insertDouble(Timeseries, 123, 1.33);
 
-      kw2.delete(Timeseries, 123);
+      Timeseries[3] = "s1";
+      kw2.createTimeSeries(Timeseries, DataType.TEXT);
+      kw2.insertText(Timeseries, 124, "txt");
+
+      kw2.delete(Timeseries, 124);
+
+      Timeseries[3] = "s2";
       kw2.deleteTimeSeries(Timeseries);
 
       // String[] Timeseries2 = {"root", "a", "c"};
@@ -245,5 +291,55 @@ public class kafkaTest {
     } catch (Exception e) {
       System.out.println("Pipe writing failed!");
     }
+  }
+
+  private void load_from_kafka() {
+    Map<String, String> sourceParams = new HashMap<>();
+    ConsumerValidator cv = new ConsumerValidator();
+    sourceParams.put("brokers", "localhost:9092");
+    sourceParams.put("topic", "IoTDB");
+    sourceParams.put("offset", "earliest");
+
+    try {
+      cv.validate_params(sourceParams);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
+    SessionPool sp = new SessionPool("localhost", 6667, "root", "root", 5);
+    KafkaLoader kl = new KafkaLoader(sp, sourceParams);
+
+    kl.open();
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException ignore) {
+    }
+
+    kl.run();
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException ignore) {
+    }
+
+    kl.cancel();
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException ignore) {
+    }
+
+    kl.run();
+    try {
+      Thread.sleep(2000);
+    } catch (InterruptedException ignore) {
+    }
+
+    kl.close();
+  }
+
+  @Test
+  public void full_Test() {
+    send_to_kafka_no_type();
+    send_to_kafka_with_type();
+    load_from_kafka();
   }
 }

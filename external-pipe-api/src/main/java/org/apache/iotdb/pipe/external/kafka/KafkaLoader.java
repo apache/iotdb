@@ -28,7 +28,7 @@ public class KafkaLoader {
   private final Map<String, String> kafkaParams;
   private List<ConsumerThreadSync> consumerThreads = null;
 
-  public KafkaLoader(SessionPool pool, Map<String, String> kafkaParams, String loader_id) {
+  public KafkaLoader(SessionPool pool, Map<String, String> kafkaParams) {
     this.pool = pool;
     this.kafkaParams = kafkaParams;
     if (!kafkaParams.containsKey("offset")) {
@@ -55,17 +55,8 @@ public class KafkaLoader {
       props.put(ConsumerConfig.GROUP_ID_CONFIG, topic);
 
       KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
-      KafkaLoaderLogManager logManager = new KafkaLoaderLogManager(topic, i, consumer);
-      try {
-        if (!logManager.init()) {
-          logManager.reset_consumer();
-        } else {
-          consumer.subscribe(Collections.singleton(topic));
-        }
-      } catch (Exception e) {
-        logger.error(
-            "Kafka consumer log manager start failed, topic = {}, index = {}", topic, i, e);
-      }
+      consumer.subscribe(Collections.singleton(topic));
+
       if (i == 0) {
         int partition_num = get_partition_num(consumer, this.kafkaParams.get("topic"));
         if (partition_num > 1) {
@@ -76,8 +67,7 @@ public class KafkaLoader {
         }
       }
       this.consumerList.add(consumer);
-      this.consumerThreads.add(
-          new ConsumerThreadSync(consumer, this.pool, this.single_partition, logManager));
+      this.consumerThreads.add(new ConsumerThreadSync(consumer, this.pool, this.single_partition));
     }
     return this.consumer_num;
   }
@@ -87,9 +77,6 @@ public class KafkaLoader {
       consumerThread.close();
     }
     this.executor.shutdown();
-    for (KafkaConsumer<String, String> consumer : consumerList) {
-      consumer.close();
-    }
   }
 
   public void run() {
@@ -102,7 +89,7 @@ public class KafkaLoader {
 
   public void cancel() {
     for (ConsumerThreadSync consumerThread : consumerThreads) {
-      consumerThread.close();
+      consumerThread.pause();
     }
     this.executor.shutdown();
   }
