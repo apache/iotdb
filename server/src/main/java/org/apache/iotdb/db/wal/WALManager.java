@@ -44,6 +44,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** This class is used to manage and allocate wal nodes */
 public class WALManager implements IService {
@@ -56,6 +57,8 @@ public class WALManager implements IService {
   private final NodeAllocationStrategy walNodesManager;
   /** single thread to delete old .wal files */
   private ScheduledExecutorService walDeleteThread;
+  /** total disk usage of wal files */
+  private final AtomicLong totalDiskUsage = new AtomicLong();
 
   private WALManager() {
     if (config.isClusterMode()
@@ -164,6 +167,18 @@ public class WALManager implements IService {
     }
   }
 
+  public long getTotalDiskUsage() {
+    return totalDiskUsage.get();
+  }
+
+  public void addTotalDiskUsage(long size) {
+    totalDiskUsage.accumulateAndGet(size, Long::sum);
+  }
+
+  public void subtractTotalDiskUsage(long size) {
+    totalDiskUsage.accumulateAndGet(size, (x, y) -> x - y);
+  }
+
   @Override
   public void stop() {
     if (config.getWalMode() == WALMode.DISABLE) {
@@ -198,6 +213,7 @@ public class WALManager implements IService {
 
   @TestOnly
   public void clear() {
+    totalDiskUsage.set(0);
     walNodesManager.clear();
   }
 

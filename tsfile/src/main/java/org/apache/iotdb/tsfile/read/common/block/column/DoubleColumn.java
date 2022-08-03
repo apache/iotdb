@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 import static io.airlift.slice.SizeOf.sizeOf;
@@ -85,6 +86,11 @@ public class DoubleColumn implements Column {
   }
 
   @Override
+  public double[] getDoubles() {
+    return values;
+  }
+
+  @Override
   public Object getObject(int position) {
     return getDouble(position);
   }
@@ -104,6 +110,16 @@ public class DoubleColumn implements Column {
   public boolean isNull(int position) {
     checkReadablePosition(position);
     return valueIsNull != null && valueIsNull[position + arrayOffset];
+  }
+
+  @Override
+  public boolean[] isNull() {
+    if (valueIsNull == null) {
+      boolean[] res = new boolean[positionCount];
+      Arrays.fill(res, false);
+      return res;
+    }
+    return valueIsNull;
   }
 
   @Override

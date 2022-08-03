@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
+import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -275,6 +276,26 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
       TSStatus tsStatus = client.flush(tFlushReq);
+      // Get response or throw exception
+      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(new StatementExecutionException(tsStatus));
+      }
+    } catch (IOException | TException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> clearCache(TClearCacheReq tClearCacheReq) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      TSStatus tsStatus = client.clearCache(tClearCacheReq);
       // Get response or throw exception
       if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));

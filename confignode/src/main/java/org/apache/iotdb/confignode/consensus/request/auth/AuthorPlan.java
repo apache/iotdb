@@ -27,6 +27,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -37,7 +38,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
   private String password;
   private String newPassword;
   private Set<Integer> permissions;
-  private String nodeName;
+  private List<String> nodeNameList;
   private String userName;
 
   public AuthorPlan(ConfigPhysicalPlanType type) {
@@ -54,7 +55,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
    * @param password password
    * @param newPassword new password
    * @param permissions permissions
-   * @param nodeName node name in Path structure
+   * @param nodeNameList node name in Path structure
    * @throws AuthException Authentication Exception
    */
   public AuthorPlan(
@@ -64,7 +65,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
       String password,
       String newPassword,
       Set<Integer> permissions,
-      String nodeName)
+      List<String> nodeNameList)
       throws AuthException {
     this(authorType);
     this.authorType = authorType;
@@ -73,7 +74,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this.password = password;
     this.newPassword = newPassword;
     this.permissions = permissions;
-    this.nodeName = nodeName;
+    this.nodeNameList = nodeNameList;
   }
 
   public ConfigPhysicalPlanType getAuthorType() {
@@ -116,12 +117,12 @@ public class AuthorPlan extends ConfigPhysicalPlan {
     this.permissions = permissions;
   }
 
-  public String getNodeName() {
-    return nodeName;
+  public List<String> getNodeNameList() {
+    return nodeNameList;
   }
 
-  public void setNodeName(String nodeName) {
-    this.nodeName = nodeName;
+  public void setNodeNameList(List<String> nodeNameList) {
+    this.nodeNameList = nodeNameList;
   }
 
   public String getUserName() {
@@ -148,7 +149,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         stream.writeInt(permission);
       }
     }
-    BasicStructureSerDeUtil.write(nodeName, stream);
+    BasicStructureSerDeUtil.write(nodeNameList, stream);
   }
 
   @Override
@@ -167,7 +168,7 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         permissions.add(buffer.getInt());
       }
     }
-    nodeName = BasicStructureSerDeUtil.readString(buffer);
+    nodeNameList = BasicStructureSerDeUtil.readStringList(buffer);
   }
 
   private int getPlanTypeOrdinal(ConfigPhysicalPlanType configPhysicalPlanType) {
@@ -245,12 +246,12 @@ public class AuthorPlan extends ConfigPhysicalPlan {
         && Objects.equals(password, that.password)
         && Objects.equals(newPassword, that.newPassword)
         && Objects.equals(permissions, that.permissions)
-        && Objects.equals(nodeName, that.nodeName);
+        && Objects.equals(nodeNameList, that.nodeNameList);
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        authorType, userName, roleName, password, newPassword, permissions, nodeName);
+        authorType, userName, roleName, password, newPassword, permissions, nodeNameList);
   }
 }

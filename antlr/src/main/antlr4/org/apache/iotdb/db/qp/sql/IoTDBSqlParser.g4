@@ -417,7 +417,7 @@ orderByClause
     ;
 
 orderByAttributeClause
-    : sortKey (DESC | ASC)
+    : sortKey (DESC | ASC)?
     ;
 
 sortKey
@@ -530,12 +530,12 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
+    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
+    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath (COMMA prefixPath)*
     ;
 
 // Grant User Role
@@ -545,12 +545,12 @@ grantRoleToUser
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
+    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
+    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath (COMMA prefixPath)*
     ;
 
 // Revoke Role From User
@@ -580,12 +580,12 @@ listRole
 
 // List Privileges
 listPrivilegesUser
-    : LIST PRIVILEGES USER userName=usernameWithRoot ON prefixPath
+    : LIST PRIVILEGES USER userName=usernameWithRoot ON prefixPath (COMMA prefixPath)*
     ;
 
 // List Privileges of Roles On Specific Path
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=identifier ON prefixPath
+    : LIST PRIVILEGES ROLE roleName=identifier ON prefixPath (COMMA prefixPath)*
     ;
 
 // List Privileges of Users
@@ -644,7 +644,7 @@ flush
 
 // Clear Cache
 clearCache
-    : CLEAR CACHE
+    : CLEAR CACHE (ON (LOCAL | CLUSTER))?
     ;
 
 // Settle

@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,28 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.mpp.execution.operator.process;
+package org.apache.iotdb.db.mpp.execution.operator.process.last;
 
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.ColumnMerger;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
-import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
-import org.apache.iotdb.db.utils.datastructure.TimeSelector;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
-import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.TreeMap;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
+import static org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil.appendLastValue;
+import static org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil.getTimeSeries;
 
-public class TimeJoinOperator implements ProcessOperator {
+// merge all last query result from different data regions, it will select max time for the same
+// time-series
+public class LastQueryMergeOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
@@ -45,14 +46,13 @@ public class TimeJoinOperator implements ProcessOperator {
 
   private final int inputOperatorsCount;
 
+  private TsBlockBuilder tsBlockBuilder;
+
   /** TsBlock from child operator. Only one cache now. */
   private final TsBlock[] inputTsBlocks;
 
   /** start index for each input TsBlocks and size of it is equal to inputTsBlocks */
   private final int[] inputIndex;
-
-  /** used to record current index for input TsBlocks after merging */
-  private final int[] shadowInputIndex;
 
   /**
    * Represent whether there are more tsBlocks from ith child operator. If all elements in
@@ -61,47 +61,23 @@ public class TimeJoinOperator implements ProcessOperator {
    */
   private final boolean[] noMoreTsBlocks;
 
-  private final TimeSelector timeSelector;
+  private boolean finished = false;
 
-  private final int outputColumnCount;
+  private final Comparator<Binary> comparator;
 
-  /**
-   * this field indicates each data type for output columns(not including time column) of
-   * TimeJoinOperator its size should be equal to outputColumnCount
-   */
-  private final List<TSDataType> dataTypes;
+  private final TreeMap<Binary, Location> timeSeriesSelector;
 
-  private final List<ColumnMerger> mergers;
-
-  private final TsBlockBuilder tsBlockBuilder;
-
-  private boolean finished;
-
-  private final TimeComparator comparator;
-
-  public TimeJoinOperator(
-      OperatorContext operatorContext,
-      List<Operator> children,
-      Ordering mergeOrder,
-      List<TSDataType> dataTypes,
-      List<ColumnMerger> mergers,
-      TimeComparator comparator) {
-    checkArgument(
-        children != null && children.size() > 0,
-        "child size of TimeJoinOperator should be larger than 0");
+  public LastQueryMergeOperator(
+      OperatorContext operatorContext, List<Operator> children, Comparator<Binary> comparator) {
     this.operatorContext = operatorContext;
     this.children = children;
     this.inputOperatorsCount = children.size();
+    this.tsBlockBuilder = LastQueryUtil.createTsBlockBuilder();
     this.inputTsBlocks = new TsBlock[this.inputOperatorsCount];
     this.inputIndex = new int[this.inputOperatorsCount];
-    this.shadowInputIndex = new int[this.inputOperatorsCount];
     this.noMoreTsBlocks = new boolean[this.inputOperatorsCount];
-    this.timeSelector = new TimeSelector(this.inputOperatorsCount << 1, Ordering.ASC == mergeOrder);
-    this.outputColumnCount = dataTypes.size();
-    this.dataTypes = dataTypes;
-    this.tsBlockBuilder = new TsBlockBuilder(dataTypes);
-    this.mergers = mergers;
     this.comparator = comparator;
+    this.timeSeriesSelector = new TreeMap<>(comparator);
   }
 
   @Override
@@ -125,14 +101,15 @@ public class TimeJoinOperator implements ProcessOperator {
 
   @Override
   public TsBlock next() {
-    tsBlockBuilder.reset();
-    // end time for returned TsBlock this time, it's the min/max end time among all the children
-    // TsBlocks order by asc/desc
-    long currentEndTime = 0;
-    boolean init = false;
 
-    // get TsBlock for each input, put their time stamp into TimeSelector and then use the min Time
-    // among all the input TsBlock as the current output TsBlock's endTime.
+    // end time series for returned TsBlock this time, it's the min/max end time series among all
+    // the children
+    // TsBlocks order by asc/desc
+    Binary currentEndTimeSeries = null;
+    boolean init = false;
+    // get TsBlock for each input, put their time series into TimeSeriesSelector and then use the
+    // min/max TimeSeries
+    // among all the input TsBlock as the current output TsBlock's endTimeSeries.
     for (int i = 0; i < inputOperatorsCount; i++) {
       if (!noMoreTsBlocks[i] && empty(i)) {
         if (children.get(i).hasNext()) {
@@ -141,12 +118,18 @@ public class TimeJoinOperator implements ProcessOperator {
           if (!empty(i)) {
             int rowSize = inputTsBlocks[i].getPositionCount();
             for (int row = 0; row < rowSize; row++) {
-              timeSelector.add(inputTsBlocks[i].getTimeByIndex(row));
+              Binary key = getTimeSeries(inputTsBlocks[i], row);
+              Location location = timeSeriesSelector.get(key);
+              if (location == null
+                  || inputTsBlocks[i].getTimeByIndex(row)
+                      > inputTsBlocks[location.tsBlockIndex].getTimeByIndex(location.rowIndex)) {
+                timeSeriesSelector.put(key, new Location(i, row));
+              }
             }
           } else {
             // child operator has next but return an empty TsBlock which means that it may not
             // finish calculation in given time slice.
-            // In such case, TimeJoinOperator can't go on calculating, so we just return null.
+            // In such case, LastQueryMergeOperator can't go on calculating, so we just return null.
             // We can also use the while loop here to continuously call the hasNext() and next()
             // methods of the child operator until its hasNext() returns false or the next() gets
             // the data that is not empty, but this will cause the execution time of the while loop
@@ -158,44 +141,37 @@ public class TimeJoinOperator implements ProcessOperator {
           inputTsBlocks[i] = null;
         }
       }
-      // update the currentEndTime if the TsBlock is not empty
+      // update the currentEndTimeSeries if the TsBlock is not empty
       if (!empty(i)) {
-        currentEndTime =
+        Binary endTimeSeries =
+            getTimeSeries(inputTsBlocks[i], inputTsBlocks[i].getPositionCount() - 1);
+        currentEndTimeSeries =
             init
-                ? comparator.getCurrentEndTime(currentEndTime, inputTsBlocks[i].getEndTime())
-                : inputTsBlocks[i].getEndTime();
+                ? (comparator.compare(currentEndTimeSeries, endTimeSeries) < 0
+                    ? currentEndTimeSeries
+                    : endTimeSeries)
+                : endTimeSeries;
         init = true;
       }
     }
 
-    if (timeSelector.isEmpty()) {
-      // return empty TsBlock
-      TsBlockBuilder tsBlockBuilder = new TsBlockBuilder(0, dataTypes);
-      return tsBlockBuilder.build();
+    if (timeSeriesSelector.isEmpty()) {
+      TsBlock res = tsBlockBuilder.build();
+      tsBlockBuilder.reset();
+      return res;
     }
 
-    TimeColumnBuilder timeBuilder = tsBlockBuilder.getTimeColumnBuilder();
-    while (!timeSelector.isEmpty()
-        && comparator.satisfyCurEndTime(timeSelector.first(), currentEndTime)) {
-      timeBuilder.writeLong(timeSelector.pollFirst());
-      tsBlockBuilder.declarePosition();
+    while (!timeSeriesSelector.isEmpty()
+        && (comparator.compare(timeSeriesSelector.firstKey(), currentEndTimeSeries) <= 0)) {
+      Location location = timeSeriesSelector.pollFirstEntry().getValue();
+      appendLastValue(tsBlockBuilder, inputTsBlocks[location.tsBlockIndex], location.rowIndex);
     }
 
-    for (int i = 0; i < outputColumnCount; i++) {
-      ColumnMerger merger = mergers.get(i);
-      merger.mergeColumn(
-          inputTsBlocks,
-          inputIndex,
-          shadowInputIndex,
-          timeBuilder,
-          currentEndTime,
-          tsBlockBuilder.getColumnBuilder(i));
-    }
+    clearTsBlockCache(currentEndTimeSeries);
 
-    // update inputIndex using shadowInputIndex
-    System.arraycopy(shadowInputIndex, 0, inputIndex, 0, inputOperatorsCount);
-
-    return tsBlockBuilder.build();
+    TsBlock res = tsBlockBuilder.build();
+    tsBlockBuilder.reset();
+    return res;
   }
 
   @Override
@@ -223,6 +199,7 @@ public class TimeJoinOperator implements ProcessOperator {
     for (Operator child : children) {
       child.close();
     }
+    tsBlockBuilder = null;
   }
 
   @Override
@@ -249,5 +226,27 @@ public class TimeJoinOperator implements ProcessOperator {
   private boolean empty(int columnIndex) {
     return inputTsBlocks[columnIndex] == null
         || inputTsBlocks[columnIndex].getPositionCount() == inputIndex[columnIndex];
+  }
+
+  private void clearTsBlockCache(Binary endTimeSeries) {
+    for (int i = 0; i < inputOperatorsCount; i++) {
+      if (!empty(i)
+          && comparator.compare(
+                  getTimeSeries(inputTsBlocks[i], inputTsBlocks[i].getPositionCount() - 1),
+                  endTimeSeries)
+              == 0) {
+        inputTsBlocks[i] = null;
+      }
+    }
+  }
+
+  private static class Location {
+    int tsBlockIndex;
+    int rowIndex;
+
+    public Location(int tsBlockIndex, int rowIndex) {
+      this.tsBlockIndex = tsBlockIndex;
+      this.rowIndex = rowIndex;
+    }
   }
 }
