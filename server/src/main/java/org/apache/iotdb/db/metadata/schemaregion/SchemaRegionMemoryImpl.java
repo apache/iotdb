@@ -424,7 +424,7 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
           logger.warn("mlog: AlterTimeSeriesPlan alterType invalid, only support SET_TYPE");
           break;
         }
-        alterTimeseriesEncodingCompressionTYpe(
+        alterTimeseriesEncodingCompressionType(
             alterTimeSeriesPlan.getPath(),
             alterTimeSeriesPlan.getEncoding(),
             alterTimeSeriesPlan.getCompressor());
@@ -774,9 +774,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
   }
 
   @Override
-  public Pair<TSEncoding, CompressionType> alterTimeseriesEncodingCompressionTYpe(
+  public Pair<TSEncoding, CompressionType> alterTimeseriesEncodingCompressionType(
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws MetadataException, IOException {
+    final String logKey = fullPath.getFullPath();
     // find mnode
     IMeasurementMNode measurementMNode = mtree.getMeasurementMNode(fullPath);
     if (measurementMNode == null) {
@@ -787,12 +788,12 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       throw new MetadataException("schema(" + fullPath + ") is null", false);
     }
     logger.info(
-        "alterTimeseriesEncodingCompressionTYpe->old encoding:{}, compressionType:{}. cur ecoding:{}, compressionType:{}",
+        "[alter timeseries] {} ->old encoding:{}, compressionType:{}. cur ecoding:{}, compressionType:{}",
+        logKey,
         schema.getEncodingType(),
         schema.getCompressor(),
         curEncoding,
         curCompressionType);
-    // lock tree node TODO
     // trigger TODO
     // alter type
     measurementMNode.updateSchemaInfo(null, curEncoding, curCompressionType, null);

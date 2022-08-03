@@ -6,23 +6,19 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
 /** altering log analyzer */
 public class AlteringLogAnalyzer {
 
-  private static final Logger logger = LoggerFactory.getLogger(AlteringLogAnalyzer.class);
+  //  private static final Logger logger = LoggerFactory.getLogger(AlteringLogAnalyzer.class);
 
   private final File alterLogFile;
 
@@ -128,9 +124,7 @@ public class AlteringLogAnalyzer {
       Set<TsFileIdentifier> tsFileIdentifiers, TsFileIdentifier endTsFileIdentifier) {
 
     TsFileIdentifier moveObj = null;
-    Iterator<TsFileIdentifier> it = tsFileIdentifiers.iterator();
-    while (it.hasNext()) {
-      TsFileIdentifier next = it.next();
+    for (TsFileIdentifier next : tsFileIdentifiers) {
       String filename = endTsFileIdentifier.getFilename();
       String oldFileName = next.getFilename();
       String preName =

@@ -357,7 +357,7 @@ public class LocalSchemaProcessor {
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws MetadataException, IOException {
     return getBelongedSchemaRegion(fullPath)
-        .alterTimeseriesEncodingCompressionTYpe(fullPath, curEncoding, curCompressionType);
+        .alterTimeseriesEncodingCompressionType(fullPath, curEncoding, curCompressionType);
   }
 
   /**

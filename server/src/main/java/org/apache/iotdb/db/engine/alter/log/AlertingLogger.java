@@ -35,6 +35,27 @@ import java.util.Set;
 /**
  * Alteringlogger records the progress of modifying the encoding compression method in the form of
  * text lines in the file "alter.log".
+ *
+ * <p>fullPath curEncoding curCompressionType<br>
+ * timePartition1<br>
+ * timePartition2<br>
+ * timePartitionn<br>
+ * FLAG_TIME_PARTITIONS_HEADER_DONE<br>
+ * FLAG_SEQ_START<br>
+ * timePartition1<br>
+ * FLAG_INIT_SELECTED_FILE filePath1<br>
+ * FLAG_INIT_SELECTED_FILE filePath2<br>
+ * FLAG_INIT_SELECTED_FILE filePathn<br>
+ * FLAG_DONE filePath1<br>
+ * FLAG_DONE filePath2<br>
+ * FLAG_DONE filePathn<br>
+ * FLAG_SEQ_END<br>
+ * FLAG_USEQ_START<br>
+ * timePartition1<br>
+ * FLAG_INIT_SELECTED_FILE filePath1<br>
+ * FLAG_INIT_SELECTED_FILE filePath2<br>
+ * FLAG_INIT_SELECTED_FILE filePathn<br>
+ * FLAG_USEQ_END<br>
  */
 public class AlertingLogger implements AutoCloseable {
 
@@ -45,10 +66,9 @@ public class AlertingLogger implements AutoCloseable {
   public static final String FLAG_SEQ = "1";
   public static final String FLAG_UNSEQ = "0";
   public static final String FLAG_INIT_SELECTED_FILE = "fisf";
-  public static final String FLAG_TARGET_FILE = "fitf";
   public static final String FLAG_DONE = "done";
 
-  private BufferedWriter logStream;
+  private final BufferedWriter logStream;
 
   public AlertingLogger(File logFile) throws IOException {
     logStream = new BufferedWriter(new FileWriter(logFile, true));
@@ -101,8 +121,7 @@ public class AlertingLogger implements AutoCloseable {
           FLAG_INIT_SELECTED_FILE
               + TsFileIdentifier.INFO_SEPARATOR
               + TsFileIdentifier.getFileIdentifierFromFilePath(
-                      tsFileResource.getTsFile().getAbsolutePath())
-                  .toString());
+                  tsFileResource.getTsFile().getAbsolutePath()));
       logStream.newLine();
     }
     logStream.flush();
@@ -115,8 +134,7 @@ public class AlertingLogger implements AutoCloseable {
     logStream.write(
         FLAG_DONE
             + TsFileIdentifier.INFO_SEPARATOR
-            + TsFileIdentifier.getFileIdentifierFromFilePath(file.getTsFile().getAbsolutePath())
-                .toString());
+            + TsFileIdentifier.getFileIdentifierFromFilePath(file.getTsFile().getAbsolutePath()));
     logStream.newLine();
     logStream.flush();
   }
@@ -128,18 +146,5 @@ public class AlertingLogger implements AutoCloseable {
     logStream.write(Long.toString(timePartition));
     logStream.newLine();
     logStream.flush();
-  }
-
-  public static File findAlterLog(String directory) {
-    File dataRegionDir = new File(directory);
-    if (dataRegionDir.exists()) {
-      File[] files = dataRegionDir.listFiles((dir, name) -> name.equals(ALTERING_LOG_NAME));
-      if (files == null || files.length == 0) {
-        return null;
-      }
-      return files[0];
-    } else {
-      return null;
-    }
   }
 }

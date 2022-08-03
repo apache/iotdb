@@ -2252,7 +2252,8 @@ public class DataRegion {
    * 2、locks<br>
    * 3、write temp tsfiles<br>
    * 4、unregister old tsfiles and release locks<br>
-   * 5、rename temp tsfiles 6、register tsfiles<br>
+   * 5、rename temp tsfiles<br>
+   * 6、register tsfiles<br>
    *
    * @param fullPath
    * @param curEncoding
@@ -2294,10 +2295,10 @@ public class DataRegion {
           "Alter failed. "
               + "alter.log detected, other alter operations may be running, please do it later.");
     }
-    // write target tsfiles
+    // rewrite target tsfiles
     try (AlertingLogger alertingLogger = new AlertingLogger(logFile)) {
       Set<Long> timePartitions = tsFileManager.getTimePartitions();
-      // log header
+      // Record the ALTER process for server restart recovery
       alertingLogger.logHeader(fullPath, curEncoding, curCompressionType, timePartitions);
       for (Long timePartition : timePartitions) {
         logger.info("[alter timeseries] {} alterDataInTsFiles seq({})", logKey, timePartition);
@@ -2335,6 +2336,7 @@ public class DataRegion {
           throw e;
         }
       }
+      // The process is complete and the logFile is deleted
       if (logFile.exists()) {
         FileUtils.delete(logFile);
       }
@@ -2377,10 +2379,10 @@ public class DataRegion {
             logKey,
             tsFileResource.getTsFilePath(),
             tsFileResource.getTsFileSize());
-        // gen target tsFileResource
+        // Generate the target tsFileResource
         TsFileResource targetTsFileResource =
             TsFileNameGenerator.generateNewAlterTsFileResource(tsFileResource);
-        // read .tsfile to .alter
+        // Data is read from the.tsfile file, re-encoded, compressed, and written to the .alter file
         TsFileRewriteExcutor tsFileRewriteExcutor =
             new TsFileRewriteExcutor(
                 tsFileResource,
@@ -2391,7 +2393,7 @@ public class DataRegion {
                 timePartition,
                 sequence);
         tsFileRewriteExcutor.execute();
-        // move tsfile
+        // .tsfile->.alter.old .alter->.tsfile
         logger.debug("[alter timeseries] {} move tsfile", logKey);
         tsFileResource.moveTsFile(TSFILE_SUFFIX, ALTER_OLD_TMP_FILE_SUFFIX);
         targetTsFileResource.moveTsFile(IoTDBConstant.ALTER_TMP_FILE_SUFFIX, TSFILE_SUFFIX);

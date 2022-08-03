@@ -1851,7 +1851,7 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
   }
 
   @Override
-  public Pair<TSEncoding, CompressionType> alterTimeseriesEncodingCompressionTYpe(
+  public Pair<TSEncoding, CompressionType> alterTimeseriesEncodingCompressionType(
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws MetadataException, IOException {
     throw new UnsupportedOperationException();

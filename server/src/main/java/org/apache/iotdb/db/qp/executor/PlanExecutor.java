@@ -2098,11 +2098,12 @@ public class PlanExecutor implements IPlanExecutor {
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
       throws QueryProcessException, IOException, MetadataException {
 
-    AUDIT_LOGGER.info("alter timeseries {} {} {}", fullPath, curEncoding, curCompressionType);
+    AUDIT_LOGGER.info("[alter timeseries] {} {} {}", fullPath, curEncoding, curCompressionType);
     if (IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
       throw new QueryProcessException("This command is not supported in cluster mode");
     }
-    // schema alter
+    // Change the encoding compression type in the schema first. After that, the newly inserted data
+    // will use the new encoding compression type
     Pair<TSEncoding, CompressionType> oldPair =
         IoTDB.schemaProcessor.alterTimeseries(fullPath, curEncoding, curCompressionType);
     if (oldPair == null || oldPair.left == null || oldPair.right == null) {
