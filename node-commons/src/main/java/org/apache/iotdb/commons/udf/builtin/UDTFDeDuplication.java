@@ -33,14 +33,14 @@ import org.apache.iotdb.udf.api.type.Type;
  * the first one).
  */
 public class UDTFDeDuplication implements UDTF {
-  boolean isFirst = true;
-  Type dataType;
-  boolean cacheBoolean;
-  int cacheInt;
-  long cacheLong;
-  float cacheFloat;
-  double cacheDouble;
-  String cacheString;
+  private boolean isFirst = true;
+  private Type dataType;
+  private boolean cacheBoolean;
+  private int cacheInt;
+  private long cacheLong;
+  private float cacheFloat;
+  private double cacheDouble;
+  private String cacheString;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
