@@ -634,7 +634,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    LOGGER.debug("start to create new region {}", regionId);
+    LOGGER.info("start to create new region {}", regionId);
     try {
       if (regionId instanceof DataRegionId) {
         storageEngine.createDataRegion((DataRegionId) regionId, storageGroup, ttl);
@@ -648,7 +648,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return status;
     }
     status.setMessage("create new region " + regionId + " succeed");
-    LOGGER.debug("succeed to create new region {}", regionId);
+    LOGGER.info("succeed to create new region {}", regionId);
     return status;
   }
 
@@ -723,7 +723,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private TSStatus addConsensusGroup(ConsensusGroupId regionId, List<Peer> peers) {
-    LOGGER.debug("start to add peers {} to region {} consensus group", peers, regionId);
+    LOGGER.info("start to add peers {} to region {} consensus group", peers, regionId);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     ConsensusGenericResponse resp;
     if (regionId instanceof DataRegionId) {
@@ -738,7 +738,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       status.setMessage(resp.getException().getMessage());
       return status;
     }
-    LOGGER.debug("succeed to add peers {} to region {} consensus group", peers, regionId);
+    LOGGER.info("succeed to add peers {} to region {} consensus group", peers, regionId);
     status.setMessage("add peers to region consensus group " + regionId + "succeed");
     return status;
   }
