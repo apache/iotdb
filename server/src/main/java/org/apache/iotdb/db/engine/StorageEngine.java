@@ -58,7 +58,10 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -86,9 +89,26 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.ConcurrentModificationException;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.*;
+import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -105,7 +125,7 @@ public class StorageEngine implements IService {
   private static OperationSyncProducer operationSyncProducer;
   private static OperationSyncDDLProtector operationSyncDDLProtector;
   private static OperationSyncLogService operationSyncDDLLogService;
-  private static boolean isSecondaryLife;
+  private static AtomicBoolean isSecondaryAlive =new AtomicBoolean(false);;
 
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
@@ -278,8 +298,8 @@ public class StorageEngine implements IService {
     return null;
   }
 
-  public static boolean isSecondaryLife() {
-    return isSecondaryLife;
+  public static AtomicBoolean isSecondaryAlive() {
+    return isSecondaryAlive;
   }
 
   public static long getTimePartitionInterval() {
@@ -404,9 +424,10 @@ public class StorageEngine implements IService {
 
   private void checkSecondaryIsLife() {
     try {
-      isSecondaryLife = operationSyncsessionPool.getSystemStatus() == SystemStatus.NORMAL;
+      isSecondaryAlive.set(operationSyncsessionPool.getSystemStatus() == SystemStatus.NORMAL);
+      ;
     } catch (IoTDBConnectionException e) {
-      isSecondaryLife = false;
+      isSecondaryAlive.set(false);
     }
   }
 

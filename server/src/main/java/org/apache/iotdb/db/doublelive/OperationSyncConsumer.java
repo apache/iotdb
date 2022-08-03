@@ -64,7 +64,7 @@ public class OperationSyncConsumer implements Runnable {
       }
       headBuffer.position(0);
       boolean transmitStatus = false;
-      if (StorageEngine.isSecondaryLife()) {
+      if (StorageEngine.isSecondaryAlive().get()) {
         try {
           transmitStatus = operationSyncSessionPool.operationSyncTransmit(headBuffer);
         } catch (IoTDBConnectionException connectionException) {
