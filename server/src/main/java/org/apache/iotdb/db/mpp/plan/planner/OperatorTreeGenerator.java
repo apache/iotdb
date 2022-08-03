@@ -46,7 +46,6 @@ import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
@@ -68,19 +67,21 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.DoublePr
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.FloatPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.IntPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.LongPreviousFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.ColumnMerger;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.DescTimeComparator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.MultiColumnMerger;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.NonOverlappedMultiColumnMerger;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.SingleColumnMerger;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQuerySortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.AscTimeComparator;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.ColumnMerger;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.DescTimeComparator;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.MultiColumnMerger;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.NonOverlappedMultiColumnMerger;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.SingleColumnMerger;
-import org.apache.iotdb.db.mpp.execution.operator.process.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesCountOperator;
 import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperator;
@@ -104,6 +105,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ColumnTransformerVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.metedata.read.CountSchemaMergeNode;
@@ -861,8 +863,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // records subexpression -> ColumnTransformer for filter
     Map<Expression, ColumnTransformer> filterExpressionColumnTransformerMap = new HashMap<>();
 
-    ColumnTransformer filterOutputTransformer =
-        filterExpression.constructColumnTransformer(
+    ColumnTransformerVisitor visitor = new ColumnTransformerVisitor();
+
+    ColumnTransformerVisitor.ColumnTransformerVisitorContext filterColumnTransformerContext =
+        new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
             filterContext,
             typeProvider,
             filterLeafColumnTransformerList,
@@ -872,6 +876,9 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             ImmutableList.of(),
             ImmutableList.of(),
             0);
+
+    ColumnTransformer filterOutputTransformer =
+        visitor.process(filterExpression, filterColumnTransformerContext);
 
     List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
 
@@ -883,18 +890,21 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       UDTFContext projectContext = new UDTFContext(node.getZoneId());
       projectContext.constructUdfExecutors(projectExpressions);
 
+      ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
+          new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
+              projectContext,
+              typeProvider,
+              projectLeafColumnTransformerList,
+              inputLocations,
+              projectExpressionColumnTransformerMap,
+              filterExpressionColumnTransformerMap,
+              commonTransformerList,
+              filterOutputDataTypes,
+              inputLocations.size());
+
       for (Expression expression : projectExpressions) {
         projectOutputTransformerList.add(
-            expression.constructColumnTransformer(
-                projectContext,
-                typeProvider,
-                projectLeafColumnTransformerList,
-                inputLocations,
-                projectExpressionColumnTransformerMap,
-                filterExpressionColumnTransformerMap,
-                commonTransformerList,
-                filterOutputDataTypes,
-                inputLocations.size()));
+            visitor.process(expression, projectColumnTransformerContext));
       }
     }
 
@@ -1146,7 +1156,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     List<TSDataType> outputColumnTypes = getOutputColumnTypes(node, context.getTypeProvider());
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
-    return new TimeJoinOperator(
+    return new RowBasedTimeJoinOperator(
         operatorContext,
         children,
         node.getMergeOrder(),

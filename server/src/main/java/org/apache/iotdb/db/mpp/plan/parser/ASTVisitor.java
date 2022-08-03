@@ -118,6 +118,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -149,6 +150,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -156,6 +158,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /** Parse AST to Statement. */
 public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
@@ -1600,17 +1603,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
 
     String privilege = parsePrivilege(ctx.privileges())[0];
-    PartialPath prefixPath;
+    List<PartialPath> nodeNameList;
     if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
-      prefixPath = new PartialPath(path);
+      nodeNameList = Collections.singletonList(new PartialPath(path));
     } else {
       if (ctx.prefixPath() == null) {
         throw new SQLParserException("Invalid prefix path");
       }
-      prefixPath = parsePrefixPath(ctx.prefixPath());
+      nodeNameList =
+          ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
     }
-    authorStatement.setNodeNameList(prefixPath);
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -1621,7 +1625,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.GRANT_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -1645,17 +1651,18 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
     String privilege = parsePrivilege(ctx.privileges())[0];
 
-    PartialPath prefixPath;
+    List<PartialPath> nodeNameList;
     if (!PrivilegeType.valueOf(privilege.toUpperCase()).isPathRelevant()) {
       String[] path = {"root"};
-      prefixPath = new PartialPath(path);
+      nodeNameList = Collections.singletonList(new PartialPath(path));
     } else {
       if (ctx.prefixPath() == null) {
         throw new SQLParserException("Invalid prefix path");
       }
-      prefixPath = parsePrefixPath(ctx.prefixPath());
+      nodeNameList =
+          ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
     }
-    authorStatement.setNodeNameList(prefixPath);
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -1666,7 +1673,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.REVOKE_ROLE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     authorStatement.setPrivilegeList(parsePrivilege(ctx.privileges()));
-    authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -1720,7 +1729,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement =
         new AuthorStatement(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
     authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
-    authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -1731,7 +1742,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     AuthorStatement authorStatement =
         new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
     authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    authorStatement.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
+    List<PartialPath> nodeNameList =
+        ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
+    authorStatement.setNodeNameList(nodeNameList);
     return authorStatement;
   }
 
@@ -2301,6 +2314,35 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     }
   }
 
+  // Merge
+  @Override
+  public Statement visitMerge(IoTDBSqlParser.MergeContext ctx) {
+    MergeStatement mergeStatement = new MergeStatement(StatementType.MERGE);
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException("MERGE ON CLUSTER is not supported in standalone mode");
+    }
+    if (ctx.LOCAL() != null) {
+      mergeStatement.setCluster(false);
+    } else {
+      mergeStatement.setCluster(true);
+    }
+    return mergeStatement;
+  }
+
+  @Override
+  public Statement visitFullMerge(IoTDBSqlParser.FullMergeContext ctx) {
+    MergeStatement mergeStatement = new MergeStatement(StatementType.FULL_MERGE);
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException("FULL MERGE ON CLUSTER is not supported in standalone mode");
+    }
+    if (ctx.LOCAL() != null) {
+      mergeStatement.setCluster(false);
+    } else {
+      mergeStatement.setCluster(true);
+    }
+    return mergeStatement;
+  }
+
   // Flush
 
   @Override
@@ -2333,7 +2375,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
   @Override
   public Statement visitClearCache(IoTDBSqlParser.ClearCacheContext ctx) {
     ClearCacheStatement clearCacheStatement = new ClearCacheStatement(StatementType.CLEAR_CACHE);
-
+    if (ctx.CLUSTER() != null && !IoTDBDescriptor.getInstance().getConfig().isClusterMode()) {
+      throw new SemanticException("CLEAR CACHE ON CLUSTER is not supported in standalone mode");
+    }
     if (ctx.LOCAL() != null) {
       clearCacheStatement.setCluster(false);
     } else {

@@ -213,12 +213,15 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     TSStatus result = new TSStatus();
     storageGroupReadWriteLock.writeLock().lock();
     try {
-      PartialPath path = new PartialPath(plan.getStorageGroup());
-      if (mTree.isStorageGroupAlreadySet(path)) {
-        mTree
-            .getStorageGroupNodeByStorageGroupPath(path)
-            .getStorageGroupSchema()
-            .setTTL(plan.getTTL());
+      PartialPath patternPath = new PartialPath(plan.getStorageGroupPathPattern());
+      List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
+      if (matchedPaths.size() != 0) {
+        for (PartialPath path : matchedPaths) {
+          mTree
+              .getStorageGroupNodeByStorageGroupPath(path)
+              .getStorageGroupSchema()
+              .setTTL(plan.getTTL());
+        }
         result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       } else {
         result.setCode(TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode());
@@ -689,6 +692,25 @@ public class ClusterSchemaInfo implements SnapshotProcessor {
     }
 
     return new AllTemplateSetInfoResp(outputStream.toByteArray());
+  }
+
+  public Map<String, TStorageGroupSchema> getMatchedStorageGroupSchemasByOneName(
+      String[] storageGroupPathPattern) {
+    Map<String, TStorageGroupSchema> schemaMap = new HashMap<>();
+    storageGroupReadWriteLock.readLock().lock();
+    try {
+      PartialPath patternPath = new PartialPath(storageGroupPathPattern);
+      List<PartialPath> matchedPaths = mTree.getBelongedStorageGroups(patternPath);
+      for (PartialPath path : matchedPaths) {
+        schemaMap.put(
+            path.getFullPath(), mTree.getStorageGroupNodeByPath(path).getStorageGroupSchema());
+      }
+    } catch (MetadataException e) {
+      LOGGER.warn("Error StorageGroup name", e);
+    } finally {
+      storageGroupReadWriteLock.readLock().unlock();
+    }
+    return schemaMap;
   }
 
   @TestOnly

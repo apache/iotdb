@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -35,7 +36,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -206,19 +206,18 @@ public class ConfigNode implements ConfigNodeMBean {
 
     TEndPoint targetConfigNode = conf.getTargetConfigNode();
     for (int retry = 0; retry < 3; retry++) {
-      TConfigNodeRegisterResp resp =
-          (TConfigNodeRegisterResp)
+      TSStatus status =
+          (TSStatus)
               SyncConfigNodeClientPool.getInstance()
                   .sendSyncRequestToConfigNodeWithRetry(
                       targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
-      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         return;
-      } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-        targetConfigNode = resp.getStatus().getRedirectNode();
+      } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        targetConfigNode = status.getRedirectNode();
         LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
-      } else if (resp.getStatus().getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
-        LOGGER.error("Configuration may not be consistent, {}", req);
+      } else if (status.getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
+        LOGGER.error(status.getMessage());
         throw new StartupException("Configuration are not consistent!");
       }
 
