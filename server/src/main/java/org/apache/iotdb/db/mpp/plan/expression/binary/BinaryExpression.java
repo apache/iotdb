@@ -65,8 +65,8 @@ public abstract class BinaryExpression extends Expression {
   }
 
   @Override
-  public <R> R accept(ExpressionVisitor<R> visitor) {
-    return visitor.visitBinaryExpression(this);
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitBinaryExpression(this, context);
   }
 
   public Expression getLeftExpression() {

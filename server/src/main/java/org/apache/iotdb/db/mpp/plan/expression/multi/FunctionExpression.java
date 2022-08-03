@@ -144,8 +144,8 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public <R> R accept(ExpressionVisitor<R> visitor) {
-    return visitor.visitFunctionExpression(this);
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitFunctionExpression(this, context);
   }
 
   @Override

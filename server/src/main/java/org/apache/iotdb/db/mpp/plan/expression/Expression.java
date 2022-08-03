@@ -82,8 +82,8 @@ public abstract class Expression {
    * Accessible for {@link ExpressionVisitor}, use {@link ExpressionVisitor#process(Expression)}
    * instead.
    */
-  public <R> R accept(ExpressionVisitor<R> visitor) {
-    return visitor.visitExpression(this);
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitExpression(this, context);
   }
 
   /////////////////////////////////////////////////////////////////////////////////////////////////

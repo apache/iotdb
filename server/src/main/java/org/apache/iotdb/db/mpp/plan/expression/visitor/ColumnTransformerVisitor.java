@@ -71,138 +71,114 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /** Responsible for constructing {@link ColumnTransformer} through Expression. */
-public class ColumnTransformerVisitor extends ExpressionVisitor<ColumnTransformer> {
-
-  private final UDTFContext udtfContext;
-
-  private final TypeProvider typeProvider;
-
-  private final List<LeafColumnTransformer> leafList;
-
-  private final Map<String, List<InputLocation>> inputLocations;
-
-  private final Map<Expression, ColumnTransformer> cache;
-
-  private final Map<Expression, ColumnTransformer> hasSeen;
-
-  private final List<ColumnTransformer> commonTransformerList;
-
-  private final List<TSDataType> inputDataTypes;
-
-  private final int originSize;
-
-  public ColumnTransformerVisitor(
-      UDTFContext udtfContext,
-      TypeProvider typeProvider,
-      List<LeafColumnTransformer> leafList,
-      Map<String, List<InputLocation>> inputLocations,
-      Map<Expression, ColumnTransformer> cache,
-      Map<Expression, ColumnTransformer> hasSeen,
-      List<ColumnTransformer> commonTransformerList,
-      List<TSDataType> inputDataTypes,
-      int originSize) {
-    this.udtfContext = udtfContext;
-    this.typeProvider = typeProvider;
-    this.leafList = leafList;
-    this.inputLocations = inputLocations;
-    this.cache = cache;
-    this.hasSeen = hasSeen;
-    this.commonTransformerList = commonTransformerList;
-    this.inputDataTypes = inputDataTypes;
-    this.originSize = originSize;
-  }
+public class ColumnTransformerVisitor
+    extends ExpressionVisitor<
+        ColumnTransformer, ColumnTransformerVisitor.ColumnTransformerVisitorContext> {
 
   @Override
-  public ColumnTransformer visitExpression(Expression expression) {
+  public ColumnTransformer visitExpression(
+      Expression expression, ColumnTransformerVisitorContext context) {
     throw new UnsupportedOperationException(
         "Unsupported statement type: " + expression.getClass().getName());
   }
 
   @Override
-  public ColumnTransformer visitUnaryExpression(UnaryExpression unaryExpression) {
-    if (!cache.containsKey(unaryExpression)) {
-      if (hasSeen.containsKey(unaryExpression)) {
+  public ColumnTransformer visitUnaryExpression(
+      UnaryExpression unaryExpression, ColumnTransformerVisitorContext context) {
+    if (!context.cache.containsKey(unaryExpression)) {
+      if (context.hasSeen.containsKey(unaryExpression)) {
         IdentityColumnTransformer identity =
             new IdentityColumnTransformer(
-                TypeFactory.getType(typeProvider.getType(unaryExpression.getExpressionString())),
-                originSize + commonTransformerList.size());
-        ColumnTransformer columnTransformer = hasSeen.get(unaryExpression);
+                TypeFactory.getType(
+                    context.typeProvider.getType(unaryExpression.getExpressionString())),
+                context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(unaryExpression);
         columnTransformer.addReferenceCount();
-        commonTransformerList.add(columnTransformer);
-        leafList.add(identity);
-        inputDataTypes.add(typeProvider.getType(unaryExpression.getExpressionString()));
-        cache.put(unaryExpression, identity);
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(
+            context.typeProvider.getType(unaryExpression.getExpressionString()));
+        context.cache.put(unaryExpression, identity);
       } else {
-        ColumnTransformer childColumnTransformer = this.process(unaryExpression.getExpression());
-        cache.put(
+        ColumnTransformer childColumnTransformer =
+            this.process(unaryExpression.getExpression(), context);
+        context.cache.put(
             unaryExpression,
             getConcreteUnaryColumnTransformer(
                 unaryExpression,
                 childColumnTransformer,
-                TypeFactory.getType(typeProvider.getType(unaryExpression.getExpressionString()))));
+                TypeFactory.getType(
+                    context.typeProvider.getType(unaryExpression.getExpressionString()))));
       }
     }
-    ColumnTransformer res = cache.get(unaryExpression);
+    ColumnTransformer res = context.cache.get(unaryExpression);
     res.addReferenceCount();
     return res;
   }
 
   @Override
-  public ColumnTransformer visitBinaryExpression(BinaryExpression binaryExpression) {
-    if (!cache.containsKey(binaryExpression)) {
-      if (hasSeen.containsKey(binaryExpression)) {
+  public ColumnTransformer visitBinaryExpression(
+      BinaryExpression binaryExpression, ColumnTransformerVisitorContext context) {
+    if (!context.cache.containsKey(binaryExpression)) {
+      if (context.hasSeen.containsKey(binaryExpression)) {
         IdentityColumnTransformer identity =
             new IdentityColumnTransformer(
-                TypeFactory.getType(typeProvider.getType(binaryExpression.getExpressionString())),
-                originSize + commonTransformerList.size());
-        ColumnTransformer columnTransformer = hasSeen.get(binaryExpression);
+                TypeFactory.getType(
+                    context.typeProvider.getType(binaryExpression.getExpressionString())),
+                context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(binaryExpression);
         columnTransformer.addReferenceCount();
-        commonTransformerList.add(columnTransformer);
-        leafList.add(identity);
-        inputDataTypes.add(typeProvider.getType(binaryExpression.getExpressionString()));
-        cache.put(binaryExpression, identity);
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(
+            context.typeProvider.getType(binaryExpression.getExpressionString()));
+        context.cache.put(binaryExpression, identity);
       } else {
         ColumnTransformer leftColumnTransformer =
-            this.process(binaryExpression.getLeftExpression());
+            this.process(binaryExpression.getLeftExpression(), context);
         ColumnTransformer rightColumnTransformer =
-            this.process(binaryExpression.getRightExpression());
-        cache.put(
+            this.process(binaryExpression.getRightExpression(), context);
+        context.cache.put(
             binaryExpression,
             getConcreteBinaryColumnTransformer(
                 binaryExpression,
                 leftColumnTransformer,
                 rightColumnTransformer,
-                TypeFactory.getType(typeProvider.getType(binaryExpression.getExpressionString()))));
+                TypeFactory.getType(
+                    context.typeProvider.getType(binaryExpression.getExpressionString()))));
       }
     }
 
-    ColumnTransformer res = cache.get(binaryExpression);
+    ColumnTransformer res = context.cache.get(binaryExpression);
     res.addReferenceCount();
     return res;
   }
 
   @Override
-  public ColumnTransformer visitTernaryExpression(TernaryExpression ternaryExpression) {
-    if (!cache.containsKey(ternaryExpression)) {
-      if (hasSeen.containsKey(ternaryExpression)) {
+  public ColumnTransformer visitTernaryExpression(
+      TernaryExpression ternaryExpression, ColumnTransformerVisitorContext context) {
+    if (!context.cache.containsKey(ternaryExpression)) {
+      if (context.hasSeen.containsKey(ternaryExpression)) {
         IdentityColumnTransformer identity =
             new IdentityColumnTransformer(
-                TypeFactory.getType(typeProvider.getType(ternaryExpression.getExpressionString())),
-                originSize + commonTransformerList.size());
-        ColumnTransformer columnTransformer = hasSeen.get(ternaryExpression);
+                TypeFactory.getType(
+                    context.typeProvider.getType(ternaryExpression.getExpressionString())),
+                context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(ternaryExpression);
         columnTransformer.addReferenceCount();
-        commonTransformerList.add(columnTransformer);
-        leafList.add(identity);
-        inputDataTypes.add(typeProvider.getType(ternaryExpression.getExpressionString()));
-        cache.put(ternaryExpression, identity);
+        context.commonTransformerList.add(columnTransformer);
+        context.leafList.add(identity);
+        context.inputDataTypes.add(
+            context.typeProvider.getType(ternaryExpression.getExpressionString()));
+        context.cache.put(ternaryExpression, identity);
       } else {
         ColumnTransformer firstColumnTransformer =
-            this.process(ternaryExpression.getFirstExpression());
+            this.process(ternaryExpression.getFirstExpression(), context);
         ColumnTransformer secondColumnTransformer =
-            this.process(ternaryExpression.getSecondExpression());
+            this.process(ternaryExpression.getSecondExpression(), context);
         ColumnTransformer thirdColumnTransformer =
-            this.process(ternaryExpression.getThirdExpression());
-        cache.put(
+            this.process(ternaryExpression.getThirdExpression(), context);
+        context.cache.put(
             ternaryExpression,
             getConcreteTernaryTransformer(
                 ternaryExpression,
@@ -210,52 +186,59 @@ public class ColumnTransformerVisitor extends ExpressionVisitor<ColumnTransforme
                 secondColumnTransformer,
                 thirdColumnTransformer,
                 TypeFactory.getType(
-                    typeProvider.getType(ternaryExpression.getExpressionString()))));
+                    context.typeProvider.getType(ternaryExpression.getExpressionString()))));
       }
     }
 
-    ColumnTransformer res = cache.get(ternaryExpression);
+    ColumnTransformer res = context.cache.get(ternaryExpression);
     res.addReferenceCount();
     return res;
   }
 
   @Override
-  public ColumnTransformer visitFunctionExpression(FunctionExpression functionExpression) {
+  public ColumnTransformer visitFunctionExpression(
+      FunctionExpression functionExpression, ColumnTransformerVisitorContext context) {
     List<Expression> expressions = functionExpression.getExpressions();
-    if (!cache.containsKey(functionExpression)) {
-      if (hasSeen.containsKey(functionExpression)) {
+    if (!context.cache.containsKey(functionExpression)) {
+      if (context.hasSeen.containsKey(functionExpression)) {
         IdentityColumnTransformer identity =
             new IdentityColumnTransformer(
-                TypeFactory.getType(typeProvider.getType(functionExpression.getExpressionString())),
-                originSize + commonTransformerList.size());
-        ColumnTransformer columnTransformer = hasSeen.get(functionExpression);
+                TypeFactory.getType(
+                    context.typeProvider.getType(functionExpression.getExpressionString())),
+                context.originSize + context.commonTransformerList.size());
+        ColumnTransformer columnTransformer = context.hasSeen.get(functionExpression);
         columnTransformer.addReferenceCount();
-        commonTransformerList.add(columnTransformer);
-        inputDataTypes.add(typeProvider.getType(functionExpression.getExpressionString()));
-        leafList.add(identity);
-        cache.put(functionExpression, identity);
+        context.commonTransformerList.add(columnTransformer);
+        context.inputDataTypes.add(
+            context.typeProvider.getType(functionExpression.getExpressionString()));
+        context.leafList.add(identity);
+        context.cache.put(functionExpression, identity);
       } else {
         if (functionExpression.isBuiltInAggregationFunctionExpression()) {
           IdentityColumnTransformer identity =
               new IdentityColumnTransformer(
                   TypeFactory.getType(
-                      typeProvider.getType(functionExpression.getExpressionString())),
-                  inputLocations
+                      context.typeProvider.getType(functionExpression.getExpressionString())),
+                  context
+                      .inputLocations
                       .get(functionExpression.getExpressionString())
                       .get(0)
                       .getValueColumnIndex());
-          leafList.add(identity);
-          cache.put(functionExpression, identity);
+          context.leafList.add(identity);
+          context.cache.put(functionExpression, identity);
         } else {
           ColumnTransformer[] inputColumnTransformers =
-              expressions.stream().map(this::process).toArray(ColumnTransformer[]::new);
+              expressions.stream()
+                  .map(expression -> this.process(expression, context))
+                  .toArray(ColumnTransformer[]::new);
 
           TSDataType[] inputTransformerDataTypes =
               expressions.stream()
-                  .map(expression -> expression.inferTypes(typeProvider))
+                  .map(expression -> expression.inferTypes(context.typeProvider))
                   .toArray(TSDataType[]::new);
 
-          UDTFExecutor executor = udtfContext.getExecutorByFunctionExpression(functionExpression);
+          UDTFExecutor executor =
+              context.udtfContext.getExecutorByFunctionExpression(functionExpression);
 
           // Mappable UDF does not need PointCollector, so memoryBudget and queryId is not
           // needed.
@@ -264,37 +247,38 @@ public class ColumnTransformerVisitor extends ExpressionVisitor<ColumnTransforme
               0,
               expressions.stream().map(Expression::toString).collect(Collectors.toList()),
               expressions.stream()
-                  .map(f -> typeProvider.getType(f.toString()))
+                  .map(f -> context.typeProvider.getType(f.toString()))
                   .collect(Collectors.toList()),
               functionExpression.getFunctionAttributes());
 
-          cache.put(
+          context.cache.put(
               functionExpression,
               new MappableUDFColumnTransformer(
                   TypeFactory.getType(
-                      typeProvider.getType(functionExpression.getExpressionString())),
+                      context.typeProvider.getType(functionExpression.getExpressionString())),
                   inputColumnTransformers,
                   inputTransformerDataTypes,
-                  udtfContext.getExecutorByFunctionExpression(functionExpression)));
+                  context.udtfContext.getExecutorByFunctionExpression(functionExpression)));
         }
       }
     }
-    ColumnTransformer res = cache.get(functionExpression);
+    ColumnTransformer res = context.cache.get(functionExpression);
     res.addReferenceCount();
     return res;
   }
 
   @Override
-  public ColumnTransformer visitTimeStampOperand(TimestampOperand timestampOperand) {
+  public ColumnTransformer visitTimeStampOperand(
+      TimestampOperand timestampOperand, ColumnTransformerVisitorContext context) {
     ColumnTransformer res =
-        cache.computeIfAbsent(
+        context.cache.computeIfAbsent(
             timestampOperand,
             e -> {
               TimeColumnTransformer timeColumnTransformer =
                   new TimeColumnTransformer(
                       TypeFactory.getType(
-                          typeProvider.getType(timestampOperand.getExpressionString())));
-              leafList.add(timeColumnTransformer);
+                          context.typeProvider.getType(timestampOperand.getExpressionString())));
+              context.leafList.add(timeColumnTransformer);
               return timeColumnTransformer;
             });
     res.addReferenceCount();
@@ -302,20 +286,22 @@ public class ColumnTransformerVisitor extends ExpressionVisitor<ColumnTransforme
   }
 
   @Override
-  public ColumnTransformer visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand) {
+  public ColumnTransformer visitTimeSeriesOperand(
+      TimeSeriesOperand timeSeriesOperand, ColumnTransformerVisitorContext context) {
     ColumnTransformer res =
-        cache.computeIfAbsent(
+        context.cache.computeIfAbsent(
             timeSeriesOperand,
             e -> {
               IdentityColumnTransformer identity =
                   new IdentityColumnTransformer(
                       TypeFactory.getType(
-                          typeProvider.getType(timeSeriesOperand.getExpressionString())),
-                      inputLocations
+                          context.typeProvider.getType(timeSeriesOperand.getExpressionString())),
+                      context
+                          .inputLocations
                           .get(timeSeriesOperand.getExpressionString())
                           .get(0)
                           .getValueColumnIndex());
-              leafList.add(identity);
+              context.leafList.add(identity);
               return identity;
             });
     res.addReferenceCount();
@@ -323,17 +309,18 @@ public class ColumnTransformerVisitor extends ExpressionVisitor<ColumnTransforme
   }
 
   @Override
-  public ColumnTransformer visitConstantOperand(ConstantOperand constantOperand) {
+  public ColumnTransformer visitConstantOperand(
+      ConstantOperand constantOperand, ColumnTransformerVisitorContext context) {
     ColumnTransformer res =
-        cache.computeIfAbsent(
+        context.cache.computeIfAbsent(
             constantOperand,
             e -> {
               ConstantColumnTransformer columnTransformer =
                   new ConstantColumnTransformer(
                       TypeFactory.getType(
-                          typeProvider.getType(constantOperand.getExpressionString())),
+                          context.typeProvider.getType(constantOperand.getExpressionString())),
                       TransformUtils.transformConstantOperandToColumn(constantOperand));
-              leafList.add(columnTransformer);
+              context.leafList.add(columnTransformer);
               return columnTransformer;
             });
     res.addReferenceCount();
@@ -438,6 +425,54 @@ public class ColumnTransformerVisitor extends ExpressionVisitor<ColumnTransforme
       default:
         throw new UnsupportedOperationException(
             "Unsupported Expression Type: " + expression.getExpressionType());
+    }
+  }
+
+  public static class ColumnTransformerVisitorContext {
+    // UDTFContext of expression
+    UDTFContext udtfContext;
+
+    // TypeProvider of expression
+    TypeProvider typeProvider;
+
+    // LeafColumnTransformer for LeafOperand
+    List<LeafColumnTransformer> leafList;
+
+    // Index of input column
+    Map<String, List<InputLocation>> inputLocations;
+
+    // cache for constructing ColumnTransformer tree
+    Map<Expression, ColumnTransformer> cache;
+
+    // Sub expressions that has been seen in filter
+    Map<Expression, ColumnTransformer> hasSeen;
+
+    // Common Transformer between filter and project
+    List<ColumnTransformer> commonTransformerList;
+
+    List<TSDataType> inputDataTypes;
+
+    int originSize;
+
+    public ColumnTransformerVisitorContext(
+        UDTFContext udtfContext,
+        TypeProvider typeProvider,
+        List<LeafColumnTransformer> leafList,
+        Map<String, List<InputLocation>> inputLocations,
+        Map<Expression, ColumnTransformer> cache,
+        Map<Expression, ColumnTransformer> hasSeen,
+        List<ColumnTransformer> commonTransformerList,
+        List<TSDataType> inputDataTypes,
+        int originSize) {
+      this.udtfContext = udtfContext;
+      this.typeProvider = typeProvider;
+      this.leafList = leafList;
+      this.inputLocations = inputLocations;
+      this.cache = cache;
+      this.hasSeen = hasSeen;
+      this.commonTransformerList = commonTransformerList;
+      this.inputDataTypes = inputDataTypes;
+      this.originSize = originSize;
     }
   }
 }

@@ -83,8 +83,8 @@ public abstract class TernaryExpression extends Expression {
   }
 
   @Override
-  public <R> R accept(ExpressionVisitor<R> visitor) {
-    return visitor.visitTernaryExpression(this);
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitTernaryExpression(this, context);
   }
 
   @Override

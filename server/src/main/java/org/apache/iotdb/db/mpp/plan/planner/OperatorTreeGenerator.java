@@ -863,8 +863,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     // records subexpression -> ColumnTransformer for filter
     Map<Expression, ColumnTransformer> filterExpressionColumnTransformerMap = new HashMap<>();
 
-    ColumnTransformerVisitor filterVisitor =
-        new ColumnTransformerVisitor(
+    ColumnTransformerVisitor visitor = new ColumnTransformerVisitor();
+
+    ColumnTransformerVisitor.ColumnTransformerVisitorContext filterColumnTransformerContext =
+        new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
             filterContext,
             typeProvider,
             filterLeafColumnTransformerList,
@@ -875,7 +877,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             ImmutableList.of(),
             0);
 
-    ColumnTransformer filterOutputTransformer = filterVisitor.process(filterExpression);
+    ColumnTransformer filterOutputTransformer =
+        visitor.process(filterExpression, filterColumnTransformerContext);
 
     List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
 
@@ -887,8 +890,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
       UDTFContext projectContext = new UDTFContext(node.getZoneId());
       projectContext.constructUdfExecutors(projectExpressions);
 
-      ColumnTransformerVisitor projectVisitor =
-          new ColumnTransformerVisitor(
+      ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
+          new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
               projectContext,
               typeProvider,
               projectLeafColumnTransformerList,
@@ -900,7 +903,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
               inputLocations.size());
 
       for (Expression expression : projectExpressions) {
-        projectOutputTransformerList.add(projectVisitor.process(expression));
+        projectOutputTransformerList.add(
+            visitor.process(expression, projectColumnTransformerContext));
       }
     }
 

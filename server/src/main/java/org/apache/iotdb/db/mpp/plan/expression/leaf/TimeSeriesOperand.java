@@ -66,8 +66,8 @@ public class TimeSeriesOperand extends LeafOperand {
   }
 
   @Override
-  public <R> R accept(ExpressionVisitor<R> visitor) {
-    return visitor.visitTimeSeriesOperand(this);
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitTimeSeriesOperand(this, context);
   }
 
   @Override

@@ -61,8 +61,8 @@ public class ConstantOperand extends LeafOperand {
   }
 
   @Override
-  public <R> R accept(ExpressionVisitor<R> visitor) {
-    return visitor.visitConstantOperand(this);
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitConstantOperand(this, context);
   }
 
   public TSDataType getDataType() {

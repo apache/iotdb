@@ -33,40 +33,41 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.UnaryExpression;
  * which only needs to handle a subset of the available methods.
  *
  * @param <R> The return type of the visit operation.
+ * @param <C> The context information during visiting.
  */
-public abstract class ExpressionVisitor<R> {
+public abstract class ExpressionVisitor<R, C> {
 
-  public R process(Expression expression) {
-    return expression.accept(this);
+  public R process(Expression expression, C context) {
+    return expression.accept(this, context);
   }
 
-  public abstract R visitExpression(Expression expression);
+  public abstract R visitExpression(Expression expression, C context);
 
-  public R visitUnaryExpression(UnaryExpression unaryExpression) {
-    return visitExpression(unaryExpression);
+  public R visitUnaryExpression(UnaryExpression unaryExpression, C context) {
+    return visitExpression(unaryExpression, context);
   }
 
-  public R visitBinaryExpression(BinaryExpression binaryExpression) {
-    return visitExpression(binaryExpression);
+  public R visitBinaryExpression(BinaryExpression binaryExpression, C context) {
+    return visitExpression(binaryExpression, context);
   }
 
-  public R visitTernaryExpression(TernaryExpression ternaryExpression) {
-    return visitExpression(ternaryExpression);
+  public R visitTernaryExpression(TernaryExpression ternaryExpression, C context) {
+    return visitExpression(ternaryExpression, context);
   }
 
-  public R visitFunctionExpression(FunctionExpression functionExpression) {
-    return visitExpression(functionExpression);
+  public R visitFunctionExpression(FunctionExpression functionExpression, C context) {
+    return visitExpression(functionExpression, context);
   }
 
-  public R visitTimeStampOperand(TimestampOperand timestampOperand) {
-    return visitExpression(timestampOperand);
+  public R visitTimeStampOperand(TimestampOperand timestampOperand, C context) {
+    return visitExpression(timestampOperand, context);
   }
 
-  public R visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand) {
-    return visitExpression(timeSeriesOperand);
+  public R visitTimeSeriesOperand(TimeSeriesOperand timeSeriesOperand, C context) {
+    return visitExpression(timeSeriesOperand, context);
   }
 
-  public R visitConstantOperand(ConstantOperand constantOperand) {
-    return visitExpression(constantOperand);
+  public R visitConstantOperand(ConstantOperand constantOperand, C context) {
+    return visitExpression(constantOperand, context);
   }
 }
