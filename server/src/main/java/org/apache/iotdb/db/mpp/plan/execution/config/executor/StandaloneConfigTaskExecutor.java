@@ -282,11 +282,15 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       Map<PartialPath, Long> allStorageGroupToTTL =
           LocalConfigNode.getInstance().getStorageGroupsTTL();
-      for (PartialPath storageGroupPath : storageGroupPaths) {
-        if (showTTLStatement.isAll()) {
-          storageGroupToTTL.put(
-              storageGroupPath.getFullPath(), allStorageGroupToTTL.get(storageGroupPath));
-        } else {
+      if (showTTLStatement.isAll()) {
+        allStorageGroupToTTL
+            .entrySet()
+            .forEach(
+                (entry) -> {
+                  storageGroupToTTL.put(entry.getKey().getFullPath(), entry.getValue());
+                });
+      } else {
+        for (PartialPath storageGroupPath : storageGroupPaths) {
           List<PartialPath> matchedStorageGroupPaths =
               LocalConfigNode.getInstance()
                   .getMatchedStorageGroups(storageGroupPath, showTTLStatement.isPrefixPath());
