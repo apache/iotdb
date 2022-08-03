@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
@@ -79,6 +80,11 @@ public abstract class TernaryExpression extends Expression {
     this.firstExpression = Expression.deserialize(byteBuffer);
     this.secondExpression = Expression.deserialize(byteBuffer);
     this.thirdExpression = Expression.deserialize(byteBuffer);
+  }
+
+  @Override
+  public <R> R accept(ExpressionVisitor<R> visitor) {
+    return visitor.visitTernaryExpression(this);
   }
 
   @Override

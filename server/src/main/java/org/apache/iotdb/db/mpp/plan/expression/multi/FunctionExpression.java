@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
@@ -140,6 +141,11 @@ public class FunctionExpression extends Expression {
                 v ->
                     v.isUserDefinedAggregationFunctionExpression()
                         || v.isBuiltInAggregationFunctionExpression());
+  }
+
+  @Override
+  public <R> R accept(ExpressionVisitor<R> visitor) {
+    return visitor.visitFunctionExpression(this);
   }
 
   @Override

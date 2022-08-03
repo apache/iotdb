@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
@@ -53,6 +54,11 @@ public class TimestampOperand extends LeafOperand {
 
   public TimestampOperand(ByteBuffer byteBuffer) {
     // do nothing
+  }
+
+  @Override
+  public <R> R accept(ExpressionVisitor<R> visitor) {
+    return visitor.visitTimeStampOperand(this);
   }
 
   @Override
