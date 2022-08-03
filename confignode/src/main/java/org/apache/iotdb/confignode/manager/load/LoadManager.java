@@ -54,6 +54,7 @@ import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCac
 import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -150,8 +151,11 @@ public class LoadManager {
           getClusterSchemaManager().getStorageGroupSchemaByName(storageGroup).getTTL());
     }
     AsyncDataNodeClientPool.getInstance().createRegions(createRegionGroupsPlan, ttlMap);
+
     // Persist the allocation result
     getConsensusManager().write(createRegionGroupsPlan);
+    // Broadcast the latest RegionRouteMap
+    broadcastLatestRegionRouteMap();
   }
 
   /**
@@ -185,6 +189,7 @@ public class LoadManager {
    *     sorting result have higher priority.
    */
   public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap() {
+    // Always take the latest locations of RegionGroups as the input parameter
     return routeBalancer.genLatestRegionRouteMap(getPartitionManager().getAllReplicaSets());
   }
 
@@ -264,17 +269,19 @@ public class LoadManager {
   }
 
   private void updateNodeLoadStatistic() {
-    AtomicBoolean isNeedBroadcast = new AtomicBoolean(false);
+    AtomicBoolean existFailDownDataNode = new AtomicBoolean(false);
+    AtomicBoolean existChangeLeaderSchemaRegionGroup = new AtomicBoolean(false);
+    AtomicBoolean existChangeLeaderDataRegionGroup = new AtomicBoolean(false);
+    boolean isNeedBroadcast = false;
 
     nodeCacheMap
         .values()
         .forEach(
             nodeCache -> {
               boolean updateResult = nodeCache.updateLoadStatistic();
-              if (conf.getRoutingPolicy().equals(RouteBalancer.greedyPolicy)
-                  && nodeCache instanceof DataNodeHeartbeatCache) {
-                // We need a broadcast when some DataNode fail down
-                isNeedBroadcast.compareAndSet(false, updateResult);
+              if (nodeCache instanceof DataNodeHeartbeatCache) {
+                // Check if some DataNodes fail down
+                existFailDownDataNode.compareAndSet(false, updateResult);
               }
             });
 
@@ -283,19 +290,43 @@ public class LoadManager {
         .forEach(
             regionGroupCache -> {
               boolean updateResult = regionGroupCache.updateLoadStatistic();
-              if (conf.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)) {
-                // We need a broadcast when the leadership changed
-                isNeedBroadcast.compareAndSet(false, updateResult);
+              switch (regionGroupCache.getConsensusGroupId().getType()) {
+                  // Check if some RegionGroups change their leader
+                case SchemaRegion:
+                  existChangeLeaderSchemaRegionGroup.compareAndSet(false, updateResult);
+                  break;
+                case DataRegion:
+                  existChangeLeaderDataRegionGroup.compareAndSet(false, updateResult);
+                  break;
               }
             });
 
-    if (isNeedBroadcast.get()) {
+    if (existFailDownDataNode.get()) {
+      // The RegionRouteMap must be broadcast if some DataNodes fail down
+      isNeedBroadcast = true;
+    }
+
+    if (conf.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)) {
+      // Check the condition of leader routing policy
+      if (existChangeLeaderSchemaRegionGroup.get()) {
+        // Broadcast the RegionRouteMap if some SchemaRegionGroups change their leader
+        isNeedBroadcast = true;
+      }
+      if (!conf.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.MultiLeaderConsensus)
+          && existChangeLeaderDataRegionGroup.get()) {
+        // Broadcast the RegionRouteMap if some DataRegionGroups change their leader
+        // and the consensus protocol isn't MultiLeader
+        isNeedBroadcast = true;
+      }
+    }
+
+    if (isNeedBroadcast) {
       broadcastLatestRegionRouteMap();
     }
     addMetrics();
   }
 
-  private void broadcastLatestRegionRouteMap() {
+  public void broadcastLatestRegionRouteMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genLatestRegionRouteMap();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
     getOnlineDataNodes(-1)

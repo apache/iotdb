@@ -207,6 +207,8 @@ public class DataNodeRemoveHandler {
         status,
         originalDataNode.getInternalEndPoint().getIp(),
         destDataNode.getInternalEndPoint().getIp());
+    // Broadcast the latest RegionRouteMap when Region migration finished
+    configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   /**
