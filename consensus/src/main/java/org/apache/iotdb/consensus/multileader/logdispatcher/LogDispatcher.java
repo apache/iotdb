@@ -107,20 +107,17 @@ public class LogDispatcher {
   }
 
   public void offer(IndexedConsensusRequest request) {
+    List<ByteBuffer> serializedRequests = request.buildSerializedRequests();
     threads.forEach(
         thread -> {
           logger.debug(
               "{}: Push a log to the queue, where the queue length is {}",
               impl.getThisNode().getGroupId(),
               thread.getPendingRequest().size());
-          if (thread.getPendingRequest().size()
-              < thread.config.getReplication().getMaxPendingRequestNumPerNode()) {
-            thread
-                .getPendingRequest()
-                .add(
-                    new IndexedConsensusRequest(
-                        request.buildSerializedRequests(), request.getSearchIndex()));
-            thread.countQueue();
+          if (thread
+              .getPendingRequest()
+              .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
+            thread.countQueue(request.getSearchIndex());
           } else {
             logger.debug(
                 "{}: Log queue of {} is full, ignore the log to this node",
@@ -128,6 +125,14 @@ public class LogDispatcher {
                 thread.getPeer());
           }
         });
+  }
+
+  private boolean needPutIntoQueue() {
+    return threads.stream()
+        .anyMatch(
+            t ->
+                t.getPendingRequest().size()
+                    < t.config.getReplication().getMaxPendingRequestNumPerNode());
   }
 
   public class LogDispatcherThread implements Runnable {
@@ -162,12 +167,12 @@ public class LogDispatcher {
       this.walEntryiterator = reader.getReqIterator(iteratorIndex);
     }
 
-    public void countQueue() {
+    public void countQueue(long searchIndex) {
       this.queueCount++;
       logger.info(
           String.format(
-              "DataRegion[%s]->%s: total request from queue - [%d]",
-              peer.getGroupId().getId(), peer.getEndpoint().ip, queueCount));
+              "DataRegion[%s]->%s: total request from queue: [%d], requestIndex: [%d]",
+              peer.getGroupId().getId(), peer.getEndpoint().ip, queueCount, searchIndex));
     }
 
     public IndexController getController() {
