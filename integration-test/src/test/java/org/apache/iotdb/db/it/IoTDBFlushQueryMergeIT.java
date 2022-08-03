@@ -92,10 +92,7 @@ public class IoTDBFlushQueryMergeIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("SELECT * FROM root.**");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
+      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**"); ) {
         int cnt = 0;
         while (resultSet.next()) {
           cnt++;
