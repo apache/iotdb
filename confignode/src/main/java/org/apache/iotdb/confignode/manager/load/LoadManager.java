@@ -155,7 +155,7 @@ public class LoadManager {
     // Persist the allocation result
     getConsensusManager().write(createRegionGroupsPlan);
     // Broadcast the latest RegionRouteMap
-    LOGGER.info("Broadcast because new Regions created");
+    LOGGER.info("[latestRegionRouteMap] Broadcast because new Regions created");
     broadcastLatestRegionRouteMap();
   }
 
@@ -304,7 +304,7 @@ public class LoadManager {
 
     if (existFailDownDataNode.get()) {
       // The RegionRouteMap must be broadcast if some DataNodes fail down
-      LOGGER.info("Broadcast because some DataNodes down");
+      LOGGER.info("[latestRegionRouteMap] Broadcast because some DataNodes down");
       isNeedBroadcast = true;
     }
 
@@ -312,14 +312,14 @@ public class LoadManager {
       // Check the condition of leader routing policy
       if (existChangeLeaderSchemaRegionGroup.get()) {
         // Broadcast the RegionRouteMap if some SchemaRegionGroups change their leader
-        LOGGER.info("Broadcast because SchemaRegion change leader");
+        LOGGER.info("[latestRegionRouteMap] Broadcast because SchemaRegion change leader");
         isNeedBroadcast = true;
       }
       if (!conf.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.MultiLeaderConsensus)
           && existChangeLeaderDataRegionGroup.get()) {
         // Broadcast the RegionRouteMap if some DataRegionGroups change their leader
         // and the consensus protocol isn't MultiLeader
-        LOGGER.info("Broadcast because DataRegion change leader");
+        LOGGER.info("[latestRegionRouteMap] Broadcast because DataRegion change leader");
         isNeedBroadcast = true;
       }
     }
@@ -339,7 +339,7 @@ public class LoadManager {
                 dataNodeLocationMap.put(
                     onlineDataNode.getLocation().getDataNodeId(), onlineDataNode.getLocation()));
 
-    LOGGER.info("Begin to broadcast RegionRouteMap:");
+    LOGGER.info("[latestRegionRouteMap] Begin to broadcast RegionRouteMap:");
     long broadcastTime = System.currentTimeMillis();
     printRegionRouteMap(broadcastTime, latestRegionRouteMap);
     AsyncDataNodeClientPool.getInstance()
@@ -348,7 +348,7 @@ public class LoadManager {
             dataNodeLocationMap,
             DataNodeRequestType.UPDATE_REGION_ROUTE_MAP,
             null);
-    LOGGER.info("Broadcast the latest RegionRouteMap finished.");
+    LOGGER.info("[latestRegionRouteMap] Broadcast the latest RegionRouteMap finished.");
   }
 
   /** loop body of the heartbeat thread */

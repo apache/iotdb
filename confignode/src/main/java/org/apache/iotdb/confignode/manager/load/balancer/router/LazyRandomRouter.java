@@ -23,6 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -32,6 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class LazyRandomRouter implements IRouter {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LazyRandomRouter.class);
 
   // Set<DataNodeId>
   private final Set<Integer> unknownDataNodes;
@@ -78,6 +83,7 @@ public class LazyRandomRouter implements IRouter {
   private boolean routeEntryNeedsUpdate(TConsensusGroupId groupId, TRegionReplicaSet replicaSet) {
     if (!routeMap.containsKey(groupId)) {
       // The RouteEntry needs update when it is not recorded yet
+      LOGGER.info("[latestRegionRouteMap] Update {} because it's a new Region", groupId);
       return true;
     }
 
@@ -91,13 +97,20 @@ public class LazyRandomRouter implements IRouter {
             .collect(Collectors.toSet());
     if (!cacheReplicaSet.equals(inputReplicaSet)) {
       // The RouteEntry needs update when the cached record is outdated
+      LOGGER.info("[latestRegionRouteMap] Update {} because it's been migrated", groupId);
       return true;
     }
 
     // The RouteEntry needs update when the status of DataNode corresponding to the first priority
     // is unknown
-    return unknownDataNodes.contains(
-        routeMap.get(groupId).getDataNodeLocations().get(0).getDataNodeId());
+    if (unknownDataNodes.contains(
+        routeMap.get(groupId).getDataNodeLocations().get(0).getDataNodeId())) {
+      LOGGER.info(
+          "[latestRegionRouteMap] Update {} because the first DataNode is unknown", groupId);
+      return true;
+    }
+
+    return false;
   }
 
   private void updateRouteEntry(TConsensusGroupId groupId, TRegionReplicaSet regionReplicaSet) {
