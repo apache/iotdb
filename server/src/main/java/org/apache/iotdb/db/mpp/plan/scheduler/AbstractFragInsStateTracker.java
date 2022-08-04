@@ -33,13 +33,11 @@ import org.apache.thrift.TException;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 public abstract class AbstractFragInsStateTracker implements IFragInstanceStateTracker {
 
   protected QueryStateMachine stateMachine;
-  protected ExecutorService executor;
   protected ScheduledExecutorService scheduledExecutor;
   protected List<FragmentInstance> instances;
 
@@ -48,12 +46,10 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
 
   public AbstractFragInsStateTracker(
       QueryStateMachine stateMachine,
-      ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
       List<FragmentInstance> instances,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.stateMachine = stateMachine;
-    this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
     this.instances = instances;
     this.internalServiceClientManager = internalServiceClientManager;

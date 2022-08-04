@@ -172,14 +172,13 @@ public class Coordinator {
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize =
-        IoTDBDescriptor.getInstance().getConfig().getCoordinatorReadExecutorSize();
+        config.isClusterMode() ? config.getCoordinatorReadExecutorSize() : 1;
     return IoTDBThreadPoolFactory.newFixedThreadPool(
         coordinatorReadExecutorSize, COORDINATOR_EXECUTOR_NAME);
   }
 
   private ExecutorService getWriteExecutor() {
-    int coordinatorWriteExecutorSize =
-        IoTDBDescriptor.getInstance().getConfig().getCoordinatorWriteExecutorSize();
+    int coordinatorWriteExecutorSize = config.getCoordinatorWriteExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
         coordinatorWriteExecutorSize, COORDINATOR_WRITE_EXECUTOR_NAME);
   }

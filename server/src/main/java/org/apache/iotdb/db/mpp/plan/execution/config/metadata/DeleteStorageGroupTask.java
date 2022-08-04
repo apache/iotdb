@@ -17,32 +17,27 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config;
+package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.db.auth.AuthorizerManager;
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class AuthorizerTask implements IConfigTask {
+public class DeleteStorageGroupTask implements IConfigTask {
 
-  private AuthorStatement authorStatement;
-  private AuthorizerManager authorizerManager = AuthorizerManager.getInstance();
+  private final DeleteStorageGroupStatement deleteStorageGroupStatement;
 
-  public AuthorizerTask(AuthorStatement authorStatement) {
-    this.authorStatement = authorStatement;
+  public DeleteStorageGroupTask(DeleteStorageGroupStatement deleteStorageGroupStatement) {
+    this.deleteStorageGroupStatement = deleteStorageGroupStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor) {
     // If the action is executed successfully, return the Future.
     // If your operation is async, you can return the corresponding future directly.
-    if (authorStatement.getQueryType() == QueryType.WRITE) {
-      return authorizerManager.operatePermission(authorStatement);
-    } else {
-      return authorizerManager.queryPermission(authorStatement);
-    }
+    return configTaskExecutor.deleteStorageGroup(deleteStorageGroupStatement);
   }
 }
