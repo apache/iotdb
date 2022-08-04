@@ -2256,11 +2256,6 @@ public class DataRegion {
    * 4、unregister old tsfiles and release locks<br>
    * 5、rename temp tsfiles<br>
    * 6、register tsfiles<br>
-   *
-   * @param fullPath
-   * @param curEncoding
-   * @param curCompressionType
-   * @throws IOException
    */
   public void alter(
       PartialPath fullPath, TSEncoding curEncoding, CompressionType curCompressionType)
@@ -2440,9 +2435,7 @@ public class DataRegion {
       return true;
     }
     TsFileIdentifier undoneFile = null;
-    Iterator<TsFileIdentifier> it = undoneFiles.iterator();
-    while (it.hasNext()) {
-      TsFileIdentifier next = it.next();
+    for (TsFileIdentifier next : undoneFiles) {
       if (next.getFilename().equals(tsFileResource.getTsFile().getName())) {
         undoneFile = next;
         break;
@@ -4080,7 +4073,7 @@ public class DataRegion {
     try {
       logger.info("{} Start to delete TsFile {}", storageGroupName, seqFile.getTsFilePath());
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      seqFile.setStatus(TsFileResourceStatus.DELETED);
+      //      seqFile.setStatus(TsFileResourceStatus.DELETED);
       seqFile.delete();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
