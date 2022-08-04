@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -114,9 +115,10 @@ public class LazyRandomRouter implements IRouter {
   }
 
   private void updateRouteEntry(TConsensusGroupId groupId, TRegionReplicaSet regionReplicaSet) {
+    Random currentRandom = new Random();
     TRegionReplicaSet newRouteEntry = new TRegionReplicaSet(regionReplicaSet);
     do {
-      Collections.shuffle(newRouteEntry.getDataNodeLocations());
+      Collections.shuffle(newRouteEntry.getDataNodeLocations(), currentRandom);
     } while (unknownDataNodes.contains(
         newRouteEntry.getDataNodeLocations().get(0).getDataNodeId()));
     routeMap.put(groupId, newRouteEntry);
