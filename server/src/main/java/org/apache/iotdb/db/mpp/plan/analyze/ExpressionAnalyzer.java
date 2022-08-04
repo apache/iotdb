@@ -72,41 +72,8 @@ import static org.apache.iotdb.db.mpp.plan.analyze.ExpressionUtils.reconstructUn
 
 public class ExpressionAnalyzer {
   /**
-   * Check if all paths in expression has only one node. If not, throw a {@link SemanticException}.
-   *
-   * @param expression expression to be checked
-   */
-  public static void checkIsAllPathOneNode(Expression expression) {
-    if (expression instanceof TernaryExpression) {
-      checkIsAllPathOneNode(((TernaryExpression) expression).getFirstExpression());
-      checkIsAllPathOneNode(((TernaryExpression) expression).getSecondExpression());
-      checkIsAllPathOneNode(((TernaryExpression) expression).getThirdExpression());
-    } else if (expression instanceof BinaryExpression) {
-      checkIsAllPathOneNode(((BinaryExpression) expression).getLeftExpression());
-      checkIsAllPathOneNode(((BinaryExpression) expression).getRightExpression());
-    } else if (expression instanceof UnaryExpression) {
-      checkIsAllPathOneNode(((UnaryExpression) expression).getExpression());
-    } else if (expression instanceof FunctionExpression) {
-      for (Expression childExpression : expression.getExpressions()) {
-        checkIsAllPathOneNode(childExpression);
-      }
-    } else if (expression instanceof TimeSeriesOperand) {
-      PartialPath path = ((TimeSeriesOperand) expression).getPath();
-      if (path.getNodes().length != 1) {
-        throw new SemanticException(
-            "Having: when used with GroupByLevel, all paths in expression of Having and Select should have only one node");
-      }
-    } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
-      // do nothing
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + expression.getExpressionType());
-    }
-  }
-
-  /**
-   * Check if all suffix paths in expression are measurements or one-level wildcards in ALIGN BY
-   * DEVICE query. If not, throw a {@link SemanticException}.
+   * Check if all suffix paths in expression are measurements or one-level wildcards, used in ALIGN
+   * BY DEVICE query or GroupByLevel query. If not, throw a {@link SemanticException}.
    *
    * @param expression expression to be checked
    */
@@ -129,7 +96,7 @@ public class ExpressionAnalyzer {
       if (path.getNodes().length > 1
           || path.getFullPath().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
         throw new SemanticException(
-            "ALIGN BY DEVICE: the suffix paths can only be measurement or one-level wildcard");
+            "the suffix paths can only be measurement or one-level wildcard");
       }
     } else if (expression instanceof TimestampOperand || expression instanceof ConstantOperand) {
       // do nothing
@@ -433,53 +400,60 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Concat suffix path in WHERE clause with the prefix path in the FROM clause. And then, bind
-   * schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in Expression.
+   * Concat suffix path in WHERE and HAVING clause with the prefix path in the FROM clause. And
+   * then, bind schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in
+   * Expression.
    *
    * @param prefixPaths prefix paths in the FROM clause
    * @param schemaTree interface for querying schema information
    * @param typeProvider a map to record output symbols and their data types
    * @return the expression list with full path and after binding schema
    */
-  public static List<Expression> removeWildcardInQueryFilter(
+  public static List<Expression> removeWildcardInFilter(
       Expression predicate,
       List<PartialPath> prefixPaths,
       ISchemaTree schemaTree,
-      TypeProvider typeProvider) {
+      TypeProvider typeProvider,
+      boolean isWhere) {
     if (predicate instanceof TernaryExpression) {
       List<Expression> firstExpressions =
-          removeWildcardInQueryFilter(
+          removeWildcardInFilter(
               ((TernaryExpression) predicate).getFirstExpression(),
               prefixPaths,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> secondExpressions =
-          removeWildcardInQueryFilter(
+          removeWildcardInFilter(
               ((TernaryExpression) predicate).getSecondExpression(),
               prefixPaths,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> thirdExpressions =
-          removeWildcardInQueryFilter(
+          removeWildcardInFilter(
               ((TernaryExpression) predicate).getThirdExpression(),
               prefixPaths,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       return reconstructTernaryExpressions(
           predicate, firstExpressions, secondExpressions, thirdExpressions);
     } else if (predicate instanceof BinaryExpression) {
       List<Expression> leftExpressions =
-          removeWildcardInQueryFilter(
+          removeWildcardInFilter(
               ((BinaryExpression) predicate).getLeftExpression(),
               prefixPaths,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> rightExpressions =
-          removeWildcardInQueryFilter(
+          removeWildcardInFilter(
               ((BinaryExpression) predicate).getRightExpression(),
               prefixPaths,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
         List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
         resultExpressions.addAll(rightExpressions);
@@ -489,17 +463,22 @@ public class ExpressionAnalyzer {
           predicate.getExpressionType(), leftExpressions, rightExpressions);
     } else if (predicate instanceof UnaryExpression) {
       List<Expression> childExpressions =
-          removeWildcardInQueryFilter(
-              ((UnaryExpression) predicate).getExpression(), prefixPaths, schemaTree, typeProvider);
+          removeWildcardInFilter(
+              ((UnaryExpression) predicate).getExpression(),
+              prefixPaths,
+              schemaTree,
+              typeProvider,
+              isWhere);
       return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
     } else if (predicate instanceof FunctionExpression) {
-      if (predicate.isBuiltInAggregationFunctionExpression()) {
+      if (predicate.isBuiltInAggregationFunctionExpression() && isWhere) {
         throw new SemanticException("aggregate functions are not supported in WHERE clause");
       }
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression suffixExpression : predicate.getExpressions()) {
         extendedExpressions.add(
-            removeWildcardInQueryFilter(suffixExpression, prefixPaths, schemaTree, typeProvider));
+            removeWildcardInFilter(
+                suffixExpression, prefixPaths, schemaTree, typeProvider, isWhere));
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
@@ -519,7 +498,9 @@ public class ExpressionAnalyzer {
         List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
         if (actualPaths.size() == 0) {
           throw new SemanticException(
-              String.format("the path '%s' in WHERE clause does not exist", concatPath));
+              String.format(
+                  "the path '%s' in %s clause does not exist",
+                  concatPath, isWhere ? "WHERE" : "HAVING"));
         }
         noStarPaths.addAll(actualPaths);
       }
@@ -581,107 +562,6 @@ public class ExpressionAnalyzer {
       return reconstructTimeSeriesOperand(groupedPath);
     } else if (predicate instanceof TimestampOperand || predicate instanceof ConstantOperand) {
       return predicate;
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
-    }
-  }
-
-  /**
-   * Concat suffix path in Having clause with the prefix path in the FROM clause. And then, bind
-   * schema ({@link PartialPath} -> {@link MeasurementPath}) and removes wildcards in Expression.
-   *
-   * @param prefixPaths prefix paths in the FROM clause
-   * @param schemaTree interface for querying schema information
-   * @param typeProvider a map to record output symbols and their data types
-   * @return the expression list with full path and after binding schema
-   */
-  public static List<Expression> removeWildcardInHavingExpression(
-      Expression predicate,
-      List<PartialPath> prefixPaths,
-      ISchemaTree schemaTree,
-      TypeProvider typeProvider) {
-    if (predicate instanceof TernaryExpression) {
-      List<Expression> firstExpressions =
-          removeWildcardInHavingExpression(
-              ((TernaryExpression) predicate).getFirstExpression(),
-              prefixPaths,
-              schemaTree,
-              typeProvider);
-      List<Expression> secondExpressions =
-          removeWildcardInHavingExpression(
-              ((TernaryExpression) predicate).getSecondExpression(),
-              prefixPaths,
-              schemaTree,
-              typeProvider);
-      List<Expression> thirdExpressions =
-          removeWildcardInHavingExpression(
-              ((TernaryExpression) predicate).getThirdExpression(),
-              prefixPaths,
-              schemaTree,
-              typeProvider);
-      return reconstructTernaryExpressions(
-          predicate, firstExpressions, secondExpressions, thirdExpressions);
-    } else if (predicate instanceof BinaryExpression) {
-      List<Expression> leftExpressions =
-          removeWildcardInHavingExpression(
-              ((BinaryExpression) predicate).getLeftExpression(),
-              prefixPaths,
-              schemaTree,
-              typeProvider);
-      List<Expression> rightExpressions =
-          removeWildcardInHavingExpression(
-              ((BinaryExpression) predicate).getRightExpression(),
-              prefixPaths,
-              schemaTree,
-              typeProvider);
-      if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
-        List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
-        resultExpressions.addAll(rightExpressions);
-        return resultExpressions;
-      }
-      return reconstructBinaryExpressions(
-          predicate.getExpressionType(), leftExpressions, rightExpressions);
-    } else if (predicate instanceof UnaryExpression) {
-      List<Expression> childExpressions =
-          removeWildcardInHavingExpression(
-              ((UnaryExpression) predicate).getExpression(), prefixPaths, schemaTree, typeProvider);
-      return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
-    } else if (predicate instanceof FunctionExpression) {
-      List<List<Expression>> extendedExpressions = new ArrayList<>();
-      for (Expression suffixExpression : predicate.getExpressions()) {
-        extendedExpressions.add(
-            removeWildcardInHavingExpression(
-                suffixExpression, prefixPaths, schemaTree, typeProvider));
-      }
-      List<List<Expression>> childExpressionsList = new ArrayList<>();
-      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-      return reconstructFunctionExpressions((FunctionExpression) predicate, childExpressionsList);
-    } else if (predicate instanceof TimeSeriesOperand) {
-      PartialPath filterPath = ((TimeSeriesOperand) predicate).getPath();
-      List<PartialPath> concatPaths = new ArrayList<>();
-      if (!filterPath.getFirstNode().equals(SQLConstant.ROOT)) {
-        prefixPaths.forEach(prefix -> concatPaths.add(prefix.concatPath(filterPath)));
-      } else {
-        concatPaths.add(filterPath);
-      }
-
-      List<PartialPath> noStarPaths = new ArrayList<>();
-      for (PartialPath concatPath : concatPaths) {
-        List<MeasurementPath> actualPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-        if (actualPaths.size() == 0) {
-          throw new SemanticException(
-              String.format("the path '%s' in Having clause does not exist", concatPath));
-        }
-        noStarPaths.addAll(actualPaths);
-      }
-      noStarPaths.forEach(path -> typeProvider.setType(path.getFullPath(), path.getSeriesType()));
-      return reconstructTimeSeriesOperands(noStarPaths);
-    } else if (predicate instanceof TimestampOperand) {
-      // do nothing in the case of "where time > 5"
-      return Collections.singletonList(predicate);
-    } else if (predicate instanceof ConstantOperand) {
-      return Collections.singletonList(predicate);
     } else {
       throw new IllegalArgumentException(
           "unsupported expression type: " + predicate.getExpressionType());
@@ -777,50 +657,56 @@ public class ExpressionAnalyzer {
   }
 
   /**
-   * Concat measurement in WHERE clause with device path. And then, bind schema ({@link PartialPath}
-   * -> {@link MeasurementPath}) and removes wildcards.
+   * Concat measurement in WHERE and HAVING clause with device path. And then, bind schema ({@link
+   * PartialPath} -> {@link MeasurementPath}) and removes wildcards.
    *
    * @return the expression list with full path and after binding schema
    */
-  public static List<Expression> removeWildcardInQueryFilterByDevice(
+  public static List<Expression> removeWildcardInFilterByDevice(
       Expression predicate,
       PartialPath devicePath,
       ISchemaTree schemaTree,
-      TypeProvider typeProvider) {
+      TypeProvider typeProvider,
+      boolean isWhere) {
     if (predicate instanceof TernaryExpression) {
       List<Expression> firstExpressions =
-          removeWildcardInQueryFilterByDevice(
+          removeWildcardInFilterByDevice(
               ((TernaryExpression) predicate).getFirstExpression(),
               devicePath,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> secondExpressions =
-          removeWildcardInQueryFilterByDevice(
+          removeWildcardInFilterByDevice(
               ((TernaryExpression) predicate).getSecondExpression(),
               devicePath,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> thirdExpressions =
-          removeWildcardInQueryFilterByDevice(
+          removeWildcardInFilterByDevice(
               ((TernaryExpression) predicate).getThirdExpression(),
               devicePath,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       return reconstructTernaryExpressions(
           predicate, firstExpressions, secondExpressions, thirdExpressions);
     } else if (predicate instanceof BinaryExpression) {
       List<Expression> leftExpressions =
-          removeWildcardInQueryFilterByDevice(
+          removeWildcardInFilterByDevice(
               ((BinaryExpression) predicate).getLeftExpression(),
               devicePath,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       List<Expression> rightExpressions =
-          removeWildcardInQueryFilterByDevice(
+          removeWildcardInFilterByDevice(
               ((BinaryExpression) predicate).getRightExpression(),
               devicePath,
               schemaTree,
-              typeProvider);
+              typeProvider,
+              isWhere);
       if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
         List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
         resultExpressions.addAll(rightExpressions);
@@ -830,18 +716,22 @@ public class ExpressionAnalyzer {
           predicate.getExpressionType(), leftExpressions, rightExpressions);
     } else if (predicate instanceof UnaryExpression) {
       List<Expression> childExpressions =
-          removeWildcardInQueryFilterByDevice(
-              ((UnaryExpression) predicate).getExpression(), devicePath, schemaTree, typeProvider);
+          removeWildcardInFilterByDevice(
+              ((UnaryExpression) predicate).getExpression(),
+              devicePath,
+              schemaTree,
+              typeProvider,
+              isWhere);
       return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
     } else if (predicate instanceof FunctionExpression) {
-      if (predicate.isBuiltInAggregationFunctionExpression()) {
+      if (predicate.isBuiltInAggregationFunctionExpression() && isWhere) {
         throw new SemanticException("aggregate functions are not supported in WHERE clause");
       }
       List<List<Expression>> extendedExpressions = new ArrayList<>();
       for (Expression suffixExpression : predicate.getExpressions()) {
         extendedExpressions.add(
-            removeWildcardInQueryFilterByDevice(
-                suffixExpression, devicePath, schemaTree, typeProvider));
+            removeWildcardInFilterByDevice(
+                suffixExpression, devicePath, schemaTree, typeProvider, isWhere));
       }
       List<List<Expression>> childExpressionsList = new ArrayList<>();
       cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
@@ -862,98 +752,6 @@ public class ExpressionAnalyzer {
       return reconstructTimeSeriesOperands(noStarPaths);
     } else if (predicate instanceof TimestampOperand) {
       // do nothing in the case of "where time > 5"
-      return Collections.singletonList(predicate);
-    } else if (predicate instanceof ConstantOperand) {
-      return Collections.singletonList(predicate);
-    } else {
-      throw new IllegalArgumentException(
-          "unsupported expression type: " + predicate.getExpressionType());
-    }
-  }
-
-  /**
-   * Concat measurement in Having clause with device path. And then, bind schema ({@link
-   * PartialPath} -> {@link MeasurementPath}) and removes wildcards.
-   *
-   * @return the expression list with full path and after binding schema
-   */
-  public static List<Expression> removeWildcardInHavingExpressionByDevice(
-      Expression predicate,
-      PartialPath devicePath,
-      ISchemaTree schemaTree,
-      TypeProvider typeProvider) {
-    if (predicate instanceof TernaryExpression) {
-      List<Expression> firstExpressions =
-          removeWildcardInHavingExpressionByDevice(
-              ((TernaryExpression) predicate).getFirstExpression(),
-              devicePath,
-              schemaTree,
-              typeProvider);
-      List<Expression> secondExpressions =
-          removeWildcardInHavingExpressionByDevice(
-              ((TernaryExpression) predicate).getSecondExpression(),
-              devicePath,
-              schemaTree,
-              typeProvider);
-      List<Expression> thirdExpressions =
-          removeWildcardInHavingExpressionByDevice(
-              ((TernaryExpression) predicate).getThirdExpression(),
-              devicePath,
-              schemaTree,
-              typeProvider);
-      return reconstructTernaryExpressions(
-          predicate, firstExpressions, secondExpressions, thirdExpressions);
-    } else if (predicate instanceof BinaryExpression) {
-      List<Expression> leftExpressions =
-          removeWildcardInHavingExpressionByDevice(
-              ((BinaryExpression) predicate).getLeftExpression(),
-              devicePath,
-              schemaTree,
-              typeProvider);
-      List<Expression> rightExpressions =
-          removeWildcardInHavingExpressionByDevice(
-              ((BinaryExpression) predicate).getRightExpression(),
-              devicePath,
-              schemaTree,
-              typeProvider);
-      if (predicate.getExpressionType() == ExpressionType.LOGIC_AND) {
-        List<Expression> resultExpressions = new ArrayList<>(leftExpressions);
-        resultExpressions.addAll(rightExpressions);
-        return resultExpressions;
-      }
-      return reconstructBinaryExpressions(
-          predicate.getExpressionType(), leftExpressions, rightExpressions);
-    } else if (predicate instanceof UnaryExpression) {
-      List<Expression> childExpressions =
-          removeWildcardInHavingExpressionByDevice(
-              ((UnaryExpression) predicate).getExpression(), devicePath, schemaTree, typeProvider);
-      return reconstructUnaryExpressions((UnaryExpression) predicate, childExpressions);
-    } else if (predicate instanceof FunctionExpression) {
-      List<List<Expression>> extendedExpressions = new ArrayList<>();
-      for (Expression suffixExpression : predicate.getExpressions()) {
-        extendedExpressions.add(
-            removeWildcardInHavingExpressionByDevice(
-                suffixExpression, devicePath, schemaTree, typeProvider));
-      }
-      List<List<Expression>> childExpressionsList = new ArrayList<>();
-      cartesianProduct(extendedExpressions, childExpressionsList, 0, new ArrayList<>());
-      return reconstructFunctionExpressions((FunctionExpression) predicate, childExpressionsList);
-    } else if (predicate instanceof TimeSeriesOperand) {
-      PartialPath measurement = ((TimeSeriesOperand) predicate).getPath();
-      PartialPath concatPath = devicePath.concatPath(measurement);
-
-      List<MeasurementPath> noStarPaths = schemaTree.searchMeasurementPaths(concatPath).left;
-      if (noStarPaths.size() == 0) {
-        throw new MeasurementNotExistException(
-            String.format(
-                "ALIGN BY DEVICE: Measurement '%s' does not exist in device '%s'",
-                measurement, devicePath));
-      }
-
-      noStarPaths.forEach(path -> typeProvider.setType(path.getFullPath(), path.getSeriesType()));
-      return reconstructTimeSeriesOperands(noStarPaths);
-    } else if (predicate instanceof TimestampOperand) {
-      // do nothing
       return Collections.singletonList(predicate);
     } else if (predicate instanceof ConstantOperand) {
       return Collections.singletonList(predicate);

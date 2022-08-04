@@ -238,15 +238,13 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
         }
 
         if (queryStatement.isGroupByLevel()) {
-          if (havingExpression != null) {
-            planBuilder = // plan Having with GroupByLevel
-                planBuilder.planFilterAndTransform(
-                    havingExpression,
-                    analysis.getGroupByLevelExpressions().keySet(),
-                    queryStatement.isGroupByTime(),
-                    queryStatement.getSelectComponent().getZoneId(),
-                    queryStatement.getResultTimeOrder());
-          }
+          planBuilder = // plan Having with GroupByLevel
+              planBuilder.planFilterAndTransform(
+                  havingExpression,
+                  analysis.getGroupByLevelExpressions().keySet(),
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId(),
+                  queryStatement.getResultTimeOrder());
         } else {
           if (havingExpression != null) {
             planBuilder = // plan Having without GroupByLevel
@@ -312,25 +310,21 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 analysis.getGroupByLevelExpressions(),
                 analysis.getTypeProvider());
         if (queryStatement.isGroupByLevel()) {
-          if (havingExpression != null) {
-            planBuilder = // plan Having with GroupByLevel
-                planBuilder.planFilterAndTransform(
-                    havingExpression,
-                    analysis.getGroupByLevelExpressions().keySet(),
-                    queryStatement.isGroupByTime(),
-                    queryStatement.getSelectComponent().getZoneId(),
-                    queryStatement.getResultTimeOrder());
-          }
+          planBuilder = // plan Having with GroupByLevel
+              planBuilder.planFilterAndTransform(
+                  havingExpression,
+                  analysis.getGroupByLevelExpressions().keySet(),
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId(),
+                  queryStatement.getResultTimeOrder());
         } else {
-          if (havingExpression != null) {
-            planBuilder = // plan Having without GroupByLevel
-                planBuilder.planFilterAndTransform(
-                    havingExpression,
-                    transformExpressions,
-                    queryStatement.isGroupByTime(),
-                    queryStatement.getSelectComponent().getZoneId(),
-                    queryStatement.getResultTimeOrder());
-          }
+          planBuilder = // plan Having without GroupByLevel
+              planBuilder.planFilterAndTransform(
+                  havingExpression,
+                  transformExpressions,
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId(),
+                  queryStatement.getResultTimeOrder());
         }
       } else {
         planBuilder =
@@ -344,17 +338,14 @@ public class LogicalPlanVisitor extends StatementVisitor<PlanNode, MPPQueryConte
                 analysis.getGroupByLevelExpressions(),
                 analysis.getTypeProvider());
 
-        // TODO condsider to extracted as a planBuild method
         if (queryStatement.isGroupByLevel()) {
-          if (havingExpression != null) {
-            planBuilder = // plan Having with GroupByLevel
-                planBuilder.planFilterAndTransform(
-                    havingExpression,
-                    analysis.getGroupByLevelExpressions().keySet(),
-                    queryStatement.isGroupByTime(),
-                    queryStatement.getSelectComponent().getZoneId(),
-                    queryStatement.getResultTimeOrder());
-          }
+          planBuilder = // plan Having with GroupByLevel
+              planBuilder.planFilterAndTransform(
+                  havingExpression,
+                  analysis.getGroupByLevelExpressions().keySet(),
+                  queryStatement.isGroupByTime(),
+                  queryStatement.getSelectComponent().getZoneId(),
+                  queryStatement.getResultTimeOrder());
         } else {
           if (havingExpression != null) {
             planBuilder = // plan Having without GroupByLevel

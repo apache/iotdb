@@ -284,22 +284,31 @@ public class QueryStatement extends Statement {
           != ResultColumn.ColumnType.AGGREGATION) {
         throw new SemanticException("Expression of HAVING clause must to be an Aggregation");
       }
-      if (isGroupByLevel()) { // check path in SELECT and HAVING only have one node
-        for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
-          ExpressionAnalyzer.checkIsAllPathOneNode(resultColumn.getExpression());
+      try {
+        if (isGroupByLevel()) { // check path in SELECT and HAVING only have one node
+          for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
+            ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
+          }
+          ExpressionAnalyzer.checkIsAllMeasurement(havingExpression);
         }
-        ExpressionAnalyzer.checkIsAllPathOneNode(havingExpression);
+      } catch (SemanticException e) {
+        throw new SemanticException("When Having used with GroupByLevel: " + e.getMessage());
       }
     }
 
     if (isAlignByDevice()) {
       // the paths can only be measurement or one-level wildcard in ALIGN BY DEVICE
-      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-        ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
+      try {
+        for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+          ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
+        }
+        if (getWhereCondition() != null) {
+          ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
+        }
+      } catch (SemanticException e) {
+        throw new SemanticException("ALIGN BY DEVICE: " + e.getMessage());
       }
-      if (getWhereCondition() != null) {
-        ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
-      }
+
       if (isOrderByTimeseries()) {
         throw new SemanticException("Sorting by timeseries is only supported in last queries.");
       }

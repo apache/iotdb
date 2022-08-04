@@ -121,11 +121,11 @@ public class IoTDBHavingIT {
   public void testUnsatisfiedRuleQuery() {
     assertTestFail(
         "select count(s1) from root.** group by ([1,3),1ms), level=1 having sum(d1.s1) > 1",
-        "416: Having: when used with GroupByLevel, all paths in expression of Having and Select should have only one node");
+        "416: When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard");
 
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having sum(s1) > 1",
-        "416: Having: when used with GroupByLevel, all paths in expression of Having and Select should have only one node");
+        "416: When Having used with GroupByLevel: the suffix paths can only be measurement or one-level wildcard");
 
     assertTestFail(
         "select count(d1.s1) from root.** group by ([1,3),1ms), level=1 having sum(s1) + s1 > 1",

@@ -244,11 +244,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
             try {
               deviceToTransformExpressionsInHaving.put(
                   device.toString(),
-                  ExpressionAnalyzer.removeWildcardInHavingExpressionByDevice(
+                  ExpressionAnalyzer.removeWildcardInFilterByDevice(
                           queryStatement.getHavingCondition().getPredicate(),
                           device,
                           schemaTree,
-                          typeProvider)
+                          typeProvider,
+                          false)
                       .stream()
                       .collect(Collectors.toSet()));
             } catch (SemanticException e) {
@@ -401,11 +402,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
         // used to analyzeAggregation in Having expression and updateSource
         Set<Expression> transformExpressionsInHaving =
             queryStatement.hasHaving()
-                ? ExpressionAnalyzer.removeWildcardInHavingExpression(
+                ? ExpressionAnalyzer.removeWildcardInFilter(
                         queryStatement.getHavingCondition().getPredicate(),
                         queryStatement.getFromComponent().getPrefixPaths(),
                         schemaTree,
-                        typeProvider)
+                        typeProvider,
+                        false)
                     .stream()
                     .collect(Collectors.toSet())
                 : null;
@@ -777,11 +779,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
 
   private Expression analyzeWhere(QueryStatement queryStatement, ISchemaTree schemaTree) {
     List<Expression> rewrittenPredicates =
-        ExpressionAnalyzer.removeWildcardInQueryFilter(
+        ExpressionAnalyzer.removeWildcardInFilter(
             queryStatement.getWhereCondition().getPredicate(),
             queryStatement.getFromComponent().getPrefixPaths(),
             schemaTree,
-            typeProvider);
+            typeProvider,
+            true);
     return ExpressionUtils.constructQueryFilter(
         rewrittenPredicates.stream().distinct().collect(Collectors.toList()));
   }
@@ -789,11 +792,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   private Expression analyzeWhereSplitByDevice(
       QueryStatement queryStatement, PartialPath devicePath, ISchemaTree schemaTree) {
     List<Expression> rewrittenPredicates =
-        ExpressionAnalyzer.removeWildcardInQueryFilterByDevice(
+        ExpressionAnalyzer.removeWildcardInFilterByDevice(
             queryStatement.getWhereCondition().getPredicate(),
             devicePath,
             schemaTree,
-            typeProvider);
+            typeProvider,
+            true);
     return ExpressionUtils.constructQueryFilter(
         rewrittenPredicates.stream().distinct().collect(Collectors.toList()));
   }
