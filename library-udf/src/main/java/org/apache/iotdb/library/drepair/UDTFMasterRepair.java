@@ -36,7 +36,7 @@ public class UDTFMasterRepair implements UDTF {
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
-    for (int i = 0; i < validator.getParameters().getAttributes().size(); i++) {
+    for (int i = 0; i < validator.getParameters().getChildExpressionsSize(); i++) {
       validator.validateInputSeriesDataType(i, Type.DOUBLE, Type.FLOAT, Type.INT32, Type.INT64);
     }
     if (validator.getParameters().hasAttribute("omega")) {
