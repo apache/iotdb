@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.snapshot.SnapshotProcessor;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
@@ -91,7 +92,6 @@ public class NodeInfo implements SnapshotProcessor {
       new ConcurrentSkipListMap<>();
 
   // For remove or draining DataNode
-  // TODO: implement
   private final Set<TDataNodeLocation> drainingDataNodes = new HashSet<>();
 
   private final String snapshotFileName = "node_info.bin";
@@ -112,7 +112,9 @@ public class NodeInfo implements SnapshotProcessor {
               registeredConfigNodes,
               o -> getRegisteredConfigNodeCount(),
               Tag.NAME.toString(),
-              "online");
+              "total",
+              Tag.STATUS.toString(),
+              NodeStatus.Registered.toString());
       MetricsService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
@@ -121,7 +123,9 @@ public class NodeInfo implements SnapshotProcessor {
               registeredDataNodes,
               Map::size,
               Tag.NAME.toString(),
-              "online");
+              "total",
+              Tag.STATUS.toString(),
+              NodeStatus.Registered.toString());
     }
   }
 
@@ -264,6 +268,21 @@ public class NodeInfo implements SnapshotProcessor {
     }
     return result;
   }
+
+  /** Return the number of registered Nodes */
+  public int getRegisteredNodeCount() {
+    int result;
+    configNodeInfoReadWriteLock.readLock().lock();
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = registeredConfigNodes.size() + registeredDataNodes.size();
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+      configNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
   /** Return the number of total cpu cores in online DataNodes */
   public int getTotalCpuCoreCount() {
     int result = 0;

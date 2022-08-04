@@ -1033,15 +1033,15 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
     insertStatement.semanticCheck();
     long[] timeArray = insertStatement.getTimes();
     PartialPath devicePath = insertStatement.getDevice();
-    String[] measurements = insertStatement.getMeasurementList();
+    String[] measurementList = insertStatement.getMeasurementList();
     if (timeArray.length == 1) {
       // construct insert row statement
       InsertRowStatement insertRowStatement = new InsertRowStatement();
       insertRowStatement.setDevicePath(devicePath);
       insertRowStatement.setTime(timeArray[0]);
-      insertRowStatement.setMeasurements(measurements);
-      insertRowStatement.setDataTypes(new TSDataType[insertStatement.getMeasurementList().length]);
-      Object[] values = new Object[insertStatement.getMeasurementList().length];
+      insertRowStatement.setMeasurements(measurementList);
+      insertRowStatement.setDataTypes(new TSDataType[measurementList.length]);
+      Object[] values = new Object[measurementList.length];
       System.arraycopy(insertStatement.getValuesList().get(0), 0, values, 0, values.length);
       insertRowStatement.setValues(values);
       insertRowStatement.setNeedInferType(true);
@@ -1055,10 +1055,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       for (int i = 0; i < timeArray.length; i++) {
         InsertRowStatement statement = new InsertRowStatement();
         statement.setDevicePath(devicePath);
+        String[] measurements = new String[measurementList.length];
+        System.arraycopy(measurementList, 0, measurements, 0, measurements.length);
         statement.setMeasurements(measurements);
         statement.setTime(timeArray[i]);
-        statement.setDataTypes(new TSDataType[insertStatement.getMeasurementList().length]);
-        Object[] values = new Object[insertStatement.getMeasurementList().length];
+        statement.setDataTypes(new TSDataType[measurementList.length]);
+        Object[] values = new Object[measurementList.length];
         System.arraycopy(insertStatement.getValuesList().get(i), 0, values, 0, values.length);
         statement.setValues(values);
         statement.setAligned(insertStatement.isAligned());

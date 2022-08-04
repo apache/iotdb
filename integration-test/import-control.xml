@@ -32,4 +32,12 @@
   <allow pkg="org\.apache\.iotdb\.it.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.db\.it\.utils\.TestUtils.*" regex="true"/>
   <allow pkg="org\.apache\.iotdb\.db\.constant\.TestConstant.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.common\.rpc\.thrift.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.confignode\.rpc\.thrift.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.db\.client.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.rpc.*" regex="true"/>
+  <allow pkg="org\.apache\.commons\.lang3.*" regex="true"/>
+  <allow pkg="org\.apache\.thrift.*" regex="true"/>
+  <allow pkg="org\.apache\.iotdb\.commons\.client\.sync.*" regex="true"/>
+
 </import-control>

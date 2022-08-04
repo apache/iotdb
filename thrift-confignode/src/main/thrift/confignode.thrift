@@ -174,7 +174,7 @@ struct TAuthorizerReq {
   4: required string password
   5: required string newPassword
   6: required set<i32> permissions
-  7: required string nodeName
+  7: required list<string> nodeNameList
 }
 
 struct TAuthorizerResp {
@@ -227,10 +227,8 @@ struct TConfigNodeRegisterReq {
   12: required string readConsistencyLevel
 }
 
-struct TConfigNodeRegisterResp {
-  1: required common.TSStatus status
-  2: optional common.TConsensusGroupId partitionRegionId
-  3: optional list<common.TConfigNodeLocation> configNodeList
+struct TAddConsensusGroupReq {
+  1: required list<common.TConfigNodeLocation> configNodeList
 }
 
 // UDF
@@ -337,6 +335,15 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
+// Maintenance Tools
+struct TMergeReq {
+  1: optional i32 dataNodeId
+}
+
+struct TClearCacheReq {
+   1: optional i32 dataNodeId
+}
+
 service IConfigNodeRPCService {
 
   /* DataNode */
@@ -409,9 +416,9 @@ service IConfigNodeRPCService {
 
   /* ConfigNode */
 
-  TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req)
+  common.TSStatus registerConfigNode(TConfigNodeRegisterReq req)
 
-  common.TSStatus addConsensusGroup(TConfigNodeRegisterResp req)
+  common.TSStatus addConsensusGroup(TAddConsensusGroupReq req)
 
   common.TSStatus notifyRegisterSuccess()
 
@@ -427,13 +434,13 @@ service IConfigNodeRPCService {
 
   common.TSStatus dropFunction(TDropFunctionReq req)
 
-  /* Flush */
+  /* Maintenance Tools */
+
+  common.TSStatus merge(TMergeReq req)
 
   common.TSStatus flush(common.TFlushReq req)
 
-  /* ClearCache */
-
-  common.TSStatus clearCache(common.TClearCacheReq req)
+  common.TSStatus clearCache(TClearCacheReq req)
 
   /* Cluster Tools */
 

@@ -73,6 +73,17 @@ public class StringUtils {
   }
 
   /**
+   * get the devicePath through the fullPath
+   *
+   * @param path path to process
+   * @return devicePath
+   */
+  public static String getDeviceByPath(String path) {
+    String field = getFieldByPath(path);
+    return path.substring(0, path.length() - field.length() - 1);
+  }
+
+  /**
    * determine whether the two string lists are the same
    *
    * @param list1 first list to compare

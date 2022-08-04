@@ -100,8 +100,8 @@ public class LocalSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(List<TsBlock> tsBlocks) {
-    Validate.notNull(tsBlocks, "tsBlocks is null");
+  public void send(TsBlock tsBlock) {
+    Validate.notNull(tsBlock, "tsBlocks is null");
     synchronized (this) {
       checkState();
       if (!blocked.isDone()) {
@@ -113,11 +113,9 @@ public class LocalSinkHandle implements ISinkHandle {
       if (queue.hasNoMoreTsBlocks()) {
         return;
       }
-      logger.info("send TsBlocks. Size: {}", tsBlocks.size());
+      logger.info("send TsBlocks");
       synchronized (this) {
-        for (TsBlock tsBlock : tsBlocks) {
-          blocked = queue.add(tsBlock);
-        }
+        blocked = queue.add(tsBlock);
       }
     }
   }
