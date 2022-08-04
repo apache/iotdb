@@ -847,7 +847,7 @@ public class IoTDBConfig {
   private int operationSyncProducerCacheSize = 1024;
 
   // OperationSyncProducer DML cache number
-  private int operationSyncProducerCacheNum = 3;
+  private int operationSyncProducerCacheNum = 8;
 
   // OperationSyncConsumer concurrency size
   private int operationSyncConsumerConcurrencySize = 4;
