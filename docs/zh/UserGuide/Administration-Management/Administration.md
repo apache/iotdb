@@ -248,18 +248,39 @@ REVOKE <roleName> FROM <userName>;
 Eg: IoTDB > REVOKE `temprole` FROM tempuser;
 ```
 
-* 列出用户
+* 列出所有用户
 
 ```
 LIST USER
 Eg: IoTDB > LIST USER
 ```
 
-* 列出角色
+* 列出指定角色下所有用户
+
+```
+LIST USER OF ROLE <roleName>;
+Eg: IoTDB > LIST USER OF ROLE `roleuser`;
+```
+
+* 列出所有角色
 
 ```
 LIST ROLE
 Eg: IoTDB > LIST ROLE
+```
+
+* 列出指定用户下所有角色
+
+```
+LIST ROLE OF USER <username> ;  
+Eg: IoTDB > LIST ROLE OF USER `tempuser`;
+```
+
+* 列出用户所有权限
+
+```
+LIST PRIVILEGES USER <username>;   
+Eg: IoTDB > LIST PRIVILEGES USER `tempuser`;
 ```
 
 * 列出用户在具体路径上相关联的权限
@@ -286,11 +307,11 @@ Total line number = 2
 It costs 0.005s
 ```
 
-* 列出角色权限
+* 列出角色所有权限
 
 ```
-LIST ROLE PRIVILEGES <roleName>
-Eg: IoTDB > LIST ROLE PRIVILEGES `actor`;
+LIST PRIVILEGES ROLE <roleName>;
+Eg: IoTDB > LIST PRIVILEGES ROLE `actor`;
 ```
 
 * 列出角色在具体路径上相关联的权限
@@ -313,27 +334,6 @@ IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.wf01.wt01.**;
 +-----------------------------------+
 Total line number = 1
 It costs 0.005s
-```
-
-* 列出用户权限
-
-```
-LIST USER PRIVILEGES <username> ;   
-Eg: IoTDB > LIST USER PRIVILEGES `tempuser`;
-```
-
-* 列出用户所有的角色
-
-```
-LIST ALL ROLE OF USER <username> ;  
-Eg: IoTDB > LIST ALL ROLE OF USER `tempuser`;
-```
-
-* 列出所有用户的角色
-
-```
-LIST ALL USER OF ROLE <roleName>;
-Eg: IoTDB > LIST ALL USER OF ROLE `roleuser`;
 ```
 
 * 更新密码
@@ -366,6 +366,7 @@ Eg: IoTDB > ALTER USER `tempuser` SET PASSWORD 'newpwd';
 |DELETE\_STORAGE\_GROUP|删除存储组。路径相关|Eg: `delete storage group root.ln;`|
 |CREATE\_TIMESERIES|创建时间序列。路径相关|Eg1: 创建时间序列<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: 创建对齐时间序列<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
 |INSERT\_TIMESERIES|插入数据。路径相关|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
+|ALTER\_TIMESERIES|修改时间序列标签。路径相关|Eg1: `alter timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4;`<br />Eg2: `ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4);`|
 |READ\_TIMESERIES|查询数据。路径相关|Eg1: `show storage group;` <br />Eg2: `show child paths root.ln, show child nodes root.ln;`<br />Eg3: `show devices;`<br />Eg4: `show timeseries root.**;`<br />Eg5: `show schema templates;`<br />Eg6: `show all ttl`<br />Eg7: [数据查询](../Query-Data/Overview.md)（这一节之下的查询语句均使用该权限）<br />Eg8: CVS格式数据导出<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg9: 查询性能追踪<br />`tracing select * from root`<br />Eg10: UDF查询<br />`select example(*) from root.sg.d1`<br />Eg11: 查询触发器<br />`show triggers`|
 |DELETE\_TIMESERIES|删除数据或时间序列。路径相关|Eg1: 删除时间序列<br />`delete timeseries root.ln.wf01.wt01.status`<br />Eg2: 删除数据<br />`delete from root.ln.wf02.wt02.status where time < 10`|
 |CREATE\_USER|创建用户。路径无关|Eg: `create user thulab 'passwd';`|

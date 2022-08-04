@@ -2239,16 +2239,18 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       switch (authorType) {
         case LIST_ROLE:
-          dataSet = executeListRole(plan);
+          if (userName != null) {
+            dataSet = executeListUserRoles(userName);
+          } else {
+            dataSet = executeListRole(plan);
+          }
           break;
         case LIST_USER:
-          dataSet = executeListUser(plan);
-          break;
-        case LIST_ROLE_USERS:
-          dataSet = executeListRoleUsers(roleName);
-          break;
-        case LIST_USER_ROLES:
-          dataSet = executeListUserRoles(userName);
+          if (roleName != null) {
+            dataSet = executeListRoleUsers(roleName);
+          } else {
+            dataSet = executeListUser(plan);
+          }
           break;
         case LIST_ROLE_PRIVILEGE:
           dataSet = executeListRolePrivileges(roleName, nodeNameList);

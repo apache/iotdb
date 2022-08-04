@@ -143,9 +143,7 @@ public class AuthorOperator extends Operator {
     LIST_USER,
     LIST_ROLE,
     LIST_USER_PRIVILEGE,
-    LIST_ROLE_PRIVILEGE,
-    LIST_USER_ROLES,
-    LIST_ROLE_USERS;
+    LIST_ROLE_PRIVILEGE;
 
     /**
      * deserialize short number.
@@ -185,10 +183,6 @@ public class AuthorOperator extends Operator {
           return LIST_USER_PRIVILEGE;
         case 14:
           return LIST_ROLE_PRIVILEGE;
-        case 15:
-          return LIST_USER_ROLES;
-        case 16:
-          return LIST_ROLE_USERS;
         default:
           return null;
       }
@@ -231,10 +225,6 @@ public class AuthorOperator extends Operator {
           return 13;
         case LIST_ROLE_PRIVILEGE:
           return 14;
-        case LIST_USER_ROLES:
-          return 15;
-        case LIST_ROLE_USERS:
-          return 16;
         default:
           return -1;
       }

@@ -120,14 +120,6 @@ public class AuthorPlan extends PhysicalPlan {
         this.setQuery(true);
         this.setOperatorType(Operator.OperatorType.LIST_ROLE_PRIVILEGE);
         break;
-      case LIST_USER_ROLES:
-        this.setQuery(true);
-        this.setOperatorType(Operator.OperatorType.LIST_USER_ROLES);
-        break;
-      case LIST_ROLE_USERS:
-        this.setQuery(true);
-        this.setOperatorType(Operator.OperatorType.LIST_ROLE_USERS);
-        break;
       case LIST_USER:
         this.setQuery(true);
         this.setOperatorType(Operator.OperatorType.LIST_USER);
