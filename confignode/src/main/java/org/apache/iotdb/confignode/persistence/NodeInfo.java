@@ -269,7 +269,7 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /** Return the number of registered ConfigNodes */
+  /** Return the number of registered Nodes */
   public int getRegisteredNodeCount() {
     int result;
     configNodeInfoReadWriteLock.readLock().lock();
