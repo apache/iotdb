@@ -33,8 +33,9 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -361,7 +362,7 @@ public class LoadManager {
                       dataNodeInfo.getLocation().getDataNodeId(),
                       empty -> new DataNodeHeartbeatCache()),
               regionGroupCacheMap);
-      AsyncDataNodeClientPool.getInstance()
+      AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
@@ -385,12 +386,11 @@ public class LoadManager {
 
       ConfigNodeHeartbeatHandler handler =
           new ConfigNodeHeartbeatHandler(
-              configNodeLocation,
               (ConfigNodeHeartbeatCache)
                   nodeCacheMap.computeIfAbsent(
                       configNodeLocation.getConfigNodeId(),
                       empty -> new ConfigNodeHeartbeatCache(configNodeLocation)));
-      AsyncConfigNodeClientPool.getInstance()
+      AsyncConfigNodeHeartbeatClientPool.getInstance()
           .getConfigNodeHeartBeat(
               configNodeLocation.getInternalEndPoint(),
               heartbeatReq.getHeartbeatTimestamp(),
