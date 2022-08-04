@@ -292,7 +292,9 @@ public class LoadManager {
     if (isNeedBroadcast.get()) {
       broadcastLatestRegionRouteMap();
     }
-    addMetrics();
+    if (nodeCacheMap.size() == getNodeManager().getRegisteredNodeCount()) {
+      addMetrics();
+    }
   }
 
   private void broadcastLatestRegionRouteMap() {
