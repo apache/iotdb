@@ -26,7 +26,9 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,15 +37,19 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class LazyRandomRouter implements IRouter {
+/**
+ * The LazyGreedyRouter mainly applies to the MultiLeader consensus protocol, it will make the
+ * number of leaders in each online DataNode as equal as possible
+ */
+public class LazyGreedyRouter implements IRouter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LazyRandomRouter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(LazyGreedyRouter.class);
 
   // Set<DataNodeId>
   private final Set<Integer> unknownDataNodes;
   private final Map<TConsensusGroupId, TRegionReplicaSet> routeMap;
 
-  public LazyRandomRouter() {
+  public LazyGreedyRouter() {
     this.unknownDataNodes = Collections.synchronizedSet(new HashSet<>());
     this.routeMap = new ConcurrentHashMap<>();
   }
@@ -67,21 +73,37 @@ public class LazyRandomRouter implements IRouter {
   public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
       List<TRegionReplicaSet> replicaSets) {
     synchronized (unknownDataNodes) {
+      // Map<DataNodeId, leaderCount> Count the number of leaders in each DataNodes
+      Map<Integer, Integer> leaderCounter = new HashMap<>();
       Map<TConsensusGroupId, TRegionReplicaSet> result = new ConcurrentHashMap<>();
+      List<TRegionReplicaSet> updateReplicas = new ArrayList<>();
 
-      replicaSets.forEach(
-          replicaSet -> {
-            if (routeEntryNeedsUpdate(replicaSet.getRegionId(), replicaSet)) {
-              updateRouteEntry(replicaSet.getRegionId(), replicaSet);
-            }
-            result.put(replicaSet.getRegionId(), routeMap.get(replicaSet.getRegionId()));
-          });
+      for (TRegionReplicaSet replicaSet : replicaSets) {
+        if (routeEntryNeedsUpdate(replicaSet)) {
+          // The greedy algorithm should be performed lastly
+          updateReplicas.add(replicaSet);
+        } else {
+          // Update counter
+          leaderCounter.compute(
+              routeMap.get(replicaSet.getRegionId()).getDataNodeLocations().get(0).getDataNodeId(),
+              (dataNodeId, counter) -> (counter == null ? 1 : counter + 1));
+          // Record the unaltered results
+          result.put(replicaSet.getRegionId(), routeMap.get(replicaSet.getRegionId()));
+        }
+      }
+
+      for (TRegionReplicaSet replicaSet : updateReplicas) {
+        updateRouteEntry(replicaSet, leaderCounter);
+        result.put(replicaSet.getRegionId(), routeMap.get(replicaSet.getRegionId()));
+      }
 
       return result;
     }
   }
 
-  private boolean routeEntryNeedsUpdate(TConsensusGroupId groupId, TRegionReplicaSet replicaSet) {
+  /** Check whether the specific RegionReplicaSet's routing policy needs update */
+  private boolean routeEntryNeedsUpdate(TRegionReplicaSet replicaSet) {
+    TConsensusGroupId groupId = replicaSet.getRegionId();
     if (!routeMap.containsKey(groupId)) {
       // The RouteEntry needs update when it is not recorded yet
       LOGGER.info("[latestRegionRouteMap] Update {} because it's a new Region", groupId);
@@ -114,13 +136,32 @@ public class LazyRandomRouter implements IRouter {
     return false;
   }
 
-  private void updateRouteEntry(TConsensusGroupId groupId, TRegionReplicaSet regionReplicaSet) {
-    Random currentRandom = new Random();
-    TRegionReplicaSet newRouteEntry = new TRegionReplicaSet(regionReplicaSet);
-    do {
-      Collections.shuffle(newRouteEntry.getDataNodeLocations(), currentRandom);
-    } while (unknownDataNodes.contains(
-        newRouteEntry.getDataNodeLocations().get(0).getDataNodeId()));
-    routeMap.put(groupId, newRouteEntry);
+  private void updateRouteEntry(TRegionReplicaSet replicaSet, Map<Integer, Integer> leaderCounter) {
+    TRegionReplicaSet newRouteEntry = new TRegionReplicaSet(replicaSet);
+    Collections.shuffle(newRouteEntry.getDataNodeLocations(), new Random());
+
+    // Greedily select the leader replica
+    int leaderIndex = -1;
+    int locateLeaderCount = Integer.MAX_VALUE;
+    for (int i = 0; i < newRouteEntry.getDataNodeLocationsSize(); i++) {
+      int currentDataNodeId = newRouteEntry.getDataNodeLocations().get(i).getDataNodeId();
+      if (!unknownDataNodes.contains(currentDataNodeId)
+          && leaderCounter.getOrDefault(currentDataNodeId, 0) < locateLeaderCount) {
+        leaderIndex = i;
+        locateLeaderCount = leaderCounter.getOrDefault(currentDataNodeId, 0);
+      }
+    }
+
+    if (leaderIndex == -1) {
+      // Prevent corner case that all DataNodes fail down
+      leaderIndex = 0;
+    }
+
+    // Swap leader replica and update statistic
+    Collections.swap(newRouteEntry.getDataNodeLocations(), 0, leaderIndex);
+    leaderCounter.compute(
+        newRouteEntry.getDataNodeLocations().get(0).getDataNodeId(),
+        (dataNodeId, counter) -> (counter == null ? 1 : counter + 1));
+    routeMap.put(newRouteEntry.getRegionId(), newRouteEntry);
   }
 }

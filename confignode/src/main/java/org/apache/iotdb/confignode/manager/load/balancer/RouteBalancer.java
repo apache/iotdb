@@ -25,7 +25,7 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.router.IRouter;
-import org.apache.iotdb.confignode.manager.load.balancer.router.LazyRandomRouter;
+import org.apache.iotdb.confignode.manager.load.balancer.router.LazyGreedyRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LeaderRouter;
 import org.apache.iotdb.confignode.manager.load.balancer.router.LoadScoreGreedyRouter;
 import org.apache.iotdb.consensus.ConsensusFactory;
@@ -45,11 +45,11 @@ public class RouteBalancer {
 
   private final IManager configManager;
 
-  private final LazyRandomRouter lazyRandomRouter;
+  private final LazyGreedyRouter lazyGreedyRouter;
 
   public RouteBalancer(IManager configManager) {
     this.configManager = configManager;
-    this.lazyRandomRouter = new LazyRandomRouter();
+    this.lazyGreedyRouter = new LazyGreedyRouter();
   }
 
   public Map<TConsensusGroupId, TRegionReplicaSet> genLatestRegionRouteMap(
@@ -95,8 +95,8 @@ public class RouteBalancer {
             .getDataRegionConsensusProtocolClass()
             .equals(ConsensusFactory.MultiLeaderConsensus)) {
           // Latent router for MultiLeader consensus protocol
-          lazyRandomRouter.updateUnknownDataNodes(getLoadManager().getUnknownDataNodes(-1));
-          return lazyRandomRouter;
+          lazyGreedyRouter.updateUnknownDataNodes(getLoadManager().getUnknownDataNodes(-1));
+          return lazyGreedyRouter;
         } else if (policy.equals(leaderPolicy)) {
           return new LeaderRouter(
               getLoadManager().getAllLeadership(), getLoadManager().getAllLoadScores());
