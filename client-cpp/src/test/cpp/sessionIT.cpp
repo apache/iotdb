@@ -298,10 +298,12 @@ TEST_CASE("Test Huge query ", "[testHugeQuery]") {
     prepareTimeseries();
     string deviceId = "root.test.d1";
     vector<string> measurements = {"s1", "s2", "s3"};
+    vector<TSDataType::TSDataType> types = {TSDataType::INT32, TSDataType::INT32, TSDataType::INT32};
+    int value1 = 1, value2 = 2, value3 = 3;
+    vector<char*> values = {(char*)&value1, (char*)&value2, (char*)&value3};
 
     for (long time = 0; time < 1000000; time++) {
-        vector<string> values = {"1", "2", "3"};
-        session->insertRecord(deviceId, time, measurements, values);
+        session->insertRecord(deviceId, time, measurements, types, values);
     }
 	
     unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select * from root.test.d1");
