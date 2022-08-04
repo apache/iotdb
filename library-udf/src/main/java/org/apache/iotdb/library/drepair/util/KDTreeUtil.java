@@ -29,22 +29,15 @@ public class KDTreeUtil {
   private Node kdtree;
 
   private static class Node {
-    // 分割的维度
     int partitiondimension;
-    // 分割的值
     double partitionValue;
-    // 如果为非叶子节点，该属性为空
-    // 否则为数据
     ArrayList<Double> value;
-    // 是否为叶子
     boolean isLeaf = false;
-    // 左树
     Node left;
-    // 右树
     Node right;
-    // 每个维度的最小值
+    //    min value of each dimension
     ArrayList<Double> min;
-    // 每个维度的最大值
+    //    max value of each dimension
     ArrayList<Double> max;
   }
 
@@ -64,7 +57,6 @@ public class KDTreeUtil {
       node.value = data.get(0);
       return;
     }
-    // 选择方差最大的维度
     node.partitiondimension = -1;
     double var = -1;
     double tmpvar;
@@ -75,14 +67,11 @@ public class KDTreeUtil {
         node.partitiondimension = i;
       }
     }
-    // 如果方差=0，表示所有数据都相同，判定为叶子节点
     if (var == 0d) {
       node.isLeaf = true;
       node.value = data.get(0);
       return;
     }
-
-    // 选择分割的值
     node.partitionValue = UtilZ.median(data, node.partitiondimension);
 
     ArrayList<ArrayList<Double>> maxmin = UtilZ.maxmin(data, dimensions);
@@ -185,11 +174,6 @@ public class KDTreeUtil {
           nearest.add(node.value);
         }
       } else {
-        /*
-         * 得到该节点代表的超矩形中点到查找点的最小距离mindistance
-         * 如果mindistance<distance表示有可能在这个节点的子节点上找到更近的点
-         * 否则不可能找到
-         */
         double mindistance = UtilZ.mindistance(input, node.max, node.min, std);
         if (mindistance < distance) {
           while (!node.isLeaf) {
@@ -253,29 +237,6 @@ public class KDTreeUtil {
       UtilZ.distance(doubles, input, std);
     }
     return kNearest;
-  }
-
-  public static class TupleWithDistance implements Comparable<TupleWithDistance> {
-    private final Double distance;
-    private final ArrayList<Double> tuple;
-
-    public TupleWithDistance(Double distance, ArrayList<Double> tuple) {
-      this.distance = distance;
-      this.tuple = tuple;
-    }
-
-    @Override
-    public int compareTo(TupleWithDistance t) {
-      return this.distance.compareTo(t.distance);
-    }
-
-    public Double getDistance() {
-      return distance;
-    }
-
-    public ArrayList<Double> getTuple() {
-      return tuple;
-    }
   }
 
   private static class UtilZ {
