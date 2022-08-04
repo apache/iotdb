@@ -293,6 +293,14 @@ public class StorageEngine implements IService {
 
   public static String getDeviceNameByPlan(PhysicalPlan plan) {
     if (plan instanceof InsertPlan) {
+      InsertPlan physicalPlan = (InsertPlan) plan;
+      if (physicalPlan.getDevicePath() == null) {
+        if (physicalPlan.getPaths() != null && physicalPlan.getPaths().size() > 0) {
+          return physicalPlan.getPaths().get(0).getDevice();
+        } else {
+          return null;
+        }
+      }
       return ((InsertPlan) plan).getDevicePath().getDevice();
     }
     return null;
