@@ -169,10 +169,12 @@ public class LogDispatcher {
 
     public void countQueue(long searchIndex) {
       this.queueCount++;
-      logger.info(
-          String.format(
-              "DataRegion[%s]->%s: total request from queue: [%d], requestIndex: [%d]",
-              peer.getGroupId().getId(), peer.getEndpoint().ip, queueCount, searchIndex));
+      if (queueCount % 100 == 0) {
+        logger.info(
+            String.format(
+                "DataRegion[%s]->%s: total request from queue: [%d], requestIndex: [%d]",
+                peer.getGroupId().getId(), peer.getEndpoint().ip, queueCount, searchIndex));
+      }
     }
 
     public IndexController getController() {
