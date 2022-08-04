@@ -293,3 +293,29 @@ TEST_CASE("Test Last query ", "[testLastQuery]") {
         index++;
     }
 }
+
+TEST_CASE("Test Huge query ", "[testHugeQuery]") {
+    prepareTimeseries();
+    string deviceId = "root.test.d1";
+    vector<string> measurements = {"s1", "s2", "s3"};
+
+    for (long time = 0; time < 1000000; time++) {
+        vector<string> values = {"1", "2", "3"};
+        session->insertRecord(deviceId, time, measurements, values);
+    }
+	
+    unique_ptr<SessionDataSet> sessionDataSet = session->executeQueryStatement("select * from root.test.d1");
+    sessionDataSet->setBatchSize(1024);
+    RowRecord* rowRecord;
+    int count = 0;
+    while (sessionDataSet->hasNext()) {
+        rowRecord = sessionDataSet->next();
+        REQUIRE(rowRecord->timestamp == count);
+        REQUIRE(rowRecord->fields[0].intV == 1);
+        REQUIRE(rowRecord->fields[1].intV == 2);
+        REQUIRE(rowRecord->fields[2].intV == 3);
+        count++;
+    }
+	
+    REQUIRE(count == 1000000);
+}
