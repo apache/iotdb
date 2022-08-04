@@ -125,7 +125,7 @@ public class StorageEngine implements IService {
   private static OperationSyncProducer operationSyncProducer;
   private static OperationSyncDDLProtector operationSyncDDLProtector;
   private static OperationSyncLogService operationSyncDDLLogService;
-  private static AtomicBoolean isSecondaryAlive =new AtomicBoolean(false);;
+  private static AtomicBoolean isSecondaryAlive = new AtomicBoolean(false);
 
   /**
    * Time range for dividing storage group, the time unit is the same with IoTDB's
