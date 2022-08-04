@@ -156,7 +156,6 @@ public class LoadManager {
     // Persist the allocation result
     getConsensusManager().write(createRegionGroupsPlan);
     // Broadcast the latest RegionRouteMap
-    LOGGER.info("[latestRegionRouteMap] Broadcast because new Regions created");
     broadcastLatestRegionRouteMap();
   }
 
@@ -305,7 +304,6 @@ public class LoadManager {
 
     if (existFailDownDataNode.get()) {
       // The RegionRouteMap must be broadcast if some DataNodes fail down
-      LOGGER.info("[latestRegionRouteMap] Broadcast because some DataNodes down");
       isNeedBroadcast = true;
     }
 
@@ -313,14 +311,12 @@ public class LoadManager {
       // Check the condition of leader routing policy
       if (existChangeLeaderSchemaRegionGroup.get()) {
         // Broadcast the RegionRouteMap if some SchemaRegionGroups change their leader
-        LOGGER.info("[latestRegionRouteMap] Broadcast because SchemaRegion change leader");
         isNeedBroadcast = true;
       }
       if (!conf.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.MultiLeaderConsensus)
           && existChangeLeaderDataRegionGroup.get()) {
         // Broadcast the RegionRouteMap if some DataRegionGroups change their leader
         // and the consensus protocol isn't MultiLeader
-        LOGGER.info("[latestRegionRouteMap] Broadcast because DataRegion change leader");
         isNeedBroadcast = true;
       }
     }

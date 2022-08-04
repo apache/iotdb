@@ -23,9 +23,6 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -42,8 +39,6 @@ import java.util.stream.Collectors;
  * number of leaders in each online DataNode as equal as possible
  */
 public class LazyGreedyRouter implements IRouter {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(LazyGreedyRouter.class);
 
   // Set<DataNodeId>
   private final Set<Integer> unknownDataNodes;
@@ -106,7 +101,6 @@ public class LazyGreedyRouter implements IRouter {
     TConsensusGroupId groupId = replicaSet.getRegionId();
     if (!routeMap.containsKey(groupId)) {
       // The RouteEntry needs update when it is not recorded yet
-      LOGGER.info("[latestRegionRouteMap] Update {} because it's a new Region", groupId);
       return true;
     }
 
@@ -120,20 +114,13 @@ public class LazyGreedyRouter implements IRouter {
             .collect(Collectors.toSet());
     if (!cacheReplicaSet.equals(inputReplicaSet)) {
       // The RouteEntry needs update when the cached record is outdated
-      LOGGER.info("[latestRegionRouteMap] Update {} because it's been migrated", groupId);
       return true;
     }
 
     // The RouteEntry needs update when the status of DataNode corresponding to the first priority
     // is unknown
-    if (unknownDataNodes.contains(
-        routeMap.get(groupId).getDataNodeLocations().get(0).getDataNodeId())) {
-      LOGGER.info(
-          "[latestRegionRouteMap] Update {} because the first DataNode is unknown", groupId);
-      return true;
-    }
-
-    return false;
+    return unknownDataNodes.contains(
+        routeMap.get(groupId).getDataNodeLocations().get(0).getDataNodeId());
   }
 
   private void updateRouteEntry(TRegionReplicaSet replicaSet, Map<Integer, Integer> leaderCounter) {
