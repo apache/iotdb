@@ -77,7 +77,7 @@ public class FunctionExpression extends Expression {
   private boolean isUserDefinedAggregationFunctionExpression;
 
   private final String functionName;
-  private final Map<String, String> functionAttributes;
+  private final LinkedHashMap<String, String> functionAttributes;
 
   /**
    * example: select udf(a, b, udf(c)) from root.sg.d;
@@ -101,7 +101,9 @@ public class FunctionExpression extends Expression {
   }
 
   public FunctionExpression(
-      String functionName, Map<String, String> functionAttributes, List<Expression> expressions) {
+      String functionName,
+      LinkedHashMap<String, String> functionAttributes,
+      List<Expression> expressions) {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
@@ -120,7 +122,8 @@ public class FunctionExpression extends Expression {
   public FunctionExpression(ByteBuffer byteBuffer) {
     functionName = ReadWriteIOUtils.readString(byteBuffer);
 
-    Map<String, String> deserializedFunctionAttributes = ReadWriteIOUtils.readMap(byteBuffer);
+    LinkedHashMap<String, String> deserializedFunctionAttributes =
+        ReadWriteIOUtils.readLinkedHashMap(byteBuffer);
     functionAttributes =
         deserializedFunctionAttributes != null
             ? deserializedFunctionAttributes
@@ -197,7 +200,7 @@ public class FunctionExpression extends Expression {
     return functionName;
   }
 
-  public Map<String, String> getFunctionAttributes() {
+  public LinkedHashMap<String, String> getFunctionAttributes() {
     return functionAttributes;
   }
 
