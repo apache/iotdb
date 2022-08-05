@@ -394,6 +394,11 @@ public class LogDispatcher {
           && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
         logger.debug("construct from WAL for one Entry, index : {}", currentIndex);
         try {
+          logger.debug(
+              "{} : before wait pendingRequest Size: {}, bufferedRequest size: {}",
+              impl.getThisNode().getGroupId(),
+              pendingRequest.size(),
+              bufferedRequest.size());
           walEntryiterator.waitForNextReady();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
