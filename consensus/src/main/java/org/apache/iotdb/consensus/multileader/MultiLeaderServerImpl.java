@@ -197,7 +197,7 @@ public class MultiLeaderServerImpl {
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForLocalRequest(
       IConsensusRequest request) {
-    return new IndexedConsensusRequest(index.incrementAndGet(), Collections.singletonList(request));
+    return new IndexedConsensusRequest(index.get() + 1, Collections.singletonList(request));
   }
 
   public IndexedConsensusRequest buildIndexedConsensusRequestForRemoteRequest(
