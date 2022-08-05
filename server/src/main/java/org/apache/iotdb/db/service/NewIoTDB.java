@@ -133,7 +133,6 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(WALManager.getInstance());
 
     registerManager.register(StorageEngineV2.getInstance());
-    registerManager.register(DataNodeInternalRPCService.getInstance());
     registerManager.register(DriverScheduler.getInstance());
 
     registerManager.register(TemporaryQueryDataFileService.getInstance());

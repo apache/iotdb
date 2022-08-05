@@ -87,8 +87,10 @@ public class LoadManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
   private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-  private static final long heartbeatInterval = conf.getHeartbeatInterval();
-  public static final TEndPoint currentNode =
+
+  private static final long HEARTBEAT_INTERVAL = conf.getHeartbeatInterval();
+
+  public static final TEndPoint CURRENT_NODE =
       new TEndPoint(conf.getInternalAddress(), conf.getInternalPort());
 
   private final IManager configManager;
@@ -234,7 +236,7 @@ public class LoadManager {
                 heartBeatExecutor,
                 this::heartbeatLoopBody,
                 0,
-                heartbeatInterval,
+                HEARTBEAT_INTERVAL,
                 TimeUnit.MILLISECONDS);
         LOGGER.info("Heartbeat service is started successfully.");
       }
@@ -246,7 +248,7 @@ public class LoadManager {
                 loadBalancingExecutor,
                 this::updateNodeLoadStatistic,
                 0,
-                heartbeatInterval,
+                HEARTBEAT_INTERVAL,
                 TimeUnit.MILLISECONDS);
         LOGGER.info("LoadBalancing service is started successfully.");
       }
@@ -408,7 +410,7 @@ public class LoadManager {
       THeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
-      if (configNodeLocation.getInternalEndPoint().equals(currentNode)) {
+      if (configNodeLocation.getInternalEndPoint().equals(CURRENT_NODE)) {
         // Skip itself
         nodeCacheMap.putIfAbsent(
             configNodeLocation.getConfigNodeId(), new ConfigNodeHeartbeatCache(configNodeLocation));
