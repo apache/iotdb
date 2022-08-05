@@ -111,36 +111,38 @@ public class LogDispatcher {
     List<ByteBuffer> serializedRequests = request.buildSerializedRequests();
     threads.forEach(
         thread -> {
-          logger.info(
+          logger.debug(
               "{}->{}: Push a log to the queue, where the queue length is {}",
               impl.getThisNode().getGroupId(),
               thread.getPeer().getEndpoint().getIp(),
               thread.getPendingRequest().size());
-          long putToQueueStartTime = System.nanoTime();
-          try {
-            while (!thread
-                .getPendingRequest()
-                .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
-              impl.getIndexObject().wait();
-            }
-            ;
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          } finally {
-            logger.info("{}: Push a log to the queue, done", impl.getThisNode().getGroupId());
-            StepTracker.trace("putToQueueWaitingTime", putToQueueStartTime, System.nanoTime());
-          }
-          //          if (thread
-          //              .getPendingRequest()
-          //              .offer(new IndexedConsensusRequest(serializedRequests,
+          //          long putToQueueStartTime = System.nanoTime();
+          //          try {
+          //            while (!thread
+          //                .getPendingRequest()
+          //                .offer(new IndexedConsensusRequest(serializedRequests,
           // request.getSearchIndex()))) {
-          //            thread.countQueue(request.getSearchIndex());
-          //          } else {
-          //            logger.debug(
-          //                "{}: Log queue of {} is full, ignore the log to this node",
-          //                impl.getThisNode().getGroupId(),
-          //                thread.getPeer());
+          //              impl.getIndexObject().wait();
+          //            }
+          //            ;
+          //          } catch (InterruptedException e) {
+          //            e.printStackTrace();
+          //          } finally {
+          //            logger.info("{}: Push a log to the queue, done",
+          // impl.getThisNode().getGroupId());
+          //            StepTracker.trace("putToQueueWaitingTime", putToQueueStartTime,
+          // System.nanoTime());
           //          }
+          if (thread
+              .getPendingRequest()
+              .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
+            thread.countQueue(request.getSearchIndex());
+          } else {
+            logger.debug(
+                "{}: Log queue of {} is full, ignore the log to this node",
+                impl.getThisNode().getGroupId(),
+                thread.getPeer());
+          }
         });
   }
 
@@ -284,7 +286,7 @@ public class LogDispatcher {
                 bufferedRequest,
                 config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
             maxIndexWhenBufferedRequestEmpty = impl.getIndex() + 1;
-            impl.getIndexObject().notifyAll();
+            //            impl.getIndexObject().notifyAll();
           }
           // remove all request that searchIndex < startIndex
           Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
