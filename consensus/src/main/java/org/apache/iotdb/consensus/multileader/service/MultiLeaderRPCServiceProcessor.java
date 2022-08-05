@@ -99,7 +99,8 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
         }
         long followerWriteRequestStartTime = System.nanoTime();
         impl.getStateMachine().multiLeaderWriteAsync(indexedConsensusRequests, resultHandler);
-        StepTracker.trace("followerWriteRequest", followerWriteRequestStartTime, System.nanoTime());
+        StepTracker.trace(
+            "followerWriteRequest", 25, followerWriteRequestStartTime, System.nanoTime());
       }
     } catch (Exception e) {
       resultHandler.onError(e);

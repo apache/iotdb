@@ -227,7 +227,8 @@ public class LogDispatcher {
           // we may block here if the synchronization pipeline is full
           long getBatchSlotStartTime = System.nanoTime();
           syncStatus.addNextBatch(batch);
-          StepTracker.trace("getBatchSlot", getBatchSlotStartTime, System.nanoTime());
+          StepTracker.trace("batchSize", 25, 0, batch.getBatches().size() * 1000_000L);
+          StepTracker.trace("getBatchSlot", 25, getBatchSlotStartTime, System.nanoTime());
           // sends batch asynchronously and migrates the retry logic into the callback handler
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));
         }
