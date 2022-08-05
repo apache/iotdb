@@ -125,8 +125,8 @@ public class MultiLeaderServerImpl {
               indexedConsensusRequest.getSearchIndex());
         }
         // TODO wal and memtable
-        //        TSStatus result = stateMachine.write(indexedConsensusRequest);
-        TSStatus result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+        TSStatus result = stateMachine.write(indexedConsensusRequest);
+//        TSStatus result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
         StepTracker.trace("stateMachineWrite", startTimeAfterLock, System.nanoTime());
         long offerStartTime = System.nanoTime();
         if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -162,7 +162,7 @@ public class MultiLeaderServerImpl {
 
   public void persistConfiguration() {
     try (PublicBAOS publicBAOS = new PublicBAOS();
-        DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
+         DataOutputStream outputStream = new DataOutputStream(publicBAOS)) {
       outputStream.writeInt(configuration.size());
       for (Peer peer : configuration) {
         peer.serialize(outputStream);
