@@ -20,24 +20,19 @@ package org.apache.iotdb.confignode.client.async.confignode;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
-import org.apache.iotdb.commons.client.async.AsyncConfigNodeIServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncConfigNodeHeartbeatServiceClient;
+import org.apache.iotdb.confignode.client.ConfigNodeClientPoolFactory;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeHeartbeatHandler;
-import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+public class AsyncConfigNodeHeartbeatClientPool {
 
-public class AsyncConfigNodeClientPool {
+  private final IClientManager<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> clientManager;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(AsyncConfigNodeClientPool.class);
-
-  private final IClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager;
-
-  private AsyncConfigNodeClientPool() {
+  private AsyncConfigNodeHeartbeatClientPool() {
     clientManager =
-        new IClientManager.Factory<TEndPoint, AsyncConfigNodeIServiceClient>()
+        new IClientManager.Factory<TEndPoint, AsyncConfigNodeHeartbeatServiceClient>()
             .createClientManager(
-                new DataNodeClientPoolFactory.AsyncConfigNodeIServiceClientPoolFactory());
+                new ConfigNodeClientPoolFactory.AsyncConfigNodeHeartbeatServiceClientPoolFactory());
   }
 
   /**
@@ -47,26 +42,29 @@ public class AsyncConfigNodeClientPool {
    */
   public void getConfigNodeHeartBeat(
       TEndPoint endPoint, long timestamp, ConfigNodeHeartbeatHandler handler) {
-    AsyncConfigNodeIServiceClient client;
+    AsyncConfigNodeHeartbeatServiceClient client;
     try {
-      client = clientManager.borrowClient(endPoint);
-      client.getConfigNodeHeartBeat(timestamp, handler);
-    } catch (Exception e) {
-      LOGGER.error("Asking ConfigNode: {}, for heartbeat failed", endPoint, e);
+      client = clientManager.purelyBorrowClient(endPoint);
+      if (client != null) {
+        client.getConfigNodeHeartBeat(timestamp, handler);
+      }
+    } catch (Exception ignore) {
+      // Just ignore
     }
   }
 
   // TODO: Is the ClientPool must be a singleton?
-  private static class AsyncConfigNodeClientPoolHolder {
+  private static class AsyncConfigNodeHeartbeatClientPoolHolder {
 
-    private static final AsyncConfigNodeClientPool INSTANCE = new AsyncConfigNodeClientPool();
+    private static final AsyncConfigNodeHeartbeatClientPool INSTANCE =
+        new AsyncConfigNodeHeartbeatClientPool();
 
-    private AsyncConfigNodeClientPoolHolder() {
+    private AsyncConfigNodeHeartbeatClientPoolHolder() {
       // Empty constructor
     }
   }
 
-  public static AsyncConfigNodeClientPool getInstance() {
-    return AsyncConfigNodeClientPool.AsyncConfigNodeClientPoolHolder.INSTANCE;
+  public static AsyncConfigNodeHeartbeatClientPool getInstance() {
+    return AsyncConfigNodeHeartbeatClientPoolHolder.INSTANCE;
   }
 }

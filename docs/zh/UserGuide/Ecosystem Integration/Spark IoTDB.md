@@ -134,7 +134,7 @@ TsFile中的现有数据如下：
 ```scala
 import org.apache.iotdb.spark.db._
 
-val wide_df = spark.read.format("org.apache.iotdb.spark.db").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root where time < 1100 and time > 1000").load
+val wide_df = spark.read.format("org.apache.iotdb.spark.db").option("url", "jdbc:iotdb://127.0.0.1:6667/").option("sql", "select * from root.** where time < 1100 and time > 1000").load
 val narrow_df = Transformer.toNarrowForm(spark, wide_df)
 ```
 

@@ -185,6 +185,15 @@ public class NodeManager {
   /**
    * Only leader use this interface
    *
+   * @return The number of registered TotalNodes
+   */
+  public int getRegisteredNodeCount() {
+    return nodeInfo.getRegisteredNodeCount();
+  }
+
+  /**
+   * Only leader use this interface
+   *
    * @return The number of total cpu cores in online DataNodes
    */
   public int getTotalCpuCoreCount() {

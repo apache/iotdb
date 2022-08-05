@@ -59,8 +59,8 @@ public class StubSinkHandle implements ISinkHandle {
   }
 
   @Override
-  public void send(List<TsBlock> tsBlocks) {
-    this.tsBlocks.addAll(tsBlocks);
+  public void send(TsBlock tsBlock) {
+    this.tsBlocks.add(tsBlock);
   }
 
   @Override
