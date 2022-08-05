@@ -92,4 +92,8 @@ public class ConfigNodeWrapper extends AbstractNodeWrapper {
             "org.apache.iotdb.confignode.service.ConfigNode",
             "-s"));
   }
+
+  public int getConsensusPort() {
+    return consensusPort;
+  }
 }

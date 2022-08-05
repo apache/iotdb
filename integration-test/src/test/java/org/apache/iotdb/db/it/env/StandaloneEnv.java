@@ -18,14 +18,19 @@
  */
 package org.apache.iotdb.db.it.env;
 
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.it.env.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.Constant;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.List;
 
 import static org.apache.iotdb.jdbc.Config.VERSION;
 import static org.junit.Assert.fail;
@@ -93,5 +98,30 @@ public class StandaloneEnv implements BaseEnv {
 
   public void dumpTestJVMSnapshot() {
     // Do nothing
+  }
+
+  @Override
+  public List<ConfigNodeWrapper> getConfigNodeWrapperList() {
+    return null;
+  }
+
+  @Override
+  public void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList) {
+    // Do nothing
+  }
+
+  @Override
+  public List<DataNodeWrapper> getDataNodeWrapperList() {
+    return null;
+  }
+
+  @Override
+  public void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList) {
+    // Do nothing
+  }
+
+  @Override
+  public IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException {
+    return null;
   }
 }

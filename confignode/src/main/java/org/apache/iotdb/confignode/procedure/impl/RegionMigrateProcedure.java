@@ -225,11 +225,12 @@ public class RegionMigrateProcedure
    * @param req
    */
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
-    LOG.info("DataNode reported region {} migrate result:{} ", req.getRegionId(), req);
     // TODO the req is used in roll back
     synchronized (regionMigrateLock) {
       regionMigrateLock.notify();
     }
+    LOG.info(
+        "notified after DataNode reported region {} migrate result:{} ", req.getRegionId(), req);
   }
 
   public TConsensusGroupId getConsensusGroupId() {

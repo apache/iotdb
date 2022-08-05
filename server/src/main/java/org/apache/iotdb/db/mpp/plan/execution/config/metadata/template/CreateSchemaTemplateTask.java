@@ -17,26 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config;
+package org.apache.iotdb.db.mpp.plan.execution.config.metadata.template;
 
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class SetTTLTask implements IConfigTask {
+public class CreateSchemaTemplateTask implements IConfigTask {
 
-  protected final SetTTLStatement statement;
-  protected String taskName;
+  private final CreateSchemaTemplateStatement createSchemaTemplateStatement;
 
-  public SetTTLTask(SetTTLStatement statement) {
-    this.statement = statement;
-    this.taskName = "set ttl";
+  public CreateSchemaTemplateTask(CreateSchemaTemplateStatement createSchemaTemplateStatement) {
+    this.createSchemaTemplateStatement = createSchemaTemplateStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.setTTL(statement, taskName);
+    return configTaskExecutor.createSchemaTemplate(this.createSchemaTemplateStatement);
   }
 }

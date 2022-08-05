@@ -212,7 +212,7 @@ public class ConfigNode implements ConfigNodeMBean {
                   .sendSyncRequestToConfigNodeWithRetry(
                       targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        break;
+        return;
       } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         targetConfigNode = status.getRedirectNode();
         LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);

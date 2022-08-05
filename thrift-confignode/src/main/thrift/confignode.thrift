@@ -335,6 +335,15 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
+// Maintenance Tools
+struct TMergeReq {
+  1: optional i32 dataNodeId
+}
+
+struct TClearCacheReq {
+   1: optional i32 dataNodeId
+}
+
 service IConfigNodeRPCService {
 
   /* DataNode */
@@ -425,13 +434,13 @@ service IConfigNodeRPCService {
 
   common.TSStatus dropFunction(TDropFunctionReq req)
 
-  /* Flush */
+  /* Maintenance Tools */
+
+  common.TSStatus merge(TMergeReq req)
 
   common.TSStatus flush(common.TFlushReq req)
 
-  /* ClearCache */
-
-  common.TSStatus clearCache(common.TClearCacheReq req)
+  common.TSStatus clearCache(TClearCacheReq req)
 
   /* Cluster Tools */
 
