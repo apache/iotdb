@@ -266,6 +266,7 @@ public class LogDispatcher {
         PendingBatch batch;
         List<TLogBatch> logBatches = new ArrayList<>();
         long startIndex = syncStatus.getNextSendingIndex();
+        long maxIndexWhenBufferedRequestEmpty = startIndex;
         logger.debug("[GetBatch] startIndex: {}", startIndex);
         long endIndex;
         if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
@@ -275,9 +276,12 @@ public class LogDispatcher {
               impl.getThisNode().getGroupId(),
               pendingRequest.size(),
               bufferedRequest.size());
-          pendingRequest.drainTo(
-              bufferedRequest,
-              config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
+          synchronized (impl.getIndexObject()) {
+            pendingRequest.drainTo(
+                bufferedRequest,
+                config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
+            maxIndexWhenBufferedRequestEmpty = impl.getIndex() + 1;
+          }
           // remove all request that searchIndex < startIndex
           Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
           while (iterator.hasNext()) {
@@ -289,8 +293,13 @@ public class LogDispatcher {
             }
           }
         }
-        if (bufferedRequest.isEmpty()) { // only execute this after a restart
-          endIndex = constructBatchFromWAL(startIndex, impl.getIndex() + 1, logBatches);
+        // This condition will be executed in several scenarios:
+        // 1. restart
+        // 2. The getBatch() is invoked immediately at the moment the PendingRequests are consumed
+        // up.
+        if (bufferedRequest.isEmpty()) {
+          endIndex =
+              constructBatchFromWAL(startIndex, maxIndexWhenBufferedRequestEmpty, logBatches);
           batch = new PendingBatch(startIndex, endIndex, logBatches);
           logger.debug(
               "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batch);
@@ -376,6 +385,7 @@ public class LogDispatcher {
               currentIndex,
               maxIndex,
               iteratorIndex));
+      // Even if there is no WAL files, these code won't produce error.
       if (iteratorIndex != currentIndex) {
         walEntryiterator.skipTo(currentIndex);
         iteratorIndex = currentIndex;

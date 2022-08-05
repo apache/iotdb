@@ -130,7 +130,10 @@ public class MultiLeaderServerImpl {
         StepTracker.trace("stateMachineWrite", startTimeAfterLock, System.nanoTime());
         long offerStartTime = System.nanoTime();
         if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          logDispatcher.offer(indexedConsensusRequest);
+          synchronized (index) {
+            logDispatcher.offer(indexedConsensusRequest);
+            index.incrementAndGet();
+          }
         } else {
           logger.debug(
               "{}: write operation failed. searchIndex: {}. Code: {}",
@@ -229,5 +232,9 @@ public class MultiLeaderServerImpl {
 
   public MultiLeaderConfig getConfig() {
     return config;
+  }
+
+  public AtomicLong getIndexObject() {
+    return index;
   }
 }
