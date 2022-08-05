@@ -41,7 +41,7 @@ public interface ISinkHandle {
    * the invocation will be ignored. This can happen with limit queries. A {@link RuntimeException}
    * will be thrown if any exception happened during the data transmission.
    */
-  void send(List<TsBlock> tsBlocks);
+  void send(TsBlock tsBlock);
 
   /**
    * Send a {@link TsBlock} to a specific partition. If no-more-tsblocks has been set, the send

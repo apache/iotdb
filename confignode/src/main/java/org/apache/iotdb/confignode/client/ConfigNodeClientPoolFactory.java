@@ -24,6 +24,8 @@ import org.apache.iotdb.commons.client.ClientFactoryProperty;
 import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.IClientPoolFactory;
+import org.apache.iotdb.commons.client.async.AsyncConfigNodeHeartbeatServiceClient;
+import org.apache.iotdb.commons.client.async.AsyncDataNodeHeartbeatServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -69,6 +71,44 @@ public class ConfigNodeClientPoolFactory {
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build()),
           new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build().getConfig());
+    }
+  }
+
+  public static class AsyncConfigNodeHeartbeatServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> {
+    @Override
+    public KeyedObjectPool<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> createClientPool(
+        ClientManager<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> manager) {
+      return new GenericKeyedObjectPool<>(
+          new AsyncConfigNodeHeartbeatServiceClient.Factory(
+              manager,
+              new ClientFactoryProperty.Builder()
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .build()),
+          new ClientPoolProperty.Builder<AsyncConfigNodeHeartbeatServiceClient>()
+              .build()
+              .getConfig());
+    }
+  }
+
+  public static class AsyncDataNodeHeartbeatServiceClientPoolFactory
+      implements IClientPoolFactory<TEndPoint, AsyncDataNodeHeartbeatServiceClient> {
+    @Override
+    public KeyedObjectPool<TEndPoint, AsyncDataNodeHeartbeatServiceClient> createClientPool(
+        ClientManager<TEndPoint, AsyncDataNodeHeartbeatServiceClient> manager) {
+      return new GenericKeyedObjectPool<>(
+          new AsyncDataNodeHeartbeatServiceClient.Factory(
+              manager,
+              new ClientFactoryProperty.Builder()
+                  .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
+                  .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
+                  .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
+                  .build()),
+          new ClientPoolProperty.Builder<AsyncDataNodeHeartbeatServiceClient>()
+              .build()
+              .getConfig());
     }
   }
 }

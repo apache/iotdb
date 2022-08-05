@@ -45,7 +45,7 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
 
   @Override
   public V borrowClient(K node) throws IOException {
-    V client = null;
+    V client;
     try {
       client = pool.borrowObject(node);
     } catch (TTransportException e) {
@@ -59,6 +59,17 @@ public class ClientManager<K, V> implements IClientManager<K, V> {
       String errorMessage = String.format("Borrow client from pool for node %s failed.", node);
       logger.warn(errorMessage, e);
       throw new IOException(errorMessage, e);
+    }
+    return client;
+  }
+
+  @Override
+  public V purelyBorrowClient(K node) {
+    V client = null;
+    try {
+      client = pool.borrowObject(node);
+    } catch (Exception ignored) {
+      // Just ignore
     }
     return client;
   }

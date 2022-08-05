@@ -54,8 +54,7 @@ public class ConfigExecutionTest {
   public void normalConfigTaskTest() {
     IConfigTask task =
         (clientManager) -> immediateFuture(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-    ConfigExecution execution =
-        new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
+    ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), getExecutor(), task);
     execution.start();
     ExecutionResult result = execution.getStatus();
     assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), result.status.code);
@@ -65,8 +64,7 @@ public class ConfigExecutionTest {
   public void normalConfigTaskWithResultTest() {
     TsBlock tsBlock =
         new TsBlock(
-            new TimeColumn(1, new long[] {0}),
-            new IntColumn(1, Optional.of(new boolean[] {false}), new int[] {1}));
+            new TimeColumn(1, new long[] {0}), new IntColumn(1, Optional.empty(), new int[] {1}));
     DatasetHeader datasetHeader =
         new DatasetHeader(
             Collections.singletonList(new ColumnHeader("TestValue", TSDataType.INT32)), false);
@@ -74,8 +72,7 @@ public class ConfigExecutionTest {
         (clientManager) ->
             immediateFuture(
                 new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, tsBlock, datasetHeader));
-    ConfigExecution execution =
-        new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
+    ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), getExecutor(), task);
     execution.start();
     ExecutionResult result = execution.getStatus();
     TsBlock tsBlockFromExecution = null;
@@ -94,8 +91,7 @@ public class ConfigExecutionTest {
         (clientManager) -> {
           throw new RuntimeException("task throw exception when executing");
         };
-    ConfigExecution execution =
-        new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
+    ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), getExecutor(), task);
     execution.start();
     ExecutionResult result = execution.getStatus();
     assertEquals(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode(), result.status.code);
@@ -118,8 +114,7 @@ public class ConfigExecutionTest {
       }
     }
     IConfigTask task = new SimpleTask(taskResult);
-    ConfigExecution execution =
-        new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
+    ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), getExecutor(), task);
     execution.start();
 
     Thread resultThread =
@@ -139,8 +134,7 @@ public class ConfigExecutionTest {
         (clientManager) -> {
           throw new RuntimeException("task throw exception when executing");
         };
-    ConfigExecution execution =
-        new ConfigExecution(genMPPQueryContext(), null, getExecutor(), task);
+    ConfigExecution execution = new ConfigExecution(genMPPQueryContext(), getExecutor(), task);
     Thread resultThread =
         new Thread(
             () -> {

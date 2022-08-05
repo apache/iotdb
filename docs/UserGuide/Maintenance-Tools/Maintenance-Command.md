@@ -22,7 +22,7 @@
 # Maintenance Command
 ## FLUSH
 
-Persist all the data points in the memory table of the storage group to the disk, and seal the data file.
+Persist all the data points in the memory table of the storage group to the disk, and seal the data file.In cluster mode, we provide commands to persist the specified storage group cache of a single node and persist the specified storage group cache of the cluster.
 
 Note: This command does not need to be invoked manually by the client. IoTDB has WAL to ensure data security
 and IoTDB will flush when appropriate.
@@ -30,8 +30,11 @@ Frequently call flush can result in small data files that degrade query performa
 
 ```sql
 IoTDB> FLUSH 
+IoTDB> FLUSH ON LOCAL
+IoTDB> FLUSH ON CLUSTER
 IoTDB> FLUSH root.ln
-IoTDB> FLUSH root.sg1,root.sg2
+IoTDB> FLUSH root.sg1,root.sg2 ON LOCAL
+IoTDB> FLUSH root.sg1,root.sg2 ON CLUSTER
 ```
 
 ## MERGE
@@ -44,6 +47,13 @@ Execute Level Compaction and unsequence Compaction task. Currently IoTDB support
 ```sql
 IoTDB> MERGE
 IoTDB> FULL MERGE
+```
+At the same time, manually trigger the compaction process of data files are supported for individual nodes or the entire cluster in cluster mode:
+```sql
+IoTDB> MERGE ON LOCAL
+IoTDB> MERGE ON CLUSTER
+IoTDB> FULL MERGE ON LOCAL
+IoTDB> FULL MERGE ON CLUSTER
 ```
 
 ## CLEAR CACHE

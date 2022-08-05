@@ -17,24 +17,35 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config;
+package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.CreateFunctionStatement;
 
 import com.google.common.util.concurrent.ListenableFuture;
 
-public class CreateSchemaTemplateTask implements IConfigTask {
+import java.net.URI;
+import java.util.List;
+import java.util.stream.Collectors;
 
-  private final CreateSchemaTemplateStatement createSchemaTemplateStatement;
+public class CreateFunctionTask implements IConfigTask {
 
-  public CreateSchemaTemplateTask(CreateSchemaTemplateStatement createSchemaTemplateStatement) {
-    this.createSchemaTemplateStatement = createSchemaTemplateStatement;
+  private final String udfName;
+  private final String className;
+  private final List<String> uris;
+
+  public CreateFunctionTask(CreateFunctionStatement createFunctionStatement) {
+    udfName = createFunctionStatement.getUdfName();
+    className = createFunctionStatement.getClassName();
+    uris =
+        createFunctionStatement.getUris().stream().map(URI::toString).collect(Collectors.toList());
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.createSchemaTemplate(this.createSchemaTemplateStatement);
+    return configTaskExecutor.createFunction(udfName, className, uris);
   }
 }

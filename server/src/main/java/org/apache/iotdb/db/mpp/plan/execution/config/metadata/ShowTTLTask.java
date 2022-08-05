@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.execution.config;
+package org.apache.iotdb.db.mpp.plan.execution.config.metadata;
 
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
-import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
 import org.apache.iotdb.db.mpp.common.header.HeaderConstant;
+import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
+import org.apache.iotdb.db.mpp.plan.execution.config.IConfigTask;
 import org.apache.iotdb.db.mpp.plan.execution.config.executor.IConfigTaskExecutor;
-import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -32,39 +32,36 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
-public class ShowConfigNodesTask implements IConfigTask {
+import java.util.Map;
 
-  private ShowConfigNodesStatement showConfigNodesStatement;
+public class ShowTTLTask implements IConfigTask {
 
-  public ShowConfigNodesTask() {}
+  private ShowTTLStatement showTTLStatement;
 
-  public ShowConfigNodesTask(ShowConfigNodesStatement showConfigNodesStatement) {
-    this.showConfigNodesStatement = showConfigNodesStatement;
+  public ShowTTLTask(ShowTTLStatement showTTLStatement) {
+    this.showTTLStatement = showTTLStatement;
   }
 
   @Override
   public ListenableFuture<ConfigTaskResult> execute(IConfigTaskExecutor configTaskExecutor)
       throws InterruptedException {
-    return configTaskExecutor.showConfigNodes();
+    return configTaskExecutor.showTTL(showTTLStatement);
   }
 
   public static void buildTSBlock(
-      TShowConfigNodesResp showConfigNodesResp, SettableFuture<ConfigTaskResult> future) {
-    TsBlockBuilder builder =
-        new TsBlockBuilder(HeaderConstant.showConfigNodesHeader.getRespDataTypes());
-    if (showConfigNodesResp.getConfigNodesInfoList() != null) {
-      for (TConfigNodeInfo configNodeInfo : showConfigNodesResp.getConfigNodesInfoList()) {
-        builder.getTimeColumnBuilder().writeLong(0L);
-        builder.getColumnBuilder(0).writeInt(configNodeInfo.getConfigNodeId());
-        builder.getColumnBuilder(1).writeBinary(Binary.valueOf(configNodeInfo.getStatus()));
-        builder
-            .getColumnBuilder(2)
-            .writeBinary(Binary.valueOf(configNodeInfo.getInternalAddress()));
-        builder.getColumnBuilder(3).writeInt(configNodeInfo.getInternalPort());
-        builder.declarePosition();
+      Map<String, Long> storageGroupToTTL, SettableFuture<ConfigTaskResult> future) {
+    TsBlockBuilder builder = new TsBlockBuilder(HeaderConstant.showTTLHeader.getRespDataTypes());
+    for (Map.Entry<String, Long> entry : storageGroupToTTL.entrySet()) {
+      builder.getTimeColumnBuilder().writeLong(0);
+      builder.getColumnBuilder(0).writeBinary(new Binary(entry.getKey()));
+      if (Long.MAX_VALUE == entry.getValue()) {
+        builder.getColumnBuilder(1).appendNull();
+      } else {
+        builder.getColumnBuilder(1).writeLong(entry.getValue());
       }
+      builder.declarePosition();
     }
-    DatasetHeader datasetHeader = HeaderConstant.showConfigNodesHeader;
+    DatasetHeader datasetHeader = HeaderConstant.showTTLHeader;
     future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS, builder.build(), datasetHeader));
   }
 }
