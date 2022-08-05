@@ -63,7 +63,7 @@ public class OperationSyncProducer {
       try {
         index = Math.abs(deviceName.hashCode()) % (operationSyncQueues.size() - 1);
       } catch (Exception e) {
-        index = 1;
+        index = 0;
       }
     }
     for (int i = 0; i < RETRY; i++) {
