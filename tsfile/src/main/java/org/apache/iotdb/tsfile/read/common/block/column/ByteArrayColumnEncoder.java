@@ -37,21 +37,14 @@ public class ByteArrayColumnEncoder implements ColumnEncoder {
     //    | byte          | list[byte]      | list[byte]  |
     //    +---------------+-----------------+-------------+
 
-    boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
-    if (TSDataType.BOOLEAN.equals(dataType)) {
-      BooleanColumnBuilder columnBuilder = new BooleanColumnBuilder(null, positionCount);
-      boolean[] values = ColumnEncoder.deserializeBooleanArray(input, positionCount);
-      for (int i = 0; i < positionCount; i++) {
-        if (nullIndicators == null || !nullIndicators[i]) {
-          columnBuilder.writeBoolean(values[i]);
-        } else {
-          columnBuilder.appendNull();
-        }
-      }
-      return columnBuilder.build();
-    } else {
+    if (!TSDataType.BOOLEAN.equals(dataType)) {
       throw new IllegalArgumentException("Invalid data type: " + dataType);
     }
+
+    boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
+    boolean[] values = ColumnEncoder.deserializeBooleanArray(input, positionCount);
+
+    return new BooleanColumn(0, positionCount, nullIndicators, values);
   }
 
   @Override

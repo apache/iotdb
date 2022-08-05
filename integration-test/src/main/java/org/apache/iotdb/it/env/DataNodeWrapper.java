@@ -88,4 +88,20 @@ public class DataNodeWrapper extends AbstractNodeWrapper {
   protected String mainClassName() {
     return "org.apache.iotdb.db.service.DataNode";
   }
+
+  public int getMppDataExchangePort() {
+    return mppDataExchangePort;
+  }
+
+  public int getInternalPort() {
+    return internalPort;
+  }
+
+  public int getDataRegionConsensusPort() {
+    return dataRegionConsensusPort;
+  }
+
+  public int getSchemaRegionConsensusPort() {
+    return schemaRegionConsensusPort;
+  }
 }

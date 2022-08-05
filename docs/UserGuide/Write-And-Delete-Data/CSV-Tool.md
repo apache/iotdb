@@ -42,7 +42,7 @@ Description:
   - false: only print the timeseries name in the head line of the CSV file. i.e., `Time, root.sg1.d1.s1 , root.sg1.d1.s2`
 * `-q <query command>`:
   - specifying a query command that you want to execute
-  - example: `select * from root limit 100`, or `select * from root limit 100 align by device`
+  - example: `select * from root.** limit 100`, or `select * from root.** limit 100 align by device`
 * `-s <sql file>`:
   - specifying a SQL file which can consist of more than one sql. If there are multiple SQLs in one SQL file, the SQLs should be separated by line breaks. And, for each SQL, a output CSV file will be generated.
 * `-td <directory>`:
@@ -61,7 +61,7 @@ More, if you don't use one of `-s` and `-q`, you need to enter some queries afte
 # Or
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss
 # or
-> tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root"
+> tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
 # Or
 > tools/export-csv.sh -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s sql.txt
 # Or
@@ -72,7 +72,7 @@ More, if you don't use one of `-s` and `-q`, you need to enter some queries afte
 # Or
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -tf yyyy-MM-dd\ HH:mm:ss
 # or
-> tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root"
+> tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -q "select * from root.**"
 # Or
 > tools/export-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -td ./ -s sql.txt
 # Or
@@ -82,11 +82,11 @@ More, if you don't use one of `-s` and `-q`, you need to enter some queries afte
 ### Sample SQL file
 
 ```sql
-select * from root;
-select * from root align by device;
+select * from root.**;
+select * from root.** align by device;
 ```
 
-The result of `select * from root`
+The result of `select * from root.**`
 
 ```sql
 Time,root.ln.wf04.wt04.status(BOOLEAN),root.ln.wf03.wt03.hardware(TEXT),root.ln.wf02.wt02.status(BOOLEAN),root.ln.wf02.wt02.hardware(TEXT),root.ln.wf01.wt01.hardware(TEXT),root.ln.wf01.wt01.status(BOOLEAN)
@@ -94,7 +94,7 @@ Time,root.ln.wf04.wt04.status(BOOLEAN),root.ln.wf03.wt03.hardware(TEXT),root.ln.
 1970-01-01T08:00:00.002+08:00,true,"v1",,,,true
 ```
 
-The result of `select * from root align by device`
+The result of `select * from root.** align by device`
 
 ```sql
 Time,Device,hardware(TEXT),status(BOOLEAN)
