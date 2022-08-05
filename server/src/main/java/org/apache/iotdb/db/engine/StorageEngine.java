@@ -177,11 +177,11 @@ public class StorageEngine implements IService {
               config.isRpcThriftCompressionEnable());
       ThreadPoolExecutor threadPool =
           new ThreadPoolExecutor(
-              5,
+                  cacheNum + 5,
               cacheNum + 5,
               3,
               TimeUnit.SECONDS,
-              new ArrayBlockingQueue<Runnable>(3),
+              new ArrayBlockingQueue<Runnable>(5),
               new ThreadPoolExecutor.AbortPolicy());
       // create operationSyncDDLProtector and operationSyncDDLLogService
       ScheduledExecutorService secondaryCheckThread =
@@ -212,10 +212,10 @@ public class StorageEngine implements IService {
       threadPool.execute(operationSyncDMLLogService);
       // create OperationSyncConsumer
       for (int i = 0; i < cacheNum; i++) {
-        OperationSyncConsumer consumer =
-            new OperationSyncConsumer(
-                arrayListBlockQueue.get(i), operationSyncsessionPool, operationSyncDMLLogService);
-        threadPool.execute(consumer);
+
+        threadPool.execute(   new Thread(new OperationSyncConsumer(
+                arrayListBlockQueue.get(i), operationSyncsessionPool, operationSyncDMLLogService)));
+
       }
       logger.info("Successfully initialize OperationSync!");
     } else {

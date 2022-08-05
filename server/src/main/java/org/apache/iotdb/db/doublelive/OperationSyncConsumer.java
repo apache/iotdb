@@ -33,7 +33,7 @@ import java.util.concurrent.BlockingQueue;
 public class OperationSyncConsumer implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncConsumer.class);
 
-  private final BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
+  private BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
       OperationSyncQueue;
   private final SessionPool operationSyncSessionPool;
   private final OperationSyncLogService dmlLogService;
@@ -55,7 +55,10 @@ public class OperationSyncConsumer implements Runnable {
       ByteBuffer headBuffer;
       OperationSyncPlanTypeUtils.OperationSyncPlanType headType;
       try {
+        LOGGER.info("开始消费");
+        LOGGER.info(OperationSyncQueue.size()+"队列大小");
         head = OperationSyncQueue.take();
+        LOGGER.info("名字"+head.right.name()+head.right);
         headBuffer = head.left;
         headType = head.right;
       } catch (InterruptedException e) {
@@ -66,6 +69,7 @@ public class OperationSyncConsumer implements Runnable {
       boolean transmitStatus = false;
       if (StorageEngine.isSecondaryAlive().get()) {
         try {
+
           transmitStatus = operationSyncSessionPool.operationSyncTransmit(headBuffer);
         } catch (IoTDBConnectionException connectionException) {
           // warn IoTDBConnectionException and do serialization
