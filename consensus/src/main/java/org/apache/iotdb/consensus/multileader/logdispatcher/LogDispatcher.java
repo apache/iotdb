@@ -112,8 +112,9 @@ public class LogDispatcher {
     threads.forEach(
         thread -> {
           logger.info(
-              "{}: Push a log to the queue, where the queue length is {}",
+              "{}->{}: Push a log to the queue, where the queue length is {}",
               impl.getThisNode().getGroupId(),
+              thread.getPeer().getEndpoint().getIp(),
               thread.getPendingRequest().size());
           long putToQueueStartTime = System.nanoTime();
           try {
