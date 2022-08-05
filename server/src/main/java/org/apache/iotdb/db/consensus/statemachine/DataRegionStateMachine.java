@@ -181,8 +181,8 @@ public class DataRegionStateMachine extends BaseStateMachine {
       InsertNodeWrapper insertNodeWrapper =
           cacheAndGetLatestInsertNode(
               requests.get(0).getSyncIndex(), insertNodesInAllRequests, resultHandler);
-      StepTracker.trace("cacheAndGet", startTime, System.nanoTime());
-      StepTracker.trace("followerWritePrepare", prepareStartTime, System.nanoTime());
+      StepTracker.trace("cacheAndGet", 25, startTime, System.nanoTime());
+      StepTracker.trace("followerWritePrepare", 25, prepareStartTime, System.nanoTime());
       long writeStartTime = System.nanoTime();
       if (insertNodeWrapper != null) {
         for (InsertNode insertNode : insertNodeWrapper.getInsertNodes()) {
@@ -190,7 +190,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
         }
         insertNodeWrapper.resultHandler.onComplete(new TSyncLogRes(statuses));
       }
-      StepTracker.trace("followerWriteInsert", writeStartTime, System.nanoTime());
+      StepTracker.trace("followerWriteInsert", 25, writeStartTime, System.nanoTime());
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       resultHandler.onError(e);
