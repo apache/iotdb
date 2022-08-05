@@ -35,10 +35,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class LazyGreedyRouterTest {
 
-  private final LazyGreedyRouter lazyGreedyRouter = new LazyGreedyRouter();
-
   @Test
   public void testGenLatestRegionRouteMap() {
+    LazyGreedyRouter lazyGreedyRouter = new LazyGreedyRouter();
+
     /* Prepare TRegionReplicaSets */
     List<TRegionReplicaSet> regionReplicaSetList = new ArrayList<>();
     for (int i = 0; i < 12; i++) {
@@ -50,7 +50,7 @@ public class LazyGreedyRouterTest {
       regionReplicaSetList.add(regionReplicaSet);
     }
 
-    /* Test1: The number of leaders in each DataNode should be exactly 4 */
+    /* Test1: The number of leaders in each DataNode should be approximately 4 */
     Map<TConsensusGroupId, TRegionReplicaSet> routeMap =
         lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
     Map<Integer, AtomicInteger> leaderCounter = new HashMap<>();
@@ -65,7 +65,8 @@ public class LazyGreedyRouterTest {
                     .getAndIncrement());
     Assert.assertEquals(3, leaderCounter.size());
     for (int i = 1; i <= 3; i++) {
-      Assert.assertEquals(4, leaderCounter.get(i).get());
+      Assert.assertTrue(3 <= leaderCounter.get(i).get());
+      Assert.assertTrue(leaderCounter.get(i).get() <= 5);
     }
 
     /* Unknown DataNodes */
@@ -73,7 +74,7 @@ public class LazyGreedyRouterTest {
     dataNodeConfigurations.add(
         new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(2)));
 
-    /* Test2: The number of leaders in DataNode-1 and DataNode-3 should be exactly 6 */
+    /* Test2: The number of leaders in DataNode-1 and DataNode-3 should be approximately 6 */
     lazyGreedyRouter.updateUnknownDataNodes(dataNodeConfigurations);
     leaderCounter.clear();
     routeMap = lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
@@ -87,12 +88,16 @@ public class LazyGreedyRouterTest {
                         empty -> new AtomicInteger(0))
                     .getAndIncrement());
     Assert.assertEquals(2, leaderCounter.size());
-    Assert.assertEquals(6, leaderCounter.get(1).get());
-    Assert.assertEquals(6, leaderCounter.get(3).get());
+    Assert.assertTrue(4 <= leaderCounter.get(1).get());
+    Assert.assertTrue(leaderCounter.get(1).get() <= 8);
+    Assert.assertTrue(4 <= leaderCounter.get(3).get());
+    Assert.assertTrue(leaderCounter.get(3).get() <= 8);
   }
 
   @Test
   public void testGenLatestRegionRouteMapWithDifferentReplicaSize() {
+    LazyGreedyRouter lazyGreedyRouter = new LazyGreedyRouter();
+
     /* Prepare TRegionReplicaSets */
     List<TRegionReplicaSet> regionReplicaSetList = new ArrayList<>();
     for (int i = 0; i < 12; i++) {
@@ -115,7 +120,7 @@ public class LazyGreedyRouterTest {
       regionReplicaSetList.add(regionReplicaSet);
     }
 
-    /* Test1: The number of leaders in each DataNode should be exactly 6 */
+    /* Test1: The number of leaders in each DataNode should be approximately 6 */
     Map<TConsensusGroupId, TRegionReplicaSet> routeMap =
         lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
     Map<Integer, AtomicInteger> leaderCounter = new HashMap<>();
@@ -130,7 +135,8 @@ public class LazyGreedyRouterTest {
                     .getAndIncrement());
     Assert.assertEquals(3, leaderCounter.size());
     for (int i = 1; i <= 3; i++) {
-      Assert.assertEquals(6, leaderCounter.get(i).get());
+      Assert.assertTrue(4 <= leaderCounter.get(i).get());
+      Assert.assertTrue(leaderCounter.get(i).get() <= 8);
     }
 
     /* Unknown DataNodes */
@@ -152,7 +158,9 @@ public class LazyGreedyRouterTest {
                         empty -> new AtomicInteger(0))
                     .getAndIncrement());
     Assert.assertEquals(2, leaderCounter.size());
-    Assert.assertEquals(9, leaderCounter.get(1).get());
-    Assert.assertEquals(9, leaderCounter.get(3).get());
+    Assert.assertTrue(7 <= leaderCounter.get(1).get());
+    Assert.assertTrue(leaderCounter.get(1).get() <= 11);
+    Assert.assertTrue(7 <= leaderCounter.get(3).get());
+    Assert.assertTrue(leaderCounter.get(3).get() <= 11);
   }
 }
