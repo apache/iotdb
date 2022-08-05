@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.consensus.statemachine;
 
+import org.apache.iotdb.commons.StepTracker;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
@@ -61,17 +62,22 @@ public abstract class BaseStateMachine implements IStateMachine, IStateMachine.E
   }
 
   protected PlanNode getPlanNode(IConsensusRequest request) {
-    PlanNode node;
-    if (request instanceof ByteBufferConsensusRequest) {
-      node = PlanNodeType.deserialize(request.serializeToByteBuffer());
-    } else if (request instanceof MultiLeaderConsensusRequest) {
-      node = WALEntry.deserializeInsertNode(request.serializeToByteBuffer());
-    } else if (request instanceof PlanNode) {
-      node = (PlanNode) request;
-    } else {
-      logger.error("Unexpected IConsensusRequest : {}", request);
-      throw new IllegalArgumentException("Unexpected IConsensusRequest!");
+    long startTime = System.nanoTime();
+    try {
+      PlanNode node;
+      if (request instanceof ByteBufferConsensusRequest) {
+        node = PlanNodeType.deserialize(request.serializeToByteBuffer());
+      } else if (request instanceof MultiLeaderConsensusRequest) {
+        node = WALEntry.deserializeInsertNode(request.serializeToByteBuffer());
+      } else if (request instanceof PlanNode) {
+        node = (PlanNode) request;
+      } else {
+        logger.error("Unexpected IConsensusRequest : {}", request);
+        throw new IllegalArgumentException("Unexpected IConsensusRequest!");
+      }
+      return node;
+    } finally {
+      StepTracker.trace("deserializePlanNode", startTime, System.nanoTime());
     }
-    return node;
   }
 }

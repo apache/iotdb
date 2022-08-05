@@ -162,6 +162,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   public void multiLeaderWriteAsync(
       List<IndexedConsensusRequest> requests, AsyncMethodCallback<TSyncLogRes> resultHandler) {
+    long prepareStartTime = System.nanoTime();
     List<TSStatus> statuses = new LinkedList<>();
     try {
       List<InsertNode> insertNodesInAllRequests = new LinkedList<>();
@@ -181,12 +182,15 @@ public class DataRegionStateMachine extends BaseStateMachine {
           cacheAndGetLatestInsertNode(
               requests.get(0).getSyncIndex(), insertNodesInAllRequests, resultHandler);
       StepTracker.trace("cacheAndGet", startTime, System.nanoTime());
+      StepTracker.trace("followerWritePrepare", prepareStartTime, System.nanoTime());
+      long writeStartTime = System.nanoTime();
       if (insertNodeWrapper != null) {
         for (InsertNode insertNode : insertNodeWrapper.getInsertNodes()) {
           statuses.add(write(insertNode));
         }
         insertNodeWrapper.resultHandler.onComplete(new TSyncLogRes(statuses));
       }
+      StepTracker.trace("followerWriteInsert", writeStartTime, System.nanoTime());
     } catch (IllegalArgumentException e) {
       logger.error(e.getMessage(), e);
       resultHandler.onError(e);
