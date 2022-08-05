@@ -1080,7 +1080,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
       testTrim(statement);
       testStrCmp(statement);
     } catch (Exception e) {
-      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
