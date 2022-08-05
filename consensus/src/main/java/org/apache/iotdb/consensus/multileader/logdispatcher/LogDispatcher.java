@@ -118,9 +118,12 @@ public class LogDispatcher {
               thread.getPendingRequest().size());
           long putToQueueStartTime = System.nanoTime();
           try {
-            thread
+            while (!thread
                 .getPendingRequest()
-                .put(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()));
+                .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
+              impl.getIndexObject().wait();
+            }
+            ;
           } catch (InterruptedException e) {
             e.printStackTrace();
           } finally {
@@ -281,6 +284,7 @@ public class LogDispatcher {
                 bufferedRequest,
                 config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
             maxIndexWhenBufferedRequestEmpty = impl.getIndex() + 1;
+            impl.getIndexObject().notifyAll();
           }
           // remove all request that searchIndex < startIndex
           Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
