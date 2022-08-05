@@ -33,8 +33,9 @@ import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
-import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeClientPool;
+import org.apache.iotdb.confignode.client.async.confignode.AsyncConfigNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
+import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeHeartbeatClientPool;
 import org.apache.iotdb.confignode.client.async.handlers.ConfigNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
@@ -84,10 +85,12 @@ public class LoadManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
-  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-  private static final long heartbeatInterval = conf.getHeartbeatInterval();
-  public static final TEndPoint currentNode =
-      new TEndPoint(conf.getInternalAddress(), conf.getInternalPort());
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
+
+  private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatInterval();
+
+  public static final TEndPoint CURRENT_NODE =
+      new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort());
 
   private final IManager configManager;
 
@@ -228,7 +231,7 @@ public class LoadManager {
                 heartBeatExecutor,
                 this::heartbeatLoopBody,
                 0,
-                heartbeatInterval,
+                HEARTBEAT_INTERVAL,
                 TimeUnit.MILLISECONDS);
         LOGGER.info("Heartbeat service is started successfully.");
       }
@@ -240,7 +243,7 @@ public class LoadManager {
                 loadBalancingExecutor,
                 this::updateNodeLoadStatistic,
                 0,
-                heartbeatInterval,
+                HEARTBEAT_INTERVAL,
                 TimeUnit.MILLISECONDS);
         LOGGER.info("LoadBalancing service is started successfully.");
       }
@@ -271,7 +274,7 @@ public class LoadManager {
         .forEach(
             nodeCache -> {
               boolean updateResult = nodeCache.updateLoadStatistic();
-              if (conf.getRoutingPolicy().equals(RouteBalancer.greedyPolicy)
+              if (CONF.getRoutingPolicy().equals(RouteBalancer.greedyPolicy)
                   && nodeCache instanceof DataNodeHeartbeatCache) {
                 // We need a broadcast when some DataNode fail down
                 isNeedBroadcast.compareAndSet(false, updateResult);
@@ -283,7 +286,7 @@ public class LoadManager {
         .forEach(
             regionGroupCache -> {
               boolean updateResult = regionGroupCache.updateLoadStatistic();
-              if (conf.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)) {
+              if (CONF.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)) {
                 // We need a broadcast when the leadership changed
                 isNeedBroadcast.compareAndSet(false, updateResult);
               }
@@ -361,7 +364,7 @@ public class LoadManager {
                       dataNodeInfo.getLocation().getDataNodeId(),
                       empty -> new DataNodeHeartbeatCache()),
               regionGroupCacheMap);
-      AsyncDataNodeClientPool.getInstance()
+      AsyncDataNodeHeartbeatClientPool.getInstance()
           .getDataNodeHeartBeat(
               dataNodeInfo.getLocation().getInternalEndPoint(), heartbeatReq, handler);
     }
@@ -376,7 +379,7 @@ public class LoadManager {
       THeartbeatReq heartbeatReq, List<TConfigNodeLocation> registeredConfigNodes) {
     // Send heartbeat requests
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
-      if (configNodeLocation.getInternalEndPoint().equals(currentNode)) {
+      if (configNodeLocation.getInternalEndPoint().equals(CURRENT_NODE)) {
         // Skip itself
         nodeCacheMap.putIfAbsent(
             configNodeLocation.getConfigNodeId(), new ConfigNodeHeartbeatCache(configNodeLocation));
@@ -385,12 +388,11 @@ public class LoadManager {
 
       ConfigNodeHeartbeatHandler handler =
           new ConfigNodeHeartbeatHandler(
-              configNodeLocation,
               (ConfigNodeHeartbeatCache)
                   nodeCacheMap.computeIfAbsent(
                       configNodeLocation.getConfigNodeId(),
                       empty -> new ConfigNodeHeartbeatCache(configNodeLocation)));
-      AsyncConfigNodeClientPool.getInstance()
+      AsyncConfigNodeHeartbeatClientPool.getInstance()
           .getConfigNodeHeartBeat(
               configNodeLocation.getInternalEndPoint(),
               heartbeatReq.getHeartbeatTimestamp(),
