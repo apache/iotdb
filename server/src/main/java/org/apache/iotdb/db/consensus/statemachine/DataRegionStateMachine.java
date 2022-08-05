@@ -185,10 +185,12 @@ public class DataRegionStateMachine extends BaseStateMachine {
       StepTracker.trace("followerWritePrepare", 25, prepareStartTime, System.nanoTime());
       long writeStartTime = System.nanoTime();
       if (insertNodeWrapper != null) {
-        for (InsertNode insertNode : insertNodeWrapper.getInsertNodes()) {
-          statuses.add(write(insertNode));
-        }
+        //        for (InsertNode insertNode : insertNodeWrapper.getInsertNodes()) {
+        //          statuses.add(write(insertNode));
+        //        }
         insertNodeWrapper.resultHandler.onComplete(new TSyncLogRes(statuses));
+      } else {
+        logger.error("insertNodeWrapper is null");
       }
       StepTracker.trace("followerWriteInsert", 25, writeStartTime, System.nanoTime());
     } catch (IllegalArgumentException e) {
