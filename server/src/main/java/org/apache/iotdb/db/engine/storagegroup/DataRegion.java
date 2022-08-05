@@ -35,8 +35,8 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.alter.TsFileRewriteExcutor;
-import org.apache.iotdb.db.engine.alter.log.AlertingLogger;
 import org.apache.iotdb.db.engine.alter.log.AlteringLogAnalyzer;
+import org.apache.iotdb.db.engine.alter.log.AlteringLogger;
 import org.apache.iotdb.db.engine.compaction.CompactionRecoverManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
@@ -588,7 +588,7 @@ public class DataRegion {
     final String logKey = logicalStorageGroupName + "-" + dataRegionId;
     // recover log
     File logFile =
-        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlertingLogger.ALTERING_LOG_NAME);
+        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
     if (!logFile.exists()) {
       return;
     }
@@ -605,7 +605,8 @@ public class DataRegion {
     if (undoneTasks == null) {
       throw new IOException("undoneTasks is null");
     }
-    try (AlertingLogger alteringLog = new AlertingLogger(logFile)) {
+    boolean done = false;
+    try (AlteringLogger alteringLog = new AlteringLogger(logFile)) {
       undoneTasks.forEach(
           (key, tsFileIdentifiers) -> {
             try {
@@ -629,21 +630,21 @@ public class DataRegion {
               logger.error("Alter failed. rewriteDataInTsFiles fail", e);
             }
           });
-      if (logFile.exists()) {
-        FileUtils.delete(logFile);
-      }
     } catch (Exception e) {
       logger.error("[recover alter] " + logKey + " error", e);
       throw e;
     } finally {
-      logger.info("[recover alter] " + logKey + " rewriteUnlock");
+      logger.info("[recover altear] " + logKey + " rewriteUnlock");
       tsFileManager.rewriteUnlock();
+      if (done && logFile.exists()) {
+        FileUtils.delete(logFile);
+      }
     }
   }
 
   private boolean needRecoverAlter() {
     File logFile =
-        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlertingLogger.ALTERING_LOG_NAME);
+        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
     return logFile.exists();
   }
 
@@ -661,7 +662,7 @@ public class DataRegion {
    * 2.3, does exist - not started <br>
    */
   private void checkTsFileAlteringStatusAndFix(
-      Set<TsFileIdentifier> tsFileIdentifiers, AlertingLogger alteringLog, String logKey) {
+      Set<TsFileIdentifier> tsFileIdentifiers, AlteringLogger alteringLog, String logKey) {
 
     if (tsFileIdentifiers == null || tsFileIdentifiers.isEmpty()) {
       // all undone
@@ -2284,7 +2285,7 @@ public class DataRegion {
     }
     // recover log
     File logFile =
-        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlertingLogger.ALTERING_LOG_NAME);
+        SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, AlteringLogger.ALTERING_LOG_NAME);
     if (logFile.exists()) {
       logger.info("[alter timeseries] {} rewriteUnlock", logKey);
       tsFileManager.rewriteUnlock();
@@ -2293,10 +2294,11 @@ public class DataRegion {
               + "alter.log detected, other alter operations may be running, please do it later.");
     }
     // rewrite target tsfiles
-    try (AlertingLogger alertingLogger = new AlertingLogger(logFile)) {
+    boolean done = false;
+    try (AlteringLogger alteringLogger = new AlteringLogger(logFile)) {
       Set<Long> timePartitions = tsFileManager.getTimePartitions();
       // Record the ALTER process for server restart recovery
-      alertingLogger.logHeader(fullPath, curEncoding, curCompressionType, timePartitions);
+      alteringLogger.logHeader(fullPath, curEncoding, curCompressionType, timePartitions);
       for (Long timePartition : timePartitions) {
         logger.info("[alter timeseries] {} alterDataInTsFiles seq({})", logKey, timePartition);
         try {
@@ -2307,7 +2309,7 @@ public class DataRegion {
               curCompressionType,
               timePartition,
               true,
-              alertingLogger,
+              alteringLogger,
               null,
               logKey);
           logger.info("[alter timeseries] {} alterDataInTsFiles unseq({})", logKey, timePartition);
@@ -2318,7 +2320,7 @@ public class DataRegion {
               curCompressionType,
               timePartition,
               false,
-              alertingLogger,
+              alteringLogger,
               null,
               logKey);
         } catch (IOException e) {
@@ -2333,16 +2335,17 @@ public class DataRegion {
           throw e;
         }
       }
-      // The process is complete and the logFile is deleted
-      if (logFile.exists()) {
-        FileUtils.delete(logFile);
-      }
+      done = true;
     } catch (Exception e) {
       logger.error("[alter timeseries] " + logKey + " error", e);
       throw e;
     } finally {
       logger.info("[alter timeseries] {} rewriteUnlock", logKey);
       tsFileManager.rewriteUnlock();
+      // The process is complete and the logFile is deleted
+      if (done && logFile.exists()) {
+        FileUtils.delete(logFile);
+      }
     }
   }
 
@@ -2353,7 +2356,7 @@ public class DataRegion {
       CompressionType curCompressionType,
       long timePartition,
       boolean sequence,
-      AlertingLogger alertingLogger,
+      AlteringLogger alteringLogger,
       Set<TsFileIdentifier> undoneFiles,
       String logKey)
       throws IOException {
@@ -2362,7 +2365,7 @@ public class DataRegion {
       return;
     }
     // log timePartition start
-    alertingLogger.startTimePartition(tsFileList, timePartition, sequence);
+    alteringLogger.startTimePartition(tsFileList, timePartition, sequence);
     for (TsFileResource tsFileResource : tsFileList) {
       if (!findUndoneResourcesAndRemove(tsFileResource, undoneFiles)) {
         continue;
@@ -2414,7 +2417,7 @@ public class DataRegion {
         // check & delete tsfile from disk
         checkAndDeleteOldTsFile(tsFileResource, targetTsFileResource, logKey);
         // log file done
-        alertingLogger.doneFile(tsFileResource);
+        alteringLogger.doneFile(tsFileResource);
         logger.info(
             "[alter timeseries] {} rewriteDataInTsFile {} end",
             logKey,
@@ -2424,7 +2427,7 @@ public class DataRegion {
         throw e;
       }
     }
-    alertingLogger.endTimePartition(timePartition);
+    alteringLogger.endTimePartition(timePartition);
   }
 
   private boolean findUndoneResourcesAndRemove(

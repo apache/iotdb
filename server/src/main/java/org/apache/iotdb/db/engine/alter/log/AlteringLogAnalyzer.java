@@ -75,7 +75,7 @@ public class AlteringLogAnalyzer {
         if (curPartition == null) {
           return undoPartitionTsFiles;
         }
-        if (curPartition.equals(AlertingLogger.FLAG_TIME_PARTITIONS_HEADER_DONE)) {
+        if (curPartition.equals(AlteringLogger.FLAG_TIME_PARTITIONS_HEADER_DONE)) {
           break;
         }
         Long partition = Long.parseLong(curPartition);
@@ -88,7 +88,7 @@ public class AlteringLogAnalyzer {
         // ftps partition isSeq
         String partitionHeaderStr = bufferedReader.readLine();
         if (partitionHeaderStr == null
-            || !partitionHeaderStr.startsWith(AlertingLogger.FLAG_TIME_PARTITION_START)) {
+            || !partitionHeaderStr.startsWith(AlteringLogger.FLAG_TIME_PARTITION_START)) {
           throw new IOException(
               "alter.log parse fail, line not start with FLAG_TIME_PARTITION_START");
         }
@@ -97,12 +97,12 @@ public class AlteringLogAnalyzer {
           throw new IOException("alter.log parse fail, partitionHeaders error");
         }
         readCurPartition = Long.parseLong(partitionHeaders[1]);
-        if (!AlertingLogger.FLAG_SEQ.equals(partitionHeaders[2])
-            && !AlertingLogger.FLAG_UNSEQ.equals(partitionHeaders[2])) {
+        if (!AlteringLogger.FLAG_SEQ.equals(partitionHeaders[2])
+            && !AlteringLogger.FLAG_UNSEQ.equals(partitionHeaders[2])) {
           throw new IOException("alter.log parse fail, partitionHeaders error");
         }
         Pair<Long, Boolean> key =
-            new Pair<>(readCurPartition, AlertingLogger.FLAG_SEQ.equals(partitionHeaders[2]));
+            new Pair<>(readCurPartition, AlteringLogger.FLAG_SEQ.equals(partitionHeaders[2]));
         Set<TsFileIdentifier> tsFileIdentifiers = undoPartitionTsFiles.get(key);
         String curLineStr;
         while (true) {
@@ -111,24 +111,24 @@ public class AlteringLogAnalyzer {
           if (curLineStr == null) {
             return undoPartitionTsFiles;
           }
-          if (curLineStr.equals(AlertingLogger.FLAG_TIME_PARTITION_DONE)) {
+          if (curLineStr.equals(AlteringLogger.FLAG_TIME_PARTITION_DONE)) {
             undoPartitionTsFiles.remove(key);
             break;
           }
-          if (curLineStr.startsWith(AlertingLogger.FLAG_INIT_SELECTED_FILE)) {
+          if (curLineStr.startsWith(AlteringLogger.FLAG_INIT_SELECTED_FILE)) {
             // add tsfile list
             tsFileIdentifiers.add(
                 TsFileIdentifier.getFileIdentifierFromInfoString(
                     curLineStr.substring(
-                        AlertingLogger.FLAG_INIT_SELECTED_FILE.length()
+                        AlteringLogger.FLAG_INIT_SELECTED_FILE.length()
                             + TsFileIdentifier.INFO_SEPARATOR.length())));
-          } else if (curLineStr.startsWith(AlertingLogger.FLAG_DONE)) {
+          } else if (curLineStr.startsWith(AlteringLogger.FLAG_DONE)) {
             // remove done file
             remove(
                 tsFileIdentifiers,
                 TsFileIdentifier.getFileIdentifierFromInfoString(
                     curLineStr.substring(
-                        AlertingLogger.FLAG_DONE.length()
+                        AlteringLogger.FLAG_DONE.length()
                             + TsFileIdentifier.INFO_SEPARATOR.length())));
           } else {
             throw new IOException("alter.log parse fail, unknown line");

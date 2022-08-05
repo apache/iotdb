@@ -57,7 +57,7 @@ import java.util.Set;
  * FLAG_INIT_SELECTED_FILE filePathn<br>
  * FLAG_USEQ_END<br>
  */
-public class AlertingLogger implements AutoCloseable {
+public class AlteringLogger implements AutoCloseable {
 
   public static final String ALTERING_LOG_NAME = "alter.log";
   public static final String FLAG_TIME_PARTITIONS_HEADER_DONE = "ftphd";
@@ -70,7 +70,7 @@ public class AlertingLogger implements AutoCloseable {
 
   private final BufferedWriter logStream;
 
-  public AlertingLogger(File logFile) throws IOException {
+  public AlteringLogger(File logFile) throws IOException {
     logStream = new BufferedWriter(new FileWriter(logFile, true));
   }
 
