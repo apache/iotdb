@@ -219,11 +219,7 @@ public class RegionMigrateProcedure
     return status;
   }
 
-  /**
-   * DN report region migrate result to CN, and continue
-   *
-   * @param req
-   */
+  /** DataNode report region migrate result to ConfigNode, and continue */
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
     // TODO the req is used in roll back
     synchronized (regionMigrateLock) {

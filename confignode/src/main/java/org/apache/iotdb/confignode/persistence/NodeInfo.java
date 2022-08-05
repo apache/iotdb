@@ -216,18 +216,18 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   /**
-   * Get DataNode info
+   * Get DataNodeConfiguration
    *
-   * @param getDataNodeInfoPlan QueryDataNodeInfoPlan
-   * @return The specific DataNode's info or all DataNode info if dataNodeId in
-   *     QueryDataNodeInfoPlan is -1
+   * @param getDataNodeConfigurationPlan GetDataNodeConfigurationPlan
+   * @return The specific DataNode's configuration or all DataNodes' configuration if dataNodeId in
+   *     GetDataNodeConfigurationPlan is -1
    */
-  public DataNodeConfigurationResp getDataNodeInfo(
-      GetDataNodeConfigurationPlan getDataNodeInfoPlan) {
+  public DataNodeConfigurationResp getDataNodeConfiguration(
+      GetDataNodeConfigurationPlan getDataNodeConfigurationPlan) {
     DataNodeConfigurationResp result = new DataNodeConfigurationResp();
     result.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
 
-    int dataNodeId = getDataNodeInfoPlan.getDataNodeId();
+    int dataNodeId = getDataNodeConfigurationPlan.getDataNodeId();
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
       if (dataNodeId == -1) {

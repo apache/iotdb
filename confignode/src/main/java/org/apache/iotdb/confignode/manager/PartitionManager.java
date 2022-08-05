@@ -131,9 +131,8 @@ public class PartitionManager {
    *
    * @param req SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
-   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
-   *     StorageGroup doesn't exist.
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
+   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan req) {
     // After all the SchemaPartitions are allocated,
@@ -189,9 +188,8 @@ public class PartitionManager {
    * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
    *     List<TimePartitionSlot>>>
    * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
-   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
-   *     StorageGroup doesn't exist.
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
+   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
     // After all the DataPartitions are allocated,
