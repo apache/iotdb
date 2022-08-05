@@ -63,7 +63,7 @@ public class SyncLoggerAnalyzerTest {
   @Test
   public void testServiceLog() {
     try {
-      SyncLogger log = new SyncLogger();
+      SyncLogger log = SyncLogger.getInstance();
       log.startPipeServer();
       CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan("demo", "iotdb");
       createPipeSinkPlan.addPipeSinkAttribute("ip", "127.0.0.1");
@@ -108,7 +108,7 @@ public class SyncLoggerAnalyzerTest {
     String pipeIdentifier1 = SyncPathUtil.getReceiverPipeDirName(pipe1, ip1, createdTime1);
     String pipeIdentifier2 = SyncPathUtil.getReceiverPipeDirName(pipe2, ip2, createdTime2);
     try {
-      SyncLogger log = new SyncLogger();
+      SyncLogger log = SyncLogger.getInstance();
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
       PipeMessage warn = new PipeMessage(PipeMessage.MsgType.WARN, "warn");
       PipeMessage error = new PipeMessage(PipeMessage.MsgType.ERROR, "error");

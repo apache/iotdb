@@ -59,7 +59,7 @@ public abstract class AbstractSyncInfo {
   protected SyncLogger syncLogger;
 
   public AbstractSyncInfo() {
-    syncLogger = new SyncLogger();
+    syncLogger = SyncLogger.getInstance();
     SyncLogAnalyzer analyzer = new SyncLogAnalyzer();
     try {
       analyzer.recover();

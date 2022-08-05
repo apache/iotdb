@@ -36,6 +36,8 @@ public class SyncLogger {
   // record message for running pipe
   private BufferedWriter msgWriter;
 
+  private SyncLogger() {}
+
   public void getBufferedWriter() throws IOException {
     if (pipeWriter == null || msgWriter == null) {
       File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_LOG_NAME);
@@ -125,5 +127,17 @@ public class SyncLogger {
       msgWriter.close();
       msgWriter = null;
     }
+  }
+
+  private static class SyncLoggerHolder {
+    private static final SyncLogger INSTANCE = new SyncLogger();
+
+    private SyncLoggerHolder() {
+      // empty constructor
+    }
+  }
+
+  public static SyncLogger getInstance() {
+    return SyncLogger.SyncLoggerHolder.INSTANCE;
   }
 }
