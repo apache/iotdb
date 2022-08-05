@@ -38,7 +38,7 @@ public class LazyGreedyRouterTest {
   private final LazyGreedyRouter lazyGreedyRouter = new LazyGreedyRouter();
 
   @Test
-  public void genLatestRegionRouteMap() {
+  public void testGenLatestRegionRouteMap() {
     /* Prepare TRegionReplicaSets */
     List<TRegionReplicaSet> regionReplicaSetList = new ArrayList<>();
     for (int i = 0; i < 12; i++) {
@@ -89,5 +89,70 @@ public class LazyGreedyRouterTest {
     Assert.assertEquals(2, leaderCounter.size());
     Assert.assertEquals(6, leaderCounter.get(1).get());
     Assert.assertEquals(6, leaderCounter.get(3).get());
+  }
+
+  @Test
+  public void testGenLatestRegionRouteMapWithDifferentReplicaSize() {
+    /* Prepare TRegionReplicaSets */
+    List<TRegionReplicaSet> regionReplicaSetList = new ArrayList<>();
+    for (int i = 0; i < 12; i++) {
+      TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+      regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, i));
+      for (int j = 1; j <= 3; j++) {
+        regionReplicaSet.addToDataNodeLocations(new TDataNodeLocation().setDataNodeId(j));
+      }
+      regionReplicaSetList.add(regionReplicaSet);
+    }
+    int dataNodeId = 0;
+    for (int i = 12; i < 18; i++) {
+      TRegionReplicaSet regionReplicaSet = new TRegionReplicaSet();
+      regionReplicaSet.setRegionId(new TConsensusGroupId(TConsensusGroupType.DataRegion, i));
+      for (int j = 0; j < 2; j++) {
+        regionReplicaSet.addToDataNodeLocations(
+            new TDataNodeLocation().setDataNodeId(dataNodeId + 1));
+        dataNodeId = (dataNodeId + 1) % 3;
+      }
+      regionReplicaSetList.add(regionReplicaSet);
+    }
+
+    /* Test1: The number of leaders in each DataNode should be exactly 6 */
+    Map<TConsensusGroupId, TRegionReplicaSet> routeMap =
+        lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
+    Map<Integer, AtomicInteger> leaderCounter = new HashMap<>();
+    routeMap
+        .values()
+        .forEach(
+            regionReplicaSet ->
+                leaderCounter
+                    .computeIfAbsent(
+                        regionReplicaSet.getDataNodeLocations().get(0).getDataNodeId(),
+                        empty -> new AtomicInteger(0))
+                    .getAndIncrement());
+    Assert.assertEquals(3, leaderCounter.size());
+    for (int i = 1; i <= 3; i++) {
+      Assert.assertEquals(6, leaderCounter.get(i).get());
+    }
+
+    /* Unknown DataNodes */
+    List<TDataNodeConfiguration> dataNodeConfigurations = new ArrayList<>();
+    dataNodeConfigurations.add(
+        new TDataNodeConfiguration().setLocation(new TDataNodeLocation().setDataNodeId(2)));
+
+    /* Test2: The number of leaders in DataNode-1 and DataNode-3 should be exactly 9 */
+    lazyGreedyRouter.updateUnknownDataNodes(dataNodeConfigurations);
+    leaderCounter.clear();
+    routeMap = lazyGreedyRouter.genLatestRegionRouteMap(regionReplicaSetList);
+    routeMap
+        .values()
+        .forEach(
+            regionReplicaSet ->
+                leaderCounter
+                    .computeIfAbsent(
+                        regionReplicaSet.getDataNodeLocations().get(0).getDataNodeId(),
+                        empty -> new AtomicInteger(0))
+                    .getAndIncrement());
+    Assert.assertEquals(2, leaderCounter.size());
+    Assert.assertEquals(9, leaderCounter.get(1).get());
+    Assert.assertEquals(9, leaderCounter.get(3).get());
   }
 }

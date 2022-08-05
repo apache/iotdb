@@ -86,12 +86,12 @@ public class LoadManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(LoadManager.class);
 
-  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig CONF = ConfigNodeDescriptor.getInstance().getConf();
 
-  private static final long HEARTBEAT_INTERVAL = conf.getHeartbeatInterval();
+  private static final long HEARTBEAT_INTERVAL = CONF.getHeartbeatInterval();
 
   public static final TEndPoint CURRENT_NODE =
-      new TEndPoint(conf.getInternalAddress(), conf.getInternalPort());
+      new TEndPoint(CONF.getInternalAddress(), CONF.getInternalPort());
 
   private final IManager configManager;
 
@@ -309,13 +309,13 @@ public class LoadManager {
       isNeedBroadcast = true;
     }
 
-    if (conf.getRoutingPolicy().equals(RouteBalancer.leaderPolicy)) {
+    if (RouteBalancer.leaderPolicy.equals(CONF.getRoutingPolicy())) {
       // Check the condition of leader routing policy
       if (existChangeLeaderSchemaRegionGroup.get()) {
         // Broadcast the RegionRouteMap if some SchemaRegionGroups change their leader
         isNeedBroadcast = true;
       }
-      if (!conf.getDataRegionConsensusProtocolClass().equals(ConsensusFactory.MultiLeaderConsensus)
+      if (!ConsensusFactory.MultiLeaderConsensus.equals(CONF.getDataRegionConsensusProtocolClass())
           && existChangeLeaderDataRegionGroup.get()) {
         // Broadcast the RegionRouteMap if some DataRegionGroups change their leader
         // and the consensus protocol isn't MultiLeader
