@@ -1229,4 +1229,198 @@ public class IoTDBUDTFBuiltinFunctionIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testMasterRepair() {
+    // create time series with master data
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.testMasterRepair");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.s1 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.s2 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.s3 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.m1 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.m2 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.m3 with datatype=FLOAT,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    String[] INSERT_SQL = {
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (1,1704,1154.55,0.195,1704,1154.55,0.195)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (2,1702,1152.30,0.193,1702,1152.30,0.193)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (3,1702,1148.65,0.192,1702,1148.65,0.192)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (4,1701,1145.20,0.194,1701,1145.20,0.194)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (7,1703,1150.55,0.195,1703,1150.55,0.195)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (8,1694,1151.55,0.193,1704,1151.55,0.193)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (9,1705,1153.55,0.194,1705,1153.55,0.194)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (10,1706,1152.30,0.190,1706,1152.30,0.190)",
+    };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String dataGenerationSql : INSERT_SQL) {
+        statement.execute(dataGenerationSql);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // test 1
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int[] timestamps = {1, 2, 3, 4, 7, 8, 9, 10};
+      double[] r1 = {1704.0, 1702.0, 1702.0, 1701.0, 1703.0, 1702.0, 1705.0, 1706.0};
+      ResultSet resultSet =
+          statement.executeQuery(
+              "select MasterRepair(s1,s2,s3,m1,m2,m3) from root.testMasterRepair.d1");
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount);
+      for (int i = 0; i < timestamps.length; i++) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        double expectedResult = r1[i];
+        double actualResult = resultSet.getDouble(2);
+        double delta = 0.001;
+        assertEquals(expectedResult, actualResult, delta);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // test 2
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int[] timestamps = {1, 2, 3, 4, 7, 8, 9, 10};
+      double[] r2 = {1154.55, 1152.30, 1148.65, 1145.20, 1150.55, 1152.30, 1153.55, 1152.30};
+
+      ResultSet resultSet =
+          statement.executeQuery(
+              "select MasterRepair(s1,s2,s3,m1,m2,m3,'output_column'='2') from root.testMasterRepair.d1");
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount);
+      for (int i = 0; i < timestamps.length; i++) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        double expectedResult = r2[i];
+        double actualResult = resultSet.getDouble(2);
+        double delta = 0.001;
+        assertEquals(expectedResult, actualResult, delta);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // test 3
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int[] timestamps = {1, 2, 3, 4, 7, 8, 9, 10};
+      double[] r3 = {0.195, 0.193, 0.192, 0.194, 0.195, 0.193, 0.194, 0.190};
+      ResultSet resultSet =
+          statement.executeQuery(
+              "select MasterRepair(s1,s2,s3,m1,m2,m3,'output_column'='3') from root.testMasterRepair.d1");
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount);
+      for (int i = 0; i < timestamps.length; i++) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        double expectedResult = r3[i];
+        double actualResult = resultSet.getDouble(2);
+        double delta = 0.001;
+        assertEquals(expectedResult, actualResult, delta);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // test 4
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int[] timestamps = {1, 2, 3, 4, 7, 8, 9, 10};
+      double[] r4 = {1704.0, 1702.0, 1702.0, 1701.0, 1703.0, 1704.0, 1705.0, 1706.0};
+      ResultSet resultSet =
+          statement.executeQuery(
+              "select MasterRepair(s1,s2,s3,m1,m2,m3,'omega'='2','eta'='3.0','k'='5') from root.testMasterRepair.d1");
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount);
+      for (int i = 0; i < timestamps.length; i++) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        double expectedResult = r4[i];
+        double actualResult = resultSet.getDouble(2);
+        double delta = 0.001;
+        assertEquals(expectedResult, actualResult, delta);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // test 5
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int[] timestamps = {1, 2, 3, 4, 7, 8, 9, 10};
+      double[] r5 = {1154.55, 1152.30, 1148.65, 1145.20, 1150.55, 1151.55, 1153.55, 1152.30};
+      ResultSet resultSet =
+          statement.executeQuery(
+              "select MasterRepair(s1,s2,s3,m1,m2,m3,'omega'='2','eta'='3.0','k'='5','output_column'='2') from root.testMasterRepair.d1");
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount);
+      for (int i = 0; i < timestamps.length; i++) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        double expectedResult = r5[i];
+        double actualResult = resultSet.getDouble(2);
+        double delta = 0.001;
+        assertEquals(expectedResult, actualResult, delta);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    // test 6
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int[] timestamps = {1, 2, 3, 4, 7, 8, 9, 10};
+      double[] r6 = {0.195, 0.193, 0.192, 0.194, 0.195, 0.193, 0.194, 0.190};
+      ResultSet resultSet =
+          statement.executeQuery(
+              "select MasterRepair(s1,s2,s3,m1,m2,m3,'omega'='2','eta'='3.0','k'='5','output_column'='3') from root.testMasterRepair.d1");
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(1 + 1, columnCount);
+      for (int i = 0; i < timestamps.length; i++) {
+        resultSet.next();
+        long expectedTimestamp = timestamps[i];
+        long actualTimestamp = Long.parseLong(resultSet.getString(1));
+        assertEquals(expectedTimestamp, actualTimestamp);
+
+        double expectedResult = r6[i];
+        double actualResult = resultSet.getDouble(2);
+        double delta = 0.001;
+        assertEquals(expectedResult, actualResult, delta);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
 }
