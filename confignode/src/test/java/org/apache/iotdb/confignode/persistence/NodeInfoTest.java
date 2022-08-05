@@ -77,14 +77,14 @@ public class NodeInfoTest {
     }
     nodeInfo.setDrainingDataNodes(drainingDataNodes_before);
 
-    int nextId = nodeInfo.getNextNodeId();
+    int nextId = nodeInfo.getNextDataNodeId();
     List<TDataNodeConfiguration> onlineDataNodes_before = nodeInfo.getRegisteredDataNodes(-1);
 
     nodeInfo.processTakeSnapshot(snapshotDir);
     nodeInfo.clear();
     nodeInfo.processLoadSnapshot(snapshotDir);
 
-    Assert.assertEquals(nextId, nodeInfo.getNextNodeId());
+    Assert.assertEquals(nextId, nodeInfo.getNextDataNodeId());
 
     Set<TDataNodeLocation> drainingDataNodes_after = nodeInfo.getDrainingDataNodes();
     Assert.assertEquals(drainingDataNodes_before, drainingDataNodes_after);

@@ -106,7 +106,7 @@ public class NodeManager {
       status.setMessage("DataNode already registered.");
     } else if (registerDataNodePlan.getInfo().getLocation().getDataNodeId() < 0) {
       // Generating a new dataNodeId only when current DataNode doesn't exist yet
-      registerDataNodePlan.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextNodeId());
+      registerDataNodePlan.getInfo().getLocation().setDataNodeId(nodeInfo.generateNextDataNodeId());
       getConsensusManager().write(registerDataNodePlan);
 
       // Adjust the maximum RegionGroup number of each StorageGroup
@@ -185,6 +185,15 @@ public class NodeManager {
   /**
    * Only leader use this interface
    *
+   * @return The number of registered ConfigNodes
+   */
+  public int getRegisteredConfigNodeCount() {
+    return nodeInfo.getRegisteredConfigNodeCount();
+  }
+
+  /**
+   * Only leader use this interface
+   *
    * @return The number of registered TotalNodes
    */
   public int getRegisteredNodeCount() {
@@ -233,7 +242,7 @@ public class NodeManager {
             int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
             info.setDataNodeId(dataNodeId);
             info.setStatus(
-                getLoadManager().getNodeCacheMap().get(dataNodeId).getNodeStatus().getStatus());
+                getLoadManager().getDataNodeCacheMap().get(dataNodeId).getNodeStatus().getStatus());
             info.setRpcAddresss(dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
             info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
             info.setDataRegionNum(0);
@@ -254,7 +263,11 @@ public class NodeManager {
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);
             info.setStatus(
-                getLoadManager().getNodeCacheMap().get(configNodeId).getNodeStatus().getStatus());
+                getLoadManager()
+                    .getConfigNodeCacheMap()
+                    .get(configNodeId)
+                    .getNodeStatus()
+                    .getStatus());
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             configNodeInfoList.add(info);
@@ -271,7 +284,7 @@ public class NodeManager {
    */
   public void applyConfigNode(TConfigNodeLocation configNodeLocation) {
     // Generate new ConfigNode's index
-    configNodeLocation.setConfigNodeId(nodeInfo.generateNextNodeId());
+    configNodeLocation.setConfigNodeId(nodeInfo.generateNextConfigNodeId());
     ApplyConfigNodePlan applyConfigNodePlan = new ApplyConfigNodePlan(configNodeLocation);
     getConsensusManager().write(applyConfigNodePlan);
   }

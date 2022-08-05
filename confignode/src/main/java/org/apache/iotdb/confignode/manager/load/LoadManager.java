@@ -94,7 +94,9 @@ public class LoadManager {
 
   /** Heartbeat sample cache */
   // Map<NodeId, IHeartbeatStatistic>
-  private final Map<Integer, INodeCache> nodeCacheMap;
+  private final Map<Integer, INodeCache> dataNodeCacheMap;
+  // Map<NodeId, ConfigNodeHeartbeatCache>
+  private final Map<Integer, ConfigNodeHeartbeatCache> configNodeCacheMap;
   // Map<RegionId, RegionGroupCache>
   private final Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap;
 
@@ -122,7 +124,8 @@ public class LoadManager {
 
   public LoadManager(IManager configManager) {
     this.configManager = configManager;
-    this.nodeCacheMap = new ConcurrentHashMap<>();
+    this.dataNodeCacheMap = new ConcurrentHashMap<>();
+    this.configNodeCacheMap = new ConcurrentHashMap<>();
     this.regionGroupCacheMap = new ConcurrentHashMap<>();
 
     this.regionBalancer = new RegionBalancer(configManager);
@@ -197,7 +200,7 @@ public class LoadManager {
   public Map<Integer, Long> getAllLoadScores() {
     Map<Integer, Long> result = new ConcurrentHashMap<>();
 
-    nodeCacheMap.forEach(
+    dataNodeCacheMap.forEach(
         (dataNodeId, heartbeatCache) -> result.put(dataNodeId, heartbeatCache.getLoadScore()));
 
     return result;
@@ -267,7 +270,7 @@ public class LoadManager {
   private void updateNodeLoadStatistic() {
     AtomicBoolean isNeedBroadcast = new AtomicBoolean(false);
 
-    nodeCacheMap
+    dataNodeCacheMap
         .values()
         .forEach(
             nodeCache -> {
@@ -277,6 +280,12 @@ public class LoadManager {
                 // We need a broadcast when some DataNode fail down
                 isNeedBroadcast.compareAndSet(false, updateResult);
               }
+            });
+    configNodeCacheMap
+        .values()
+        .forEach(
+            ConfigNodeCache -> {
+              boolean updateResult = ConfigNodeCache.updateLoadStatistic();
             });
 
     regionGroupCacheMap
@@ -293,7 +302,8 @@ public class LoadManager {
     if (isNeedBroadcast.get()) {
       broadcastLatestRegionRouteMap();
     }
-    if (nodeCacheMap.size() == getNodeManager().getRegisteredNodeCount()) {
+    if (dataNodeCacheMap.size() == getNodeManager().getRegisteredDataNodeCount()
+        && configNodeCacheMap.size() == getNodeManager().getRegisteredConfigNodeCount()) {
       addMetrics();
     }
   }
@@ -358,7 +368,7 @@ public class LoadManager {
           new DataNodeHeartbeatHandler(
               dataNodeInfo.getLocation(),
               (DataNodeHeartbeatCache)
-                  nodeCacheMap.computeIfAbsent(
+                  dataNodeCacheMap.computeIfAbsent(
                       dataNodeInfo.getLocation().getDataNodeId(),
                       empty -> new DataNodeHeartbeatCache()),
               regionGroupCacheMap);
@@ -379,7 +389,7 @@ public class LoadManager {
     for (TConfigNodeLocation configNodeLocation : registeredConfigNodes) {
       if (configNodeLocation.getInternalEndPoint().equals(currentNode)) {
         // Skip itself
-        nodeCacheMap.putIfAbsent(
+        configNodeCacheMap.putIfAbsent(
             configNodeLocation.getConfigNodeId(), new ConfigNodeHeartbeatCache(configNodeLocation));
         continue;
       }
@@ -387,7 +397,7 @@ public class LoadManager {
       ConfigNodeHeartbeatHandler handler =
           new ConfigNodeHeartbeatHandler(
               (ConfigNodeHeartbeatCache)
-                  nodeCacheMap.computeIfAbsent(
+                  configNodeCacheMap.computeIfAbsent(
                       configNodeLocation.getConfigNodeId(),
                       empty -> new ConfigNodeHeartbeatCache(configNodeLocation)));
       AsyncConfigNodeHeartbeatClientPool.getInstance()
@@ -404,14 +414,14 @@ public class LoadManager {
    * @param nodeId removed node id
    */
   public void removeNodeHeartbeatHandCache(Integer nodeId) {
-    nodeCacheMap.remove(nodeId);
+    configNodeCacheMap.remove(nodeId);
   }
 
   public List<TConfigNodeLocation> getOnlineConfigNodes() {
     return getNodeManager().getRegisteredConfigNodes().stream()
         .filter(
             registeredConfigNode ->
-                nodeCacheMap
+                configNodeCacheMap
                     .get(registeredConfigNode.getConfigNodeId())
                     .getNodeStatus()
                     .equals(NodeStatus.Running))
@@ -422,7 +432,7 @@ public class LoadManager {
     return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
         .filter(
             registeredDataNode ->
-                nodeCacheMap
+                dataNodeCacheMap
                     .get(registeredDataNode.getLocation().getDataNodeId())
                     .getNodeStatus()
                     .equals(NodeStatus.Running))
@@ -433,7 +443,7 @@ public class LoadManager {
     return getNodeManager().getRegisteredConfigNodes().stream()
         .filter(
             registeredConfigNode ->
-                nodeCacheMap
+                configNodeCacheMap
                     .get(registeredConfigNode.getConfigNodeId())
                     .getNodeStatus()
                     .equals(NodeStatus.Unknown))
@@ -444,7 +454,7 @@ public class LoadManager {
     return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
         .filter(
             registeredDataNode ->
-                nodeCacheMap
+                dataNodeCacheMap
                     .get(registeredDataNode.getLocation().getDataNodeId())
                     .getNodeStatus()
                     .equals(NodeStatus.Unknown))
@@ -667,7 +677,11 @@ public class LoadManager {
     return configManager.getPartitionManager();
   }
 
-  public Map<Integer, INodeCache> getNodeCacheMap() {
-    return nodeCacheMap;
+  public Map<Integer, INodeCache> getDataNodeCacheMap() {
+    return dataNodeCacheMap;
+  }
+
+  public Map<Integer, ConfigNodeHeartbeatCache> getConfigNodeCacheMap() {
+    return configNodeCacheMap;
   }
 }
