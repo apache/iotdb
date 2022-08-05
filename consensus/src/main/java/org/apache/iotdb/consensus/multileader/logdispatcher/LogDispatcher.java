@@ -111,7 +111,7 @@ public class LogDispatcher {
     List<ByteBuffer> serializedRequests = request.buildSerializedRequests();
     threads.forEach(
         thread -> {
-          logger.debug(
+          logger.info(
               "{}: Push a log to the queue, where the queue length is {}",
               impl.getThisNode().getGroupId(),
               thread.getPendingRequest().size());
@@ -123,6 +123,7 @@ public class LogDispatcher {
           } catch (InterruptedException e) {
             e.printStackTrace();
           } finally {
+            logger.info("{}: Push a log to the queue, done", impl.getThisNode().getGroupId());
             StepTracker.trace("putToQueueWaitingTime", putToQueueStartTime, System.nanoTime());
           }
           //          if (thread
