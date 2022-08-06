@@ -286,9 +286,8 @@ public class PartitionManager {
           continue;
         }
 
-        // 2. The average number of partitions held by each Region is greater than the expected
-        // average
-        //    when the partition allocation is complete
+        // 2. The average number of partitions held by each Region will be greater than the
+        // expected average number after the partition allocation is completed
         if (allocatedRegionCount < maxRegionCount
             && slotCount / allocatedRegionCount > maxSlotCount / maxRegionCount) {
           // The delta is equal to the smallest integer solution that satisfies the inequality:
@@ -306,8 +305,10 @@ public class PartitionManager {
       }
 
       // TODO: Use procedure to protect the following process
-      // Do Region allocation and creation for StorageGroups based on the allotment
-      getLoadManager().doRegionCreation(allotmentMap, consensusGroupType);
+      if (!allotmentMap.isEmpty()) {
+        // Do Region allocation and creation for StorageGroups based on the allotment
+        getLoadManager().doRegionCreation(allotmentMap, consensusGroupType);
+      }
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (NotEnoughDataNodeException e) {

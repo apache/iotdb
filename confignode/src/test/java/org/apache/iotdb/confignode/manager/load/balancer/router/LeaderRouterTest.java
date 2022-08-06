@@ -43,7 +43,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LeaderRouterTest {
 
   @Test
-  public void genRealTimeRoutingPolicy() {
+  public void testGenRealTimeRoutingPolicy() {
     // Build TDataNodeLocations
     List<TDataNodeLocation> dataNodeLocations = new ArrayList<>();
     for (int i = 0; i < 6; i++) {
