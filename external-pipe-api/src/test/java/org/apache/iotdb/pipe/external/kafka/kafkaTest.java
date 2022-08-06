@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class kafkaTest {
+
+  private boolean stop = false;
+
   @Test
   public void get_Test() {
     KafkaWriterFactory kf = new KafkaWriterFactory();
@@ -309,37 +312,55 @@ public class kafkaTest {
     SessionPool sp = new SessionPool("localhost", 6667, "root", "root", 5);
     KafkaLoader kl = new KafkaLoader(sp, sourceParams);
 
+    System.out.println("created:");
+    System.out.println("status:" + kl.getStatus());
     kl.open();
-    try {
-      Thread.sleep(2000);
-    } catch (InterruptedException ignore) {
-    }
+    System.out.println("open:");
+    System.out.println("status:" + kl.getStatus());
+    System.out.println(kl);
 
     kl.run();
+    System.out.println("run:");
+    System.out.println("status:" + kl.getStatus());
     try {
-      Thread.sleep(2000);
+      Thread.sleep(3000);
     } catch (InterruptedException ignore) {
     }
+    System.out.println(kl);
 
     kl.cancel();
+    System.out.println("cancel:");
+    System.out.println("status:" + kl.getStatus());
     try {
-      Thread.sleep(2000);
+      Thread.sleep(3000);
     } catch (InterruptedException ignore) {
     }
+    System.out.println(kl);
 
     kl.run();
+    System.out.println("run:");
+    System.out.println("status:" + kl.getStatus());
     try {
-      Thread.sleep(2000);
+      Thread.sleep(3000);
     } catch (InterruptedException ignore) {
     }
+    System.out.println(kl);
 
+    // while (true) {}
     kl.close();
+    System.out.println("close:");
+    System.out.println("status:" + kl.getStatus());
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException ignore) {
+    }
+    System.out.println(kl);
   }
 
   @Test
   public void full_Test() {
-    send_to_kafka_no_type();
-    send_to_kafka_with_type();
+    // send_to_kafka_no_type();
+    // send_to_kafka_with_type();
     load_from_kafka();
   }
 }

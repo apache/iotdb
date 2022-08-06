@@ -5,8 +5,6 @@ import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,8 +17,9 @@ import java.util.concurrent.Executors;
 import static org.apache.iotdb.pipe.external.kafka.KafkaConstant.MAX_CONSUMERS;
 
 public class KafkaLoader {
+  private Long startTime;
+  private LoaderStatus status = null;
   private ExecutorService executor;
-  private static final Logger logger = LoggerFactory.getLogger(KafkaLoader.class);
   private List<KafkaConsumer<String, String>> consumerList = null;
   private final SessionPool pool;
   private int consumer_num = MAX_CONSUMERS;
@@ -69,6 +68,8 @@ public class KafkaLoader {
       this.consumerList.add(consumer);
       this.consumerThreads.add(new ConsumerThreadSync(consumer, this.pool, this.single_partition));
     }
+    this.startTime = System.currentTimeMillis();
+    this.status = LoaderStatus.STOP;
     return this.consumer_num;
   }
 
@@ -77,6 +78,7 @@ public class KafkaLoader {
       consumerThread.close();
     }
     this.executor.shutdown();
+    this.status = LoaderStatus.DROP;
   }
 
   public void run() {
@@ -85,6 +87,7 @@ public class KafkaLoader {
       consumerThread.open();
       this.executor.submit(consumerThread);
     }
+    this.status = LoaderStatus.RUNNING;
   }
 
   public void cancel() {
@@ -92,9 +95,65 @@ public class KafkaLoader {
       consumerThread.pause();
     }
     this.executor.shutdown();
+    this.status = LoaderStatus.STOP;
   }
 
   public static int get_partition_num(KafkaConsumer<String, String> consumer, String topic) {
     return consumer.listTopics().get(topic).size();
+  }
+
+  enum LoaderStatus {
+    RUNNING,
+    STOP,
+    DROP
+  }
+
+  public LoaderStatus getStatus() {
+    return this.status;
+  }
+
+  @Override
+  public String toString() {
+    Long numOfSuccessfulInsertion = 0L;
+    Long numOfSuccessfulStringInsertion = 0L;
+    Long numOfSuccessfulRecordDeletion = 0L;
+    Long numOfSuccessfulTimeSeriesDeletion = 0L;
+    Long numOfFailedInsertion = 0L;
+    Long numOfFailedStringInsertion = 0L;
+    Long numOfFailedRecordDeletion = 0L;
+    Long numOfFailedTimeSeriesDeletion = 0L;
+
+    for (ConsumerThreadSync consumerThread : consumerThreads) {
+      ConsumerSyncStatus cs = consumerThread.consumerSyncStatus;
+      numOfSuccessfulInsertion += cs.getNumOfSuccessfulInsertion();
+      numOfSuccessfulStringInsertion += cs.getNumOfSuccessfulStringInsertion();
+      numOfSuccessfulRecordDeletion += cs.getNumOfSuccessfulRecordDeletion();
+      numOfSuccessfulTimeSeriesDeletion += cs.getNumOfSuccessfulTimeSeriesDeletion();
+      numOfFailedInsertion += cs.getNumOfFailedInsertion();
+      numOfFailedStringInsertion += cs.getNumOfFailedStringInsertion();
+      numOfFailedRecordDeletion += cs.getNumOfFailedRecordDeletion();
+      numOfFailedTimeSeriesDeletion += cs.getNumOfFailedTimeSeriesDeletion();
+    }
+
+    return "ExternalPipeSinkWriterStatus{"
+        + "startTime="
+        + startTime
+        + ", numOfSuccessfulInsertion="
+        + numOfSuccessfulInsertion
+        + ", numOfSuccessfulStringInsertion="
+        + numOfSuccessfulStringInsertion
+        + ", numOfSuccessfulRecordDeletion="
+        + numOfSuccessfulRecordDeletion
+        + ", numOfSuccessfulTimeSeriesDeletion="
+        + numOfSuccessfulTimeSeriesDeletion
+        + ", numOfFailedInsertion="
+        + numOfFailedInsertion
+        + ", numOfFailedStringInsertion="
+        + numOfFailedStringInsertion
+        + ", numOfFailedRecordDeletion="
+        + numOfFailedRecordDeletion
+        + ", numOfFailedTimeSeriesDeletion="
+        + numOfFailedTimeSeriesDeletion
+        + '}';
   }
 }

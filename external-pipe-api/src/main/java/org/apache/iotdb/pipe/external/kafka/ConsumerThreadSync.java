@@ -34,10 +34,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** The class is Thread class of Consumer. ConsumerThread. */
+/** The class is Thread class of Consumer. ConsumerThreadSync. */
 public class ConsumerThreadSync implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(ConsumerThreadSync.class);
+  final ConsumerSyncStatus consumerSyncStatus = new ConsumerSyncStatus();
   private final KafkaConsumer<String, String> consumer;
   private final SessionPool pool;
   private boolean is_open = true;
@@ -143,35 +144,61 @@ public class ConsumerThreadSync implements Runnable {
       measurementsList.add(measurements);
     }
 
-    try {
-      pool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
-    } catch (Exception e) {
-      logger.error("Kafka sync insertion failure, data batch = \n{}", String.join("\n", datas), e);
-    }
-
-    try {
-      pool.insertRecords(deviceStringIds, stringTimes, measurementsStringList, valuesStringList);
-    } catch (Exception e) {
-      logger.error(
-          "Kafka sync string insertion failure, data batch = \n{}", String.join("\n", datas), e);
-    }
-
-    try {
-      for (String deleteDeviceId : deleteMap.keySet()) {
-        pool.deleteData(deleteDeviceId, deleteMap.get(deleteDeviceId));
+    if (!deviceIds.isEmpty()) {
+      try {
+        pool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+        this.consumerSyncStatus.setNumOfSuccessfulInsertion(
+            consumerSyncStatus.getNumOfSuccessfulInsertion() + deviceIds.size());
+      } catch (Exception e) {
+        logger.error(
+            "Kafka sync insertion failure, data batch = \n{}", String.join("\n", datas), e);
+        this.consumerSyncStatus.setNumOfFailedInsertion(
+            consumerSyncStatus.getNumOfFailedInsertion() + deviceIds.size());
       }
-    } catch (Exception e) {
-      logger.error(
-          "Kafka sync data deletion failure, data batch = \n{}", String.join("\n", datas), e);
     }
 
-    try {
-      pool.deleteTimeseries(delTimeDeviceIds);
-    } catch (Exception e) {
-      logger.error(
-          "Kafka sync time-series deletion failure, data batch = \n{}",
-          String.join("\n", datas),
-          e);
+    if (!deviceStringIds.isEmpty()) {
+      try {
+        pool.insertRecords(deviceStringIds, stringTimes, measurementsStringList, valuesStringList);
+        this.consumerSyncStatus.setNumOfSuccessfulStringInsertion(
+            consumerSyncStatus.getNumOfSuccessfulStringInsertion() + deviceStringIds.size());
+      } catch (Exception e) {
+        logger.error(
+            "Kafka sync string insertion failure, data batch = \n{}", String.join("\n", datas), e);
+        this.consumerSyncStatus.setNumOfFailedStringInsertion(
+            consumerSyncStatus.getNumOfFailedStringInsertion() + deviceStringIds.size());
+      }
+    }
+
+    for (String deleteDeviceId : deleteMap.keySet()) {
+      try {
+        pool.deleteData(deleteDeviceId, deleteMap.get(deleteDeviceId));
+        this.consumerSyncStatus.setNumOfSuccessfulRecordDeletion(
+            consumerSyncStatus.getNumOfSuccessfulRecordDeletion() + 1);
+      } catch (Exception e) {
+        logger.error(
+            "Kafka sync data deletion failure, device = {}, time = {}\n",
+            deleteDeviceId,
+            deleteMap.get(deleteDeviceId),
+            e);
+        this.consumerSyncStatus.setNumOfFailedRecordDeletion(
+            consumerSyncStatus.getNumOfFailedRecordDeletion() + 1);
+      }
+    }
+
+    if (!delTimeDeviceIds.isEmpty()) {
+      try {
+        pool.deleteTimeseries(delTimeDeviceIds);
+        this.consumerSyncStatus.setNumOfSuccessfulTimeSeriesDeletion(
+            consumerSyncStatus.getNumOfSuccessfulTimeSeriesDeletion() + delTimeDeviceIds.size());
+      } catch (Exception e) {
+        logger.error(
+            "Kafka sync time-series deletion failure, data batch = \n{}",
+            String.join("\n", datas),
+            e);
+        this.consumerSyncStatus.setNumOfFailedTimeSeriesDeletion(
+            consumerSyncStatus.getNumOfFailedTimeSeriesDeletion() + delTimeDeviceIds.size());
+      }
     }
   }
 
