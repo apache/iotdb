@@ -156,7 +156,6 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TDataNodeRemoveResp removeDataNode(TDataNodeRemoveReq req) throws TException {
-    // TODO without reqId and respId, how to trace a request exec state?
     LOGGER.info("ConfigNode RPC Service start to remove DataNode, req: {}", req);
     RemoveDataNodePlan removeDataNodePlan = new RemoveDataNodePlan(req.getDataNodeLocations());
     DataNodeToStatusResp removeResp =
@@ -472,18 +471,14 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
         configManager.getConsensusManager().getConsensusImpl().removeConsensusGroup(groupId);
     if (!resp.isSuccess()) {
       return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-          .setMessage("remove ConsensusGroup failed because remove ConsensusGroup failed.");
+          .setMessage(
+              "remove ConsensusGroup failed because internal failure. See other logs for more details");
     }
     return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode())
         .setMessage("remove ConsensusGroup success.");
   }
 
-  /**
-   * stop config node
-   *
-   * @param configNodeLocation
-   * @return
-   */
+  /** stop config node */
   @Override
   public TSStatus stopConfigNode(TConfigNodeLocation configNodeLocation) {
     new Thread(
