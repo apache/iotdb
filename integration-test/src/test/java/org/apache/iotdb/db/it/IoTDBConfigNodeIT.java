@@ -51,6 +51,7 @@ import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.apache.thrift.TException;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -514,7 +515,7 @@ public class IoTDBConfigNodeIT {
               "passwd",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       authorizerReq.setUserName("tempuser1");
@@ -536,7 +537,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -549,7 +550,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -565,7 +566,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       authorizerReq.setRoleName("temprole1");
@@ -581,7 +582,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -594,7 +595,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -610,11 +611,13 @@ public class IoTDBConfigNodeIT {
               "",
               "newpwd",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
       // grant user
+      List<String> nodeNameList = new ArrayList<>();
+      nodeNameList.add("root.ln.**");
       authorizerReq =
           new TAuthorizerReq(
               AuthorOperator.AuthorType.GRANT_USER.ordinal(),
@@ -623,7 +626,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               privilegeList,
-              Collections.singletonList("root.ln.**"));
+              nodeNameList);
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -642,7 +645,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               privilegeList,
-              Collections.singletonList("root.ln.**"));
+              nodeNameList);
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -655,7 +658,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              nodeNameList);
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -668,7 +671,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               revokePrivilege,
-              Collections.singletonList("root.ln.**"));
+              nodeNameList);
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -681,7 +684,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               revokePrivilege,
-              Collections.singletonList("root.ln.**"));
+              nodeNameList);
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -694,11 +697,27 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList("root.ln.**"));
+              nodeNameList);
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
       assertEquals(
+          privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
+
+      // list user privileges
+      authorizerReq =
+          new TAuthorizerReq(
+              AuthorOperator.AuthorType.LIST_USER_PRIVILEGE.ordinal(),
+              "tempuser0",
+              "",
+              "",
+              "",
+              new HashSet<>(),
+              new ArrayList<>());
+      authorizerResp = client.queryPermission(authorizerReq);
+      status = authorizerResp.getStatus();
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
           privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
       // list privileges role
@@ -710,7 +729,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList("root.ln.**"));
+              nodeNameList);
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -718,16 +737,32 @@ public class IoTDBConfigNodeIT {
       assertEquals(
           privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
 
+      // list role privileges
+      authorizerReq =
+          new TAuthorizerReq(
+              AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE.ordinal(),
+              "",
+              "temprole0",
+              "",
+              "",
+              new HashSet<>(),
+              new ArrayList<>());
+      authorizerResp = client.queryPermission(authorizerReq);
+      status = authorizerResp.getStatus();
+      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
+      Assert.assertEquals(
+          privilege, authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_PRIVILEGE));
+
       // list all role of user
       authorizerReq =
           new TAuthorizerReq(
-              AuthorOperator.AuthorType.LIST_USER.ordinal(),
+              AuthorOperator.AuthorType.LIST_ROLE.ordinal(),
               "tempuser0",
               "",
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -737,13 +772,13 @@ public class IoTDBConfigNodeIT {
       // list all user of role
       authorizerReq =
           new TAuthorizerReq(
-              AuthorOperator.AuthorType.LIST_ROLE.ordinal(),
+              AuthorOperator.AuthorType.LIST_USER.ordinal(),
               "",
               "temprole0",
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -760,7 +795,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       status = client.operatePermission(authorizerReq);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
 
@@ -773,7 +808,7 @@ public class IoTDBConfigNodeIT {
               "",
               "",
               new HashSet<>(),
-              Collections.singletonList(""));
+              new ArrayList<>());
       authorizerResp = client.queryPermission(authorizerReq);
       status = authorizerResp.getStatus();
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
