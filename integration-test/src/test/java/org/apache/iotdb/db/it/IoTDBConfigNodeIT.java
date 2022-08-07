@@ -351,6 +351,8 @@ public class IoTDBConfigNodeIT {
         }
         Thread.sleep(1000);
       }
+      assertEquals(3, showDataNodesResp.getDataNodesInfoListSize());
+
       dataNodeInfos = showDataNodesResp.getDataNodesInfoList();
       for (TDataNodeInfo dnInfo : dataNodeInfos) {
         assertNotEquals(dataNodeLocation.getDataNodeId(), dnInfo.getDataNodeId());
