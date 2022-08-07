@@ -196,6 +196,7 @@ public class QueryDataSetInputLayer {
         return true;
       }
 
+      // 为什么要用for循环
       for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
         Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
         // If any field in the current row are null, we should treat this row as valid.

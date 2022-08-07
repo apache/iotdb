@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.api.LayerRowReader;
 import org.apache.iotdb.db.mpp.transformation.api.LayerRowWindowReader;
 import org.apache.iotdb.udf.api.customizer.strategy.AccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 
@@ -59,6 +60,9 @@ public abstract class IntermediateLayer {
       case SLIDING_SIZE_WINDOW:
         return constructRowSlidingSizeWindowReader(
             (SlidingSizeWindowAccessStrategy) strategy, memoryBudgetInMB);
+      case SESSION_TIME_WINDOW:
+        return constructRowSessionTimeWindowReader(
+            (SessionTimeWindowAccessStrategy) strategy, memoryBudgetInMB);
       default:
         throw new IllegalStateException(
             "Unexpected access strategy: " + strategy.getAccessStrategyType());
@@ -71,6 +75,10 @@ public abstract class IntermediateLayer {
 
   protected abstract LayerRowWindowReader constructRowSlidingTimeWindowReader(
       SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
+      throws QueryProcessException, IOException;
+
+  protected abstract LayerRowWindowReader constructRowSessionTimeWindowReader(
+      SessionTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
       throws QueryProcessException, IOException;
 
   @Override
