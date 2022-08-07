@@ -285,7 +285,7 @@ public class PlannerTest {
   public void testRootPrivilege()
       throws QueryProcessException, StorageEngineException, IOException, InterruptedException,
           QueryFilterOptimizationException, MetadataException {
-    String listRootPrivilegeStatement = "list user privileges root";
+    String listRootPrivilegeStatement = "list privileges user root";
     PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(listRootPrivilegeStatement);
     PlanExecutor executor = new PlanExecutor();
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, null);
