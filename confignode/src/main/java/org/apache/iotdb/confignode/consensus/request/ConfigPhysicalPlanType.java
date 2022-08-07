@@ -57,7 +57,9 @@ public enum ConfigPhysicalPlanType {
   ListRole,
   ListUserPrivilege,
   ListRolePrivilege,
+  @Deprecated
   ListUserRoles,
+  @Deprecated
   ListRoleUsers,
   ApplyConfigNode,
   RemoveDataNode,
