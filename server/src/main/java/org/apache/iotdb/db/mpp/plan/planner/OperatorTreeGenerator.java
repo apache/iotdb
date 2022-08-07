@@ -43,12 +43,14 @@ import org.apache.iotdb.db.mpp.execution.operator.process.FilterAndProjectOperat
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.PreviousUntilLastFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.RawDataAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.SlidingWindowAggregationOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.TransformOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.ILinearFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.IPreviousUntilLastFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.BinaryConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.BooleanConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.DoubleConstantFill;
@@ -67,6 +69,12 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.DoublePr
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.FloatPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.IntPreviousFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.LongPreviousFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previousuntillast.BinaryPreviousUntilLastFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previousuntillast.BooleanPreviousUntilLastFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previousuntillast.DoublePreviousUntilLastFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previousuntillast.FloatPreviousUntilLastFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previousuntillast.IntPreviousUntilLastFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previousuntillast.LongPreviousUntilLastFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.AscTimeComparator;
@@ -684,6 +692,10 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
         return new FillOperator(
             operatorContext, getPreviousFill(inputColumns, inputDataTypes), child);
+      case PREVIOUS_UNTIL_LAST:
+        context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+        return new PreviousUntilLastFillOperator(
+            operatorContext, getPreviousUntilLastFill(inputColumns, inputDataTypes), child);
       case LINEAR:
         context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
         return new LinearFillOperator(
@@ -748,6 +760,36 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           break;
         case DOUBLE:
           previousFill[i] = new DoublePreviousFill();
+          break;
+        default:
+          throw new IllegalArgumentException("Unknown data type: " + inputDataTypes.get(i));
+      }
+    }
+    return previousFill;
+  }
+
+  private IPreviousUntilLastFill[] getPreviousUntilLastFill(
+      int inputColumns, List<TSDataType> inputDataTypes) {
+    IPreviousUntilLastFill[] previousFill = new IPreviousUntilLastFill[inputColumns];
+    for (int i = 0; i < inputColumns; i++) {
+      switch (inputDataTypes.get(i)) {
+        case BOOLEAN:
+          previousFill[i] = new BooleanPreviousUntilLastFill();
+          break;
+        case TEXT:
+          previousFill[i] = new BinaryPreviousUntilLastFill();
+          break;
+        case INT32:
+          previousFill[i] = new IntPreviousUntilLastFill();
+          break;
+        case INT64:
+          previousFill[i] = new LongPreviousUntilLastFill();
+          break;
+        case FLOAT:
+          previousFill[i] = new FloatPreviousUntilLastFill();
+          break;
+        case DOUBLE:
+          previousFill[i] = new DoublePreviousUntilLastFill();
           break;
         default:
           throw new IllegalArgumentException("Unknown data type: " + inputDataTypes.get(i));

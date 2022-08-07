@@ -21,5 +21,6 @@ package org.apache.iotdb.db.mpp.plan.statement.component;
 public enum FillPolicy {
   PREVIOUS,
   LINEAR,
-  VALUE
+  VALUE,
+  PREVIOUS_UNTIL_LAST
 }

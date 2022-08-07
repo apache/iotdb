@@ -25,9 +25,12 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.PreviousUntilLastFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.IPreviousUntilLastFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.constant.DoubleConstantFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.previous.IntPreviousFill;
+import org.apache.iotdb.db.mpp.execution.operator.process.fill.previousuntillast.IntPreviousUntilLastFill;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -326,6 +329,158 @@ public class FillOperatorTest {
               {false, false, false},
               {false, false, false},
               {false, false, false}
+            }
+          };
+      while (fillOperator.hasNext()) {
+        TsBlock block = fillOperator.next();
+        for (int i = 0; i < block.getPositionCount(); i++) {
+          long expectedTime = i + 1 + count * 10000L;
+          assertEquals(expectedTime, block.getTimeByIndex(i));
+          for (int j = 0; j < 3; j++) {
+            assertEquals(isNull[count][i][j], block.getColumn(j).isNull(i));
+            if (!isNull[count][i][j]) {
+              assertEquals(res[count][i][j], block.getColumn(j).getInt(i));
+            }
+          }
+        }
+        count++;
+      }
+
+      assertTrue(fillOperator.isFinished());
+      assertEquals(3, count);
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void batchPreviousUntilLastFillTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId1 = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId1, PreviousUntilLastFillOperator.class.getSimpleName());
+
+      IPreviousUntilLastFill[] fillArray =
+          new IPreviousUntilLastFill[] {
+            new IntPreviousUntilLastFill(),
+            new IntPreviousUntilLastFill(),
+            new IntPreviousUntilLastFill(),
+          };
+      PreviousUntilLastFillOperator fillOperator =
+          new PreviousUntilLastFillOperator(
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              fillArray,
+              new Operator() {
+                private int index = 0;
+
+                @Override
+                public OperatorContext getOperatorContext() {
+                  return null;
+                }
+
+                @Override
+                public TsBlock next() {
+                  int delta = index * 10000;
+                  TsBlockBuilder builder =
+                      new TsBlockBuilder(
+                          ImmutableList.of(TSDataType.INT32, TSDataType.INT32, TSDataType.INT32));
+                  // 1  1, null, 100
+                  builder.getTimeColumnBuilder().writeLong(1 + delta);
+                  builder.getColumnBuilder(0).writeInt(1 + delta);
+                  builder.getColumnBuilder(1).appendNull();
+                  builder.getColumnBuilder(2).writeInt(100 + delta);
+                  builder.declarePosition();
+                  // 2  2, 20, 200
+                  builder.getTimeColumnBuilder().writeLong(2 + delta);
+                  builder.getColumnBuilder(0).writeInt(2 + delta);
+                  builder.getColumnBuilder(1).writeInt(20 + delta);
+                  builder.getColumnBuilder(2).writeInt(200 + delta);
+                  builder.declarePosition();
+                  // 3  3, 30, null
+                  builder.getTimeColumnBuilder().writeLong(3 + delta);
+                  builder.getColumnBuilder(0).writeInt(3 + delta);
+                  builder.getColumnBuilder(1).writeInt(30 + delta);
+                  builder.getColumnBuilder(2).appendNull();
+                  builder.declarePosition();
+                  // 4  null, 40, null
+                  builder.getTimeColumnBuilder().writeLong(4 + delta);
+                  builder.getColumnBuilder(0).appendNull();
+                  builder.getColumnBuilder(1).writeInt(40 + delta);
+                  builder.getColumnBuilder(2).appendNull();
+                  builder.declarePosition();
+                  // 5  null, null, 500
+                  builder.getTimeColumnBuilder().writeLong(5 + delta);
+                  builder.getColumnBuilder(0).appendNull();
+                  builder.getColumnBuilder(1).appendNull();
+                  builder.getColumnBuilder(2).writeInt(500 + delta);
+                  builder.declarePosition();
+
+                  index++;
+                  return builder.build();
+                }
+
+                @Override
+                public boolean hasNext() {
+                  return index < 3;
+                }
+
+                @Override
+                public boolean isFinished() {
+                  return index >= 3;
+                }
+              });
+
+      int count = 0;
+      int[][][] res =
+          new int[][][] {
+            {{1, 0, 100}, {2, 20, 200}, {3, 30, 200}, {3, 40, 200}, {3, 40, 500}},
+            {
+              {10001, 40, 10100},
+              {10002, 10020, 10200},
+              {10003, 10030, 10200},
+              {10003, 10040, 10200},
+              {10003, 10040, 10500}
+            },
+            {
+              {20001, 10040, 20100},
+              {20002, 20020, 20200},
+              {20003, 20030, 20200},
+              {0, 20040, 20200},
+              {0, 0, 20500}
+            }
+          };
+      boolean[][][] isNull =
+          new boolean[][][] {
+            {
+              {false, true, false},
+              {false, false, false},
+              {false, false, false},
+              {false, false, false},
+              {false, false, false}
+            },
+            {
+              {false, false, false},
+              {false, false, false},
+              {false, false, false},
+              {false, false, false},
+              {false, false, false}
+            },
+            {
+              {false, false, false},
+              {false, false, false},
+              {false, false, false},
+              {true, false, false},
+              {true, true, false}
             }
           };
       while (fillOperator.hasNext()) {

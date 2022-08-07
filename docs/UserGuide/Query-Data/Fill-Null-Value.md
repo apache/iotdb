@@ -46,10 +46,16 @@ IoTDB supports previous, linear, and value fill methods. Following table lists t
 
 ### Previous Fill
 
-When the value is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
+Previous Fill includes two cases:
+
+- PREVIOUS will fill any null value as long as there exist value is not null before it.
+- PREVIOUSUNTILLAST won't fill the result whose time is after the last time of that time series.
+
+Their syntax is defined as follows:
 
 ```sql
 fill(previous)
+fill(previousuntillast)
 ```
 
 Here we give an example of filling null values using the previous method. The SQL statement is as follows:
@@ -71,15 +77,18 @@ if we don't use any fill methods, the original result will be like:
 +-----------------------------+-------------------------------+--------------------------+
 |2017-11-01T16:40:00.000+08:00|                          23.43|                      null|
 +-----------------------------+-------------------------------+--------------------------+
-Total line number = 4
+|2017-11-01T16:41:00.000+08:00|                          24.53|                      true|
++-----------------------------+-------------------------------+--------------------------+
+Total line number = 5
 ```
 
-if we use previous fill, sql will be like:
+if we use previous fill and previousuntillast fill, sql will be like:
 ```sql
 select temperature from root.sgcc.wf03.wt01 where time => 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(previous)
+select temperature from root.sgcc.wf03.wt01 where time => 2017-11-01T16:37:00.000 and time <= 2017-11-01T16:40:00.000 fill(previousuntillast)
 ```
 
-previous filled result will be like:
+filled result will be like:
 
 ```
 +-----------------------------+-------------------------------+--------------------------+
@@ -94,7 +103,24 @@ previous filled result will be like:
 |2017-11-01T16:40:00.000+08:00|                          23.43|                     false|
 +-----------------------------+-------------------------------+--------------------------+
 Total line number = 4
+
++-----------------------------+-------------------------------+--------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|root.sgcc.wf03.wt01.status|
++-----------------------------+-------------------------------+--------------------------+
+|2017-11-01T16:37:00.000+08:00|                          21.93|                      true|
++-----------------------------+-------------------------------+--------------------------+
+|2017-11-01T16:38:00.000+08:00|                          21.93|                     false|
++-----------------------------+-------------------------------+--------------------------+
+|2017-11-01T16:39:00.000+08:00|                          22.23|                      null|
++-----------------------------+-------------------------------+--------------------------+
+|2017-11-01T16:40:00.000+08:00|                          23.43|                      null|
++-----------------------------+-------------------------------+--------------------------+
+Total line number = 4
 ```
+
+which means:
+
+using PREVIOUSUNTILLAST won't fill time after 2017-11-01T16:38 in column root.sgcc.wf03.wt01.status.
 
 > Note: If the first value of this column is null, we will keep first value as null and won't fill it until we meet first non-null value
 
