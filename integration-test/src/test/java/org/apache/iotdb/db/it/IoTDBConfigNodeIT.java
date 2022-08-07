@@ -67,6 +67,7 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 @RunWith(IoTDBTestRunner.class)
 @Category({ClusterIT.class})
@@ -226,6 +227,7 @@ public class IoTDBConfigNodeIT {
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     } catch (Exception e) {
       e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -361,6 +363,7 @@ public class IoTDBConfigNodeIT {
 
     } catch (Exception e) {
       e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -427,6 +430,7 @@ public class IoTDBConfigNodeIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -778,6 +782,7 @@ public class IoTDBConfigNodeIT {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }
