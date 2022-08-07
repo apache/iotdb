@@ -119,7 +119,7 @@ public class ConfigPlanExecutor {
       throws UnknownPhysicalPlanTypeException, AuthException {
     switch (req.getType()) {
       case GetDataNodeConfiguration:
-        return nodeInfo.getDataNodeInfo((GetDataNodeConfigurationPlan) req);
+        return nodeInfo.getDataNodeConfiguration((GetDataNodeConfigurationPlan) req);
       case CountStorageGroup:
         return clusterSchemaInfo.countMatchedStorageGroups((CountStorageGroupPlan) req);
       case GetStorageGroup:

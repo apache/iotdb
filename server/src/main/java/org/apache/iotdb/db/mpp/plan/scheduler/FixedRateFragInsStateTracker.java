@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -54,11 +53,10 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
 
   public FixedRateFragInsStateTracker(
       QueryStateMachine stateMachine,
-      ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
       List<FragmentInstance> instances,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
-    super(stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
+    super(stateMachine, scheduledExecutor, instances, internalServiceClientManager);
     this.aborted = false;
   }
 

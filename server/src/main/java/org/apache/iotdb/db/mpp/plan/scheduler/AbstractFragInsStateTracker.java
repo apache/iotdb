@@ -22,7 +22,9 @@ package org.apache.iotdb.db.mpp.plan.scheduler;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.mpp.rpc.thrift.TFetchFragmentInstanceStateReq;
@@ -33,30 +35,30 @@ import org.apache.thrift.TException;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 
 public abstract class AbstractFragInsStateTracker implements IFragInstanceStateTracker {
 
   protected QueryStateMachine stateMachine;
-  protected ExecutorService executor;
   protected ScheduledExecutorService scheduledExecutor;
   protected List<FragmentInstance> instances;
+  protected final String localhostIpAddr;
+  protected final int localhostInternalPort;
 
   private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
       internalServiceClientManager;
 
   public AbstractFragInsStateTracker(
       QueryStateMachine stateMachine,
-      ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
       List<FragmentInstance> instances,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.stateMachine = stateMachine;
-    this.executor = executor;
     this.scheduledExecutor = scheduledExecutor;
     this.instances = instances;
     this.internalServiceClientManager = internalServiceClientManager;
+    this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
   }
 
   public abstract void start();
@@ -66,12 +68,20 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
   protected FragmentInstanceState fetchState(FragmentInstance instance)
       throws TException, IOException {
     TEndPoint endPoint = instance.getHostDataNode().internalEndPoint;
-    try (SyncDataNodeInternalServiceClient client =
-        internalServiceClientManager.borrowClient(endPoint)) {
-      TFragmentInstanceStateResp resp =
-          client.fetchFragmentInstanceState(new TFetchFragmentInstanceStateReq(getTId(instance)));
-      return FragmentInstanceState.valueOf(resp.state);
+    if (isInstanceRunningLocally(endPoint)) {
+      return FragmentInstanceManager.getInstance().getInstanceInfo(instance.getId()).getState();
+    } else {
+      try (SyncDataNodeInternalServiceClient client =
+          internalServiceClientManager.borrowClient(endPoint)) {
+        TFragmentInstanceStateResp resp =
+            client.fetchFragmentInstanceState(new TFetchFragmentInstanceStateReq(getTId(instance)));
+        return FragmentInstanceState.valueOf(resp.state);
+      }
     }
+  }
+
+  private boolean isInstanceRunningLocally(TEndPoint endPoint) {
+    return this.localhostIpAddr.equals(endPoint.getIp()) && localhostInternalPort == endPoint.port;
   }
 
   private TFragmentInstanceId getTId(FragmentInstance instance) {

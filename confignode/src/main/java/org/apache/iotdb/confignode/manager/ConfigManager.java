@@ -200,7 +200,6 @@ public class ConfigManager implements IManager {
 
   @Override
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
-    // TODO replace with Porcedure later.
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return nodeManager.removeDataNode(removeDataNodePlan);

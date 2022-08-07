@@ -59,7 +59,7 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
 
   @Override
   public boolean updateLoadStatistic() {
-    if (configNodeLocation.getInternalEndPoint().equals(LoadManager.currentNode)) {
+    if (configNodeLocation.getInternalEndPoint().equals(LoadManager.CURRENT_NODE)) {
       // We don't need to update itself
       return false;
     }
