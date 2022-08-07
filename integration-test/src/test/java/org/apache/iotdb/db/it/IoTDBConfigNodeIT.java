@@ -721,7 +721,7 @@ public class IoTDBConfigNodeIT {
       // list all role of user
       authorizerReq =
           new TAuthorizerReq(
-              AuthorOperator.AuthorType.LIST_USER_ROLES.ordinal(),
+              AuthorOperator.AuthorType.LIST_USER.ordinal(),
               "tempuser0",
               "",
               "",
@@ -737,7 +737,7 @@ public class IoTDBConfigNodeIT {
       // list all user of role
       authorizerReq =
           new TAuthorizerReq(
-              AuthorOperator.AuthorType.LIST_ROLE_USERS.ordinal(),
+              AuthorOperator.AuthorType.LIST_ROLE.ordinal(),
               "",
               "temprole0",
               "",
