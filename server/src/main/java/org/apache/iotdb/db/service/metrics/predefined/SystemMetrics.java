@@ -114,15 +114,15 @@ public class SystemMetrics implements IMetricSet {
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
-        systemDiskTotalSpace,
-        value -> value,
+        this,
+        SystemMetrics::getSystemDiskTotalSpace,
         Tag.NAME.toString(),
         "system");
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_DISK_FREE_SPACE.toString(),
         MetricLevel.CORE,
-        systemDiskFreeSpace,
-        value -> value,
+        this,
+        SystemMetrics::getSystemDiskFreeSpace,
         Tag.NAME.toString(),
         "system");
   }
@@ -152,5 +152,21 @@ public class SystemMetrics implements IMetricSet {
     }
     systemDiskTotalSpace = sysTotalSpace;
     systemDiskFreeSpace = sysFreeSpace;
+  }
+
+  public long getSystemDiskTotalSpace() {
+    return systemDiskTotalSpace;
+  }
+
+  public void setSystemDiskTotalSpace(long systemDiskTotalSpace) {
+    this.systemDiskTotalSpace = systemDiskTotalSpace;
+  }
+
+  public long getSystemDiskFreeSpace() {
+    return systemDiskFreeSpace;
+  }
+
+  public void setSystemDiskFreeSpace(long systemDiskFreeSpace) {
+    this.systemDiskFreeSpace = systemDiskFreeSpace;
   }
 }
