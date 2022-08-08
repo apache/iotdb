@@ -62,6 +62,7 @@ else
   LIB_PATH=${CONFIGNODE_HOME}/../lib
 fi
 
+CLASSPATH=""
 for f in ${LIB_PATH}/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done
