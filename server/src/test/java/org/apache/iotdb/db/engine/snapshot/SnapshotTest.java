@@ -127,7 +127,8 @@ public class SnapshotTest {
     File snapshotDir = new File("target" + File.separator + "snapshot");
     Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
     try {
-      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+      Assert.assertTrue(
+          new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true));
       DataRegion dataRegion =
           new SnapshotLoader(snapshotDir.getAbsolutePath(), testSgName, "0")
               .loadSnapshotForStateMachine();
