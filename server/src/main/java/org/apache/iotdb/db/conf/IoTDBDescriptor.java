@@ -1444,7 +1444,7 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
-    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProperties();
+    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps();
     MetricsService.getInstance().reloadProperties(reloadLevel);
   }
 
