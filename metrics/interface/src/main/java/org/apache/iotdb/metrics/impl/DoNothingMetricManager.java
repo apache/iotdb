@@ -144,25 +144,30 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public void removeCounter(String metric, String... tags) {}
+  public void removeCounter(String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void removeGauge(String metric, String... tags) {}
+  public void removeGauge(String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void removeRate(String metric, String... tags) {}
+  public void removeRate(String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void removeHistogram(String metric, String... tags) {}
+  public void removeHistogram(String metric, String... tags) {
+    // do nothing
+  }
 
   @Override
-  public void removeTimer(String metric, String... tags) {}
+  public void removeTimer(String metric, String... tags) {
+    // do nothing
+  }
 
-  /**
-   * stop everything and clear
-   *
-   * @return
-   */
   @Override
   public boolean stop() {
     return false;
