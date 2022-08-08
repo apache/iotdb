@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -42,22 +43,23 @@ import java.util.List;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class SnapshotTest {
-  private String[] originDataDirs;
+  String[] originDataDirs;
   private String[] testDataDirs =
       new String[] {"target/data/data1", "target/data/data2", "target/data/data3"};
   private String testSgName = "root.testsg";
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
+    DirectoryManager.restartDirectoryManager();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    EnvironmentUtils.recursiveDeleteFolder("target" + File.separator + "data");
     IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
+    EnvironmentUtils.recursiveDeleteFolder("target" + File.separator + "data");
     EnvironmentUtils.cleanEnv();
   }
 
