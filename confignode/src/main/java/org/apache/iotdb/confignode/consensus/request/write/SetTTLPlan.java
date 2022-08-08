@@ -25,11 +25,13 @@ import org.apache.iotdb.confignode.consensus.request.ConfigPhysicalPlanType;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 public class SetTTLPlan extends ConfigPhysicalPlan {
 
-  private String storageGroup;
+  private String[] storageGroupPathPattern;
 
   private long TTL;
 
@@ -37,14 +39,14 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
     super(ConfigPhysicalPlanType.SetTTL);
   }
 
-  public SetTTLPlan(String storageGroup, long TTL) {
+  public SetTTLPlan(List<String> storageGroupPathPattern, long TTL) {
     this();
-    this.storageGroup = storageGroup;
+    this.storageGroupPathPattern = storageGroupPathPattern.toArray(new String[0]);
     this.TTL = TTL;
   }
 
-  public String getStorageGroup() {
-    return storageGroup;
+  public String[] getStorageGroupPathPattern() {
+    return storageGroupPathPattern;
   }
 
   public long getTTL() {
@@ -55,13 +57,21 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
   protected void serializeImpl(DataOutputStream stream) throws IOException {
     stream.writeInt(getType().ordinal());
 
-    BasicStructureSerDeUtil.write(storageGroup, stream);
+    stream.writeInt(storageGroupPathPattern.length);
+    for (String node : storageGroupPathPattern) {
+      BasicStructureSerDeUtil.write(node, stream);
+    }
     stream.writeLong(TTL);
   }
 
   @Override
   protected void deserializeImpl(ByteBuffer buffer) throws IOException {
-    storageGroup = BasicStructureSerDeUtil.readString(buffer);
+
+    int length = buffer.getInt();
+    storageGroupPathPattern = new String[length];
+    for (int i = 0; i < length; i++) {
+      storageGroupPathPattern[i] = BasicStructureSerDeUtil.readString(buffer);
+    }
     TTL = buffer.getLong();
   }
 
@@ -70,11 +80,12 @@ public class SetTTLPlan extends ConfigPhysicalPlan {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     SetTTLPlan setTTLPlan = (SetTTLPlan) o;
-    return TTL == setTTLPlan.TTL && storageGroup.equals(setTTLPlan.storageGroup);
+    return TTL == setTTLPlan.TTL
+        && Arrays.equals(this.storageGroupPathPattern, setTTLPlan.storageGroupPathPattern);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(storageGroup, TTL);
+    return Objects.hash(storageGroupPathPattern, TTL);
   }
 }

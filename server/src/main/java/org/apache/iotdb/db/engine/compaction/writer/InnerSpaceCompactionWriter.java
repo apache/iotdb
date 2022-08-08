@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -55,12 +58,20 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     writeDataPoint(timestamp, value, subTaskId);
-    checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
+    if (measurementPointCountArray[subTaskId] % 10 == 0) {
+      checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
+    }
     isEmptyFile = false;
   }
 
   @Override
-  public void write(long[] timestamps, Object values) {}
+  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException {
+    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
+    chunkWriter.write(timestamps, columns, batchSize);
+    checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
+    isEmptyFile = false;
+  }
 
   @Override
   public void endFile() throws IOException {

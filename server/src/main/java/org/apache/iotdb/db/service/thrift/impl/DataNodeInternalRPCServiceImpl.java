@@ -46,10 +46,16 @@ import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.consensus.DataRegionConsensusImpl;
 import org.apache.iotdb.db.consensus.SchemaRegionConsensusImpl;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.cache.DataNodeSchemaCache;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
+import org.apache.iotdb.db.metadata.template.TemplateInternalRPCUpdateType;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
@@ -95,6 +101,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TSendFragmentInstanceResp;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TSendPlanNodeResp;
 import org.apache.iotdb.mpp.rpc.thrift.TUpdateConfigNodeGroupReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
@@ -477,13 +484,31 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
+  public TSStatus merge() throws TException {
+    try {
+      storageEngine.mergeAll();
+    } catch (StorageEngineException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   public TSStatus flush(TFlushReq req) throws TException {
-    return StorageEngineV2.getInstance().operateFlush(req);
+    return storageEngine.operateFlush(req);
+  }
+
+  @Override
+  public TSStatus clearCache() throws TException {
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    BloomFilterCache.getInstance().clear();
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
   public TSStatus setTTL(TSetTTLReq req) throws TException {
-    return StorageEngineV2.getInstance().setTTL(req);
+    return storageEngine.setTTL(req);
   }
 
   @Override
@@ -496,6 +521,19 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
                   .parallelStream()
                   .map(TConfigNodeLocation::getInternalEndPoint)
                   .collect(Collectors.toList()));
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus updateTemplate(TUpdateTemplateReq req) throws TException {
+    switch (TemplateInternalRPCUpdateType.getType(req.type)) {
+      case ADD_TEMPLATE_SET_INFO:
+        ClusterTemplateManager.getInstance().updateTemplateSetInfo(req.getTemplateInfo());
+        break;
+      case INVALIDATE_TEMPLATE_SET_INFO:
+        ClusterTemplateManager.getInstance().invalidateTemplateSetInfo(req.getTemplateInfo());
+        break;
     }
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
@@ -596,7 +634,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
   private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-    LOGGER.debug("start to create new region {}", regionId);
+    LOGGER.info("start to create new region {}", regionId);
     try {
       if (regionId instanceof DataRegionId) {
         storageEngine.createDataRegion((DataRegionId) regionId, storageGroup, ttl);
@@ -610,7 +648,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       return status;
     }
     status.setMessage("create new region " + regionId + " succeed");
-    LOGGER.debug("succeed to create new region {}", regionId);
+    LOGGER.info("succeed to create new region {}", regionId);
     return status;
   }
 
@@ -685,7 +723,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   private TSStatus addConsensusGroup(ConsensusGroupId regionId, List<Peer> peers) {
-    LOGGER.debug("start to add peers {} to region {} consensus group", peers, regionId);
+    LOGGER.info("start to add peers {} to region {} consensus group", peers, regionId);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     ConsensusGenericResponse resp;
     if (regionId instanceof DataRegionId) {
@@ -700,7 +738,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       status.setMessage(resp.getException().getMessage());
       return status;
     }
-    LOGGER.debug("succeed to add peers {} to region {} consensus group", peers, regionId);
+    LOGGER.info("succeed to add peers {} to region {} consensus group", peers, regionId);
     status.setMessage("add peers to region consensus group " + regionId + "succeed");
     return status;
   }

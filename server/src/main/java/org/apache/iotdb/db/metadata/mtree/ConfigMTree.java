@@ -463,15 +463,23 @@ public class ConfigMTree {
 
   // region MTree Node Management
 
-  public IMNode getNodeWithAutoCreate(PartialPath path) {
+  public IMNode getNodeWithAutoCreate(PartialPath path) throws StorageGroupNotSetException {
     String[] nodeNames = path.getNodes();
     IMNode cur = root;
     IMNode child;
+    boolean hasStorageGroup = false;
     for (int i = 1; i < nodeNames.length; i++) {
       child = cur.getChild(nodeNames[i]);
       if (child == null) {
-        child = cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        if (hasStorageGroup) {
+          child = cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        } else {
+          throw new StorageGroupNotSetException(path.getFullPath());
+        }
+      } else if (child.isStorageGroup()) {
+        hasStorageGroup = true;
       }
+
       cur = child;
     }
     return cur;

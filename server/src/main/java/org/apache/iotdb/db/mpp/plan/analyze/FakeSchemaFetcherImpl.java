@@ -20,30 +20,34 @@
 package org.apache.iotdb.db.mpp.plan.analyze;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaEntityNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaInternalNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.db.mpp.common.schematree.node.SchemaNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class FakeSchemaFetcherImpl implements ISchemaFetcher {
 
-  private final SchemaTree schemaTree = new SchemaTree(generateSchemaTree());
+  private final ClusterSchemaTree schemaTree = new ClusterSchemaTree(generateSchemaTree());
 
   @Override
-  public SchemaTree fetchSchema(PathPatternTree patternTree) {
+  public ClusterSchemaTree fetchSchema(PathPatternTree patternTree) {
     schemaTree.setStorageGroups(Collections.singletonList("root.sg"));
     return schemaTree;
   }
 
   @Override
-  public SchemaTree fetchSchemaWithAutoCreate(
+  public ISchemaTree fetchSchemaWithAutoCreate(
       PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
     return schemaTree;
   }
@@ -95,11 +99,26 @@ public class FakeSchemaFetcherImpl implements ISchemaFetcher {
   }
 
   @Override
-  public SchemaTree fetchSchemaListWithAutoCreate(
+  public ISchemaTree fetchSchemaListWithAutoCreate(
       List<PartialPath> devicePath,
       List<String[]> measurements,
       List<TSDataType[]> tsDataTypes,
       List<Boolean> aligned) {
+    return null;
+  }
+
+  @Override
+  public Pair<Template, PartialPath> checkTemplateSetInfo(PartialPath path) {
+    return null;
+  }
+
+  @Override
+  public Map<Integer, Template> checkAllRelatedTemplate(PartialPath pathPattern) {
+    return Collections.emptyMap();
+  }
+
+  @Override
+  public Pair<Template, List<PartialPath>> getAllPathsSetTemplate(String templateName) {
     return null;
   }
 

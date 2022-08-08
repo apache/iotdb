@@ -79,8 +79,8 @@ public class SeriesScanUtil {
    *
    * valueFilter is pushed down to non-overlapped page only
    */
-  private final Filter timeFilter;
-  private final Filter valueFilter;
+  private Filter timeFilter;
+  private Filter valueFilter;
 
   private QueryDataSource dataSource;
 
@@ -161,6 +161,10 @@ public class SeriesScanUtil {
   public void initQueryDataSource(QueryDataSource dataSource) {
     QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), orderUtils.getAscending());
     this.dataSource = dataSource;
+    this.timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
+    if (this.valueFilter != null) {
+      this.valueFilter = dataSource.updateFilterUsingTTL(valueFilter);
+    }
     orderUtils.setCurSeqFileIndex(dataSource);
   }
 

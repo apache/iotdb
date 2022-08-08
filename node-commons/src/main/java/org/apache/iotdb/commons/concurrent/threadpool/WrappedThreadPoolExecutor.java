@@ -23,14 +23,21 @@ import org.apache.iotdb.commons.concurrent.IoTThreadFactory;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.service.JMXService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
     implements WrappedThreadPoolExecutorMBean {
+  private static final Logger logger = LoggerFactory.getLogger(WrappedThreadPoolExecutor.class);
   private final String mbeanName;
 
   public WrappedThreadPoolExecutor(
@@ -78,5 +85,23 @@ public class WrappedThreadPoolExecutor extends ThreadPoolExecutor
   @Override
   public int getQueueLength() {
     return getQueue().size();
+  }
+
+  protected void afterExecute(Runnable r, Throwable t) {
+    super.afterExecute(r, t);
+    if (t == null && r instanceof Future<?>) {
+      try {
+        ((Future<?>) r).get();
+      } catch (CancellationException ce) {
+        t = ce;
+      } catch (ExecutionException ee) {
+        t = ee.getCause();
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+      }
+    }
+    if (t != null) {
+      logger.error("Exception in thread pool {}", mbeanName, t);
+    }
   }
 }

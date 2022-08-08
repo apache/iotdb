@@ -29,7 +29,6 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.LoadFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
-import org.apache.iotdb.db.mpp.plan.statement.internal.LastPointFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.AlterTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountDevicesStatement;
@@ -49,6 +48,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.SetTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowChildPathsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowClusterStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowConfigNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDataNodesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowDevicesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowFunctionsStatement;
@@ -57,14 +57,18 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowStorageGroupStatement
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTTLStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.ShowTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.UnSetTTLStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ActivateTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.CreateSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowNodesInSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathSetTemplateStatement;
+import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowPathsUsingTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.template.ShowSchemaTemplateStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 
 /**
@@ -167,10 +171,6 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(queryStatement, context);
   }
 
-  public R visitLastPointFetch(LastPointFetchStatement lastPointFetchStatement, C context) {
-    return visitStatement(lastPointFetchStatement, context);
-  }
-
   // Insert Statement
   public R visitInsert(InsertStatement insertStatement, C context) {
     return visitStatement(insertStatement, context);
@@ -260,8 +260,16 @@ public abstract class StatementVisitor<R, C> {
     return visitStatement(deleteDataStatement, context);
   }
 
+  public R visitMerge(MergeStatement mergeStatement, C context) {
+    return visitStatement(mergeStatement, context);
+  }
+
   public R visitFlush(FlushStatement flushStatement, C context) {
     return visitStatement(flushStatement, context);
+  }
+
+  public R visitClearCache(ClearCacheStatement clearCacheStatement, C context) {
+    return visitStatement(clearCacheStatement, context);
   }
 
   public R visitShowRegion(ShowRegionStatement showRegionStatement, C context) {
@@ -270,6 +278,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitShowDataNodes(ShowDataNodesStatement showDataNodesStatement, C context) {
     return visitStatement(showDataNodesStatement, context);
+  }
+
+  public R visitShowConfigNodes(ShowConfigNodesStatement showConfigNodesStatement, C context) {
+    return visitStatement(showConfigNodesStatement, context);
   }
 
   public R visitShowVersion(ShowVersionStatement showVersionStatement, C context) {
@@ -299,5 +311,14 @@ public abstract class StatementVisitor<R, C> {
   public R visitShowPathSetTemplate(
       ShowPathSetTemplateStatement showPathSetTemplateStatement, C context) {
     return visitStatement(showPathSetTemplateStatement, context);
+  }
+
+  public R visitActivateTemplate(ActivateTemplateStatement activateTemplateStatement, C context) {
+    return visitStatement(activateTemplateStatement, context);
+  }
+
+  public R visitShowPathsUsingTemplate(
+      ShowPathsUsingTemplateStatement showPathsUsingTemplateStatement, C context) {
+    return visitStatement(showPathsUsingTemplateStatement, context);
   }
 }

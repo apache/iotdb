@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import org.openjdk.jol.info.ClassLayout;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 import static io.airlift.slice.SizeOf.sizeOf;
@@ -84,6 +85,11 @@ public class FloatColumn implements Column {
   }
 
   @Override
+  public float[] getFloats() {
+    return values;
+  }
+
+  @Override
   public Object getObject(int position) {
     return getFloat(position);
   }
@@ -103,6 +109,16 @@ public class FloatColumn implements Column {
   public boolean isNull(int position) {
     checkReadablePosition(position);
     return valueIsNull != null && valueIsNull[position + arrayOffset];
+  }
+
+  @Override
+  public boolean[] isNull() {
+    if (valueIsNull == null) {
+      boolean[] res = new boolean[positionCount];
+      Arrays.fill(res, false);
+      return res;
+    }
+    return valueIsNull;
   }
 
   @Override

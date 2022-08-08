@@ -62,6 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -73,23 +74,22 @@ public class PartitionManager {
 
   private final IManager configManager;
   private final PartitionInfo partitionInfo;
-  private static final int REGION_CLEANER_WORK_INTERVAL = 300;
-  private static final int REGION_CLEANER_WORK_INITIAL_DELAY = 10;
 
   private SeriesPartitionExecutor executor;
+
+  /** Region cleaner */
+  // Monitor for leadership change
+  private final Object scheduleMonitor = new Object();
+  // Try to delete Regions in every 10s
+  private static final int REGION_CLEANER_WORK_INTERVAL = 10;
   private final ScheduledExecutorService regionCleaner;
+  private Future<?> currentRegionCleanerFuture;
 
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
     this.regionCleaner =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Cleaner");
-    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
-        regionCleaner,
-        this::clearDeletedRegions,
-        REGION_CLEANER_WORK_INITIAL_DELAY,
-        REGION_CLEANER_WORK_INTERVAL,
-        TimeUnit.SECONDS);
     setSeriesPartitionExecutor();
   }
 
@@ -131,9 +131,8 @@ public class PartitionManager {
    *
    * @param req SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
-   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
-   *     StorageGroup doesn't exist.
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
+   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan req) {
     // After all the SchemaPartitions are allocated,
@@ -189,9 +188,8 @@ public class PartitionManager {
    * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
    *     List<TimePartitionSlot>>>
    * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
-   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
-   *     StorageGroup doesn't exist.
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
+   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
     // After all the DataPartitions are allocated,
@@ -286,9 +284,8 @@ public class PartitionManager {
           continue;
         }
 
-        // 2. The average number of partitions held by each Region is greater than the expected
-        // average
-        //    when the partition allocation is complete
+        // 2. The average number of partitions held by each Region will be greater than the
+        // expected average number after the partition allocation is completed
         if (allocatedRegionCount < maxRegionCount
             && slotCount / allocatedRegionCount > maxSlotCount / maxRegionCount) {
           // The delta is equal to the smallest integer solution that satisfies the inequality:
@@ -306,8 +303,10 @@ public class PartitionManager {
       }
 
       // TODO: Use procedure to protect the following process
-      // Do Region allocation and creation for StorageGroups based on the allotment
-      getLoadManager().doRegionCreation(allotmentMap, consensusGroupType);
+      if (!allotmentMap.isEmpty()) {
+        // Do Region allocation and creation for StorageGroups based on the allotment
+        getLoadManager().doRegionCreation(allotmentMap, consensusGroupType);
+      }
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (NotEnoughDataNodeException e) {
@@ -397,24 +396,6 @@ public class PartitionManager {
     getConsensusManager().write(preDeleteStorageGroupPlan);
   }
 
-  /**
-   * Called by {@link PartitionManager#regionCleaner} Delete regions of logical deleted storage
-   * groups periodically.
-   */
-  public void clearDeletedRegions() {
-    if (getConsensusManager().isLeader()) {
-      final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
-      if (!deletedRegionSet.isEmpty()) {
-        LOGGER.info(
-            "DELETE REGIONS {} START",
-            deletedRegionSet.stream()
-                .map(TRegionReplicaSet::getRegionId)
-                .collect(Collectors.toList()));
-        SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
-      }
-    }
-  }
-
   public void addMetrics() {
     partitionInfo.addMetrics();
   }
@@ -451,6 +432,51 @@ public class PartitionManager {
    */
   public String getRegionStorageGroup(TConsensusGroupId regionId) {
     return partitionInfo.getRegionStorageGroup(regionId);
+  }
+
+  /**
+   * Called by {@link PartitionManager#regionCleaner} Delete regions of logical deleted storage
+   * groups periodically.
+   */
+  public void clearDeletedRegions() {
+    if (getConsensusManager().isLeader()) {
+      final Set<TRegionReplicaSet> deletedRegionSet = partitionInfo.getDeletedRegionSet();
+      if (!deletedRegionSet.isEmpty()) {
+        LOGGER.info(
+            "DELETE REGIONS {} START",
+            deletedRegionSet.stream()
+                .map(TRegionReplicaSet::getRegionId)
+                .collect(Collectors.toList()));
+        SyncDataNodeClientPool.getInstance().deleteRegions(deletedRegionSet);
+      }
+    }
+  }
+
+  public void startRegionCleaner() {
+    synchronized (scheduleMonitor) {
+      if (currentRegionCleanerFuture == null) {
+        /* Start the RegionCleaner service */
+        currentRegionCleanerFuture =
+            ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+                regionCleaner,
+                this::clearDeletedRegions,
+                0,
+                REGION_CLEANER_WORK_INTERVAL,
+                TimeUnit.SECONDS);
+        LOGGER.info("RegionCleaner is started successfully.");
+      }
+    }
+  }
+
+  public void stopRegionCleaner() {
+    synchronized (scheduleMonitor) {
+      if (currentRegionCleanerFuture != null) {
+        /* Stop the RegionCleaner service */
+        currentRegionCleanerFuture.cancel(false);
+        currentRegionCleanerFuture = null;
+        LOGGER.info("RegionCleaner is stopped successfully.");
+      }
+    }
   }
 
   public ScheduledExecutorService getRegionCleaner() {
