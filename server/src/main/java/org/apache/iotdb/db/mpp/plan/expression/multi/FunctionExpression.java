@@ -122,12 +122,7 @@ public class FunctionExpression extends Expression {
   public FunctionExpression(ByteBuffer byteBuffer) {
     functionName = ReadWriteIOUtils.readString(byteBuffer);
 
-    LinkedHashMap<String, String> deserializedFunctionAttributes =
-        ReadWriteIOUtils.readLinkedHashMap(byteBuffer);
-    functionAttributes =
-        deserializedFunctionAttributes != null
-            ? deserializedFunctionAttributes
-            : new LinkedHashMap<>();
+    functionAttributes = ReadWriteIOUtils.readLinkedHashMap(byteBuffer);
 
     int expressionSize = ReadWriteIOUtils.readInt(byteBuffer);
     expressions = new ArrayList<>();
