@@ -416,6 +416,7 @@ public class LogDispatcher {
         iteratorIndex = currentIndex;
         for (IConsensusRequest innerRequest : data.getRequests()) {
           logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), currentIndex, true));
+          logger.info("read one entry from WAL for dispatching: {}", data.getSearchIndex());
         }
         if (currentIndex == maxIndex - 1) {
           break;
