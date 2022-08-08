@@ -138,10 +138,11 @@ public class LogDispatcher {
               .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
             thread.countQueue(request.getSearchIndex());
           } else {
-            logger.debug(
-                "{}: Log queue of {} is full, ignore the log to this node",
+            logger.info(
+                "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
                 impl.getThisNode().getGroupId(),
-                thread.getPeer());
+                thread.getPeer(),
+                request.getSearchIndex());
           }
         });
   }
