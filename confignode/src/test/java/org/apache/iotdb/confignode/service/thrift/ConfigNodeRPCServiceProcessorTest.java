@@ -29,7 +29,6 @@ import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
-import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.StartupException;
@@ -43,8 +42,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.ConfigNodeStartupCheck;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
-import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
@@ -63,7 +60,6 @@ import org.apache.iotdb.confignode.rpc.thrift.TSetTimePartitionIntervalReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
@@ -82,7 +78,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -588,70 +583,6 @@ public class ConfigNodeRPCServiceProcessorTest {
     // rollback success
     Assert.assertEquals(root.getStorageGroupSchemaMap().size(), 2);
     Assert.assertEquals(TSStatusCode.MULTIPLE_ERROR.getStatusCode(), deleteSgStatus.getCode());
-  }
-
-  private void cleanUserAndRole() throws TException {
-    TSStatus status;
-
-    // clean user
-    TAuthorizerReq authorizerReq =
-        new TAuthorizerReq(
-            AuthorOperator.AuthorType.LIST_USER.ordinal(),
-            "",
-            "",
-            "",
-            "",
-            new HashSet<>(),
-            new ArrayList<>());
-    TAuthorizerResp authorizerResp = processor.queryPermission(authorizerReq);
-    status = authorizerResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-    List<String> allUsers = authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_USER);
-    for (String user : allUsers) {
-      if (!user.equals("root")) {
-        authorizerReq =
-            new TAuthorizerReq(
-                AuthorOperator.AuthorType.DROP_USER.ordinal(),
-                user,
-                "",
-                "",
-                "",
-                new HashSet<>(),
-                new ArrayList<>());
-        status = processor.operatePermission(authorizerReq);
-        Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-      }
-    }
-
-    // clean role
-    authorizerReq =
-        new TAuthorizerReq(
-            AuthorOperator.AuthorType.LIST_ROLE.ordinal(),
-            "",
-            "",
-            "",
-            "",
-            new HashSet<>(),
-            new ArrayList<>());
-    authorizerResp = processor.queryPermission(authorizerReq);
-    status = authorizerResp.getStatus();
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-    List<String> roleList = authorizerResp.getAuthorizerInfo().get(IoTDBConstant.COLUMN_ROLE);
-    for (String roleN : roleList) {
-      authorizerReq =
-          new TAuthorizerReq(
-              AuthorOperator.AuthorType.DROP_ROLE.ordinal(),
-              "",
-              roleN,
-              "",
-              "",
-              new HashSet<>(),
-              new ArrayList<>());
-      status = processor.operatePermission(authorizerReq);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    }
   }
 
   @Test
