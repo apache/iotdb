@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.compaction.cross.utils.ReadPointCrossCompactio
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -55,8 +56,8 @@ public interface ICompactionSelector {
     }
   }
 
-  default long getSelectedFileMemoryCost() {
-    return 0L;
+  default List<Long> getCompactionMemoryCost() {
+    return Collections.emptyList();
   }
 
   static AbstractCompactionEstimator getCompactionEstimator(

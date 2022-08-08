@@ -442,6 +442,7 @@ public class CrossSpaceCompactionTest {
                         .getCrossCompactionPerformer()
                         .createInstance(),
                     new AtomicInteger(0),
+                    0,
                     0);
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
@@ -748,6 +749,7 @@ public class CrossSpaceCompactionTest {
                         .getCrossCompactionPerformer()
                         .createInstance(),
                     new AtomicInteger(0),
+                    0,
                     0);
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
@@ -1053,6 +1055,7 @@ public class CrossSpaceCompactionTest {
                         .getCrossCompactionPerformer()
                         .createInstance(),
                     new AtomicInteger(0),
+                    0,
                     0);
             compactionTask.start();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();

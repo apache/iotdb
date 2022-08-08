@@ -105,7 +105,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
    * @return two lists of TsFileResource, the former is selected seqFiles and the latter is selected
    *     unseqFiles or an empty array if there are no proper candidates by the budget.
    */
-  public List[] select() throws MergeException {
+  private List[] select() throws MergeException {
     long startTime = System.currentTimeMillis();
     try {
       LOGGER.debug(
@@ -352,7 +352,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   }
 
   @Override
-  public long getSelectedFileMemoryCost() {
-    return totalCost;
+  public List<Long> getCompactionMemoryCost() {
+    return Collections.singletonList(totalCost);
   }
 }

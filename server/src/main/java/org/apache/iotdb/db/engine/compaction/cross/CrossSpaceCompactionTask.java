@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.rescon.SystemInfo;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -66,6 +67,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       List<TsFileResource> selectedUnsequenceFiles,
       ICrossCompactionPerformer performer,
       AtomicInteger currentTaskNum,
+      long memoryCost,
       long serialId) {
     super(
         tsFileManager.getStorageGroupName(),
@@ -80,11 +82,13 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
     this.unseqTsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
     this.performer = performer;
     this.hashCode = this.toString().hashCode();
+    this.memoryCost = memoryCost;
   }
 
   @Override
   protected void doCompaction() {
     try {
+      SystemInfo.getInstance().addCompactionMemoryCost(memoryCost);
       if (!tsFileManager.isAllowCompaction()) {
         return;
       }
@@ -193,6 +197,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
           false,
           true);
     } finally {
+      SystemInfo.getInstance().resetCompactionMemoryCost(memoryCost);
       releaseAllLock();
     }
   }
