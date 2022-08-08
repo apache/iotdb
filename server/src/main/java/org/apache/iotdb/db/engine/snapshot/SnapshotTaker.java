@@ -212,6 +212,13 @@ public class SnapshotTaker {
   }
 
   private boolean createSnapshotInAnotherDisk(File snapshotDir) {
+    try {
+      snapshotLogger.logSnapshotType(SnapshotLogger.SnapshotType.REMOTE_DISK);
+    } catch (IOException e) {
+      LOGGER.error("Fail to create snapshot", e);
+      cleanUpWhenFail(snapshotDir);
+      return false;
+    }
     for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
       File seqDir =
           new File(
@@ -261,38 +268,29 @@ public class SnapshotTaker {
       TsFileManager manager = dataRegion.getTsFileManager();
       manager.readLock();
       for (long timePartition : timePartitions) {
-        File seqTimePartitionDir = new File(seqDir, String.valueOf(timePartition));
-        File seqTimePartitionSnapshotDir =
-            new File(localSeqSnapshotDir, String.valueOf(timePartition));
-
-        try {
-          createFileSnapshotToTargetOne(seqTimePartitionDir, seqTimePartitionSnapshotDir);
-        } catch (IOException e) {
-          LOGGER.error(
-              "Failed to create snapshot for {}-{}",
-              dataRegion.getStorageGroupName(),
-              dataRegion.getDataRegionId(),
-              e);
-          cleanUpWhenFail(snapshotDir);
-        }
-
-        File unseqTimePartitionDir = new File(unseqDir, String.valueOf(timePartition));
-        File unseqTimePartitionSnapshotDir =
-            new File(localUnseqSnapshotDir, String.valueOf(timePartition));
-        try {
-          createFileSnapshotToTargetOne(unseqTimePartitionDir, unseqTimePartitionSnapshotDir);
-        } catch (IOException e) {
-          LOGGER.error(
-              "Failed to create snapshot for {}-{}",
-              dataRegion.getStorageGroupName(),
-              dataRegion.getDataRegionId(),
-              e);
-          cleanUpWhenFail(snapshotDir);
-        }
+        createSnapshotForTimePartition(snapshotDir, seqDir, localSeqSnapshotDir, timePartition);
+        createSnapshotForTimePartition(snapshotDir, unseqDir, localUnseqSnapshotDir, timePartition);
       }
     }
 
     return true;
+  }
+
+  private void createSnapshotForTimePartition(
+      File snapshotDir, File dataDir, File localSeqSnapshotDir, long timePartition) {
+    File seqTimePartitionDir = new File(dataDir, String.valueOf(timePartition));
+    File seqTimePartitionSnapshotDir = new File(localSeqSnapshotDir, String.valueOf(timePartition));
+
+    try {
+      createFileSnapshotToTargetOne(seqTimePartitionDir, seqTimePartitionSnapshotDir);
+    } catch (IOException e) {
+      LOGGER.error(
+          "Failed to create snapshot for {}-{}",
+          dataRegion.getStorageGroupName(),
+          dataRegion.getDataRegionId(),
+          e);
+      cleanUpWhenFail(snapshotDir);
+    }
   }
 
   private void createFileSnapshotToTargetOne(File sourceDir, File targetDir) throws IOException {
