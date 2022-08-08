@@ -177,7 +177,7 @@ public class StorageEngine implements IService {
               config.isRpcThriftCompressionEnable());
       ThreadPoolExecutor threadPool =
           new ThreadPoolExecutor(
-                  cacheNum + 5,
+              cacheNum + 5,
               cacheNum + 5,
               3,
               TimeUnit.SECONDS,
@@ -212,10 +212,9 @@ public class StorageEngine implements IService {
       threadPool.execute(operationSyncDMLLogService);
       // create OperationSyncConsumer
       for (int i = 0; i < cacheNum; i++) {
-
-        threadPool.execute(   new Thread(new OperationSyncConsumer(
-                arrayListBlockQueue.get(i), operationSyncsessionPool, operationSyncDMLLogService)));
-
+        threadPool.execute(
+            new OperationSyncConsumer(
+                arrayListBlockQueue.get(i), operationSyncsessionPool, operationSyncDMLLogService));
       }
       logger.info("Successfully initialize OperationSync!");
     } else {
