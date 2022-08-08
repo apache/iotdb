@@ -24,9 +24,9 @@ import org.apache.iotdb.commons.StepTracker;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.DataSet;
+import org.apache.iotdb.consensus.common.request.BatchIndexedConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.multileader.wal.ConsensusReqReader;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
@@ -50,7 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -66,12 +66,12 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private static final int MAX_REQUEST_CACHE_SIZE = 5;
   private static final long CACHE_WINDOW_TIME_IN_MS = 10_000;
 
-  private final PriorityQueue<InsertNode> requestCache;
+  private final PriorityQueue<InsertNodeWrapper> requestCache;
   private long nextSyncIndex = -1;
 
   public DataRegionStateMachine(DataRegion region) {
     this.region = region;
-    this.requestCache = new PriorityQueue<>(Comparator.comparingLong(InsertNode::getSyncIndex));
+    this.requestCache = new PriorityQueue<>();
   }
 
   @Override
@@ -116,28 +116,28 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
   }
 
-  private TSStatus cacheAndInsertLatestNode(long syncIndex, InsertNode insertNode) {
+  private TSStatus cacheAndInsertLatestNode(InsertNodeWrapper insertNodeWrapper) {
     long cacheRequestStartTime = System.nanoTime();
-    logger.info("syncIndex = {}, nextSyncIndex = {}", syncIndex, nextSyncIndex);
-    insertNode.setSyncIndex(syncIndex);
+    logger.info(
+        "syncIndex = {}, nextSyncIndex = {}", insertNodeWrapper.startSyncIndex, nextSyncIndex);
     synchronized (requestCache) {
-      requestCache.add(insertNode);
+      requestCache.add(insertNodeWrapper);
       // If the peek is not hold by current thread, it should notify the corresponding thread to
       // process the peek when the queue is full
       if (requestCache.size() == MAX_REQUEST_CACHE_SIZE
-          && requestCache.peek().getSyncIndex() != syncIndex) {
+          && requestCache.peek().getStartSyncIndex() != insertNodeWrapper.getStartSyncIndex()) {
         requestCache.notifyAll();
       }
       while (true) {
-        if (insertNode.getSyncIndex() == nextSyncIndex) {
-          requestCache.remove(insertNode);
-          nextSyncIndex++;
+        if (insertNodeWrapper.getStartSyncIndex() == nextSyncIndex) {
+          requestCache.remove(insertNodeWrapper);
+          nextSyncIndex = insertNodeWrapper.getEndSyncIndex() + 1;
           break;
         }
         if (requestCache.size() == MAX_REQUEST_CACHE_SIZE
-            && requestCache.peek().getSyncIndex() == insertNode.getSyncIndex()) {
+            && requestCache.peek().getStartSyncIndex() == insertNodeWrapper.getStartSyncIndex()) {
           requestCache.remove();
-          nextSyncIndex = insertNode.getSyncIndex() + 1;
+          nextSyncIndex = insertNodeWrapper.getEndSyncIndex() + 1;
           break;
         }
         try {
@@ -147,35 +147,72 @@ public class DataRegionStateMachine extends BaseStateMachine {
         }
       }
       StepTracker.trace("cacheAndQueueRequest", cacheRequestStartTime, System.nanoTime());
-      logger.info("queue size {}, syncIndex = {}", requestCache.size(), insertNode.getSyncIndex());
-      TSStatus tsStatus = write(insertNode);
+      logger.info(
+          "queue size {}, startSyncIndex = {}, endSyncIndex = {}",
+          requestCache.size(),
+          insertNodeWrapper.getStartSyncIndex(),
+          insertNodeWrapper.getEndSyncIndex());
+      List<TSStatus> subStatus = new LinkedList<>();
+      for (InsertNode insertNode : insertNodeWrapper.getInsertNodes()) {
+        subStatus.add(write(insertNode));
+      }
       // TODO: think about notifying until processing the last request in this batch
       requestCache.notifyAll();
-      return tsStatus;
+      return new TSStatus().setSubStatus(subStatus);
     }
   }
 
   private static class InsertNodeWrapper implements Comparable<InsertNodeWrapper> {
-    private final long syncIndex;
-    private final InsertNode insertNode;
+    private final long startSyncIndex;
+    private final long endSyncIndex;
+    private final List<InsertNode> insertNodes;
 
-    public InsertNodeWrapper(long syncIndex, InsertNode insertNode) {
-      this.syncIndex = syncIndex;
-      this.insertNode = insertNode;
+    public InsertNodeWrapper(long startSyncIndex, long endSyncIndex) {
+      this.startSyncIndex = startSyncIndex;
+      this.endSyncIndex = endSyncIndex;
+      this.insertNodes = new LinkedList<>();
     }
 
     @Override
     public int compareTo(@NotNull InsertNodeWrapper o) {
-      return Long.compare(syncIndex, o.syncIndex);
+      return Long.compare(startSyncIndex, o.startSyncIndex);
     }
 
-    public long getSyncIndex() {
-      return syncIndex;
+    public void add(InsertNode insertNode) {
+      this.insertNodes.add(insertNode);
     }
 
-    public InsertNode getInsertNode() {
-      return insertNode;
+    public long getStartSyncIndex() {
+      return startSyncIndex;
     }
+
+    public long getEndSyncIndex() {
+      return endSyncIndex;
+    }
+
+    public List<InsertNode> getInsertNodes() {
+      return insertNodes;
+    }
+  }
+
+  private InsertNodeWrapper deserializeAndWrap(BatchIndexedConsensusRequest batchRequest) {
+    InsertNodeWrapper insertNodeWrapper =
+        new InsertNodeWrapper(batchRequest.getStartSyncIndex(), batchRequest.getEndSyncIndex());
+    for (IndexedConsensusRequest indexedRequest : batchRequest.getRequests()) {
+      insertNodeWrapper.add(grabInsertNode(indexedRequest));
+    }
+    return insertNodeWrapper;
+  }
+
+  private InsertNode grabInsertNode(IndexedConsensusRequest indexedRequest) {
+    List<InsertNode> insertNodes = new ArrayList<>(indexedRequest.getRequests().size());
+    for (IConsensusRequest req : indexedRequest.getRequests()) {
+      // PlanNode in IndexedConsensusRequest should always be InsertNode
+      InsertNode innerNode = (InsertNode) getPlanNode(req);
+      innerNode.setSearchIndex(indexedRequest.getSearchIndex());
+      insertNodes.add(innerNode);
+    }
+    return mergeInsertNodes(insertNodes);
   }
 
   @Override
@@ -184,21 +221,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
     try {
       if (request instanceof IndexedConsensusRequest) {
         IndexedConsensusRequest indexedRequest = (IndexedConsensusRequest) request;
-        List<InsertNode> insertNodes = new ArrayList<>(indexedRequest.getRequests().size());
-        for (IConsensusRequest req : indexedRequest.getRequests()) {
-          // PlanNode in IndexedConsensusRequest should always be InsertNode
-          InsertNode innerNode = (InsertNode) getPlanNode(req);
-          innerNode.setSearchIndex(indexedRequest.getSearchIndex());
-          insertNodes.add(innerNode);
-        }
-        if (indexedRequest.getSearchIndex() == ConsensusReqReader.DEFAULT_SEARCH_INDEX) {
-          TSStatus status =
-              cacheAndInsertLatestNode(
-                  indexedRequest.getSyncIndex(), mergeInsertNodes(insertNodes));
-          return status;
-        } else {
-          planNode = mergeInsertNodes(insertNodes);
-        }
+        planNode = grabInsertNode(indexedRequest);
+      } else if (request instanceof BatchIndexedConsensusRequest) {
+        InsertNodeWrapper insertNodeWrapper =
+            deserializeAndWrap((BatchIndexedConsensusRequest) request);
+        return cacheAndInsertLatestNode(insertNodeWrapper);
       } else {
         planNode = getPlanNode(request);
       }
