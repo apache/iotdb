@@ -37,6 +37,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -87,6 +88,7 @@ public class IoTDBUDFWindowQueryIT {
       statement.execute("SET STORAGE GROUP TO root.vehicle");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s1 with datatype=INT32,encoding=PLAIN");
       statement.execute("CREATE TIMESERIES root.vehicle.d1.s2 with datatype=INT32,encoding=PLAIN");
+      statement.execute("CREATE TIMESERIES root.vehicle.d1.s3 with datatype=INT32,encoding=PLAIN");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -99,6 +101,15 @@ public class IoTDBUDFWindowQueryIT {
         statement.execute(
             (String.format(
                 "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", i, i, i)));
+      }
+
+      for (int i = 0; i < ITERATION_TIMES; ++i) {
+        if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 9996
+            || i == 9997 || i == 9998) {
+          continue;
+        }
+        statement.execute(
+            (String.format("insert into root.vehicle.d1(timestamp,s3) values(%d,%d)", i, i)));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -499,8 +510,11 @@ public class IoTDBUDFWindowQueryIT {
 
     sql =
         String.format(
-            "select window_start_end(s1, '%s'='%s') from root.vehicle.d1",
-            UDFTestConstant.TIME_INTERVAL_KEY, timeInterval);
+            "select window_start_end(s1, '%s'='%s', '%s'='%s') from root.vehicle.d1",
+            UDFTestConstant.ACCESS_STRATEGY_KEY,
+            UDFTestConstant.ACCESS_STRATEGY_SLIDING_TIME,
+            UDFTestConstant.TIME_INTERVAL_KEY,
+            timeInterval);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
         Statement statement = conn.createStatement();
@@ -803,5 +817,135 @@ public class IoTDBUDFWindowQueryIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private void testSessionTimeWindowSS(
+      String sessionGap, long[] windowStart, long[] windowEnd, Long displayBegin, Long displayEnd) {
+    String sql;
+    if (displayBegin == null) {
+      sql =
+          String.format(
+              "select window_start_end(s3, '%s'='%s', '%s'='%s') from root.vehicle.d1",
+              UDFTestConstant.ACCESS_STRATEGY_KEY,
+              UDFTestConstant.ACCESS_STRATEGY_SESSION,
+              UDFTestConstant.SESSION_GAP_KEY,
+              sessionGap);
+    } else {
+      sql =
+          String.format(
+              "select window_start_end(s3, '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s') from root.vehicle.d1",
+              UDFTestConstant.ACCESS_STRATEGY_KEY,
+              UDFTestConstant.ACCESS_STRATEGY_SESSION,
+              UDFTestConstant.DISPLAY_WINDOW_BEGIN_KEY,
+              displayBegin.longValue(),
+              UDFTestConstant.DISPLAY_WINDOW_END_KEY,
+              displayEnd.longValue(),
+              UDFTestConstant.SESSION_GAP_KEY,
+              sessionGap);
+    }
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement();
+        ResultSet resultSet = statement.executeQuery(sql)) {
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
+      for (int i = 0; i < windowStart.length; i++) {
+        resultSet.next();
+        Assert.assertEquals(resultSet.getLong(1), windowStart[i]);
+        Assert.assertEquals(resultSet.getLong(2), windowEnd[i]);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testSessionTimeWindowSS1() {
+    String sessionGap = "2";
+    long[] windowStart = new long[] {0, 8, 55, 9999};
+    long[] windowEnd = new long[] {4, 50, 9995, 9999};
+    testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, null, null);
+  }
+
+  @Test
+  public void testSessionTimeWindowSS2() {
+    String sessionGap = "5";
+    long[] windowStart = new long[] {0, 55};
+    long[] windowEnd = new long[] {50, 9999};
+    testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, null, null);
+  }
+
+  @Test
+  public void testSessionTimeWindowSS3() {
+    String sessionGap = "6";
+    long[] windowStart = new long[] {0};
+    long[] windowEnd = new long[] {9999};
+    testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, null, null);
+  }
+
+  @Test
+  public void testSessionTimeWindowSS4() {
+    String sessionGap = "2";
+    Long displayBegin = 1L;
+    Long displayEnd = 9993L;
+    long[] windowStart = new long[] {1, 8, 55};
+    long[] windowEnd = new long[] {4, 50, 9992};
+    testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, displayBegin, displayEnd);
+  }
+
+  @Test
+  public void testSessionTimeWindowSS5() {
+    String sessionGap = "5";
+    Long displayBegin = 43L;
+    Long displayEnd = 100L;
+    long[] windowStart = new long[] {43, 55};
+    long[] windowEnd = new long[] {50, 99};
+    testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, displayBegin, displayEnd);
+  }
+
+  @Test
+  public void testSessionTimeWindowSS6() {
+    String sessionGap = "1";
+    Long displayBegin = 2L;
+    Long displayEnd = 20000L;
+    ArrayList<Long> windowStart = new ArrayList<>();
+    ArrayList<Long> windowEnd = new ArrayList<>();
+    for (long i = displayBegin; i <= 9999; i++) {
+      if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 9996
+          || i == 9997 || i == 9998) {
+        continue;
+      }
+      windowStart.add(i);
+      windowEnd.add(i);
+    }
+    testSessionTimeWindowSS(
+        sessionGap,
+        windowStart.stream().mapToLong(t -> t.longValue()).toArray(),
+        windowEnd.stream().mapToLong(t -> t.longValue()).toArray(),
+        displayBegin,
+        displayEnd);
+  }
+
+  @Test
+  public void testSessionTimeWindowSS7() {
+    String sessionGap = "1";
+    Long displayBegin = 2L;
+    Long displayEnd = 20000L;
+    ArrayList<Long> windowStart = new ArrayList<>();
+    ArrayList<Long> windowEnd = new ArrayList<>();
+    for (long i = displayBegin; i <= 9999; i++) {
+      if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 9996
+          || i == 9997 || i == 9998) {
+        continue;
+      }
+      windowStart.add(i);
+      windowEnd.add(i);
+    }
+    testSessionTimeWindowSS(
+        sessionGap,
+        windowStart.stream().mapToLong(t -> t.longValue()).toArray(),
+        windowEnd.stream().mapToLong(t -> t.longValue()).toArray(),
+        displayBegin,
+        displayEnd);
   }
 }

@@ -707,9 +707,10 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
           final YieldableState yieldableState =
               LayerCacheUtils.yieldRow(udfInputDataSet, rowRecordList);
           if (yieldableState == YieldableState.YIELDABLE) {
-            if (rowRecordList.getTime(rowRecordList.size() - 1)
-                    - rowRecordList.getTime(rowRecordList.size() - 2)
-                >= sessionTimeGap) {
+            if (rowRecordList.getTime(rowRecordList.size() - 2) >= displayWindowBegin
+                && rowRecordList.getTime(rowRecordList.size() - 1)
+                        - rowRecordList.getTime(rowRecordList.size() - 2)
+                    >= sessionTimeGap) {
               nextIndexEnd = rowRecordList.size() - 1;
               break;
             } else {

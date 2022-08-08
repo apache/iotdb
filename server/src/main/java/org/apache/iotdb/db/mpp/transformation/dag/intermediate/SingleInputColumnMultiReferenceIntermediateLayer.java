@@ -594,8 +594,9 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
               LayerCacheUtils.yieldPoint(
                   parentLayerPointReaderDataType, parentLayerPointReader, tvList);
           if (yieldableState == YieldableState.YIELDABLE) {
-            if (tvList.getTime(tvList.size() - 1) - tvList.getTime(tvList.size() - 2)
-                >= sessionTimeGap) {
+            if (tvList.getTime(tvList.size() - 2) >= displayWindowBegin
+                && tvList.getTime(tvList.size() - 1) - tvList.getTime(tvList.size() - 2)
+                    >= sessionTimeGap) {
               nextIndexEnd = tvList.size() - 1;
               break;
             } else {
