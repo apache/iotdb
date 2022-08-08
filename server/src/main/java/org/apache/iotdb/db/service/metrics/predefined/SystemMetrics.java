@@ -131,7 +131,7 @@ public class SystemMetrics implements IMetricSet {
     service.scheduleAtFixedRate(
         this::collect,
         1,
-        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriod(),
+        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
         TimeUnit.MILLISECONDS);
   }
 

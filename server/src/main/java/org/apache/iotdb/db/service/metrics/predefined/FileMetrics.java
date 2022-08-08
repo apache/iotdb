@@ -52,43 +52,43 @@ public class FileMetrics implements IMetricSet {
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        walFileTotalSize,
-        value -> value,
+        this,
+        FileMetrics::getWalFileTotalSize,
         Tag.NAME.toString(),
         "wal");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        sequenceFileTotalSize,
-        value -> value,
+        this,
+        FileMetrics::getSequenceFileTotalSize,
         Tag.NAME.toString(),
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        unsequenceFileTotalSize,
-        value -> value,
+        this,
+        FileMetrics::getUnsequenceFileTotalSize,
         Tag.NAME.toString(),
         "unseq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        walFileTotalCount,
-        value -> value,
+        this,
+        FileMetrics::getWalFileTotalCount,
         Tag.NAME.toString(),
         "wal");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        sequenceFileTotalCount,
-        value -> value,
+        this,
+        FileMetrics::getSequenceFileTotalCount,
         Tag.NAME.toString(),
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        unsequenceFileTotalCount,
-        value -> value,
+        this,
+        FileMetrics::getUnsequenceFileTotalCount,
         Tag.NAME.toString(),
         "unseq");
   }
@@ -103,8 +103,8 @@ public class FileMetrics implements IMetricSet {
     service.scheduleAtFixedRate(
         this::collect,
         1,
-        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriod(),
-        TimeUnit.MILLISECONDS);
+        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
+        TimeUnit.SECONDS);
   }
 
   @Override
@@ -149,7 +149,7 @@ public class FileMetrics implements IMetricSet {
                   return result;
                 })
             .sum();
-    sequenceFileTotalSize =
+    sequenceFileTotalCount =
         Stream.of(dataDirs)
             .mapToLong(
                 dir -> {
@@ -179,5 +179,29 @@ public class FileMetrics implements IMetricSet {
                   }
                 })
             .sum();
+  }
+
+  public long getWalFileTotalSize() {
+    return walFileTotalSize;
+  }
+
+  public long getWalFileTotalCount() {
+    return walFileTotalCount;
+  }
+
+  public long getSequenceFileTotalSize() {
+    return sequenceFileTotalSize;
+  }
+
+  public long getSequenceFileTotalCount() {
+    return sequenceFileTotalCount;
+  }
+
+  public long getUnsequenceFileTotalSize() {
+    return unsequenceFileTotalSize;
+  }
+
+  public long getUnsequenceFileTotalCount() {
+    return unsequenceFileTotalCount;
   }
 }
