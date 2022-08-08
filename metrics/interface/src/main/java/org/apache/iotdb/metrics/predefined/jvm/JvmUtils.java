@@ -17,14 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.utils;
+package org.apache.iotdb.metrics.predefined.jvm;
 
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
 import java.util.function.ToLongFunction;
 
 public class JvmUtils {
-  public static double getUsageValue(
+  static double getUsageValue(
       MemoryPoolMXBean memoryPoolMXBean, ToLongFunction<MemoryUsage> getter) {
     MemoryUsage usage = getUsage(memoryPoolMXBean);
     if (usage == null) {
