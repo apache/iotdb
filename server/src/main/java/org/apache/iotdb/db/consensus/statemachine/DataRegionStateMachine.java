@@ -118,6 +118,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   private TSStatus cacheAndInsertLatestNode(long syncIndex, InsertNode insertNode) {
     long cacheRequestStartTime = System.nanoTime();
+    logger.info("syncIndex = {}, nextSyncIndex = {}", syncIndex, nextSyncIndex);
     insertNode.setSyncIndex(syncIndex);
     synchronized (requestCache) {
       requestCache.add(insertNode);
@@ -190,11 +191,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
           insertNodes.add(innerNode);
         }
         if (indexedRequest.getSearchIndex() == ConsensusReqReader.DEFAULT_SEARCH_INDEX) {
-
           TSStatus status =
               cacheAndInsertLatestNode(
                   indexedRequest.getSyncIndex(), mergeInsertNodes(insertNodes));
-
           return status;
         } else {
           planNode = mergeInsertNodes(insertNodes);
