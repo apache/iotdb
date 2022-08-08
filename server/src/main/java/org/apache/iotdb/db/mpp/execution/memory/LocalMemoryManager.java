@@ -30,11 +30,9 @@ public class LocalMemoryManager {
   private final MemoryPool queryPool;
 
   public LocalMemoryManager() {
-    queryPool =
-        new MemoryPool(
-            "query",
-            IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForRead(),
-            (long) (IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForRead() * 0.5));
+    long totalMemory = IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForDataExchange();
+    int maxQueryThread = IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread();
+    queryPool = new MemoryPool("query", totalMemory, totalMemory / maxQueryThread);
   }
 
   public MemoryPool getQueryPool() {

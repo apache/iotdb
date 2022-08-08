@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryUtil.compareTimeSeries;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 // collect all last query result in the same data region and sort them according to the
 // time-series's alphabetical order
@@ -188,6 +189,22 @@ public class LastQuerySortOperator implements ProcessOperator {
   @Override
   public boolean isFinished() {
     return !hasNext();
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long maxPeekMemory =
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + tsBlockBuilder.getRetainedSizeInBytes();
+    long maxChildrenReturnSize = 0;
+    for (Operator child : children) {
+      maxChildrenReturnSize = Math.max(maxChildrenReturnSize, child.calculateMaxReturnSize());
+    }
+    return maxPeekMemory;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   private int getEndIndex() {

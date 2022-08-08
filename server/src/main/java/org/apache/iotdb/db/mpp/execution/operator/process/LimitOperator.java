@@ -80,4 +80,14 @@ public class LimitOperator implements ProcessOperator {
   public boolean isFinished() {
     return remainingLimit == 0 || child.isFinished();
   }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return child.calculateMaxPeekMemory();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return child.calculateMaxReturnSize();
+  }
 }

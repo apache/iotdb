@@ -21,11 +21,13 @@ package org.apache.iotdb.db.mpp.execution.operator.process.last;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.process.ProcessOperator;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import org.openjdk.jol.info.ClassLayout;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -39,6 +41,8 @@ import static org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryU
 // merge all last query result from different data regions, it will select max time for the same
 // time-series
 public class LastQueryMergeOperator implements ProcessOperator {
+
+  private static final int MAP_NODE_RETRAINED_SIZE = 16;
 
   private final OperatorContext operatorContext;
 
@@ -219,6 +223,30 @@ public class LastQueryMergeOperator implements ProcessOperator {
     return finished;
   }
 
+  @Override
+  public long calculateMaxPeekMemory() {
+    // result size + cached TreeMap size
+    long maxPeekMemory =
+        calculateMaxReturnSize()
+            + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()
+                * (Location.INSTANCE_SIZE + MAP_NODE_RETRAINED_SIZE);
+    long childrenMaxPeekMemory = 0;
+    for (Operator child : children) {
+      maxPeekMemory += child.calculateMaxReturnSize();
+      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+    }
+    return Math.max(maxPeekMemory, childrenMaxPeekMemory);
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    long maxReturnSize = 0;
+    for (Operator child : children) {
+      maxReturnSize = Math.max(maxReturnSize, child.calculateMaxReturnSize());
+    }
+    return maxReturnSize;
+  }
+
   /**
    * If the tsBlock of columnIndex is null or has no more data in the tsBlock, return true; else
    * return false;
@@ -241,6 +269,8 @@ public class LastQueryMergeOperator implements ProcessOperator {
   }
 
   private static class Location {
+
+    private static final long INSTANCE_SIZE = ClassLayout.parseClass(Location.class).instanceSize();
     int tsBlockIndex;
     int rowIndex;
 

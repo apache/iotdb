@@ -58,6 +58,16 @@ public class LastCacheScanOperator implements SourceOperator {
   }
 
   @Override
+  public long calculateMaxPeekMemory() {
+    return tsBlock.getRetainedSizeInBytes();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return tsBlock.getRetainedSizeInBytes();
+  }
+
+  @Override
   public PlanNodeId getSourceId() {
     return sourceId;
   }

@@ -131,4 +131,14 @@ public class UpdateLastCacheOperator implements ProcessOperator {
   public void close() throws Exception {
     child.close();
   }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return child.calculateMaxPeekMemory();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return child.calculateMaxReturnSize();
+  }
 }
