@@ -31,6 +31,7 @@ import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
@@ -38,6 +39,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRemoveResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowDataNodesResp;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.it.env.ConfigFactory;
@@ -370,14 +372,19 @@ public class IoTDBConfigNodeIT {
   }
 
   @Test
-  public void showClusterAndDataNodesTest() {
+  public void showClusterAndNodesTest() {
     try (SyncConfigNodeIServiceClient client =
         (SyncConfigNodeIServiceClient) EnvFactory.getEnv().getConfigNodeConnection()) {
+
+      TShowClusterResp clusterNodes;
+      TShowConfigNodesResp showConfigNodesResp;
+      TShowDataNodesResp showDataNodesResp;
+
       List<ConfigNodeWrapper> configNodeWrappers = EnvFactory.getEnv().getConfigNodeWrapperList();
       List<DataNodeWrapper> dataNodeWrappers = EnvFactory.getEnv().getDataNodeWrapperList();
 
       // test showCluster
-      TShowClusterResp clusterNodes = getClusterNodeInfos(client, 1, 3);
+      clusterNodes = getClusterNodeInfos(client, 1, 3);
       List<TConfigNodeLocation> configNodeLocations = clusterNodes.getConfigNodeList();
       List<TDataNodeLocation> dataNodeLocations = clusterNodes.getDataNodeList();
 
@@ -415,8 +422,24 @@ public class IoTDBConfigNodeIT {
         assertTrue(found);
       }
 
+      // test showConfigNodes
+      showConfigNodesResp = client.showConfigNodes();
+      List<TConfigNodeInfo> configNodesInfo = showConfigNodesResp.getConfigNodesInfoList();
+
+      for (TConfigNodeInfo configNodeInfo : configNodesInfo) {
+        boolean found = false;
+        for (ConfigNodeWrapper configNodeWrapper : configNodeWrappers) {
+          if (configNodeWrapper.getIp().equals(configNodeInfo.getInternalAddress())
+              && configNodeWrapper.getPort() == configNodeInfo.getInternalPort()) {
+            found = true;
+            break;
+          }
+        }
+        assertTrue(found);
+      }
+
       // test showDataNodes
-      TShowDataNodesResp showDataNodesResp = client.showDataNodes();
+      showDataNodesResp = client.showDataNodes();
       List<TDataNodeInfo> dataNodesInfo = showDataNodesResp.getDataNodesInfoList();
 
       for (TDataNodeInfo dataNodeInfo : dataNodesInfo) {
