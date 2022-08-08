@@ -54,9 +54,9 @@ import static org.apache.iotdb.commons.sync.SyncConstant.RETRY_CODE;
 import static org.apache.iotdb.commons.sync.SyncConstant.SUCCESS_CODE;
 import static org.apache.iotdb.db.sync.transport.conf.TransportConfig.isCheckFileDegistAgain;
 
-public class StandaloneTransportClient implements ITransportClient {
+public class IoTDBSInkTransportClient implements ITransportClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(StandaloneTransportClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSInkTransportClient.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -80,7 +80,7 @@ public class StandaloneTransportClient implements ITransportClient {
    * @param port remote port
    * @param localIP local ip address
    */
-  public StandaloneTransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
+  public IoTDBSInkTransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
     this.ipAddress = ipAddress;

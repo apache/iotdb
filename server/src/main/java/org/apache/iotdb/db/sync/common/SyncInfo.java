@@ -165,7 +165,7 @@ public class SyncInfo {
 
   public void operatePipe(String pipeName, Operator.OperatorType operatorType)
       throws PipeException, IOException {
-    checkRunningPipeExistAndName(pipeName);
+    checkIfPipeExistAndRunning(pipeName);
     switch (operatorType) {
       case START_PIPE:
         runningPipe.start();
@@ -186,7 +186,7 @@ public class SyncInfo {
     return pipes;
   }
 
-  private void checkRunningPipeExistAndName(String pipeName) throws PipeException {
+  private void checkIfPipeExistAndRunning(String pipeName) throws PipeException {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
       throw new PipeException("There is no existing pipe.");
     }

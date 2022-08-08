@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.transport.client.ITransportClient;
-import org.apache.iotdb.db.sync.transport.client.StandaloneTransportClient;
+import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +63,7 @@ public class TransportHandler {
 
     this.localIP = getLocalIP(pipeSink);
     this.transportClient =
-        new StandaloneTransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIP);
+        new IoTDBSInkTransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIP);
   }
 
   private String getLocalIP(IoTDBPipeSink pipeSink) {

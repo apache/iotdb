@@ -63,7 +63,7 @@ public class SyncLogReader {
     try (BufferedReader br = new BufferedReader(new FileReader(serviceLogFile))) {
       recoverPipe(br);
     } catch (IOException e) {
-      logger.info("Sync service log file not found");
+      logger.warn("Sync service log file not found");
     }
     File msgLogFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_MSG_LOG_NAME);
     try (BufferedReader loadReader = new BufferedReader(new FileReader(msgLogFile))) {

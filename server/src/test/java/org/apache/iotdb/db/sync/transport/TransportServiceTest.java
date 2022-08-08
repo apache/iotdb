@@ -31,7 +31,7 @@ import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.transport.client.StandaloneTransportClient;
+import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
 import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.session.Session;
@@ -135,8 +135,8 @@ public class TransportServiceTest {
 
     // 4. start client
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
-    StandaloneTransportClient client =
-        new StandaloneTransportClient(
+    IoTDBSInkTransportClient client =
+        new IoTDBSInkTransportClient(
             pipe,
             "127.0.0.1",
             IoTDBDescriptor.getInstance().getConfig().getPipeServerPort(),
