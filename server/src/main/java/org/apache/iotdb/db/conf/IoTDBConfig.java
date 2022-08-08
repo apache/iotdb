@@ -449,7 +449,7 @@ public class IoTDBConfig {
   private long allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
 
   /** Whether to enable Last cache */
-  private boolean lastCacheEnable = false;
+  private boolean lastCacheEnable = true;
 
   /** Set true to enable statistics monitor service, false to disable statistics service. */
   private boolean enableStatMonitor = false;
@@ -516,7 +516,7 @@ public class IoTDBConfig {
   private String watermarkMethod = "GroupBasedLSBMethod(embed_row_cycle=2,embed_lsb_num=5)";
 
   /** Switch of creating schema automatically */
-  private boolean enableAutoCreateSchema = false;
+  private boolean enableAutoCreateSchema = true;
 
   /** register time series as which type when receiving boolean string "true" or "false" */
   private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
@@ -822,11 +822,11 @@ public class IoTDBConfig {
   private String encryptDecryptProviderParameter;
 
   // Operation Sync Config
-  private boolean enableOperationSync = true;
+  private boolean enableOperationSync = false;
 
   // Secondary IoTDB
-  private String secondaryAddress = "192.168.1.99";
-  private int secondaryPort = 6667;
+  private String secondaryAddress = "127.0.0.1";
+  private int secondaryPort = 6668;
   private String secondaryUser = "root";
   private String secondaryPassword = "root";
 
@@ -847,7 +847,7 @@ public class IoTDBConfig {
   private int operationSyncProducerCacheSize = 1024;
 
   // OperationSyncProducer DML cache number
-  private int operationSyncProducerCacheNum = 3;
+  private int operationSyncProducerCacheNum = 8;
 
   // OperationSyncConsumer concurrency size
   private int operationSyncConsumerConcurrencySize = 4;
