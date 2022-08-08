@@ -42,7 +42,7 @@ import java.util.List;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-public class SnapshotTest {
+public class IoTDBSnapshotTest {
   String[] originDataDirs;
   private String[] testDataDirs =
       new String[] {"target/data/data1", "target/data/data2", "target/data/data3"};
@@ -59,6 +59,7 @@ public class SnapshotTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
+    DirectoryManager.restartDirectoryManager();
     EnvironmentUtils.recursiveDeleteFolder("target" + File.separator + "data");
     EnvironmentUtils.cleanEnv();
   }
