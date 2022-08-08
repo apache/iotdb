@@ -363,7 +363,6 @@ public class IoTDBConfigNodeIT {
           TSStatusCode.SUCCESS_STATUS.getStatusCode(),
           dataNodeConfigurationResp.getStatus().getCode());
       assertEquals(0, dataNodeConfigurationResp.getDataNodeConfigurationMap().size());
-
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
