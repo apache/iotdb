@@ -47,6 +47,8 @@ public class MetricConfig {
   private List<PredefinedMetric> predefinedMetrics =
       Arrays.asList(PredefinedMetric.JVM, PredefinedMetric.FILE);
 
+  private Integer asyncCollectPeriod = 5;
+
   /** the http server's port for prometheus exporter to get metric data. */
   private String prometheusExporterPort = "9091";
 
@@ -213,6 +215,14 @@ public class MetricConfig {
 
   public void setPredefinedMetrics(List<PredefinedMetric> predefinedMetrics) {
     this.predefinedMetrics = predefinedMetrics;
+  }
+
+  public Integer getAsyncCollectPeriod() {
+    return asyncCollectPeriod;
+  }
+
+  public void setAsyncCollectPeriod(Integer asyncCollectPeriod) {
+    this.asyncCollectPeriod = asyncCollectPeriod;
   }
 
   public String getPrometheusExporterPort() {

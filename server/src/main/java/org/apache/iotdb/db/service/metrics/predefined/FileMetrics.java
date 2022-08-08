@@ -25,119 +25,70 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.io.File;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class FileMetrics implements IMetricSet {
+  private final String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
+  private final String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+  private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+  private long walFileTotalSize = 0L;
+  private long walFileTotalCount = 0L;
+  private long sequenceFileTotalSize = 0L;
+  private long sequenceFileTotalCount = 0L;
+  private long unsequenceFileTotalSize = 0L;
+  private long unsequenceFileTotalCount = 0L;
+
   @Override
   public void bindTo(MetricManager metricManager) {
-    String[] walDirs = IoTDBDescriptor.getInstance().getConfig().getWalDirs();
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        walDirs,
-        value -> Stream.of(value).mapToLong(FileUtils::getDirSize).sum(),
+        walFileTotalSize,
+        value -> value,
         Tag.NAME.toString(),
         "wal");
-
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                      return FileUtils.getDirSize(dir);
-                    })
-                .sum(),
+        sequenceFileTotalSize,
+        value -> value,
         Tag.NAME.toString(),
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_SIZE.toString(),
         MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                      return FileUtils.getDirSize(dir);
-                    })
-                .sum(),
+        unsequenceFileTotalSize,
+        value -> value,
         Tag.NAME.toString(),
         "unseq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        walDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      File walFolder = new File(dir);
-                      File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
-                      long result = 0L;
-                      if (null != walNodeFolders) {
-                        for (File walNodeFolder : walNodeFolders) {
-                          if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
-                            result +=
-                                org.apache.commons.io.FileUtils.listFiles(walNodeFolder, null, true)
-                                    .size();
-                          }
-                        }
-                      }
-                      return result;
-                    })
-                .sum(),
+        walFileTotalCount,
+        value -> value,
         Tag.NAME.toString(),
         "wal");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
-                      File folder = new File(dir);
-                      if (folder.exists()) {
-                        return org.apache.commons.io.FileUtils.listFiles(
-                                new File(dir), new String[] {"tsfile"}, true)
-                            .size();
-                      } else {
-                        return 0L;
-                      }
-                    })
-                .sum(),
+        sequenceFileTotalCount,
+        value -> value,
         Tag.NAME.toString(),
         "seq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
         MetricLevel.IMPORTANT,
-        dataDirs,
-        value ->
-            Stream.of(value)
-                .mapToLong(
-                    dir -> {
-                      dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
-                      File folder = new File(dir);
-                      if (folder.exists()) {
-                        return org.apache.commons.io.FileUtils.listFiles(
-                                new File(dir), new String[] {"tsfile"}, true)
-                            .size();
-                      } else {
-                        return 0L;
-                      }
-                    })
-                .sum(),
+        unsequenceFileTotalCount,
+        value -> value,
         Tag.NAME.toString(),
         "unseq");
   }
@@ -145,5 +96,88 @@ public class FileMetrics implements IMetricSet {
   @Override
   public PredefinedMetric getType() {
     return PredefinedMetric.FILE;
+  }
+
+  @Override
+  public void startAsyncCollectedMetrics() {
+    service.scheduleAtFixedRate(
+        this::collect,
+        1,
+        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriod(),
+        TimeUnit.MILLISECONDS);
+  }
+
+  @Override
+  public void stopAsyncCollectedMetrics() {
+    service.shutdown();
+  }
+
+  private void collect() {
+    walFileTotalSize = Stream.of(walDirs).mapToLong(FileUtils::getDirSize).sum();
+    sequenceFileTotalSize =
+        Stream.of(dataDirs)
+            .mapToLong(
+                dir -> {
+                  dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
+                  return FileUtils.getDirSize(dir);
+                })
+            .sum();
+    unsequenceFileTotalSize =
+        Stream.of(dataDirs)
+            .mapToLong(
+                dir -> {
+                  dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
+                  return FileUtils.getDirSize(dir);
+                })
+            .sum();
+    walFileTotalCount =
+        Stream.of(walDirs)
+            .mapToLong(
+                dir -> {
+                  File walFolder = new File(dir);
+                  File[] walNodeFolders = walFolder.listFiles(File::isDirectory);
+                  long result = 0L;
+                  if (null != walNodeFolders) {
+                    for (File walNodeFolder : walNodeFolders) {
+                      if (walNodeFolder.exists() && walNodeFolder.isDirectory()) {
+                        result +=
+                            org.apache.commons.io.FileUtils.listFiles(walNodeFolder, null, true)
+                                .size();
+                      }
+                    }
+                  }
+                  return result;
+                })
+            .sum();
+    sequenceFileTotalSize =
+        Stream.of(dataDirs)
+            .mapToLong(
+                dir -> {
+                  dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
+                  File folder = new File(dir);
+                  if (folder.exists()) {
+                    return org.apache.commons.io.FileUtils.listFiles(
+                            new File(dir), new String[] {"tsfile"}, true)
+                        .size();
+                  } else {
+                    return 0L;
+                  }
+                })
+            .sum();
+    unsequenceFileTotalCount =
+        Stream.of(dataDirs)
+            .mapToLong(
+                dir -> {
+                  dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
+                  File folder = new File(dir);
+                  if (folder.exists()) {
+                    return org.apache.commons.io.FileUtils.listFiles(
+                            new File(dir), new String[] {"tsfile"}, true)
+                        .size();
+                  } else {
+                    return 0L;
+                  }
+                })
+            .sum();
   }
 }
