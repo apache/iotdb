@@ -22,13 +22,8 @@ package org.apache.iotdb.consensus;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
-
-import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.io.File;
-import java.util.List;
 
 public class EmptyStateMachine implements IStateMachine, IStateMachine.EventApi {
 
@@ -37,10 +32,6 @@ public class EmptyStateMachine implements IStateMachine, IStateMachine.EventApi 
 
   @Override
   public void stop() {}
-
-  @Override
-  public void multiLeaderWriteAsync(
-      List<IndexedConsensusRequest> requests, AsyncMethodCallback<TSyncLogRes> resultHandler) {}
 
   @Override
   public TSStatus write(IConsensusRequest IConsensusRequest) {

@@ -24,13 +24,8 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
-
-import org.apache.thrift.async.AsyncMethodCallback;
 
 import java.io.File;
-import java.util.List;
 
 public class StandAloneServerImpl implements IStateMachine {
 
@@ -60,12 +55,6 @@ public class StandAloneServerImpl implements IStateMachine {
   @Override
   public void stop() {
     stateMachine.stop();
-  }
-
-  @Override
-  public void multiLeaderWriteAsync(
-      List<IndexedConsensusRequest> requests, AsyncMethodCallback<TSyncLogRes> resultHandler) {
-    throw new UnsupportedOperationException();
   }
 
   @Override

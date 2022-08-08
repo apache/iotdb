@@ -31,17 +31,13 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
-import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
-import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 /** Statemachine for PartitionRegion */
 public class PartitionRegionStateMachine implements IStateMachine, IStateMachine.EventApi {
@@ -165,8 +161,4 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   public void stop() {
     // do nothing
   }
-
-  @Override
-  public void multiLeaderWriteAsync(
-      List<IndexedConsensusRequest> requests, AsyncMethodCallback<TSyncLogRes> resultHandler) {}
 }
