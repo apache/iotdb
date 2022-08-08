@@ -55,6 +55,10 @@ public interface ICompactionSelector {
     }
   }
 
+  default long getSelectedFileMemoryCost() {
+    return 0L;
+  }
+
   static AbstractCompactionEstimator getCompactionEstimator(
       CrossCompactionPerformer compactionPerformer, boolean isInnerSpace) {
     switch (compactionPerformer) {

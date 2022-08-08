@@ -170,6 +170,14 @@ public class SystemInfo {
     this.flushingMemTablesCost -= flushingMemTableCost;
   }
 
+  public synchronized void addCompactionMemoryCost(long compactionMemoryCost) {
+    this.totalStorageGroupMemCost += compactionMemoryCost;
+  }
+
+  public synchronized void resetCompactionMemoryCost(long compactionMemoryCost) {
+    this.totalStorageGroupMemCost -= compactionMemoryCost;
+  }
+
   private void logCurrentTotalSGMemory() {
     logger.debug("Current Sg cost is {}", totalStorageGroupMemCost);
   }
