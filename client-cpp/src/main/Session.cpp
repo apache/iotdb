@@ -274,6 +274,18 @@ bool SessionDataSet::hasNext() {
             } else {
                 tsQueryDataSet = make_shared<TSQueryDataSet>(resp->queryDataSet);
                 tsQueryDataSetTimeBuffer.str = tsQueryDataSet->time;
+                tsQueryDataSetTimeBuffer.pos = 0;
+                for (size_t i = 0; i < columnNameList.size(); i++) {
+                    valueBuffers.pop_back();
+                    bitmapBuffers.pop_back();
+                }
+                for (size_t i = 0; i < columnNameList.size(); i++) {
+                    std::string name = columnNameList[i];
+                    valueBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(tsQueryDataSet->valueList[columnMap[name]])));
+                    bitmapBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(tsQueryDataSet->bitmapList[columnMap[name]])));
+                }
                 rowsIndex = 0;
             }
         }
@@ -906,11 +918,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
                                        vector<vector<char *>> &valuesList,
                                        bool sorted) {
 
-    if (sorted) {
-        if (!checkSorted(times)) {
-            throw BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
             index[i] = i;
@@ -962,11 +970,7 @@ void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
                                               vector<vector<char *>> &valuesList,
                                               bool sorted) {
 
-    if (sorted) {
-        if (!checkSorted(times)) {
-            throw BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
-        }
-    } else {
+    if (!checkSorted(times)) {
         int *index = new int[times.size()];
         for (size_t i = 0; i < times.size(); i++) {
             index[i] = i;

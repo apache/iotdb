@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.mpp.plan.scheduler;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
+import org.apache.iotdb.rpc.TSStatusCode;
 
 import io.airlift.units.Duration;
 import org.slf4j.Logger;
@@ -78,15 +80,19 @@ public class ClusterScheduler implements IScheduler {
     if (queryType == QueryType.READ) {
       this.stateTracker =
           new FixedRateFragInsStateTracker(
-              stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
+              stateMachine, scheduledExecutor, instances, internalServiceClientManager);
       this.queryTerminator =
           new SimpleQueryTerminator(
-              executor,
               scheduledExecutor,
               queryContext.getQueryId(),
               instances,
               internalServiceClientManager);
     }
+  }
+
+  private boolean needRetry(TSStatus failureStatus) {
+    return failureStatus != null
+        && failureStatus.getCode() == TSStatusCode.SYNC_CONNECTION_EXCEPTION.getStatusCode();
   }
 
   @Override
@@ -99,12 +105,10 @@ public class ClusterScheduler implements IScheduler {
     try {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
-        if (result.getFailureStatus() != null) {
-          stateMachine.transitionToFailed(result.getFailureStatus());
+        if (needRetry(result.getFailureStatus())) {
+          stateMachine.transitionToRetrying(result.getFailureStatus());
         } else {
-          // won't get into here
-          stateMachine.transitionToFailed(
-              new IllegalStateException("Fragment cannot be dispatched"));
+          stateMachine.transitionToFailed(result.getFailureStatus());
         }
         return;
       }
@@ -113,7 +117,7 @@ public class ClusterScheduler implements IScheduler {
       if (e instanceof InterruptedException) {
         Thread.currentThread().interrupt();
       }
-      stateMachine.transitionToRetrying(e);
+      stateMachine.transitionToFailed(e);
       return;
     }
 

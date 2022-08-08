@@ -24,19 +24,23 @@ import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.persistence.ProcedureInfo;
 import org.apache.iotdb.confignode.procedure.Procedure;
 import org.apache.iotdb.confignode.procedure.ProcedureExecutor;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.impl.AddConfigNodeProcedure;
 import org.apache.iotdb.confignode.procedure.impl.DeleteStorageGroupProcedure;
+import org.apache.iotdb.confignode.procedure.impl.RegionMigrateProcedure;
 import org.apache.iotdb.confignode.procedure.impl.RemoveConfigNodeProcedure;
+import org.apache.iotdb.confignode.procedure.impl.RemoveDataNodeProcedure;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
 import org.apache.iotdb.confignode.procedure.store.ConfigProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.IProcedureStore;
 import org.apache.iotdb.confignode.procedure.store.ProcedureStore;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -79,6 +83,7 @@ public class ProcedureManager {
             CONFIG_NODE_CONFIG.getProcedureCompletedCleanInterval(),
             CONFIG_NODE_CONFIG.getProcedureCompletedEvictTTL());
         store.start();
+        LOGGER.info("ProcedureManager is started successfully.");
       }
     } else {
       if (executor.isRunning()) {
@@ -86,6 +91,7 @@ public class ProcedureManager {
         if (!executor.isRunning()) {
           executor.join();
           store.stop();
+          LOGGER.info("ProcedureManager is stopped successfully.");
         }
       }
     }
@@ -111,11 +117,7 @@ public class ProcedureManager {
     }
   }
 
-  /**
-   * generate a procedure, and execute by one by one
-   *
-   * @param req new config node
-   */
+  /** Generate a AddConfigNodeProcedure, and serially execute all the AddConfigNodeProcedure */
   public void addConfigNode(TConfigNodeRegisterReq req) {
     AddConfigNodeProcedure addConfigNodeProcedure =
         new AddConfigNodeProcedure(req.getConfigNodeLocation());
@@ -123,15 +125,25 @@ public class ProcedureManager {
   }
 
   /**
-   * generate a procedure, and execute remove confignode one by one
-   *
-   * @param removeConfigNodePlan remove config node plan
+   * Generate a RemoveConfigNodeProcedure, and serially execute all the RemoveConfigNodeProcedure
    */
   public void removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
     RemoveConfigNodeProcedure removeConfigNodeProcedure =
         new RemoveConfigNodeProcedure(removeConfigNodePlan.getConfigNodeLocation());
     this.executor.submitProcedure(removeConfigNodeProcedure);
     LOGGER.info("Submit to remove ConfigNode, {}", removeConfigNodePlan);
+  }
+
+  /** Generate RemoveDataNodeProcedures, and serially execute all the RemoveDataNodeProcedure */
+  public boolean removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
+    removeDataNodePlan
+        .getDataNodeLocations()
+        .forEach(
+            tDataNodeLocation -> {
+              this.executor.submitProcedure(new RemoveDataNodeProcedure(tDataNodeLocation));
+              LOGGER.info("Submit to remove data node procedure, {}", tDataNodeLocation);
+            });
+    return true;
   }
 
   private static boolean getProcedureStatus(
@@ -214,5 +226,26 @@ public class ProcedureManager {
 
   public void setEnv(ConfigNodeProcedureEnv env) {
     this.env = env;
+  }
+
+  public void reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
+    LOGGER.info("receive DataNode region:{} migrate result:{}", req.getRegionId(), req);
+    this.executor
+        .getProcedures()
+        .values()
+        .forEach(
+            procedure -> {
+              if (procedure instanceof RegionMigrateProcedure) {
+                RegionMigrateProcedure regionMigrateProcedure = (RegionMigrateProcedure) procedure;
+                if (regionMigrateProcedure.getConsensusGroupId().equals(req.getRegionId())) {
+                  regionMigrateProcedure.notifyTheRegionMigrateFinished(req);
+                } else {
+                  LOGGER.warn(
+                      "DataNode report region:{} is not equals ConfigNode send region:{}",
+                      req.getRegionId(),
+                      regionMigrateProcedure.getConsensusGroupId());
+                }
+              }
+            });
   }
 }

@@ -2095,7 +2095,7 @@ public class DataRegion {
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
-
+    boolean hasReleasedLock = false;
     try {
       Set<PartialPath> devicePaths = IoTDB.schemaProcessor.getBelongedDevices(path);
       for (PartialPath device : devicePaths) {
@@ -2116,18 +2116,18 @@ public class DataRegion {
 
       Deletion deletion = new Deletion(path, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
 
+      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
+      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
+      separateTsFile(sealedTsFileResource, unsealedTsFileResource);
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(true),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter);
+          unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+
+      writeUnlock();
+      hasReleasedLock = true;
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(false),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter);
+          sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
 
     } catch (Exception e) {
       // roll back
@@ -2138,8 +2138,35 @@ public class DataRegion {
       }
       throw new IOException(e);
     } finally {
-      writeUnlock();
+      if (!hasReleasedLock) {
+        writeUnlock();
+      }
     }
+  }
+
+  /** Seperate tsfiles in TsFileManager to sealedList and unsealedList. */
+  private void separateTsFile(
+      List<TsFileResource> sealedResource, List<TsFileResource> unsealedResource) {
+    tsFileManager
+        .getTsFileList(true)
+        .forEach(
+            tsFileResource -> {
+              if (tsFileResource.isClosed()) {
+                sealedResource.add(tsFileResource);
+              } else {
+                unsealedResource.add(tsFileResource);
+              }
+            });
+    tsFileManager
+        .getTsFileList(false)
+        .forEach(
+            tsFileResource -> {
+              if (tsFileResource.isClosed()) {
+                sealedResource.add(tsFileResource);
+              } else {
+                unsealedResource.add(tsFileResource);
+              }
+            });
   }
 
   /**
@@ -2173,6 +2200,7 @@ public class DataRegion {
 
     // record files which are updated so that we can roll back them in case of exception
     List<ModificationFile> updatedModFiles = new ArrayList<>();
+    boolean hasReleasedLock = false;
 
     try {
 
@@ -2196,18 +2224,17 @@ public class DataRegion {
 
       Deletion deletion = new Deletion(pattern, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
 
+      List<TsFileResource> sealedTsFileResource = new ArrayList<>();
+      List<TsFileResource> unsealedTsFileResource = new ArrayList<>();
+      separateTsFile(sealedTsFileResource, unsealedTsFileResource);
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(true),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter);
+          unsealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
+      writeUnlock();
+      hasReleasedLock = true;
+
       deleteDataInFiles(
-          tsFileManager.getTsFileList(false),
-          deletion,
-          devicePaths,
-          updatedModFiles,
-          timePartitionFilter);
+          sealedTsFileResource, deletion, devicePaths, updatedModFiles, timePartitionFilter);
 
     } catch (Exception e) {
       // roll back
@@ -2218,7 +2245,9 @@ public class DataRegion {
       }
       throw new IOException(e);
     } finally {
-      writeUnlock();
+      if (!hasReleasedLock) {
+        writeUnlock();
+      }
     }
   }
 
@@ -2262,10 +2291,7 @@ public class DataRegion {
         && !timePartitionFilter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
       return true;
     }
-    if (!tsFileResource.isClosed()) {
-      // tsfile is not closed
-      return false;
-    }
+
     for (PartialPath device : devicePaths) {
       String deviceId = device.getFullPath();
       if (!tsFileResource.mayContainsDevice(deviceId)) {
@@ -2273,10 +2299,18 @@ public class DataRegion {
         continue;
       }
 
-      if (deleteEnd >= tsFileResource.getStartTime(deviceId)
-          && deleteStart <= tsFileResource.getEndTime(deviceId)) {
-        // time range of device has overlap with the deletion
-        return false;
+      long deviceEndTime = tsFileResource.getEndTime(deviceId);
+      if (!tsFileResource.isClosed() && deviceEndTime == Long.MIN_VALUE) {
+        // unsealed seq file
+        if (deleteEnd >= tsFileResource.getStartTime(deviceId)) {
+          return false;
+        }
+      } else {
+        // sealed file or unsealed unseq file
+        if (deleteEnd >= tsFileResource.getStartTime(deviceId) && deleteStart <= deviceEndTime) {
+          // time range of device has overlap with the deletion
+          return false;
+        }
       }
     }
     return true;
@@ -2299,36 +2333,38 @@ public class DataRegion {
         continue;
       }
 
-      if (tsFileResource.isCompacting()) {
-        // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-        // change after compaction
-        deletion.setFileOffset(Long.MAX_VALUE);
-        // write deletion into compaction modification file
-        tsFileResource.getCompactionModFile().write(deletion);
-        // write deletion into modification file to enable query during compaction
-        tsFileResource.getModFile().write(deletion);
-        // remember to close mod file
-        tsFileResource.getCompactionModFile().close();
-        tsFileResource.getModFile().close();
-      } else if (tsFileResource.isClosed()) {
-        deletion.setFileOffset(tsFileResource.getTsFileSize());
-        // write deletion into modification file
-        tsFileResource.getModFile().write(deletion);
-        // remember to close mod file
-        tsFileResource.getModFile().close();
+      if (tsFileResource.isClosed()) {
+        // delete data in sealed file
+        if (tsFileResource.isCompacting()) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          deletion.setFileOffset(Long.MAX_VALUE);
+          // write deletion into compaction modification file
+          tsFileResource.getCompactionModFile().write(deletion);
+          // write deletion into modification file to enable query during compaction
+          tsFileResource.getModFile().write(deletion);
+          // remember to close mod file
+          tsFileResource.getCompactionModFile().close();
+          tsFileResource.getModFile().close();
+        } else {
+          deletion.setFileOffset(tsFileResource.getTsFileSize());
+          // write deletion into modification file
+          tsFileResource.getModFile().write(deletion);
+          // remember to close mod file
+          tsFileResource.getModFile().close();
+        }
+        logger.info(
+            "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
+            deletion.getPath(),
+            deletion.getStartTime(),
+            deletion.getEndTime(),
+            tsFileResource.getModFile().getFilePath());
+      } else {
+        // delete data in memory of unsealed file
+        tsFileResource.getProcessor().deleteDataInMemory(deletion, devicePaths);
       }
-      logger.info(
-          "[Deletion] Deletion with path:{}, time:{}-{} written into mods file:{}.",
-          deletion.getPath(),
-          deletion.getStartTime(),
-          deletion.getEndTime(),
-          tsFileResource.getModFile().getFilePath());
 
-      // delete data in memory of unsealed file
-      if (!tsFileResource.isClosed()) {
-        TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
-        tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
-      } else if (tsFileSyncManager.isEnableSync()) {
+      if (tsFileSyncManager.isEnableSync()) {
         tsFileSyncManager.collectRealTimeDeletion(deletion);
       }
 

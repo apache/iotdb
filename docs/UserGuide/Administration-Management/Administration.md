@@ -100,7 +100,7 @@ We use `GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>` to grant us
 
 ```
 GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
-GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc1.**, root.sgcc2.**
 GRANT USER `ln_write_user` PRIVILEGES CREATE_USER
 ```
 The execution result is as follows:
@@ -108,7 +108,7 @@ The execution result is as follows:
 ```
 IoTDB> GRANT USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-IoTDB> GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+IoTDB> GRANT USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc1.**, root.sgcc2.**
 Msg: The statement is executed successfully.
 IoTDB> GRANT USER `ln_write_user` PRIVILEGES CREATE_USER
 Msg: The statement is executed successfully.
@@ -126,7 +126,7 @@ After granting user privileges, we could use `REVOKE USER <userName> PRIVILEGES 
 
 ```
 REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
-REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc1.**, root.sgcc2.**
 REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 ```
 
@@ -135,7 +135,7 @@ The execution result is as follows:
 ```
 REVOKE USER `ln_write_user` PRIVILEGES INSERT_TIMESERIES on root.ln.**
 Msg: The statement is executed successfully.
-REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc.**
+REVOKE USER `sgcc_write_user` PRIVILEGES INSERT_TIMESERIES on root.sgcc1.**, root.sgcc2.**
 Msg: The statement is executed successfully.
 REVOKE USER `ln_write_user` PRIVILEGES CREATE_USER
 Msg: The statement is executed successfully.
@@ -182,28 +182,28 @@ Eg: IoTDB > DROP ROLE `admin`;
 * Grant User Privileges
 
 ```
-GRANT USER <userName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
+GRANT USER <userName> PRIVILEGES <privileges> ON <nodeNames>;  
+Eg: IoTDB > GRANT USER `tempuser` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES on root.ln.**, root.sgcc.**;
 ```
 
 - Grant User All Privileges
 
 ```
-GRANT USER <userName> PRIVILEGES ALL ON <nodeName>; 
-Eg: IoTDB > grant user renyuhua privileges all on root.**
+GRANT USER <userName> PRIVILEGES ALL ON <nodeNames>; 
+Eg: IoTDB > grant user renyuhua privileges all on root.sgcc.**, root.**;
 ```
 
 * Grant Role Privileges
 
 ```
-GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
-Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
+GRANT ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
+Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES INSERT_TIMESERIES, DELETE_TIMESERIES ON root.sgcc.**, root.ln.**;
 ```
 
 - Grant Role All Privileges
 
 ```
-GRANT ROLE <roleName> PRIVILEGES ALL ON <nodeName>;  
+GRANT ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
 Eg: IoTDB > GRANT ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
 ```
 
@@ -217,28 +217,28 @@ Eg: IoTDB > GRANT `temprole` TO tempuser;
 * Revoke User Privileges
 
 ```
-REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeName>;   
+REVOKE USER <userName> PRIVILEGES <privileges> ON <nodeNames>;   
 Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES DELETE_TIMESERIES on root.ln.**;
 ```
 
 * Revoke User All Privileges
 
 ```
-REVOKE USER <userName> PRIVILEGES ALL ON <nodeName>; 
+REVOKE USER <userName> PRIVILEGES ALL ON <nodeNames>; 
 Eg: IoTDB > REVOKE USER `tempuser` PRIVILEGES ALL on root.ln.**;
 ```
 
 * Revoke Role Privileges
 
 ```
-REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeName>;  
+REVOKE ROLE <roleName> PRIVILEGES <privileges> ON <nodeNames>;  
 Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES DELETE_TIMESERIES ON root.ln.**;
 ```
 
 * Revoke All Role Privileges
 
 ```
-REVOKE ROLE <roleName> PRIVILEGES ALL ON <nodeName>;  
+REVOKE ROLE <roleName> PRIVILEGES ALL ON <nodeNames>;  
 Eg: IoTDB > REVOKE ROLE `temprole` PRIVILEGES ALL ON root.ln.**;
 ```
 
@@ -256,6 +256,13 @@ LIST USER
 Eg: IoTDB > LIST USER
 ```
 
+* List User of Specific Role
+
+```
+LIST USER OF ROLE <roleName>;
+Eg: IoTDB > LIST USER OF ROLE `roleuser`;
+```
+
 * List Roles
 
 ```
@@ -263,46 +270,71 @@ LIST ROLE
 Eg: IoTDB > LIST ROLE
 ```
 
-* List Privileges
+* List Roles of Specific User
 
 ```
-LIST PRIVILEGES USER  <username> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES USER `sgcc_write_user` ON root.sgcc.**;
+LIST ROLE OF USER <username> ;  
+Eg: IoTDB > LIST ROLE OF USER `tempuser`;
 ```
 
-* List Privileges of Roles
+* List All Privileges of Users
 
 ```
-LIST ROLE PRIVILEGES <roleName>
-Eg: IoTDB > LIST ROLE PRIVILEGES `actor`;
+LIST PRIVILEGES USER <username> ;   
+Eg: IoTDB > LIST PRIVILEGES USER `tempuser`;
 ```
 
-* List Privileges of Roles(On Specific Path)
+* List Related Privileges of Users(On Specific Paths)
 
 ```
-LIST PRIVILEGES ROLE <roleName> ON <path>;    
-Eg: IoTDB > LIST PRIVILEGES ROLE `write_role` ON root.sgcc.**;
+LIST PRIVILEGES USER <username> ON <paths>;
+Eg: IoTDB> LIST PRIVILEGES USER `tempuser` ON root.ln.**, root.ln.wf01.**;
++--------+-----------------------------------+
+|    role|                          privilege|
++--------+-----------------------------------+
+|        |      root.ln.** : ALTER_TIMESERIES|
+|temprole|root.ln.wf01.** : CREATE_TIMESERIES|
++--------+-----------------------------------+
+Total line number = 2
+It costs 0.005s
+IoTDB> LIST PRIVILEGES USER `tempuser` ON root.ln.wf01.wt01.**;
++--------+-----------------------------------+
+|    role|                          privilege|
++--------+-----------------------------------+
+|        |      root.ln.** : ALTER_TIMESERIES|
+|temprole|root.ln.wf01.** : CREATE_TIMESERIES|
++--------+-----------------------------------+
+Total line number = 2
+It costs 0.005s
 ```
 
-* List Privileges of Users
+* List All Privileges of Roles
 
 ```
-LIST USER PRIVILEGES <username> ;   
-Eg: IoTDB > LIST USER PRIVILEGES `tempuser`;
+LIST PRIVILEGES ROLE <roleName>
+Eg: IoTDB > LIST PRIVILEGES ROLE `actor`;
 ```
 
-* List Roles of User
+* List Related Privileges of Roles(On Specific Paths)
 
 ```
-LIST ALL ROLE OF USER <username> ;  
-Eg: IoTDB > LIST ALL ROLE OF USER `tempuser`;
-```
-
-* List Users of Role
-
-```
-LIST ALL USER OF ROLE <roleName>;
-Eg: IoTDB > LIST ALL USER OF ROLE `roleuser`;
+LIST PRIVILEGES ROLE <roleName> ON <paths>;    
+Eg: IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.**, root.ln.wf01.wt01.**;
++-----------------------------------+
+|                          privilege|
++-----------------------------------+
+|root.ln.wf01.** : CREATE_TIMESERIES|
++-----------------------------------+
+Total line number = 1
+It costs 0.005s
+IoTDB> LIST PRIVILEGES ROLE `temprole` ON root.ln.wf01.wt01.**;
++-----------------------------------+
+|                          privilege|
++-----------------------------------+
+|root.ln.wf01.** : CREATE_TIMESERIES|
++-----------------------------------+
+Total line number = 1
+It costs 0.005s
 ```
 
 * Alter Password
@@ -329,35 +361,40 @@ At the same time, changes to roles are immediately reflected on all users who ow
 
 **List of privileges Included in the System**
 
-|privilege Name|Interpretation|Example|
-|:---|:---|----|
-|SET\_STORAGE\_GROUP|set storage groups; path dependent|Eg: `set storage group to root.ln;`|
-|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent|Eg: `delete storage group root.ln;`|
-|CREATE\_TIMESERIES|create timeseries; path dependent|Eg1: create timeseries<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: create aligned timeseries<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`|
-|INSERT\_TIMESERIES|insert data; path dependent|Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`|
-|READ\_TIMESERIES|query data; path dependent|Eg1: `show storage group;` <br />Eg2: `show child paths root.ln, show child nodes root.ln;`<br />Eg3: `show devices;`<br />Eg4: `show timeseries root.**;`<br />Eg5: `show schema templates;`<br />Eg6: `show all ttl`<br />Eg7: [Query-Data](../Query-Data/Overview.md)（The query statements under this section all use this permission）<br />Eg8: CVS format data export<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg9: Performance Tracing Tool<br />`tracing select * from root`<br />Eg10: UDF-Query<br />`select example(*) from root.sg.d1`<br />Eg11: Triggers-Query<br />`show triggers`|
-|DELETE\_TIMESERIES|delete data or timeseries; path dependent|Eg1: delete timeseries<br />`delete timeseries root.ln.wf01.wt01.status`<br />Eg2: delete data<br />`delete from root.ln.wf02.wt02.status where time < 10`|
-|CREATE\_USER|create users; path independent|Eg: `create user thulab 'passwd';`|
-|DELETE\_USER|delete users; path independent|Eg: `drop user xiaoming;`|
-|MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )|Eg: `alter user tempuser SET PASSWORD 'newpwd';`|
-|LIST\_USER|list all users; list a user's privileges; list a user's roles; list users of Role with four kinds of operation privileges; path independent|Eg1: `list user;`<br />Eg2: `list privileges user 'admin' on root.sgcc.**;`<br />Eg3: `list user privileges admin;`<br />Eg4: `list all user of role 'admin';`|
-|GRANT\_USER\_PRIVILEGE|grant user privileges; path independent|Eg:  `grant user tempuser privileges DELETE_TIMESERIES on root.ln.**;`|
-|REVOKE\_USER\_PRIVILEGE|revoke user privileges; path independent|Eg:  `revoke user tempuser privileges DELETE_TIMESERIES on root.ln.**;`|
-|GRANT\_USER\_ROLE|grant user roles; path independent|Eg:  `grant temprole to tempuser;`|
-|REVOKE\_USER\_ROLE|revoke user roles; path independent|Eg:  `revoke temprole from tempuser;`|
-|CREATE\_ROLE|create roles; path independent|Eg:  `create role admin;`|
-|DELETE\_ROLE|delete roles; path independent|Eg: `drop role admin;`|
-|LIST\_ROLE|list all roles; list the privileges of a role; list the three kinds of operation privileges of all users owning a role; path independent|Eg1: `list role`<br />Eg2: `list role privileges actor;`<br />Eg3: `list privileges role wirte_role ON root.sgcc;`<br />Eg4: `list all role of user admin;`|
-|GRANT\_ROLE\_PRIVILEGE|grant role privileges; path independent|Eg: `grant role temprole privileges DELETE_TIMESERIES ON root.ln.**;`|
-|REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|Eg: `revoke role temprole privileges DELETE_TIMESERIES ON root.ln.**;`|
-|CREATE_FUNCTION|register UDFs; path independent|Eg: `create function example AS 'org.apache.iotdb.udf.UDTFExample';`|
-|DROP_FUNCTION|deregister UDFs; path independent|Eg: `drop function example`|
-|CREATE_TRIGGER|create triggers; path dependent|Eg1: `CREATE TRIGGER <TRIGGER-NAME> BEFORE INSERT ON <FULL-PATH> AS <CLASSNAME>`<br />Eg2: `CREATE TRIGGER <TRIGGER-NAME> AFTER INSERT ON <FULL-PATH> AS <CLASSNAME>`|
-|DROP_TRIGGER|drop triggers; path dependent|Eg: `drop trigger 'alert-listener-sg1d1s1'`|
-|START_TRIGGER|start triggers; path dependent|Eg: `start trigger lert-listener-sg1d1s1'`|
-|STOP_TRIGGER|stop triggers; path dependent|Eg: `stop trigger 'alert-listener-sg1d1s1'`|
-|CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|Eg: `select s1, s1 into t1, t2 from root.sg.d1`|
-|DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|Eg1: `DROP CONTINUOUS QUERY cq3`<br />Eg2: `DROP CQ cq3`|
+|privilege Name|Interpretation| Example                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|:---|:---|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|SET\_STORAGE\_GROUP|set storage groups; path dependent| Eg: `set storage group to root.ln;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|DELETE\_STORAGE\_GROUP|delete storage groups; path dependent| Eg: `delete storage group root.ln;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+|CREATE\_TIMESERIES|create timeseries; path dependent| Eg1: create timeseries<br />`create timeseries root.ln.wf02.status with datatype=BOOLEAN,encoding=PLAIN;`<br />Eg2: create aligned timeseries<br />`create aligned timeseries root.ln.device1(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY);`                                                                                                                                                                                                                                                                                                                                       |
+|INSERT\_TIMESERIES|insert data; path dependent| Eg1: `insert into root.ln.wf02(timestamp,status) values(1,true);`<br />Eg2: `insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|ALTER\_TIMESERIES|alter timeseries; path dependent| Eg1: `alter timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4;`<br />Eg2: `ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4);`                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|READ\_TIMESERIES|query data; path dependent| Eg1: `show storage group;` <br />Eg2: `show child paths root.ln, show child nodes root.ln;`<br />Eg3: `show devices;`<br />Eg4: `show timeseries root.**;`<br />Eg5: `show schema templates;`<br />Eg6: `show all ttl`<br />Eg7: [Query-Data](../Query-Data/Overview.md)（The query statements under this section all use this permission）<br />Eg8: CVS format data export<br />`./export-csv.bat -h 127.0.0.1 -p 6667 -u tempuser -pw root -td ./`<br />Eg9: Performance Tracing Tool<br />`tracing select * from root.**`<br />Eg10: UDF-Query<br />`select example(*) from root.sg.d1`<br />Eg11: Triggers-Query<br />`show triggers` |
+|DELETE\_TIMESERIES|delete data or timeseries; path dependent| Eg1: delete timeseries<br />`delete timeseries root.ln.wf01.wt01.status`<br />Eg2: delete data<br />`delete from root.ln.wf02.wt02.status where time < 10`                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|CREATE\_USER|create users; path independent| Eg: `create user thulab 'passwd';`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|DELETE\_USER|delete users; path independent| Eg: `drop user xiaoming;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|MODIFY\_PASSWORD|modify passwords for all users; path independent; (Those who do not have this privilege can still change their own asswords. )| Eg: `alter user tempuser SET PASSWORD 'newpwd';`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+|LIST\_USER|list all users; list a user's privileges; list a user's roles; list users of Role with four kinds of operation privileges; path independent| Eg1: `list user;`<br />Eg2: `list privileges user 'admin' on root.sgcc.**;`<br />Eg3: `list user privileges admin;`<br />Eg4: `list all user of role 'admin';`                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+|GRANT\_USER\_PRIVILEGE|grant user privileges; path independent| Eg:  `grant user tempuser privileges DELETE_TIMESERIES on root.ln.**;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|REVOKE\_USER\_PRIVILEGE|revoke user privileges; path independent| Eg:  `revoke user tempuser privileges DELETE_TIMESERIES on root.ln.**;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+|GRANT\_USER\_ROLE|grant user roles; path independent| Eg:  `grant temprole to tempuser;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+|REVOKE\_USER\_ROLE|revoke user roles; path independent| Eg:  `revoke temprole from tempuser;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|CREATE\_ROLE|create roles; path independent| Eg:  `create role admin;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+|DELETE\_ROLE|delete roles; path independent| Eg: `drop role admin;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|LIST\_ROLE|list all roles; list the privileges of a role; list the three kinds of operation privileges of all users owning a role; path independent| Eg1: `list role`<br />Eg2: `list role privileges actor;`<br />Eg3: `list privileges role wirte_role ON root.sgcc;`<br />Eg4: `list all role of user admin;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|GRANT\_ROLE\_PRIVILEGE|grant role privileges; path independent| Eg: `grant role temprole privileges DELETE_TIMESERIES ON root.ln.**;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent| Eg: `revoke role temprole privileges DELETE_TIMESERIES ON root.ln.**;`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+|CREATE_FUNCTION|register UDFs; path independent| Eg: `create function example AS 'org.apache.iotdb.udf.UDTFExample';`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+|DROP_FUNCTION|deregister UDFs; path independent| Eg: `drop function example`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|CREATE_TRIGGER|create triggers; path dependent| Eg1: `CREATE TRIGGER <TRIGGER-NAME> BEFORE INSERT ON <FULL-PATH> AS <CLASSNAME>`<br />Eg2: `CREATE TRIGGER <TRIGGER-NAME> AFTER INSERT ON <FULL-PATH> AS <CLASSNAME>`                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+|DROP_TRIGGER|drop triggers; path dependent| Eg: `drop trigger 'alert-listener-sg1d1s1'`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|START_TRIGGER|start triggers; path dependent| Eg: `start trigger lert-listener-sg1d1s1'`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+|STOP_TRIGGER|stop triggers; path dependent| Eg: `stop trigger 'alert-listener-sg1d1s1'`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+|CREATE_CONTINUOUS_QUERY|create continuous queries; path independent| Eg: `select s1, s1 into t1, t2 from root.sg.d1`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+|DROP_CONTINUOUS_QUERY|drop continuous queries; path independent| Eg1: `DROP CONTINUOUS QUERY cq3`<br />Eg2: `DROP CQ cq3`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+|UPDATE_TEMPLATE|create, drop, append and prune schema template; path independent| Eg1: `create schema template t1(s1 int32)`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               
+|READ_TEMPLATE|show schema templates and show nodes in schema template; path independent| Eg1: `show schema templates`<br/>Eg2: `show nodes in template t1`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+|APPLY_TEMPLATE|set, unset and activate schema template; path dependent| Eg1: `set schema template t1 to root.sg.d`<br/>Eg2: `create timeseries of schema template on root.sg.d`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+|READ_TEMPLATE_APPLICATION|show paths set and using schema template; path independent| Eg1: `show paths set schema template t1`<br/>Eg2: `show paths using schema template t1`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
 
 Note that the following SQL statements need to be granted multiple permissions before they can be used：
 
@@ -440,44 +477,6 @@ Eg: IoTDB > unset schema template t1 from root.sg1.d1
 
 ```
 Eg: IoTDB > drop schema template t1
-```
-
-###### Tag and Attribute Management
-
-- Rename the tag/attribute key
-
-```text
-ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
-```
-
-- reset the tag/attribute value
-
-```text
-ALTER timeseries root.turbine.d1.s1 SET newTag1=newV1, attr1=newV1
-```
-
-- delete the existing tag/attribute
-
-```text
-ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
-```
-
-- add new tags
-
-```text
-ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
-```
-
-- add new attributes
-
-```text
-ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
-```
-
-- upsert alias, tags and attributes
-
-```text
-ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
 
 ###### TsFile Management

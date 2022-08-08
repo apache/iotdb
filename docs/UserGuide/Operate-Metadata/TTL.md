@@ -33,6 +33,15 @@ IoTDB> set ttl to root.ln 3600000
 
 This example means that for data in `root.ln`, only that of the latest 1 hour will remain, the older one is removed or made invisible.
 
+```
+IoTDB> set ttl to root.sgcc.** 3600000
+```
+It supports setting TTL for storage groups in a path. This example represents setting TTL for all storage groups in the `root.sgcc` path.
+```
+IoTDB> set ttl to root.** 3600000
+```
+This example represents setting TTL for all storage groups.
+
 ## Unset TTL
 
 To unset TTL, we can use follwing SQL statement:
@@ -41,7 +50,17 @@ To unset TTL, we can use follwing SQL statement:
 IoTDB> unset ttl to root.ln
 ```
 
-After unset TTL, all data will be accepted in `root.ln`
+After unset TTL, all data will be accepted in `root.ln`.
+```
+IoTDB> unset ttl to root.sgcc.**
+```
+
+Unset the TTL setting for all storage groups in the `root.sgcc` path.
+```
+IoTDB> unset ttl to root.**
+```
+
+Unset the TTL setting for all storage groups.
 
 ## Show TTL
 

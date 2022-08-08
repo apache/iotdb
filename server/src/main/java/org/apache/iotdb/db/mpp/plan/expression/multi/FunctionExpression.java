@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
@@ -44,7 +45,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.transformer.multi.UDFQueryTran
 import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.TransparentTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFContext;
 import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFExecutor;
-import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFTypeInferrer;
+import org.apache.iotdb.db.mpp.transformation.dag.udf.UDTFInformationInferrer;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
@@ -140,6 +141,11 @@ public class FunctionExpression extends Expression {
                 v ->
                     v.isUserDefinedAggregationFunctionExpression()
                         || v.isBuiltInAggregationFunctionExpression());
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitFunctionExpression(this, context);
   }
 
   @Override
@@ -263,7 +269,7 @@ public class FunctionExpression extends Expression {
       if (!isBuiltInAggregationFunctionExpression()) {
         typeProvider.setType(
             expressionString,
-            new UDTFTypeInferrer(functionName)
+            new UDTFInformationInferrer(functionName)
                 .inferOutputType(
                     expressions.stream().map(Expression::toString).collect(Collectors.toList()),
                     expressions.stream()
@@ -312,8 +318,8 @@ public class FunctionExpression extends Expression {
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     for (Expression expression : expressions) {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
-      memoryAssigner.increaseExpressionReference(this);
     }
+    memoryAssigner.increaseExpressionReference(this);
   }
 
   @Override
@@ -421,6 +427,19 @@ public class FunctionExpression extends Expression {
       default:
         throw new UnsupportedOperationException("Unsupported transformer access strategy");
     }
+  }
+
+  @Override
+  public boolean isMappable(TypeProvider typeProvider) {
+    return new UDTFInformationInferrer(functionName)
+        .getAccessStrategy(
+            expressions.stream().map(Expression::toString).collect(Collectors.toList()),
+            expressions.stream()
+                .map(f -> typeProvider.getType(f.toString()))
+                .collect(Collectors.toList()),
+            functionAttributes)
+        .getAccessStrategyType()
+        .equals(AccessStrategy.AccessStrategyType.MAPPABLE_ROW_BY_ROW);
   }
 
   @Override

@@ -32,8 +32,9 @@ public interface IDriverScheduler {
    *
    * @param queryId the queryId these instances belong to.
    * @param instances the submitted instances.
+   * @param timeOut the query timeout
    */
-  void submitDrivers(QueryId queryId, List<IDriver> instances);
+  void submitDrivers(QueryId queryId, List<IDriver> instances, long timeOut);
 
   /**
    * Abort all the instances in this query.

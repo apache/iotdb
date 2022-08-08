@@ -90,6 +90,9 @@ public class UDTFOnOff implements UDTF {
 
   @Override
   public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
     switch (dataType) {
       case INT32:
         return row.getInt(0) >= threshold;

@@ -22,8 +22,9 @@ package org.apache.iotdb.db.mpp.execution.operator.schema;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -39,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -49,6 +51,8 @@ public class SchemaFetchScanOperator implements SourceOperator {
   private final PlanNodeId sourceId;
   private final OperatorContext operatorContext;
   private final PathPatternTree patternTree;
+  private final Map<Integer, Template> templateMap;
+
   private final ISchemaRegion schemaRegion;
 
   private TsBlock tsBlock;
@@ -58,11 +62,13 @@ public class SchemaFetchScanOperator implements SourceOperator {
       PlanNodeId planNodeId,
       OperatorContext context,
       PathPatternTree patternTree,
+      Map<Integer, Template> templateMap,
       ISchemaRegion schemaRegion) {
     this.sourceId = planNodeId;
     this.operatorContext = context;
     this.patternTree = patternTree;
     this.schemaRegion = schemaRegion;
+    this.templateMap = templateMap;
   }
 
   @Override
@@ -101,10 +107,10 @@ public class SchemaFetchScanOperator implements SourceOperator {
   }
 
   private void fetchSchema() throws MetadataException {
-    SchemaTree schemaTree = new SchemaTree();
+    ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
     for (PartialPath path : partialPathList) {
-      schemaTree.appendMeasurementPaths(schemaRegion.getMeasurementPaths(path, false));
+      schemaTree.appendMeasurementPaths(schemaRegion.fetchSchema(path, templateMap));
     }
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -120,8 +126,6 @@ public class SchemaFetchScanOperator implements SourceOperator {
         new TsBlock(
             new TimeColumn(1, new long[] {0}),
             new BinaryColumn(
-                1,
-                Optional.of(new boolean[] {false}),
-                new Binary[] {new Binary(outputStream.toByteArray())}));
+                1, Optional.empty(), new Binary[] {new Binary(outputStream.toByteArray())}));
   }
 }

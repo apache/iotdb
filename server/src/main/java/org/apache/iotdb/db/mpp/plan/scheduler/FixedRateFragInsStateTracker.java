@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -50,18 +49,22 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   private ScheduledFuture<?> trackTask;
   private volatile FragmentInstanceState lastState;
   private volatile long durationToLastPrintInMS;
+  private volatile boolean aborted;
 
   public FixedRateFragInsStateTracker(
       QueryStateMachine stateMachine,
-      ExecutorService executor,
       ScheduledExecutorService scheduledExecutor,
       List<FragmentInstance> instances,
       IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
-    super(stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
+    super(stateMachine, scheduledExecutor, instances, internalServiceClientManager);
+    this.aborted = false;
   }
 
   @Override
-  public void start() {
+  public synchronized void start() {
+    if (aborted) {
+      return;
+    }
     trackTask =
         ScheduledExecutorUtil.safelyScheduleAtFixedRate(
             scheduledExecutor,
@@ -72,7 +75,8 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   }
 
   @Override
-  public void abort() {
+  public synchronized void abort() {
+    aborted = true;
     logger.info("start to abort state tracker");
     if (trackTask != null) {
       logger.info("start to cancel fixed rate tracking task");
@@ -82,6 +86,8 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
       } else {
         logger.info("cancellation succeeds");
       }
+    } else {
+      logger.info("trackTask not started");
     }
   }
 

@@ -153,7 +153,6 @@ public class RemoveDataNodePlanTest {
   private RemoveDataNodePlan runPlanSerializeAndDeSerialize(boolean update) throws IOException {
     try (DataOutputStream outputStream =
         new DataOutputStream(Files.newOutputStream(Paths.get(serializedFileName)))) {
-      req1.setUpdate(update);
       req1.serializeImpl(outputStream);
     }
 

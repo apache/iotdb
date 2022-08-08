@@ -57,6 +57,7 @@ public class Util {
     String device2 = "root.sg.d22";
     String device3 = "root.sg.d333";
     String device4 = "root.sg.d4444";
+    String device5 = "root.sg.d55555";
 
     TRegionReplicaSet dataRegion1 =
         new TRegionReplicaSet(
@@ -121,10 +122,16 @@ public class Util {
     Map<TTimePartitionSlot, List<TRegionReplicaSet>> d4DataRegionMap = new HashMap<>();
     d4DataRegionMap.put(new TTimePartitionSlot(), d4DataRegions);
 
+    List<TRegionReplicaSet> d5DataRegions = new ArrayList<>();
+    d5DataRegions.add(dataRegion4);
+    Map<TTimePartitionSlot, List<TRegionReplicaSet>> d5DataRegionMap = new HashMap<>();
+    d5DataRegionMap.put(new TTimePartitionSlot(), d5DataRegions);
+
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device1), d1DataRegionMap);
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device2), d2DataRegionMap);
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device3), d3DataRegionMap);
     sgPartitionMap.put(executor.getSeriesPartitionSlot(device4), d4DataRegionMap);
+    sgPartitionMap.put(executor.getSeriesPartitionSlot(device5), d5DataRegionMap);
 
     dataPartitionMap.put("root.sg", sgPartitionMap);
 

@@ -1986,7 +1986,7 @@ public class PlanExecutor implements IPlanExecutor {
     String password = author.getPassword();
     String newPassword = author.getNewPassword();
     Set<Integer> permissions = author.getPermissions();
-    PartialPath nodeName = author.getNodeName();
+    List<PartialPath> nodeNameList = author.getNodeNameList();
     try {
       switch (authorType) {
         case UPDATE_USER:
@@ -2006,12 +2006,16 @@ public class PlanExecutor implements IPlanExecutor {
           break;
         case GRANT_ROLE:
           for (int i : permissions) {
-            authorizerManager.grantPrivilegeToRole(roleName, nodeName.getFullPath(), i);
+            for (PartialPath path : nodeNameList) {
+              authorizerManager.grantPrivilegeToRole(roleName, path.getFullPath(), i);
+            }
           }
           break;
         case GRANT_USER:
           for (int i : permissions) {
-            authorizerManager.grantPrivilegeToUser(userName, nodeName.getFullPath(), i);
+            for (PartialPath path : nodeNameList) {
+              authorizerManager.grantPrivilegeToUser(userName, path.getFullPath(), i);
+            }
           }
           break;
         case GRANT_ROLE_TO_USER:
@@ -2019,12 +2023,16 @@ public class PlanExecutor implements IPlanExecutor {
           break;
         case REVOKE_USER:
           for (int i : permissions) {
-            authorizerManager.revokePrivilegeFromUser(userName, nodeName.getFullPath(), i);
+            for (PartialPath path : nodeNameList) {
+              authorizerManager.revokePrivilegeFromUser(userName, path.getFullPath(), i);
+            }
           }
           break;
         case REVOKE_ROLE:
           for (int i : permissions) {
-            authorizerManager.revokePrivilegeFromRole(roleName, nodeName.getFullPath(), i);
+            for (PartialPath path : nodeNameList) {
+              authorizerManager.revokePrivilegeFromRole(roleName, path.getFullPath(), i);
+            }
           }
           break;
         case REVOKE_ROLE_FROM_USER:
@@ -2224,29 +2232,31 @@ public class PlanExecutor implements IPlanExecutor {
     AuthorType authorType = plan.getAuthorType();
     String userName = plan.getUserName();
     String roleName = plan.getRoleName();
-    PartialPath path = plan.getNodeName();
+    List<PartialPath> nodeNameList = plan.getNodeNameList();
 
     ListDataSet dataSet;
 
     try {
       switch (authorType) {
         case LIST_ROLE:
-          dataSet = executeListRole(plan);
+          if (userName != null) {
+            dataSet = executeListUserRoles(userName);
+          } else {
+            dataSet = executeListRole(plan);
+          }
           break;
         case LIST_USER:
-          dataSet = executeListUser(plan);
-          break;
-        case LIST_ROLE_USERS:
-          dataSet = executeListRoleUsers(roleName);
-          break;
-        case LIST_USER_ROLES:
-          dataSet = executeListUserRoles(userName);
+          if (roleName != null) {
+            dataSet = executeListRoleUsers(roleName);
+          } else {
+            dataSet = executeListUser(plan);
+          }
           break;
         case LIST_ROLE_PRIVILEGE:
-          dataSet = executeListRolePrivileges(roleName, path);
+          dataSet = executeListRolePrivileges(roleName, nodeNameList);
           break;
         case LIST_USER_PRIVILEGE:
-          dataSet = executeListUserPrivileges(userName, path);
+          dataSet = executeListUserPrivileges(userName, nodeNameList);
           break;
         default:
           throw new QueryProcessException("Unsupported operation " + authorType);
@@ -2300,7 +2310,7 @@ public class PlanExecutor implements IPlanExecutor {
     boolean hasListUserPrivilege =
         AuthorityChecker.check(
             plan.getLoginUserName(),
-            Collections.singletonList((plan.getNodeName())),
+            plan.getNodeNameList(),
             plan.getOperatorType(),
             plan.getLoginUserName());
     if (!hasListUserPrivilege) {
@@ -2357,7 +2367,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private ListDataSet executeListRolePrivileges(String roleName, PartialPath path)
+  private ListDataSet executeListRolePrivileges(String roleName, List<PartialPath> nodeNameList)
       throws AuthException {
     Role role = authorizerManager.getRole(roleName);
     if (role != null) {
@@ -2368,12 +2378,22 @@ public class PlanExecutor implements IPlanExecutor {
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       int index = 0;
       for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (nodeNameList.isEmpty()) {
           RowRecord record = new RowRecord(index++);
           Field field = new Field(TSDataType.TEXT);
           field.setBinaryV(new Binary(pathPrivilege.toString()));
           record.addField(field);
           dataSet.putRecord(record);
+          continue;
+        }
+        for (PartialPath path : nodeNameList) {
+          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+            RowRecord record = new RowRecord(index++);
+            Field field = new Field(TSDataType.TEXT);
+            field.setBinaryV(new Binary(pathPrivilege.toString()));
+            record.addField(field);
+            dataSet.putRecord(record);
+          }
         }
       }
       return dataSet;
@@ -2382,7 +2402,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private ListDataSet executeListUserPrivileges(String userName, PartialPath path)
+  private ListDataSet executeListUserPrivileges(String userName, List<PartialPath> nodeNameList)
       throws AuthException {
     User user = authorizerManager.getUser(userName);
     if (user == null) {
@@ -2410,7 +2430,7 @@ public class PlanExecutor implements IPlanExecutor {
       typeList.add(TSDataType.TEXT);
       ListDataSet dataSet = new ListDataSet(headerList, typeList);
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-        if (path == null || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+        if (nodeNameList.isEmpty()) {
           RowRecord record = new RowRecord(index++);
           Field roleF = new Field(TSDataType.TEXT);
           roleF.setBinaryV(new Binary(""));
@@ -2419,6 +2439,19 @@ public class PlanExecutor implements IPlanExecutor {
           privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
           record.addField(privilegeF);
           dataSet.putRecord(record);
+          continue;
+        }
+        for (PartialPath path : nodeNameList) {
+          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+            RowRecord record = new RowRecord(index++);
+            Field roleF = new Field(TSDataType.TEXT);
+            roleF.setBinaryV(new Binary(""));
+            record.addField(roleF);
+            Field privilegeF = new Field(TSDataType.TEXT);
+            privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
+            record.addField(privilegeF);
+            dataSet.putRecord(record);
+          }
         }
       }
       for (String roleN : user.getRoleList()) {
@@ -2427,8 +2460,7 @@ public class PlanExecutor implements IPlanExecutor {
           continue;
         }
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-          if (path == null
-              || AuthUtils.pathBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+          if (nodeNameList.isEmpty()) {
             RowRecord record = new RowRecord(index++);
             Field roleF = new Field(TSDataType.TEXT);
             roleF.setBinaryV(new Binary(roleN));
@@ -2437,6 +2469,18 @@ public class PlanExecutor implements IPlanExecutor {
             privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
             record.addField(privilegeF);
             dataSet.putRecord(record);
+          }
+          for (PartialPath path : nodeNameList) {
+            if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+              RowRecord record = new RowRecord(index++);
+              Field roleF = new Field(TSDataType.TEXT);
+              roleF.setBinaryV(new Binary(roleN));
+              record.addField(roleF);
+              Field privilegeF = new Field(TSDataType.TEXT);
+              privilegeF.setBinaryV(new Binary(pathPrivilege.toString()));
+              record.addField(privilegeF);
+              dataSet.putRecord(record);
+            }
           }
         }
       }

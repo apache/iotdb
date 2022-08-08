@@ -300,7 +300,7 @@ public class IoTDBConfig {
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = 16;
+  private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
@@ -516,7 +516,7 @@ public class IoTDBConfig {
   private long cacheFileReaderClearPeriod = 100000;
 
   /** the max executing time of query in ms. Unit: millisecond */
-  private int queryTimeoutThreshold = 60000;
+  private long queryTimeoutThreshold = 60000;
 
   /** the max time to live of a session in ms. Unit: millisecond */
   private int sessionTimeoutThreshold = 0;
@@ -736,8 +736,6 @@ public class IoTDBConfig {
   // wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private int queryCacheSizeInMetric = 50;
-
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
@@ -931,7 +929,7 @@ public class IoTDBConfig {
   private int triggerForwardMQTTPoolSize = 4;
 
   /** ThreadPool size for read operation in coordinator */
-  private int coordinatorReadExecutorSize = 50;
+  private int coordinatorReadExecutorSize = 20;
 
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
@@ -1489,11 +1487,11 @@ public class IoTDBConfig {
     this.cacheFileReaderClearPeriod = cacheFileReaderClearPeriod;
   }
 
-  public int getQueryTimeoutThreshold() {
+  public long getQueryTimeoutThreshold() {
     return queryTimeoutThreshold;
   }
 
-  public void setQueryTimeoutThreshold(int queryTimeoutThreshold) {
+  public void setQueryTimeoutThreshold(long queryTimeoutThreshold) {
     this.queryTimeoutThreshold = queryTimeoutThreshold;
   }
 

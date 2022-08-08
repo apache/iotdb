@@ -33,6 +33,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -84,6 +85,8 @@ public class SyncDataNodeClientPool {
             return client.disableDataNode((TDisableDataNodeReq) req);
           case STOP_DATA_NODE:
             return client.stopDataNode();
+          case UPDATE_TEMPLATE:
+            return client.updateTemplate((TUpdateTemplateReq) req);
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);

@@ -100,12 +100,12 @@ public class QueryStateMachine {
     queryState.set(QueryState.DISPATCHING);
   }
 
-  public void transitionToRetrying(Throwable throwable) {
+  public void transitionToRetrying(TSStatus failureStatus) {
     if (queryState.get().isDone()) {
       return;
     }
+    this.failureStatus = failureStatus;
     queryState.set(QueryState.RETRYING);
-    this.failureException = throwable;
   }
 
   public void transitionToRunning() {

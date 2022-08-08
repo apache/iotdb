@@ -48,6 +48,7 @@ import org.apache.iotdb.db.mpp.plan.expression.unary.LikeExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.LogicNotExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.NegationExpression;
 import org.apache.iotdb.db.mpp.plan.expression.unary.RegularExpression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
 import org.apache.iotdb.db.mpp.transformation.dag.intermediate.IntermediateLayer;
@@ -74,8 +75,22 @@ import java.util.Set;
 public abstract class Expression {
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
+  // Operations that Class Expression is not responsible for should be done through a visitor ////
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * Accessible for {@link ExpressionVisitor}, use {@link ExpressionVisitor#process(Expression)}
+   * instead.
+   */
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitExpression(this, context);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
   // Expression type inferring for execution plan generation //////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  public abstract ExpressionType getExpressionType();
 
   public boolean isBuiltInAggregationFunctionExpression() {
     return false;
@@ -88,6 +103,29 @@ public abstract class Expression {
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
   }
+
+  public boolean isCompareBinaryExpression() {
+    return false;
+  }
+
+  public abstract boolean isMappable(TypeProvider typeProvider);
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // isConstantOperand
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  protected Boolean isConstantOperandCache = null;
+
+  /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
+  public final boolean isConstantOperand() {
+    if (isConstantOperandCache == null) {
+      isConstantOperandCache = isConstantOperandInternal();
+    }
+    return isConstantOperandCache;
+  }
+
+  /** Sub-classes should override this method indicating if the expression is a constant operand */
+  protected abstract boolean isConstantOperandInternal();
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
   // Operations for time series paths
@@ -169,23 +207,6 @@ public abstract class Expression {
       throws QueryProcessException, IOException;
 
   /////////////////////////////////////////////////////////////////////////////////////////////////
-  // isConstantOperand
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  protected Boolean isConstantOperandCache = null;
-
-  /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
-  public final boolean isConstantOperand() {
-    if (isConstantOperandCache == null) {
-      isConstantOperandCache = isConstantOperandInternal();
-    }
-    return isConstantOperandCache;
-  }
-
-  /** Sub-classes should override this method indicating if the expression is a constant operand */
-  protected abstract boolean isConstantOperandInternal();
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
   // toString
   /////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -238,44 +259,6 @@ public abstract class Expression {
     }
 
     return getExpressionString().equals(((Expression) o).getExpressionString());
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-  // iterator: level-order traversal iterator
-  /////////////////////////////////////////////////////////////////////////////////////////////////
-
-  /** returns an iterator to traverse all the successor expressions in a level-order */
-  public final Iterator<Expression> iterator() {
-    return new ExpressionIterator(this);
-  }
-
-  /** the iterator of an Expression tree with level-order traversal */
-  private static class ExpressionIterator implements Iterator<Expression> {
-
-    private final Deque<Expression> queue = new LinkedList<>();
-
-    public ExpressionIterator(Expression expression) {
-      queue.add(expression);
-    }
-
-    @Override
-    public boolean hasNext() {
-      return !queue.isEmpty();
-    }
-
-    @Override
-    public Expression next() {
-      if (!hasNext()) {
-        return null;
-      }
-      Expression current = queue.pop();
-      if (current != null) {
-        for (Expression subExp : current.getExpressions()) {
-          queue.push(subExp);
-        }
-      }
-      return current;
-    }
   }
 
   /**
@@ -410,9 +393,45 @@ public abstract class Expression {
     return expression;
   }
 
-  public abstract ExpressionType getExpressionType();
-
   protected abstract void serialize(ByteBuffer byteBuffer);
 
   protected abstract void serialize(DataOutputStream stream) throws IOException;
+
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+  // iterator: level-order traversal iterator
+  /////////////////////////////////////////////////////////////////////////////////////////////////
+
+  /** returns an iterator to traverse all the successor expressions in a level-order */
+  public final Iterator<Expression> iterator() {
+    return new ExpressionIterator(this);
+  }
+
+  /** the iterator of an Expression tree with level-order traversal */
+  private static class ExpressionIterator implements Iterator<Expression> {
+
+    private final Deque<Expression> queue = new LinkedList<>();
+
+    public ExpressionIterator(Expression expression) {
+      queue.add(expression);
+    }
+
+    @Override
+    public boolean hasNext() {
+      return !queue.isEmpty();
+    }
+
+    @Override
+    public Expression next() {
+      if (!hasNext()) {
+        return null;
+      }
+      Expression current = queue.pop();
+      if (current != null) {
+        for (Expression subExp : current.getExpressions()) {
+          queue.push(subExp);
+        }
+      }
+      return current;
+    }
+  }
 }

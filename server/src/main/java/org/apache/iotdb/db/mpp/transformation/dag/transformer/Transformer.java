@@ -25,7 +25,6 @@ import org.apache.iotdb.db.mpp.transformation.api.YieldableState;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
-import java.util.Objects;
 
 public abstract class Transformer implements LayerPointReader {
 
@@ -118,25 +117,5 @@ public abstract class Transformer implements LayerPointReader {
   @Override
   public final boolean isCurrentNull() {
     return currentNull;
-  }
-
-  protected static int compare(CharSequence cs1, CharSequence cs2) {
-    if (Objects.requireNonNull(cs1) == Objects.requireNonNull(cs2)) {
-      return 0;
-    }
-
-    if (cs1.getClass() == cs2.getClass() && cs1 instanceof Comparable) {
-      return ((Comparable<Object>) cs1).compareTo(cs2);
-    }
-
-    for (int i = 0, len = Math.min(cs1.length(), cs2.length()); i < len; i++) {
-      char a = cs1.charAt(i);
-      char b = cs2.charAt(i);
-      if (a != b) {
-        return a - b;
-      }
-    }
-
-    return cs1.length() - cs2.length();
   }
 }

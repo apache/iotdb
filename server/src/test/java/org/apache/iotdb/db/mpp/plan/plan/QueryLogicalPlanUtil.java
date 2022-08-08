@@ -30,16 +30,15 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -49,7 +48,10 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.SeriesScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByLevelDescriptor;
-import org.apache.iotdb.db.mpp.plan.statement.component.OrderBy;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
+import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortItem;
+import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -106,13 +108,10 @@ public class QueryLogicalPlanUtil {
 
   /* Last Query */
   static {
-    String sql = "SELECT last * FROM root.sg.** WHERE time > 100";
+    String sql = "SELECT last * FROM root.sg.** WHERE time > 100 ORDER BY timeseries ASC";
 
     QueryId queryId = new QueryId("test");
     List<PlanNode> sourceNodeList = new ArrayList<>();
-    sourceNodeList.add(
-        new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3")));
     sourceNodeList.add(
         new LastQueryScanNode(
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1")));
@@ -121,7 +120,7 @@ public class QueryLogicalPlanUtil {
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2")));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4")));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3")));
     sourceNodeList.add(
         new AlignedLastQueryScanNode(
             queryId.genPlanNodeId(),
@@ -136,12 +135,20 @@ public class QueryLogicalPlanUtil {
     sourceNodeList.add(
         new LastQueryScanNode(
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4")));
 
-    LastQueryMergeNode lastQueryMergeNode =
-        new LastQueryMergeNode(queryId.genPlanNodeId(), sourceNodeList, TimeFilter.gt(100));
+    LastQueryNode lastQueryNode =
+        new LastQueryNode(
+            queryId.genPlanNodeId(),
+            sourceNodeList,
+            TimeFilter.gt(100),
+            new OrderByParameter(
+                Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC))));
 
     querySQLs.add(sql);
-    sqlToPlanMap.put(sql, lastQueryMergeNode);
+    sqlToPlanMap.put(sql, lastQueryNode);
   }
 
   /* Simple Query */
@@ -154,24 +161,22 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
-            OrderBy.TIMESTAMP_ASC));
+            Ordering.ASC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
-            OrderBy.TIMESTAMP_ASC));
+            Ordering.ASC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
-            OrderBy.TIMESTAMP_ASC));
+            Ordering.ASC));
     sourceNodeList.add(
         new AlignedSeriesScanNode(
-            queryId.genPlanNodeId(),
-            (AlignedPath) schemaMap.get("root.sg.d2.a"),
-            OrderBy.TIMESTAMP_ASC));
+            queryId.genPlanNodeId(), (AlignedPath) schemaMap.get("root.sg.d2.a"), Ordering.ASC));
     TimeJoinNode timeJoinNode =
-        new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, sourceNodeList);
+        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), timeJoinNode, 10);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 10);
 
@@ -191,26 +196,23 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList.forEach(
         planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode =
-        new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList);
+        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
 
-    GreaterThanExpression timeFilter =
-        new GreaterThanExpression(
-            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
@@ -219,8 +221,9 @@ public class QueryLogicalPlanUtil {
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
-    LogicAndExpression predicate =
-        new LogicAndExpression(timeFilter, new LogicAndExpression(valueFilter1, valueFilter2));
+
+    // Duplicate timeFilter has been removed, here only valueFilters are kept
+    LogicAndExpression predicate = new LogicAndExpression(valueFilter1, valueFilter2);
 
     FilterNode filterNode =
         new FilterNode(
@@ -230,7 +233,7 @@ public class QueryLogicalPlanUtil {
             predicate,
             false,
             ZonedDateTime.now().getOffset(),
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), filterNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -251,31 +254,27 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s3"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList1.forEach(
         planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode1 =
-        new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList1);
+        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
 
-    GreaterThanExpression timeFilter =
-        new GreaterThanExpression(
-            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
-    GreaterThanExpression valueFilter1 =
+    GreaterThanExpression predicate1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
             new ConstantOperand(TSDataType.INT64, "10"));
-    LogicAndExpression predicate1 = new LogicAndExpression(timeFilter, valueFilter1);
 
     FilterNode filterNode1 =
         new FilterNode(
@@ -289,35 +288,34 @@ public class QueryLogicalPlanUtil {
             predicate1,
             false,
             ZonedDateTime.now().getOffset(),
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s4"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList2.forEach(
         planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode2 =
-        new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList2);
+        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
 
-    GreaterThanExpression valueFilter2 =
+    GreaterThanExpression predicate2 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
             new ConstantOperand(TSDataType.INT32, "10"));
-    LogicAndExpression predicate2 = new LogicAndExpression(timeFilter, valueFilter2);
 
     FilterNode filterNode2 =
         new FilterNode(
@@ -331,7 +329,7 @@ public class QueryLogicalPlanUtil {
             predicate2,
             false,
             ZonedDateTime.now().getOffset(),
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
@@ -339,7 +337,10 @@ public class QueryLogicalPlanUtil {
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
-            Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_DESC),
+            new OrderByParameter(
+                Arrays.asList(
+                    new SortItem(SortKey.DEVICE, Ordering.ASC),
+                    new SortItem(SortKey.TIME, Ordering.DESC))),
             Arrays.asList(HeaderConstant.COLUMN_DEVICE, "s3", "s1", "s2", "s4"),
             deviceToMeasurementIndexesMap);
     deviceViewNode.addChildDeviceNode("root.sg.d1", filterNode1);
@@ -375,7 +376,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2"))))),
-            OrderBy.TIMESTAMP_ASC,
+            Ordering.ASC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -387,7 +388,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            OrderBy.TIMESTAMP_ASC,
+            Ordering.ASC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -399,7 +400,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            OrderBy.TIMESTAMP_ASC,
+            Ordering.ASC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -411,7 +412,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
-            OrderBy.TIMESTAMP_ASC,
+            Ordering.ASC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -423,7 +424,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
-            OrderBy.TIMESTAMP_ASC,
+            Ordering.ASC,
             null));
     sourceNodeList.add(
         new AlignedSeriesAggregationScanNode(
@@ -435,7 +436,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -447,7 +448,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -459,7 +460,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList.forEach(
         node -> {
@@ -471,7 +472,7 @@ public class QueryLogicalPlanUtil {
         });
 
     TimeJoinNode timeJoinNode =
-        new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_ASC, sourceNodeList);
+        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.ASC, sourceNodeList);
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), timeJoinNode, 10);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 10);
 
@@ -508,7 +509,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s2"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -525,7 +526,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -542,7 +543,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -554,7 +555,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList.add(
         new SeriesAggregationScanNode(
@@ -566,7 +567,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.PARTIAL,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList.forEach(
         node -> {
@@ -622,7 +623,7 @@ public class QueryLogicalPlanUtil {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.a.s1"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.*.s1")))),
             null,
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -655,7 +656,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList1.add(
         new SeriesAggregationScanNode(
@@ -667,12 +668,12 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList1.forEach(node -> ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter));
 
     TimeJoinNode timeJoinNode1 =
-        new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList1);
+        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList2.add(
@@ -690,7 +691,7 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList2.add(
         new SeriesAggregationScanNode(
@@ -702,12 +703,12 @@ public class QueryLogicalPlanUtil {
                     AggregationStep.SINGLE,
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2"))))),
-            OrderBy.TIMESTAMP_DESC,
+            Ordering.DESC,
             null));
     sourceNodeList2.forEach(node -> ((SeriesAggregationScanNode) node).setTimeFilter(timeFilter));
 
     TimeJoinNode timeJoinNode2 =
-        new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList2);
+        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 3, 2));
@@ -715,7 +716,10 @@ public class QueryLogicalPlanUtil {
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
-            Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_DESC),
+            new OrderByParameter(
+                Arrays.asList(
+                    new SortItem(SortKey.DEVICE, Ordering.ASC),
+                    new SortItem(SortKey.TIME, Ordering.DESC))),
             Arrays.asList(
                 HeaderConstant.COLUMN_DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
             deviceToMeasurementIndexesMap);
@@ -741,31 +745,28 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList.forEach(
         planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode =
-        new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList);
+        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
 
-    GreaterThanExpression timeFilter =
-        new GreaterThanExpression(
-            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
@@ -774,8 +775,7 @@ public class QueryLogicalPlanUtil {
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
-    LogicAndExpression predicate =
-        new LogicAndExpression(timeFilter, new LogicAndExpression(valueFilter1, valueFilter2));
+    LogicAndExpression predicate = new LogicAndExpression(valueFilter1, valueFilter2);
     FilterNode filterNode =
         new FilterNode(
             queryId.genPlanNodeId(),
@@ -789,7 +789,7 @@ public class QueryLogicalPlanUtil {
             predicate,
             false,
             ZonedDateTime.now().getOffset(),
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     AggregationNode aggregationNode =
         new AggregationNode(
@@ -827,7 +827,7 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
             null,
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     GroupByLevelNode groupByLevelNode =
         new GroupByLevelNode(
@@ -856,7 +856,7 @@ public class QueryLogicalPlanUtil {
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))),
                     new TimeSeriesOperand(schemaMap.get("root.sg.*.s1")))),
             null,
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     OffsetNode offsetNode = new OffsetNode(queryId.genPlanNodeId(), groupByLevelNode, 100);
     LimitNode limitNode = new LimitNode(queryId.genPlanNodeId(), offsetNode, 100);
@@ -877,28 +877,24 @@ public class QueryLogicalPlanUtil {
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s1"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList1.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d1.s2"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList1.forEach(
         planNode -> {
           ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100));
         });
 
     TimeJoinNode timeJoinNode1 =
-        new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList1);
+        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
 
-    GreaterThanExpression timeFilter =
-        new GreaterThanExpression(
-            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
-    GreaterThanExpression valueFilter1 =
+    GreaterThanExpression predicate1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
             new ConstantOperand(TSDataType.INT64, "10"));
-    LogicAndExpression predicate1 = new LogicAndExpression(timeFilter, valueFilter1);
 
     FilterNode filterNode1 =
         new FilterNode(
@@ -911,7 +907,7 @@ public class QueryLogicalPlanUtil {
             predicate1,
             false,
             ZonedDateTime.now().getOffset(),
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     AggregationNode aggregationNode1 =
         new AggregationNode(
@@ -934,30 +930,29 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1"))))),
             null,
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     List<PlanNode> sourceNodeList2 = new ArrayList<>();
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s1"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList2.add(
         new SeriesScanNode(
             queryId.genPlanNodeId(),
             (MeasurementPath) schemaMap.get("root.sg.d2.s2"),
-            OrderBy.TIMESTAMP_DESC));
+            Ordering.DESC));
     sourceNodeList2.forEach(
         planNode -> ((SeriesScanNode) planNode).setTimeFilter(TimeFilter.gt(100)));
 
     TimeJoinNode timeJoinNode2 =
-        new TimeJoinNode(queryId.genPlanNodeId(), OrderBy.TIMESTAMP_DESC, sourceNodeList2);
+        new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
 
-    GreaterThanExpression valueFilter2 =
+    GreaterThanExpression predicate2 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
-    LogicAndExpression predicate2 = new LogicAndExpression(timeFilter, valueFilter2);
 
     FilterNode filterNode2 =
         new FilterNode(
@@ -970,7 +965,7 @@ public class QueryLogicalPlanUtil {
             predicate2,
             false,
             ZonedDateTime.now().getOffset(),
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     AggregationNode aggregationNode2 =
         new AggregationNode(
@@ -993,7 +988,7 @@ public class QueryLogicalPlanUtil {
                     Collections.singletonList(
                         new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1"))))),
             null,
-            OrderBy.TIMESTAMP_DESC);
+            Ordering.DESC);
 
     Map<String, List<Integer>> deviceToMeasurementIndexesMap = new HashMap<>();
     deviceToMeasurementIndexesMap.put("root.sg.d1", Arrays.asList(1, 2, 3));
@@ -1001,7 +996,10 @@ public class QueryLogicalPlanUtil {
     DeviceViewNode deviceViewNode =
         new DeviceViewNode(
             queryId.genPlanNodeId(),
-            Arrays.asList(OrderBy.DEVICE_ASC, OrderBy.TIMESTAMP_DESC),
+            new OrderByParameter(
+                Arrays.asList(
+                    new SortItem(SortKey.DEVICE, Ordering.ASC),
+                    new SortItem(SortKey.TIME, Ordering.DESC))),
             Arrays.asList(
                 HeaderConstant.COLUMN_DEVICE, "count(s1)", "max_value(s2)", "last_value(s1)"),
             deviceToMeasurementIndexesMap);

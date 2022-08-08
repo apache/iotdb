@@ -22,11 +22,8 @@ package org.apache.iotdb.confignode.procedure.impl;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.commons.exception.runtime.ThriftSerDeException;
 import org.apache.iotdb.commons.utils.ThriftConfigNodeSerDeUtils;
-import org.apache.iotdb.confignode.procedure.StateMachineProcedure;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
-import org.apache.iotdb.confignode.procedure.scheduler.SimpleProcedureScheduler;
-import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RemoveConfigNodeState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
 
@@ -38,8 +35,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /** remove config node procedure */
-public class RemoveConfigNodeProcedure
-    extends StateMachineProcedure<ConfigNodeProcedureEnv, RemoveConfigNodeState> {
+public class RemoveConfigNodeProcedure extends AbstractNodeProcedure<RemoveConfigNodeState> {
   private static final Logger LOG = LoggerFactory.getLogger(RemoveConfigNodeProcedure.class);
   private static final int retryThreshold = 5;
 
@@ -62,6 +58,7 @@ public class RemoveConfigNodeProcedure
     try {
       switch (state) {
         case REMOVE_CONFIG_NODE_PREPARE:
+          env.broadCastTheLatestConfigNodeGroup();
           setNextState(RemoveConfigNodeState.REMOVE_PEER);
           break;
         case REMOVE_PEER:
@@ -103,33 +100,6 @@ public class RemoveConfigNodeProcedure
   @Override
   protected boolean isRollbackSupported(RemoveConfigNodeState state) {
     return true;
-  }
-
-  @Override
-  protected ProcedureLockState acquireLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    if (configNodeProcedureEnv.getConfigNodeLock().tryLock()) {
-      LOG.info("{} acquire lock.", getProcId());
-      return ProcedureLockState.LOCK_ACQUIRED;
-    }
-    SimpleProcedureScheduler simpleProcedureScheduler =
-        (SimpleProcedureScheduler) configNodeProcedureEnv.getScheduler();
-    simpleProcedureScheduler.addWaiting(this);
-    LOG.info("{} wait for lock.", getProcId());
-    return ProcedureLockState.LOCK_EVENT_WAIT;
-  }
-
-  @Override
-  protected void releaseLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    LOG.info("{} release lock.", getProcId());
-    configNodeProcedureEnv.getConfigNodeLock().unlock();
-    SimpleProcedureScheduler simpleProcedureScheduler =
-        (SimpleProcedureScheduler) configNodeProcedureEnv.getScheduler();
-    simpleProcedureScheduler.releaseWaiting();
-  }
-
-  @Override
-  protected boolean holdLock(ConfigNodeProcedureEnv configNodeProcedureEnv) {
-    return configNodeProcedureEnv.getConfigNodeLock().isHeldByCurrentThread();
   }
 
   @Override
