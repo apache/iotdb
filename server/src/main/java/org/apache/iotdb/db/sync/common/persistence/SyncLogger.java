@@ -30,6 +30,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
+/**
+ * SyncLogger is used to manage the persistent information in the sync module. Persistent
+ * information can be recovered on reboot via {@linkplain SyncLogAnalyzer}.
+ */
 public class SyncLogger {
   // record pipe meta info
   private BufferedWriter pipeWriter;

@@ -46,8 +46,6 @@ public class SyncLogAnalyzer {
   private static final Logger logger = LoggerFactory.getLogger(SyncLogAnalyzer.class);
   // record recovery result of receiver server status
   private boolean pipeServerEnable = false;
-  // <pipeName, <remoteIp, <createTime, status>>>
-  //  private Map<String, Map<String, Map<Long, PipeStatus>>> pipeInfos = new ConcurrentHashMap<>();
   // <pipeFolderName, pipeMsg>
   private Map<String, List<PipeMessage>> pipeMessageMap = new ConcurrentHashMap<>();
   // <pipeSinkName, PipeSink>
@@ -91,10 +89,6 @@ public class SyncLogAnalyzer {
   public boolean isPipeServerEnable() {
     return pipeServerEnable;
   }
-
-  //  public Map<String, Map<String, Map<Long, PipeStatus>>> getPipeInfos() {
-  //    return pipeInfos;
-  //  }
 
   public Map<String, List<PipeMessage>> getPipeMessageMap() {
     return pipeMessageMap;

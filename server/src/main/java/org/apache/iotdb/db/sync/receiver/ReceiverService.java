@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sync.receiver;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
@@ -27,8 +28,10 @@ import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
-import org.apache.iotdb.db.sync.common.LocalSyncInfo;
+import org.apache.iotdb.db.sync.common.ISyncInfoFetcher;
+import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -38,14 +41,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.Collections;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESERVER_STATUS;
 
 public class ReceiverService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverService.class);
-  private LocalSyncInfo receiverInfo;
+
+  private ISyncInfoFetcher syncInfoFetcher = LocalSyncInfoFetcher.getInstance();
 
   /**
    * start receiver service
@@ -53,27 +56,29 @@ public class ReceiverService implements IService {
    * @param isRecovery if isRecovery, it will ignore check and force a start
    */
   public synchronized void startPipeServer(boolean isRecovery) throws PipeServerException {
-    if (receiverInfo.isPipeServerEnable() && !isRecovery) {
+    if (syncInfoFetcher.isPipeServerEnable() && !isRecovery) {
       return;
     }
     try {
       TransportServerManager.getInstance().startService();
-      receiverInfo.startServer();
-    } catch (IOException | StartupException e) {
+      TSStatus status = syncInfoFetcher.startPipeServer();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new PipeServerException("Failed to start pipe server because " + status.getMessage());
+      }
+    } catch (StartupException e) {
       throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
     }
   }
 
   /** stop receiver service */
   public synchronized void stopPipeServer() throws PipeServerException {
-    if (!receiverInfo.isPipeServerEnable()) {
+    if (!syncInfoFetcher.isPipeServerEnable()) {
       return;
     }
-    try {
-      TransportServerManager.getInstance().stopService();
-      receiverInfo.stopServer();
-    } catch (IOException e) {
-      throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
+    TransportServerManager.getInstance().stopService();
+    TSStatus status = syncInfoFetcher.stopPipeServer();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeServerException("Failed to stop pipe server because " + status.getMessage());
     }
   }
 
@@ -100,7 +105,7 @@ public class ReceiverService implements IService {
             Collections.singletonList(TSDataType.BOOLEAN));
     RowRecord rowRecord = new RowRecord(0);
     Field status = new Field(TSDataType.BOOLEAN);
-    status.setBoolV(receiverInfo.isPipeServerEnable());
+    status.setBoolV(syncInfoFetcher.isPipeServerEnable());
     rowRecord.addField(status);
     dataSet.putRecord(rowRecord);
     return dataSet;
@@ -112,13 +117,7 @@ public class ReceiverService implements IService {
     return dataSet;
   }
 
-  private ReceiverService() {
-    init();
-  }
-
-  private void init() {
-    receiverInfo = new LocalSyncInfo();
-  }
+  private ReceiverService() {}
 
   public static ReceiverService getInstance() {
     return ReceiverServiceHolder.INSTANCE;
@@ -127,8 +126,7 @@ public class ReceiverService implements IService {
   /** IService * */
   @Override
   public void start() throws StartupException {
-    init();
-    if (receiverInfo.isPipeServerEnable()) {
+    if (syncInfoFetcher.isPipeServerEnable()) {
       try {
         startPipeServer(true);
       } catch (PipeServerException e) {
@@ -138,13 +136,7 @@ public class ReceiverService implements IService {
   }
 
   @Override
-  public void stop() {
-    try {
-      receiverInfo.close();
-    } catch (IOException e) {
-      logger.error(e.getMessage());
-    }
-  }
+  public void stop() {}
 
   @Override
   public ServiceType getID() {
