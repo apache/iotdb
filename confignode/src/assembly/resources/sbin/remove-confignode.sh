@@ -72,7 +72,6 @@ launch_service() {
   confignode_parms="-Dlogback.configurationFile=${CONFIGNODE_CONF}/logback.xml"
   confignode_parms="$confignode_parms -DCONFIGNODE_HOME=${CONFIGNODE_HOME}"
   confignode_parms="$confignode_parms -DCONFIGNODE_CONF=${CONFIGNODE_CONF}"
-  echo "$JAVA" $illegal_access_params $confignode_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
   exec "$JAVA" $illegal_access_params $confignode_parms $CONFIGNODE_JMX_OPTS -cp "$CLASSPATH" "$class" $CONF_PARAMS
   return $?
 }
