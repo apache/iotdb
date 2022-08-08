@@ -25,8 +25,8 @@ import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogAnalyzer;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogger;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
@@ -43,9 +43,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class AbstractSyncInfo {
+public class SyncInfo {
 
-  protected static final Logger LOGGER = LoggerFactory.getLogger(AbstractSyncInfo.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger(SyncInfo.class);
 
   protected boolean pipeServerEnable;
   // <pipeFolderName, pipeMsg>
@@ -56,11 +56,11 @@ public abstract class AbstractSyncInfo {
   private PipeInfo runningPipe;
   private List<PipeInfo> pipes;
 
-  protected SyncLogger syncLogger;
+  protected SyncLogWriter syncLogWriter;
 
-  public AbstractSyncInfo() {
-    syncLogger = SyncLogger.getInstance();
-    SyncLogAnalyzer analyzer = new SyncLogAnalyzer();
+  public SyncInfo() {
+    syncLogWriter = SyncLogWriter.getInstance();
+    SyncLogReader analyzer = new SyncLogReader();
     try {
       analyzer.recover();
       pipeSinks = analyzer.getAllPipeSinks();
@@ -78,26 +78,20 @@ public abstract class AbstractSyncInfo {
     }
   }
 
-  protected abstract void afterStartPipe(String pipeName, long createTime);
-
-  protected abstract void afterStopPipe(String pipeName, long createTime);
-
-  protected abstract void afterDropPipe(String pipeName, long createTime);
-
   public void close() throws IOException {
-    syncLogger.close();
+    syncLogWriter.close();
   }
 
   // region Implement of PipeServer
 
   public void startServer() throws IOException {
     pipeServerEnable = true;
-    syncLogger.startPipeServer();
+    syncLogWriter.startPipeServer();
   }
 
   public void stopServer() throws IOException {
     pipeServerEnable = false;
-    syncLogger.stopPipeServer();
+    syncLogWriter.stopPipeServer();
   }
 
   // endregion
@@ -116,7 +110,7 @@ public abstract class AbstractSyncInfo {
     PipeSink pipeSink = SyncPipeUtil.parseCreatePipeSinkPlan(plan);
     // should guarantee the adding pipesink is not exist.
     pipeSinks.put(pipeSink.getPipeSinkName(), pipeSink);
-    syncLogger.addPipeSink(plan);
+    syncLogWriter.addPipeSink(plan);
   }
 
   public void dropPipeSink(String name) throws PipeSinkException, IOException {
@@ -132,7 +126,7 @@ public abstract class AbstractSyncInfo {
               name, runningPipe.getPipeName()));
     }
     pipeSinks.remove(name);
-    syncLogger.dropPipeSink(name);
+    syncLogWriter.dropPipeSink(name);
   }
 
   public PipeSink getPipeSink(String name) {
@@ -166,7 +160,7 @@ public abstract class AbstractSyncInfo {
     PipeSink runningPipeSink = getPipeSink(plan.getPipeSinkName());
     runningPipe = SyncPipeUtil.parseCreatePipePlanAsPipeInfo(plan, runningPipeSink, createTime);
     pipes.add(runningPipe);
-    syncLogger.addPipe(plan, createTime);
+    syncLogWriter.addPipe(plan, createTime);
   }
 
   public void operatePipe(String pipeName, Operator.OperatorType operatorType)
@@ -175,20 +169,17 @@ public abstract class AbstractSyncInfo {
     switch (operatorType) {
       case START_PIPE:
         runningPipe.start();
-        afterStartPipe(runningPipe.getPipeName(), runningPipe.getCreateTime());
         break;
       case STOP_PIPE:
         runningPipe.stop();
-        afterStopPipe(runningPipe.getPipeName(), runningPipe.getCreateTime());
         break;
       case DROP_PIPE:
         runningPipe.drop();
-        afterDropPipe(runningPipe.getPipeName(), runningPipe.getCreateTime());
         break;
       default:
         throw new PipeException("Unknown operatorType " + operatorType);
     }
-    syncLogger.operatePipe(pipeName, operatorType);
+    syncLogWriter.operatePipe(pipeName, operatorType);
   }
 
   public List<PipeInfo> getAllPipeInfos() {
@@ -219,7 +210,7 @@ public abstract class AbstractSyncInfo {
   public synchronized void writePipeMessage(String pipeName, long createTime, PipeMessage message) {
     String pipeIdentifier = SyncPathUtil.getSenderPipeDir(pipeName, createTime);
     try {
-      syncLogger.writePipeMsg(pipeIdentifier, message);
+      syncLogWriter.writePipeMsg(pipeIdentifier, message);
     } catch (IOException e) {
       LOGGER.error(
           "Can not write pipe message {} from {} to disk because {}",
@@ -245,7 +236,7 @@ public abstract class AbstractSyncInfo {
     String pipeIdentifier = SyncPathUtil.getSenderPipeDir(pipeName, createTime);
     if (consume) {
       try {
-        syncLogger.comsumePipeMsg(pipeIdentifier);
+        syncLogWriter.comsumePipeMsg(pipeIdentifier);
       } catch (IOException e) {
         LOGGER.error(
             "Can not read pipe message about {} from disk because {}",

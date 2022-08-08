@@ -42,8 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class SyncLogAnalyzer {
-  private static final Logger logger = LoggerFactory.getLogger(SyncLogAnalyzer.class);
+public class SyncLogReader {
+  private static final Logger logger = LoggerFactory.getLogger(SyncLogReader.class);
   // record recovery result of receiver server status
   private boolean pipeServerEnable = false;
   // <pipeFolderName, pipeMsg>

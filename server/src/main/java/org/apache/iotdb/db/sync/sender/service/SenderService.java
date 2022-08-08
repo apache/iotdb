@@ -36,7 +36,7 @@ import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.sync.common.ISyncInfoFetcher;
 import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogAnalyzer;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
 import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginRegister;
 import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
@@ -426,7 +426,7 @@ public class SenderService implements IService {
   }
 
   private void recover() throws IOException, PipeException, StartupException {
-    SyncLogAnalyzer analyzer = new SyncLogAnalyzer();
+    SyncLogReader analyzer = new SyncLogReader();
     analyzer.recover();
     PipeInfo runningPipeInfo = analyzer.getRunningPipeInfo();
     this.runningPipe =

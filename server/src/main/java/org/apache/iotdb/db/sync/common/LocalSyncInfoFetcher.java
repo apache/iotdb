@@ -40,10 +40,10 @@ import java.util.List;
 public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalSyncInfoFetcher.class);
-  private AbstractSyncInfo syncInfo;
+  private SyncInfo syncInfo;
 
   private LocalSyncInfoFetcher() {
-    syncInfo = new LocalSyncInfo();
+    syncInfo = new SyncInfo();
   }
 
   // region Interfaces of PipeServer
@@ -181,6 +181,6 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
 
   @TestOnly
   public void reset() {
-    syncInfo = new LocalSyncInfo();
+    syncInfo = new SyncInfo();
   }
 }

@@ -23,8 +23,7 @@ import org.apache.iotdb.db.exception.sync.PipeException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.common.AbstractSyncInfo;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
+import org.apache.iotdb.db.sync.common.SyncInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -33,10 +32,9 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
-public class AbstractSyncInfoTest {
+public class SyncInfoTest {
   private static final String pipe1 = "pipe1";
   private static final String pipe2 = "pipe2";
   private static final long createdTime1 = System.currentTimeMillis();
@@ -54,7 +52,7 @@ public class AbstractSyncInfoTest {
 
   @Test
   public void testOperatePipe() throws Exception {
-    MockSyncInfo syncInfo = new MockSyncInfo();
+    SyncInfo syncInfo = new SyncInfo();
     try {
       syncInfo.startServer();
       CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan("demo", "iotdb");
@@ -78,17 +76,6 @@ public class AbstractSyncInfoTest {
       syncInfo.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
       syncInfo.operatePipe(pipe2, Operator.OperatorType.STOP_PIPE);
       syncInfo.operatePipe(pipe2, Operator.OperatorType.START_PIPE);
-      List<String> actualRecords = syncInfo.getOperateRecord();
-      String[] expectedRecords =
-          new String[] {
-            String.format("%s-%d-%s", pipe1, createdTime1, PipeStatus.DROP.name()),
-            String.format("%s-%d-%s", pipe2, createdTime2, PipeStatus.STOP.name()),
-            String.format("%s-%d-%s", pipe2, createdTime2, PipeStatus.RUNNING.name())
-          };
-      Assert.assertEquals(expectedRecords.length, actualRecords.size());
-      for (int i = 0; i < expectedRecords.length; i++) {
-        Assert.assertEquals(expectedRecords[i], actualRecords.get(i));
-      }
       Assert.assertEquals(2, syncInfo.getAllPipeInfos().size());
       Assert.assertEquals(1, syncInfo.getAllPipeSink().size());
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
@@ -109,29 +96,6 @@ public class AbstractSyncInfoTest {
       Assert.fail();
     } finally {
       syncInfo.close();
-    }
-  }
-
-  private class MockSyncInfo extends AbstractSyncInfo {
-    private final List<String> operateRecord = new ArrayList<>();
-
-    public List<String> getOperateRecord() {
-      return operateRecord;
-    }
-
-    @Override
-    protected void afterStartPipe(String pipeName, long createTime) {
-      operateRecord.add(String.format("%s-%d-%s", pipeName, createTime, PipeStatus.RUNNING.name()));
-    }
-
-    @Override
-    protected void afterStopPipe(String pipeName, long createTime) {
-      operateRecord.add(String.format("%s-%d-%s", pipeName, createTime, PipeStatus.STOP.name()));
-    }
-
-    @Override
-    protected void afterDropPipe(String pipeName, long createTime) {
-      operateRecord.add(String.format("%s-%d-%s", pipeName, createTime, PipeStatus.DROP.name()));
     }
   }
 }

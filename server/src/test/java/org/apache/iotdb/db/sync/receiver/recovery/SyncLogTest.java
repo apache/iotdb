@@ -23,8 +23,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogAnalyzer;
-import org.apache.iotdb.db.sync.common.persistence.SyncLogger;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
@@ -41,7 +41,7 @@ import java.util.List;
 import java.util.Map;
 
 /** This test is for ReceiverLog and ReceiverLogAnalyzer */
-public class SyncLoggerAnalyzerTest {
+public class SyncLogTest {
 
   private static final String pipe1 = "pipe1";
   private static final String pipe2 = "pipe2";
@@ -63,7 +63,7 @@ public class SyncLoggerAnalyzerTest {
   @Test
   public void testServiceLog() {
     try {
-      SyncLogger log = SyncLogger.getInstance();
+      SyncLogWriter log = SyncLogWriter.getInstance();
       log.startPipeServer();
       CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan("demo", "iotdb");
       createPipeSinkPlan.addPipeSinkAttribute("ip", "127.0.0.1");
@@ -78,12 +78,12 @@ public class SyncLoggerAnalyzerTest {
       log.operatePipe(pipe1, Operator.OperatorType.STOP_PIPE);
       log.operatePipe(pipe1, Operator.OperatorType.START_PIPE);
       log.close();
-      SyncLogAnalyzer syncLogAnalyzer = new SyncLogAnalyzer();
-      syncLogAnalyzer.recover();
-      List<PipeInfo> pipes = syncLogAnalyzer.getAllPipeInfos();
-      Map<String, PipeSink> allPipeSinks = syncLogAnalyzer.getAllPipeSinks();
-      PipeInfo runningPipe = syncLogAnalyzer.getRunningPipeInfo();
-      Assert.assertTrue(syncLogAnalyzer.isPipeServerEnable());
+      SyncLogReader syncLogReader = new SyncLogReader();
+      syncLogReader.recover();
+      List<PipeInfo> pipes = syncLogReader.getAllPipeInfos();
+      Map<String, PipeSink> allPipeSinks = syncLogReader.getAllPipeSinks();
+      PipeInfo runningPipe = syncLogReader.getRunningPipeInfo();
+      Assert.assertTrue(syncLogReader.isPipeServerEnable());
       Assert.assertEquals(1, allPipeSinks.size());
       Assert.assertEquals(2, pipes.size());
       Assert.assertEquals(pipe2, runningPipe.getPipeName());
@@ -108,7 +108,7 @@ public class SyncLoggerAnalyzerTest {
     String pipeIdentifier1 = SyncPathUtil.getReceiverPipeDirName(pipe1, ip1, createdTime1);
     String pipeIdentifier2 = SyncPathUtil.getReceiverPipeDirName(pipe2, ip2, createdTime2);
     try {
-      SyncLogger log = SyncLogger.getInstance();
+      SyncLogWriter log = SyncLogWriter.getInstance();
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
       PipeMessage warn = new PipeMessage(PipeMessage.MsgType.WARN, "warn");
       PipeMessage error = new PipeMessage(PipeMessage.MsgType.ERROR, "error");
@@ -124,9 +124,9 @@ public class SyncLoggerAnalyzerTest {
       log.comsumePipeMsg(pipeIdentifier2);
       log.close();
 
-      SyncLogAnalyzer syncLogAnalyzer = new SyncLogAnalyzer();
-      syncLogAnalyzer.recover();
-      Map<String, List<PipeMessage>> map = syncLogAnalyzer.getPipeMessageMap();
+      SyncLogReader syncLogReader = new SyncLogReader();
+      syncLogReader.recover();
+      Map<String, List<PipeMessage>> map = syncLogReader.getPipeMessageMap();
       Assert.assertNotNull(map);
       Assert.assertEquals(3, map.get(pipeIdentifier1).size());
       Assert.assertNull(map.get(pipeIdentifier2));

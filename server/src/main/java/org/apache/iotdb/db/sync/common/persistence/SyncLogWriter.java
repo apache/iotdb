@@ -32,116 +32,116 @@ import java.io.IOException;
 
 /**
  * SyncLogger is used to manage the persistent information in the sync module. Persistent
- * information can be recovered on reboot via {@linkplain SyncLogAnalyzer}.
+ * information can be recovered on reboot via {@linkplain SyncLogReader}.
  */
-public class SyncLogger {
+public class SyncLogWriter {
   // record pipe meta info
-  private BufferedWriter pipeWriter;
-  // record message for running pipe
-  private BufferedWriter msgWriter;
+  private BufferedWriter pipeInfoWriter;
+  // record pipe message
+  private BufferedWriter pipeMsgWriter;
 
-  private SyncLogger() {}
+  private SyncLogWriter() {}
 
   public void getBufferedWriter() throws IOException {
-    if (pipeWriter == null || msgWriter == null) {
+    if (pipeInfoWriter == null || pipeMsgWriter == null) {
       File logFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_LOG_NAME);
       File msgFile = new File(SyncPathUtil.getSysDir(), SyncConstant.SYNC_MSG_LOG_NAME);
       if (!logFile.getParentFile().exists()) {
         logFile.getParentFile().mkdirs();
       }
-      pipeWriter = new BufferedWriter(new FileWriter(logFile, true));
-      msgWriter = new BufferedWriter(new FileWriter(msgFile, true));
+      pipeInfoWriter = new BufferedWriter(new FileWriter(logFile, true));
+      pipeMsgWriter = new BufferedWriter(new FileWriter(msgFile, true));
     }
   }
 
   public void startPipeServer() throws IOException {
     getBufferedWriter();
-    pipeWriter.write(Operator.OperatorType.START_PIPE_SERVER.name());
-    pipeWriter.newLine();
-    pipeWriter.flush();
+    pipeInfoWriter.write(Operator.OperatorType.START_PIPE_SERVER.name());
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.flush();
   }
 
   public void stopPipeServer() throws IOException {
     getBufferedWriter();
-    pipeWriter.write(Operator.OperatorType.STOP_PIPE_SERVER.name());
-    pipeWriter.newLine();
-    pipeWriter.flush();
+    pipeInfoWriter.write(Operator.OperatorType.STOP_PIPE_SERVER.name());
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.flush();
   }
 
   public synchronized void addPipeSink(CreatePipeSinkPlan plan) throws IOException {
     getBufferedWriter();
-    pipeWriter.write(Operator.OperatorType.CREATE_PIPESINK.name());
-    pipeWriter.newLine();
-    pipeWriter.write(plan.toString());
-    pipeWriter.newLine();
-    pipeWriter.flush();
+    pipeInfoWriter.write(Operator.OperatorType.CREATE_PIPESINK.name());
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.write(plan.toString());
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.flush();
   }
 
   public synchronized void dropPipeSink(String pipeSinkName) throws IOException {
     getBufferedWriter();
-    pipeWriter.write(Operator.OperatorType.DROP_PIPESINK.name());
-    pipeWriter.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
-    pipeWriter.write(pipeSinkName);
-    pipeWriter.newLine();
-    pipeWriter.flush();
+    pipeInfoWriter.write(Operator.OperatorType.DROP_PIPESINK.name());
+    pipeInfoWriter.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
+    pipeInfoWriter.write(pipeSinkName);
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.flush();
   }
 
   public synchronized void addPipe(CreatePipePlan plan, long pipeCreateTime) throws IOException {
     getBufferedWriter();
-    pipeWriter.write(Operator.OperatorType.CREATE_PIPE.name());
-    pipeWriter.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
-    pipeWriter.write(String.valueOf(pipeCreateTime));
-    pipeWriter.newLine();
-    pipeWriter.write(plan.toString());
-    pipeWriter.newLine();
-    pipeWriter.flush();
+    pipeInfoWriter.write(Operator.OperatorType.CREATE_PIPE.name());
+    pipeInfoWriter.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
+    pipeInfoWriter.write(String.valueOf(pipeCreateTime));
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.write(plan.toString());
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.flush();
   }
 
   public synchronized void operatePipe(String pipeName, Operator.OperatorType type)
       throws IOException {
     getBufferedWriter();
-    pipeWriter.write(type.name());
-    pipeWriter.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
-    pipeWriter.write(pipeName);
-    pipeWriter.newLine();
-    pipeWriter.flush();
+    pipeInfoWriter.write(type.name());
+    pipeInfoWriter.write(SyncConstant.SENDER_LOG_SPLIT_CHARACTER);
+    pipeInfoWriter.write(pipeName);
+    pipeInfoWriter.newLine();
+    pipeInfoWriter.flush();
   }
 
   public void writePipeMsg(String pipeIdentifier, PipeMessage pipeMessage) throws IOException {
     getBufferedWriter();
-    msgWriter.write(
+    pipeMsgWriter.write(
         String.format("%s,%s,%s", pipeIdentifier, pipeMessage.getType(), pipeMessage.getMsg()));
-    msgWriter.newLine();
-    msgWriter.flush();
+    pipeMsgWriter.newLine();
+    pipeMsgWriter.flush();
   }
 
   public void comsumePipeMsg(String pipeIdentifier) throws IOException {
     getBufferedWriter();
-    msgWriter.write(String.format("%s,read", pipeIdentifier));
-    msgWriter.newLine();
-    msgWriter.flush();
+    pipeMsgWriter.write(String.format("%s,read", pipeIdentifier));
+    pipeMsgWriter.newLine();
+    pipeMsgWriter.flush();
   }
 
   public void close() throws IOException {
-    if (pipeWriter != null) {
-      pipeWriter.close();
-      pipeWriter = null;
+    if (pipeInfoWriter != null) {
+      pipeInfoWriter.close();
+      pipeInfoWriter = null;
     }
-    if (msgWriter != null) {
-      msgWriter.close();
-      msgWriter = null;
+    if (pipeMsgWriter != null) {
+      pipeMsgWriter.close();
+      pipeMsgWriter = null;
     }
   }
 
   private static class SyncLoggerHolder {
-    private static final SyncLogger INSTANCE = new SyncLogger();
+    private static final SyncLogWriter INSTANCE = new SyncLogWriter();
 
     private SyncLoggerHolder() {
       // empty constructor
     }
   }
 
-  public static SyncLogger getInstance() {
-    return SyncLogger.SyncLoggerHolder.INSTANCE;
+  public static SyncLogWriter getInstance() {
+    return SyncLogWriter.SyncLoggerHolder.INSTANCE;
   }
 }
