@@ -100,6 +100,8 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
                           currentSearchIndex, consensusRequests)));
         }
       }
+      logger.debug("Execute TSyncLogReq for {} with result {}", req.consensusGroupId, statuses);
+      resultHandler.onComplete(new TSyncLogRes(statuses));
     } catch (Exception e) {
       resultHandler.onError(e);
     } finally {

@@ -149,6 +149,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
       StepTracker.trace("cacheAndQueueRequest", cacheRequestStartTime, System.nanoTime());
       logger.info("queue size {}, syncIndex = {}", requestCache.size(), insertNode.getSyncIndex());
       TSStatus tsStatus = write(insertNode);
+      // TODO: think about notifying until processing the last request in this batch
       requestCache.notifyAll();
       return tsStatus;
     }
