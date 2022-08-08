@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.service.metrics.predefined;
 
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -100,7 +101,8 @@ public class FileMetrics implements IMetricSet {
 
   @Override
   public void startAsyncCollectedMetrics() {
-    service.scheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        service,
         this::collect,
         1,
         MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),

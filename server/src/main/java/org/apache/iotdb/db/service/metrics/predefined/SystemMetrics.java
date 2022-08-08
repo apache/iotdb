@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service.metrics.predefined;
 
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.MetricManager;
@@ -128,7 +129,8 @@ public class SystemMetrics implements IMetricSet {
 
   @Override
   public void startAsyncCollectedMetrics() {
-    service.scheduleAtFixedRate(
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        service,
         this::collect,
         1,
         MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
