@@ -67,7 +67,7 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   STRING_LOWER("LOWER", UDTFLower.class),
   STRING_TRIM("TRIM", UDTFTrim.class),
   STRING_CMP("STRCMP", UDTFStrCompare.class),
-  DE_DUP("DEDUP", UDTFDeDuplication.class),
+  CHANGE_POINTS("CHANGE_POINTS", UDTFChangePoints.class),
   DIFFERENCE("DIFFERENCE", UDTFCommonValueDifference.class),
   NON_NEGATIVE_DIFFERENCE("NON_NEGATIVE_DIFFERENCE", UDTFNonNegativeValueDifference.class),
   TIME_DIFFERENCE("TIME_DIFFERENCE", UDTFTimeDifference.class),
