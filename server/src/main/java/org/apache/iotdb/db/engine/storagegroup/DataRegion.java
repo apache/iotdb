@@ -250,7 +250,7 @@ public class DataRegion {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
   /** storage group info for mem control */
-  private StorageGroupInfo storageGroupInfo = new StorageGroupInfo(this);
+  private DataRegionInfo dataRegionInfo = new DataRegionInfo(this);
   /** whether it's ready from recovery */
   private boolean isReady = false;
   /** close file listeners */
@@ -351,8 +351,8 @@ public class DataRegion {
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,
-              storageGroupInfo,
-              StorageGroupInfo::getMemCost,
+              dataRegionInfo,
+              DataRegionInfo::getMemCost,
               Tag.NAME.toString(),
               "storageGroup_" + getLogicalStorageGroupName());
     }
@@ -766,7 +766,7 @@ public class DataRegion {
       TsFileProcessor tsFileProcessor =
           new TsFileProcessor(
               dataRegionId,
-              storageGroupInfo,
+              dataRegionInfo,
               tsFileResource,
               this::closeUnsealedTsFileProcessorCallBack,
               isSeq ? this::updateLatestFlushTimeCallback : this::unsequenceFlushCallback,
@@ -782,9 +782,9 @@ public class DataRegion {
       tsFileProcessor.setTimeRangeId(timePartitionId);
       writer.makeMetadataVisible();
       if (enableMemControl) {
-        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+        TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
         tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-        this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+        this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
         // get chunkMetadata size
         long chunkMetadataSize = 0;
         for (Map<String, List<ChunkMetadata>> metaMap : writer.getMetadatasForQuery().values()) {
@@ -1537,7 +1537,7 @@ public class DataRegion {
           new TsFileProcessor(
               logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId,
               fsFactory.getFileWithParent(filePath),
-              storageGroupInfo,
+              dataRegionInfo,
               this::closeUnsealedTsFileProcessorCallBack,
               this::updateLatestFlushTimeCallback,
               true);
@@ -1546,16 +1546,16 @@ public class DataRegion {
           new TsFileProcessor(
               logicalStorageGroupName + FILE_NAME_SEPARATOR + dataRegionId,
               fsFactory.getFileWithParent(filePath),
-              storageGroupInfo,
+              dataRegionInfo,
               this::closeUnsealedTsFileProcessorCallBack,
               this::unsequenceFlushCallback,
               false);
     }
 
     if (enableMemControl) {
-      TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(storageGroupInfo);
+      TsFileProcessorInfo tsFileProcessorInfo = new TsFileProcessorInfo(dataRegionInfo);
       tsFileProcessor.setTsFileProcessorInfo(tsFileProcessorInfo);
-      this.storageGroupInfo.initTsFileProcessorInfo(tsFileProcessor);
+      this.dataRegionInfo.initTsFileProcessorInfo(tsFileProcessor);
     }
 
     tsFileProcessor.addCloseFileListeners(customCloseFileListeners);
@@ -3267,8 +3267,8 @@ public class DataRegion {
     return logicalStorageGroupName + File.separator + dataRegionId;
   }
 
-  public StorageGroupInfo getStorageGroupInfo() {
-    return storageGroupInfo;
+  public DataRegionInfo getStorageGroupInfo() {
+    return dataRegionInfo;
   }
 
   /**

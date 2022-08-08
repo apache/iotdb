@@ -20,10 +20,11 @@
 package org.apache.iotdb.db.rescon;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.flush.FlushManager;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupInfo;
+import org.apache.iotdb.db.engine.storagegroup.DataRegionInfo;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 
@@ -44,12 +45,12 @@ public class SystemInfo {
   private volatile boolean rejected = false;
 
   private static long memorySizeForWrite = config.getAllocateMemoryForWrite();
-  private Map<StorageGroupInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
+  private Map<DataRegionInfo, Long> reportedStorageGroupMemCostMap = new HashMap<>();
 
   private long flushingMemTablesCost = 0L;
 
   private ExecutorService flushTaskSubmitThreadPool =
-      IoTDBThreadPoolFactory.newSingleThreadExecutor("FlushTask-Submit-Pool");
+      IoTDBThreadPoolFactory.newSingleThreadExecutor(ThreadName.FLUSH_TASK_SUBMIT.getName());
   private static double FLUSH_THERSHOLD = memorySizeForWrite * config.getFlushProportion();
   private static double REJECT_THERSHOLD = memorySizeForWrite * config.getRejectProportion();
 
@@ -59,15 +60,15 @@ public class SystemInfo {
    * Report current mem cost of storage group to system. Called when the memory of storage group
    * newly accumulates to IoTDBConfig.getStorageGroupSizeReportThreshold()
    *
-   * @param storageGroupInfo storage group
+   * @param dataRegionInfo storage group
    * @throws WriteProcessRejectException
    */
   public synchronized boolean reportStorageGroupStatus(
-      StorageGroupInfo storageGroupInfo, TsFileProcessor tsFileProcessor)
+      DataRegionInfo dataRegionInfo, TsFileProcessor tsFileProcessor)
       throws WriteProcessRejectException {
     long delta =
-        storageGroupInfo.getMemCost()
-            - reportedStorageGroupMemCostMap.getOrDefault(storageGroupInfo, 0L);
+        dataRegionInfo.getMemCost()
+            - reportedStorageGroupMemCostMap.getOrDefault(dataRegionInfo, 0L);
     totalStorageGroupMemCost += delta;
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -76,8 +77,8 @@ public class SystemInfo {
           delta,
           totalStorageGroupMemCost);
     }
-    reportedStorageGroupMemCostMap.put(storageGroupInfo, storageGroupInfo.getMemCost());
-    storageGroupInfo.setLastReportedSize(storageGroupInfo.getMemCost());
+    reportedStorageGroupMemCostMap.put(dataRegionInfo, dataRegionInfo.getMemCost());
+    dataRegionInfo.setLastReportedSize(dataRegionInfo.getMemCost());
     if (totalStorageGroupMemCost < FLUSH_THERSHOLD) {
       return true;
     } else if (totalStorageGroupMemCost >= FLUSH_THERSHOLD
@@ -91,7 +92,7 @@ public class SystemInfo {
     } else {
       logger.info(
           "Change system to reject status. Triggered by: logical SG ({}), mem cost delta ({}), totalSgMemCost ({}).",
-          storageGroupInfo.getDataRegion().getLogicalStorageGroupName(),
+          dataRegionInfo.getDataRegion().getLogicalStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       rejected = true;
@@ -115,29 +116,29 @@ public class SystemInfo {
    * Report resetting the mem cost of sg to system. It will be called after flushing, closing and
    * failed to insert
    *
-   * @param storageGroupInfo storage group
+   * @param dataRegionInfo storage group
    */
-  public synchronized void resetStorageGroupStatus(StorageGroupInfo storageGroupInfo) {
+  public synchronized void resetStorageGroupStatus(DataRegionInfo dataRegionInfo) {
     long delta = 0;
 
-    if (reportedStorageGroupMemCostMap.containsKey(storageGroupInfo)) {
-      delta = reportedStorageGroupMemCostMap.get(storageGroupInfo) - storageGroupInfo.getMemCost();
+    if (reportedStorageGroupMemCostMap.containsKey(dataRegionInfo)) {
+      delta = reportedStorageGroupMemCostMap.get(dataRegionInfo) - dataRegionInfo.getMemCost();
       this.totalStorageGroupMemCost -= delta;
-      storageGroupInfo.setLastReportedSize(storageGroupInfo.getMemCost());
-      reportedStorageGroupMemCostMap.put(storageGroupInfo, storageGroupInfo.getMemCost());
+      dataRegionInfo.setLastReportedSize(dataRegionInfo.getMemCost());
+      reportedStorageGroupMemCostMap.put(dataRegionInfo, dataRegionInfo.getMemCost());
     }
 
     if (totalStorageGroupMemCost >= FLUSH_THERSHOLD
         && totalStorageGroupMemCost < REJECT_THERSHOLD) {
       logger.debug(
           "SG ({}) released memory (delta: {}) but still exceeding flush proportion (totalSgMemCost: {}), call flush.",
-          storageGroupInfo.getDataRegion().getLogicalStorageGroupName(),
+          dataRegionInfo.getDataRegion().getLogicalStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       if (rejected) {
         logger.info(
             "SG ({}) released memory (delta: {}), set system to normal status (totalSgMemCost: {}).",
-            storageGroupInfo.getDataRegion().getLogicalStorageGroupName(),
+            dataRegionInfo.getDataRegion().getLogicalStorageGroupName(),
             delta,
             totalStorageGroupMemCost);
       }
@@ -146,7 +147,7 @@ public class SystemInfo {
     } else if (totalStorageGroupMemCost >= REJECT_THERSHOLD) {
       logger.warn(
           "SG ({}) released memory (delta: {}), but system is still in reject status (totalSgMemCost: {}).",
-          storageGroupInfo.getDataRegion().getLogicalStorageGroupName(),
+          dataRegionInfo.getDataRegion().getLogicalStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();
@@ -154,7 +155,7 @@ public class SystemInfo {
     } else {
       logger.debug(
           "SG ({}) released memory (delta: {}), system is in normal status (totalSgMemCost: {}).",
-          storageGroupInfo.getDataRegion().getLogicalStorageGroupName(),
+          dataRegionInfo.getDataRegion().getLogicalStorageGroupName(),
           delta,
           totalStorageGroupMemCost);
       logCurrentTotalSGMemory();
@@ -187,8 +188,8 @@ public class SystemInfo {
     PriorityQueue<TsFileProcessor> allTsFileProcessors =
         new PriorityQueue<>(
             (o1, o2) -> Long.compare(o2.getWorkMemTableRamCost(), o1.getWorkMemTableRamCost()));
-    for (StorageGroupInfo storageGroupInfo : reportedStorageGroupMemCostMap.keySet()) {
-      allTsFileProcessors.addAll(storageGroupInfo.getAllReportedTsp());
+    for (DataRegionInfo dataRegionInfo : reportedStorageGroupMemCostMap.keySet()) {
+      allTsFileProcessors.addAll(dataRegionInfo.getAllReportedTsp());
     }
     boolean isCurrentTsFileProcessorSelected = false;
     long memCost = 0;

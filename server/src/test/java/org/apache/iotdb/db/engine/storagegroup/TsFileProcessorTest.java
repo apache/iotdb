@@ -71,7 +71,7 @@ public class TsFileProcessorTest {
 
   private TsFileProcessor processor;
   private String storageGroup = "root.vehicle";
-  private StorageGroupInfo sgInfo = new StorageGroupInfo(null);
+  private DataRegionInfo sgInfo = new DataRegionInfo(null);
   private String filePath = TestConstant.getTestTsFilePath("root.vehicle", 0, 0, 0);
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
