@@ -20,6 +20,7 @@ package org.apache.iotdb.commons.udf.utils;
 
 import org.apache.iotdb.udf.api.access.Row;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -60,7 +61,7 @@ public class MasterRepairUtil {
     for (int i = 0; i < this.columnCnt; i++) {
       if (!row.isNull(i)) {
         containsNotNull = true;
-        BigDecimal bd = BigDecimal.valueOf(Util.getValueAsDouble(row, i));
+        BigDecimal bd = BigDecimal.valueOf(getValueAsDouble(row, i));
         tt.add(bd.doubleValue());
       } else {
         tt.add(null);
@@ -76,7 +77,7 @@ public class MasterRepairUtil {
     for (int i = this.columnCnt; i < row.size(); i++) {
       if (!row.isNull(i)) {
         containsNotNull = true;
-        BigDecimal bd = BigDecimal.valueOf(Util.getValueAsDouble(row, i));
+        BigDecimal bd = BigDecimal.valueOf(getValueAsDouble(row, i));
         mt.add(bd.doubleValue());
       } else {
         mt.add(null);
@@ -85,6 +86,31 @@ public class MasterRepairUtil {
     if (containsNotNull) {
       md.add(mt);
     }
+  }
+
+  public static double getValueAsDouble(Row row, int index) throws Exception {
+    double ans = 0;
+    try {
+      switch (row.getDataType(index)) {
+        case INT32:
+          ans = row.getInt(index);
+          break;
+        case INT64:
+          ans = row.getLong(index);
+          break;
+        case FLOAT:
+          ans = row.getFloat(index);
+          break;
+        case DOUBLE:
+          ans = row.getDouble(index);
+          break;
+        default:
+          throw new Exception("The value of the input time series is not numeric.\n");
+      }
+    } catch (IOException e) {
+      throw new Exception("Fail to get data type in row " + row.getTime(), e);
+    }
+    return ans;
   }
 
   public void buildKDTree() {
