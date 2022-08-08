@@ -55,10 +55,7 @@ public class OperationSyncConsumer implements Runnable {
       ByteBuffer headBuffer;
       OperationSyncPlanTypeUtils.OperationSyncPlanType headType;
       try {
-        LOGGER.info("开始消费");
-        LOGGER.info(OperationSyncQueue.size() + "队列大小");
         head = OperationSyncQueue.take();
-        LOGGER.info("名字" + head.right.name() + head.right);
         headBuffer = head.left;
         headType = head.right;
       } catch (InterruptedException e) {
