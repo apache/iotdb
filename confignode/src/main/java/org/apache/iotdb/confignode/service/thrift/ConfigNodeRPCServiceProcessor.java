@@ -179,8 +179,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
 
   @Override
   public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) throws TException {
-    configManager.getProcedureManager().reportRegionMigrateResult(req);
-    return new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    return configManager.reportRegionMigrateResult(req);
   }
 
   @Override

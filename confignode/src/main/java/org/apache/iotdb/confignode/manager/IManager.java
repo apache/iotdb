@@ -46,6 +46,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
@@ -133,6 +134,14 @@ public interface IManager {
    * @return DataNodeToStatusResp
    */
   DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan);
+
+  /**
+   * DataNode report region migrate result to ConfigNode when remove DataNode
+   *
+   * @param req TRegionMigrateResultReportReq
+   * @return TSStatus
+   */
+  TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req);
 
   /**
    * Get DataNode info
