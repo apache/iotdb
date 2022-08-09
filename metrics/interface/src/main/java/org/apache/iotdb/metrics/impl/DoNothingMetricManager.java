@@ -139,11 +139,6 @@ public class DoNothingMetricManager implements MetricManager {
   }
 
   @Override
-  public boolean init() {
-    return false;
-  }
-
-  @Override
   public void removeCounter(String metric, String... tags) {
     // do nothing
   }

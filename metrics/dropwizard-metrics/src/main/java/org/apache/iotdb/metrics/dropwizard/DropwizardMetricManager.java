@@ -409,12 +409,6 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public boolean init() {
-    // init something
-    return true;
-  }
-
-  @Override
   public boolean stop() {
     isEnable = metricConfig.getEnableMetric();
     metricRegistry.removeMatching(MetricFilter.ALL);

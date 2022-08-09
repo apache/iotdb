@@ -58,8 +58,6 @@ public abstract class MetricService {
     loadManager();
     // load reporter
     loadReporter();
-    // do some init work
-    metricManager.init();
     // do start all reporter without first time
 
     if (!firstInit.getAndSet(false)) {

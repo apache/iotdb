@@ -32,20 +32,27 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.ToLongFunction;
 
 public interface MetricManager {
+
+  // region get or create metric
+
   /**
-   * Get Counter If exists, then return or create one to return
+   * get counter. return if exists, create if not.
    *
-   * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * Get Gauge If exists, then return or create one to return
+   * get autoGauge. return if exists, create if not.
    *
-   * <p>This type of gauge will keep a weak reference of the obj, so it will not prevent the obj's
-   * gc. NOTICE: When the obj has already been cleared by gc when you call the gauge's value(), then
-   * you will get 0L;
+   * <p>AutoGauge keep a weak reference of the obj, so it will not prevent gc of the obj. Notice: if
+   * you call this gauge's value() when the obj has already been cleared by gc, then you will get
+   * 0L.
    *
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
    * @param obj which will be monitored automatically
    * @param mapper use which to map the obj to a long value
    */
@@ -53,118 +60,195 @@ public interface MetricManager {
       String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags);
 
   /**
-   * Get Gauge If exists, then return or create one to return
+   * get counter. return if exists, create if not.
    *
-   * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * Get Rate If exists, then return or create one to return
+   * get rate. return if exists, create if not.
    *
-   * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * Get Histogram If exists, then return or create one to return
+   * get histogram. return if exists, create if not.
    *
-   * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * Get Timer If exists, then return or create one to return
+   * get timer. return if exists, create if not.
    *
-   * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags);
 
-  /** update Counter. Create if not exists */
+  // endregion
+
+  // region update metric
+
+  /**
+   * update counter. if exists, then update counter by delta. if not, then create and update.
+   *
+   * @param delta the value to update
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   */
   void count(long delta, String metric, MetricLevel metricLevel, String... tags);
 
-  /** set init value of Gauge. Create if not exists */
+  /**
+   * set value of gauge. if exists, then set gauge by value. if not, then create and set.
+   *
+   * @param value the value of gauge
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   */
   void gauge(long value, String metric, MetricLevel metricLevel, String... tags);
 
-  /** update Rate. Create if not exists */
+  /**
+   * mark rate. if exists, then mark rate by value. if not, then create and mark.
+   *
+   * @param value the value to mark
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   */
   void rate(long value, String metric, MetricLevel metricLevel, String... tags);
 
-  /** update Histogram. Create if not exists */
+  /**
+   * update histogram. if exists, then update histogram by value. if not, then create and update
+   *
+   * @param value the value to update
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   */
   void histogram(long value, String metric, MetricLevel metricLevel, String... tags);
 
-  /** update Timer. Create if not exists */
+  /**
+   * update timer. if exists, then update timer by delta and timeUnit. if not, then create and
+   * update
+   *
+   * @param delta the value to update
+   * @param timeUnit the unit of delta
+   * @param metric the name of metric
+   * @param metricLevel the level of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   */
   void timer(long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags);
 
-  /** remove counter */
-  void removeCounter(String metric, String... tags);
+  // endregion
 
-  /** remove gauge */
-  void removeGauge(String metric, String... tags);
-
-  /** remove rate */
-  void removeRate(String metric, String... tags);
-
-  /** remove histogram */
-  void removeHistogram(String metric, String... tags);
-
-  /** update timer */
-  void removeTimer(String metric, String... tags);
+  // region get metric
 
   /**
    * get all metric keys.
    *
-   * @return all MetricKeys, key is metric name, value is tags, which is a string array.
+   * @return [[name, tags...], ...]
    */
   List<String[]> getAllMetricKeys();
 
   /**
-   * Get all counters
+   * get all counters
    *
    * @return [name, tags...] -> counter
    */
   Map<String[], Counter> getAllCounters();
 
   /**
-   * Get all gauges
+   * get all gauges
    *
    * @return [name, tags...] -> gauge
    */
   Map<String[], Gauge> getAllGauges();
 
   /**
-   * Get all rates
+   * get all rates
    *
    * @return [name, tags...] -> rate
    */
   Map<String[], Rate> getAllRates();
 
   /**
-   * Get all histogram
+   * get all histograms
    *
    * @return [name, tags...] -> histogram
    */
   Map<String[], Histogram> getAllHistograms();
 
   /**
-   * Get all timers
+   * get all timers
    *
    * @return [name, tags...] -> timer
    */
   Map<String[], Timer> getAllTimers();
 
-  /** whether is enabled monitor */
-  boolean isEnable();
+  // endregion
 
-  /** whether is enabled monitor in specific level */
-  boolean isEnable(MetricLevel metricLevel);
+  // region remove metric
 
   /**
-   * init something.
+   * remove counter
    *
-   * @return whether success
+   * @param metric the name of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  boolean init();
+  void removeCounter(String metric, String... tags);
 
-  /** clear metrics */
+  /**
+   * remove gauge
+   *
+   * @param metric the name of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   */
+  void removeGauge(String metric, String... tags);
+
+  /**
+   * remove rate
+   *
+   * @param metric the name of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   */
+  void removeRate(String metric, String... tags);
+
+  /**
+   * remove histogram
+   *
+   * @param metric the name of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   */
+  void removeHistogram(String metric, String... tags);
+
+  /**
+   * update timer
+   *
+   * @param metric the name of metric
+   * @param tags string pairs, like sg="ln" will be "sg", "ln"
+   */
+  void removeTimer(String metric, String... tags);
+
+  // endregion
+
+  /** is metric service enabled */
+  boolean isEnable();
+
+  /** Is metric service enabled in specific level */
+  boolean isEnable(MetricLevel metricLevel);
+
+  /** stop and clear metric manager */
   boolean stop();
 }

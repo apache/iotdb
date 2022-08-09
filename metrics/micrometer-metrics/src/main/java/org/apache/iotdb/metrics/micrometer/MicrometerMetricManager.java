@@ -71,16 +71,6 @@ public class MicrometerMetricManager implements MetricManager {
     isEnable = metricConfig.getEnableMetric();
   }
 
-  /**
-   * init of manager
-   *
-   * @see org.apache.iotdb.metrics.MetricService
-   */
-  @Override
-  public boolean init() {
-    return true;
-  }
-
   @Override
   public Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags) {
     if (!isEnable(metricLevel)) {
