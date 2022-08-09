@@ -303,13 +303,11 @@ public class RegionMigrateService implements IService {
       TSStatus status;
       try (ConfigNodeClient client = new ConfigNodeClient()) {
         status = client.reportRegionMigrateResult(req);
-        if (taskLogger.isDebugEnabled()) {
-          taskLogger.debug(
-              "report region {} migrate result {} to Config node succeed, result: {}",
-              tRegionId,
-              req,
-              status);
-        }
+        taskLogger.info(
+            "report region {} migrate result {} to Config node succeed, result: {}",
+            tRegionId,
+            req,
+            status);
       }
     }
 
@@ -318,7 +316,7 @@ public class RegionMigrateService implements IService {
       TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       ConsensusGenericResponse resp = null;
       TEndPoint newPeerNode = getConsensusEndPoint(toNode, regionId);
-      taskLogger.debug("start to add peer {} for region {}", newPeerNode, tRegionId);
+      taskLogger.info("start to add peer {} for region {}", newPeerNode, tRegionId);
       boolean addPeerSucceed = true;
       for (int i = 0; i < RETRY; i++) {
         try {
@@ -352,7 +350,7 @@ public class RegionMigrateService implements IService {
         return status;
       }
 
-      taskLogger.debug("succeed to add peer {} for region {}", newPeerNode, regionId);
+      taskLogger.info("succeed to add peer {} for region {}", newPeerNode, regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("add peer " + newPeerNode + " for region " + regionId + " succeed");
       return status;
@@ -382,7 +380,7 @@ public class RegionMigrateService implements IService {
       ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
       TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       TEndPoint oldPeerNode = getConsensusEndPoint(fromNode, regionId);
-      taskLogger.debug("start to remove peer {} for region {}", oldPeerNode, regionId);
+      taskLogger.info("start to remove peer {} for region {}", oldPeerNode, regionId);
       ConsensusGenericResponse resp = null;
       boolean removePeerSucceed = true;
       for (int i = 0; i < RETRY; i++) {
@@ -391,6 +389,7 @@ public class RegionMigrateService implements IService {
             Thread.sleep(SLEEP_MILLIS);
           }
           resp = removeRegionPeer(regionId, new Peer(regionId, oldPeerNode));
+          removePeerSucceed = true;
         } catch (Throwable e) {
           removePeerSucceed = false;
           taskLogger.error(
@@ -417,7 +416,7 @@ public class RegionMigrateService implements IService {
         return status;
       }
 
-      taskLogger.debug("succeed to remove peer {} for region {}", oldPeerNode, regionId);
+      taskLogger.info("succeed to remove peer {} for region {}", oldPeerNode, regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("remove peer " + oldPeerNode + " for region " + regionId + " succeed");
       return status;
@@ -425,7 +424,7 @@ public class RegionMigrateService implements IService {
 
     private TSStatus removeConsensusGroup() {
       ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
-      taskLogger.debug("start to remove region {} consensus group", regionId);
+      taskLogger.info("start to remove region {} consensus group", regionId);
       TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       ConsensusGenericResponse resp;
       try {
@@ -454,7 +453,7 @@ public class RegionMigrateService implements IService {
                 + resp.getException().getMessage());
         return status;
       }
-      taskLogger.debug("succeed to remove region {} consensus group", regionId);
+      taskLogger.info("succeed to remove region {} consensus group", regionId);
       status.setMessage("remove region consensus group " + regionId + "succeed");
       return status;
     }

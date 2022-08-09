@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.ProcedureLockState;
 import org.apache.iotdb.confignode.procedure.state.RegionTransitionState;
 import org.apache.iotdb.confignode.procedure.store.ProcedureFactory;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -86,12 +87,9 @@ public class RegionMigrateProcedure
         case MIGRATE_REGION:
           env.getDataNodeRemoveHandler()
               .migrateRegion(originalDataNode, destDataNode, consensusGroupId);
-          setNextState(RegionTransitionState.WAIT_FOR_REGION_MIGRATE_FINISHED);
-          break;
-        case WAIT_FOR_REGION_MIGRATE_FINISHED:
           waitForTheRegionMigrateFinished(consensusGroupId);
+          LOG.info("Wait for region {}  migrate finished", consensusGroupId);
           setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
-          LOG.info("Wait for region migrate finished");
           break;
         case UPDATE_REGION_LOCATION_CACHE:
           env.getDataNodeRemoveHandler()
@@ -218,10 +216,14 @@ public class RegionMigrateProcedure
     return status;
   }
 
-  public void notifyTheRegionMigrateFinished() {
+  /** DataNode report region migrate result to ConfigNode, and continue */
+  public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
+    // TODO the req is used in roll back
     synchronized (regionMigrateLock) {
       regionMigrateLock.notify();
     }
+    LOG.info(
+        "notified after DataNode reported region {} migrate result:{} ", req.getRegionId(), req);
   }
 
   public TConsensusGroupId getConsensusGroupId() {

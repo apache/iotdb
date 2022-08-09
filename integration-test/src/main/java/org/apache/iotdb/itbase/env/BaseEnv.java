@@ -18,10 +18,15 @@
  */
 package org.apache.iotdb.itbase.env;
 
+import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.it.env.ConfigNodeWrapper;
+import org.apache.iotdb.it.env.DataNodeWrapper;
 import org.apache.iotdb.jdbc.Constant;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.List;
 
 public interface BaseEnv {
 
@@ -40,4 +45,14 @@ public interface BaseEnv {
   void setTestMethodName(String testCaseName);
 
   void dumpTestJVMSnapshot();
+
+  List<ConfigNodeWrapper> getConfigNodeWrapperList();
+
+  void setConfigNodeWrapperList(List<ConfigNodeWrapper> configNodeWrapperList);
+
+  List<DataNodeWrapper> getDataNodeWrapperList();
+
+  void setDataNodeWrapperList(List<DataNodeWrapper> dataNodeWrapperList);
+
+  IConfigNodeRPCService.Iface getConfigNodeConnection() throws IOException;
 }

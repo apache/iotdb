@@ -19,6 +19,8 @@
 package org.apache.iotdb.confignode.service.thrift;
 
 import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.runtime.RPCServiceException;
 import org.apache.iotdb.commons.service.AbstractThriftServiceThread;
@@ -36,7 +38,8 @@ import org.apache.iotdb.metrics.utils.MetricLevel;
 /** ConfigNodeRPCServer exposes the interface that interacts with the DataNode */
 public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPCServiceMBean {
 
-  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final ConfigNodeConfig configConf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig commonConfig = CommonDescriptor.getInstance().getConfig();
 
   private ConfigNodeRPCServiceProcessor configNodeRPCServiceProcessor;
 
@@ -72,10 +75,10 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
               ThreadName.CONFIG_NODE_RPC_CLIENT.getName(),
               getBindIP(),
               getBindPort(),
-              conf.getRpcMaxConcurrentClientNum(),
-              conf.getThriftServerAwaitTimeForStopService(),
+              configConf.getRpcMaxConcurrentClientNum(),
+              configConf.getThriftServerAwaitTimeForStopService(),
               new ConfigNodeRPCServiceHandler(configNodeRPCServiceProcessor),
-              conf.isRpcThriftCompressionEnabled());
+              commonConfig.isRpcThriftCompressionEnabled());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
@@ -93,11 +96,11 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
 
   @Override
   public String getBindIP() {
-    return conf.getInternalAddress();
+    return configConf.getInternalAddress();
   }
 
   @Override
   public int getBindPort() {
-    return conf.getInternalPort();
+    return configConf.getInternalPort();
   }
 }

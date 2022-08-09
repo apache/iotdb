@@ -93,7 +93,7 @@ public class QueryExecution implements IQueryExecution {
 
   private final List<PlanOptimizer> planOptimizers;
 
-  private Statement rawStatement;
+  private final Statement rawStatement;
   private Analysis analysis;
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
@@ -247,7 +247,6 @@ public class QueryExecution implements IQueryExecution {
                 stateMachine,
                 distributedPlan.getInstances(),
                 context.getQueryType(),
-                executor,
                 scheduledExecutor,
                 internalServiceClientManager);
     this.scheduler.start();

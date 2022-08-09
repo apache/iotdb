@@ -29,7 +29,7 @@ import java.util.List;
 
 public class InfluxMeanFunction extends InfluxAggregator {
   private final List<Double> numbers = new ArrayList<>();
-  long sum = 0;
+  double sum = 0;
   long count = 0;
 
   public InfluxMeanFunction(List<Expression> expressionList) {
@@ -66,7 +66,7 @@ public class InfluxMeanFunction extends InfluxAggregator {
     if (functionValues.length == 1) {
       count += (long) functionValues[0].getValue();
     } else if (functionValues.length == 2) {
-      sum += (long) functionValues[1].getValue();
+      sum += (double) functionValues[1].getValue();
     }
   }
 }

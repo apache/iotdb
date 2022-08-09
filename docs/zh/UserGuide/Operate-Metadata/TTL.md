@@ -32,6 +32,14 @@ IoTDB 支持对存储组级别设置数据存活时间（TTL），这使得 IoTD
 IoTDB> set ttl to root.ln 3600000
 ```
 这个例子表示在`root.ln`存储组中，只有最近一个小时的数据将会保存，旧数据会被移除或不可见。
+```
+IoTDB> set ttl to root.sgcc.** 3600000
+```
+支持给某一路径下的存储组设置TTL，这个例子表示`root.sgcc`路径下的所有存储组设置TTL。
+```
+IoTDB> set ttl to root.** 3600000
+```
+表示给所有存储组设置TTL。
 
 ## 取消 TTL
 
@@ -42,6 +50,16 @@ IoTDB> unset ttl to root.ln
 ```
 
 取消设置 TTL 后，存储组`root.ln`中所有的数据都会被保存。
+```
+IoTDB> unset ttl to root.sgcc.**
+```
+
+取消设置`root.sgcc`路径下的所有存储组的 TTL 。
+```
+IoTDB> unset ttl to root.**
+```
+
+取消设置所有存储组的 TTL 。
 
 ## 显示 TTL
 

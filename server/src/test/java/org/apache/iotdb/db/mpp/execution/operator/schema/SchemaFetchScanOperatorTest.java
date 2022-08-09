@@ -24,9 +24,10 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.schemaregion.ISchemaRegion;
 import org.apache.iotdb.db.metadata.schemaregion.SchemaEngine;
+import org.apache.iotdb.db.mpp.common.schematree.ClusterSchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.common.schematree.PathPatternTree;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -84,7 +85,7 @@ public class SchemaFetchScanOperatorTest {
     Binary binary = tsBlock.getColumn(0).getBinary(0);
     InputStream inputStream = new ByteArrayInputStream(binary.getValues());
     Assert.assertEquals(1, ReadWriteIOUtils.readByte(inputStream));
-    SchemaTree schemaTree = SchemaTree.deserialize(inputStream);
+    ISchemaTree schemaTree = ClusterSchemaTree.deserialize(inputStream);
 
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(
