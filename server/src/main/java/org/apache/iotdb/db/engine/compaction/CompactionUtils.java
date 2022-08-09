@@ -354,7 +354,7 @@ public class CompactionUtils {
         reader.getChunkMetadataList(new PartialPath(device, measurement));
     if (chunkMetadata.size() > 0) {
       chunkMetadata.get(chunkMetadata.size() - 1).setFilePath(resource.getTsFilePath());
-      Chunk chunk = ChunkCache.getInstance().get(chunkMetadata.get(0));
+      Chunk chunk = ChunkCache.getInstance().get(chunkMetadata.get(chunkMetadata.size() - 1));
       ChunkHeader header = chunk.getHeader();
       return new MeasurementSchema(
           measurement, header.getDataType(), header.getEncodingType(), header.getCompressionType());

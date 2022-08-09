@@ -4,28 +4,22 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.FastCompactionPerformerSubTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.performer.ICrossCompactionPerformer;
 import org.apache.iotdb.db.engine.compaction.task.CompactionTaskSummary;
-import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
-import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.FastCrossCompactionWriter;
-import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
@@ -34,14 +28,13 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -54,19 +47,20 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
-  public final Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new HashMap<>();
+  public final Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new ConcurrentHashMap<>();
 
   // measurementID -> schema, schemas of measurements under one device
-  public Map<String, MeasurementSchema> schemaMapCache;
+  public final Map<String, MeasurementSchema> schemaMapCache = new ConcurrentHashMap<>();
 
   private CompactionTaskSummary summary;
 
   private List<TsFileResource> targetFiles;
 
-  public final Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
+  public final Map<TsFileResource, List<Modification>> modificationCache =
+      new ConcurrentHashMap<>();
 
-  // unseq reader of sensors in one device
-  public final Map<Integer, IPointReader> unseqReaders = new HashMap<>();
+  // measurementID -> unseq reader, unseq reader of sensors in one device
+  public final Map<String, IPointReader> unseqReaders = new ConcurrentHashMap<>();
 
   private final Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
       measurementChunkMetadataListMapIteratorCache =
@@ -98,6 +92,9 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
         boolean isAligned = deviceInfo.right;
+
+        // get all unseq measurements of this device
+        Set<String> unseqMeasurements = getAllUnseqMeasurementsByDevice(device);
 
         // iterate each seq file
         for (int i = 0; i < seqFiles.size(); i++) {
@@ -132,17 +129,17 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
                   getModifications(seqFile, new PartialPath(device, entry.getKey())));
             }
 
-            // get all measurements in unseq files under the device
-            for (String measurement : getAllUnseqMeasurementsByDevice(device)) {
+            // put all unseq measurements into map
+            for (String measurement : unseqMeasurements) {
               if (!measurmentMetadataList.containsKey(measurement)) {
                 measurmentMetadataList.put(measurement, null);
               }
             }
 
             // get schema of measurements
-            schemaMapCache =
+            schemaMapCache.putAll(
                 CompactionUtils.getMeasurementSchema(
-                    device, measurmentMetadataList.keySet(), seqFiles, unseqFiles, readerCacheMap);
+                    device, measurmentMetadataList.keySet(), seqFiles, unseqFiles, readerCacheMap));
 
             if (isAligned) {
               compactAlignedSeries();
@@ -245,20 +242,6 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
     }
   }
 
-  private AbstractCompactionWriter getCompactionWriter(
-      List<TsFileResource> seqFileResources,
-      List<TsFileResource> unseqFileResources,
-      List<TsFileResource> targetFileResources)
-      throws IOException {
-    if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
-      // cross space
-      return new CrossSpaceCompactionWriter(targetFileResources, seqFileResources);
-    } else {
-      // inner space
-      return new InnerSpaceCompactionWriter(targetFileResources.get(0));
-    }
-  }
-
   private Set<String> getAllUnseqMeasurementsByDevice(String device) throws IOException {
     Set<String> allUnseqMeasurements = new HashSet<>();
     for (TsFileResource unseqResource : unseqFiles) {
@@ -311,21 +294,6 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
       }
     }
     return pathModifications;
-  }
-
-  public List<IMeasurementSchema> getMeasurementSchemas(
-      TsFileResource tsFileResource, List<ChunkMetadata> chunkMetadataList) throws IOException {
-
-    ChunkMetadata lastChunkMetadata = chunkMetadataList.get(chunkMetadataList.size() - 1);
-    lastChunkMetadata.setFilePath(tsFileResource.getTsFilePath());
-    ChunkHeader lastChunkHeader = ChunkCache.getInstance().get(lastChunkMetadata).getHeader();
-
-    return Collections.singletonList(
-        new MeasurementSchema(
-            lastChunkHeader.getMeasurementID(),
-            lastChunkHeader.getDataType(),
-            lastChunkHeader.getEncodingType(),
-            lastChunkHeader.getCompressionType()));
   }
 
   public TsFileSequenceReader getReaderFromCache(TsFileResource resource) {

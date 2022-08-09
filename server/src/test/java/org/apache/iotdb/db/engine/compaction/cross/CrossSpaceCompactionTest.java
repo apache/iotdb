@@ -1044,8 +1044,8 @@ public class CrossSpaceCompactionTest {
                         "root.compactionTest",
                         "0",
                         "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
-                    mergeResource.getSeqFiles(),
-                    mergeResource.getUnseqFiles(),
+                    mergeFiles[0],
+                    mergeFiles[1],
                     IoTDBDescriptor.getInstance()
                         .getConfig()
                         .getCrossCompactionPerformer()

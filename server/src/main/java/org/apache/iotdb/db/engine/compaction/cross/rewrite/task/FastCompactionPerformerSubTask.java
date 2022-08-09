@@ -71,13 +71,14 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
   @Override
   public Void call() throws Exception {
     for (Integer index : pathsIndex) {
+      String sensorID = allMeasurements.get(index);
       // get unseq reader of timeseries
       IPointReader unseqReader =
           fastCompactionPerformer.unseqReaders.computeIfAbsent(
-              index,
+              sensorID,
               integer -> {
                 try {
-                  return getUnseqReaders(new PartialPath(deviceID, allMeasurements.get(index)));
+                  return getUnseqReaders(new PartialPath(deviceID, sensorID));
                 } catch (IOException | IllegalPathException e) {
                   throw new RuntimeException(e);
                 }
@@ -181,42 +182,6 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
         fastCompactionPerformer.getModifications(tsFileResource, path);
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(unseqChunkMetadataList, pathModifications);
-    }
-  }
-
-  /** MetaListEntry stores all chunkmetadatas of a timeseries in an unseq file. */
-  public static class MetaListEntry implements Comparable<MetaListEntry> {
-
-    private int pathId;
-    private int listIdx;
-    private List<ChunkMetadata> chunkMetadataList;
-
-    public MetaListEntry(int pathId, List<ChunkMetadata> chunkMetadataList) {
-      this.pathId = pathId;
-      this.listIdx = -1;
-      this.chunkMetadataList = chunkMetadataList;
-    }
-
-    @Override
-    public int compareTo(MetaListEntry o) {
-      return Long.compare(
-          this.current().getOffsetOfChunkHeader(), o.current().getOffsetOfChunkHeader());
-    }
-
-    public ChunkMetadata current() {
-      return chunkMetadataList.get(listIdx);
-    }
-
-    public boolean hasNext() {
-      return listIdx + 1 < chunkMetadataList.size();
-    }
-
-    public ChunkMetadata next() {
-      return chunkMetadataList.get(++listIdx);
-    }
-
-    public int getPathId() {
-      return pathId;
     }
   }
 }

@@ -6,7 +6,6 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -14,7 +13,6 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -95,7 +93,10 @@ public class FastCrossCompactionWriter implements AutoCloseable {
       throws IOException, PageException {
     if (!isChunkModified) {
       // flush chunk to tsfileIOWriter directly
-      targetFileWriters.get(targetFileIndex).writeChunk(seqChunk, seqChunkMetadata);
+      TsFileIOWriter tsFileIOWriter = targetFileWriters.get(targetFileIndex);
+      synchronized (tsFileIOWriter) {
+        tsFileIOWriter.writeChunk(seqChunk, seqChunkMetadata);
+      }
     } else {
       ChunkReader chunkReader = new ChunkReader(seqChunk);
       ByteBuffer chunkDataBuffer = seqChunk.getData();
@@ -119,7 +120,11 @@ public class FastCrossCompactionWriter implements AutoCloseable {
             PageReader pageReader = chunkReader.constructPageReaderForNextPage(pageHeader);
             BatchData batchData = pageReader.getAllSatisfiedPageData();
             while (batchData.hasCurrent()) {
-              writeDataPoint(batchData.currentTime(), batchData.currentValue(), subTaskId);
+              CompactionWriterUtils.writeDataPoint(
+                  batchData.currentTime(),
+                  batchData.currentValue(),
+                  isAlign,
+                  chunkWriters[subTaskId]);
               batchData.next();
             }
             break;
@@ -152,7 +157,7 @@ public class FastCrossCompactionWriter implements AutoCloseable {
       while (unseqReader.hasNextTimeValuePair()
           && unseqReader.currentTimeValuePair().getTimestamp() < pageHeader.getStartTime()) {
         TimeValuePair timeValuePair = unseqReader.nextTimeValuePair();
-        writeTVPair(timeValuePair, subTaskId);
+        CompactionWriterUtils.writeTVPair(timeValuePair, chunkWriters[subTaskId]);
       }
 
       // 2. compact with this seq page, write point.time < seq page.endTime
@@ -171,11 +176,12 @@ public class FastCrossCompactionWriter implements AutoCloseable {
             if (unseqTimestamp == seqTimestamp) {
               hasOverWritenSeqPoint = true;
             }
-            writeTVPair(timeValuePair, subTaskId);
+            CompactionWriterUtils.writeTVPair(timeValuePair, chunkWriters[subTaskId]);
           }
           // write seq point
           if (!hasOverWritenSeqPoint) {
-            writeDataPoint(seqTimestamp, batchData.currentValue(), subTaskId);
+            CompactionWriterUtils.writeDataPoint(
+                seqTimestamp, batchData.currentValue(), isAlign, chunkWriters[subTaskId]);
           }
           batchData.next();
         }
@@ -191,7 +197,7 @@ public class FastCrossCompactionWriter implements AutoCloseable {
     while (unseqReader.hasNextTimeValuePair()
         && unseqReader.currentTimeValuePair().getTimestamp() <= timeLimit) {
       TimeValuePair timeValuePair = unseqReader.nextTimeValuePair();
-      writeTVPair(timeValuePair, subTaskId);
+      CompactionWriterUtils.writeTVPair(timeValuePair, chunkWriters[subTaskId]);
     }
   }
 
@@ -211,92 +217,6 @@ public class FastCrossCompactionWriter implements AutoCloseable {
     chunkDataBuffer.get(compressedPageBody);
     ((ChunkWriterImpl) chunkWriters[subTaskId])
         .writePageHeaderAndDataIntoBuff(ByteBuffer.wrap(compressedPageBody), pageHeader);
-  }
-
-  protected void writeDataPoint(Long timestamp, Object value, int subTaskId) {
-    if (!isAlign) {
-      ChunkWriterImpl chunkWriter = (ChunkWriterImpl) this.chunkWriters[subTaskId];
-      switch (chunkWriter.getDataType()) {
-        case TEXT:
-          chunkWriter.write(timestamp, (Long) value);
-          break;
-        case DOUBLE:
-          chunkWriter.write(timestamp, (Double) value);
-          break;
-        case BOOLEAN:
-          chunkWriter.write(timestamp, (Boolean) value);
-          break;
-        case INT64:
-          chunkWriter.write(timestamp, (Long) value);
-          break;
-        case INT32:
-          chunkWriter.write(timestamp, (Integer) value);
-          break;
-        case FLOAT:
-          chunkWriter.write(timestamp, (Float) value);
-          break;
-        default:
-          throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
-      }
-    } else {
-      AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
-      for (TsPrimitiveType val : (TsPrimitiveType[]) value) {
-        if (val == null) {
-          chunkWriter.write(timestamp, null, true);
-        } else {
-          TSDataType tsDataType = chunkWriter.getCurrentValueChunkType();
-          switch (tsDataType) {
-            case TEXT:
-              chunkWriter.write(timestamp, val.getBinary(), false);
-              break;
-            case DOUBLE:
-              chunkWriter.write(timestamp, val.getDouble(), false);
-              break;
-            case BOOLEAN:
-              chunkWriter.write(timestamp, val.getBoolean(), false);
-              break;
-            case INT64:
-              chunkWriter.write(timestamp, val.getLong(), false);
-              break;
-            case INT32:
-              chunkWriter.write(timestamp, val.getInt(), false);
-              break;
-            case FLOAT:
-              chunkWriter.write(timestamp, val.getFloat(), false);
-              break;
-            default:
-              throw new UnsupportedOperationException("Unknown data type " + tsDataType);
-          }
-        }
-      }
-      chunkWriter.write(timestamp);
-    }
-  }
-
-  public void writeTVPair(TimeValuePair timeValuePair, int subTaskId) {
-    ChunkWriterImpl chunkWriter = (ChunkWriterImpl) (chunkWriters[subTaskId]);
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-        break;
-      case DOUBLE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-        break;
-      case BOOLEAN:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-        break;
-      case INT64:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-        break;
-      case INT32:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-        break;
-      case FLOAT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
-    }
   }
 
   /**

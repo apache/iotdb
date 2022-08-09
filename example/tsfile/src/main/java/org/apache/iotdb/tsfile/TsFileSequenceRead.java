@@ -46,7 +46,7 @@ import java.util.Map;
 /** This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries. */
 public class TsFileSequenceRead {
   // if you wanna print detailed datas in pages, then turn it true.
-  private static boolean printDetail = true;
+  private static boolean printDetail = false;
 
   @SuppressWarnings({
     "squid:S3776",
@@ -54,7 +54,7 @@ public class TsFileSequenceRead {
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
     String filename =
-        "/Users/bensonchou/PersonalFiles/IOTDB/projects/choubenson/iotdb/server/target/data/sequence/root.compactionTest/0/0/1659948215079-1-0-1.tsfile";
+        "/Users/bensonchou/PersonalFiles/IOTDB/projects/choubenson/iotdb/server/target/sequence/root.compactionTest/0/0/4-4-0-1.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -74,6 +74,7 @@ public class TsFileSequenceRead {
       List<long[]> timeBatch = new ArrayList<>();
       int pageIndex = 0;
       byte marker;
+      String deviceID = "";
       while ((marker = reader.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
@@ -156,7 +157,8 @@ public class TsFileSequenceRead {
                 } else {
                   System.out.println("\t\tpoints in the page: " + batchData.length());
                 }
-                if (printDetail) {
+                if (deviceID.equals("root.compactionTest.device0")
+                    && header.getMeasurementID().equals("sensor3")) {
                   while (batchData.hasCurrent()) {
                     System.out.println(
                         "\t\t\ttime, value: "
@@ -176,6 +178,7 @@ public class TsFileSequenceRead {
             System.out.println("Chunk Group Header position: " + reader.position());
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             System.out.println("device: " + chunkGroupHeader.getDeviceID());
+            deviceID = chunkGroupHeader.getDeviceID();
             break;
           case MetaMarker.OPERATION_INDEX_RANGE:
             reader.readPlanIndex();
