@@ -155,12 +155,21 @@ public class DataRegionStateMachine extends BaseStateMachine {
           boolean timeout =
               !queueSortCondition.await(CACHE_WINDOW_TIME_IN_MS, TimeUnit.MILLISECONDS);
           if (timeout) {
-            logger.info(
-                "waiting target request timeout. current index: {}, target index: {}",
-                insertNodeWrapper.getStartSyncIndex(),
-                nextSyncIndex);
-            requestCache.remove(insertNodeWrapper);
-            break;
+            if (requestCache.peek().getStartSyncIndex() == insertNodeWrapper.getStartSyncIndex()) {
+              // current thread hold the peek request thus it can write the peek immediately.
+              logger.info(
+                  "waiting target request timeout. current index: {}, target index: {}",
+                  insertNodeWrapper.getStartSyncIndex(),
+                  nextSyncIndex);
+              requestCache.remove(insertNodeWrapper);
+              break;
+            } else {
+              // although the timeout is triggered, current thread cannot write its request
+              // because there should be some other thread who hold the peek request.
+              // And current thread should signal all the other threads to let the thread
+              // who holds the peed request to execute write operation.
+              queueSortCondition.signalAll();
+            }
           }
         } catch (InterruptedException e) {
           logger.warn(
