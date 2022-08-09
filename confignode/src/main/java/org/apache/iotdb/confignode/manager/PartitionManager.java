@@ -131,9 +131,8 @@ public class PartitionManager {
    *
    * @param req SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
-   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
-   *     StorageGroup doesn't exist.
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
+   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan req) {
     // After all the SchemaPartitions are allocated,
@@ -189,9 +188,8 @@ public class PartitionManager {
    * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
    *     List<TimePartitionSlot>>>
    * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
-   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
-   *     StorageGroup doesn't exist.
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
+   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
     // After all the DataPartitions are allocated,
@@ -286,9 +284,8 @@ public class PartitionManager {
           continue;
         }
 
-        // 2. The average number of partitions held by each Region is greater than the expected
-        // average
-        //    when the partition allocation is complete
+        // 2. The average number of partitions held by each Region will be greater than the
+        // expected average number after the partition allocation is completed
         if (allocatedRegionCount < maxRegionCount
             && slotCount / allocatedRegionCount > maxSlotCount / maxRegionCount) {
           // The delta is equal to the smallest integer solution that satisfies the inequality:
@@ -306,8 +303,10 @@ public class PartitionManager {
       }
 
       // TODO: Use procedure to protect the following process
-      // Do Region allocation and creation for StorageGroups based on the allotment
-      getLoadManager().doRegionCreation(allotmentMap, consensusGroupType);
+      if (!allotmentMap.isEmpty()) {
+        // Do Region allocation and creation for StorageGroups based on the allotment
+        getLoadManager().doRegionCreation(allotmentMap, consensusGroupType);
+      }
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (NotEnoughDataNodeException e) {

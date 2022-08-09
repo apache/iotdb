@@ -87,12 +87,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case LIST_ROLE_PRIVILEGE:
         this.setType(StatementType.LIST_ROLE_PRIVILEGE);
         break;
-      case LIST_USER_ROLES:
-        this.setType(StatementType.LIST_USER_ROLES);
-        break;
-      case LIST_ROLE_USERS:
-        this.setType(StatementType.LIST_ROLE_USERS);
-        break;
       case LIST_USER:
         this.setType(StatementType.LIST_USER);
         break;
@@ -192,8 +186,6 @@ public class AuthorStatement extends Statement implements IConfigStatement {
       case LIST_ROLE:
       case LIST_USER_PRIVILEGE:
       case LIST_ROLE_PRIVILEGE:
-      case LIST_USER_ROLES:
-      case LIST_ROLE_USERS:
         queryType = QueryType.READ;
         break;
       default:
