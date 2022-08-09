@@ -1257,10 +1257,10 @@ public class Session {
       }
     }
     if (valuesList.size() == 0) {
-      logger.warn("All values of the {} are null,null values are {}", deviceId, nullMap.toString());
+      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap.toString());
       return true;
     } else {
-      logger.warn("Some values of {} are null,null values are {}", deviceId, nullMap.toString());
+      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap.toString());
     }
     return false;
   }
@@ -1314,10 +1314,10 @@ public class Session {
       }
     }
     if (valuesList.size() == 0) {
-      logger.warn("All values of the {} are null,null values are {}", deviceId, nullMap.toString());
+      logger.info("All values of the {} are null,null values are {}", deviceId, nullMap.toString());
       return true;
     } else {
-      logger.warn("Some values of {} are null,null values are {}", deviceId, nullMap.toString());
+      logger.info("Some values of {} are null,null values are {}", deviceId, nullMap.toString());
     }
     return false;
   }
