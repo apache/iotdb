@@ -253,7 +253,7 @@ public class TransportServiceImpl implements TransportService.Iface {
       byte[] byteArray = new byte[length];
       buff.get(byteArray);
       try {
-        PipeData pipeData = PipeData.deserialize(byteArray);
+        PipeData pipeData = PipeData.createPipeData(byteArray);
         if (type == Type.TSFILE) {
           // Do with file
           handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
