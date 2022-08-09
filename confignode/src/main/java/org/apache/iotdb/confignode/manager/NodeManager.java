@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
@@ -37,6 +38,7 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
 import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
@@ -232,8 +234,12 @@ public class NodeManager {
             TDataNodeInfo info = new TDataNodeInfo();
             int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
             info.setDataNodeId(dataNodeId);
-            info.setStatus(
-                getLoadManager().getNodeCacheMap().get(dataNodeId).getNodeStatus().getStatus());
+            INodeCache nodeCache = getLoadManager().getNodeCacheMap().get(dataNodeId);
+            if (nodeCache == null) {
+              info.setStatus(NodeStatus.Unknown.getStatus());
+            } else {
+              info.setStatus(nodeCache.getNodeStatus().getStatus());
+            }
             info.setRpcAddresss(dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
             info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
             info.setDataRegionNum(0);
@@ -253,8 +259,12 @@ public class NodeManager {
             TConfigNodeInfo info = new TConfigNodeInfo();
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);
-            info.setStatus(
-                getLoadManager().getNodeCacheMap().get(configNodeId).getNodeStatus().getStatus());
+            INodeCache nodeCache = getLoadManager().getNodeCacheMap().get(configNodeId);
+            if (nodeCache == null) {
+              info.setStatus(NodeStatus.Unknown.getStatus());
+            } else {
+              info.setStatus(nodeCache.getNodeStatus().getStatus());
+            }
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             configNodeInfoList.add(info);
