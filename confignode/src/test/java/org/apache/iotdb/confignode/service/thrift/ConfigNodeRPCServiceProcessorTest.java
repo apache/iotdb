@@ -18,16 +18,12 @@
  */
 package org.apache.iotdb.confignode.service.thrift;
 
-import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TNodeResource;
-import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
-import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.auth.entity.PrivilegeType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
@@ -51,14 +47,10 @@ import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeConfigurationResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeRegisterResp;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionReq;
-import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetDataReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaReplicationFactorReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
@@ -86,7 +78,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -352,278 +343,6 @@ public class ConfigNodeRPCServiceProcessorTest {
     PublicBAOS baos = new PublicBAOS();
     patternTree.serialize(baos);
     return ByteBuffer.wrap(baos.toByteArray());
-  }
-
-  @Test
-  public void testGetAndCreateSchemaPartition()
-      throws TException, IOException, IllegalPathException {
-    final String sg = "root.sg";
-    final String sg0 = "root.sg0";
-    final String sg1 = "root.sg1";
-
-    final String d00 = sg0 + ".d0.s";
-    final String d01 = sg0 + ".d1.s";
-    final String d10 = sg1 + ".d0.s";
-    final String d11 = sg1 + ".d1.s";
-
-    final String allPaths = "root.**";
-    final String allSg0 = "root.sg0.**";
-    final String allSg1 = "root.sg1.**";
-
-    TSStatus status;
-    ByteBuffer buffer;
-    TSchemaPartitionReq schemaPartitionReq;
-    TSchemaPartitionResp schemaPartitionResp;
-
-    Map<String, Map<TSeriesPartitionSlot, TRegionReplicaSet>> schemaPartitionMap;
-
-    // Set StorageGroups
-    status = processor.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg0)));
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    status = processor.setStorageGroup(new TSetStorageGroupReq(new TStorageGroupSchema(sg1)));
-    Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-
-    // Test getOrCreateSchemaPartition, the result should be NOT_ENOUGH_DATANODE
-    buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
-    schemaPartitionReq = new TSchemaPartitionReq(buffer);
-    schemaPartitionResp = processor.getOrCreateSchemaPartition(schemaPartitionReq);
-    Assert.assertEquals(
-        TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(),
-        schemaPartitionResp.getStatus().getCode());
-    Assert.assertNull(schemaPartitionResp.getSchemaRegionMap());
-
-    // register DataNodes
-    registerDataNodes();
-
-    // Test getSchemaPartition, the result should be empty
-    buffer = generatePatternTreeBuffer(new String[] {d00, d01, allSg1});
-    schemaPartitionReq = new TSchemaPartitionReq(buffer);
-    schemaPartitionResp = processor.getSchemaPartition(schemaPartitionReq);
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), schemaPartitionResp.getStatus().getCode());
-    Assert.assertEquals(0, schemaPartitionResp.getSchemaRegionMapSize());
-
-    // Test getOrCreateSchemaPartition, ConfigNode should create SchemaPartitions and return
-    buffer = generatePatternTreeBuffer(new String[] {d00, d01, d10, d11});
-    schemaPartitionReq.setPathPatternTree(buffer);
-    schemaPartitionResp = processor.getOrCreateSchemaPartition(schemaPartitionReq);
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), schemaPartitionResp.getStatus().getCode());
-    Assert.assertEquals(2, schemaPartitionResp.getSchemaRegionMapSize());
-    schemaPartitionMap = schemaPartitionResp.getSchemaRegionMap();
-    for (int i = 0; i < 2; i++) {
-      Assert.assertTrue(schemaPartitionMap.containsKey(sg + i));
-      Assert.assertEquals(2, schemaPartitionMap.get(sg + i).size());
-      schemaPartitionMap
-          .get(sg + i)
-          .forEach(
-              (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-                Assert.assertEquals(1, tRegionReplicaSet.getDataNodeLocationsSize());
-                Assert.assertEquals(
-                    TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
-              });
-    }
-
-    // Test getSchemaPartition, when a device path doesn't match any StorageGroup and including
-    // "**",
-    // ConfigNode will return all the SchemaPartitions
-    buffer = generatePatternTreeBuffer(new String[] {allPaths});
-    schemaPartitionReq.setPathPatternTree(buffer);
-    schemaPartitionResp = processor.getSchemaPartition(schemaPartitionReq);
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), schemaPartitionResp.getStatus().getCode());
-    Assert.assertEquals(2, schemaPartitionResp.getSchemaRegionMapSize());
-    schemaPartitionMap = schemaPartitionResp.getSchemaRegionMap();
-    for (int i = 0; i < 2; i++) {
-      Assert.assertTrue(schemaPartitionMap.containsKey(sg + i));
-      Assert.assertEquals(2, schemaPartitionMap.get(sg + i).size());
-      schemaPartitionMap
-          .get(sg + i)
-          .forEach(
-              (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-                Assert.assertEquals(1, tRegionReplicaSet.getDataNodeLocationsSize());
-                Assert.assertEquals(
-                    TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
-              });
-    }
-
-    // Test getSchemaPartition, when a device path matches with a StorageGroup and end with "*",
-    // ConfigNode will return all the SchemaPartitions in this StorageGroup
-    buffer = generatePatternTreeBuffer(new String[] {allSg0, d11});
-    schemaPartitionReq.setPathPatternTree(buffer);
-    schemaPartitionResp = processor.getSchemaPartition(schemaPartitionReq);
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), schemaPartitionResp.getStatus().getCode());
-    Assert.assertEquals(2, schemaPartitionResp.getSchemaRegionMapSize());
-    schemaPartitionMap = schemaPartitionResp.getSchemaRegionMap();
-    // Check "root.sg0"
-    Assert.assertTrue(schemaPartitionMap.containsKey(sg0));
-    Assert.assertEquals(2, schemaPartitionMap.get(sg0).size());
-    schemaPartitionMap
-        .get(sg0)
-        .forEach(
-            (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-              Assert.assertEquals(1, tRegionReplicaSet.getDataNodeLocationsSize());
-              Assert.assertEquals(
-                  TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
-            });
-    // Check "root.sg1"
-    Assert.assertTrue(schemaPartitionMap.containsKey(sg1));
-    Assert.assertEquals(1, schemaPartitionMap.get(sg1).size());
-    schemaPartitionMap
-        .get(sg1)
-        .forEach(
-            (tSeriesPartitionSlot, tRegionReplicaSet) -> {
-              Assert.assertEquals(1, tRegionReplicaSet.getDataNodeLocationsSize());
-              Assert.assertEquals(
-                  TConsensusGroupType.SchemaRegion, tRegionReplicaSet.getRegionId().getType());
-            });
-  }
-
-  private Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>>
-      constructPartitionSlotsMap(
-          int storageGroupNum, int seriesPartitionSlotNum, long timePartitionSlotNum) {
-    final String sg = "root.sg";
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> result = new HashMap<>();
-
-    for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = sg + i;
-      result.put(storageGroup, new HashMap<>());
-      for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(j);
-        result.get(storageGroup).put(seriesPartitionSlot, new ArrayList<>());
-        for (long k = 0; k < timePartitionSlotNum; k++) {
-          TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(k);
-          result.get(storageGroup).get(seriesPartitionSlot).add(timePartitionSlot);
-        }
-      }
-    }
-
-    return result;
-  }
-
-  private void checkDataPartitionMap(
-      int storageGroupNum,
-      int seriesPartitionSlotNum,
-      long timePartitionSlotNum,
-      Map<String, Map<TSeriesPartitionSlot, Map<TTimePartitionSlot, List<TRegionReplicaSet>>>>
-          dataPartitionMap) {
-    final String sg = "root.sg";
-    Assert.assertEquals(storageGroupNum, dataPartitionMap.size());
-    for (int i = 0; i < storageGroupNum; i++) {
-      String storageGroup = sg + i;
-      Assert.assertTrue(dataPartitionMap.containsKey(storageGroup));
-      Assert.assertEquals(seriesPartitionSlotNum, dataPartitionMap.get(storageGroup).size());
-      for (int j = 0; j < seriesPartitionSlotNum; j++) {
-        TSeriesPartitionSlot seriesPartitionSlot = new TSeriesPartitionSlot(j);
-        Assert.assertTrue(dataPartitionMap.get(storageGroup).containsKey(seriesPartitionSlot));
-        Assert.assertEquals(
-            timePartitionSlotNum,
-            dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).size());
-        for (long k = 0; k < timePartitionSlotNum; k++) {
-          TTimePartitionSlot timePartitionSlot = new TTimePartitionSlot(k);
-          Assert.assertTrue(
-              dataPartitionMap
-                  .get(storageGroup)
-                  .get(seriesPartitionSlot)
-                  .containsKey(timePartitionSlot));
-          // One RegionReplicaSet
-          Assert.assertEquals(
-              1,
-              dataPartitionMap
-                  .get(storageGroup)
-                  .get(seriesPartitionSlot)
-                  .get(timePartitionSlot)
-                  .size());
-          // Is DataRegion
-          Assert.assertEquals(
-              TConsensusGroupType.DataRegion,
-              dataPartitionMap
-                  .get(storageGroup)
-                  .get(seriesPartitionSlot)
-                  .get(timePartitionSlot)
-                  .get(0)
-                  .getRegionId()
-                  .getType());
-          // Including one RegionReplica
-          Assert.assertEquals(
-              1,
-              dataPartitionMap
-                  .get(storageGroup)
-                  .get(seriesPartitionSlot)
-                  .get(timePartitionSlot)
-                  .get(0)
-                  .getDataNodeLocationsSize());
-        }
-      }
-    }
-  }
-
-  @Test
-  public void testGetAndCreateDataPartition() throws TException {
-    final String sg = "root.sg";
-    final int storageGroupNum = 2;
-    final int seriesPartitionSlotNum = 4;
-    final long timePartitionSlotNum = 6;
-
-    TSStatus status;
-    TDataPartitionReq dataPartitionReq;
-    TDataPartitionResp dataPartitionResp;
-
-    // Prepare partitionSlotsMap
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap0 =
-        constructPartitionSlotsMap(storageGroupNum, seriesPartitionSlotNum, timePartitionSlotNum);
-    Map<String, Map<TSeriesPartitionSlot, List<TTimePartitionSlot>>> partitionSlotsMap1 =
-        constructPartitionSlotsMap(
-            storageGroupNum * 2, seriesPartitionSlotNum * 2, timePartitionSlotNum * 2);
-
-    // set StorageGroups
-    for (int i = 0; i < storageGroupNum; i++) {
-      TSetStorageGroupReq setReq = new TSetStorageGroupReq(new TStorageGroupSchema(sg + i));
-      status = processor.setStorageGroup(setReq);
-      Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
-    }
-
-    // Test getOrCreateDataPartition, the result should be NOT_ENOUGH_DATANODE
-    dataPartitionReq = new TDataPartitionReq(partitionSlotsMap0);
-    dataPartitionResp = processor.getOrCreateDataPartition(dataPartitionReq);
-    Assert.assertEquals(
-        TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode(), dataPartitionResp.getStatus().getCode());
-    Assert.assertNull(dataPartitionResp.getDataPartitionMap());
-
-    // register DataNodes
-    registerDataNodes();
-
-    // Test getDataPartition, the result should be empty
-    dataPartitionReq = new TDataPartitionReq(partitionSlotsMap0);
-    dataPartitionResp = processor.getDataPartition(dataPartitionReq);
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataPartitionResp.getStatus().getCode());
-    Assert.assertNotNull(dataPartitionResp.getDataPartitionMap());
-    Assert.assertEquals(0, dataPartitionResp.getDataPartitionMapSize());
-
-    // Test getOrCreateDataPartition, ConfigNode should create DataPartition and return
-    dataPartitionResp = processor.getOrCreateDataPartition(dataPartitionReq);
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataPartitionResp.getStatus().getCode());
-    Assert.assertNotNull(dataPartitionResp.getDataPartitionMap());
-    checkDataPartitionMap(
-        storageGroupNum,
-        seriesPartitionSlotNum,
-        timePartitionSlotNum,
-        dataPartitionResp.getDataPartitionMap());
-
-    // Test getDataPartition, the result should only contain DataPartition created before
-    dataPartitionReq.setPartitionSlotsMap(partitionSlotsMap1);
-    dataPartitionResp = processor.getDataPartition(dataPartitionReq);
-    Assert.assertEquals(
-        TSStatusCode.SUCCESS_STATUS.getStatusCode(), dataPartitionResp.getStatus().getCode());
-    Assert.assertNotNull(dataPartitionResp.getDataPartitionMap());
-    checkDataPartitionMap(
-        storageGroupNum,
-        seriesPartitionSlotNum,
-        timePartitionSlotNum,
-        dataPartitionResp.getDataPartitionMap());
   }
 
   @Test
