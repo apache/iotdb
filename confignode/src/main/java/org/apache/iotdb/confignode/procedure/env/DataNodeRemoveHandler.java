@@ -136,7 +136,7 @@ public class DataNodeRemoveHandler {
   }
 
   /**
-   * Send to DataNode, migrate region from originalDataNode to destDataNode
+   * Send to DataNode, add region peer
    *
    * @param originalDataNode old location data node
    * @param destDataNode dest data node
@@ -169,14 +169,14 @@ public class DataNodeRemoveHandler {
                 migrateRegionReq,
                 DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
-        "send region {} migrate action to {}, wait it finished",
+        "Send region {} migrate action to {}, wait it finished",
         regionId,
         destDataNode.getInternalEndPoint());
     return status;
   }
 
   /**
-   * Send to DataNode, migrate region from originalDataNode to destDataNode
+   * Send to DataNode, remove region
    *
    * @param originalDataNode old location data node
    * @param destDataNode dest data node
@@ -209,14 +209,14 @@ public class DataNodeRemoveHandler {
                 migrateRegionReq,
                 DataNodeRequestType.REMOVE_REGION_PEER);
     LOGGER.info(
-        "send region {} remove peer to {}, wait it finished",
+        "Send region {} remove peer to {}, wait it finished",
         regionId,
         originalDataNode.getInternalEndPoint());
     return status;
   }
 
   /**
-   * Send to DataNode, migrate region from originalDataNode to destDataNode
+   * Send to DataNode, remove region consensus group from originalDataNode node
    *
    * @param originalDataNode old location data node
    * @param destDataNode dest data node
@@ -247,7 +247,7 @@ public class DataNodeRemoveHandler {
                 migrateRegionReq,
                 DataNodeRequestType.REMOVE_REGION_CONSENSUS_GROUP);
     LOGGER.info(
-        "send region {} migrate action to {}, wait it finished",
+        "Send region {} migrate action to {}, wait it finished",
         regionId,
         originalDataNode.getInternalEndPoint());
     return status;
