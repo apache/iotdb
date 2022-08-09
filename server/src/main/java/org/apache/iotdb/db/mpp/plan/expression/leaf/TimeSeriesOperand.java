@@ -111,7 +111,7 @@ public class TimeSeriesOperand extends LeafOperand {
   public void bindInputLayerColumnIndexWithExpression(
       Map<String, List<InputLocation>> inputLocations) {
     final String digest = toString();
-    // 有不符合if条件的情况吗？
+
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
     }

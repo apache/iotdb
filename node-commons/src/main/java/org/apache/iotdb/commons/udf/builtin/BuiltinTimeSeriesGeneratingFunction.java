@@ -88,8 +88,7 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   EQUAL_SIZE_BUCKET_M4_SAMPLE("EQUAL_SIZE_BUCKET_M4_SAMPLE", UDTFEqualSizeBucketM4Sample.class),
   EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE(
       "EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE", UDTFEqualSizeBucketOutlierSample.class),
-  JEXL("JEXL", UDTFJexl.class),
-  SESSION_WINDOW_COUNT("SESSION_WINDOW_COUNT", UDTFSessionCount.class);
+  JEXL("JEXL", UDTFJexl.class);
 
   private final String functionName;
   private final Class<?> functionClass;

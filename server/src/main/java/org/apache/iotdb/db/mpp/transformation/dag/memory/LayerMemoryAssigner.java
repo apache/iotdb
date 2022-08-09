@@ -51,7 +51,7 @@ public class LayerMemoryAssigner {
     int memoryPartitions = 0;
     for (Entry<Expression, Integer> expressionReferenceEntry :
         expressionReferenceCount.entrySet()) {
-      // 没看懂
+
       memoryPartitions +=
           expressionReferenceEntry.getValue()
               * (expressionReferenceEntry.getKey() instanceof FunctionExpression ? 2 : 1);

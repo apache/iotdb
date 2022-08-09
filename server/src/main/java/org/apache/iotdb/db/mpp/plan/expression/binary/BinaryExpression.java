@@ -213,7 +213,7 @@ public abstract class BinaryExpression extends Expression {
     rightExpression.bindInputLayerColumnIndexWithExpression(inputLocations);
 
     final String digest = toString();
-    // 对于多元表达式，需要这个if语句吗，应该是一定不会存在digest？因为inputLocations只存单一物理量，不会存多元表达式的？
+
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
     }

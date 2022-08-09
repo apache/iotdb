@@ -905,29 +905,92 @@ public class IoTDBUDFWindowQueryIT {
 
   @Test
   public void testSessionTimeWindowSS6() {
-    String sessionGap = "1";
-    Long displayBegin = 2L;
-    Long displayEnd = 20000L;
-    ArrayList<Long> windowStart = new ArrayList<>();
-    ArrayList<Long> windowEnd = new ArrayList<>();
-    for (long i = displayBegin; i <= 9999; i++) {
-      if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 9996
-          || i == 9997 || i == 9998) {
-        continue;
-      }
-      windowStart.add(i);
-      windowEnd.add(i);
+    String sessionGap = "2";
+    Long displayBegin = 1000000L;
+    Long displayEnd = 2000000L;
+    String sql;
+    if (displayBegin == null) {
+      sql =
+          String.format(
+              "select window_start_end(s3, '%s'='%s', '%s'='%s') from root.vehicle.d1",
+              UDFTestConstant.ACCESS_STRATEGY_KEY,
+              UDFTestConstant.ACCESS_STRATEGY_SESSION,
+              UDFTestConstant.SESSION_GAP_KEY,
+              sessionGap);
+    } else {
+      sql =
+          String.format(
+              "select window_start_end(s3, '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s') from root.vehicle.d1",
+              UDFTestConstant.ACCESS_STRATEGY_KEY,
+              UDFTestConstant.ACCESS_STRATEGY_SESSION,
+              UDFTestConstant.DISPLAY_WINDOW_BEGIN_KEY,
+              displayBegin.longValue(),
+              UDFTestConstant.DISPLAY_WINDOW_END_KEY,
+              displayEnd.longValue(),
+              UDFTestConstant.SESSION_GAP_KEY,
+              sessionGap);
     }
-    testSessionTimeWindowSS(
-        sessionGap,
-        windowStart.stream().mapToLong(t -> t.longValue()).toArray(),
-        windowEnd.stream().mapToLong(t -> t.longValue()).toArray(),
-        displayBegin,
-        displayEnd);
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement();
+        ResultSet resultSet = statement.executeQuery(sql)) {
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(count, 0);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
   }
 
   @Test
   public void testSessionTimeWindowSS7() {
+    String sessionGap = "2";
+    Long displayBegin = -2000000L;
+    Long displayEnd = -100L;
+    String sql;
+    if (displayBegin == null) {
+      sql =
+          String.format(
+              "select window_start_end(s3, '%s'='%s', '%s'='%s') from root.vehicle.d1",
+              UDFTestConstant.ACCESS_STRATEGY_KEY,
+              UDFTestConstant.ACCESS_STRATEGY_SESSION,
+              UDFTestConstant.SESSION_GAP_KEY,
+              sessionGap);
+    } else {
+      sql =
+          String.format(
+              "select window_start_end(s3, '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s') from root.vehicle.d1",
+              UDFTestConstant.ACCESS_STRATEGY_KEY,
+              UDFTestConstant.ACCESS_STRATEGY_SESSION,
+              UDFTestConstant.DISPLAY_WINDOW_BEGIN_KEY,
+              displayBegin.longValue(),
+              UDFTestConstant.DISPLAY_WINDOW_END_KEY,
+              displayEnd.longValue(),
+              UDFTestConstant.SESSION_GAP_KEY,
+              sessionGap);
+    }
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement();
+        ResultSet resultSet = statement.executeQuery(sql)) {
+      assertEquals(2, resultSet.getMetaData().getColumnCount());
+      int count = 0;
+      while (resultSet.next()) {
+        count++;
+      }
+      assertEquals(count, 0);
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testSessionTimeWindowSS8() {
     String sessionGap = "1";
     Long displayBegin = 2L;
     Long displayEnd = 20000L;
