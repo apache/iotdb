@@ -111,4 +111,14 @@ public class TypeInferenceUtilsTest {
       assertEquals(encodings[i], TypeInferenceUtils.getPredictedDataType(values[i], false));
     }
   }
+
+  @Test
+  public void testIsNumber() {
+    String[] values = {"123", ".123", "123.", "123.123", "123f", "123x", "123d", "ddd"};
+    Boolean[] is_value = {true, true, true, true, false, false, false, false};
+
+    for (int i = 0; i < values.length; i++) {
+      assertEquals(is_value[i], TypeInferenceUtils.isNumber(values[i]));
+    }
+  }
 }

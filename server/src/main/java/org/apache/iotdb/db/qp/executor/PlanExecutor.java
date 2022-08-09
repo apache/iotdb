@@ -1862,7 +1862,7 @@ public class PlanExecutor implements IPlanExecutor {
       insertRowPlan.setMeasurementMNodes(
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
       // When insert data with sql statement, the data types will be null here.
-      // We need to predicted the data types first
+      // We need to predict the data types first
       if (insertRowPlan.getDataTypes()[0] == null) {
         for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
           insertRowPlan.getDataTypes()[i] =

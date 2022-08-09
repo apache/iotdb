@@ -47,15 +47,7 @@ public class TypeInferenceUtils {
   private TypeInferenceUtils() {}
 
   static boolean isNumber(String s) {
-    if (s == null || s.equals("NaN")) {
-      return false;
-    }
-    try {
-      Double.parseDouble(s);
-    } catch (NumberFormatException e) {
-      return false;
-    }
-    return true;
+    return s.matches("^\\.[0-9]+|[0-9]+\\.?[0-9]*$");
   }
 
   private static boolean isBoolean(String s) {
