@@ -87,7 +87,7 @@ public class NodeInfo implements SnapshotProcessor {
 
   // Registered DataNodes
   private final ReentrantReadWriteLock dataNodeInfoReadWriteLock;
-  private final AtomicInteger nextNodeId = new AtomicInteger(0);
+  private final AtomicInteger nextNodeId = new AtomicInteger(-1);
   private final ConcurrentNavigableMap<Integer, TDataNodeConfiguration> registeredDataNodes =
       new ConcurrentSkipListMap<>();
 
@@ -396,7 +396,7 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   public int generateNextNodeId() {
-    return nextNodeId.getAndIncrement();
+    return nextNodeId.incrementAndGet();
   }
 
   @Override
@@ -559,7 +559,7 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   public void clear() {
-    nextNodeId.set(0);
+    nextNodeId.set(-1);
     registeredDataNodes.clear();
     drainingDataNodes.clear();
     registeredConfigNodes.clear();
