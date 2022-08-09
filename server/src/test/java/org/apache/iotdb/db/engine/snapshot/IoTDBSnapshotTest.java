@@ -43,25 +43,20 @@ import java.util.List;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBSnapshotTest {
-  String[] originDataDirs;
   private String[] testDataDirs =
       new String[] {"target/data/data1", "target/data/data2", "target/data/data3"};
   private String testSgName = "root.testsg";
 
   @Before
   public void setUp() throws Exception {
-    originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
-    DirectoryManager.restartDirectoryManager();
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
-    DirectoryManager.restartDirectoryManager();
     EnvironmentUtils.recursiveDeleteFolder("target" + File.separator + "data");
     EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.recursiveDeleteFolder("target" + File.separator + "tmp");
   }
 
   private void writeTsFiles() throws IOException, WriteProcessException {
@@ -93,53 +88,69 @@ public class IoTDBSnapshotTest {
   @Test
   public void testCreateSnapshot()
       throws IOException, WriteProcessException, DataRegionException, DirectoryNotLegalException {
-    writeTsFiles();
-    DataRegion region = new DataRegion(testSgName, "0");
-    File snapshotDir = new File("target" + File.separator + "snapshot");
-    Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
+    String[] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
+    DirectoryManager.getInstance().resetFolders();
     try {
-      new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
-      File[] files =
-          snapshotDir.listFiles(
-              new FilenameFilter() {
-                @Override
-                public boolean accept(File dir, String name) {
-                  return name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME);
-                }
-              });
-      Assert.assertEquals(files.length, 1);
-      SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
-      Assert.assertEquals(analyzer.getType(), SnapshotLogger.SnapshotType.LOCAL_DISK);
-      int cnt = 0;
-      while (analyzer.hasNext()) {
-        analyzer.getNextPairs();
-        cnt++;
+      writeTsFiles();
+      DataRegion region = new DataRegion(testSgName, "0");
+      File snapshotDir = new File("target" + File.separator + "snapshot");
+      Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
+      try {
+        new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true);
+        File[] files =
+            snapshotDir.listFiles(
+                new FilenameFilter() {
+                  @Override
+                  public boolean accept(File dir, String name) {
+                    return name.equals(SnapshotLogger.SNAPSHOT_LOG_NAME);
+                  }
+                });
+        Assert.assertEquals(files.length, 1);
+        SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
+        Assert.assertEquals(analyzer.getType(), SnapshotLogger.SnapshotType.LOCAL_DISK);
+        int cnt = 0;
+        while (analyzer.hasNext()) {
+          analyzer.getNextPairs();
+          cnt++;
+        }
+        analyzer.close();
+        Assert.assertEquals(200, cnt);
+      } finally {
+        EnvironmentUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
       }
-      analyzer.close();
-      Assert.assertEquals(200, cnt);
     } finally {
-      EnvironmentUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
+      IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
+      DirectoryManager.getInstance().resetFolders();
     }
   }
 
   @Test
   public void testLoadSnapshot()
       throws IOException, WriteProcessException, DataRegionException, DirectoryNotLegalException {
-    writeTsFiles();
-    DataRegion region = new DataRegion(testSgName, "0");
-    File snapshotDir = new File("target" + File.separator + "snapshot");
-    Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
+    String[] originDataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    IoTDBDescriptor.getInstance().getConfig().setDataDirs(testDataDirs);
+    DirectoryManager.getInstance().resetFolders();
     try {
-      Assert.assertTrue(
-          new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true));
-      DataRegion dataRegion =
-          new SnapshotLoader(snapshotDir.getAbsolutePath(), testSgName, "0")
-              .loadSnapshotForStateMachine();
-      Assert.assertNotNull(dataRegion);
-      List<TsFileResource> resource = dataRegion.getTsFileManager().getTsFileList(true);
-      Assert.assertEquals(100, resource.size());
+      writeTsFiles();
+      DataRegion region = new DataRegion(testSgName, "0");
+      File snapshotDir = new File("target" + File.separator + "snapshot");
+      Assert.assertTrue(snapshotDir.exists() || snapshotDir.mkdirs());
+      try {
+        Assert.assertTrue(
+            new SnapshotTaker(region).takeFullSnapshot(snapshotDir.getAbsolutePath(), true));
+        DataRegion dataRegion =
+            new SnapshotLoader(snapshotDir.getAbsolutePath(), testSgName, "0")
+                .loadSnapshotForStateMachine();
+        Assert.assertNotNull(dataRegion);
+        List<TsFileResource> resource = dataRegion.getTsFileManager().getTsFileList(true);
+        Assert.assertEquals(100, resource.size());
+      } finally {
+        EnvironmentUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
+      }
     } finally {
-      EnvironmentUtils.recursiveDeleteFolder(snapshotDir.getAbsolutePath());
+      IoTDBDescriptor.getInstance().getConfig().setDataDirs(originDataDirs);
+      DirectoryManager.getInstance().resetFolders();
     }
   }
 }
