@@ -118,7 +118,7 @@ public class LogDispatcher {
           if (!thread
               .getPendingRequest()
               .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
-            logger.info(
+            logger.debug(
                 "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
                 impl.getThisNode().getGroupId(),
                 thread.getPeer(),
