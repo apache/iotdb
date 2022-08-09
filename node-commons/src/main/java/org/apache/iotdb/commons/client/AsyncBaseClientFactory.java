@@ -39,15 +39,15 @@ public abstract class AsyncBaseClientFactory<K, V> extends BaseClientFactory<K, 
       ClientFactoryProperty clientFactoryProperty,
       String threadName) {
     super(clientManager, clientFactoryProperty);
-    tManagers = new TAsyncClientManager[clientFactoryProperty.getSelectorNumOfAsyncClientPool()];
-    for (int i = 0; i < tManagers.length; i++) {
-      try {
-        tManagers[i] = new TAsyncClientManager();
-      } catch (IOException e) {
-        logger.error("Cannot create Async client factory", e);
-      }
-    }
     synchronized (this) {
+      tManagers = new TAsyncClientManager[clientFactoryProperty.getSelectorNumOfAsyncClientPool()];
+      for (int i = 0; i < tManagers.length; i++) {
+        try {
+          tManagers[i] = new TAsyncClientManager();
+        } catch (IOException e) {
+          logger.error("Cannot create Async client factory", e);
+        }
+      }
       Thread.getAllStackTraces().keySet().stream()
           .filter(thread -> thread.getName().contains(THRIFT_THREAD_NAME))
           .collect(Collectors.toList())
