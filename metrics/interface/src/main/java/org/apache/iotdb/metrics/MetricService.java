@@ -25,61 +25,69 @@ import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.reporter.CompositeReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.ToLongFunction;
 
-/**
- * MetricService is the entry to manage all Metric system, include MetricManager and MetricReporter.
- */
+/** MetricService is the entry to get all metric features. */
 public abstract class MetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
+  /** The config of metric service */
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
-
+  /** Is the first initialization of metric service */
+  private final AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
+  /** The metric manager of metric service */
   protected MetricManager metricManager = new DoNothingMetricManager();
-
+  /** The metric reporter of metric service */
   protected CompositeReporter compositeReporter = new CompositeReporter();
-
+  /** Is metric service enabled */
   protected boolean isEnableMetric = metricConfig.getEnableMetric();
-
-  private AtomicBoolean firstInit = new AtomicBoolean(true);
 
   public MetricService() {}
 
-  /** Start metric service without start reporter. if is disabled, do nothing */
+  /** start metric service */
   public void startService() {
-    // load manager
+    logger.info("Start metric service at level: {}", metricConfig.getMetricLevel().name());
+    // load metric manager
     loadManager();
-    // load reporter
+    // load metric reporter
     loadReporter();
     // do start all reporter without first time
-
-    if (!firstInit.getAndSet(false)) {
+    if (!isFirstInitialization.getAndSet(false)) {
       startAllReporter();
     }
-
-    logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
     for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
-      enablePredefinedMetric(predefinedMetric);
+      enablePredefinedMetrics(predefinedMetric);
     }
-    logger.info("Start metric at level: " + metricConfig.getMetricLevel().name());
+    logger.info("Start predefined metrics: {}", metricConfig.getPredefinedMetrics());
   }
 
-  /** Stop metric service. if is disabled, do nothing */
+  /** stop metric service */
   public void stopService() {
-    metricManager.stop();
     compositeReporter.stopAll();
+    metricManager.stop();
     metricManager = new DoNothingMetricManager();
     compositeReporter = new CompositeReporter();
   }
 
-  protected void loadManager() {
+  /** Load metric manager according to configuration */
+  private void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
     ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
     int size = 0;
@@ -99,12 +107,13 @@ public abstract class MetricService {
       metricManager = new DoNothingMetricManager();
     } else if (size > 1) {
       logger.warn(
-          "detect more than one MetricManager, will use {}", metricManager.getClass().getName());
+          "Detect more than one MetricManager, will use {}", metricManager.getClass().getName());
     }
   }
 
+  /** Load metric reporters according to configuration */
   protected void loadReporter() {
-    logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
+    logger.info("Load metric reporters, type: {}", metricConfig.getMetricReporterList());
     compositeReporter.clearReporter();
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
     for (Reporter reporter : reporters) {
@@ -121,39 +130,132 @@ public abstract class MetricService {
     }
   }
 
+  /** Enable predefined Metrics */
+  protected abstract void enablePredefinedMetrics(PredefinedMetric metric);
+
+  /** Reload metric service according to reloadLevel */
+  protected abstract void reloadProperties(ReloadLevel reloadLevel);
+
+  // region interface from metric reporter
+
+  /** Start all reporters */
   public void startAllReporter() {
-    // start reporter
+    if (!isEnable()) {
+      return;
+    }
     compositeReporter.startAll();
   }
 
-  /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
-  public void start(ReporterType reporter) {
+  /** Start reporter according to type */
+  public void start(ReporterType type) {
     if (!isEnable()) {
       return;
     }
-    compositeReporter.start(reporter);
+    compositeReporter.start(type);
   }
 
-  /** stop reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
-  public void stop(ReporterType reporter) {
+  /** Stop reporter according to type */
+  public void stop(ReporterType type) {
     if (!isEnable()) {
       return;
     }
-    compositeReporter.stop(reporter);
+    compositeReporter.stop(type);
   }
 
-  /**
-   * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback
-   * metrics are not supported
-   */
-  public abstract void enablePredefinedMetric(PredefinedMetric metric);
+  // endregion
 
-  /**
-   * support hot load of some properties
-   *
-   * @param reloadLevel
-   */
-  protected abstract void reloadProperties(ReloadLevel reloadLevel);
+  // region interface from metric manager
+  public Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getOrCreateCounter(metric, metricLevel, tags);
+  }
+
+  public <T> Gauge getOrCreateAutoGauge(
+      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+    return metricManager.getOrCreateAutoGauge(metric, metricLevel, obj, mapper, tags);
+  }
+
+  public Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getOrCreateGauge(metric, metricLevel, tags);
+  }
+
+  public Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getOrCreateRate(metric, metricLevel, tags);
+  }
+
+  public Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getOrCreateHistogram(metric, metricLevel, tags);
+  }
+
+  public Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags) {
+    return metricManager.getOrCreateTimer(metric, metricLevel, tags);
+  }
+
+  public void count(long delta, String metric, MetricLevel metricLevel, String... tags) {
+    metricManager.count(delta, metric, metricLevel, tags);
+  }
+
+  public void gauge(long value, String metric, MetricLevel metricLevel, String... tags) {
+    metricManager.gauge(value, metric, metricLevel, tags);
+  }
+
+  public void rate(long value, String metric, MetricLevel metricLevel, String... tags) {
+    metricManager.rate(value, metric, metricLevel, tags);
+  }
+
+  void histogram(long value, String metric, MetricLevel metricLevel, String... tags) {
+    metricManager.histogram(value, metric, metricLevel, tags);
+  }
+
+  void timer(
+      long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
+    metricManager.timer(delta, timeUnit, metric, metricLevel, tags);
+  }
+
+  public List<String[]> getAllMetricKeys() {
+    return metricManager.getAllMetricKeys();
+  }
+
+  public Map<String[], Counter> getAllCounters() {
+    return metricManager.getAllCounters();
+  }
+
+  public Map<String[], Gauge> getAllGauges() {
+    return metricManager.getAllGauges();
+  }
+
+  public Map<String[], Rate> getAllRates() {
+    return metricManager.getAllRates();
+  }
+
+  public Map<String[], Histogram> getAllHistograms() {
+    return metricManager.getAllHistograms();
+  }
+
+  public Map<String[], Timer> getAllTimers() {
+    return metricManager.getAllTimers();
+  }
+
+  public void removeCounter(String metric, String... tags) {
+    metricManager.removeCounter(metric, tags);
+  }
+
+  public void removeGauge(String metric, String... tags) {
+    metricManager.removeGauge(metric, tags);
+  }
+
+  public void removeRate(String metric, String... tags) {
+    metricManager.removeRate(metric, tags);
+  }
+
+  public void removeHistogram(String metric, String... tags) {
+    metricManager.removeHistogram(metric, tags);
+  }
+
+  public void removeTimer(String metric, String... tags) {
+    metricManager.removeTimer(metric, tags);
+  }
+
+  // endregion
 
   public MetricManager getMetricManager() {
     return metricManager;

@@ -25,7 +25,7 @@ import org.apache.iotdb.metrics.utils.PredefinedMetric;
 public class DoNothingMetricService extends MetricService {
 
   @Override
-  public void enablePredefinedMetric(PredefinedMetric metric) {
+  public void enablePredefinedMetrics(PredefinedMetric metric) {
     // do nothing
   }
 

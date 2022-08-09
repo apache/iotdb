@@ -49,10 +49,10 @@ public class MetricConfig {
   private List<PredefinedMetric> predefinedMetrics =
       Arrays.asList(PredefinedMetric.JVM, PredefinedMetric.FILE);
 
-  /** the http server's port for prometheus reporter to get metric data. */
+  /** The http server's port for prometheus reporter to get metric data. */
   private String prometheusExporterPort = "9091";
 
-  /** the config for iotdb reporter to push metric data */
+  /** The config for iotdb reporter to push metric data */
   private IoTDBReporterConfig ioTDBReporterConfig = new IoTDBReporterConfig();
 
   public static class IoTDBReporterConfig {

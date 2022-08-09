@@ -36,7 +36,7 @@ public interface MetricManager {
   // region get or create metric
 
   /**
-   * get counter. return if exists, create if not.
+   * Get counter. return if exists, create if not.
    *
    * @param metric the name of metric
    * @param metricLevel the level of metric
@@ -45,7 +45,7 @@ public interface MetricManager {
   Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * get autoGauge. return if exists, create if not.
+   * Get autoGauge. return if exists, create if not.
    *
    * <p>AutoGauge keep a weak reference of the obj, so it will not prevent gc of the obj. Notice: if
    * you call this gauge's value() when the obj has already been cleared by gc, then you will get
@@ -60,7 +60,7 @@ public interface MetricManager {
       String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags);
 
   /**
-   * get counter. return if exists, create if not.
+   * Get counter. return if exists, create if not.
    *
    * @param metric the name of metric
    * @param metricLevel the level of metric
@@ -69,7 +69,7 @@ public interface MetricManager {
   Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * get rate. return if exists, create if not.
+   * Get rate. return if exists, create if not.
    *
    * @param metric the name of metric
    * @param metricLevel the level of metric
@@ -78,7 +78,7 @@ public interface MetricManager {
   Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * get histogram. return if exists, create if not.
+   * Get histogram. return if exists, create if not.
    *
    * @param metric the name of metric
    * @param metricLevel the level of metric
@@ -87,7 +87,7 @@ public interface MetricManager {
   Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * get timer. return if exists, create if not.
+   * Get timer. return if exists, create if not.
    *
    * @param metric the name of metric
    * @param metricLevel the level of metric
@@ -100,7 +100,7 @@ public interface MetricManager {
   // region update metric
 
   /**
-   * update counter. if exists, then update counter by delta. if not, then create and update.
+   * Update counter. if exists, then update counter by delta. if not, then create and update.
    *
    * @param delta the value to update
    * @param metric the name of metric
@@ -110,7 +110,7 @@ public interface MetricManager {
   void count(long delta, String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * set value of gauge. if exists, then set gauge by value. if not, then create and set.
+   * Set value of gauge. if exists, then set gauge by value. if not, then create and set.
    *
    * @param value the value of gauge
    * @param metric the name of metric
@@ -120,7 +120,7 @@ public interface MetricManager {
   void gauge(long value, String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * mark rate. if exists, then mark rate by value. if not, then create and mark.
+   * Mark rate. if exists, then mark rate by value. if not, then create and mark.
    *
    * @param value the value to mark
    * @param metric the name of metric
@@ -130,7 +130,7 @@ public interface MetricManager {
   void rate(long value, String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * update histogram. if exists, then update histogram by value. if not, then create and update
+   * Update histogram. if exists, then update histogram by value. if not, then create and update
    *
    * @param value the value to update
    * @param metric the name of metric
@@ -140,7 +140,7 @@ public interface MetricManager {
   void histogram(long value, String metric, MetricLevel metricLevel, String... tags);
 
   /**
-   * update timer. if exists, then update timer by delta and timeUnit. if not, then create and
+   * Update timer. if exists, then update timer by delta and timeUnit. if not, then create and
    * update
    *
    * @param delta the value to update
@@ -156,42 +156,42 @@ public interface MetricManager {
   // region get metric
 
   /**
-   * get all metric keys.
+   * Get all metric keys.
    *
-   * @return [[name, tags...], ...]
+   * @return [[name, tags...], ..., [name, tags...]]
    */
   List<String[]> getAllMetricKeys();
 
   /**
-   * get all counters
+   * Get all counters
    *
    * @return [name, tags...] -> counter
    */
   Map<String[], Counter> getAllCounters();
 
   /**
-   * get all gauges
+   * Get all gauges
    *
    * @return [name, tags...] -> gauge
    */
   Map<String[], Gauge> getAllGauges();
 
   /**
-   * get all rates
+   * Get all rates
    *
    * @return [name, tags...] -> rate
    */
   Map<String[], Rate> getAllRates();
 
   /**
-   * get all histograms
+   * Get all histograms
    *
    * @return [name, tags...] -> histogram
    */
   Map<String[], Histogram> getAllHistograms();
 
   /**
-   * get all timers
+   * Get all timers
    *
    * @return [name, tags...] -> timer
    */
@@ -202,7 +202,7 @@ public interface MetricManager {
   // region remove metric
 
   /**
-   * remove counter
+   * Remove counter
    *
    * @param metric the name of metric
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
@@ -210,7 +210,7 @@ public interface MetricManager {
   void removeCounter(String metric, String... tags);
 
   /**
-   * remove gauge
+   * Remove gauge
    *
    * @param metric the name of metric
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
@@ -218,7 +218,7 @@ public interface MetricManager {
   void removeGauge(String metric, String... tags);
 
   /**
-   * remove rate
+   * Remove rate
    *
    * @param metric the name of metric
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
@@ -226,7 +226,7 @@ public interface MetricManager {
   void removeRate(String metric, String... tags);
 
   /**
-   * remove histogram
+   * Remove histogram
    *
    * @param metric the name of metric
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
@@ -234,7 +234,7 @@ public interface MetricManager {
   void removeHistogram(String metric, String... tags);
 
   /**
-   * update timer
+   * Update timer
    *
    * @param metric the name of metric
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
@@ -243,12 +243,12 @@ public interface MetricManager {
 
   // endregion
 
-  /** is metric service enabled */
+  /** Is metric service enabled */
   boolean isEnable();
 
   /** Is metric service enabled in specific level */
   boolean isEnable(MetricLevel metricLevel);
 
-  /** stop and clear metric manager */
+  /** Stop and clear metric manager */
   boolean stop();
 }

@@ -77,7 +77,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
   }
 
   @Override
-  public void enablePredefinedMetric(PredefinedMetric metric) {
+  public void enablePredefinedMetrics(PredefinedMetric metric) {
     IMetricSet metricSet;
     switch (metric) {
       case JVM:
