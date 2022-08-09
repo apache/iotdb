@@ -123,13 +123,6 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   private TSStatus cacheAndInsertLatestNode(InsertNodeWrapper insertNodeWrapper) {
-    long cacheRequestStartTime = System.nanoTime();
-    logger.info(
-        "region = {}, queue size = {}, syncIndex = {}, nextSyncIndex = {}",
-        region.getDataRegionId(),
-        requestCache.size(),
-        insertNodeWrapper.startSyncIndex,
-        nextSyncIndex);
     queueLock.lock();
     try {
       requestCache.add(insertNodeWrapper);
@@ -177,9 +170,9 @@ public class DataRegionStateMachine extends BaseStateMachine {
           Thread.currentThread().interrupt();
         }
       }
-      StepTracker.trace("cacheAndQueueRequest", cacheRequestStartTime, System.nanoTime());
-      logger.info(
-          "queue size {}, startSyncIndex = {}, endSyncIndex = {}",
+      logger.debug(
+          "region = {}, queue size {}, startSyncIndex = {}, endSyncIndex = {}",
+          region.getDataRegionId(),
           requestCache.size(),
           insertNodeWrapper.getStartSyncIndex(),
           insertNodeWrapper.getEndSyncIndex());

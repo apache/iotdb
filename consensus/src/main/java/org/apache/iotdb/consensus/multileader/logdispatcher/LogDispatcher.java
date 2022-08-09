@@ -20,7 +20,6 @@
 package org.apache.iotdb.consensus.multileader.logdispatcher;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.StepTracker;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.consensus.common.Peer;
@@ -116,28 +115,9 @@ public class LogDispatcher {
               impl.getThisNode().getGroupId(),
               thread.getPeer().getEndpoint().getIp(),
               thread.getPendingRequest().size());
-          //          long putToQueueStartTime = System.nanoTime();
-          //          try {
-          //            while (!thread
-          //                .getPendingRequest()
-          //                .offer(new IndexedConsensusRequest(serializedRequests,
-          // request.getSearchIndex()))) {
-          //              impl.getIndexObject().wait();
-          //            }
-          //            ;
-          //          } catch (InterruptedException e) {
-          //            e.printStackTrace();
-          //          } finally {
-          //            logger.info("{}: Push a log to the queue, done",
-          // impl.getThisNode().getGroupId());
-          //            StepTracker.trace("putToQueueWaitingTime", putToQueueStartTime,
-          // System.nanoTime());
-          //          }
-          if (thread
+          if (!thread
               .getPendingRequest()
               .offer(new IndexedConsensusRequest(serializedRequests, request.getSearchIndex()))) {
-            thread.countQueue(request.getSearchIndex());
-          } else {
             logger.info(
                 "{}: Log queue of {} is full, ignore the log to this node, searchIndex: {}",
                 impl.getThisNode().getGroupId(),
@@ -145,14 +125,6 @@ public class LogDispatcher {
                 request.getSearchIndex());
           }
         });
-  }
-
-  private boolean needPutIntoQueue() {
-    return threads.stream()
-        .anyMatch(
-            t ->
-                t.getPendingRequest().size()
-                    < t.config.getReplication().getMaxPendingRequestNumPerNode());
   }
 
   public class LogDispatcherThread implements Runnable {
@@ -185,16 +157,6 @@ public class LogDispatcher {
               impl.getStorageDir(), Utils.fromTEndPointToString(peer.getEndpoint()));
       this.syncStatus = new SyncStatus(controller, config);
       this.walEntryiterator = reader.getReqIterator(iteratorIndex);
-    }
-
-    public void countQueue(long searchIndex) {
-      this.queueCount++;
-      if (queueCount % 100 == 0) {
-        logger.info(
-            String.format(
-                "DataRegion[%s]->%s: total request from queue: [%d], requestIndex: [%d]",
-                peer.getGroupId().getId(), peer.getEndpoint().ip, queueCount, searchIndex));
-      }
     }
 
     public IndexController getController() {
@@ -244,10 +206,7 @@ public class LogDispatcher {
             }
           }
           // we may block here if the synchronization pipeline is full
-          long getBatchSlotStartTime = System.nanoTime();
           syncStatus.addNextBatch(batch);
-          StepTracker.trace("batchSize", 25, 0, batch.getBatches().size() * 1000_000L);
-          StepTracker.trace("getBatchSlot", 25, getBatchSlotStartTime, System.nanoTime());
           // sends batch asynchronously and migrates the retry logic into the callback handler
           sendBatchAsync(batch, new DispatchLogHandler(this, batch));
         }
@@ -267,99 +226,92 @@ public class LogDispatcher {
     }
 
     public PendingBatch getBatch() {
-      long getBatchStartTime = System.nanoTime();
-      try {
-        PendingBatch batch;
-        List<TLogBatch> logBatches = new ArrayList<>();
-        long startIndex = syncStatus.getNextSendingIndex();
-        long maxIndexWhenBufferedRequestEmpty = startIndex;
-        logger.debug("[GetBatch] startIndex: {}", startIndex);
-        long endIndex;
-        if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
-          // Use drainTo instead of poll to reduce lock overhead
-          logger.debug(
-              "{} : pendingRequest Size: {}, bufferedRequest size: {}",
-              impl.getThisNode().getGroupId(),
-              pendingRequest.size(),
-              bufferedRequest.size());
-          synchronized (impl.getIndexObject()) {
-            pendingRequest.drainTo(
-                bufferedRequest,
-                config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
-            maxIndexWhenBufferedRequestEmpty = impl.getIndex() + 1;
-            //            impl.getIndexObject().notifyAll();
-          }
-          // remove all request that searchIndex < startIndex
-          Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
-          while (iterator.hasNext()) {
-            IndexedConsensusRequest request = iterator.next();
-            if (request.getSearchIndex() < startIndex) {
-              iterator.remove();
-            } else {
-              break;
-            }
-          }
+      PendingBatch batch;
+      List<TLogBatch> logBatches = new ArrayList<>();
+      long startIndex = syncStatus.getNextSendingIndex();
+      long maxIndexWhenBufferedRequestEmpty = startIndex;
+      logger.debug("[GetBatch] startIndex: {}", startIndex);
+      long endIndex;
+      if (bufferedRequest.size() <= config.getReplication().getMaxRequestPerBatch()) {
+        // Use drainTo instead of poll to reduce lock overhead
+        logger.debug(
+            "{} : pendingRequest Size: {}, bufferedRequest size: {}",
+            impl.getThisNode().getGroupId(),
+            pendingRequest.size(),
+            bufferedRequest.size());
+        synchronized (impl.getIndexObject()) {
+          pendingRequest.drainTo(
+              bufferedRequest,
+              config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
+          maxIndexWhenBufferedRequestEmpty = impl.getIndex() + 1;
+          //            impl.getIndexObject().notifyAll();
         }
-        // This condition will be executed in several scenarios:
-        // 1. restart
-        // 2. The getBatch() is invoked immediately at the moment the PendingRequests are consumed
-        // up.
-        if (bufferedRequest.isEmpty()) {
-          endIndex =
-              constructBatchFromWAL(startIndex, maxIndexWhenBufferedRequestEmpty, logBatches);
-          batch = new PendingBatch(startIndex, endIndex, logBatches);
-          logger.debug(
-              "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batch);
-        } else {
-          // Notice that prev searchIndex >= startIndex
-          Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
-          IndexedConsensusRequest prev = iterator.next();
-          // Prevents gap between logs. For example, some requests are not written into the queue
-          // when
-          // the queue is full. In this case, requests need to be loaded from the WAL
-          endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
-          if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
-            batch = new PendingBatch(startIndex, endIndex, logBatches);
-            logger.debug("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
-            return batch;
-          }
-          constructBatchIndexedFromConsensusRequest(prev, logBatches);
-          endIndex = prev.getSearchIndex();
-          iterator.remove();
-          while (iterator.hasNext()
-              && logBatches.size() <= config.getReplication().getMaxRequestPerBatch()) {
-            IndexedConsensusRequest current = iterator.next();
-            // Prevents gap between logs. For example, some logs are not written into the queue when
-            // the queue is full. In this case, requests need to be loaded from the WAL
-            if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
-              endIndex =
-                  constructBatchFromWAL(
-                      prev.getSearchIndex(), current.getSearchIndex(), logBatches);
-              if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
-                batch = new PendingBatch(startIndex, endIndex, logBatches);
-                logger.debug(
-                    "gap {} : accumulated a {} from queue and wal when gap",
-                    impl.getThisNode().getGroupId(),
-                    batch);
-                return batch;
-              }
-            }
-            constructBatchIndexedFromConsensusRequest(current, logBatches);
-            endIndex = current.getSearchIndex();
-            prev = current;
-            // We might not be able to remove all the elements in the bufferedRequest in the
-            // current function, but that's fine, we'll continue processing these elements in the
-            // bufferedRequest the next time we go into the function, they're never lost
+        // remove all request that searchIndex < startIndex
+        Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
+        while (iterator.hasNext()) {
+          IndexedConsensusRequest request = iterator.next();
+          if (request.getSearchIndex() < startIndex) {
             iterator.remove();
+          } else {
+            break;
           }
-          batch = new PendingBatch(startIndex, endIndex, logBatches);
-          logger.debug(
-              "{} : accumulated a {} from queue and wal", impl.getThisNode().getGroupId(), batch);
         }
-        return batch;
-      } finally {
-        StepTracker.trace("getBatch()", 25, getBatchStartTime, System.nanoTime());
       }
+      // This condition will be executed in several scenarios:
+      // 1. restart
+      // 2. The getBatch() is invoked immediately at the moment the PendingRequests are consumed
+      // up.
+      if (bufferedRequest.isEmpty()) {
+        endIndex = constructBatchFromWAL(startIndex, maxIndexWhenBufferedRequestEmpty, logBatches);
+        batch = new PendingBatch(startIndex, endIndex, logBatches);
+        logger.debug(
+            "{} : accumulated a {} from wal when empty", impl.getThisNode().getGroupId(), batch);
+      } else {
+        // Notice that prev searchIndex >= startIndex
+        Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
+        IndexedConsensusRequest prev = iterator.next();
+        // Prevents gap between logs. For example, some requests are not written into the queue
+        // when
+        // the queue is full. In this case, requests need to be loaded from the WAL
+        endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
+        if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
+          batch = new PendingBatch(startIndex, endIndex, logBatches);
+          logger.debug("{} : accumulated a {} from wal", impl.getThisNode().getGroupId(), batch);
+          return batch;
+        }
+        constructBatchIndexedFromConsensusRequest(prev, logBatches);
+        endIndex = prev.getSearchIndex();
+        iterator.remove();
+        while (iterator.hasNext()
+            && logBatches.size() <= config.getReplication().getMaxRequestPerBatch()) {
+          IndexedConsensusRequest current = iterator.next();
+          // Prevents gap between logs. For example, some logs are not written into the queue when
+          // the queue is full. In this case, requests need to be loaded from the WAL
+          if (current.getSearchIndex() != prev.getSearchIndex() + 1) {
+            endIndex =
+                constructBatchFromWAL(prev.getSearchIndex(), current.getSearchIndex(), logBatches);
+            if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
+              batch = new PendingBatch(startIndex, endIndex, logBatches);
+              logger.debug(
+                  "gap {} : accumulated a {} from queue and wal when gap",
+                  impl.getThisNode().getGroupId(),
+                  batch);
+              return batch;
+            }
+          }
+          constructBatchIndexedFromConsensusRequest(current, logBatches);
+          endIndex = current.getSearchIndex();
+          prev = current;
+          // We might not be able to remove all the elements in the bufferedRequest in the
+          // current function, but that's fine, we'll continue processing these elements in the
+          // bufferedRequest the next time we go into the function, they're never lost
+          iterator.remove();
+        }
+        batch = new PendingBatch(startIndex, endIndex, logBatches);
+        logger.debug(
+            "{} : accumulated a {} from queue and wal", impl.getThisNode().getGroupId(), batch);
+      }
+      return batch;
     }
 
     public void sendBatchAsync(PendingBatch batch, DispatchLogHandler handler) {

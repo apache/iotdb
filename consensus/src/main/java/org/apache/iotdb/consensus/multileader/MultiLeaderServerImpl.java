@@ -21,7 +21,6 @@ package org.apache.iotdb.consensus.multileader;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.StepTracker;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -110,44 +109,33 @@ public class MultiLeaderServerImpl {
    * records the index of the log and writes locally, and then asynchronous replication is performed
    */
   public TSStatus write(IConsensusRequest request) {
-    long leaderWriteStartTime = System.nanoTime();
     synchronized (stateMachine) {
-      StepTracker.trace("LeaderWriteWaitLock", leaderWriteStartTime, System.nanoTime());
-      long startTimeAfterLock = System.nanoTime();
-      try {
-        IndexedConsensusRequest indexedConsensusRequest =
-            buildIndexedConsensusRequestForLocalRequest(request);
-        if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
-          logger.info(
-              "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
-              thisNode.getGroupId(),
-              getCurrentSafelyDeletedSearchIndex(),
-              indexedConsensusRequest.getSearchIndex());
-        }
-        // TODO wal and memtable
-        TSStatus result = stateMachine.write(indexedConsensusRequest);
-        //        TSStatus result = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-        StepTracker.trace("stateMachineWrite", startTimeAfterLock, System.nanoTime());
-        long offerStartTime = System.nanoTime();
-        if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          synchronized (index) {
-            logDispatcher.offer(indexedConsensusRequest);
-            index.incrementAndGet();
-          }
-        } else {
-          logger.debug(
-              "{}: write operation failed. searchIndex: {}. Code: {}",
-              thisNode.getGroupId(),
-              indexedConsensusRequest.getSearchIndex(),
-              result.getCode());
-          index.decrementAndGet();
-        }
-        StepTracker.trace("serializeAndOfferToQueue", offerStartTime, System.nanoTime());
-        return result;
-      } finally {
-        StepTracker.trace("MultiLeaderWriteAfterLock", startTimeAfterLock, System.nanoTime());
-        StepTracker.trace("MultiLeaderWriteWhole", leaderWriteStartTime, System.nanoTime());
+      IndexedConsensusRequest indexedConsensusRequest =
+          buildIndexedConsensusRequestForLocalRequest(request);
+      if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
+        logger.info(
+            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
+            thisNode.getGroupId(),
+            getCurrentSafelyDeletedSearchIndex(),
+            indexedConsensusRequest.getSearchIndex());
       }
+      // TODO wal and memtable
+      TSStatus result = stateMachine.write(indexedConsensusRequest);
+      long offerStartTime = System.nanoTime();
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        synchronized (index) {
+          logDispatcher.offer(indexedConsensusRequest);
+          index.incrementAndGet();
+        }
+      } else {
+        logger.debug(
+            "{}: write operation failed. searchIndex: {}. Code: {}",
+            thisNode.getGroupId(),
+            indexedConsensusRequest.getSearchIndex(),
+            result.getCode());
+        index.decrementAndGet();
+      }
+      return result;
     }
   }
 

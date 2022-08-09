@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.consensus.common.request;
 
-import org.apache.iotdb.commons.StepTracker;
-
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
@@ -69,14 +67,9 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   }
 
   public List<ByteBuffer> buildSerializedRequests() {
-    long startTime = System.nanoTime();
-    try {
-      List<ByteBuffer> result = new LinkedList<>();
-      this.requests.forEach(r -> result.add(r.serializeToByteBuffer()));
-      return result;
-    } finally {
-      StepTracker.trace("buildSerializedRequests", startTime, System.nanoTime());
-    }
+    List<ByteBuffer> result = new LinkedList<>();
+    this.requests.forEach(r -> result.add(r.serializeToByteBuffer()));
+    return result;
   }
 
   public long getSearchIndex() {

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.consensus.multileader.client;
 
-import org.apache.iotdb.commons.StepTracker;
 import org.apache.iotdb.consensus.multileader.logdispatcher.LogDispatcher.LogDispatcherThread;
 import org.apache.iotdb.consensus.multileader.logdispatcher.PendingBatch;
 import org.apache.iotdb.consensus.multileader.thrift.TSyncLogRes;
@@ -38,7 +37,6 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
   private final LogDispatcherThread thread;
   private final PendingBatch batch;
   private int retryCount;
-  private final long startTime = System.nanoTime();
 
   public DispatchLogHandler(LogDispatcherThread thread, PendingBatch batch) {
     this.thread = thread;
@@ -47,7 +45,6 @@ public class DispatchLogHandler implements AsyncMethodCallback<TSyncLogRes> {
 
   @Override
   public void onComplete(TSyncLogRes response) {
-    StepTracker.trace("leaderSendUtilResponse", 25, startTime, System.nanoTime());
     if (response.getStatus().size() == 1
         && response.getStatus().get(0).getCode()
             == TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode()) {
