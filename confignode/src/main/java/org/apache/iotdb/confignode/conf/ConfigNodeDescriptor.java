@@ -177,12 +177,6 @@ public class ConfigNodeDescriptor {
                   "rpc_advanced_compression_enable",
                   String.valueOf(conf.isRpcAdvancedCompressionEnable()))));
 
-      conf.setRpcThriftCompressionEnabled(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "rpc_thrift_compression_enable",
-                  String.valueOf(conf.isRpcThriftCompressionEnabled()))));
-
       conf.setRpcMaxConcurrentClientNum(
           Integer.parseInt(
               properties.getProperty(
@@ -198,17 +192,6 @@ public class ConfigNodeDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
-
-      conf.setConnectionTimeoutInMS(
-          Integer.parseInt(
-              properties.getProperty(
-                  "connection_timeout_ms", String.valueOf(conf.getConnectionTimeoutInMS()))));
-
-      conf.setSelectorNumOfClientManager(
-          Integer.parseInt(
-              properties.getProperty(
-                  "selector_thread_nums_of_client_manager",
-                  String.valueOf(conf.getSelectorNumOfClientManager()))));
 
       conf.setSystemDir(properties.getProperty("system_dir", conf.getSystemDir()));
 
