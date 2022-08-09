@@ -576,11 +576,7 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
               return yieldableState;
             }
           }
-          if (nextWindowTimeBegin == Long.MIN_VALUE) {
-            // display window begin should be set to the same as the min timestamp of the query
-            // result set
-            nextWindowTimeBegin = tvList.getTime(0);
-          }
+          nextWindowTimeBegin = Math.max(displayWindowBegin, tvList.getTime(0));
           hasAtLeastOneRow = tvList.size() != 0;
           isFirstIteration = false;
         }
