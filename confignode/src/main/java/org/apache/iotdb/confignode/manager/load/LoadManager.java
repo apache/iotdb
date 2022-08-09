@@ -327,7 +327,8 @@ public class LoadManager {
       broadcastLatestRegionRouteMap();
     }
     if (nodeCacheMap.size() == getNodeManager().getRegisteredNodeCount()) {
-      addMetrics();
+      addNodeMetrics();
+      addLeaderCount();
     }
   }
 
@@ -446,7 +447,7 @@ public class LoadManager {
             registeredConfigNode -> {
               int configNodeId = registeredConfigNode.getConfigNodeId();
               return nodeCacheMap.containsKey(configNodeId)
-                  && nodeCacheMap.get(configNodeId).getNodeStatus().equals(NodeStatus.Running);
+                  && NodeStatus.Running.equals(nodeCacheMap.get(configNodeId).getNodeStatus());
             })
         .collect(Collectors.toList());
   }
@@ -457,7 +458,7 @@ public class LoadManager {
             registeredDataNode -> {
               int id = registeredDataNode.getLocation().getDataNodeId();
               return nodeCacheMap.containsKey(id)
-                  && nodeCacheMap.get(id).getNodeStatus().equals(NodeStatus.Running);
+                  && NodeStatus.Running.equals(nodeCacheMap.get(id).getNodeStatus());
             })
         .collect(Collectors.toList());
   }
@@ -468,7 +469,7 @@ public class LoadManager {
             registeredConfigNode -> {
               int configNodeId = registeredConfigNode.getConfigNodeId();
               return nodeCacheMap.containsKey(configNodeId)
-                  && nodeCacheMap.get(configNodeId).getNodeStatus().equals(NodeStatus.Unknown);
+                  && NodeStatus.Unknown.equals(nodeCacheMap.get(configNodeId).getNodeStatus());
             })
         .collect(Collectors.toList());
   }
@@ -479,7 +480,7 @@ public class LoadManager {
             registeredDataNode -> {
               int id = registeredDataNode.getLocation().getDataNodeId();
               return nodeCacheMap.containsKey(id)
-                  && nodeCacheMap.get(id).getNodeStatus().equals(NodeStatus.Unknown);
+                  && NodeStatus.Unknown.equals(nodeCacheMap.get(id).getNodeStatus());
             })
         .collect(Collectors.toList());
   }
@@ -590,7 +591,54 @@ public class LoadManager {
     return allDataNodes.size();
   }
 
-  public void addMetrics() {
+  /**
+   * Get the LeaderCount of each DataNodeId
+   *
+   * @return Map<DataNodeId, LeaderCount>
+   */
+  public Map<Integer, Integer> getLeadershipCountByDatanode() {
+    Map<Integer, Integer> idToCountMap = new ConcurrentHashMap<>();
+
+    regionGroupCacheMap.forEach(
+        (consensusGroupId, regionGroupCache) -> {
+          Integer count = idToCountMap.get(regionGroupCache.getLeaderDataNodeId());
+          if (count == null) {
+            idToCountMap.put(regionGroupCache.getLeaderDataNodeId(), 1);
+          } else {
+            idToCountMap.put(regionGroupCache.getLeaderDataNodeId(), count + 1);
+          }
+        });
+    return idToCountMap;
+  }
+
+  public void addLeaderCount() {
+    Map<Integer, Integer> idToCountMap = getLeadershipCountByDatanode();
+    getNodeManager()
+        .getRegisteredDataNodes(-1)
+        .forEach(
+            dataNodeInfo -> {
+              TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
+              int dataNodeId = dataNodeLocation.getDataNodeId();
+              if (idToCountMap.containsKey(dataNodeId)) {
+                String name =
+                    "EndPoint("
+                        + dataNodeLocation.getClientRpcEndPoint().ip
+                        + ":"
+                        + dataNodeLocation.getClientRpcEndPoint().port
+                        + ")";
+                MetricsService.getInstance()
+                    .getMetricManager()
+                    .getOrCreateGauge(
+                        Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
+                        MetricLevel.IMPORTANT,
+                        Tag.NAME.toString(),
+                        name)
+                    .set(idToCountMap.get(dataNodeId));
+              }
+            });
+  }
+
+  public void addNodeMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
           .getMetricManager()
