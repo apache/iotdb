@@ -303,6 +303,16 @@ public class IoTDBDescriptor {
         conf.setUnSeqTsFileSize(unSeqTsFileSize);
       }
 
+      int PrimitiveArraySize =
+          Integer.parseInt(
+              properties
+                  .getProperty("primitive_array_size", Long.toString(conf.getUnSeqTsFileSize()))
+                  .trim());
+      if (PrimitiveArraySize > 0) {
+        conf.setPrimitiveArraySize(PrimitiveArraySize);
+        PrimitiveArrayManager.changeSize(PrimitiveArraySize);
+      }
+
       long memTableSizeThreshold =
           Long.parseLong(
               properties
