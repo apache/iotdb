@@ -165,6 +165,7 @@ public abstract class MetricService {
   // endregion
 
   // region interface from metric manager
+
   public Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags) {
     return metricManager.getOrCreateCounter(metric, metricLevel, tags);
   }
