@@ -1501,8 +1501,12 @@ public class IoTDBDescriptor {
               maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
           conf.setAllocateMemoryForTimeSeriesMetaDataCache(
               maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
-          conf.setAllocateMemoryForReadWithoutCache(
+          conf.setAllocateMemoryForCoordinator(
               maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
+          conf.setAllocateMemoryForOperators(
+              maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
+          conf.setAllocateMemoryForDataExchange(
+              maxMemoryAvailable * Integer.parseInt(proportions[5].trim()) / proportionSum);
         } catch (Exception e) {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"

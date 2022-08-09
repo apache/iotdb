@@ -193,13 +193,14 @@ public class LastQuerySortOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    long maxPeekMemory =
-        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + tsBlockBuilder.getRetainedSizeInBytes();
+    long maxPeekMemory = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + cachedTsBlock.getRetainedSizeInBytes();
     long maxChildrenReturnSize = 0;
+    long maxChildrenPeekMemory = 0;
     for (Operator child : children) {
       maxChildrenReturnSize = Math.max(maxChildrenReturnSize, child.calculateMaxReturnSize());
+      maxChildrenPeekMemory = Math.max(maxChildrenPeekMemory, child.calculateMaxPeekMemory());
     }
-    return maxPeekMemory;
+    return Math.max(maxPeekMemory + maxChildrenReturnSize, maxChildrenPeekMemory);
   }
 
   @Override

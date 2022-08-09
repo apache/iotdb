@@ -42,7 +42,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryU
 // time-series
 public class LastQueryMergeOperator implements ProcessOperator {
 
-  private static final int MAP_NODE_RETRAINED_SIZE = 16;
+  public static final long MAP_NODE_RETRAINED_SIZE = 16L + Location.INSTANCE_SIZE;
 
   private final OperatorContext operatorContext;
 
@@ -229,7 +229,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
     long maxPeekMemory =
         calculateMaxReturnSize()
             + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()
-                * (Location.INSTANCE_SIZE + MAP_NODE_RETRAINED_SIZE);
+                * MAP_NODE_RETRAINED_SIZE;
     long childrenMaxPeekMemory = 0;
     for (Operator child : children) {
       maxPeekMemory += child.calculateMaxReturnSize();
@@ -270,7 +270,7 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   private static class Location {
 
-    private static final long INSTANCE_SIZE = ClassLayout.parseClass(Location.class).instanceSize();
+    private static final int INSTANCE_SIZE = ClassLayout.parseClass(Location.class).instanceSize();
     int tsBlockIndex;
     int rowIndex;
 
