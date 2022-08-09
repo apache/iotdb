@@ -120,7 +120,7 @@ public class PartitionInfo implements SnapshotProcessor {
               Metric.STORAGE_GROUP.toString(),
               MetricLevel.CORE,
               storageGroupPartitionTables,
-              o -> o.size(),
+              ConcurrentHashMap::size,
               Tag.NAME.toString(),
               "number");
       MetricsService.getInstance()
@@ -347,6 +347,29 @@ public class PartitionInfo implements SnapshotProcessor {
         new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()),
         isAllPartitionsExist.get(),
         dataPartition);
+  }
+
+  /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does
+   *
+   * @param storageGroup StorageGroupName
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @param timePartitionInterval Time partition interval
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPrecededDataPartition(
+      String storageGroup,
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot,
+      long timePartitionInterval) {
+    if (storageGroupPartitionTables.containsKey(storageGroup)) {
+      return storageGroupPartitionTables
+          .get(storageGroup)
+          .getPrecededDataPartition(seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+    } else {
+      return null;
+    }
   }
 
   private boolean isStorageGroupExisted(String storageGroup) {
@@ -596,21 +619,6 @@ public class PartitionInfo implements SnapshotProcessor {
   public List<Pair<Long, TConsensusGroupId>> getSortedRegionSlotsCounter(
       String storageGroup, TConsensusGroupType type) {
     return storageGroupPartitionTables.get(storageGroup).getSortedRegionGroupSlotsCounter(type);
-  }
-
-  /**
-   * Get total region number
-   *
-   * @param type SchemaRegion or DataRegion
-   * @return the number of SchemaRegion or DataRegion
-   */
-  public int getTotalRegionCount(TConsensusGroupType type) {
-    Set<RegionGroup> regionGroups = new HashSet<>();
-    for (Map.Entry<String, StorageGroupPartitionTable> entry :
-        storageGroupPartitionTables.entrySet()) {
-      regionGroups.addAll(entry.getValue().getRegionGroups(type));
-    }
-    return regionGroups.size();
   }
 
   /**

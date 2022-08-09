@@ -121,7 +121,7 @@ public class ConfigNodeConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Time partition interval in seconds */
-  private long timePartitionInterval = 604800;
+  private long timePartitionInterval = 86400;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;
