@@ -354,22 +354,22 @@ public class StorageGroupPartitionTable {
         .getDataNodeLocations()
         .forEach(
             (dataNodeLocation) -> {
-              TRegionInfo tRegionInfoList = new TRegionInfo();
-              tRegionInfoList.setConsensusGroupId(replicaSet.getRegionId());
-              tRegionInfoList.setStorageGroup(storageGroupName);
+              TRegionInfo regionInfo = new TRegionInfo();
+              regionInfo.setConsensusGroupId(replicaSet.getRegionId());
+              regionInfo.setStorageGroup(storageGroupName);
               if (replicaSet.getRegionId().getType() == TConsensusGroupType.DataRegion) {
-                tRegionInfoList.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
-                tRegionInfoList.setTimeSlots(regionGroup.getCounter());
+                regionInfo.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
+                regionInfo.setTimeSlots(regionGroup.getCounter());
               } else if (replicaSet.getRegionId().getType() == TConsensusGroupType.SchemaRegion) {
-                tRegionInfoList.setSeriesSlots(regionGroup.getCounter());
-                tRegionInfoList.setTimeSlots(0);
+                regionInfo.setSeriesSlots(regionGroup.getCounter());
+                regionInfo.setTimeSlots(0);
               }
-              tRegionInfoList.setDataNodeId(dataNodeLocation.getDataNodeId());
-              tRegionInfoList.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
-              tRegionInfoList.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
+              regionInfo.setDataNodeId(dataNodeLocation.getDataNodeId());
+              regionInfo.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
+              regionInfo.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
               // TODO: Wait for data migration. And then add the state
-              tRegionInfoList.setStatus(RegionStatus.Up.getStatus());
-              regionInfoList.add(tRegionInfoList);
+              regionInfo.setStatus(RegionStatus.Up.getStatus());
+              regionInfoList.add(regionInfo);
             });
   }
 

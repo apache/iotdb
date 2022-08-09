@@ -104,7 +104,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public PartitionInfo() {
     this.storageGroupPartitionTables = new ConcurrentHashMap<>();
-    this.nextRegionGroupId = new AtomicInteger(0);
+    this.nextRegionGroupId = new AtomicInteger(-1);
 
     // Ensure that the PartitionTables of the StorageGroups who've been logically deleted
     // are unreadable and un-writable
@@ -149,7 +149,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   public int generateNextRegionGroupId() {
-    return nextRegionGroupId.getAndIncrement();
+    return nextRegionGroupId.incrementAndGet();
   }
 
   // ======================================================
@@ -427,6 +427,7 @@ public class PartitionInfo implements SnapshotProcessor {
     List<TRegionInfo> regionInfoList = new ArrayList<>();
     if (storageGroupPartitionTables.isEmpty()) {
       regionResp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+      regionResp.setRegionInfoList(new ArrayList<>());
       return regionResp;
     }
     TShowRegionReq showRegionReq = regionsInfoPlan.getShowRegionReq();
