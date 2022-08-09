@@ -125,7 +125,10 @@ public class DataRegionStateMachine extends BaseStateMachine {
   private TSStatus cacheAndInsertLatestNode(InsertNodeWrapper insertNodeWrapper) {
     long cacheRequestStartTime = System.nanoTime();
     logger.info(
-        "syncIndex = {}, nextSyncIndex = {}", insertNodeWrapper.startSyncIndex, nextSyncIndex);
+        "region = {}, syncIndex = {}, nextSyncIndex = {}",
+        region.getDataRegionId(),
+        insertNodeWrapper.startSyncIndex,
+        nextSyncIndex);
     queueLock.lock();
     try {
       requestCache.add(insertNodeWrapper);
