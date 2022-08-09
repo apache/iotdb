@@ -30,22 +30,22 @@ IoTDB 支持使用 `TRACING` 关键词对查询语句进行性能追踪。用户
 
 **示例：**
 
-例如执行 `tracing select * from root`，输出结果如下：
+例如执行 `tracing select * from root.**`，输出结果如下：
 
 ```
 Tracing Activties:
-+------------------------------------------------------+------------+
-|                                              Activity|Elapsed Time|
-+------------------------------------------------------+------------+
-|Start to execute statement: tracing select * from root|           0|
-|                            Parse SQL to physical plan|           4|
-|                              Create and cache dataset|          16|
-|                              * Num of series paths: 3|            |
-|                       * Num of sequence files read: 2|            |
-|                     * Num of unsequence files read: 1|            |
-|        * Num of sequence chunks: 6, avg points: 100.0|            |
-|      * Num of unsequence chunks: 3, avg points: 100.0|            |
-|         * Num of Pages: 9, overlapped pages: 0 (0.0%)|            |
-|                                      Request complete|          20|
-+------------------------------------------------------+------------+
++---------------------------------------------------------+------------+
+|                                                 Activity|Elapsed Time|
++---------------------------------------------------------+------------+
+|Start to execute statement: tracing select * from root.**|           0|
+|                               Parse SQL to physical plan|           4|
+|                                 Create and cache dataset|          16|
+|                                 * Num of series paths: 3|            |
+|                          * Num of sequence files read: 2|            |
+|                        * Num of unsequence files read: 1|            |
+|           * Num of sequence chunks: 6, avg points: 100.0|            |
+|         * Num of unsequence chunks: 3, avg points: 100.0|            |
+|            * Num of Pages: 9, overlapped pages: 0 (0.0%)|            |
+|                                         Request complete|          20|
++---------------------------------------------------------+------------+
 ```

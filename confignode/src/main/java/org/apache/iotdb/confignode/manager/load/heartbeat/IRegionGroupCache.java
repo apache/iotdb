@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.confignode.manager.load.heartbeat;
 
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
+
 public interface IRegionGroupCache {
 
   /**
@@ -40,4 +42,11 @@ public interface IRegionGroupCache {
    * @return The DataNodeId of the latest leader
    */
   int getLeaderDataNodeId();
+
+  /**
+   * Get RegionGroup's ConsensusGroupId
+   *
+   * @return TConsensusGroupId
+   */
+  TConsensusGroupId getConsensusGroupId();
 }

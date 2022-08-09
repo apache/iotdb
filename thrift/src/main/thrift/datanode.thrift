@@ -330,9 +330,19 @@ service IDataNodeRPCService {
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 
+  /* Maintenance Tools */
+
+  common.TSStatus merge()
+
   common.TSStatus flush(common.TFlushReq req)
 
+  common.TSStatus clearCache()
+
+  /**
+   * Config node will Set the TTL for the storage group on a list of data nodes.
+   */
   common.TSStatus setTTL(common.TSetTTLReq req)
+  
   /**
    * configNode will notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
    *

@@ -434,7 +434,7 @@ public class BufferedPipeDataQueue implements PipeDataQueue {
     List<PipeData> pipeData = new ArrayList<>();
     try (DataInputStream inputStream = new DataInputStream(new FileInputStream(file))) {
       while (true) {
-        pipeData.add(PipeData.deserialize(inputStream));
+        pipeData.add(PipeData.createPipeData(inputStream));
       }
     } catch (EOFException e) {
     } catch (IllegalPathException e) {

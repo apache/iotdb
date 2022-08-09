@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.exception.MetadataException;
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
@@ -153,37 +154,54 @@ public class ClusterSchemaManager {
   }
 
   /**
-   * Update TTL for the specific StorageGroup
+   * Update TTL for the specific StorageGroup or all storage groups in a path
    *
    * @param setTTLPlan setTTLPlan
-   * @return SUCCESS_STATUS if successfully update the TTL, STORAGE_GROUP_NOT_EXIST if the specific
-   *     StorageGroup doesn't exist
+   * @return SUCCESS_STATUS if successfully update the TTL, STORAGE_GROUP_NOT_EXIST if the path
+   *     doesn't exist
    */
   public TSStatus setTTL(SetTTLPlan setTTLPlan) {
 
-    if (!getStorageGroupNames().contains(setTTLPlan.getStorageGroup())) {
+    Map<String, TStorageGroupSchema> storageSchemaMap =
+        clusterSchemaInfo.getMatchedStorageGroupSchemasByOneName(
+            setTTLPlan.getStorageGroupPathPattern());
+
+    if (storageSchemaMap.isEmpty()) {
       return RpcUtils.getStatus(
           TSStatusCode.STORAGE_GROUP_NOT_EXIST,
-          "storageGroup " + setTTLPlan.getStorageGroup() + " does not exist");
+          "Path [" + new PartialPath(setTTLPlan.getStorageGroupPathPattern()) + "] does not exist");
     }
-    Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    Set<TDataNodeLocation> dataNodeLocations =
-        getPartitionManager()
-            .getStorageGroupRelatedDataNodes(
-                setTTLPlan.getStorageGroup(), TConsensusGroupType.DataRegion);
-    dataNodeLocations.forEach(
-        dataNodeLocation ->
-            dataNodeLocationMap.put(dataNodeLocation.getDataNodeId(), dataNodeLocation));
-    if (dataNodeLocations.size() > 0) {
-      // TODO: Use procedure to protect SetTTL on DataNodes
+    Map<Integer, TDataNodeLocation> dataNodeLocationMaps = new ConcurrentHashMap<>();
+    Map<Integer, List<String>> dnlToSgMap = new ConcurrentHashMap<>();
+    for (String storageGroup : storageSchemaMap.keySet()) {
+
+      Set<TDataNodeLocation> dataNodeLocations =
+          getPartitionManager()
+              .getStorageGroupRelatedDataNodes(storageGroup, TConsensusGroupType.DataRegion);
+      for (TDataNodeLocation dataNodeLocation : dataNodeLocations) {
+        if (!dataNodeLocationMaps.containsKey(dataNodeLocation.getDataNodeId())) {
+          dataNodeLocationMaps.put(dataNodeLocation.getDataNodeId(), dataNodeLocation);
+          List<String> storageGroups = new ArrayList<>();
+          storageGroups.add(storageGroup);
+          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
+        } else {
+          List<String> storageGroups = dnlToSgMap.get(dataNodeLocation.getDataNodeId());
+          storageGroups.add(storageGroup);
+          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
+        }
+      }
+    }
+
+    for (Map.Entry<Integer, List<String>> entry : dnlToSgMap.entrySet()) {
+      Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
+      dataNodeLocationMap.put(entry.getKey(), dataNodeLocationMaps.get(entry.getKey()));
       AsyncDataNodeClientPool.getInstance()
           .sendAsyncRequestToDataNodeWithRetry(
-              new TSetTTLReq(setTTLPlan.getStorageGroup(), setTTLPlan.getTTL()),
+              new TSetTTLReq(entry.getValue(), setTTLPlan.getTTL()),
               dataNodeLocationMap,
               DataNodeRequestType.SET_TTL,
               null);
     }
-
     return getConsensusManager().write(setTTLPlan).getStatus();
   }
 
@@ -336,25 +354,15 @@ public class ClusterSchemaManager {
     resp.setStatus(templateResp.getStatus());
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (templateResp.getTemplateList() != null) {
-        List<ByteBuffer> list = new ArrayList<ByteBuffer>();
-        templateResp
-            .getTemplateList()
-            .forEach(
-                template -> {
-                  list.add(template.serialize());
-                });
+        List<ByteBuffer> list = new ArrayList<>();
+        templateResp.getTemplateList().forEach(template -> list.add(template.serialize()));
         resp.setTemplateList(list);
       }
     }
     return resp;
   }
 
-  /**
-   * show nodes in schema template
-   *
-   * @param req
-   * @return
-   */
+  /** show nodes in schema template */
   public TGetTemplateResp getTemplate(String req) {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(req);
     TemplateInfoResp templateResp =
@@ -370,13 +378,7 @@ public class ClusterSchemaManager {
     return resp;
   }
 
-  /**
-   * mount template
-   *
-   * @param templateName
-   * @param path
-   * @return
-   */
+  /** mount template */
   public synchronized TSStatus setSchemaTemplate(String templateName, String path) {
     // check whether the template can be set on given path
     CheckTemplateSettablePlan checkTemplateSettablePlan =
@@ -464,12 +466,7 @@ public class ClusterSchemaManager {
     return failedRollbackStatusList;
   }
 
-  /**
-   * show path set template xx
-   *
-   * @param templateName
-   * @return
-   */
+  /** show path set template xx */
   public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName) {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
     PathInfoResp pathInfoResp =

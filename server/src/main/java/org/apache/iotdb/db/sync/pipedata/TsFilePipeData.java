@@ -20,8 +20,10 @@
 package org.apache.iotdb.db.sync.pipedata;
 
 import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.receiver.load.ILoader;
 import org.apache.iotdb.db.sync.receiver.load.TsFileLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -44,6 +46,10 @@ public class TsFilePipeData extends PipeData {
   private String parentDirPath;
   private String tsFileName;
   private String storageGroupName;
+
+  public TsFilePipeData() {
+    super();
+  }
 
   public TsFilePipeData(String tsFilePath, long serialNumber) {
     super(serialNumber);
@@ -115,11 +121,15 @@ public class TsFilePipeData extends PipeData {
         + ReadWriteIOUtils.write(tsFileName, stream);
   }
 
-  public static TsFilePipeData deserialize(DataInputStream stream) throws IOException {
-    long serialNumber = stream.readLong();
-    String parentDirPath = ReadWriteIOUtils.readString(stream);
-    String tsFileName = ReadWriteIOUtils.readString(stream);
-    return new TsFilePipeData(parentDirPath == null ? "" : parentDirPath, tsFileName, serialNumber);
+  @Override
+  public void deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+    super.deserialize(stream);
+    parentDirPath = ReadWriteIOUtils.readString(stream);
+    if (parentDirPath == null) {
+      parentDirPath = "";
+    }
+    tsFileName = ReadWriteIOUtils.readString(stream);
+    initStorageGroupName();
   }
 
   @Override

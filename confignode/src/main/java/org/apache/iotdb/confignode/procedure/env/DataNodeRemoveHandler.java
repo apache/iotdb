@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
 public class DataNodeRemoveHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(DataNodeRemoveHandler.class);
 
-  private ConfigManager configManager;
+  private final ConfigManager configManager;
 
   /** region migrate lock */
   private final LockQueue regionMigrateLock = new LockQueue();
@@ -175,8 +175,10 @@ public class DataNodeRemoveHandler {
                 originalDataNode.getInternalEndPoint(),
                 migrateRegionReq,
                 DataNodeRequestType.MIGRATE_REGION);
-    LOGGER.debug(
-        "send region {} migrate action to {}, wait it finished", regionId, originalDataNode);
+    LOGGER.info(
+        "send region {} migrate action to {}, wait it finished",
+        regionId,
+        originalDataNode.getInternalEndPoint());
     return status;
   }
 
@@ -191,7 +193,7 @@ public class DataNodeRemoveHandler {
       TConsensusGroupId regionId,
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode) {
-    LOGGER.debug(
+    LOGGER.info(
         "start to update region {} location from {} to {} when it migrate succeed",
         regionId,
         originalDataNode.getInternalEndPoint().getIp(),
@@ -205,6 +207,8 @@ public class DataNodeRemoveHandler {
         status,
         originalDataNode.getInternalEndPoint().getIp(),
         destDataNode.getInternalEndPoint().getIp());
+    // Broadcast the latest RegionRouteMap when Region migration finished
+    configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   /**
@@ -258,7 +262,7 @@ public class DataNodeRemoveHandler {
             .addToRegionConsensusGroup(
                 // TODO replace with real ttl
                 regionReplicaNodes, regionId, destDataNode, storageGroup, Long.MAX_VALUE);
-    LOGGER.debug("send add region {} consensus group to {}", regionId, destDataNode);
+    LOGGER.info("send add region {} consensus group to {}", regionId, destDataNode);
     if (isFailed(status)) {
       LOGGER.error(
           "add new node {} to region {} consensus group failed,  result: {}",
@@ -323,10 +327,11 @@ public class DataNodeRemoveHandler {
   }
 
   /**
-   * check if has removed Data Node but not exist in cluster
+   * Check whether all DataNodes to be deleted exist in the cluster
    *
    * @param removeDataNodePlan RemoveDataNodeReq
-   * @return SUCCEED_STATUS if not has
+   * @return SUCCEED_STATUS if all DataNodes to be deleted exist in the cluster, DATANODE_NOT_EXIST
+   *     otherwise
    */
   private TSStatus checkDataNodeExist(RemoveDataNodePlan removeDataNodePlan) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
@@ -346,10 +351,10 @@ public class DataNodeRemoveHandler {
   }
 
   /**
-   * check if has enought replication in cluster
+   * Check whether the cluster has enough DataNodes to maintain RegionReplicas
    *
    * @param removeDataNodePlan RemoveDataNodeReq
-   * @return SUCCEED_STATUS if not has
+   * @return SUCCEED_STATUS if the number of DataNodes is enough, LACK_REPLICATION otherwise
    */
   private TSStatus checkRegionReplication(RemoveDataNodePlan removeDataNodePlan) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());

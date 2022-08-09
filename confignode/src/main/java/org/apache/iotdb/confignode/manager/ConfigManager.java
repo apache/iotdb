@@ -73,8 +73,8 @@ import org.apache.iotdb.confignode.persistence.UDFInfo;
 import org.apache.iotdb.confignode.persistence.executor.ConfigPlanExecutor;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
 import org.apache.iotdb.confignode.persistence.schema.ClusterSchemaInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionResp;
@@ -82,6 +82,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TDataPartitionTableResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
@@ -199,7 +200,6 @@ public class ConfigManager implements IManager {
 
   @Override
   public DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
-    // TODO replace with Porcedure later.
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return nodeManager.removeDataNode(removeDataNodePlan);
@@ -697,103 +697,65 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
+  public TSStatus registerConfigNode(TConfigNodeRegisterReq req) {
     // Check global configuration
     TSStatus status = confirmLeader();
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      TConfigNodeRegisterResp errorResp1 = checkConfigNodeRegisterResp(req);
-      if (errorResp1 != null) return errorResp1;
+      TSStatus errorStatus = checkConfigNodeGlobalConfig(req);
+      if (errorStatus != null) {
+        return errorStatus;
+      }
 
       procedureManager.addConfigNode(req);
-      return nodeManager.registerConfigNode(req);
+      return StatusUtils.OK;
     }
 
-    return new TConfigNodeRegisterResp().setStatus(status);
+    return status;
   }
 
-  private TConfigNodeRegisterResp checkConfigNodeRegisterResp(TConfigNodeRegisterReq req) {
+  private TSStatus checkConfigNodeGlobalConfig(TConfigNodeRegisterReq req) {
+    final String errorPrefix = "Reject register, please ensure that the parameter ";
+    final String errorSuffix = " is consistent with the Seed-ConfigNode.";
+
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
-    TConfigNodeRegisterResp errorResp = new TConfigNodeRegisterResp();
-    errorResp.setStatus(new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()));
+    TSStatus errorStatus = new TSStatus(TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode());
     if (!req.getDataRegionConsensusProtocolClass()
         .equals(conf.getDataRegionConsensusProtocolClass())) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the data_region_consensus_protocol_class "
-                  + "are consistent.");
-      return errorResp;
+      return errorStatus.setMessage(
+          errorPrefix + "data_region_consensus_protocol_class" + errorSuffix);
     }
     if (!req.getSchemaRegionConsensusProtocolClass()
         .equals(conf.getSchemaRegionConsensusProtocolClass())) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the schema_region_consensus_protocol_class "
-                  + "are consistent.");
-      return errorResp;
+      return errorStatus.setMessage(
+          errorPrefix + "schema_region_consensus_protocol_class" + errorSuffix);
     }
     if (req.getSeriesPartitionSlotNum() != conf.getSeriesPartitionSlotNum()) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the series_partition_slot_num are consistent.");
-      return errorResp;
+      return errorStatus.setMessage(errorPrefix + "series_partition_slot_num" + errorSuffix);
     }
     if (!req.getSeriesPartitionExecutorClass().equals(conf.getSeriesPartitionExecutorClass())) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the series_partition_executor_class are consistent.");
-      return errorResp;
+      return errorStatus.setMessage(errorPrefix + "series_partition_executor_class" + errorSuffix);
     }
     if (req.getDefaultTTL() != CommonDescriptor.getInstance().getConfig().getDefaultTTL()) {
-      errorResp
-          .getStatus()
-          .setMessage("Reject register, please ensure that the default_ttl are consistent.");
-      return errorResp;
+      return errorStatus.setMessage(errorPrefix + "default_ttl" + errorSuffix);
     }
     if (req.getTimePartitionInterval() != conf.getTimePartitionInterval()) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the time_partition_interval are consistent.");
-      return errorResp;
+      return errorStatus.setMessage(errorPrefix + "time_partition_interval" + errorSuffix);
     }
     if (req.getSchemaReplicationFactor() != conf.getSchemaReplicationFactor()) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the schema_replication_factor are consistent.");
-      return errorResp;
+      return errorStatus.setMessage(errorPrefix + "schema_replication_factor" + errorSuffix);
     }
     if (req.getSchemaRegionPerDataNode() != conf.getSchemaRegionPerDataNode()) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the schema_region_per_data_node are consistent.");
-      return errorResp;
+      return errorStatus.setMessage(errorPrefix + "schema_region_per_data_node" + errorSuffix);
     }
     if (req.getDataReplicationFactor() != conf.getDataReplicationFactor()) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the data_replication_factor are consistent.");
-      return errorResp;
+      return errorStatus.setMessage(errorPrefix + "data_replication_factor" + errorSuffix);
     }
     if (req.getDataRegionPerProcessor() != conf.getDataRegionPerProcessor()) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the data_region_per_processor are consistent.");
-      return errorResp;
+      return errorStatus.setMessage(errorPrefix + "data_region_per_processor" + errorSuffix);
     }
     if (!req.getReadConsistencyLevel().equals(conf.getReadConsistencyLevel())) {
-      errorResp
-          .getStatus()
-          .setMessage(
-              "Reject register, please ensure that the read_consistency_level are consistent.");
+      return errorStatus.setMessage(errorPrefix + "read_consistency_level" + errorSuffix);
     }
     return null;
   }
@@ -835,10 +797,26 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus merge(TMergeReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.merge(req))
+        : status;
+  }
+
+  @Override
   public TSStatus flush(TFlushReq req) {
     TSStatus status = confirmLeader();
     return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
         ? RpcUtils.squashResponseStatusList(nodeManager.flush(req))
+        : status;
+  }
+
+  @Override
+  public TSStatus clearCache(TClearCacheReq req) {
+    TSStatus status = confirmLeader();
+    return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        ? RpcUtils.squashResponseStatusList(nodeManager.clearCache(req))
         : status;
   }
 

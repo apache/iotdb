@@ -195,7 +195,7 @@ public class MemoryPool {
     Iterator<MemoryReservationFuture<Void>> iterator = memoryReservationFutures.iterator();
     while (iterator.hasNext()) {
       MemoryReservationFuture<Void> future = iterator.next();
-      if (future.isCancelled()) {
+      if (future.isCancelled() || future.isDone()) {
         continue;
       }
       long bytesToReserve = future.getBytes();

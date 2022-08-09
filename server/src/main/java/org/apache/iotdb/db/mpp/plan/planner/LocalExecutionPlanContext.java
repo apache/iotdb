@@ -24,9 +24,10 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.operator.source.DataSourceOperator;
 import org.apache.iotdb.db.mpp.execution.timer.RuleBasedTimeSliceAllocator;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -51,13 +52,9 @@ public class LocalExecutionPlanContext {
 
   private final TypeProvider typeProvider;
 
-  // cached last value in last query
-  private List<TimeValuePair> cachedLastValueList;
-  // full path for each cached last value, this size should be equal to cachedLastValueList
-  private List<String> cachedLastValuePathList;
-  // PlanNodeId of first LastQueryScanNode/AlignedLastQueryScanNode, it's used for sourceId of
-  // LastCachedScanOperator
-  private PlanNodeId firstCachedPlanNodeId;
+  // left is cached last value in last query
+  // right is full path for each cached last value
+  private List<Pair<TimeValuePair, Binary>> cachedLastValueAndPathList;
   // timeFilter for last query
   private Filter lastQueryTimeFilter;
   // whether we need to update last cache
@@ -120,19 +117,15 @@ public class LocalExecutionPlanContext {
     this.needUpdateLastCache = needUpdateLastCache;
   }
 
-  public void addCachedLastValue(
-      TimeValuePair timeValuePair, PlanNodeId planNodeId, String fullPath) {
-    if (cachedLastValueList == null) {
-      cachedLastValueList = new ArrayList<>();
-      cachedLastValuePathList = new ArrayList<>();
-      firstCachedPlanNodeId = planNodeId;
+  public void addCachedLastValue(TimeValuePair timeValuePair, String fullPath) {
+    if (cachedLastValueAndPathList == null) {
+      cachedLastValueAndPathList = new ArrayList<>();
     }
-    cachedLastValueList.add(timeValuePair);
-    cachedLastValuePathList.add(fullPath);
+    cachedLastValueAndPathList.add(new Pair<>(timeValuePair, new Binary(fullPath)));
   }
 
-  public List<TimeValuePair> getCachedLastValueList() {
-    return cachedLastValueList;
+  public List<Pair<TimeValuePair, Binary>> getCachedLastValueAndPathList() {
+    return cachedLastValueAndPathList;
   }
 
   public ISinkHandle getSinkHandle() {
@@ -160,14 +153,6 @@ public class LocalExecutionPlanContext {
 
   public Filter getLastQueryTimeFilter() {
     return lastQueryTimeFilter;
-  }
-
-  public PlanNodeId getFirstCachedPlanNodeId() {
-    return firstCachedPlanNodeId;
-  }
-
-  public List<String> getCachedLastValuePathList() {
-    return cachedLastValuePathList;
   }
 
   public boolean isNeedUpdateLastCache() {

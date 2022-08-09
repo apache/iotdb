@@ -146,8 +146,6 @@ public class IoTDBDescriptor {
 
       conf.setRpcAddress(properties.getProperty(IoTDBConstant.RPC_ADDRESS, conf.getRpcAddress()));
 
-      loadClusterProps(properties);
-
       // TODO: Use FQDN  to identify our nodes afterwards
       try {
         replaceHostnameWithIP();
@@ -885,6 +883,17 @@ public class IoTDBDescriptor {
           .setKerberosPrincipal(
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
+
+      conf.setCoordinatorReadExecutorSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "coordinator_read_executor_size",
+                  Integer.toString(conf.getCoordinatorReadExecutorSize()))));
+      conf.setCoordinatorWriteExecutorSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "coordinator_write_executor_size",
+                  Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
 
       // commons
       commonDescriptor.loadCommonProps(properties);
@@ -1638,16 +1647,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "trigger_forward_mqtt_pool_size",
                 Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
-    conf.setCoordinatorReadExecutorSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "coordinator_read_executor_size",
-                Integer.toString(conf.getCoordinatorReadExecutorSize()))));
-    conf.setCoordinatorWriteExecutorSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "coordinator_write_executor_size",
-                Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
   }
 
   private void loadCQProps(Properties properties) {
