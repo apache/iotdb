@@ -51,7 +51,7 @@ public abstract class AsyncBaseClientFactory<K, V> extends BaseClientFactory<K, 
       Thread.getAllStackTraces().keySet().stream()
           .filter(thread -> thread.getName().contains(THRIFT_THREAD_NAME))
           .collect(Collectors.toList())
-          .forEach(thread -> thread.setName(threadName + "-" + thread.getId()));
+          .forEach(thread -> thread.setName(threadName + "-selector" + "-" + thread.getId()));
     }
   }
 }
