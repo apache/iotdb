@@ -159,6 +159,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
                 "waiting target request timeout. current index: {}, target index: {}",
                 insertNodeWrapper.getStartSyncIndex(),
                 nextSyncIndex);
+            requestCache.remove(insertNodeWrapper);
             break;
           }
         } catch (InterruptedException e) {
