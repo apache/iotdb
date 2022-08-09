@@ -247,7 +247,7 @@ public class MultiLeaderConfig {
     }
 
     public static class Builder {
-      private int maxPendingRequestNumPerNode = 300;
+      private int maxPendingRequestNumPerNode = 600;
       private int maxRequestPerBatch = 30;
       private int maxPendingBatch = 5;
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
