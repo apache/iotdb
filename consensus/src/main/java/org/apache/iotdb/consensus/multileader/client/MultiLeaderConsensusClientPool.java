@@ -37,6 +37,7 @@ public class MultiLeaderConsensusClientPool {
       implements IClientPoolFactory<TEndPoint, AsyncMultiLeaderServiceClient> {
 
     private final MultiLeaderConfig config;
+    private static final String THREAD_NAME = "MultiLeaderConsensusClientPool";
 
     public AsyncMultiLeaderServiceClientPoolFactory(MultiLeaderConfig config) {
       this.config = config;
@@ -53,7 +54,8 @@ public class MultiLeaderConsensusClientPool {
                   .setRpcThriftCompressionEnabled(config.getRpc().isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(
                       config.getRpc().getSelectorNumOfClientManager())
-                  .build()),
+                  .build(),
+              THREAD_NAME),
           new ClientPoolProperty.Builder<AsyncMultiLeaderServiceClient>().build().getConfig());
     }
   }

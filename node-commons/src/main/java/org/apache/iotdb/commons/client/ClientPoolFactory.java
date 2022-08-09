@@ -33,6 +33,12 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 public class ClientPoolFactory {
 
   private static final CommonConfig conf = CommonDescriptor.getInstance().getConfig();
+  private static final String DATA_NODE_CLIENT_POOL_THREAD_NAME =
+      "AsyncDataNodeInternalServiceClientPool";
+  private static final String CONFIG_NODE_HEARTBEAT_CLIENT_POOL_THREAD_NAME =
+      "AsyncConfigNodeHeartbeatServiceClientPool";
+  private static final String DATA_NODE_HEARTBEAT_CLIENT_POOL_THREAD_NAME =
+      "AsyncDataNodeHeartbeatServiceClientPool";
 
   private ClientPoolFactory() {}
 
@@ -65,7 +71,8 @@ public class ClientPoolFactory {
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
-                  .build()),
+                  .build(),
+              DATA_NODE_CLIENT_POOL_THREAD_NAME),
           new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }
@@ -82,7 +89,8 @@ public class ClientPoolFactory {
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
-                  .build()),
+                  .build(),
+              CONFIG_NODE_HEARTBEAT_CLIENT_POOL_THREAD_NAME),
           new ClientPoolProperty.Builder<AsyncConfigNodeHeartbeatServiceClient>()
               .build()
               .getConfig());
@@ -101,7 +109,8 @@ public class ClientPoolFactory {
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
-                  .build()),
+                  .build(),
+              DATA_NODE_HEARTBEAT_CLIENT_POOL_THREAD_NAME),
           new ClientPoolProperty.Builder<AsyncDataNodeHeartbeatServiceClient>()
               .build()
               .getConfig());

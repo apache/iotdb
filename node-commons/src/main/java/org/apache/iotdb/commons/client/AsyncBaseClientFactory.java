@@ -25,15 +25,19 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public abstract class AsyncBaseClientFactory<K, V> extends BaseClientFactory<K, V> {
 
   private static final Logger logger = LoggerFactory.getLogger(AsyncBaseClientFactory.class);
   protected TAsyncClientManager[] tManagers;
   protected AtomicInteger clientCnt = new AtomicInteger();
+  private static final String THRIFT_THREAD_NAME = "TAsyncClientManager#SelectorThread";
 
   protected AsyncBaseClientFactory(
-      ClientManager<K, V> clientManager, ClientFactoryProperty clientFactoryProperty) {
+      ClientManager<K, V> clientManager,
+      ClientFactoryProperty clientFactoryProperty,
+      String threadName) {
     super(clientManager, clientFactoryProperty);
     tManagers = new TAsyncClientManager[clientFactoryProperty.getSelectorNumOfAsyncClientPool()];
     for (int i = 0; i < tManagers.length; i++) {
@@ -42,6 +46,12 @@ public abstract class AsyncBaseClientFactory<K, V> extends BaseClientFactory<K, 
       } catch (IOException e) {
         logger.error("Cannot create Async client factory", e);
       }
+    }
+    synchronized (this) {
+      Thread.getAllStackTraces().keySet().stream()
+          .filter(thread -> thread.getName().contains(THRIFT_THREAD_NAME))
+          .collect(Collectors.toList())
+          .forEach(thread -> thread.setName(threadName + "-" + thread.getId()));
     }
   }
 }
