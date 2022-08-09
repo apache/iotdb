@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.consensus.statemachine;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
-import org.apache.iotdb.commons.StepTracker;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.consensus.common.DataSet;
@@ -44,7 +43,6 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertRowsOfOneDevic
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertTabletNode;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,6 +120,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
   }
 
+  /**
+   * This method is used for write of MultiLeader SyncLog. By this method, we can keep write order
+   * in follower the same as the leader. And besides order insurance, we can make the
+   * deserialization of PlanNode to be concurrent
+   */
   private TSStatus cacheAndInsertLatestNode(InsertNodeWrapper insertNodeWrapper) {
     queueLock.lock();
     try {
@@ -133,11 +136,18 @@ public class DataRegionStateMachine extends BaseStateMachine {
         queueSortCondition.signalAll();
       }
       while (true) {
+        // If current InsertNode is the next target InsertNode, write it
         if (insertNodeWrapper.getStartSyncIndex() == nextSyncIndex) {
           requestCache.remove(insertNodeWrapper);
           nextSyncIndex = insertNodeWrapper.getEndSyncIndex() + 1;
           break;
         }
+        // If all write thread doesn't hit nextSyncIndex and the heap is full, write
+        // the peek request. This is used to keep the whole write correct when nextSyncIndex
+        // is not set. We won't persist the value of nextSyncIndex to reduce the complexity.
+        // There are some cases that nextSyncIndex is not set:
+        //   1. When the system was just started
+        //   2. When some exception occurs during SyncLog
         if (requestCache.size() == MAX_REQUEST_CACHE_SIZE
             && requestCache.peek().getStartSyncIndex() == insertNodeWrapper.getStartSyncIndex()) {
           requestCache.remove();
@@ -199,7 +209,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
     }
 
     @Override
-    public int compareTo(@NotNull InsertNodeWrapper o) {
+    public int compareTo(InsertNodeWrapper o) {
       return Long.compare(startSyncIndex, o.startSyncIndex);
     }
 
@@ -314,12 +324,7 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   protected TSStatus write(PlanNode planNode) {
-    long startTime = System.nanoTime();
-    try {
-      return planNode.accept(new DataExecutionVisitor(), region);
-    } finally {
-      StepTracker.trace("StateMachineWrite", startTime, System.nanoTime());
-    }
+    return planNode.accept(new DataExecutionVisitor(), region);
   }
 
   @Override

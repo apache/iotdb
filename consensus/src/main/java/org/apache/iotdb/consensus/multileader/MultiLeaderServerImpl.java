@@ -121,8 +121,13 @@ public class MultiLeaderServerImpl {
       }
       // TODO wal and memtable
       TSStatus result = stateMachine.write(indexedConsensusRequest);
-      long offerStartTime = System.nanoTime();
       if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // The index is used when constructing batch in LogDispatcher. If its value
+        // increases but the corresponding request does not exist or is not put into
+        // the queue, the dispatcher will try to find the request in WAL. This behavior
+        // is not expected and will slow down the preparation speed for batch.
+        // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
+        // in one transaction.
         synchronized (index) {
           logDispatcher.offer(indexedConsensusRequest);
           index.incrementAndGet();

@@ -132,7 +132,7 @@ public class MultiLeaderConfig {
 
     public static class Builder {
       private int rpcSelectorThreadNum = 1;
-      private int rpcMinConcurrentClientNum = 16;
+      private int rpcMinConcurrentClientNum = Runtime.getRuntime().availableProcessors();
       private int rpcMaxConcurrentClientNum = 65535;
       private int thriftServerAwaitTimeForStopService = 60;
       private boolean isRpcThriftCompressionEnabled = false;
@@ -249,6 +249,8 @@ public class MultiLeaderConfig {
     public static class Builder {
       private int maxPendingRequestNumPerNode = 600;
       private int maxRequestPerBatch = 30;
+      // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
+      // in DataRegionStateMachine
       private int maxPendingBatch = 5;
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);

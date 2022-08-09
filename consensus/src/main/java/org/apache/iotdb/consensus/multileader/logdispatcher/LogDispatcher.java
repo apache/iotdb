@@ -145,7 +145,6 @@ public class LogDispatcher {
 
     private ConsensusReqReader.ReqIterator walEntryiterator;
     private long iteratorIndex = 1;
-    private int queueCount = 0;
 
     public LogDispatcherThread(Peer peer, MultiLeaderConfig config) {
       this.peer = peer;
@@ -244,7 +243,6 @@ public class LogDispatcher {
               bufferedRequest,
               config.getReplication().getMaxRequestPerBatch() - bufferedRequest.size());
           maxIndexWhenBufferedRequestEmpty = impl.getIndex() + 1;
-          //            impl.getIndexObject().notifyAll();
         }
         // remove all request that searchIndex < startIndex
         Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
@@ -260,7 +258,8 @@ public class LogDispatcher {
       // This condition will be executed in several scenarios:
       // 1. restart
       // 2. The getBatch() is invoked immediately at the moment the PendingRequests are consumed
-      // up.
+      // up. To prevent inconsistency here, we use the synchronized logic when calculate value of
+      // `maxIndexWhenBufferedRequestEmpty`
       if (bufferedRequest.isEmpty()) {
         endIndex = constructBatchFromWAL(startIndex, maxIndexWhenBufferedRequestEmpty, logBatches);
         batch = new PendingBatch(startIndex, endIndex, logBatches);
@@ -270,8 +269,7 @@ public class LogDispatcher {
         // Notice that prev searchIndex >= startIndex
         Iterator<IndexedConsensusRequest> iterator = bufferedRequest.iterator();
         IndexedConsensusRequest prev = iterator.next();
-        // Prevents gap between logs. For example, some requests are not written into the queue
-        // when
+        // Prevents gap between logs. For example, some requests are not written into the queue when
         // the queue is full. In this case, requests need to be loaded from the WAL
         endIndex = constructBatchFromWAL(startIndex, prev.getSearchIndex(), logBatches);
         if (logBatches.size() == config.getReplication().getMaxRequestPerBatch()) {
@@ -353,11 +351,6 @@ public class LogDispatcher {
           && logBatches.size() < config.getReplication().getMaxRequestPerBatch()) {
         logger.debug("construct from WAL for one Entry, index : {}", currentIndex);
         try {
-          logger.debug(
-              "{} : before wait pendingRequest Size: {}, bufferedRequest size: {}",
-              impl.getThisNode().getGroupId(),
-              pendingRequest.size(),
-              bufferedRequest.size());
           walEntryiterator.waitForNextReady();
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
@@ -368,7 +361,6 @@ public class LogDispatcher {
         iteratorIndex = currentIndex;
         for (IConsensusRequest innerRequest : data.getRequests()) {
           logBatches.add(new TLogBatch(innerRequest.serializeToByteBuffer(), currentIndex, true));
-          logger.info("read one entry from WAL for dispatching: {}", data.getSearchIndex());
         }
         if (currentIndex == maxIndex - 1) {
           break;
