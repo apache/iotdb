@@ -70,6 +70,11 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
           break;
         case BROADCAST_DISABLE_DATA_NODE:
           env.getDataNodeRemoveHandler().broadcastDisableDataNode(tDataNodeLocation);
+          setNextState(RemoveDataNodeState.CHANGE_REGION_LEADER);
+          break;
+        case CHANGE_REGION_LEADER:
+          env.getDataNodeRemoveHandler()
+              .changeRegionLeader(execDataNodeRegionIds, tDataNodeLocation);
           setNextState(RemoveDataNodeState.SUBMIT_REGION_MIGRATE);
           break;
         case SUBMIT_REGION_MIGRATE:
@@ -77,8 +82,8 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
           setNextState(RemoveDataNodeState.STOP_DATA_NODE);
           break;
         case STOP_DATA_NODE:
-          env.getDataNodeRemoveHandler().stopDataNode(tDataNodeLocation);
           env.getDataNodeRemoveHandler().removeDataNodePersistence(tDataNodeLocation);
+          env.getDataNodeRemoveHandler().stopDataNode(tDataNodeLocation);
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {

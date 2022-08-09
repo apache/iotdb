@@ -279,10 +279,22 @@ service IDataNodeRPCService {
   common.TSStatus addToRegionConsensusGroup(TAddConsensusGroup req);
 
   /**
-   * Config node will migrate a region from this node to newNode
-   * @param migrate which region from one node to other node
+   * Config node will add a region peer from this node to newNode
+   * @param add region req which region from one node to other node
    */
-  common.TSStatus migrateRegion(TMigrateRegionReq req);
+  common.TSStatus addRegionPeer(TMigrateRegionReq req);
+
+  /**
+   * Config node will remove a region peer from this node to newNode
+   * @param remove region peer region from one node to other node
+   */
+  common.TSStatus removeRegionPeer(TMigrateRegionReq req);
+
+  /**
+   * Config node will remove a region consensus group from this node to newNode
+   * @param remove consensus group req which region from one node to other node
+  */
+  common.TSStatus removeToRegionConsensusGroup(TMigrateRegionReq req);
 
   /**
   * Config node will disable the Data node, the Data node will not accept read/write request when disabled

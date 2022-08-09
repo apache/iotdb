@@ -35,6 +35,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
+import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -142,22 +143,92 @@ public class DataNodeRemoveHandler {
    * @param regionId region id
    * @return migrate status
    */
-  public TSStatus migrateRegion(
+  public TSStatus addRegionPeer(
       TDataNodeLocation originalDataNode,
       TDataNodeLocation destDataNode,
       TConsensusGroupId regionId) {
     TSStatus status;
-    List<TDataNodeLocation> regionReplicaNodes = findRegionReplicaNodes(regionId);
-    if (regionReplicaNodes.isEmpty()) {
-      LOGGER.warn("Not find region replica nodes, region: {}", regionId);
+    Optional<TDataNodeLocation> newLeaderNode = findNewLeader(regionId, originalDataNode);
+    if (!newLeaderNode.isPresent()) {
+      LOGGER.warn(
+          "No other Node to change region leader, check by show regions, region: {}", regionId);
       status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-      status.setMessage("not find region replica nodes, region: " + regionId);
+      status.setMessage("No other Node to change region leader, check by show regions");
       return status;
     }
 
-    // TODO if region replica is 1, the new leader is null, it also need to migrate
-    Optional<TDataNodeLocation> newLeaderNode =
-        regionReplicaNodes.stream().filter(e -> !e.equals(originalDataNode)).findAny();
+    TMigrateRegionReq migrateRegionReq =
+        new TMigrateRegionReq(regionId, destDataNode, destDataNode);
+    migrateRegionReq.setNewLeaderNode(newLeaderNode.get());
+
+    // send to new leader
+    status =
+        SyncDataNodeClientPool.getInstance()
+            .sendSyncRequestToDataNodeWithRetry(
+                newLeaderNode.get().getInternalEndPoint(),
+                migrateRegionReq,
+                DataNodeRequestType.ADD_REGION_PEER);
+    LOGGER.info(
+        "send region {} migrate action to {}, wait it finished",
+        regionId,
+        destDataNode.getInternalEndPoint());
+    return status;
+  }
+
+  /**
+   * Send to DataNode, migrate region from originalDataNode to destDataNode
+   *
+   * @param originalDataNode old location data node
+   * @param destDataNode dest data node
+   * @param regionId region id
+   * @return migrate status
+   */
+  public TSStatus removeRegionPeer(
+      TDataNodeLocation originalDataNode,
+      TDataNodeLocation destDataNode,
+      TConsensusGroupId regionId) {
+    TSStatus status;
+    Optional<TDataNodeLocation> newLeaderNode = findNewLeader(regionId, originalDataNode);
+    if (!newLeaderNode.isPresent()) {
+      LOGGER.warn(
+          "No other Node to change region leader, check by show regions, region: {}", regionId);
+      status = new TSStatus(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+      status.setMessage("No other Node to change region leader, check by show regions");
+      return status;
+    }
+
+    TMigrateRegionReq migrateRegionReq =
+        new TMigrateRegionReq(regionId, originalDataNode, destDataNode);
+    migrateRegionReq.setNewLeaderNode(newLeaderNode.get());
+
+    // send to new leader
+    status =
+        SyncDataNodeClientPool.getInstance()
+            .sendSyncRequestToDataNodeWithRetry(
+                newLeaderNode.get().getInternalEndPoint(),
+                migrateRegionReq,
+                DataNodeRequestType.REMOVE_REGION_PEER);
+    LOGGER.info(
+        "send region {} remove peer to {}, wait it finished",
+        regionId,
+        originalDataNode.getInternalEndPoint());
+    return status;
+  }
+
+  /**
+   * Send to DataNode, migrate region from originalDataNode to destDataNode
+   *
+   * @param originalDataNode old location data node
+   * @param destDataNode dest data node
+   * @param regionId region id
+   * @return migrate status
+   */
+  public TSStatus removeRegionConsensusGroup(
+      TDataNodeLocation originalDataNode,
+      TDataNodeLocation destDataNode,
+      TConsensusGroupId regionId) {
+    TSStatus status;
+    Optional<TDataNodeLocation> newLeaderNode = findNewLeader(regionId, originalDataNode);
     if (!newLeaderNode.isPresent()) {
       LOGGER.warn(
           "No other Node to change region leader, check by show regions, region: {}", regionId);
@@ -174,7 +245,7 @@ public class DataNodeRemoveHandler {
             .sendSyncRequestToDataNodeWithRetry(
                 originalDataNode.getInternalEndPoint(),
                 migrateRegionReq,
-                DataNodeRequestType.MIGRATE_REGION);
+                DataNodeRequestType.REMOVE_REGION_CONSENSUS_GROUP);
     LOGGER.info(
         "send region {} migrate action to {}, wait it finished",
         regionId,
@@ -256,12 +327,20 @@ public class DataNodeRemoveHandler {
       return status;
     }
 
+    List<TDataNodeLocation> currentPeerNodes = new ArrayList<>(regionReplicaNodes);
+    currentPeerNodes.add(destDataNode);
     String storageGroup = configManager.getPartitionManager().getRegionStorageGroup(regionId);
+    TAddConsensusGroup req = new TAddConsensusGroup(regionId, currentPeerNodes, storageGroup);
+    // TODO replace with real ttl
+    req.setTtl(Long.MAX_VALUE);
+
     status =
         SyncDataNodeClientPool.getInstance()
-            .addToRegionConsensusGroup(
-                // TODO replace with real ttl
-                regionReplicaNodes, regionId, destDataNode, storageGroup, Long.MAX_VALUE);
+            .sendSyncRequestToDataNodeWithRetry(
+                destDataNode.getInternalEndPoint(),
+                req,
+                DataNodeRequestType.ADD_REGION_CONSENSUS_GROUP);
+
     LOGGER.info("send add region {} consensus group to {}", regionId, destDataNode);
     if (isFailed(status)) {
       LOGGER.error(
@@ -296,9 +375,6 @@ public class DataNodeRemoveHandler {
             .sendSyncRequestToDataNodeWithRetry(
                 dataNode.getInternalEndPoint(), dataNode, DataNodeRequestType.STOP_DATA_NODE);
     LOGGER.info("stop Data Node {} result: {}", dataNode, status);
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new ProcedureException("Failed to stop data node");
-    }
     return status;
   }
 
@@ -382,5 +458,36 @@ public class DataNodeRemoveHandler {
     List<TDataNodeLocation> removeDataNodes = new ArrayList<>();
     removeDataNodes.add(tDataNodeLocation);
     configManager.getConsensusManager().write(new RemoveDataNodePlan(removeDataNodes));
+  }
+
+  public void changeRegionLeader(
+      List<TConsensusGroupId> regionIds, TDataNodeLocation tDataNodeLocation) {
+    regionIds.forEach(
+        regionId -> {
+          Optional<TDataNodeLocation> newLeaderNode = findNewLeader(regionId, tDataNodeLocation);
+          if (newLeaderNode.isPresent()) {
+            SyncDataNodeClientPool.getInstance()
+                .changeRegionLeader(
+                    regionId, tDataNodeLocation.getInternalEndPoint(), newLeaderNode.get());
+            LOGGER.info(
+                "Change region leader finished, region is {}, newLeaderNode is {}",
+                regionId,
+                newLeaderNode);
+          }
+        });
+  }
+
+  private Optional<TDataNodeLocation> findNewLeader(
+      TConsensusGroupId regionId, TDataNodeLocation tDataNodeLocation) {
+    List<TDataNodeLocation> regionReplicaNodes = findRegionReplicaNodes(regionId);
+    if (regionReplicaNodes.isEmpty()) {
+      LOGGER.warn("Not find region replica nodes, region: {}", regionId);
+      return Optional.empty();
+    }
+
+    // TODO if region replica is 1, the new leader is null, it also need to migrate
+    Optional<TDataNodeLocation> newLeaderNode =
+        regionReplicaNodes.stream().filter(e -> !e.equals(tDataNodeLocation)).findAny();
+    return newLeaderNode;
   }
 }

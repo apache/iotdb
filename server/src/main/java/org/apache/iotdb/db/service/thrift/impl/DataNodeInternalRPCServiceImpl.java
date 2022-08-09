@@ -632,6 +632,41 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     return addConsensusGroup(regionId, peers);
   }
 
+  @Override
+  public TSStatus removeRegionPeer(TMigrateRegionReq req) throws TException {
+    TConsensusGroupId regionId = req.getRegionId();
+    String fromNodeIp = req.getFromNode().getInternalEndPoint().getIp();
+    boolean submitSucceed = RegionMigrateService.getInstance().submitRemoveRegionPeerTask(req);
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (submitSucceed) {
+      LOGGER.info(
+          "succeed to submit a remove region peer task. region: {}, from {}", regionId, fromNodeIp);
+      return status;
+    }
+    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+    status.setMessage("submit region remove region peer task failed, region: " + regionId);
+    return status;
+  }
+
+  @Override
+  public TSStatus removeToRegionConsensusGroup(TMigrateRegionReq req) throws TException {
+    TConsensusGroupId regionId = req.getRegionId();
+    String fromNodeIp = req.getFromNode().getInternalEndPoint().getIp();
+    boolean submitSucceed = RegionMigrateService.getInstance().submitRemoveRegionPeerTask(req);
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    if (submitSucceed) {
+      LOGGER.info(
+          "succeed to submit a remove region consensus group task. region: {}, from {}",
+          regionId,
+          fromNodeIp);
+      return status;
+    }
+    status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
+    status.setMessage(
+        "submit region remove region consensus group task failed, region: " + regionId);
+    return status;
+  }
+
   private TSStatus createNewRegion(ConsensusGroupId regionId, String storageGroup, long ttl) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     LOGGER.info("start to create new region {}", regionId);
@@ -681,32 +716,18 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   }
 
   @Override
-  public TSStatus migrateRegion(TMigrateRegionReq req) throws TException {
+  public TSStatus addRegionPeer(TMigrateRegionReq req) throws TException {
     TConsensusGroupId regionId = req.getRegionId();
-    String fromNodeIp = req.getFromNode().getInternalEndPoint().getIp();
     String toNodeIp = req.getToNode().getInternalEndPoint().getIp();
-    LOGGER.debug(
-        "start to submit a region migrate task. region: {}, from {} to {}",
-        regionId,
-        fromNodeIp,
-        toNodeIp);
-    boolean submitSucceed = RegionMigrateService.getInstance().submitRegionMigrateTask(req);
+    boolean submitSucceed = RegionMigrateService.getInstance().submitAddRegionPeerTask(req);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
-      LOGGER.debug(
-          "succeed to submit a region migrate task. region: {}, from {} to {}",
-          regionId,
-          fromNodeIp,
-          toNodeIp);
+      LOGGER.info(
+          "succeed to submit a add region peer task. region: {}, to {}", regionId, toNodeIp);
       return status;
     }
-    LOGGER.error(
-        "failed to submit a region migrate task. region: {}, from {} to {}",
-        regionId,
-        fromNodeIp,
-        toNodeIp);
     status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-    status.setMessage("submit region migrate task failed, region: " + regionId);
+    status.setMessage("submit add region peer task failed, region: " + regionId);
     return status;
   }
 

@@ -22,6 +22,7 @@ package org.apache.iotdb.confignode.procedure.state;
 public enum RemoveDataNodeState {
   REMOVE_DATA_NODE_PREPARE,
   BROADCAST_DISABLE_DATA_NODE,
+  CHANGE_REGION_LEADER,
   SUBMIT_REGION_MIGRATE,
   STOP_DATA_NODE
 }
