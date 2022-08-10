@@ -26,7 +26,9 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,6 +38,11 @@ public class DeviceSchemaInfo {
   private boolean isAligned;
   private List<MeasurementSchemaInfo> measurementSchemaInfoList;
 
+  private Map<String, MeasurementSchemaInfo> measurementSchemaInfoMap;
+  private Map<String, MeasurementSchemaInfo> aliasMap;
+
+  private DeviceSchemaInfo() {}
+
   public DeviceSchemaInfo(
       PartialPath devicePath,
       boolean isAligned,
@@ -44,8 +51,6 @@ public class DeviceSchemaInfo {
     this.isAligned = isAligned;
     this.measurementSchemaInfoList = measurementSchemaInfoList;
   }
-
-  private DeviceSchemaInfo() {}
 
   public PartialPath getDevicePath() {
     return devicePath;
@@ -61,30 +66,49 @@ public class DeviceSchemaInfo {
     result.isAligned = isAligned;
     List<MeasurementSchemaInfo> desiredMeasurementSchemaInfoList =
         new ArrayList<>(measurements.size());
-    int index;
-    int count = 0;
-    for (MeasurementSchemaInfo measurementSchemaInfo : measurementSchemaInfoList) {
-      index = measurements.indexOf(measurementSchemaInfo.getName());
-      if (index == -1) {
-        index = measurements.indexOf(measurementSchemaInfo.getAlias());
+
+    if (measurementSchemaInfoMap == null) {
+      constructMap();
+    }
+
+    MeasurementSchemaInfo measurementSchemaInfo;
+    for (String measurement : measurements) {
+      measurementSchemaInfo = measurementSchemaInfoMap.get(measurement);
+      if (measurementSchemaInfo == null) {
+        measurementSchemaInfo = aliasMap.get(measurement);
       }
 
-      if (index == -1) {
-        continue;
+      if (measurementSchemaInfo == null) {
+        desiredMeasurementSchemaInfoList.add(null);
       }
-      desiredMeasurementSchemaInfoList.add(index, measurementSchemaInfo);
-      count++;
-      if (count == measurements.size()) {
-        break;
-      }
+
+      desiredMeasurementSchemaInfoList.add(measurementSchemaInfo);
     }
+
     result.measurementSchemaInfoList = desiredMeasurementSchemaInfoList;
     return result;
   }
 
+  private void constructMap() {
+    measurementSchemaInfoMap = new HashMap<>();
+    aliasMap = new HashMap<>();
+    measurementSchemaInfoList.forEach(
+        measurementSchemaInfo -> {
+          if (measurementSchemaInfo == null) {
+            return;
+          }
+          measurementSchemaInfoMap.put(measurementSchemaInfo.getName(), measurementSchemaInfo);
+          if (measurementSchemaInfo.getAlias() != null) {
+            aliasMap.put(measurementSchemaInfo.getAlias(), measurementSchemaInfo);
+          }
+        });
+  }
+
   public List<MeasurementSchema> getMeasurementSchemaList() {
     return measurementSchemaInfoList.stream()
-        .map(measurementNode -> measurementNode == null ? null : measurementNode.getSchema())
+        .map(
+            measurementSchemaInfo ->
+                measurementSchemaInfo == null ? null : measurementSchemaInfo.getSchema())
         .collect(Collectors.toList());
   }
 
