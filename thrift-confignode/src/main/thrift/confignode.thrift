@@ -578,11 +578,11 @@ service IConfigNodeRPCService {
 
   common.TSStatus flush(common.TFlushReq req)
 
-  /* ClearCache */
+  common.TSStatus clearCache(TClearCacheReq req)
 
-  common.TSStatus clearCache(common.TClearCacheReq req)
-
-  /* Cluster Tools */
+  // ======================================================
+  // Cluster Tools
+  // ======================================================
 
   /** Show cluster ConfigNodes' and DataNodes' information */
   TShowClusterResp showCluster()

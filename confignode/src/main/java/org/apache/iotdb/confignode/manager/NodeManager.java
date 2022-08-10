@@ -372,59 +372,15 @@ public class NodeManager {
                 + ".");
   }
 
-  public List<TConfigNodeLocation> getRegisteredConfigNodes() {
-    return nodeInfo.getRegisteredConfigNodes();
-  }
-
-  private ConsensusManager getConsensusManager() {
-    return configManager.getConsensusManager();
-  }
-
-  private ClusterSchemaManager getClusterSchemaManager() {
-    return configManager.getClusterSchemaManager();
-  }
-
-  public void registerListener(final ChangeServerListener serverListener) {
-    listeners.add(serverListener);
-  }
-
-  public boolean unregisterListener(final ChangeServerListener serverListener) {
-    return listeners.remove(serverListener);
-  }
-
-  /** TODO: wait data node register, wait */
-  public void waitForDataNodes() {
-    listeners.stream().forEach(serverListener -> serverListener.waiting());
-  }
-
-  private class ServerStartListenerThread extends Thread implements ChangeServerListener {
-    private boolean changed = false;
-
-    ServerStartListenerThread() {
-      setDaemon(true);
-    }
-
-    @Override
-    public void addDataNode(TDataNodeLocation DataNodeInfo) {
-      serverChanged();
-    }
-
-    @Override
-    public void removeDataNode(TDataNodeLocation dataNodeInfo) {
-      // TODO: When removing a datanode, do the following
-      //  configManager.getLoadManager().removeNodeHeartbeatHandCache(dataNodeId);
-      serverChanged();
-    }
-
-    private synchronized void serverChanged() {
-      changed = true;
-      this.notify();
-    }
-
-    @Override
-    public void run() {
-      while (!configManager.isStopped()) {}
-    }
+  public List<TSStatus> merge(TMergeReq req) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (req.dataNodeId != -1) {
+      dataNodeLocationMap =
+          dataNodeLocationMap.entrySet().stream()
+              .filter((e) -> req.dataNodeId == e.getKey())
+              .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
+            }
   }
 
   /** TODO: For listener for add or remove data node */
@@ -450,26 +406,38 @@ public class NodeManager {
 
   public List<TSStatus> flush(TFlushReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+    configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (req.dataNodeId != -1) {
+      dataNodeLocationMap =
+          dataNodeLocationMap.entrySet().stream()
+              .filter((e) -> req.dataNodeId == e.getKey())
+              .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
+    }
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            null, dataNodeLocationMap, DataNodeRequestType.CLEAR_CACHE, dataNodeResponseStatus);
+          req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 
-<<<<<<< HEAD
-  public List<TSStatus> deletePartition(TDeletePartitionReq req) {
+  public List<TSStatus> clearCache(TClearCacheReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+    configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (req.dataNodeId != -1) {
+      dataNodeLocationMap =
+          dataNodeLocationMap.entrySet().stream()
+              .filter((e) -> req.dataNodeId == e.getKey())
+              .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
+    }
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-            req, dataNodeLocationMap, DataNodeRequestType.CLEAR_CACHE, dataNodeResponseStatus);
+          null, dataNodeLocationMap, DataNodeRequestType.CLEAR_CACHE, dataNodeResponseStatus);
     return dataNodeResponseStatus;
-=======
+  }
+  
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
     return nodeInfo.getRegisteredConfigNodes();
   }
@@ -480,7 +448,6 @@ public class NodeManager {
 
   private ClusterSchemaManager getClusterSchemaManager() {
     return configManager.getClusterSchemaManager();
->>>>>>> eeb553dbd857e4a97c43c195d5ef4258a4f7e5a6
   }
 
   private LoadManager getLoadManager() {

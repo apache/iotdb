@@ -102,18 +102,14 @@ struct TFlushReq {
    3: optional i32 dataNodeId
 }
 
-struct TClearCacheReq {
-   1: optional i32 dataNodeId
-}
-
-struct TDeletePartitionReq {
-  1: required string storageGroup
-  2: required list<i64> PartitionId
+// for node management
+struct TSchemaNode {
+  1: required string nodeName
+  2: required byte nodeType
 }
 
 struct TSetTTLReq {
-  1: required string storageGroup
-  2: required i64 TTL
+  1: required list<string> storageGroupPathPattern
 }
 
 // for node management
