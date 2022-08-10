@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.utils;
 
-public enum MonitorType {
+public enum MetricFrameType {
   DROPWIZARD,
   MICROMETER;
 

@@ -66,7 +66,7 @@ public class MicrometerPrometheusReporter implements Reporter {
         HttpServer.create()
             .idleTimeout(Duration.ofMillis(30_000L))
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
-            .port(Integer.parseInt(metricConfig.getPrometheusExporterPort()))
+            .port(metricConfig.getPrometheusExporterPort())
             .route(
                 routes ->
                     routes.get(

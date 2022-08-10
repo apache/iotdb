@@ -28,8 +28,8 @@ import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.MonitorType;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -54,7 +54,7 @@ public class DropwizardMetricManagerTest {
   @BeforeClass
   public static void init() {
     metricConfig.setEnableMetric(true);
-    metricConfig.setMonitorType(MonitorType.DROPWIZARD);
+    metricConfig.setMonitorType(MetricFrameType.DROPWIZARD);
     metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
     metricConfig.setPredefinedMetrics(new ArrayList<>());
     metricService.startService();

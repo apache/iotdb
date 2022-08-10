@@ -252,7 +252,7 @@ metricReporterList:
   - PROMETHEUS
 
 # 底层使用的metric架构，可选参数：[MICROMETER, DROPWIZARD]
-monitorType: MICROMETER
+metricFrameworkType: MICROMETER
 
 # 初始化metric的级别，可选参数: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: IMPORTANT

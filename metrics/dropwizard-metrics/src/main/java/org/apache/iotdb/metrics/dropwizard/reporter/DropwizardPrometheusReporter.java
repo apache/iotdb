@@ -51,8 +51,7 @@ public class DropwizardPrometheusReporter implements Reporter {
       return false;
     }
     int port =
-        Integer.parseInt(
-            MetricConfigDescriptor.getInstance().getMetricConfig().getPrometheusExporterPort());
+        MetricConfigDescriptor.getInstance().getMetricConfig().getPrometheusExporterPort();
     httpServer =
         HttpServer.create()
             .idleTimeout(Duration.ofMillis(30_000L))

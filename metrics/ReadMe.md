@@ -107,7 +107,7 @@ System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources"
 | metricReporterList | the list of reporter                                  | JMX, PROMETHEUS        |
 | predefinedMetrics  | predefined set of metrics                             | JMX, LOGBACK           |
 | metricLevel | the init level of metrics| ALL, NORMAL, IMPORTANT, CORE |
-| monitorType        | The type of monitor manager                           | DROPWIZARD, MICROMETER |
+| metricFrameworkType        | The type of monitor manager                           | DROPWIZARD, MICROMETER |
 | pushPeriodInSecond | the period time of push(used for prometheus, unit: s) | 5                      |
 
 ## 3.2. Use Guide in IoTDB Server Module
@@ -123,11 +123,11 @@ MetricsService.getInstance().count(1, "operation_count", MetricLevel.IMPORTANT, 
    1. You need to implement `collectFileSystemInfo` to collect file system info as you like.
    2. You need to implement `reloadProperties` to support hot load.
 2. implement your MetricManager
-   1. The name of MetricManager should start with `monitorType`, MetricService will init manager according to the prefix of class name.
+   1. The name of MetricManager should start with `metricFrameworkType`, MetricService will init manager according to the prefix of class name.
    2. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.AbstractMetricManager`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager`
 3. implement your reporter
    1. You need to implement jmx reporter and prometheus reporter, notice that your jmx bean name should be unified as `org.apache.iotdb.metrics`
-   2. The name of your reporter should also start with `monitorType`
+   2. The name of your reporter should also start with `metricFrameworkType`
    3. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.Reporter`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.reporter.DropwizardPrometheusReporter`
 4. implement your specific metric
    1. They are counter, gauge, histogram, histogramSnapshot, rate and timer.

@@ -252,7 +252,7 @@ metricReporterList:
   - PROMETHEUS
 
 # Type of monitor frame, options: [MICROMETER, DROPWIZARD]
-monitorType: MICROMETER
+metricFrameworkType: MICROMETER
 
 # Level of metric level, options: [CORE, IMPORTANT, NORMAL, ALL]
 metricLevel: IMPORTANT
