@@ -45,9 +45,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.ToLongFunction;
 
 /** MetricService is the entry to get all metric features. */
-public abstract class MetricService {
+public abstract class AbstractMetricService {
 
-  private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
+  private static final Logger logger = LoggerFactory.getLogger(AbstractMetricService.class);
   /** The config of metric service */
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   /** Is the first initialization of metric service */
@@ -59,7 +59,7 @@ public abstract class MetricService {
   /** Is metric service enabled */
   protected boolean isEnableMetric = metricConfig.getEnableMetric();
 
-  public MetricService() {}
+  public AbstractMetricService() {}
 
   /** start metric service */
   public void startService() {

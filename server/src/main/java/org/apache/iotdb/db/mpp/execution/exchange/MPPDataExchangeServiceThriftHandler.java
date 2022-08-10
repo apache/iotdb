@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.mpp.execution.exchange;
 
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -36,7 +36,7 @@ public class MPPDataExchangeServiceThriftHandler implements TServerEventHandler 
 
   @Override
   public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
-    MetricsService.getInstance()
+    MetricService.getInstance()
         .getMetricManager()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(),
@@ -50,7 +50,7 @@ public class MPPDataExchangeServiceThriftHandler implements TServerEventHandler 
   @Override
   public void deleteContext(
       ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
-    MetricsService.getInstance()
+    MetricService.getInstance()
         .getMetricManager()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(),

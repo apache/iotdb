@@ -56,7 +56,7 @@ import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache
 import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
 import org.apache.iotdb.consensus.ConsensusFactory;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -496,7 +496,7 @@ public class LoadManager {
               + ":"
               + configNodeLocation.getInternalEndPoint().port
               + ")";
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
@@ -523,7 +523,7 @@ public class LoadManager {
               + ":"
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
@@ -549,7 +549,7 @@ public class LoadManager {
               + ":"
               + configNodeLocation.getInternalEndPoint().port
               + ")";
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
@@ -576,7 +576,7 @@ public class LoadManager {
               + ":"
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
@@ -592,7 +592,7 @@ public class LoadManager {
 
   public void addMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
               Metric.CONFIG_NODE.toString(),
@@ -602,7 +602,7 @@ public class LoadManager {
               Tag.STATUS.toString(),
               NodeStatus.Online.toString())
           .set(getRunningConfigNodesNum());
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
               Metric.DATA_NODE.toString(),
@@ -612,7 +612,7 @@ public class LoadManager {
               Tag.STATUS.toString(),
               NodeStatus.Online.toString())
           .set(getRunningDataNodesNum());
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
               Metric.CONFIG_NODE.toString(),
@@ -622,7 +622,7 @@ public class LoadManager {
               Tag.STATUS.toString(),
               NodeStatus.Unknown.toString())
           .set(getUnknownConfigNodesNum());
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
               Metric.DATA_NODE.toString(),
@@ -636,7 +636,7 @@ public class LoadManager {
   }
 
   public void removeMetrics() {
-    MetricsService.getInstance()
+    MetricService.getInstance()
         .getMetricManager()
         .removeGauge(
             Metric.CONFIG_NODE.toString(),
@@ -644,7 +644,7 @@ public class LoadManager {
             "total",
             Tag.STATUS.toString(),
             NodeStatus.Online.toString());
-    MetricsService.getInstance()
+    MetricService.getInstance()
         .getMetricManager()
         .removeGauge(
             Metric.DATA_NODE.toString(),
@@ -652,7 +652,7 @@ public class LoadManager {
             "total",
             Tag.STATUS.toString(),
             NodeStatus.Online.toString());
-    MetricsService.getInstance()
+    MetricService.getInstance()
         .getMetricManager()
         .removeGauge(
             Metric.CONFIG_NODE.toString(),
@@ -660,7 +660,7 @@ public class LoadManager {
             "total",
             Tag.STATUS.toString(),
             NodeStatus.Unknown.toString());
-    MetricsService.getInstance()
+    MetricService.getInstance()
         .getMetricManager()
         .removeGauge(
             Metric.DATA_NODE.toString(),

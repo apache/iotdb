@@ -59,7 +59,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
@@ -272,7 +272,7 @@ public class DataNode implements DataNodeMBean {
     initServiceProvider();
 
     // init metric service
-    registerManager.register(MetricsService.getInstance());
+    registerManager.register(MetricService.getInstance());
 
     logger.info("recover the schema...");
     initSchemaEngine();
@@ -320,7 +320,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(ContinuousQueryService.getInstance());
 
     // start reporter
-    MetricsService.getInstance().startAllReporter();
+    MetricService.getInstance().startAllReporter();
 
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
@@ -406,7 +406,7 @@ public class DataNode implements DataNodeMBean {
 
     // QSW
     try {
-      MetricsService.getInstance().stop();
+      MetricService.getInstance().stop();
       SchemaRegionConsensusImpl.getInstance().stop();
       DataRegionConsensusImpl.getInstance().stop();
     } catch (Exception e) {

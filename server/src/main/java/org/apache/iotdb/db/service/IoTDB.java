@@ -47,7 +47,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -142,7 +142,7 @@ public class IoTDB implements IoTDBMBean {
     setUncaughtExceptionHandler();
     initServiceProvider();
 
-    registerManager.register(MetricsService.getInstance());
+    registerManager.register(MetricService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
     registerManager.register(new JMXService());
@@ -199,7 +199,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(ContinuousQueryService.getInstance());
 
     // start reporter
-    MetricsService.getInstance().startAllReporter();
+    MetricService.getInstance().startAllReporter();
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }

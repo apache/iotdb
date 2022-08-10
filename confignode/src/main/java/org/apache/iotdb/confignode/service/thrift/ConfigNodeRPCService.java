@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -80,7 +80,7 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
       throw new IllegalAccessException(e.getMessage());
     }
     thriftServiceThread.setName(ThreadName.CONFIG_NODE_RPC_SERVER.getName());
-    MetricsService.getInstance()
+    MetricService.getInstance()
         .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),

@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.rescon;
 
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -46,7 +46,7 @@ public class TimeseriesStatistics {
 
   public void init() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.QUANTITY.toString(),

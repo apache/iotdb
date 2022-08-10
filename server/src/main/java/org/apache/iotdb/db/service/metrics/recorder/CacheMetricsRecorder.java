@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.service.metrics.recorder;
 
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -39,7 +39,7 @@ public class CacheMetricsRecorder {
     if (ENABLE_METRIC) {
       if (result) {
         // cache hit
-        MetricsService.getInstance()
+        MetricService.getInstance()
             .getMetricManager()
             .count(
                 1,
@@ -50,7 +50,7 @@ public class CacheMetricsRecorder {
                 Tag.TYPE.toString(),
                 "hit");
       }
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .count(
               1,

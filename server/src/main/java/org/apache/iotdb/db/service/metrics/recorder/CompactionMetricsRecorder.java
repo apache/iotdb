@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -45,7 +45,7 @@ public class CompactionMetricsRecorder {
     if (!ENABLE_METRIC) {
       return;
     }
-    MetricsService.getInstance()
+    MetricService.getInstance()
         .getMetricManager()
         .count(
             byteNum / 1024L,
@@ -59,7 +59,7 @@ public class CompactionMetricsRecorder {
             aligned ? "ALIGNED" : "NOT_ALIGNED",
             Tag.TYPE.toString(),
             processChunkType.toString());
-    MetricsService.getInstance()
+    MetricService.getInstance()
         .getMetricManager()
         .count(
             byteNum / 1024L,
@@ -75,7 +75,7 @@ public class CompactionMetricsRecorder {
     if (!ENABLE_METRIC) {
       return;
     }
-    MetricsService.getInstance()
+    MetricService.getInstance()
         .getMetricManager()
         .count(
             byteNum,
@@ -102,7 +102,7 @@ public class CompactionMetricsRecorder {
     switch (status) {
       case ADD_TO_QUEUE:
       case POLL_FROM_QUEUE:
-        MetricsService.getInstance()
+        MetricService.getInstance()
             .getMetricManager()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
@@ -114,7 +114,7 @@ public class CompactionMetricsRecorder {
             .set(size);
         break;
       case READY_TO_EXECUTE:
-        MetricsService.getInstance()
+        MetricService.getInstance()
             .getMetricManager()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
@@ -126,7 +126,7 @@ public class CompactionMetricsRecorder {
             .set(size);
         break;
       case FINISHED:
-        MetricsService.getInstance()
+        MetricService.getInstance()
             .getMetricManager()
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
@@ -136,7 +136,7 @@ public class CompactionMetricsRecorder {
                 Tag.STATUS.toString(),
                 "running")
             .set(size);
-        MetricsService.getInstance()
+        MetricService.getInstance()
             .getMetricManager()
             .timer(
                 task.getTimeCost(),
@@ -146,7 +146,7 @@ public class CompactionMetricsRecorder {
                 Tag.NAME.toString(),
                 isInnerTask ? "inner_compaction" : "cross_compaction");
         if (isInnerTask) {
-          MetricsService.getInstance()
+          MetricService.getInstance()
               .getMetricManager()
               .count(
                   1,
@@ -157,7 +157,7 @@ public class CompactionMetricsRecorder {
                   Tag.TYPE.toString(),
                   ((InnerSpaceCompactionTask) task).isSequence() ? "sequence" : "unsequence");
         } else {
-          MetricsService.getInstance()
+          MetricService.getInstance()
               .getMetricManager()
               .count(
                   1,

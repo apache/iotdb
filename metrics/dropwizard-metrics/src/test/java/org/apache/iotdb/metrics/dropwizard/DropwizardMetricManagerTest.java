@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
+import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Counter;
@@ -49,7 +49,7 @@ import static org.junit.Assert.assertTrue;
 
 public class DropwizardMetricManagerTest {
   static MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
-  static MetricService metricService = new DoNothingMetricService();
+  static AbstractMetricService metricService = new DoNothingMetricService();
   static MetricManager metricManager;
 
   @BeforeClass

@@ -47,7 +47,7 @@ import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
 import org.apache.iotdb.consensus.common.DataSet;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -114,7 +114,7 @@ public class PartitionInfo implements SnapshotProcessor {
 
   public void addMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.STORAGE_GROUP.toString(),
@@ -123,7 +123,7 @@ public class PartitionInfo implements SnapshotProcessor {
               o -> o.size(),
               Tag.NAME.toString(),
               "number");
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.REGION.toString(),
@@ -134,7 +134,7 @@ public class PartitionInfo implements SnapshotProcessor {
               "total",
               Tag.TYPE.toString(),
               TConsensusGroupType.SchemaRegion.toString());
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.REGION.toString(),
@@ -647,7 +647,7 @@ public class PartitionInfo implements SnapshotProcessor {
               + ":"
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateGauge(
               Metric.REGION.toString(),

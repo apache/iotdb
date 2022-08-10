@@ -30,7 +30,7 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -89,7 +89,7 @@ public class StorageGroupPartitionTable {
 
   private void addMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.REGION.toString(),
@@ -100,7 +100,7 @@ public class StorageGroupPartitionTable {
               storageGroupName,
               Tag.TYPE.toString(),
               TConsensusGroupType.SchemaRegion.toString());
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.REGION.toString(),
@@ -112,7 +112,7 @@ public class StorageGroupPartitionTable {
               Tag.TYPE.toString(),
               TConsensusGroupType.DataRegion.toString());
       // TODO slot will be updated in the future
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.SLOT.toString(),
@@ -123,7 +123,7 @@ public class StorageGroupPartitionTable {
               storageGroupName,
               Tag.TYPE.toString(),
               "schemaSlotNumber");
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.SLOT.toString(),

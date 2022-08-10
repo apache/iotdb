@@ -29,7 +29,7 @@ import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -57,7 +57,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     try {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-        MetricsService.getInstance()
+        MetricService.getInstance()
             .getMetricManager()
             .getOrCreateAutoGauge(
                 Metric.QUEUE.toString(),
@@ -68,7 +68,7 @@ public class FlushManager implements FlushManagerMBean, IService {
                 "flush",
                 Tag.STATUS.toString(),
                 "waiting");
-        MetricsService.getInstance()
+        MetricService.getInstance()
             .getMetricManager()
             .getOrCreateAutoGauge(
                 Metric.QUEUE.toString(),

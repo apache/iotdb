@@ -72,7 +72,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
@@ -2122,7 +2122,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .histogram(
               System.currentTimeMillis() - startTime,
@@ -2130,7 +2130,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
               MetricLevel.IMPORTANT,
               "name",
               operation.getName());
-      MetricsService.getInstance()
+      MetricService.getInstance()
           .getMetricManager()
           .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
     }
