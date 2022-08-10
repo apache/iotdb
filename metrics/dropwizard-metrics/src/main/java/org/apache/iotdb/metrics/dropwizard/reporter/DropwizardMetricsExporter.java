@@ -33,6 +33,7 @@ import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -115,23 +116,8 @@ class DropwizardMetricsExporter {
     writer.writeHelp(sanitizeName, helpMessage);
     writer.writeType(sanitizeName, MetricType.SUMMARY);
     Map<String, String> tags = metricName.getTags();
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.5"), snapshot.getMedian() * factor);
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.75"), snapshot.get75thPercentile() * factor);
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.95"), snapshot.get95thPercentile() * factor);
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.98"), snapshot.get98thPercentile() * factor);
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.99"), snapshot.get99thPercentile() * factor);
-    writer.writeSample(
-        sanitizeName, addTags(tags, "quantile", "0.999"), snapshot.get999thPercentile() * factor);
-    writer.writeSample(sanitizeName + "_min", tags, snapshot.getMin());
-    writer.writeSample(sanitizeName + "_max", tags, snapshot.getMax());
-    writer.writeSample(sanitizeName + "_median", tags, snapshot.getMedian());
-    writer.writeSample(sanitizeName + "_mean", tags, snapshot.getMean());
-    writer.writeSample(sanitizeName + "_stddev", tags, snapshot.getStdDev());
+    writer.writeSample(sanitizeName + "_max", tags, snapshot.getMax() * factor);
+    writer.writeSample(sanitizeName + "_sum", tags, Arrays.stream(snapshot.getValues()).sum() * factor);
     writer.writeSample(sanitizeName + "_count", tags, count);
   }
 
@@ -143,7 +129,6 @@ class DropwizardMetricsExporter {
         timer.getCount(),
         1.0D / TimeUnit.SECONDS.toNanos(1L),
         getHelpMessage(dropwizardName, timer));
-    writeMetered(new MicrometerMetricName(dropwizardName), timer);
   }
 
   /** Export Meter as Prometheus Counter */
