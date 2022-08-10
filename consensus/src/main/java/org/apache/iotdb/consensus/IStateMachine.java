@@ -71,6 +71,20 @@ public interface IStateMachine {
    */
   void loadSnapshot(File latestSnapshotRootDir);
 
+  /**
+   * given a snapshot dir, ask statemachine to provide all snapshot files.
+   *
+   * <p>DataRegion may take snapshot at a different disk and only store a log file containing only
+   * file paths. So statemachine is required to read the log file and give the real snapshot file
+   * paths.
+   *
+   * @param latestSnapshotRootDir dir where the latest snapshot sits
+   * @return List of real snapshot files
+   */
+  default List<File> getSnapshotFiles(File latestSnapshotRootDir) {
+    return null;
+  }
+
   /** An optional API for event notifications. */
   interface EventApi {
     /**
