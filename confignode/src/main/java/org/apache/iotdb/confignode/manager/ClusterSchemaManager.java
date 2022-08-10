@@ -185,9 +185,9 @@ public class ClusterSchemaManager {
           storageGroups.add(storageGroup);
           dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
         } else {
-          List<String> storagegroups = dnlToSgMap.get(dataNodeLocation.getDataNodeId());
-          storagegroups.add(storageGroup);
-          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storagegroups);
+          List<String> storageGroups = dnlToSgMap.get(dataNodeLocation.getDataNodeId());
+          storageGroups.add(storageGroup);
+          dnlToSgMap.put(dataNodeLocation.getDataNodeId(), storageGroups);
         }
       }
     }
@@ -354,25 +354,15 @@ public class ClusterSchemaManager {
     resp.setStatus(templateResp.getStatus());
     if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       if (templateResp.getTemplateList() != null) {
-        List<ByteBuffer> list = new ArrayList<ByteBuffer>();
-        templateResp
-            .getTemplateList()
-            .forEach(
-                template -> {
-                  list.add(template.serialize());
-                });
+        List<ByteBuffer> list = new ArrayList<>();
+        templateResp.getTemplateList().forEach(template -> list.add(template.serialize()));
         resp.setTemplateList(list);
       }
     }
     return resp;
   }
 
-  /**
-   * show nodes in schema template
-   *
-   * @param req
-   * @return
-   */
+  /** show nodes in schema template */
   public TGetTemplateResp getTemplate(String req) {
     GetSchemaTemplatePlan getSchemaTemplatePlan = new GetSchemaTemplatePlan(req);
     TemplateInfoResp templateResp =
@@ -388,13 +378,7 @@ public class ClusterSchemaManager {
     return resp;
   }
 
-  /**
-   * mount template
-   *
-   * @param templateName
-   * @param path
-   * @return
-   */
+  /** mount template */
   public synchronized TSStatus setSchemaTemplate(String templateName, String path) {
     // check whether the template can be set on given path
     CheckTemplateSettablePlan checkTemplateSettablePlan =
@@ -423,7 +407,7 @@ public class ClusterSchemaManager {
     // sync template set info to all dataNodes
     TSStatus status;
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
     for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
       status =
           SyncDataNodeClientPool.getInstance()
@@ -463,7 +447,7 @@ public class ClusterSchemaManager {
 
     // get all dataNodes
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
 
     // send rollbackReq
     TSStatus status;
@@ -482,12 +466,7 @@ public class ClusterSchemaManager {
     return failedRollbackStatusList;
   }
 
-  /**
-   * show path set template xx
-   *
-   * @param templateName
-   * @return
-   */
+  /** show path set template xx */
   public TGetPathsSetTemplatesResp getPathsSetTemplate(String templateName) {
     GetPathsSetTemplatePlan getPathsSetTemplatePlan = new GetPathsSetTemplatePlan(templateName);
     PathInfoResp pathInfoResp =

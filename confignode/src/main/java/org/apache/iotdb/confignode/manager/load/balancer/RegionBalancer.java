@@ -70,7 +70,7 @@ public class RegionBalancer {
 
     // TODO: After waiting for the IT framework to complete, change the following code to:
     //  List<TDataNodeInfo> onlineDataNodes = getLoadManager().getOnlineDataNodes(-1);
-    List<TDataNodeConfiguration> registeredDataNodes = getNodeManager().getRegisteredDataNodes(-1);
+    List<TDataNodeConfiguration> registeredDataNodes = getNodeManager().getRegisteredDataNodes();
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllReplicaSets();
 
     for (Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
