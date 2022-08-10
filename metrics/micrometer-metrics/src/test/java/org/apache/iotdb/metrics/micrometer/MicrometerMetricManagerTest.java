@@ -65,8 +65,9 @@ public class MicrometerMetricManagerTest {
   }
 
   private void getOrCreateMetricsWithSameNameAndDifferentTags() {
-    metricManager.gauge(1L, "gaugeTest", MetricLevel.CORE, "a", "b");
-    metricManager.gauge(2L, "gaugeTest", MetricLevel.CORE, "a", "b", "c", "d");
+    Timer timer = metricManager.getOrCreateTimer("metric", MetricLevel.IMPORTANT, "tag1", "tag2");
+    assertNotNull(timer);
+    metricManager.getOrCreateCounter("metric", MetricLevel.IMPORTANT, "tag1", "tag2");
   }
 
   @Test
