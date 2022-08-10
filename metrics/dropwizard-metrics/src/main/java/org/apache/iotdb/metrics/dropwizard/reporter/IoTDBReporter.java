@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.dropwizard.MicrometerMetricName;
+import org.apache.iotdb.metrics.dropwizard.DropwizardMetricName;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -160,7 +160,7 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == gauge) {
       return;
     }
-    MicrometerMetricName metricName = new MicrometerMetricName(name);
+    DropwizardMetricName metricName = new DropwizardMetricName(name);
     Object obj = gauge.getValue();
     double value;
     if (obj instanceof Number) {
@@ -175,7 +175,7 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == counter) {
       return;
     }
-    MicrometerMetricName metricName = new MicrometerMetricName(name);
+    DropwizardMetricName metricName = new DropwizardMetricName(name);
     double value = counter.getCount();
     updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
   }
@@ -184,7 +184,7 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == histogram) {
       return;
     }
-    MicrometerMetricName metricName = new MicrometerMetricName(name);
+    DropwizardMetricName metricName = new DropwizardMetricName(name);
     writeSnapshotAndCount(
         prefixed(metricName.getName()),
         metricName.getTags(),
@@ -197,7 +197,7 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == meter) {
       return;
     }
-    MicrometerMetricName metricName = new MicrometerMetricName(name);
+    DropwizardMetricName metricName = new DropwizardMetricName(name);
     double value = meter.getCount();
     updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
   }
@@ -206,7 +206,7 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == timer) {
       return;
     }
-    MicrometerMetricName metricName = new MicrometerMetricName(name);
+    DropwizardMetricName metricName = new DropwizardMetricName(name);
     writeSnapshotAndCount(
         prefixed(metricName.getName()),
         metricName.getTags(),

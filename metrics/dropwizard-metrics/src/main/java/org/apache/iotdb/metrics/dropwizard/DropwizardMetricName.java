@@ -27,12 +27,12 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /** the unique identifier of a metric, include a name and some tags. */
-public class MicrometerMetricName {
+public class DropwizardMetricName {
   private String name;
   private Map<String, String> tags = new LinkedHashMap<>();
   private static final String TAG_SEPARATOR = ".";
 
-  public MicrometerMetricName(String name, String... tags) {
+  public DropwizardMetricName(String name, String... tags) {
     this.name = name;
     if (tags.length % 2 == 0) {
       for (int i = 0; i < tags.length; i += 2) {
@@ -42,7 +42,7 @@ public class MicrometerMetricName {
   }
 
   /** Create metric name from flatString */
-  public MicrometerMetricName(String flatString) {
+  public DropwizardMetricName(String flatString) {
     int firstIndex = flatString.indexOf("{");
     int lastIndex = flatString.indexOf("}");
     if (firstIndex == -1 || lastIndex == -1) {
@@ -120,10 +120,10 @@ public class MicrometerMetricName {
   @Override
   public boolean equals(Object obj) {
     // do not compare metricLevel
-    if (!(obj instanceof MicrometerMetricName)) {
+    if (!(obj instanceof DropwizardMetricName)) {
       return false;
     }
-    MicrometerMetricName that = (MicrometerMetricName) obj;
+    DropwizardMetricName that = (DropwizardMetricName) obj;
     if (!this.name.equals(that.name)) {
       return false;
     }
