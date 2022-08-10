@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.sync.externalpipe;
 
+import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -49,7 +51,6 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -181,13 +182,8 @@ public class ExtPipePlugin {
 
     // == Launch pipe worker threads
     executorService =
-        Executors.newFixedThreadPool(
-            threadNum,
-            r -> {
-              Thread thread = new Thread(r);
-              thread.setName("ExtPipePlugin-worker-" + extPipeTypeName + "-" + thread.getId());
-              return thread;
-            });
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            threadNum, ThreadName.EXT_PIPE_PLUGIN_WORKER.getName() + "-" + extPipeTypeName);
 
     // == Start threads that will run external PiPeSink plugin
     dataTransmissionTasks = new ArrayList<>(threadNum);
@@ -529,6 +525,9 @@ public class ExtPipePlugin {
       for (Pair<MeasurementPath, List<TimeValuePair>> dataPair : operation.getDataList()) {
         MeasurementPath path = dataPair.left;
         for (TimeValuePair tvPair : dataPair.right) {
+          if (tvPair == null) {
+            continue;
+          }
           String[] nodes = path.getNodes();
           long timestampInMs = tvPair.getTimestamp() / timestampDivisor;
           switch (tvPair.getValue().getDataType()) {

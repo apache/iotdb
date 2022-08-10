@@ -19,32 +19,21 @@
  */
 package org.apache.iotdb.db.sync.transport.client;
 
+import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.SyncConnectionException;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
+import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
-import org.apache.iotdb.db.sync.transport.conf.TransportConstant;
 import org.apache.iotdb.rpc.RpcTransportFactory;
-import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.transport.thrift.MetaInfo;
-import org.apache.iotdb.service.transport.thrift.RequestType;
-import org.apache.iotdb.service.transport.thrift.ResponseType;
-import org.apache.iotdb.service.transport.thrift.SyncRequest;
-import org.apache.iotdb.service.transport.thrift.SyncResponse;
-import org.apache.iotdb.service.transport.thrift.TransportService;
 import org.apache.iotdb.service.transport.thrift.TransportStatus;
 import org.apache.iotdb.service.transport.thrift.Type;
 
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TSocket;
-import org.apache.thrift.transport.TTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,14 +48,15 @@ import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
+import static org.apache.iotdb.commons.sync.SyncConstant.REBASE_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.RETRY_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.SUCCESS_CODE;
 import static org.apache.iotdb.db.sync.transport.conf.TransportConfig.isCheckFileDegistAgain;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.REBASE_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.RETRY_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.SUCCESS_CODE;
 
-public class TransportClient implements ITransportClient {
+public class IoTDBSInkTransportClient implements ITransportClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(TransportClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(IoTDBSInkTransportClient.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -84,28 +74,20 @@ public class TransportClient implements ITransportClient {
 
   private final Pipe pipe;
 
-  /* hold this lock to wait until successfully reconnect to receiver */
-  private final Object waitLock;
-
   /**
    * @param pipe sync task
    * @param ipAddress remote ip address
    * @param port remote port
    * @param localIP local ip address
    */
-  public TransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
+  public IoTDBSInkTransportClient(Pipe pipe, String ipAddress, int port, String localIP) {
     RpcTransportFactory.setThriftMaxFrameSize(config.getThriftMaxFrameSize());
     this.pipe = pipe;
     this.ipAddress = ipAddress;
     this.port = port;
-    this.waitLock = new Object();
     this.localIP = localIP;
     serviceClient = new ClientWrapper(pipe, ipAddress, port, localIP);
     heartbeatClient = new ClientWrapper(pipe, ipAddress, port, localIP);
-  }
-
-  public Object getWaitLock() {
-    return waitLock;
   }
 
   /**
@@ -260,8 +242,8 @@ public class TransportClient implements ITransportClient {
     while (true) {
 
       // Normal piece.
-      if (position != 0L && buffer.length != TransportConstant.DATA_CHUNK_SIZE) {
-        buffer = new byte[TransportConstant.DATA_CHUNK_SIZE];
+      if (position != 0L && buffer.length != DATA_CHUNK_SIZE) {
+        buffer = new byte[DATA_CHUNK_SIZE];
       }
 
       int dataLength;
@@ -350,7 +332,7 @@ public class TransportClient implements ITransportClient {
       throws SyncConnectionException, IOException {
     messageDigest.reset();
     try (InputStream inputStream = new FileInputStream(file)) {
-      byte[] block = new byte[TransportConstant.DATA_CHUNK_SIZE];
+      byte[] block = new byte[DATA_CHUNK_SIZE];
       int length;
       while ((length = inputStream.read(block)) > 0) {
         messageDigest.update(block, 0, length);
@@ -447,15 +429,9 @@ public class TransportClient implements ITransportClient {
           if (!handshake()) {
             SenderService.getInstance()
                 .receiveMsg(
-                    new SyncResponse(
-                        ResponseType.ERROR,
-                        String.format("Can not handshake with %s:%d.", ipAddress, port)));
+                    PipeMessage.MsgType.ERROR,
+                    String.format("Can not handshake with %s:%d.", ipAddress, port));
           }
-          SenderService.getInstance()
-              .receiveMsg(
-                  heartbeat(
-                      new SyncRequest(
-                          RequestType.START, pipe.getName(), localIP, pipe.getCreateTime())));
           while (!Thread.currentThread().isInterrupted()) {
             PipeData pipeData = pipe.take();
             if (!senderTransport(pipeData)) {
@@ -463,10 +439,9 @@ public class TransportClient implements ITransportClient {
               // can do something.
               SenderService.getInstance()
                   .receiveMsg(
-                      new SyncResponse(
-                          ResponseType.WARN,
-                          String.format(
-                              "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber())));
+                      PipeMessage.MsgType.WARN,
+                      String.format(
+                          "Transfer piepdata %s error, skip it.", pipeData.getSerialNumber()));
               continue;
             }
             pipe.commit();
@@ -474,100 +449,13 @@ public class TransportClient implements ITransportClient {
         } catch (SyncConnectionException e) {
           logger.error(
               String.format("Connect to receiver %s:%d error, because %s.", ipAddress, port, e));
-          // wait and retry
-          synchronized (waitLock) {
-            SenderService.getInstance().setConnecting(true);
-            waitLock.wait();
-          }
+          // TODO: wait and retry
         }
       }
     } catch (InterruptedException e) {
       logger.info("Interrupted by pipe, exit transport.");
     } finally {
       close();
-    }
-  }
-
-  @Override
-  public SyncResponse heartbeat(SyncRequest syncRequest) throws SyncConnectionException {
-    if (syncRequest.getType().equals(RequestType.HEARTBEAT)) {
-      return requestHeartbeat(syncRequest);
-    }
-    int retryCount = 0;
-    while (true) {
-      retryCount++;
-      if (retryCount > config.getMaxNumberOfSyncFileRetry()) {
-        throw new SyncConnectionException(
-            String.format(
-                "%s request connects to receiver %s:%d error.",
-                syncRequest.type.name(), ipAddress, port));
-      }
-
-      try (TTransport heartbeatTransport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              new TSocket(
-                  TConfigurationConst.defaultTConfiguration,
-                  ipAddress,
-                  port,
-                  SyncConstant.SOCKET_TIMEOUT_MILLISECONDS,
-                  SyncConstant.CONNECT_TIMEOUT_MILLISECONDS))) {
-        TProtocol protocol;
-        if (config.isRpcThriftCompressionEnable()) {
-          protocol = new TCompactProtocol(heartbeatTransport);
-        } else {
-          protocol = new TBinaryProtocol(heartbeatTransport);
-        }
-        TransportService.Client heartbeatClient = new TransportService.Client(protocol);
-        if (!heartbeatTransport.isOpen()) {
-          heartbeatTransport.open();
-        }
-
-        return heartbeatClient.heartbeat(syncRequest);
-      } catch (TException e) {
-        logger.info(
-            String.format(
-                "Heartbeat connect to receiver %s:%d error, retry %d/%d.",
-                ipAddress, port, retryCount, config.getMaxNumberOfSyncFileRetry()));
-      }
-    }
-  }
-
-  /**
-   * deal with HEARTBEAT type request, use a special client to send request.
-   *
-   * @param syncRequest must be HEARTBEAT type request
-   * @throws SyncConnectionException cannot connect to receiver
-   */
-  private SyncResponse requestHeartbeat(SyncRequest syncRequest) throws SyncConnectionException {
-    if (heartbeatClient.getClient() == null) {
-      synchronized (heartbeatClient) {
-        if (heartbeatClient.getClient() == null) {
-          if (!heartbeatClient.handshakeWithVersion()) {
-            throw new SyncConnectionException("Handshake with receiver error when heartbeat.");
-          }
-        }
-      }
-    }
-    int retryCount = 0;
-    while (true) {
-      retryCount++;
-      if (retryCount > config.getMaxNumberOfSyncFileRetry()) {
-        throw new SyncConnectionException(
-            String.format(
-                "%s request connects to receiver %s:%d error.",
-                syncRequest.type.name(), ipAddress, port));
-      }
-      try {
-        return heartbeatClient.getClient().heartbeat(syncRequest);
-      } catch (TException e) {
-        if (!heartbeatClient.handshakeWithVersion()) {
-          throw new SyncConnectionException("Handshake with receiver error when heartbeat.");
-        }
-        logger.info(
-            String.format(
-                "Heartbeat connect to receiver %s:%d error, retry %d/%d.",
-                ipAddress, port, retryCount, config.getMaxNumberOfSyncFileRetry()));
-      }
     }
   }
 

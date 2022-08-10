@@ -105,6 +105,12 @@ public class DataRegionStateMachine extends BaseStateMachine {
   }
 
   @Override
+  public List<File> getSnapshotFiles(File latestSnapshotRootDir) {
+    // TODO: implement this method
+    return super.getSnapshotFiles(latestSnapshotRootDir);
+  }
+
+  @Override
   public TSStatus write(IConsensusRequest request) {
     PlanNode planNode;
     try {

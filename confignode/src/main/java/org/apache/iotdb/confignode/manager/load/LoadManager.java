@@ -334,7 +334,7 @@ public class LoadManager {
   public void broadcastLatestRegionRouteMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genLatestRegionRouteMap();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    getOnlineDataNodes(-1)
+    getOnlineDataNodes()
         .forEach(
             onlineDataNode ->
                 dataNodeLocationMap.put(
@@ -358,7 +358,7 @@ public class LoadManager {
       // Generate HeartbeatReq
       THeartbeatReq heartbeatReq = genHeartbeatReq();
       // Send heartbeat requests to all the registered DataNodes
-      pingRegisteredDataNodes(heartbeatReq, getNodeManager().getRegisteredDataNodes(-1));
+      pingRegisteredDataNodes(heartbeatReq, getNodeManager().getRegisteredDataNodes());
       // Send heartbeat requests to all the registered ConfigNodes
       pingRegisteredConfigNodes(heartbeatReq, getNodeManager().getRegisteredConfigNodes());
     }
@@ -451,8 +451,8 @@ public class LoadManager {
         .collect(Collectors.toList());
   }
 
-  public List<TDataNodeConfiguration> getOnlineDataNodes(int dataNodeId) {
-    return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
+  public List<TDataNodeConfiguration> getOnlineDataNodes() {
+    return getNodeManager().getRegisteredDataNodes().stream()
         .filter(
             registeredDataNode -> {
               int id = registeredDataNode.getLocation().getDataNodeId();
@@ -473,8 +473,8 @@ public class LoadManager {
         .collect(Collectors.toList());
   }
 
-  public List<TDataNodeConfiguration> getUnknownDataNodes(int dataNodeId) {
-    return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
+  public List<TDataNodeConfiguration> getUnknownDataNodes() {
+    return getNodeManager().getRegisteredDataNodes().stream()
         .filter(
             registeredDataNode -> {
               int id = registeredDataNode.getLocation().getDataNodeId();
@@ -511,7 +511,7 @@ public class LoadManager {
   }
 
   public int getRunningDataNodesNum() {
-    List<TDataNodeConfiguration> allDataNodes = getOnlineDataNodes(-1);
+    List<TDataNodeConfiguration> allDataNodes = getOnlineDataNodes();
     if (allDataNodes == null) {
       return 0;
     }
@@ -564,7 +564,7 @@ public class LoadManager {
   }
 
   public int getUnknownDataNodesNum() {
-    List<TDataNodeConfiguration> allDataNodes = getUnknownDataNodes(-1);
+    List<TDataNodeConfiguration> allDataNodes = getUnknownDataNodes();
     if (allDataNodes == null) {
       return 0;
     }
