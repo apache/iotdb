@@ -1070,7 +1070,7 @@ public class IoTDBDescriptor {
     long multiLeaderMaxBufferSize =
         Long.parseLong(
             properties.getProperty(
-                "multiLeader_max_wal_buffer_size_in_byte",
+                "multi_leader_throttle_down_threshold_in_byte",
                 Long.toString(conf.getMultiLeaderMaxWalBufferSize())));
     if (multiLeaderMaxBufferSize > 0) {
       conf.setMultiLeaderMaxWalBufferSize(multiLeaderMaxBufferSize);
