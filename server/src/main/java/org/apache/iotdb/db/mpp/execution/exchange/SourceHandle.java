@@ -129,7 +129,7 @@ public class SourceHandle implements ISourceHandle {
         return null;
       }
       logger.info(
-          "Receive {} TsdBlock, size is {}", currSequenceId, tsBlock.getRetainedSizeInBytes());
+          "Receive {} TsBlock, size is {}", currSequenceId, tsBlock.getRetainedSizeInBytes());
       currSequenceId += 1;
       bufferRetainedSizeInBytes -= tsBlock.getRetainedSizeInBytes();
       localMemoryManager
