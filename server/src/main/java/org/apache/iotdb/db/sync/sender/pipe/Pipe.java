@@ -107,10 +107,6 @@ public interface Pipe {
    */
   void commit();
 
-  void setDisconnected(boolean disconnected);
-
-  boolean isDisconnected();
-
   // a new pipe should be stop status
   enum PipeStatus {
     RUNNING,

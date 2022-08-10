@@ -22,7 +22,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceStatus;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
-import org.apache.iotdb.db.exception.sync.PipeDataLoadUnbearableException;
 import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 
@@ -61,7 +60,7 @@ public class TsFileLoader implements ILoader {
         StorageEngine.getInstance().loadNewTsFile(resource, false);
       }
     } catch (Exception e) {
-      throw new PipeDataLoadUnbearableException(e.getMessage());
+      throw new PipeDataLoadException(e.getMessage());
     }
   }
 }
