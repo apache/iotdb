@@ -169,9 +169,9 @@ public class DataNodeRemoveHandler {
                 migrateRegionReq,
                 DataNodeRequestType.ADD_REGION_PEER);
     LOGGER.info(
-        "Send region {} migrate action to {}, wait it finished",
+        "Send region {} add peer action to {}, wait it finished",
         regionId,
-        destDataNode.getInternalEndPoint());
+        otherNode.get().getInternalEndPoint());
     return status;
   }
 
@@ -211,7 +211,7 @@ public class DataNodeRemoveHandler {
     LOGGER.info(
         "Send region {} remove peer to {}, wait it finished",
         regionId,
-        originalDataNode.getInternalEndPoint());
+        otherNode.get().getInternalEndPoint());
     return status;
   }
 
