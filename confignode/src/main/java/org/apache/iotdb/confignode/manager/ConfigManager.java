@@ -851,12 +851,17 @@ public class ConfigManager implements IManager {
           .forEach(
               regionInfo -> {
                 Map<TConsensusGroupId, Integer> allLeadership = loadManager.getAllLeadership();
+                String regionType;
                 if (!allLeadership.isEmpty()) {
-                  String regionType =
-                      regionInfo.getDataNodeId()
-                              == allLeadership.get(regionInfo.getConsensusGroupId())
-                          ? RegionRoleType.Leader.toString()
-                          : RegionRoleType.Follower.toString();
+                  if (allLeadership.get(regionInfo.getConsensusGroupId()) == -1) {
+                    regionType = RegionRoleType.Leader.toString();
+                  } else {
+                    regionType =
+                        regionInfo.getDataNodeId()
+                                == allLeadership.get(regionInfo.getConsensusGroupId())
+                            ? RegionRoleType.Leader.toString()
+                            : RegionRoleType.Follower.toString();
+                  }
                   regionInfo.setRoleType(regionType);
                 }
               });
