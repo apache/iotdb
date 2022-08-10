@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.net.URL?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
+
+<fx:root
+		type="javafx.scene.layout.HBox" 
+		xmlns:fx="http://javafx.com/fxml">
+
+	<TextField
+			fx:id="textField"
+			id="DateTimePicker_TextField"
+			disable="true"
+			focusTraversable="false"/>
+
+	<Button fx:id="button" id="DateTimePicker_Button" onAction="#handleButtonAction">
+		<graphic>
+			<ImageView>
+				<image>
+					<Image url="@icons/calendar.png"/>
+				</image>
+			</ImageView>
+		</graphic>
+	</Button>
+
+	<stylesheets>
+		<URL value="@DateTimePicker.css"/>
+	</stylesheets>
+
+</fx:root>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Accordion?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+
+<fx:root
+		type="VBox" 
+		xmlns:fx="http://javafx.com/fxml">
+
+	<Accordion fx:id="accordion">
+		<panes>
+			<TitledPane text="Date">
+				<DatePicker fx:id="datePicker"/>
+			</TitledPane>
+
+			<TitledPane text="Time" fx:id="timePane">
+				<HBox alignment="CENTER" fx:id="timeButtonsPane">
+					<Button fx:id="hoursButton" onAction="#handleHoursButtonAction"/>
+					<Label text=" : "/>
+					<Button fx:id="minutesButton" onAction="#handleMinutesButtonAction"/>
+					<Label text=" : "/>
+					<Button fx:id="secondsButton" onAction="#handleSecondsButtonAction"/>
+				</HBox>
+			</TitledPane>
+		</panes>
+	</Accordion>
+	<BorderPane style="-fx-background-color:#f4f4f4;">
+		<padding>
+			<Insets bottom="5" left="5" right="5" top="5"/>
+		</padding>
+		<center>
+			<Button text="OK" onAction="#handleOkButtonAction">
+				<graphic>
+					<ImageView>
+						<image>
+							<Image url="@icons/check.png"/>
+						</image>
+					</ImageView>
+				</graphic>
+			</Button>
+		</center>
+	</BorderPane>
+</fx:root>

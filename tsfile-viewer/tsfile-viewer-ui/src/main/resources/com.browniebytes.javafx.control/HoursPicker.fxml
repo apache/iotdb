@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.Button?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+
+<fx:root
+		type="GridPane"
+		alignment="center"
+		hgap="5"
+		vgap="5"
+		xmlns:fx="http://javafx.com/fxml">
+
+	<padding>
+		<Insets top="5" right="5" left="5" bottom="5"/>
+	</padding>
+
+	<fx:define>
+		<ToggleGroup fx:id="hoursToggleGroup"/>
+	</fx:define>
+
+	<ToggleButton
+			fx:id="zeroButton"
+			text="00"
+			GridPane.rowIndex="0"
+			GridPane.columnIndex="0"
+			toggleGroup="$hoursToggleGroup"/>
+	<ToggleButton
+			fx:id="oneButton"
+			text="01"
+			GridPane.rowIndex="0"
+			GridPane.columnIndex="1"
+			toggleGroup="$hoursToggleGroup"/>
+	<ToggleButton
+			fx:id="twoButton"
+			text="02"
+			GridPane.rowIndex="0"
+			GridPane.columnIndex="2"
+			toggleGroup="$hoursToggleGroup"/>
+	<ToggleButton
+			fx:id="threeButton"
+			text="03"
+			GridPane.rowIndex="0"
+			GridPane.columnIndex="3"
+			toggleGroup="$hoursToggleGroup"/>
+
+	<ToggleButton
+			fx:id="fourButton"
+			text="04"
+			GridPane.rowIndex="1"
+			GridPane.columnIndex="0"
+			toggleGroup="$hoursToggleGroup"/>
+	<ToggleButton
+			fx:id="fiveButton"
+			text="05"
+			GridPane.rowIndex="1"
+			GridPane.columnIndex="1"
+			toggleGroup="$hoursToggleGroup"/>
+	<ToggleButton
+			fx:id="sixButton"
+			text="06"
+			GridPane.rowIndex="1"
+			GridPane.columnIndex="2"
+			toggleGroup="$hoursToggleGroup"/>
+	<ToggleButton
+			fx:id="sevenButton"
+			text="07"
+			GridPane.rowIndex="1"
+			GridPane.columnIndex="3"
+			toggleGroup="$hoursToggleGroup"/>
+
+	<ToggleButton
+			fx:id="eightButton"
+			text="08"
+			GridPane.rowIndex="2"
+			GridPane.columnIndex="0"
+			toggleGroup="$hoursToggleGroup"/>
+	<ToggleButton
+			fx:id="nineButton"
+			text="09"
+			GridPane.rowIndex="2"
+			GridPane.columnIndex="1"
+			toggleGroup="$hoursToggleGroup"/>
+	<ToggleButton
+			fx:id="tenButton"
+			text="10"
+			GridPane.rowIndex="2"
+			GridPane.columnIndex="2"
+			toggleGroup="$hoursToggleGroup"/>
+	<ToggleButton
+			fx:id="elevenButton"
+			text="11"
+			GridPane.rowIndex="2"
+			GridPane.columnIndex="3"
+			toggleGroup="$hoursToggleGroup"/>
+
+	<ToggleButton
+			fx:id="amPmButton"
+			text="AM"
+			GridPane.rowIndex="0"
+			GridPane.columnIndex="6"
+			GridPane.rowSpan="3"/>
+
+</fx:root>
+

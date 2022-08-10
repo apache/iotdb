@@ -1,0 +1,6 @@
+.root {
+    -fx-background-image: url(../icons/iotdb-logo.png);
+    -fx-background-position: top;
+    -fx-background-repeat:no-repeat;
+    -fx-background-size: 200px 100px;
+}
