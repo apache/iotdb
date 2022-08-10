@@ -37,7 +37,7 @@ public class MasterRepairUtil {
   private double[] std;
   private KDTreeUtil kdTreeUtil;
 
-  public MasterRepairUtil(int columnCnt, long omega, double eta, int k) throws Exception {
+  public MasterRepairUtil(int columnCnt, long omega, double eta, int k) {
     this.columnCnt = columnCnt;
     this.omega = omega;
     this.eta = eta;
@@ -89,7 +89,7 @@ public class MasterRepairUtil {
   }
 
   public static double getValueAsDouble(Row row, int index) throws Exception {
-    double ans = 0;
+    double ans;
     try {
       switch (row.getDataType(index)) {
         case INT32:
