@@ -74,13 +74,13 @@ public interface IStateMachine {
   /**
    * given a snapshot dir, ask statemachine to provide all snapshot files.
    *
-   * <p>DataRegion may take snapshot at a different disk and only store a log file containing only
-   * file paths. So statemachine is required to read the log file and give the real snapshot file
+   * <p>DataRegion may take snapshot at a different disk and only store a log file containing file
+   * paths. So statemachine is required to read the log file and provide the real snapshot file
    * paths.
    *
    * @param latestSnapshotRootDir dir where the latest snapshot sits
    * @return List of real snapshot files. If the returned list is null, consensus implementations
-   * will visit and add all files under this give latestSnapshotRootDir.
+   *     will visit and add all files under this give latestSnapshotRootDir.
    */
   default List<File> getSnapshotFiles(File latestSnapshotRootDir) {
     return null;
