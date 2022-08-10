@@ -22,6 +22,8 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
+import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -44,9 +46,12 @@ import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOp
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -420,5 +425,65 @@ public class OperatorMemoryTest {
 
     assertEquals(2048 * 3, linearFillOperator.calculateMaxPeekMemory());
     assertEquals(1024, linearFillOperator.calculateMaxReturnSize());
+  }
+
+  @Test
+  public void seriesAggregationScanOperatorTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      MeasurementPath measurementPath =
+          new MeasurementPath(
+              "root.SeriesAggregationScanOperatorTest.device0.sensor0", TSDataType.INT32);
+      Set<String> allSensors = Sets.newHashSet("sensor0");
+
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId, SeriesAggregationScanOperatorTest.class.getSimpleName());
+
+      SeriesAggregationScanOperator seriesAggregationScanOperator =
+          new SeriesAggregationScanOperator(
+              planNodeId,
+              measurementPath,
+              allSensors,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              Arrays.asList(
+                  new Aggregator(
+                      AccumulatorFactory.createAccumulator(
+                          AggregationType.COUNT, TSDataType.INT32, true),
+                      AggregationStep.SINGLE),
+                  new Aggregator(
+                      AccumulatorFactory.createAccumulator(
+                          AggregationType.MAX_VALUE, TSDataType.INT32, true),
+                      AggregationStep.SINGLE),
+                  new Aggregator(
+                      AccumulatorFactory.createAccumulator(
+                          AggregationType.MIN_TIME, TSDataType.INT32, true),
+                      AggregationStep.SINGLE)),
+              null,
+              true,
+              null);
+
+      assertEquals(
+          2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
+              + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+          seriesAggregationScanOperator.calculateMaxPeekMemory());
+      assertEquals(
+          2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
+              + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+          seriesAggregationScanOperator.calculateMaxReturnSize());
+    } catch (IllegalPathException e) {
+      e.printStackTrace();
+      fail();
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
   }
 }
