@@ -47,6 +47,10 @@ public class DeviceGroupSchemaTree implements ISchemaTree {
     return deviceSchemaInfoMap.isEmpty();
   }
 
+  public void addDeviceInfo(DeviceSchemaInfo deviceSchemaInfo) {
+    deviceSchemaInfoMap.put(deviceSchemaInfo.getDevicePath(), deviceSchemaInfo);
+  }
+
   public void merge(DeviceGroupSchemaTree schemaTree) {
     deviceSchemaInfoMap.putAll(schemaTree.deviceSchemaInfoMap);
   }
