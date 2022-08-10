@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.utils.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
+import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
@@ -115,7 +116,7 @@ public class FileMetrics implements IMetricSet {
   }
 
   private void collect() {
-    walFileTotalSize = Stream.of(walDirs).mapToLong(FileUtils::getDirSize).sum();
+    walFileTotalSize = WALManager.getInstance().getTotalDiskUsage();
     sequenceFileTotalSize =
         Stream.of(dataDirs)
             .mapToLong(
