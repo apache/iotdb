@@ -25,6 +25,7 @@ import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -42,6 +43,7 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendA
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public abstract class AbstractSeriesAggregationScanOperator implements DataSourceOperator {
 
@@ -68,6 +70,8 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
   protected boolean finished = false;
 
+  private final long maxReturnSize;
+
   public AbstractSeriesAggregationScanOperator(
       PlanNodeId sourceId,
       OperatorContext context,
@@ -91,6 +95,10 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
       dataTypes.addAll(Arrays.asList(aggregator.getOutputType()));
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
+
+    this.maxReturnSize =
+        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
+            + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
@@ -106,6 +114,16 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
   @Override
   public void initQueryDataSource(QueryDataSource dataSource) {
     seriesScanUtil.initQueryDataSource(dataSource);
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return maxReturnSize;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return maxReturnSize;
   }
 
   @Override
