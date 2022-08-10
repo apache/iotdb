@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.util.concurrent.Futures.successfulAsList;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendAggregationResult;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 /**
  * AggregationOperator can process the situation: aggregation of intermediate aggregate result, it
@@ -93,6 +94,22 @@ public class AggregationOperator implements ProcessOperator {
   @Override
   public OperatorContext getOperatorContext() {
     return operatorContext;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long maxPeekMemory = calculateMaxReturnSize();
+    long childrenMaxPeekMemory = 0;
+    for (Operator child : children) {
+      maxPeekMemory += child.calculateMaxReturnSize();
+      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+    }
+    return Math.max(maxPeekMemory, childrenMaxPeekMemory);
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return (1L + inputOperatorsCount) * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
