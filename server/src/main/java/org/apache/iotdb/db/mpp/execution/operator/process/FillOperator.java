@@ -97,7 +97,13 @@ public class FillOperator implements ProcessOperator {
     // while doing constant and previous fill, we may need to copy the corresponding column if there
     // exists null values
     // so the max peek memory may be double
-    return 2 * child.calculateMaxPeekMemory();
+    return 2 * child.calculateMaxPeekMemory() + child.calculateRetainedSizeAfterCallingNext();
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    // we can safely ignore one line cached in IFill
+    return child.calculateRetainedSizeAfterCallingNext();
   }
 
   @Override

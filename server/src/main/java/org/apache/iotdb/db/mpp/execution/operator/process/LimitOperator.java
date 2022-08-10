@@ -90,4 +90,9 @@ public class LimitOperator implements ProcessOperator {
   public long calculateMaxReturnSize() {
     return child.calculateMaxReturnSize();
   }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return child.calculateRetainedSizeAfterCallingNext();
+  }
 }

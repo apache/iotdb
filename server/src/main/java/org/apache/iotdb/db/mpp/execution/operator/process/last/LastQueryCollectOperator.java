@@ -91,6 +91,7 @@ public class LastQueryCollectOperator implements ProcessOperator {
     long maxPeekMemory = 0;
     for (Operator child : children) {
       maxPeekMemory = Math.max(maxPeekMemory, child.calculateMaxPeekMemory());
+      maxPeekMemory = Math.max(maxPeekMemory, child.calculateRetainedSizeAfterCallingNext());
     }
     return maxPeekMemory;
   }
@@ -102,5 +103,14 @@ public class LastQueryCollectOperator implements ProcessOperator {
       maxReturnMemory = Math.max(maxReturnMemory, child.calculateMaxReturnSize());
     }
     return maxReturnMemory;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long sum = 0;
+    for (Operator operator : children) {
+      sum += operator.calculateRetainedSizeAfterCallingNext();
+    }
+    return sum;
   }
 }
