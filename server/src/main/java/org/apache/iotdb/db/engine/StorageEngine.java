@@ -571,7 +571,7 @@ public class StorageEngine implements IService {
     try {
       IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       storageGroupPath = storageGroupMNode.getPartialPath();
-      return getStorageGroupProcessorByPath(storageGroupPath, storageGroupMNode);
+      return getStorageGroupProcessorByPath(path, storageGroupMNode);
     } catch (StorageGroupProcessorException | MetadataException e) {
       throw new StorageEngineException(e);
     }
