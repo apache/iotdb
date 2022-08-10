@@ -26,10 +26,10 @@ import static java.lang.Math.min;
 import static java.lang.Math.sqrt;
 
 public class KDTreeUtil {
-  private Node kdtree;
+  private Node kdTree;
 
   private static class Node {
-    int partitiondimension;
+    int partitionDimension;
     double partitionValue;
     ArrayList<Double> value;
     boolean isLeaf = false;
@@ -43,8 +43,8 @@ public class KDTreeUtil {
 
   public static KDTreeUtil build(ArrayList<ArrayList<Double>> input, int dimension) {
     KDTreeUtil tree = new KDTreeUtil();
-    tree.kdtree = new Node();
-    tree.buildDetail(tree.kdtree, input, dimension);
+    tree.kdTree = new Node();
+    tree.buildDetail(tree.kdTree, input, dimension);
     return tree;
   }
 
@@ -57,14 +57,14 @@ public class KDTreeUtil {
       node.value = data.get(0);
       return;
     }
-    node.partitiondimension = -1;
+    node.partitionDimension = -1;
     double var = -1;
     double tmpvar;
     for (int i = 0; i < dimensions; i++) {
       tmpvar = UtilZ.variance(data, i);
       if (tmpvar > var) {
         var = tmpvar;
-        node.partitiondimension = i;
+        node.partitionDimension = i;
       }
     }
     if (var == 0d) {
@@ -72,24 +72,24 @@ public class KDTreeUtil {
       node.value = data.get(0);
       return;
     }
-    node.partitionValue = UtilZ.median(data, node.partitiondimension);
+    node.partitionValue = UtilZ.median(data, node.partitionDimension);
 
-    ArrayList<ArrayList<Double>> maxmin = UtilZ.maxmin(data, dimensions);
-    node.min = maxmin.get(0);
-    node.max = maxmin.get(1);
+    ArrayList<ArrayList<Double>> maxMin = UtilZ.maxMin(data, dimensions);
+    node.min = maxMin.get(0);
+    node.max = maxMin.get(1);
 
     ArrayList<ArrayList<Double>> left = new ArrayList<>();
     ArrayList<ArrayList<Double>> right = new ArrayList<>();
 
     for (ArrayList<Double> d : data) {
-      if (d.get(node.partitiondimension) < node.partitionValue) {
+      if (d.get(node.partitionDimension) < node.partitionValue) {
         left.add(d);
-      } else if (d.get(node.partitiondimension) > node.partitionValue) {
+      } else if (d.get(node.partitionDimension) > node.partitionValue) {
         right.add(d);
       }
     }
     for (ArrayList<Double> d : data) {
-      if (d.get(node.partitiondimension) == node.partitionValue) {
+      if (d.get(node.partitionDimension) == node.partitionValue) {
         if (left.size() == 0) {
           left.add(d);
         } else {
@@ -98,19 +98,19 @@ public class KDTreeUtil {
       }
     }
 
-    Node leftnode = new Node();
-    Node rightnode = new Node();
-    node.left = leftnode;
-    node.right = rightnode;
-    buildDetail(leftnode, left, dimensions);
-    buildDetail(rightnode, right, dimensions);
+    Node leftNode = new Node();
+    Node rightNode = new Node();
+    node.left = leftNode;
+    node.right = rightNode;
+    buildDetail(leftNode, left, dimensions);
+    buildDetail(rightNode, right, dimensions);
   }
 
   public ArrayList<Double> query(ArrayList<Double> input, double[] std) {
-    Node node = kdtree;
+    Node node = kdTree;
     Stack<Node> stack = new Stack<>();
     while (!node.isLeaf) {
-      if (input.get(node.partitiondimension) < node.partitionValue) {
+      if (input.get(node.partitionDimension) < node.partitionValue) {
         stack.add(node.right);
         node = node.left;
       } else {
@@ -138,10 +138,10 @@ public class KDTreeUtil {
           nearest = node.value;
         }
       } else {
-        double mindistance = UtilZ.mindistance(input, node.max, node.min, std);
-        if (mindistance < distance) {
+        double minDistance = UtilZ.minDistance(input, node.max, node.min, std);
+        if (minDistance < distance) {
           while (!node.isLeaf) {
-            if (input.get(node.partitiondimension) < node.partitionValue) {
+            if (input.get(node.partitionDimension) < node.partitionValue) {
               stack.add(node.right);
               node = node.left;
             } else {
@@ -174,10 +174,10 @@ public class KDTreeUtil {
           nearest.add(node.value);
         }
       } else {
-        double mindistance = UtilZ.mindistance(input, node.max, node.min, std);
-        if (mindistance < distance) {
+        double minDistance = UtilZ.minDistance(input, node.max, node.min, std);
+        if (minDistance < distance) {
           while (!node.isLeaf) {
-            if (input.get(node.partitiondimension) < node.partitionValue) {
+            if (input.get(node.partitionDimension) < node.partitionValue) {
               stack.add(node.right);
               node = node.left;
             } else {
@@ -214,10 +214,10 @@ public class KDTreeUtil {
 
   public ArrayList<ArrayList<Double>> queryKNN(ArrayList<Double> input, int k, double[] std) {
     ArrayList<ArrayList<Double>> kNearest = new ArrayList<>();
-    Node node = kdtree;
+    Node node = kdTree;
     Stack<Node> stack = new Stack<>();
     while (!node.isLeaf) {
-      if (input.get(node.partitiondimension) < node.partitionValue) {
+      if (input.get(node.partitionDimension) < node.partitionValue) {
         stack.add(node.right);
         node = node.left;
       } else {
@@ -265,11 +265,10 @@ public class KDTreeUtil {
       return d.get(pos);
     }
 
-    static ArrayList<ArrayList<Double>> maxmin(ArrayList<ArrayList<Double>> data, int dimensions) {
+    static ArrayList<ArrayList<Double>> maxMin(ArrayList<ArrayList<Double>> data, int dimensions) {
       ArrayList<ArrayList<Double>> mm = new ArrayList<>();
       ArrayList<Double> min_v = new ArrayList<>();
       ArrayList<Double> max_v = new ArrayList<>();
-      // 初始化 第一行为min，第二行为max
       for (int i = 0; i < dimensions; i++) {
         double min_temp = Double.MAX_VALUE;
         double max_temp = Double.MIN_VALUE;
@@ -299,7 +298,7 @@ public class KDTreeUtil {
       return sum;
     }
 
-    static double mindistance(
+    static double minDistance(
         ArrayList<Double> a, ArrayList<Double> max, ArrayList<Double> min, double[] std) {
       double sum = 0d;
       for (int i = 0; i < a.size(); i++) {

@@ -27,9 +27,9 @@ import java.util.Collections;
 
 public class MasterRepairUtil {
   private final ArrayList<ArrayList<Double>> td = new ArrayList<>();
-  private final ArrayList<ArrayList<Double>> td_cleaned = new ArrayList<>();
+  private final ArrayList<ArrayList<Double>> tdCleaned = new ArrayList<>();
   private final ArrayList<ArrayList<Double>> md = new ArrayList<>();
-  private final ArrayList<Long> td_time = new ArrayList<>();
+  private final ArrayList<Long> tdTime = new ArrayList<>();
   private final int columnCnt;
   private long omega;
   private Double eta;
@@ -69,7 +69,7 @@ public class MasterRepairUtil {
     }
     if (containsNotNull) {
       td.add(tt);
-      td_time.add(row.getTime());
+      tdTime.add(row.getTime());
     }
 
     ArrayList<Double> mt = new ArrayList<>(); // master tuple
@@ -119,20 +119,20 @@ public class MasterRepairUtil {
 
   public ArrayList<Double> getCleanResultColumn(int columnPos) {
     ArrayList<Double> column = new ArrayList<>();
-    for (ArrayList<Double> tuple : this.td_cleaned) {
+    for (ArrayList<Double> tuple : this.tdCleaned) {
       column.add(tuple.get(columnPos - 1));
     }
     return column;
   }
 
   public ArrayList<Long> getTime() {
-    return td_time;
+    return tdTime;
   }
 
-  public double get_tm_distance(ArrayList<Double> t_tuple, ArrayList<Double> m_tuple) {
+  public double getTmDistance(ArrayList<Double> tTuple, ArrayList<Double> mTuple) {
     double distance = 0d;
     for (int pos = 0; pos < columnCnt; pos++) {
-      double temp = t_tuple.get(pos) - m_tuple.get(pos);
+      double temp = tTuple.get(pos) - mTuple.get(pos);
       temp = temp / std[pos];
       distance += temp * temp;
     }
@@ -140,58 +140,58 @@ public class MasterRepairUtil {
     return distance;
   }
 
-  public ArrayList<Integer> cal_W(int i) {
-    ArrayList<Integer> W_i = new ArrayList<>();
+  public ArrayList<Integer> calW(int i) {
+    ArrayList<Integer> Wi = new ArrayList<>();
     for (int l = i - 1; l >= 0; l--) {
-      if (this.td_time.get(i) <= this.td_time.get(l) + omega) {
-        W_i.add(l);
+      if (this.tdTime.get(i) <= this.tdTime.get(l) + omega) {
+        Wi.add(l);
       }
     }
-    return W_i;
+    return Wi;
   }
 
-  public ArrayList<ArrayList<Double>> cal_C(int i, ArrayList<Integer> W_i) {
-    ArrayList<ArrayList<Double>> C_i = new ArrayList<>();
-    if (W_i.size() == 0) {
-      C_i.add(this.kdTreeUtil.query(this.td.get(i), std));
+  public ArrayList<ArrayList<Double>> calC(int i, ArrayList<Integer> Wi) {
+    ArrayList<ArrayList<Double>> Ci = new ArrayList<>();
+    if (Wi.size() == 0) {
+      Ci.add(this.kdTreeUtil.query(this.td.get(i), std));
     } else {
-      C_i.addAll(this.kdTreeUtil.queryKNN(this.td.get(i), k, std));
-      for (Integer integer : W_i) {
-        C_i.addAll(this.kdTreeUtil.queryKNN(this.td_cleaned.get(integer), k, std));
+      Ci.addAll(this.kdTreeUtil.queryKNN(this.td.get(i), k, std));
+      for (Integer integer : Wi) {
+        Ci.addAll(this.kdTreeUtil.queryKNN(this.tdCleaned.get(integer), k, std));
       }
     }
-    return C_i;
+    return Ci;
   }
 
-  public void master_repair() {
+  public void masterRepair() {
     for (int i = 0; i < this.td.size(); i++) {
       ArrayList<Double> tuple = this.td.get(i);
-      ArrayList<Integer> W_i = cal_W(i);
-      ArrayList<ArrayList<Double>> C_i = this.cal_C(i, W_i);
-      double min_dis = Double.MAX_VALUE;
-      ArrayList<Double> repair_tuple = new ArrayList<>();
-      for (ArrayList<Double> c_i : C_i) {
+      ArrayList<Integer> Wi = calW(i);
+      ArrayList<ArrayList<Double>> Ci = this.calC(i, Wi);
+      double minDis = Double.MAX_VALUE;
+      ArrayList<Double> repairTuple = new ArrayList<>();
+      for (ArrayList<Double> ci : Ci) {
         boolean smooth = true;
-        for (Integer w_i : W_i) {
-          ArrayList<Double> w_is = td_cleaned.get(w_i);
-          if (get_tm_distance(c_i, w_is) > eta) {
+        for (Integer wi : Wi) {
+          ArrayList<Double> wis = tdCleaned.get(wi);
+          if (getTmDistance(ci, wis) > eta) {
             smooth = false;
             break;
           }
         }
         if (smooth) {
-          double dis = get_tm_distance(c_i, tuple);
-          if (dis < min_dis) {
-            min_dis = dis;
-            repair_tuple = c_i;
+          double dis = getTmDistance(ci, tuple);
+          if (dis < minDis) {
+            minDis = dis;
+            repairTuple = ci;
           }
         }
       }
-      this.td_cleaned.add(repair_tuple);
+      this.tdCleaned.add(repairTuple);
     }
   }
 
-  public void set_parameters() {
+  public void setParameters() {
     if (omega == -1) {
       ArrayList<Long> intervals = getIntervals();
       Collections.sort(intervals);
@@ -199,29 +199,29 @@ public class MasterRepairUtil {
       omega = interval * 10;
     }
     if (Double.isNaN(eta)) {
-      ArrayList<Double> distance_list = new ArrayList<>();
+      ArrayList<Double> distanceList = new ArrayList<>();
       for (int i = 1; i < this.td.size(); i++) {
         for (int l = i - 1; l >= 0; l--) {
-          if (this.td_time.get(i) <= this.td_time.get(l) + omega) {
-            distance_list.add(get_tm_distance(this.td.get(i), this.td.get(l)));
+          if (this.tdTime.get(i) <= this.tdTime.get(l) + omega) {
+            distanceList.add(getTmDistance(this.td.get(i), this.td.get(l)));
           } else break;
         }
       }
-      Collections.sort(distance_list);
-      eta = distance_list.get((int) (distance_list.size() * 0.9973));
+      Collections.sort(distanceList);
+      eta = distanceList.get((int) (distanceList.size() * 0.9973));
     }
     if (k == -1) {
-      for (int temp_k = 2; temp_k <= 5; temp_k++) {
-        ArrayList<Double> distance_list = new ArrayList<>();
+      for (int tempK = 2; tempK <= 5; tempK++) {
+        ArrayList<Double> distanceList = new ArrayList<>();
         for (ArrayList<Double> tuple : this.td) {
-          ArrayList<ArrayList<Double>> neighbors = this.kdTreeUtil.queryKNN(tuple, temp_k, std);
+          ArrayList<ArrayList<Double>> neighbors = this.kdTreeUtil.queryKNN(tuple, tempK, std);
           for (ArrayList<Double> neighbor : neighbors) {
-            distance_list.add(get_tm_distance(tuple, neighbor));
+            distanceList.add(getTmDistance(tuple, neighbor));
           }
         }
-        Collections.sort(distance_list);
-        if (distance_list.get((int) (distance_list.size() * 0.9)) > eta) {
-          k = temp_k;
+        Collections.sort(distanceList);
+        if (distanceList.get((int) (distanceList.size() * 0.9)) > eta) {
+          k = tempK;
           break;
         }
       }
@@ -262,7 +262,7 @@ public class MasterRepairUtil {
     return column;
   }
 
-  public void call_std() {
+  public void callStd() {
     this.std = new double[this.columnCnt];
     for (int i = 0; i < this.columnCnt; i++) {
       std[i] = Math.sqrt(varianceImperative(getColumn(i)));
@@ -272,18 +272,15 @@ public class MasterRepairUtil {
   public void repair() {
     fillNullValue();
     buildKDTree();
-    call_std();
-    set_parameters();
-    System.out.println(this.omega);
-    System.out.println(this.eta);
-    System.out.println(this.k);
-    master_repair();
+    callStd();
+    setParameters();
+    masterRepair();
   }
 
   public ArrayList<Long> getIntervals() {
     ArrayList<Long> intervals = new ArrayList<>();
-    for (int i = 1; i < this.td_time.size(); i++) {
-      intervals.add(this.td_time.get(i) - this.td_time.get(i - 1));
+    for (int i = 1; i < this.tdTime.size(); i++) {
+      intervals.add(this.tdTime.get(i) - this.tdTime.get(i - 1));
     }
     return intervals;
   }

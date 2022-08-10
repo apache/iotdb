@@ -32,7 +32,7 @@ import java.util.ArrayList;
 
 public class UDTFMasterRepair implements UDTF {
   private MasterRepairUtil masterRepairUtil;
-  private int output_column;
+  private int outputColumn;
 
   @Override
   public void validate(UDFParameterValidator validator) throws Exception {
@@ -59,7 +59,7 @@ public class UDTFMasterRepair implements UDTF {
     }
     if (validator.getParameters().hasAttribute("output_column")) {
       validator.validate(
-          output_column -> (int) output_column > 0,
+          outputColumn -> (int) outputColumn > 0,
           "Parameter output_column should be a positive integer.",
           validator.getParameters().getInt("output_column"));
     }
@@ -75,7 +75,7 @@ public class UDTFMasterRepair implements UDTF {
     double eta = parameters.getDoubleOrDefault("eta", Double.NaN);
     int k = parameters.getIntOrDefault("k", -1);
     masterRepairUtil = new MasterRepairUtil(columnCnt, omega, eta, k);
-    output_column = parameters.getIntOrDefault("output_column", 1);
+    outputColumn = parameters.getIntOrDefault("output_column", 1);
   }
 
   @Override
@@ -89,7 +89,7 @@ public class UDTFMasterRepair implements UDTF {
   public void terminate(PointCollector collector) throws Exception {
     masterRepairUtil.repair();
     ArrayList<Long> times = masterRepairUtil.getTime();
-    ArrayList<Double> column = masterRepairUtil.getCleanResultColumn(this.output_column);
+    ArrayList<Double> column = masterRepairUtil.getCleanResultColumn(this.outputColumn);
     for (int i = 0; i < column.size(); i++) {
       collector.putDouble(times.get(i), column.get(i));
     }
