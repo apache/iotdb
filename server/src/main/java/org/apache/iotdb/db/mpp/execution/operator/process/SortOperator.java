@@ -64,4 +64,9 @@ public class SortOperator implements ProcessOperator {
   public long calculateMaxReturnSize() {
     return 0;
   }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0;
+  }
 }

@@ -75,6 +75,11 @@ public class ExchangeOperator implements SourceOperator {
   }
 
   @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
+  }
+
+  @Override
   public PlanNodeId getSourceId() {
     return sourceId;
   }

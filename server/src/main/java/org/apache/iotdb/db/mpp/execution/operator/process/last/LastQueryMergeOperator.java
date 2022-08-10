@@ -225,16 +225,19 @@ public class LastQueryMergeOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    // result size + cached TreeMap size
-    long maxPeekMemory =
-        calculateMaxReturnSize()
-            + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()
-                * MAP_NODE_RETRAINED_SIZE;
+    long maxPeekMemory = 0;
     long childrenMaxPeekMemory = 0;
     for (Operator child : children) {
-      maxPeekMemory += child.calculateMaxReturnSize();
-      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+      childrenMaxPeekMemory =
+          Math.max(childrenMaxPeekMemory, maxPeekMemory + child.calculateMaxPeekMemory());
+      maxPeekMemory +=
+          (child.calculateMaxReturnSize() + child.calculateRetainedSizeAfterCallingNext());
     }
+    // result size + cached TreeMap size
+    maxPeekMemory +=
+        (calculateMaxReturnSize()
+            + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()
+                * MAP_NODE_RETRAINED_SIZE);
     return Math.max(maxPeekMemory, childrenMaxPeekMemory);
   }
 
@@ -245,6 +248,20 @@ public class LastQueryMergeOperator implements ProcessOperator {
       maxReturnSize = Math.max(maxReturnSize, child.calculateMaxReturnSize());
     }
     return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long childrenSum = 0, minChildReturnSize = Long.MAX_VALUE;
+    for (Operator child : children) {
+      long maxReturnSize = child.calculateMaxReturnSize();
+      childrenSum += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
+      minChildReturnSize = Math.min(minChildReturnSize, maxReturnSize);
+    }
+    // max cached TsBlock + cached TreeMap size
+    return (childrenSum - minChildReturnSize)
+        + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()
+            * MAP_NODE_RETRAINED_SIZE;
   }
 
   /**
