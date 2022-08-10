@@ -35,6 +35,7 @@ import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
+import org.apache.iotdb.udf.api.customizer.strategy.StateWindowAccessStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -529,5 +530,272 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         return window;
       }
     };
+  }
+
+  @Override
+  protected LayerRowWindowReader constructRowStateWindowReader(
+      StateWindowAccessStrategy strategy, float memoryBudgetInMB) {
+
+    final long displayWindowBegin = strategy.getDisplayWindowBegin();
+    final long displayWindowEnd = strategy.getDisplayWindowEnd();
+    final double delta = strategy.getDelta();
+
+    final ElasticSerializableTVList tvList =
+        ElasticSerializableTVList.newElasticSerializableTVList(
+            dataType, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);
+    final ElasticSerializableTVListBackedSingleColumnWindow window =
+        new ElasticSerializableTVListBackedSingleColumnWindow(tvList);
+
+    return new LayerRowWindowReader() {
+
+      private boolean isFirstIteration = true;
+      private boolean hasAtLeastOneRow = false;
+
+      private long nextWindowTimeBegin = displayWindowBegin;
+      private long nextWindowTimeEnd = 0;
+      private int nextIndexBegin = 0;
+      private int nextIndexEnd = 1;
+
+      private ValueCacher valueCacher = new ValueCacher();
+
+      @Override
+      public YieldableState yield() throws IOException, QueryProcessException {
+        if (isFirstIteration) {
+          if (tvList.size() == 0) {
+            final YieldableState yieldableState =
+                LayerCacheUtils.yieldPoint(dataType, parentLayerPointReader, tvList);
+            if (yieldableState != YieldableState.YIELDABLE) {
+              return yieldableState;
+            }
+          }
+          nextWindowTimeBegin = Math.max(displayWindowBegin, tvList.getTime(0));
+          hasAtLeastOneRow = tvList.size() != 0;
+          isFirstIteration = false;
+        }
+
+        if (!hasAtLeastOneRow || displayWindowEnd <= nextWindowTimeBegin) {
+          return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+        }
+
+        while (tvList.getTime(tvList.size() - 1) < displayWindowEnd) {
+          final YieldableState yieldableState =
+              LayerCacheUtils.yieldPoint(dataType, parentLayerPointReader, tvList);
+          if (yieldableState == YieldableState.YIELDABLE) {
+            if (tvList.getTime(tvList.size() - 2) >= displayWindowBegin
+                && splitWindow(valueCacher, delta, tvList)) {
+              nextIndexEnd = tvList.size() - 1;
+              break;
+            } else {
+              nextIndexEnd++;
+            }
+          } else if (yieldableState == YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA) {
+            return YieldableState.NOT_YIELDABLE_WAITING_FOR_DATA;
+          } else if (yieldableState == YieldableState.NOT_YIELDABLE_NO_MORE_DATA) {
+            nextIndexEnd = tvList.size();
+            break;
+          }
+        }
+
+        nextWindowTimeEnd = tvList.getTime(nextIndexEnd - 1);
+
+        if (nextIndexBegin == nextIndexEnd) {
+          return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+        }
+
+        // Only if encounter user set the strategy's displayWindowBegin, which will go into the for
+        // loop to find the true index of the first window begin.
+        // For other situation, we will only go into if (nextWindowTimeBegin <= tvList.getTime(i))
+        // once.
+        for (int i = nextIndexBegin; i < tvList.size(); ++i) {
+          if (nextWindowTimeBegin <= tvList.getTime(i)) {
+            nextIndexBegin = i;
+            break;
+          }
+          // The first window's beginning time is greater than all the timestamp of the query result
+          // set
+          if (i == tvList.size() - 1) {
+            return YieldableState.NOT_YIELDABLE_NO_MORE_DATA;
+          }
+        }
+
+        window.seek(nextIndexBegin, nextIndexEnd, nextWindowTimeBegin, nextWindowTimeEnd);
+
+        return YieldableState.YIELDABLE;
+      }
+
+      @Override
+      public boolean next() throws IOException, QueryProcessException {
+        return false;
+      }
+
+      @Override
+      public void readyForNext() throws IOException {
+        if (nextIndexEnd < tvList.size()) {
+          nextWindowTimeBegin = tvList.getTime(nextIndexEnd);
+        }
+        tvList.setEvictionUpperBound(nextIndexBegin + 1);
+        nextIndexBegin = nextIndexEnd;
+      }
+
+      @Override
+      public TSDataType[] getDataTypes() {
+        return new TSDataType[] {dataType};
+      }
+
+      @Override
+      public RowWindow currentWindow() {
+        return window;
+      }
+    };
+  }
+
+  private class ValueCacher {
+
+    boolean cached = false;
+
+    int windowFirstValueInt = 0;
+    long windowFirstValueLong = 0;
+    float windowFirstValueFloat = 0;
+    double windowFirstValueDouble = 0;
+    boolean windowFirstValueBoolean = false;
+    String windowFirstValueString = "";
+
+    public boolean isCached() {
+      return cached;
+    }
+
+    public void setCached(boolean cached) {
+      this.cached = cached;
+    }
+
+    public void cacheInt(int value) {
+      windowFirstValueInt = value;
+    }
+
+    public void cacheLong(long value) {
+      windowFirstValueLong = value;
+    }
+
+    public void cacheFloat(float value) {
+      windowFirstValueFloat = value;
+    }
+
+    public void cacheDouble(double value) {
+      windowFirstValueDouble = value;
+    }
+
+    public void cacheBoolean(boolean value) {
+      windowFirstValueBoolean = value;
+    }
+
+    public void cacheString(String value) {
+      windowFirstValueString = value;
+    }
+
+    public int getInt() {
+      return windowFirstValueInt;
+    }
+
+    public long getLong() {
+      return windowFirstValueLong;
+    }
+
+    public float getFloat() {
+      return windowFirstValueFloat;
+    }
+
+    public double getDouble() {
+      return windowFirstValueDouble;
+    }
+
+    public boolean getBoolean() {
+      return windowFirstValueBoolean;
+    }
+
+    public String getString() {
+      return windowFirstValueString;
+    }
+  }
+
+  boolean splitWindow(ValueCacher valueCacher, double delta, ElasticSerializableTVList tvList)
+      throws IOException {
+    boolean res;
+    switch (dataType) {
+      case INT32:
+        {
+          if (!valueCacher.isCached()) {
+            valueCacher.cacheInt(tvList.getInt(tvList.size() - 2));
+            valueCacher.setCached(true);
+          }
+          res = Math.abs(tvList.getInt(tvList.size() - 1) - valueCacher.getInt()) >= delta;
+          if (res) {
+            valueCacher.cacheInt(tvList.getInt(tvList.size() - 1));
+          }
+          break;
+        }
+      case INT64:
+        {
+          if (!valueCacher.isCached()) {
+            valueCacher.cacheLong(tvList.getLong(tvList.size() - 2));
+            valueCacher.setCached(true);
+          }
+          res = Math.abs(tvList.getLong(tvList.size() - 1) - valueCacher.getLong()) >= delta;
+          if (res) {
+            valueCacher.cacheLong(tvList.getLong(tvList.size() - 1));
+          }
+          break;
+        }
+      case FLOAT:
+        {
+          if (!valueCacher.isCached()) {
+            valueCacher.cacheFloat(tvList.getFloat(tvList.size() - 2));
+            valueCacher.setCached(true);
+          }
+          res = Math.abs(tvList.getFloat(tvList.size() - 1) - valueCacher.getFloat()) >= delta;
+          if (res) {
+            valueCacher.cacheFloat(tvList.getFloat(tvList.size() - 1));
+          }
+          break;
+        }
+      case DOUBLE:
+        {
+          if (!valueCacher.isCached()) {
+            valueCacher.cacheDouble(tvList.getDouble(tvList.size() - 2));
+            valueCacher.setCached(true);
+          }
+          res = Math.abs(tvList.getDouble(tvList.size() - 1) - valueCacher.getDouble()) >= delta;
+          if (res) {
+            valueCacher.cacheDouble(tvList.getDouble(tvList.size() - 1));
+          }
+          break;
+        }
+      case BOOLEAN:
+        {
+          if (!valueCacher.isCached()) {
+            valueCacher.cacheBoolean(tvList.getBoolean(tvList.size() - 2));
+            valueCacher.setCached(true);
+          }
+          res = tvList.getBoolean(tvList.size() - 1) != valueCacher.getBoolean();
+          if (res) {
+            valueCacher.cacheBoolean(tvList.getBoolean(tvList.size() - 1));
+          }
+          break;
+        }
+      case TEXT:
+        {
+          if (!valueCacher.isCached()) {
+            valueCacher.cacheString(tvList.getString(tvList.size() - 2));
+            valueCacher.setCached(true);
+          }
+          res = !tvList.getString(tvList.size() - 1).equals(valueCacher.getString());
+          if (res) {
+            valueCacher.cacheString(tvList.getString(tvList.size() - 1));
+          }
+          break;
+        }
+      default:
+        throw new RuntimeException("The data type of the state window strategy is not valid.");
+    }
+    return res;
   }
 }
