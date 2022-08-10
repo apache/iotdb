@@ -377,7 +377,7 @@ public class NodeManager {
     if (req.dataNodeId != -1) {
       dataNodeLocationMap =
           dataNodeLocationMap.entrySet().stream()
-              .filter((e) -> 1 == e.getKey())
+              .filter((e) -> req.dataNodeId == e.getKey())
               .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
     }
     List<TSStatus> dataNodeResponseStatus =
@@ -394,7 +394,7 @@ public class NodeManager {
     if (req.dataNodeId != -1) {
       dataNodeLocationMap =
           dataNodeLocationMap.entrySet().stream()
-              .filter((e) -> 1 == e.getKey())
+              .filter((e) -> req.dataNodeId == e.getKey())
               .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
     }
     List<TSStatus> dataNodeResponseStatus =
@@ -411,7 +411,7 @@ public class NodeManager {
     if (req.dataNodeId != -1) {
       dataNodeLocationMap =
           dataNodeLocationMap.entrySet().stream()
-              .filter((e) -> 1 == e.getKey())
+              .filter((e) -> req.dataNodeId == e.getKey())
               .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
     }
     List<TSStatus> dataNodeResponseStatus =
