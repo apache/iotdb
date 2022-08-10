@@ -21,7 +21,6 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TDeletePartitionReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
@@ -380,7 +379,13 @@ public class NodeManager {
           dataNodeLocationMap.entrySet().stream()
               .filter((e) -> req.dataNodeId == e.getKey())
               .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
-            }
+    }
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            null, dataNodeLocationMap, DataNodeRequestType.MERGE, dataNodeResponseStatus);
+    return dataNodeResponseStatus;
   }
 
   /** TODO: For listener for add or remove data node */
@@ -406,7 +411,7 @@ public class NodeManager {
 
   public List<TSStatus> flush(TFlushReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-    configManager.getNodeManager().getRegisteredDataNodeLocations();
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     if (req.dataNodeId != -1) {
       dataNodeLocationMap =
           dataNodeLocationMap.entrySet().stream()
@@ -417,13 +422,13 @@ public class NodeManager {
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-          req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
+            req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 
   public List<TSStatus> clearCache(TClearCacheReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-    configManager.getNodeManager().getRegisteredDataNodeLocations();
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     if (req.dataNodeId != -1) {
       dataNodeLocationMap =
           dataNodeLocationMap.entrySet().stream()
@@ -434,10 +439,10 @@ public class NodeManager {
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
         .sendAsyncRequestToDataNodeWithRetry(
-          null, dataNodeLocationMap, DataNodeRequestType.CLEAR_CACHE, dataNodeResponseStatus);
+            null, dataNodeLocationMap, DataNodeRequestType.CLEAR_CACHE, dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
-  
+
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
     return nodeInfo.getRegisteredConfigNodes();
   }

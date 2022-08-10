@@ -33,7 +33,6 @@ import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
 import org.apache.iotdb.confignode.client.async.handlers.ClearCacheHandler;
 import org.apache.iotdb.confignode.client.async.handlers.CreateRegionHandler;
-import org.apache.iotdb.confignode.client.async.handlers.DataNodeHeartbeatHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.client.async.handlers.MergeHandler;
