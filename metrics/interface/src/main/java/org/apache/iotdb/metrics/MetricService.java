@@ -203,11 +203,11 @@ public abstract class MetricService {
     metricManager.rate(value, metric, metricLevel, tags);
   }
 
-  void histogram(long value, String metric, MetricLevel metricLevel, String... tags) {
+  public void histogram(long value, String metric, MetricLevel metricLevel, String... tags) {
     metricManager.histogram(value, metric, metricLevel, tags);
   }
 
-  void timer(
+  public void timer(
       long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
     metricManager.timer(delta, timeUnit, metric, metricLevel, tags);
   }
@@ -265,4 +265,6 @@ public abstract class MetricService {
   public boolean isEnable() {
     return isEnableMetric;
   }
+
+  // TODO remove level in metric manager, and fix IMetricSet
 }
