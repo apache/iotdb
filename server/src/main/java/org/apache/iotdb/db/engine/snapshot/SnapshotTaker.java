@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
@@ -297,7 +298,7 @@ public class SnapshotTaker {
     File[] files =
         sourceDir.listFiles(
             (dir, name) ->
-                name.endsWith(".tsfile")
+                name.endsWith(TsFileConstant.TSFILE_SUFFIX)
                     || name.endsWith(TsFileResource.RESOURCE_SUFFIX)
                     || name.endsWith(ModificationFile.FILE_SUFFIX)
                     || name.endsWith(ModificationFile.COMPACTION_FILE_SUFFIX)

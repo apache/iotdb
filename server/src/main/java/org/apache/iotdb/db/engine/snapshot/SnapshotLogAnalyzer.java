@@ -59,6 +59,10 @@ public class SnapshotLogAnalyzer {
     }
   }
 
+  /**
+   * @return The next pair of files recorded in the log. The left one is the path of source file,
+   *     the right one is the path of target file
+   */
   public Pair<String, String> getNextPairs() {
     if (reader == null) {
       return null;

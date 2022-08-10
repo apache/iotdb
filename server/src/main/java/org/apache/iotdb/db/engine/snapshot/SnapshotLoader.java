@@ -22,8 +22,12 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngineV2;
+import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
@@ -33,11 +37,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 public class SnapshotLoader {
   private Logger LOGGER = LoggerFactory.getLogger(SnapshotLoader.class);
@@ -69,17 +76,7 @@ public class SnapshotLoader {
     }
   }
 
-  /**
-   * 1. Clear origin data 2. Move snapshot data to data dir 3. Load data region
-   *
-   * @return
-   */
-  public DataRegion loadSnapshotForStateMachine() {
-    LOGGER.info(
-        "Loading snapshot for {}-{}, source directory is {}",
-        storageGroupName,
-        dataRegionId,
-        snapshotPath);
+  private File getSnapshotLogFile() {
     File sourceDataDir = new File(snapshotPath);
 
     File snapshotLogFile = null;
@@ -94,25 +91,62 @@ public class SnapshotLoader {
               });
       if (files == null || files.length == 0) {
         LOGGER.warn("Failed to find snapshot log file, cannot recover it");
-        return null;
       } else if (files.length > 1) {
         LOGGER.warn(
             "Found more than one snapshot log file, cannot recover it. {}", Arrays.toString(files));
-        return null;
       } else {
         LOGGER.info("Reading snapshot log file {}", files[0]);
-        snapshotLogFile = files[0];
+        return files[0];
       }
     }
+    return null;
+  }
 
+  /**
+   * 1. Clear origin data 2. Move snapshot data to data dir 3. Load data region
+   *
+   * @return
+   */
+  public DataRegion loadSnapshotForStateMachine() {
+    LOGGER.info(
+        "Loading snapshot for {}-{}, source directory is {}",
+        storageGroupName,
+        dataRegionId,
+        snapshotPath);
+    File sourceDataDir = new File(snapshotPath);
+
+    File snapshotLogFile = getSnapshotLogFile();
+
+    if (snapshotLogFile == null) {
+      return loadSnapshotWithoutLog();
+    } else {
+      return loadSnapshotWithLog(snapshotLogFile);
+    }
+  }
+
+  private DataRegion loadSnapshotWithoutLog() {
+    try {
+      LOGGER.info("Moving snapshot file to data dirs");
+      createLinksFromSnapshotDirToDataDirWithoutLog(new File(snapshotPath));
+      return loadSnapshot();
+    } catch (IOException | DiskSpaceInsufficientException e) {
+      LOGGER.error(
+          "Exception occurs when loading snapshot for {}-{}", storageGroupName, dataRegionId, e);
+      return null;
+    }
+  }
+
+  private DataRegion loadSnapshotWithLog(File logFile) {
     SnapshotLogger.SnapshotType type = null;
     try {
-      logAnalyzer = new SnapshotLogAnalyzer(snapshotLogFile);
+      logAnalyzer = new SnapshotLogAnalyzer(logFile);
       type = logAnalyzer.getType();
     } catch (Exception e) {
       LOGGER.error("Exception occurs when reading snapshot file", e);
       return null;
     }
+
+    LOGGER.info("Loading snapshot with {} type", type);
 
     try {
       try {
@@ -122,8 +156,7 @@ public class SnapshotLoader {
         return null;
       }
 
-      createLinksFromSnapshotDirToDataDir();
-
+      createLinksFromSnapshotDirToDataDirWithLog();
       return loadSnapshot();
     } finally {
       logAnalyzer.close();
@@ -184,7 +217,7 @@ public class SnapshotLoader {
     }
   }
 
-  private void createLinksFromSnapshotDirToDataDir(File sourceDir)
+  private void createLinksFromSnapshotDirToDataDirWithoutLog(File sourceDir)
       throws IOException, DiskSpaceInsufficientException {
     File seqFileDir = new File(sourceDir, "sequence" + File.separator + storageGroupName);
     File unseqFileDir = new File(sourceDir, "unsequence" + File.separator + storageGroupName);
@@ -232,7 +265,13 @@ public class SnapshotLoader {
                   throw new IOException(
                       String.format("Failed to create dir %s", targetFile.getParent()));
                 }
-                Files.createLink(targetFile.toPath(), file.toPath());
+                try {
+                  Files.createLink(targetFile.toPath(), file.toPath());
+                } catch (FileSystemException e) {
+                  // cannot create link between two directories in different fs
+                  // copy it
+                  Files.copy(file.toPath(), targetFile.toPath());
+                }
               }
             }
           }
@@ -286,7 +325,7 @@ public class SnapshotLoader {
     }
   }
 
-  private void createLinksFromSnapshotDirToDataDir() {
+  private void createLinksFromSnapshotDirToDataDirWithLog() {
     while (logAnalyzer.hasNext()) {
       Pair<String, String> filesPath = logAnalyzer.getNextPairs();
       File sourceFile = new File(filesPath.left);
@@ -305,5 +344,50 @@ public class SnapshotLoader {
         LOGGER.error("Failed to create link from {} to {}", linkedFile, sourceFile, e);
       }
     }
+  }
+
+  public List<File> getSnapshotFileInfo() throws IOException {
+    File snapshotLogFile = getSnapshotLogFile();
+
+    if (snapshotLogFile == null) {
+      return getSnapshotFileWithoutLog();
+    } else {
+      return getSnapshotFileWithLog(snapshotLogFile);
+    }
+  }
+
+  private List<File> getSnapshotFileWithLog(File logFile) throws IOException {
+    SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(logFile);
+    try {
+      SnapshotLogger.SnapshotType type = analyzer.getType();
+
+      List<File> fileList = new LinkedList<>();
+
+      while (analyzer.hasNext()) {
+        fileList.add(new File(analyzer.getNextPairs().right));
+      }
+
+      return fileList;
+    } finally {
+      analyzer.close();
+    }
+  }
+
+  private List<File> getSnapshotFileWithoutLog() {
+    return new LinkedList<>(
+        Arrays.asList(
+            Objects.requireNonNull(
+                new File(snapshotPath)
+                    .listFiles(
+                        (dir, name) ->
+                            name.endsWith(TsFileConstant.TSFILE_SUFFIX)
+                                || name.endsWith(TsFileResource.RESOURCE_SUFFIX)
+                                || name.endsWith(ModificationFile.FILE_SUFFIX)
+                                || name.endsWith(ModificationFile.COMPACTION_FILE_SUFFIX)
+                                || name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
+                                || name.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)
+                                || name.endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)
+                                || name.endsWith(
+                                    IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)))));
   }
 }
