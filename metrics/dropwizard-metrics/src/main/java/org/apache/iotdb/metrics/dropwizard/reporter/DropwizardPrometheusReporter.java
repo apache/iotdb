@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
@@ -44,7 +44,7 @@ public class DropwizardPrometheusReporter implements Reporter {
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
 
-  private MetricManager dropwizardMetricManager = null;
+  private AbstractMetricManager dropwizardMetricManager = null;
   private DisposableServer httpServer = null;
 
   @Override
@@ -114,7 +114,7 @@ public class DropwizardPrometheusReporter implements Reporter {
   }
 
   @Override
-  public void setMetricManager(MetricManager metricManager) {
+  public void setMetricManager(AbstractMetricManager metricManager) {
     this.dropwizardMetricManager = metricManager;
   }
 }

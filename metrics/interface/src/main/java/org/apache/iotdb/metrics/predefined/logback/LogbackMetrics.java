@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.predefined.logback;
 
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -41,7 +41,8 @@ import java.util.Map;
 public class LogbackMetrics implements IMetricSet, AutoCloseable {
   static ThreadLocal<Boolean> ignoreMetrics = new ThreadLocal<>();
   private final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-  private final Map<MetricManager, MetricsTurboFilter> metricsTurboFilters = new HashMap<>();
+  private final Map<AbstractMetricManager, MetricsTurboFilter> metricsTurboFilters =
+      new HashMap<>();
 
   public LogbackMetrics() {
     loggerContext.addListener(
@@ -79,7 +80,7 @@ public class LogbackMetrics implements IMetricSet, AutoCloseable {
   }
 
   @Override
-  public void bindTo(MetricManager metricManager) {
+  public void bindTo(AbstractMetricManager metricManager) {
     MetricsTurboFilter filter = new MetricsTurboFilter(metricManager);
     synchronized (metricsTurboFilters) {
       metricsTurboFilters.put(metricManager, filter);
@@ -118,7 +119,7 @@ class MetricsTurboFilter extends TurboFilter {
   private Counter debugCounter;
   private Counter traceCounter;
 
-  MetricsTurboFilter(MetricManager metricManager) {
+  MetricsTurboFilter(AbstractMetricManager metricManager) {
     errorCounter =
         metricManager.getOrCreateCounter("logback.events", MetricLevel.IMPORTANT, "level", "error");
 

@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.db.service.metrics.predefined;
 
+import com.sun.management.OperatingSystemMXBean;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
-
-import com.sun.management.OperatingSystemMXBean;
 
 import java.lang.management.ManagementFactory;
 
@@ -41,7 +40,7 @@ public class ProcessMetrics implements IMetricSet {
   }
 
   @Override
-  public void bindTo(MetricManager metricManager) {
+  public void bindTo(AbstractMetricManager metricManager) {
     collectProcessCPUInfo(metricManager);
     collectProcessMemInfo(metricManager);
     collectProcessStatusInfo(metricManager);
@@ -53,7 +52,7 @@ public class ProcessMetrics implements IMetricSet {
     return PredefinedMetric.PROCESS;
   }
 
-  private void collectProcessCPUInfo(MetricManager metricManager) {
+  private void collectProcessCPUInfo(AbstractMetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_CPU_LOAD.toString(),
         MetricLevel.CORE,
@@ -71,7 +70,7 @@ public class ProcessMetrics implements IMetricSet {
         "process");
   }
 
-  private void collectProcessMemInfo(MetricManager metricManager) {
+  private void collectProcessMemInfo(AbstractMetricManager metricManager) {
     Runtime runtime = Runtime.getRuntime();
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_MAX_MEM.toString(),
@@ -110,7 +109,7 @@ public class ProcessMetrics implements IMetricSet {
         "process");
   }
 
-  private void collectThreadInfo(MetricManager metricManager) {
+  private void collectThreadInfo(AbstractMetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_THREADS_COUNT.toString(),
         MetricLevel.CORE,
@@ -120,7 +119,7 @@ public class ProcessMetrics implements IMetricSet {
         "process");
   }
 
-  private void collectProcessStatusInfo(MetricManager metricManager) {
+  private void collectProcessStatusInfo(AbstractMetricManager metricManager) {
     metricManager.getOrCreateAutoGauge(
         Metric.PROCESS_STATUS.toString(),
         MetricLevel.CORE,

@@ -19,10 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
-import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.config.MetricConfig;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerAutoGauge;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerCounter;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerGauge;
@@ -35,7 +32,6 @@ import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
@@ -48,6 +44,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -55,27 +52,20 @@ import java.util.function.ToLongFunction;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
 @SuppressWarnings("common-java:DuplicatedBlocks")
-public class MicrometerMetricManager implements MetricManager {
+public class MicrometerMetricManager extends AbstractMetricManager {
   private static final Logger logger = LoggerFactory.getLogger(MicrometerMetricManager.class);
 
   Map<MicrometerMetricName, IMetric> currentMeters;
-  boolean isEnable;
   io.micrometer.core.instrument.MeterRegistry meterRegistry;
-
-  MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
   /** init the field with micrometer library. */
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
     currentMeters = new ConcurrentHashMap<>();
-    isEnable = metricConfig.getEnableMetric();
   }
 
   @Override
-  public Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingCounter;
-    }
+  public Counter getOrCreateCounter(String metric, String... tags) {
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.COUNTER, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -89,10 +79,7 @@ public class MicrometerMetricManager implements MetricManager {
 
   @Override
   public <T> Gauge getOrCreateAutoGauge(
-      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingGauge;
-    }
+      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -106,10 +93,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingGauge;
-    }
+  public Gauge getOrCreateGauge(String metric, String... tags) {
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -122,11 +106,9 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingHistogram;
-    }
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
+  public Histogram getOrCreateHistogram(String metric, String... tags) {
+    MicrometerMetricName metricName =
+        new MicrometerMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName,
@@ -144,20 +126,8 @@ public class MicrometerMetricManager implements MetricManager {
         metricName + " is already used for a different type of metric");
   }
 
-  /**
-   * We only create a gauge(AtomicLong) to record the raw value, because we assume that the backend
-   * metrics system has the ability to calculate getOrCreatRate.
-   *
-   * @param metric the name
-   * @param metricLevel
-   * @param tags tags to describe some attribute
-   * @return Rate instance
-   */
   @Override
-  public Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingRate;
-    }
+  public Rate getOrCreateRate(String metric, String... tags) {
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
 
     IMetric m =
@@ -173,10 +143,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingTimer;
-    }
+  public Timer getOrCreateTimer(String metric, String... tags) {
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.TIMER, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -197,10 +164,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public void count(long delta, String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return;
-    }
+  public void count(long delta, String metric, String... tags) {
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.COUNTER, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -211,11 +175,9 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public void histogram(long value, String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return;
-    }
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
+  public void histogram(long value, String metric, String... tags) {
+    MicrometerMetricName metricName =
+        new MicrometerMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName,
@@ -237,10 +199,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public void gauge(long value, String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return;
-    }
+  public void gauge(long value, String metric, String... tags) {
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
     IMetric m =
         (currentMeters.computeIfAbsent(
@@ -254,10 +213,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public void rate(long value, String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return;
-    }
+  public void rate(long value, String metric, String... tags) {
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -274,11 +230,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public synchronized void timer(
-      long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return;
-    }
+  public synchronized void timer(long delta, TimeUnit timeUnit, String metric, String... tags) {
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.TIMER, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -402,7 +354,8 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable()) {
       return;
     }
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
+    MicrometerMetricName metricName =
+        new MicrometerMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
     currentMeters.remove(metricName);
   }
 
@@ -418,19 +371,26 @@ public class MicrometerMetricManager implements MetricManager {
   /** stop everything and clear */
   @Override
   public boolean stop() {
-    isEnable = metricConfig.getEnableMetric();
+    isEnable = METRIC_CONFIG.getEnableMetric();
     meterRegistry.clear();
     currentMeters = new ConcurrentHashMap<>();
     return true;
   }
 
   @Override
-  public boolean isEnable() {
-    return isEnable;
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    MicrometerMetricManager that = (MicrometerMetricManager) o;
+    return Objects.equals(currentMeters, that.currentMeters);
   }
 
   @Override
-  public boolean isEnable(MetricLevel metricLevel) {
-    return isEnable() && MetricLevel.higherOrEqual(metricLevel, metricConfig.getMetricLevel());
+  public int hashCode() {
+    return Objects.hashCode(currentMeters);
   }
 }

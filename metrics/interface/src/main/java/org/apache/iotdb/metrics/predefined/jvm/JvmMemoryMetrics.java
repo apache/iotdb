@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.predefined.jvm;
 
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
@@ -33,7 +33,7 @@ import java.lang.management.MemoryUsage;
 /** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics */
 public class JvmMemoryMetrics implements IMetricSet {
   @Override
-  public void bindTo(MetricManager metricManager) {
+  public void bindTo(AbstractMetricManager metricManager) {
     for (BufferPoolMXBean bufferPoolBean :
         ManagementFactory.getPlatformMXBeans(BufferPoolMXBean.class)) {
       metricManager.getOrCreateAutoGauge(

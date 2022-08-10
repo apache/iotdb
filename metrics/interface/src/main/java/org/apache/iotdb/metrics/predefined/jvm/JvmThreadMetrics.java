@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.predefined.jvm;
 
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
@@ -31,7 +31,7 @@ import java.util.Arrays;
 /** This file is modified from io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics */
 public class JvmThreadMetrics implements IMetricSet {
   @Override
-  public void bindTo(MetricManager metricManager) {
+  public void bindTo(AbstractMetricManager metricManager) {
     ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
 
     metricManager.getOrCreateAutoGauge(

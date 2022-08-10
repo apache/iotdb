@@ -53,7 +53,7 @@ public abstract class AbstractMetricService {
   /** Is the first initialization of metric service */
   private final AtomicBoolean isFirstInitialization = new AtomicBoolean(true);
   /** The metric manager of metric service */
-  protected MetricManager metricManager = new DoNothingMetricManager();
+  protected AbstractMetricManager metricManager = new DoNothingMetricManager();
   /** The metric reporter of metric service */
   protected CompositeReporter compositeReporter = new CompositeReporter();
   /** Is metric service enabled */
@@ -89,9 +89,10 @@ public abstract class AbstractMetricService {
   /** Load metric manager according to configuration */
   private void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
-    ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
+    ServiceLoader<AbstractMetricManager> metricManagers =
+        ServiceLoader.load(AbstractMetricManager.class);
     int size = 0;
-    for (MetricManager mf : metricManagers) {
+    for (AbstractMetricManager mf : metricManagers) {
       size++;
       if (mf.getClass()
           .getName()
@@ -258,7 +259,7 @@ public abstract class AbstractMetricService {
 
   // endregion
 
-  public MetricManager getMetricManager() {
+  public AbstractMetricManager getMetricManager() {
     return metricManager;
   }
 

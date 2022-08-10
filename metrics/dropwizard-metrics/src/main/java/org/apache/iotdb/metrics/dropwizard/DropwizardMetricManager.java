@@ -19,23 +19,19 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
-import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.config.MetricConfig;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardAutoGauge;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardCounter;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardGauge;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardHistogram;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardRate;
 import org.apache.iotdb.metrics.dropwizard.type.DropwizardTimer;
-import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
@@ -48,6 +44,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.ToLongFunction;
@@ -56,15 +53,12 @@ import java.util.function.ToLongFunction;
  * Metric manager based on dropwizard metrics. More details in https://metrics.dropwizard.io/4.1.2/.
  */
 @SuppressWarnings("common-java:DuplicatedBlocks")
-public class DropwizardMetricManager implements MetricManager {
+public class DropwizardMetricManager extends AbstractMetricManager {
   private static final Logger logger = LoggerFactory.getLogger(DropwizardMetricManager.class);
 
   Map<MicrometerMetricName, IMetric> currentMeters;
-  /** whether is able to monitor */
-  boolean isEnable;
-
   com.codahale.metrics.MetricRegistry metricRegistry;
-  MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+
   MetricRegistry.MetricSupplier<com.codahale.metrics.Timer> timerMetricSupplier =
       () -> new com.codahale.metrics.Timer(new UniformReservoir());
   MetricRegistry.MetricSupplier<com.codahale.metrics.Histogram> histogramMetricSupplier =
@@ -73,15 +67,12 @@ public class DropwizardMetricManager implements MetricManager {
   /** init the field with dropwizard library. */
   public DropwizardMetricManager() {
     metricRegistry = new MetricRegistry();
-    isEnable = metricConfig.getEnableMetric();
+    isEnable = METRIC_CONFIG.getEnableMetric();
     currentMeters = new ConcurrentHashMap<>();
   }
 
   @Override
-  public Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingCounter;
-    }
+  public Counter getOrCreateCounter(String metric, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -94,10 +85,7 @@ public class DropwizardMetricManager implements MetricManager {
 
   @Override
   public <T> Gauge getOrCreateAutoGauge(
-      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingGauge;
-    }
+      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -114,10 +102,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingGauge;
-    }
+  public Gauge getOrCreateGauge(String metric, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -135,10 +120,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingRate;
-    }
+  public Rate getOrCreateRate(String metric, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -150,10 +132,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return DoNothingMetricManager.doNothingHistogram;
-    }
+  public Histogram getOrCreateHistogram(String metric, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -168,10 +147,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable()) {
-      return DoNothingMetricManager.doNothingTimer;
-    }
+  public Timer getOrCreateTimer(String metric, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -186,10 +162,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void count(long delta, String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return;
-    }
+  public void count(long delta, String metric, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -202,10 +175,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void gauge(long value, String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return;
-    }
+  public void gauge(long value, String metric, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -224,10 +194,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void rate(long value, String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return;
-    }
+  public void rate(long value, String metric, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -240,10 +207,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void histogram(long value, String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return;
-    }
+  public void histogram(long value, String metric, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -259,11 +223,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void timer(
-      long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
-      return;
-    }
+  public void timer(long delta, TimeUnit timeUnit, String metric, String... tags) {
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -394,25 +354,32 @@ public class DropwizardMetricManager implements MetricManager {
     return timerMap;
   }
 
-  @Override
-  public boolean isEnable() {
-    return isEnable;
-  }
-
-  @Override
-  public boolean isEnable(MetricLevel metricLevel) {
-    return isEnable() && MetricLevel.higherOrEqual(metricLevel, metricConfig.getMetricLevel());
-  }
-
   public MetricRegistry getMetricRegistry() {
     return metricRegistry;
   }
 
   @Override
   public boolean stop() {
-    isEnable = metricConfig.getEnableMetric();
+    isEnable = METRIC_CONFIG.getEnableMetric();
     metricRegistry.removeMatching(MetricFilter.ALL);
     currentMeters = new ConcurrentHashMap<>();
     return true;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    DropwizardMetricManager that = (DropwizardMetricManager) o;
+    return Objects.equals(currentMeters, that.currentMeters);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(currentMeters);
   }
 }

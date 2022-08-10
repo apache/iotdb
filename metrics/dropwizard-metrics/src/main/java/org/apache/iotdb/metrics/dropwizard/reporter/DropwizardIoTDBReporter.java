@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 public class DropwizardIoTDBReporter implements Reporter {
 
-  private MetricManager dropwizardMetricManager = null;
+  private AbstractMetricManager dropwizardMetricManager = null;
   private IoTDBReporter ioTDBReporter;
 
   private static final MetricConfig metricConfig =
@@ -69,7 +69,7 @@ public class DropwizardIoTDBReporter implements Reporter {
   }
 
   @Override
-  public void setMetricManager(MetricManager metricManager) {
+  public void setMetricManager(AbstractMetricManager metricManager) {
     this.dropwizardMetricManager = metricManager;
   }
 }

@@ -19,13 +19,13 @@
 
 package org.apache.iotdb.metrics.predefined.jvm;
 
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 public class JvmMetrics implements IMetricSet {
   @Override
-  public void bindTo(MetricManager metricManager) {
+  public void bindTo(AbstractMetricManager metricManager) {
     JvmClassLoaderMetrics jvmClassLoaderMetricSet = new JvmClassLoaderMetrics();
     jvmClassLoaderMetricSet.bindTo(metricManager);
 

@@ -104,7 +104,11 @@ class DropwizardMetricsExporter {
 
   /** Export histogram snapshot */
   private void writeSnapshotAndCount(
-      MicrometerMetricName metricName, Snapshot snapshot, long count, double factor, String helpMessage)
+      MicrometerMetricName metricName,
+      Snapshot snapshot,
+      long count,
+      double factor,
+      String helpMessage)
       throws IOException {
     String sanitizeName = metricName.getName();
     writer.writeHelp(sanitizeName, helpMessage);

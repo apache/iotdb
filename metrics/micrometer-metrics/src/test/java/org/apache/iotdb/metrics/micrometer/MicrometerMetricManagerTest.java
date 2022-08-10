@@ -21,7 +21,6 @@ package org.apache.iotdb.metrics.micrometer;
 
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.DoNothingMetricService;
-import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
@@ -43,7 +42,7 @@ import static org.junit.Assert.assertThrows;
 public class MicrometerMetricManagerTest {
   static MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   static AbstractMetricService metricService = new DoNothingMetricService();
-  static MetricManager metricManager;
+  static MicrometerMetricManager metricManager;
 
   @BeforeClass
   public static void init() {
@@ -51,7 +50,7 @@ public class MicrometerMetricManagerTest {
     metricConfig.setMonitorType(MonitorType.MICROMETER);
     metricService.startService();
     metricService.startAllReporter();
-    metricManager = metricService.getMetricManager();
+    metricManager = (MicrometerMetricManager) metricService.getMetricManager();
   }
 
   private void getOrCreateDifferentMetricsWithSameName() {
