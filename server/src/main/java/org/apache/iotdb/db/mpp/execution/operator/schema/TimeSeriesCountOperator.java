@@ -103,4 +103,16 @@ public class TimeSeriesCountOperator implements SourceOperator {
   public boolean isFinished() {
     return isFinished;
   }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    // the integer used for count
+    return 4L;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    // the integer used for count
+    return 4L;
+  }
 }
