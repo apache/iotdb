@@ -1292,47 +1292,4 @@ public class IoTDBUDTFBuiltinFunctionIT {
       e.printStackTrace();
     }
   }
-
-  @Test
-  public void testSessionWindowCount() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE TIMESERIES root.sg.d8.s1 with datatype=INT32,encoding=PLAIN");
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-    String[] SQL_FOR_SAMPLE = new String[100];
-    for (int i = 1; i <= 50; i++) {
-      if (i == 7 || i == 8 || i == 9 || i == 12 || i == 23 || i == 24 || i == 25 || i == 41
-          || i == 42 || i == 48 || i == 49) {
-        continue;
-      }
-      SQL_FOR_SAMPLE[i] = String.format("insert into root.sg.d8(time, s1) values (%d, %d)", i, i);
-    }
-    int[] ANSWER1 = new int[] {1, 2, 39, 40, 41, 42, 79, 80, 81, 82, 99, 100};
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      for (int i = 1; i <= 50; i++) {
-        if (i == 7 || i == 8 || i == 9 || i == 12 || i == 23 || i == 24 || i == 25 || i == 41
-            || i == 42 || i == 48 || i == 49) {
-          continue;
-        }
-        statement.execute(SQL_FOR_SAMPLE[i]);
-      }
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      String functionName = "SESSION_WINDOW_COUNT";
-      ResultSet resultSet =
-          statement.executeQuery(String.format("select %s(s1) from root.sg.d8", functionName));
-      while (resultSet.next()) {
-        System.out.println(resultSet.getInt(2));
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
 }
