@@ -576,10 +576,10 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TEndPoint newNode = getConsensusEndPoint(req.getNewLeaderNode(), regionId);
     Peer newLeaderPeer = new Peer(regionId, newNode);
     if (!isLeader(regionId)) {
-      LOGGER.debug("region {} is not leader, no need to change leader", regionId);
+      LOGGER.info("region {} is not leader, no need to change leader", regionId);
       return status;
     }
-    LOGGER.debug("region {} is leader, will change leader", regionId);
+    LOGGER.info("region {} is leader, will change leader", regionId);
     return transferLeader(regionId, newLeaderPeer);
   }
 
@@ -652,7 +652,8 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   public TSStatus removeToRegionConsensusGroup(TMigrateRegionReq req) throws TException {
     TConsensusGroupId regionId = req.getRegionId();
     String fromNodeIp = req.getFromNode().getInternalEndPoint().getIp();
-    boolean submitSucceed = RegionMigrateService.getInstance().submitRemoveRegionPeerTask(req);
+    boolean submitSucceed =
+        RegionMigrateService.getInstance().submitRemoveRegionConsensusGroupTask(req);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(

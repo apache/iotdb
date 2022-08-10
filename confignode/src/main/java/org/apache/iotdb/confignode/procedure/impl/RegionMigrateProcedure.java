@@ -95,6 +95,10 @@ public class RegionMigrateProcedure
           } else {
             throw new ProcedureException("Failed to add region peer");
           }
+          setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
+          break;
+        case CHANGE_REGION_LEADER:
+          env.getDataNodeRemoveHandler().changeRegionLeader(consensusGroupId, originalDataNode);
           setNextState(RegionTransitionState.REMOVE_REGION_PEER);
           break;
         case REMOVE_REGION_PEER:
