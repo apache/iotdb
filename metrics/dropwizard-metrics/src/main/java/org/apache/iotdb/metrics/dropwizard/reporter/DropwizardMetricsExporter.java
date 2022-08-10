@@ -116,9 +116,10 @@ class DropwizardMetricsExporter {
     writer.writeHelp(sanitizeName, helpMessage);
     writer.writeType(sanitizeName, MetricType.SUMMARY);
     Map<String, String> tags = metricName.getTags();
-    writer.writeSample(sanitizeName + "_max", tags, snapshot.getMax() * factor);
-    writer.writeSample(sanitizeName + "_sum", tags, Arrays.stream(snapshot.getValues()).sum() * factor);
-    writer.writeSample(sanitizeName + "_count", tags, count);
+    writer.writeSample(sanitizeName + "_seconds_max", tags, snapshot.getMax() * factor);
+    writer.writeSample(
+        sanitizeName + "_seconds_sum", tags, Arrays.stream(snapshot.getValues()).sum() * factor);
+    writer.writeSample(sanitizeName + "_seconds_count", tags, count);
   }
 
   /** Export Timer as Prometheus Summary */
