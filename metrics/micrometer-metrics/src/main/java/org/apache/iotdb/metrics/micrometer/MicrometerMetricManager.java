@@ -58,7 +58,6 @@ public class MicrometerMetricManager extends AbstractMetricManager {
   Map<MicrometerMetricName, IMetric> currentMeters;
   io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
-  /** init the field with micrometer library. */
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
     currentMeters = new ConcurrentHashMap<>();
@@ -368,7 +367,6 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     currentMeters.remove(metricName);
   }
 
-  /** stop everything and clear */
   @Override
   public boolean stop() {
     isEnableMetric = METRIC_CONFIG.getEnableMetric();

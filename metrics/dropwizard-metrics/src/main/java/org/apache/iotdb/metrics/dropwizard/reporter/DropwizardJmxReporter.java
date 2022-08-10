@@ -56,12 +56,10 @@ public class DropwizardJmxReporter implements Reporter {
 
   @Override
   public boolean stop() {
-    if (jmxReporter == null) {
-      LOGGER.warn("Dropwizard JmxReporter already stop!");
-      return false;
+    if (jmxReporter != null) {
+      jmxReporter.stop();
+      jmxReporter = null;
     }
-    jmxReporter.stop();
-    jmxReporter = null;
     return true;
   }
 

@@ -71,19 +71,17 @@ public class MicrometerMetricName {
    * @return the flat string
    */
   public String toFlatString() {
-    StringBuilder stringBuilder = new StringBuilder(name.replaceAll("\\{|\\}", ""));
-    stringBuilder.append("{");
-    stringBuilder.append(
-        tags.entrySet().stream()
+    return name.replaceAll("\\{|\\}", "")
+        + "{"
+        + tags.entrySet().stream()
             .map(
                 t ->
                     t.getKey().replace(TAG_SEPARATOR, "")
                         + TAG_SEPARATOR
                         + t.getValue().replace(TAG_SEPARATOR, ""))
             .collect(Collectors.joining(TAG_SEPARATOR))
-            .replaceAll("\\{|\\}", ""));
-    stringBuilder.append("}");
-    return stringBuilder.toString();
+            .replaceAll("\\{|\\}", "")
+        + "}";
   }
 
   /** convert the metric name to string array. */

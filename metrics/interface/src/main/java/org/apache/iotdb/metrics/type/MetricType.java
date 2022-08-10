@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard.reporter;
+package org.apache.iotdb.metrics.type;
 
-enum MetricType {
+public enum MetricType {
   COUNTER("counter"),
   GAUGE("gauge"),
   SUMMARY("summary"),

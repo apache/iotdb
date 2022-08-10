@@ -330,7 +330,8 @@ public abstract class AbstractMetricManager {
 
   /** Is metric service enabled in specific level */
   public boolean isEnableMetricInGivenLevel(MetricLevel metricLevel) {
-    return isEnableMetric() && MetricLevel.higherOrEqual(metricLevel, METRIC_CONFIG.getMetricLevel());
+    return isEnableMetric()
+        && MetricLevel.higherOrEqual(metricLevel, METRIC_CONFIG.getMetricLevel());
   }
 
   /** Stop and clear metric manager */
