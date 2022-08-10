@@ -279,19 +279,20 @@ service IDataNodeRPCService {
   common.TSStatus addToRegionConsensusGroup(TAddConsensusGroup req);
 
   /**
-   * Config node will add a region peer from this node to newNode
+   * Config node will add a region peer to a region group
    * @param add region req which region from one node to other node
    */
   common.TSStatus addRegionPeer(TMigrateRegionReq req);
 
   /**
-   * Config node will remove a region peer from this node to newNode
+   * Config node will remove a region peer to a region group
    * @param remove region peer region from one node to other node
    */
   common.TSStatus removeRegionPeer(TMigrateRegionReq req);
 
   /**
-   * Config node will remove a region consensus group from this node to newNode
+   * Config node will remove a region group from this node to newNode. Usually a region group has
+   * multiple replicas, thus relates to multiple nodes.
    * @param remove consensus group req which region from one node to other node
   */
   common.TSStatus removeToRegionConsensusGroup(TMigrateRegionReq req);

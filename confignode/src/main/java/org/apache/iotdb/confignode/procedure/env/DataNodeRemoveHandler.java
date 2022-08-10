@@ -127,7 +127,6 @@ public class DataNodeRemoveHandler {
       return null;
     }
 
-    // will migrate the region to the new node, which should not be same raft
     Optional<TDataNodeLocation> newNode = pickNewReplicaNodeForRegion(regionReplicaNodes);
     if (!newNode.isPresent()) {
       LOGGER.warn("No enough Data node to migrate region: {}", regionId);
@@ -148,7 +147,7 @@ public class DataNodeRemoveHandler {
       TDataNodeLocation destDataNode,
       TConsensusGroupId regionId) {
     TSStatus status;
-    Optional<TDataNodeLocation> otherNode = findOtherNode(regionId, originalDataNode);
+    Optional<TDataNodeLocation> otherNode = findNodeOfAnotherReplica(regionId, originalDataNode);
     if (!otherNode.isPresent()) {
       LOGGER.warn(
           "No other Node to change region leader, check by show regions, region: {}", regionId);
@@ -188,7 +187,7 @@ public class DataNodeRemoveHandler {
       TDataNodeLocation destDataNode,
       TConsensusGroupId regionId) {
     TSStatus status;
-    Optional<TDataNodeLocation> otherNode = findOtherNode(regionId, originalDataNode);
+    Optional<TDataNodeLocation> otherNode = findNodeOfAnotherReplica(regionId, originalDataNode);
     if (!otherNode.isPresent()) {
       LOGGER.warn(
           "No other Node to change region leader, check by show regions, region: {}", regionId);
@@ -452,7 +451,8 @@ public class DataNodeRemoveHandler {
   }
 
   public void changeRegionLeader(TConsensusGroupId regionId, TDataNodeLocation tDataNodeLocation) {
-    Optional<TDataNodeLocation> newLeaderNode = findOtherNode(regionId, tDataNodeLocation);
+    Optional<TDataNodeLocation> newLeaderNode =
+        findNodeOfAnotherReplica(regionId, tDataNodeLocation);
     if (newLeaderNode.isPresent()) {
       SyncDataNodeClientPool.getInstance()
           .changeRegionLeader(
@@ -464,7 +464,7 @@ public class DataNodeRemoveHandler {
     }
   }
 
-  private Optional<TDataNodeLocation> findOtherNode(
+  private Optional<TDataNodeLocation> findNodeOfAnotherReplica(
       TConsensusGroupId regionId, TDataNodeLocation tDataNodeLocation) {
     List<TDataNodeLocation> regionReplicaNodes = findRegionReplicaNodes(regionId);
     if (regionReplicaNodes.isEmpty()) {
@@ -472,7 +472,7 @@ public class DataNodeRemoveHandler {
       return Optional.empty();
     }
 
-    // TODO if region replica is 1, the new leader is null, it also need to migrate
+    // TODO replace findAny() by select the low load node.
     Optional<TDataNodeLocation> newLeaderNode =
         regionReplicaNodes.stream().filter(e -> !e.equals(tDataNodeLocation)).findAny();
     return newLeaderNode;

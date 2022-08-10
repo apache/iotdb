@@ -90,7 +90,7 @@ public class RegionMigrateProcedure
               env.getDataNodeRemoveHandler()
                   .addRegionPeer(originalDataNode, destDataNode, consensusGroupId);
           if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            waitForTheRegionMigrateFinished(consensusGroupId);
+            waitForOneMigrationStepFinished(consensusGroupId);
             LOG.info("Wait for region {}  add peer finished", consensusGroupId);
           } else {
             throw new ProcedureException("Failed to add region peer");
@@ -106,7 +106,7 @@ public class RegionMigrateProcedure
               env.getDataNodeRemoveHandler()
                   .removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
           if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            waitForTheRegionMigrateFinished(consensusGroupId);
+            waitForOneMigrationStepFinished(consensusGroupId);
             LOG.info("Wait for region {} remove peer finished", consensusGroupId);
           } else {
             throw new ProcedureException("Failed to remove region peer");
@@ -118,7 +118,7 @@ public class RegionMigrateProcedure
               env.getDataNodeRemoveHandler()
                   .removeRegionConsensusGroup(originalDataNode, destDataNode, consensusGroupId);
           if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            waitForTheRegionMigrateFinished(consensusGroupId);
+            waitForOneMigrationStepFinished(consensusGroupId);
             LOG.info("Wait for region {}  remove consensus group finished", consensusGroupId);
           }
           // remove consensus group after a node stop, which will be failed, but we will continue
@@ -234,7 +234,7 @@ public class RegionMigrateProcedure
     return false;
   }
 
-  public TSStatus waitForTheRegionMigrateFinished(TConsensusGroupId consensusGroupId) {
+  public TSStatus waitForOneMigrationStepFinished(TConsensusGroupId consensusGroupId) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     synchronized (regionMigrateLock) {
       try {

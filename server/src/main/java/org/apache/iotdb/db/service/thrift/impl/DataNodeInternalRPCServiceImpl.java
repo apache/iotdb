@@ -640,11 +640,17 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     if (submitSucceed) {
       LOGGER.info(
-          "succeed to submit a remove region peer task. region: {}, from {}", regionId, fromNodeIp);
+          "succeed to submit a remove region peer task. region: {}, from {}",
+          regionId,
+          req.getFromNode().getInternalEndPoint());
       return status;
     }
     status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
-    status.setMessage("submit region remove region peer task failed, region: " + regionId);
+    status.setMessage(
+        "submit region remove region peer task failed, region: "
+            + regionId
+            + ", from "
+            + req.getFromNode().getInternalEndPoint());
     return status;
   }
 
