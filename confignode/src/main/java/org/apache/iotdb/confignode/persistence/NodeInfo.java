@@ -301,18 +301,25 @@ public class NodeInfo implements SnapshotProcessor {
    * Return the specific registered DataNode
    *
    * @param dataNodeId Specific DataNodeId
-   * @return All registered DataNodes if dataNodeId equals -1. And return the specific DataNode
-   *     otherwise.
+   * @return return the specific DataNode
    */
-  public List<TDataNodeConfiguration> getRegisteredDataNodes(int dataNodeId) {
+  public TDataNodeConfiguration getRegisteredDataNodeById(int dataNodeId) {
+    TDataNodeConfiguration result;
+    dataNodeInfoReadWriteLock.readLock().lock();
+    try {
+      result = registeredDataNodes.get(dataNodeId);
+    } finally {
+      dataNodeInfoReadWriteLock.readLock().unlock();
+    }
+    return result;
+  }
+
+  /** Return All registered DataNodes */
+  public List<TDataNodeConfiguration> getRegisteredDataNodes() {
     List<TDataNodeConfiguration> result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
-      if (dataNodeId == -1) {
-        result = new ArrayList<>(registeredDataNodes.values());
-      } else {
-        result = Collections.singletonList(registeredDataNodes.get(dataNodeId));
-      }
+      result = new ArrayList<>(registeredDataNodes.values());
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
