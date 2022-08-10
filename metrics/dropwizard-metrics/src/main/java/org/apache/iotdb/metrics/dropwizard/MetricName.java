@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
-import org.apache.iotdb.metrics.utils.MetricLevel;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,7 +29,6 @@ import java.util.stream.Collectors;
 /** the unique identifier of a metric, include a name and some tags. */
 public class MetricName {
   private String name;
-  private MetricLevel metricLevel;
   private Map<String, String> tags = new LinkedHashMap<>();
   private static final String TAG_SEPARATOR = ".";
 
@@ -42,18 +39,6 @@ public class MetricName {
         this.tags.put(tags[i], tags[i + 1]);
       }
     }
-  }
-  /**
-   * the unique identifier of a metric, include a name and some tags.
-   *
-   * @param name metric name
-   * @param metricLevel metric level
-   * @param tags string appear in pairs, like sg="ln",user="user1" will be "sg", "ln", "user",
-   *     "user1"
-   */
-  public MetricName(String name, MetricLevel metricLevel, String... tags) {
-    this(name, tags);
-    this.metricLevel = metricLevel;
   }
 
   /** Create metric name from flatString */
@@ -124,14 +109,6 @@ public class MetricName {
 
   public void setName(String name) {
     this.name = name;
-  }
-
-  public MetricLevel getMetricLevel() {
-    return metricLevel;
-  }
-
-  public void setMetricLevel(MetricLevel metricLevel) {
-    this.metricLevel = metricLevel;
   }
 
   public Map<String, String> getTags() {

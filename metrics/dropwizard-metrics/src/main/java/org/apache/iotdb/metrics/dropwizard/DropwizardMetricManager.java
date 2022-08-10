@@ -82,7 +82,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingCounter;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
@@ -98,7 +98,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -118,7 +118,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -139,7 +139,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingRate;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString())));
@@ -154,7 +154,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingHistogram;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -172,7 +172,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable()) {
       return DoNothingMetricManager.doNothingTimer;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -190,7 +190,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
@@ -206,7 +206,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -228,7 +228,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString())));
@@ -244,7 +244,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -264,7 +264,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, metricLevel, tags);
+    MetricName name = new MetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
