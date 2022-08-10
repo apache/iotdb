@@ -342,6 +342,7 @@ public class IoTDBConfigNodeIT {
       assertEquals(dataNodeLocation, dnLocation);
 
       // test remove DataNode
+      dataNodeLocation = infoList.get(0).getValue().getLocation();
       removeDataNodeLocationList.add(dataNodeLocation);
       removeReq = new TDataNodeRemoveReq(removeDataNodeLocationList);
       removeResp = client.removeDataNode(removeReq);
