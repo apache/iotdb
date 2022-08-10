@@ -92,6 +92,6 @@ public class StepTracker {
   }
 
   public static void cleanup() {
-    metrics.set(null);
+    metrics.remove();
   }
 }
