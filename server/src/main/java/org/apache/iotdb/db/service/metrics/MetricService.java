@@ -37,7 +37,7 @@ import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MetricService extends AbstractMetricService implements MetricsServiceMBean, IService {
+public class MetricService extends AbstractMetricService implements MetricServiceMBean, IService {
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
   private final String mbeanName =
       String.format(

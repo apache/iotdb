@@ -20,7 +20,7 @@ package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.commons.exception.StartupException;
 
-public interface MetricsServiceMBean {
+public interface MetricServiceMBean {
 
   void startService() throws StartupException;
 

@@ -61,6 +61,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
     currentMeters = new ConcurrentHashMap<>();
+    isEnableMetric = METRIC_CONFIG.getEnableMetric();
   }
 
   @Override
