@@ -1,15 +1,15 @@
 package org.apache.iotdb.tool.ui.node;
 
-import javafx.scene.Group;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Line;
-import javafx.scene.shape.Rectangle;
 import org.apache.iotdb.tool.core.model.TimeSeriesMetadataNode;
-import org.apache.iotdb.tool.ui.scene.IoTDBParsePageV13;
+import org.apache.iotdb.tool.ui.scene.IoTDBParsePageV3;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 
 import java.util.ArrayList;
 import java.util.List;
+import javafx.scene.Group;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.Rectangle;
 
 /**
  * index node wrap
@@ -46,18 +46,14 @@ public class IndexNode {
       TimeSeriesMetadataNode timeSeriesMetadataNode,
       EntityNode parent,
       Group indexRegion,
-      IoTDBParsePageV13 ioTDBParsePageV13) {
+      IoTDBParsePageV3 ioTDBParsePageV13) {
 
     this.timeSeriesMetadataNode = timeSeriesMetadataNode;
     this.indexRegion = indexRegion;
     this.parent = parent;
     // default:root index
-    int parentX = INDEX_ENTITY_SP_WIDTH;
-    int parentY = INDEX_ENTITY_SP_WIDTH;
-    if (parent != null) {
-      parentX = parent.getX();
-      parentY = parent.getY();
-    }
+    int parentX = parent == null ? INDEX_ENTITY_SP_WIDTH : parent.getX();
+    int parentY = parent == null ? INDEX_ENTITY_SP_WIDTH : parent.getY();
     this.x = parentX;
     this.y = parentY + ((parent == null) ? 0 : INDEX_LINE_HEIGHT);
     this.totalWidth = INDEX_ENTITY_WIDTH + INDEX_ENTITY_SP_WIDTH + INDEX_ENTITY_SP_WIDTH;

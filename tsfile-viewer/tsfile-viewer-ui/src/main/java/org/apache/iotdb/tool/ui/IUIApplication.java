@@ -1,8 +1,9 @@
 package org.apache.iotdb.tool.ui;
 
+import org.apache.iotdb.tool.ui.scene.ScenesManager;
+
 import javafx.application.Application;
 import javafx.stage.Stage;
-import org.apache.iotdb.tool.ui.scene.ScenesManager;
 
 /**
  * IoTDB UI Application
@@ -21,6 +22,6 @@ public class IUIApplication extends Application {
     manager.setBaseStage(primaryStage);
     primaryStage.setResizable(false);
     // application start
-    manager.converToPage(primaryStage, ScenesManager.SceneType.HOME);
+    manager.showBaseStage();
   }
 }
