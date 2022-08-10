@@ -229,8 +229,12 @@ public class LoadManager {
           });
       routeBalancer
           .getRouteMap()
-          .keySet()
-          .forEach(consensusGroupId -> result.put(consensusGroupId, -1));
+          .forEach(
+              (consensusGroupId, regionReplicaSet) -> {
+                result.put(
+                    consensusGroupId,
+                    regionReplicaSet.getDataNodeLocations().get(0).getDataNodeId());
+              });
     } else {
       regionGroupCacheMap.forEach(
           (consensusGroupId, regionGroupCache) ->
