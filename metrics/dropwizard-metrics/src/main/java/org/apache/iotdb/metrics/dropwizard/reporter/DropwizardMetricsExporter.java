@@ -88,7 +88,7 @@ class DropwizardMetricsExporter {
   /** Export counter as Prometheus Gauge */
   public void writeCounter(String dropwizardName, Counter counter) throws IOException {
     MicrometerMetricName metricName = new MicrometerMetricName(dropwizardName);
-    String sanitizeName = metricName.getName();
+    String sanitizeName = metricName.getName() + "_total";
     writer.writeHelp(sanitizeName, getHelpMessage(dropwizardName, counter));
     writer.writeType(sanitizeName, MetricType.GAUGE);
     writer.writeSample(sanitizeName, metricName.getTags(), counter.getCount());
@@ -112,14 +112,14 @@ class DropwizardMetricsExporter {
       double factor,
       String helpMessage)
       throws IOException {
-    String sanitizeName = metricName.getName();
+    String sanitizeName = metricName.getName() + "_seconds";
     writer.writeHelp(sanitizeName, helpMessage);
     writer.writeType(sanitizeName, MetricType.SUMMARY);
     Map<String, String> tags = metricName.getTags();
-    writer.writeSample(sanitizeName + "_seconds_max", tags, snapshot.getMax() * factor);
+    writer.writeSample(sanitizeName + "_max", tags, snapshot.getMax() * factor);
     writer.writeSample(
-        sanitizeName + "_seconds_sum", tags, Arrays.stream(snapshot.getValues()).sum() * factor);
-    writer.writeSample(sanitizeName + "_seconds_count", tags, count);
+        sanitizeName + "_sum", tags, Arrays.stream(snapshot.getValues()).sum() * factor);
+    writer.writeSample(sanitizeName + "_count", tags, count);
   }
 
   /** Export Timer as Prometheus Summary */
