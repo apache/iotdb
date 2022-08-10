@@ -229,12 +229,12 @@ public class MultiLeaderServerImpl {
   }
 
   public boolean needToThrottleDown() {
-    return reader.getTotalSize() > config.getReplication().getMaxWalBufferSize();
+    return reader.getTotalSize() > config.getReplication().getThrottleDownThreshold();
   }
 
   public boolean needToThrottleUp() {
     return reader.getTotalSize()
-        < config.getReplication().getMaxWalBufferSize()
+        < config.getReplication().getThrottleDownThreshold()
             - config.getReplication().getThrottleWalSize();
   }
 }

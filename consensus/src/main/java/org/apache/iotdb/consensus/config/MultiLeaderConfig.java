@@ -202,7 +202,7 @@ public class MultiLeaderConfig {
     private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
-    private final long maxWalBufferSize;
+    private final long throttleDownThreshold;
     private final long throttleWalSize;
     private final long throttleTimeOutMs;
 
@@ -213,7 +213,7 @@ public class MultiLeaderConfig {
         int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
         long maxRetryWaitTimeMs,
-        long maxWalBufferSize,
+        long throttleDownThreshold,
         long throttleWalSize,
         long throttleTimeOutMs) {
       this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
@@ -222,7 +222,7 @@ public class MultiLeaderConfig {
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
-      this.maxWalBufferSize = maxWalBufferSize;
+      this.throttleDownThreshold = throttleDownThreshold;
       this.throttleWalSize = throttleWalSize;
       this.throttleTimeOutMs = throttleTimeOutMs;
     }
@@ -251,8 +251,8 @@ public class MultiLeaderConfig {
       return maxRetryWaitTimeMs;
     }
 
-    public long getMaxWalBufferSize() {
-      return maxWalBufferSize;
+    public long getThrottleDownThreshold() {
+      return throttleDownThreshold;
     }
 
     public long getThrottleWalSize() {
@@ -274,8 +274,8 @@ public class MultiLeaderConfig {
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
-      private long maxWalBufferSize = 10 * 1024 * 1024 * 1024L;
-      private long throttleWalSize = 1024 * 1024 * 1024L;
+      private long throttleDownThreshold = 50 * 1024 * 1024 * 1024L;
+      private long throttleUpThreshold = 5 * 1024 * 1024 * 1024L;
       private long throttleTimeOutMs = TimeUnit.MINUTES.toMillis(1);
 
       public Replication.Builder setMaxPendingRequestNumPerNode(int maxPendingRequestNumPerNode) {
@@ -309,13 +309,13 @@ public class MultiLeaderConfig {
         return this;
       }
 
-      public Replication.Builder setMaxWalBufferSize(long maxWalBufferSize) {
-        this.maxWalBufferSize = maxWalBufferSize;
+      public Replication.Builder setThrottleDownThreshold(long throttleDownThreshold) {
+        this.throttleDownThreshold = throttleDownThreshold;
         return this;
       }
 
-      public Replication.Builder setThrottleWalSize(long throttleWalSize) {
-        this.throttleWalSize = throttleWalSize;
+      public Replication.Builder setThrottleUpThreshold(long throttleUpThreshold) {
+        this.throttleUpThreshold = throttleUpThreshold;
         return this;
       }
 
@@ -332,8 +332,8 @@ public class MultiLeaderConfig {
             maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,
             maxRetryWaitTimeMs,
-            maxWalBufferSize,
-            throttleWalSize,
+            throttleDownThreshold,
+            throttleUpThreshold,
             throttleTimeOutMs);
       }
     }

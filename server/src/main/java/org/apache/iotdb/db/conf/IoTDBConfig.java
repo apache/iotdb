@@ -955,7 +955,7 @@ public class IoTDBConfig {
   private int driverTaskExecutionTimeSliceInMs = 100;
 
   /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
-  private long multiLeaderMaxWalBufferSize = 10 * 1024 * 1024 * 1024L;
+  private long throttleDownThreshold = 50 * 1024 * 1024 * 1024L;
 
   IoTDBConfig() {}
 
@@ -3035,11 +3035,11 @@ public class IoTDBConfig {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
 
-  public long getMultiLeaderMaxWalBufferSize() {
-    return multiLeaderMaxWalBufferSize;
+  public long getThrottleDownThreshold() {
+    return throttleDownThreshold;
   }
 
-  public void setMultiLeaderMaxWalBufferSize(long multiLeaderMaxWalBufferSize) {
-    this.multiLeaderMaxWalBufferSize = multiLeaderMaxWalBufferSize;
+  public void setThrottleDownThreshold(long throttleDownThreshold) {
+    this.throttleDownThreshold = throttleDownThreshold;
   }
 }
