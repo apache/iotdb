@@ -79,7 +79,8 @@ public interface IStateMachine {
    * paths.
    *
    * @param latestSnapshotRootDir dir where the latest snapshot sits
-   * @return List of real snapshot files
+   * @return List of real snapshot files. If the returned list is null, consensus implementations
+   * will visit and add all files under this give latestSnapshotRootDir.
    */
   default List<File> getSnapshotFiles(File latestSnapshotRootDir) {
     return null;
