@@ -247,6 +247,17 @@ public class PlannerTest {
   }
 
   @Test
+  public void insertStatementWithNegativeTimeStamp()
+      throws QueryProcessException, MetadataException {
+    String createTSStatement = "insert into root.vehicle.d0(time,s0) values(-1000, 111)";
+    PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(createTSStatement);
+
+    assertTrue(physicalPlan instanceof InsertRowPlan);
+    assertEquals(-1000, ((InsertRowPlan) physicalPlan).getTime());
+    assertEquals("111", ((InsertRowPlan) physicalPlan).getValues()[0]);
+  }
+
+  @Test
   public void rawDataQueryReqToPhysicalPlanTest()
       throws QueryProcessException, IllegalPathException {
     TSRawDataQueryReq tsRawDataQueryReq = new TSRawDataQueryReq();

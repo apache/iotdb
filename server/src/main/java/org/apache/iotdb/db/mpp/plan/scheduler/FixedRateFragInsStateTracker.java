@@ -77,17 +77,15 @@ public class FixedRateFragInsStateTracker extends AbstractFragInsStateTracker {
   @Override
   public synchronized void abort() {
     aborted = true;
-    logger.info("start to abort state tracker");
     if (trackTask != null) {
-      logger.info("start to cancel fixed rate tracking task");
       boolean cancelResult = trackTask.cancel(true);
+      // TODO: (xingtanzjr) a strange case here is that sometimes
+      // the cancelResult is false but the trackTask is definitely cancelled
       if (!cancelResult) {
-        logger.error("cancel state tracking task failed. {}", trackTask.isCancelled());
-      } else {
-        logger.info("cancellation succeeds");
+        logger.debug("cancel state tracking task failed. {}", trackTask.isCancelled());
       }
     } else {
-      logger.info("trackTask not started");
+      logger.debug("trackTask not started");
     }
   }
 
