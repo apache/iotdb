@@ -76,7 +76,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingCounter;
     }
-    MetricName metricName = new MetricName(metric, Meter.Type.COUNTER, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.COUNTER, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName, key -> new MicrometerCounter(meterRegistry.counter(metric, tags)));
@@ -93,7 +93,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricName metricName = new MetricName(metric, Meter.Type.GAUGE, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.GAUGE, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName,
@@ -110,7 +110,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricName metricName = new MetricName(metric, Meter.Type.GAUGE, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.GAUGE, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName, key -> new MicrometerGauge(meterRegistry, metric, tags));
@@ -126,8 +126,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingHistogram;
     }
-    MetricName metricName =
-        new MetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName,
@@ -159,7 +158,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingRate;
     }
-    MetricName metricName = new MetricName(metric, Meter.Type.GAUGE, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.GAUGE, tags);
 
     IMetric m =
         currentMeters.computeIfAbsent(
@@ -178,7 +177,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingTimer;
     }
-    MetricName metricName = new MetricName(metric, Meter.Type.TIMER, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.TIMER, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName,
@@ -202,7 +201,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName metricName = new MetricName(metric, Meter.Type.COUNTER, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.COUNTER, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName, key -> new MicrometerCounter(meterRegistry.counter(metric, tags)));
@@ -216,8 +215,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName metricName =
-        new MetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName,
@@ -243,7 +241,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName metricName = new MetricName(metric, Meter.Type.GAUGE, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.GAUGE, tags);
     IMetric m =
         (currentMeters.computeIfAbsent(
             metricName, key -> new MicrometerGauge(meterRegistry, metric, tags)));
@@ -260,7 +258,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName metricName = new MetricName(metric, Meter.Type.GAUGE, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.GAUGE, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName,
@@ -281,7 +279,7 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName metricName = new MetricName(metric, Meter.Type.TIMER, metricLevel, tags);
+    MetricName metricName = new MetricName(metric, Meter.Type.TIMER, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             metricName,
