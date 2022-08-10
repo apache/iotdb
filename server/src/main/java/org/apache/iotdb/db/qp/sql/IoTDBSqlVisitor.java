@@ -2791,6 +2791,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_LITERAL() != null) {
+      if (ctx.MINUS() != null) {
+        return -Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      }
       return Long.parseLong(ctx.INTEGER_LITERAL().getText());
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);

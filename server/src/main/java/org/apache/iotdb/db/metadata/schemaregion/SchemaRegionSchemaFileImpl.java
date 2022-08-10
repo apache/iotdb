@@ -54,6 +54,7 @@ import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -1604,6 +1605,13 @@ public class SchemaRegionSchemaFileImpl implements ISchemaRegion {
     }
 
     return deviceMNode;
+  }
+
+  @Override
+  public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
+      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned)
+      throws MetadataException {
+    throw new UnsupportedOperationException();
   }
 
   private IMNode getDeviceInTemplateIfUsingTemplate(

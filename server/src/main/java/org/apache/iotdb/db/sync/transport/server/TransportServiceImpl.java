@@ -20,19 +20,15 @@
 package org.apache.iotdb.db.sync.transport.server;
 
 import org.apache.iotdb.commons.exception.IllegalPathException;
+import org.apache.iotdb.commons.sync.SyncConstant;
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
+import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
-import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.service.transport.thrift.IdentityInfo;
 import org.apache.iotdb.service.transport.thrift.MetaInfo;
-import org.apache.iotdb.service.transport.thrift.RequestType;
-import org.apache.iotdb.service.transport.thrift.SyncRequest;
-import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.service.transport.thrift.TransportService;
 import org.apache.iotdb.service.transport.thrift.TransportStatus;
 import org.apache.iotdb.service.transport.thrift.Type;
@@ -60,12 +56,12 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.apache.iotdb.db.sync.conf.SyncConstant.DATA_CHUNK_SIZE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.CONFLICT_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.ERROR_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.REBASE_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.RETRY_CODE;
-import static org.apache.iotdb.db.sync.transport.conf.TransportConstant.SUCCESS_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.CONFLICT_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
+import static org.apache.iotdb.commons.sync.SyncConstant.ERROR_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.REBASE_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.RETRY_CODE;
+import static org.apache.iotdb.commons.sync.SyncConstant.SUCCESS_CODE;
 
 public class TransportServiceImpl implements TransportService.Iface {
   private static Logger logger = LoggerFactory.getLogger(TransportServiceImpl.class);
@@ -253,16 +249,25 @@ public class TransportServiceImpl implements TransportService.Iface {
       byte[] byteArray = new byte[length];
       buff.get(byteArray);
       try {
-        PipeData pipeData = PipeData.deserialize(byteArray);
+        PipeData pipeData = PipeData.createPipeData(byteArray);
         if (type == Type.TSFILE) {
           // Do with file
           handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
         }
-        PipeDataQueueFactory.getBufferedPipeDataQueue(SyncPathUtil.getPipeLogDirPath(identityInfo))
-            .offer(pipeData);
+        logger.info(
+            "Start load pipeData with serialize number {} and type {},value={}",
+            pipeData.getSerialNumber(),
+            pipeData.getType(),
+            pipeData);
+        pipeData.createLoader().load();
+        logger.info(
+            "Load pipeData with serialize number {} successfully.", pipeData.getSerialNumber());
       } catch (IOException | IllegalPathException e) {
         logger.error("Pipe data transport error, {}", e.getMessage());
         return new TransportStatus(RETRY_CODE, "Data digest transport error " + e.getMessage());
+      } catch (PipeDataLoadException e) {
+        logger.error("Fail to load pipeData because {}.", e.getMessage());
+        return new TransportStatus(ERROR_CODE, "Fail to load pipeData because " + e.getMessage());
       }
     } else {
       // Write buff to {file}.patch
@@ -336,11 +341,6 @@ public class TransportServiceImpl implements TransportService.Iface {
     }
   }
 
-  @Override
-  public SyncResponse heartbeat(SyncRequest syncRequest) throws TException {
-    return ReceiverService.getInstance().receiveMsg(syncRequest);
-  }
-
   private void writeRecordFile(File recordFile, long position) throws IOException {
     File tmpFile = new File(recordFile.getAbsolutePath() + ".tmp");
     FileWriter fileWriter = new FileWriter(tmpFile, false);
@@ -362,13 +362,7 @@ public class TransportServiceImpl implements TransportService.Iface {
         identityInfoCounter.compute(identityInfo, (k, v) -> v == null ? 0 : v - 1);
         if (identityInfoCounter.get(identityInfo) == 0) {
           identityInfoCounter.remove(identityInfo);
-          ReceiverService.getInstance()
-              .receiveMsg(
-                  new SyncRequest(
-                      RequestType.STOP,
-                      identityInfo.getPipeName(),
-                      identityInfo.getAddress(),
-                      identityInfo.getCreateTime()));
+          // TODO：发送端退出
         }
       }
     }
