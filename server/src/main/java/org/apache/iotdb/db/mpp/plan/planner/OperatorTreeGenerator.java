@@ -796,8 +796,61 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
     final Operator inputOperator = generateOnlyChildOperator(node, context);
     final List<TSDataType> inputDataTypes = getInputColumnTypes(node, context.getTypeProvider());
     final Map<String, List<InputLocation>> inputLocations = makeLayout(node);
+    final Expression[] projectExpressions = node.getOutputExpressions();
+    final TypeProvider typeProvider = context.getTypeProvider();
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, 1);
+
+    boolean hasNonMappableUDF = false;
+    for (Expression expression : projectExpressions) {
+      if (!expression.isMappable(typeProvider)) {
+        hasNonMappableUDF = true;
+        break;
+      }
+    }
+
+    // Use FilterAndProject Operator when project expressions are all mappable
+    if (!hasNonMappableUDF) {
+      // init project UDTFContext
+      UDTFContext projectContext = new UDTFContext(node.getZoneId());
+      projectContext.constructUdfExecutors(projectExpressions);
+
+      List<ColumnTransformer> projectOutputTransformerList = new ArrayList<>();
+      Map<Expression, ColumnTransformer> projectExpressionColumnTransformerMap = new HashMap<>();
+
+      // records LeafColumnTransformer of project expressions
+      List<LeafColumnTransformer> projectLeafColumnTransformerList = new ArrayList<>();
+
+      ColumnTransformerVisitor visitor = new ColumnTransformerVisitor();
+      ColumnTransformerVisitor.ColumnTransformerVisitorContext projectColumnTransformerContext =
+          new ColumnTransformerVisitor.ColumnTransformerVisitorContext(
+              projectContext,
+              typeProvider,
+              projectLeafColumnTransformerList,
+              inputLocations,
+              projectExpressionColumnTransformerMap,
+              ImmutableMap.of(),
+              ImmutableList.of(),
+              inputDataTypes,
+              inputLocations.size());
+
+      for (Expression expression : projectExpressions) {
+        projectOutputTransformerList.add(
+            visitor.process(expression, projectColumnTransformerContext));
+      }
+
+      return new FilterAndProjectOperator(
+          operatorContext,
+          inputOperator,
+          inputDataTypes,
+          ImmutableList.of(),
+          null,
+          ImmutableList.of(),
+          projectLeafColumnTransformerList,
+          projectOutputTransformerList,
+          false,
+          false);
+    }
 
     try {
       return new TransformOperator(
@@ -918,7 +971,8 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
             commonTransformerList,
             projectLeafColumnTransformerList,
             projectOutputTransformerList,
-            hasNonMappableUDF);
+            hasNonMappableUDF,
+            true);
 
     // Project expressions don't contain Non-Mappable UDF, TransformOperator is not needed
     if (!hasNonMappableUDF) {
