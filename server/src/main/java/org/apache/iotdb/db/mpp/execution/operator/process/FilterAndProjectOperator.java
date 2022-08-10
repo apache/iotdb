@@ -23,6 +23,7 @@ import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -189,5 +190,16 @@ public class FilterAndProjectOperator implements ProcessOperator {
   @Override
   public ListenableFuture<?> isBlocked() {
     return inputOperator.isBlocked();
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    return ProcessOperator.super.calculateMaxPeekMemory();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return ProcessOperator.super.calculateMaxReturnSize();
   }
 }

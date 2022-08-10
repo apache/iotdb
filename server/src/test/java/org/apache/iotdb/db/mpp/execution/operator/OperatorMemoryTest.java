@@ -27,6 +27,7 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
@@ -36,6 +37,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
@@ -47,6 +49,7 @@ import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
@@ -420,5 +423,51 @@ public class OperatorMemoryTest {
 
     assertEquals(2048 * 3, linearFillOperator.calculateMaxPeekMemory());
     assertEquals(1024, linearFillOperator.calculateMaxReturnSize());
+  }
+
+  @Test
+  public void deviceMergeOperatorTest() {
+    List<Operator> children = new ArrayList<>(4);
+    List<TSDataType> dataTypeList = new ArrayList<>(2);
+    dataTypeList.add(TSDataType.INT32);
+    dataTypeList.add(TSDataType.INT32);
+    List<String> devices = new ArrayList<>(4);
+    devices.add("device1");
+    devices.add("device2");
+    devices.add("device3");
+    devices.add("device4");
+    long expectedMaxReturnSize =
+        3L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    long expectedMaxPeekMemory = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    long expectedRetainedSizeAfterCallingNext = 0;
+    long childrenMaxPeekMemory = 0;
+
+    for (int i = 0; i < 4; i++) {
+      Operator child = Mockito.mock(Operator.class);
+      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(64 * 1024L);
+      expectedMaxPeekMemory += 128 * 1024L;
+      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+      expectedRetainedSizeAfterCallingNext += 128 * 1024L;
+      children.add(child);
+    }
+
+    expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory);
+
+    DeviceMergeOperator deviceMergeOperator =
+        new DeviceMergeOperator(
+            Mockito.mock(OperatorContext.class),
+            devices,
+            children,
+            dataTypeList,
+            Mockito.mock(TimeSelector.class),
+            Mockito.mock(TimeComparator.class));
+
+    assertEquals(expectedMaxPeekMemory, deviceMergeOperator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, deviceMergeOperator.calculateMaxReturnSize());
+    assertEquals(
+        expectedRetainedSizeAfterCallingNext - 64 * 1024L,
+        deviceMergeOperator.calculateRetainedSizeAfterCallingNext());
   }
 }

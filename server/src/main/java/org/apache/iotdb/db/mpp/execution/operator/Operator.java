@@ -59,7 +59,8 @@ public interface Operator extends AutoCloseable {
    * be like: long estimatedOfCurrentOperator = XXXXX; return max(estimatedOfCurrentOperator,
    * child1.calculateMaxPeekMemory(), child2.calculateMaxPeekMemory(), ....)
    *
-   * Each operator's MaxPeekMemory should also take retained size of each child operator into account.
+   * <p>Each operator's MaxPeekMemory should also take retained size of each child operator into
+   * account.
    *
    * @return estimated max memory footprint that the Operator Tree(rooted from this operator) will
    *     use while doing its own query processing
@@ -76,9 +77,7 @@ public interface Operator extends AutoCloseable {
 
   // TODO remove the default while completing all the operators
 
-  /**
-   * @return each operator's retained size after calling its next() method
-   */
+  /** @return each operator's retained size after calling its next() method */
   default long calculateRetainedSizeAfterCallingNext() {
     return 0L;
   }
