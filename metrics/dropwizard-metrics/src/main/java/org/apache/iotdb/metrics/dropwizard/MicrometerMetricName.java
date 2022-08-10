@@ -27,12 +27,12 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /** the unique identifier of a metric, include a name and some tags. */
-public class MetricName {
+public class MicrometerMetricName {
   private String name;
   private Map<String, String> tags = new LinkedHashMap<>();
   private static final String TAG_SEPARATOR = ".";
 
-  public MetricName(String name, String... tags) {
+  public MicrometerMetricName(String name, String... tags) {
     this.name = name;
     if (tags.length % 2 == 0) {
       for (int i = 0; i < tags.length; i += 2) {
@@ -42,7 +42,7 @@ public class MetricName {
   }
 
   /** Create metric name from flatString */
-  public MetricName(String flatString) {
+  public MicrometerMetricName(String flatString) {
     int firstIndex = flatString.indexOf("{");
     int lastIndex = flatString.indexOf("}");
     if (firstIndex == -1 || lastIndex == -1) {
@@ -100,7 +100,7 @@ public class MetricName {
 
   @Override
   public String toString() {
-    return "MetricName{" + "name='" + name + "'" + ", tags=" + tags + '}';
+    return "MicrometerMetricName{" + "name='" + name + "'" + ", tags=" + tags + '}';
   }
 
   public String getName() {
@@ -122,10 +122,10 @@ public class MetricName {
   @Override
   public boolean equals(Object obj) {
     // do not compare metricLevel
-    if (!(obj instanceof MetricName)) {
+    if (!(obj instanceof MicrometerMetricName)) {
       return false;
     }
-    MetricName that = (MetricName) obj;
+    MicrometerMetricName that = (MicrometerMetricName) obj;
     if (!this.name.equals(that.name)) {
       return false;
     }

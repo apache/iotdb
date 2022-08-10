@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.dropwizard.MetricName;
+import org.apache.iotdb.metrics.dropwizard.MicrometerMetricName;
 import org.apache.iotdb.metrics.utils.IoTDBMetricsUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -160,7 +160,7 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == gauge) {
       return;
     }
-    MetricName metricName = new MetricName(name);
+    MicrometerMetricName metricName = new MicrometerMetricName(name);
     Object obj = gauge.getValue();
     double value;
     if (obj instanceof Number) {
@@ -175,7 +175,7 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == counter) {
       return;
     }
-    MetricName metricName = new MetricName(name);
+    MicrometerMetricName metricName = new MicrometerMetricName(name);
     double value = counter.getCount();
     updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
   }
@@ -184,7 +184,7 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == histogram) {
       return;
     }
-    MetricName metricName = new MetricName(name);
+    MicrometerMetricName metricName = new MicrometerMetricName(name);
     writeSnapshotAndCount(
         prefixed(metricName.getName()),
         metricName.getTags(),
@@ -197,7 +197,7 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == meter) {
       return;
     }
-    MetricName metricName = new MetricName(name);
+    MicrometerMetricName metricName = new MicrometerMetricName(name);
     double value = meter.getCount();
     updateValue(prefixed(metricName.getName()), metricName.getTags(), value);
   }
@@ -206,7 +206,7 @@ public class IoTDBReporter extends ScheduledReporter {
     if (null == timer) {
       return;
     }
-    MetricName metricName = new MetricName(name);
+    MicrometerMetricName metricName = new MicrometerMetricName(name);
     writeSnapshotAndCount(
         prefixed(metricName.getName()),
         metricName.getTags(),

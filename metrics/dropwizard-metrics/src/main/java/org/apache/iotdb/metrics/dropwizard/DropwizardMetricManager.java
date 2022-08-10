@@ -59,7 +59,7 @@ import java.util.function.ToLongFunction;
 public class DropwizardMetricManager implements MetricManager {
   private static final Logger logger = LoggerFactory.getLogger(DropwizardMetricManager.class);
 
-  Map<MetricName, IMetric> currentMeters;
+  Map<MicrometerMetricName, IMetric> currentMeters;
   /** whether is able to monitor */
   boolean isEnable;
 
@@ -82,7 +82,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingCounter;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
@@ -98,7 +98,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -118,7 +118,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -139,7 +139,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingRate;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString())));
@@ -154,7 +154,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return DoNothingMetricManager.doNothingHistogram;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -172,7 +172,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable()) {
       return DoNothingMetricManager.doNothingTimer;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -190,7 +190,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
@@ -206,7 +206,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -228,7 +228,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString())));
@@ -244,7 +244,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -264,7 +264,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable(metricLevel)) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     IMetric m =
         currentMeters.computeIfAbsent(
             name,
@@ -284,7 +284,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable()) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     metricRegistry.remove(name.toFlatString());
     currentMeters.remove(name);
   }
@@ -294,7 +294,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable()) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     metricRegistry.remove(name.toFlatString());
     currentMeters.remove(name);
   }
@@ -304,7 +304,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable()) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     metricRegistry.remove(name.toFlatString());
     currentMeters.remove(name);
   }
@@ -314,7 +314,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable()) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     metricRegistry.remove(name.toFlatString());
     currentMeters.remove(name);
   }
@@ -324,7 +324,7 @@ public class DropwizardMetricManager implements MetricManager {
     if (!isEnable()) {
       return;
     }
-    MetricName name = new MetricName(metric, tags);
+    MicrometerMetricName name = new MicrometerMetricName(metric, tags);
     metricRegistry.remove(name.toFlatString());
     currentMeters.remove(name);
   }
@@ -342,7 +342,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public Map<String[], Counter> getAllCounters() {
     Map<String[], Counter> counterMap = new HashMap<>();
-    for (Map.Entry<MetricName, IMetric> entry : currentMeters.entrySet()) {
+    for (Map.Entry<MicrometerMetricName, IMetric> entry : currentMeters.entrySet()) {
       if (entry.getValue() instanceof Counter) {
         counterMap.put(entry.getKey().toStringArray(), (Counter) entry.getValue());
       }
@@ -353,7 +353,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public Map<String[], Gauge> getAllGauges() {
     Map<String[], Gauge> gaugeMap = new HashMap<>();
-    for (Map.Entry<MetricName, IMetric> entry : currentMeters.entrySet()) {
+    for (Map.Entry<MicrometerMetricName, IMetric> entry : currentMeters.entrySet()) {
       if (entry.getValue() instanceof Gauge) {
         gaugeMap.put(entry.getKey().toStringArray(), (Gauge) entry.getValue());
       }
@@ -364,7 +364,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public Map<String[], Rate> getAllRates() {
     Map<String[], Rate> rateMap = new HashMap<>();
-    for (Map.Entry<MetricName, IMetric> entry : currentMeters.entrySet()) {
+    for (Map.Entry<MicrometerMetricName, IMetric> entry : currentMeters.entrySet()) {
       if (entry.getValue() instanceof Rate) {
         rateMap.put(entry.getKey().toStringArray(), (Rate) entry.getValue());
       }
@@ -375,7 +375,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public Map<String[], Histogram> getAllHistograms() {
     Map<String[], Histogram> histogramMap = new HashMap<>();
-    for (Map.Entry<MetricName, IMetric> entry : currentMeters.entrySet()) {
+    for (Map.Entry<MicrometerMetricName, IMetric> entry : currentMeters.entrySet()) {
       if (entry.getValue() instanceof Histogram) {
         histogramMap.put(entry.getKey().toStringArray(), (Histogram) entry.getValue());
       }
@@ -386,7 +386,7 @@ public class DropwizardMetricManager implements MetricManager {
   @Override
   public Map<String[], Timer> getAllTimers() {
     Map<String[], Timer> timerMap = new HashMap<>();
-    for (Map.Entry<MetricName, IMetric> entry : currentMeters.entrySet()) {
+    for (Map.Entry<MicrometerMetricName, IMetric> entry : currentMeters.entrySet()) {
       if (entry.getValue() instanceof Timer) {
         timerMap.put(entry.getKey().toStringArray(), (Timer) entry.getValue());
       }

@@ -22,10 +22,10 @@ package org.apache.iotdb.metrics.micrometer;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tags;
 
-public class MetricName {
+public class MicrometerMetricName {
   private Meter.Id id;
 
-  public MetricName(String name, Meter.Type type, String... tags) {
+  public MicrometerMetricName(String name, Meter.Type type, String... tags) {
     this.id = new Meter.Id(name, Tags.of(tags), null, null, type);
   }
 
@@ -41,10 +41,10 @@ public class MetricName {
   @Override
   public boolean equals(Object obj) {
     // do not compare metricLevel
-    if (!(obj instanceof MetricName)) {
+    if (!(obj instanceof MicrometerMetricName)) {
       return false;
     }
-    return id.equals(((MetricName) obj).getId());
+    return id.equals(((MicrometerMetricName) obj).getId());
   }
 
   @Override
