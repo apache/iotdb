@@ -23,12 +23,14 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 /**
  * RawDataAggregationOperator is used to process raw data tsBlock input calculating using value
@@ -79,5 +81,18 @@ public class RawDataAggregationOperator extends SingleInputAggregationOperator {
         calculateAggregationFromRawData(inputTsBlock, aggregators, curTimeRange, ascending);
     inputTsBlock = calcResult.getRight();
     return calcResult.getLeft();
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return calculateMaxReturnSize() + child.calculateMaxReturnSize();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    // time + all value columns
+    return (1L + inputTsBlock.getValueColumnCount())
+            * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
+        + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 }
