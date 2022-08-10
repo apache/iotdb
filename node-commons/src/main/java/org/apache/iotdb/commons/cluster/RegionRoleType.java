@@ -20,9 +20,9 @@ package org.apache.iotdb.commons.cluster;
 
 /** Region Role for showing regions */
 public enum RegionRoleType {
-  // Node registered
+  // Region role type : Leader
   Leader("Leader"),
-  // Node online ,right now Online is Running
+  // Region role type : Follower
   Follower("Follower");
 
   private final String status;
