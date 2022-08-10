@@ -23,7 +23,6 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.mpp.common.schematree.node.SchemaMeasurementNode;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.ArrayList;
@@ -33,16 +32,20 @@ import java.util.stream.Collectors;
 
 public class DeviceSchemaInfo {
 
-  private final PartialPath devicePath;
-  private final boolean isAligned;
-  private final List<SchemaMeasurementNode> measurementNodeList;
+  private PartialPath devicePath;
+  private boolean isAligned;
+  private List<MeasurementSchemaInfo> measurementSchemaInfoList;
 
   public DeviceSchemaInfo(
-      PartialPath devicePath, boolean isAligned, List<SchemaMeasurementNode> measurementNodeList) {
+      PartialPath devicePath,
+      boolean isAligned,
+      List<MeasurementSchemaInfo> measurementSchemaInfoList) {
     this.devicePath = devicePath;
     this.isAligned = isAligned;
-    this.measurementNodeList = measurementNodeList;
+    this.measurementSchemaInfoList = measurementSchemaInfoList;
   }
+
+  private DeviceSchemaInfo() {}
 
   public PartialPath getDevicePath() {
     return devicePath;
@@ -52,26 +55,53 @@ public class DeviceSchemaInfo {
     return isAligned;
   }
 
+  public DeviceSchemaInfo getSubDeviceSchemaInfo(List<String> measurements) {
+    DeviceSchemaInfo result = new DeviceSchemaInfo();
+    result.devicePath = devicePath;
+    result.isAligned = isAligned;
+    List<MeasurementSchemaInfo> desiredMeasurementSchemaInfoList =
+        new ArrayList<>(measurements.size());
+    int index;
+    int count = 0;
+    for (MeasurementSchemaInfo measurementSchemaInfo : measurementSchemaInfoList) {
+      index = measurements.indexOf(measurementSchemaInfo.getName());
+      if (index == -1) {
+        index = measurements.indexOf(measurementSchemaInfo.getAlias());
+      }
+
+      if (index == -1) {
+        continue;
+      }
+      desiredMeasurementSchemaInfoList.add(index, measurementSchemaInfo);
+      count++;
+      if (count == measurements.size()) {
+        break;
+      }
+    }
+    result.measurementSchemaInfoList = desiredMeasurementSchemaInfoList;
+    return result;
+  }
+
   public List<MeasurementSchema> getMeasurementSchemaList() {
-    return measurementNodeList.stream()
+    return measurementSchemaInfoList.stream()
         .map(measurementNode -> measurementNode == null ? null : measurementNode.getSchema())
         .collect(Collectors.toList());
   }
 
   public List<MeasurementPath> getMeasurements(Set<String> measurements) {
     if (measurements.contains(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-      return measurementNodeList.stream()
+      return measurementSchemaInfoList.stream()
           .map(
-              measurementNode -> {
-                if (measurementNode == null) {
+              measurementInfo -> {
+                if (measurementInfo == null) {
                   return null;
                 }
                 MeasurementPath measurementPath =
                     new MeasurementPath(
-                        devicePath.concatNode(measurementNode.getName()),
-                        measurementNode.getSchema());
-                if (measurementNode.getAlias() != null) {
-                  measurementPath.setMeasurementAlias(measurementNode.getAlias());
+                        devicePath.concatNode(measurementInfo.getName()),
+                        measurementInfo.getSchema());
+                if (measurementInfo.getAlias() != null) {
+                  measurementPath.setMeasurementAlias(measurementInfo.getAlias());
                 }
                 measurementPath.setUnderAlignedEntity(isAligned);
                 return measurementPath;
@@ -79,16 +109,17 @@ public class DeviceSchemaInfo {
           .collect(Collectors.toList());
     }
     List<MeasurementPath> measurementPaths = new ArrayList<>();
-    for (SchemaMeasurementNode measurementNode : measurementNodeList) {
+    for (MeasurementSchemaInfo measurementSchemaInfo : measurementSchemaInfoList) {
       MeasurementPath measurementPath =
           new MeasurementPath(
-              devicePath.concatNode(measurementNode.getName()), measurementNode.getSchema());
+              devicePath.concatNode(measurementSchemaInfo.getName()),
+              measurementSchemaInfo.getSchema());
       measurementPath.setUnderAlignedEntity(isAligned);
-      if (measurements.contains(measurementNode.getName())) {
+      if (measurements.contains(measurementSchemaInfo.getName())) {
         measurementPaths.add(measurementPath);
-      } else if (measurementNode.getAlias() != null
-          && measurements.contains(measurementNode.getAlias())) {
-        measurementPath.setMeasurementAlias(measurementNode.getAlias());
+      } else if (measurementSchemaInfo.getAlias() != null
+          && measurements.contains(measurementSchemaInfo.getAlias())) {
+        measurementPath.setMeasurementAlias(measurementSchemaInfo.getAlias());
         measurementPaths.add(measurementPath);
       }
     }
@@ -96,16 +127,17 @@ public class DeviceSchemaInfo {
   }
 
   public MeasurementPath getPathByMeasurement(String measurementName) {
-    for (SchemaMeasurementNode measurementNode : measurementNodeList) {
+    for (MeasurementSchemaInfo measurementSchemaInfo : measurementSchemaInfoList) {
       MeasurementPath measurementPath =
           new MeasurementPath(
-              devicePath.concatNode(measurementNode.getName()), measurementNode.getSchema());
+              devicePath.concatNode(measurementSchemaInfo.getName()),
+              measurementSchemaInfo.getSchema());
       measurementPath.setUnderAlignedEntity(isAligned);
-      if (measurementNode.getName().equals(measurementName)) {
+      if (measurementSchemaInfo.getName().equals(measurementName)) {
         return measurementPath;
-      } else if (measurementNode.getAlias() != null
-          && measurementNode.getAlias().equals(measurementName)) {
-        measurementPath.setMeasurementAlias(measurementNode.getAlias());
+      } else if (measurementSchemaInfo.getAlias() != null
+          && measurementSchemaInfo.getAlias().equals(measurementName)) {
+        measurementPath.setMeasurementAlias(measurementSchemaInfo.getAlias());
         return measurementPath;
       }
     }
