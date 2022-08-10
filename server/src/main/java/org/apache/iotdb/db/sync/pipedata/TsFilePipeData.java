@@ -104,6 +104,14 @@ public class TsFilePipeData extends PipeData {
     return parentDirPath + File.separator + tsFileName;
   }
 
+  public String getResourceFilePath() {
+    return getTsFilePath() + TsFileResource.RESOURCE_SUFFIX;
+  }
+
+  public String getModsFilePath() {
+    return getTsFilePath() + ModificationFile.FILE_SUFFIX;
+  }
+
   public String getStorageGroupName() {
     return storageGroupName;
   }
@@ -138,8 +146,8 @@ public class TsFilePipeData extends PipeData {
 
   public List<File> getTsFiles(boolean shouldWaitForTsFileClose) throws FileNotFoundException {
     File tsFile = new File(getTsFilePath()).getAbsoluteFile();
-    File resource = new File(tsFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX);
-    File mods = new File(tsFile.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+    File resource = new File(getResourceFilePath());
+    File mods = new File(getModsFilePath());
 
     List<File> files = new ArrayList<>();
     if (!tsFile.exists()) {
