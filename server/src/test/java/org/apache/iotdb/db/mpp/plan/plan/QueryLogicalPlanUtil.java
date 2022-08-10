@@ -30,16 +30,15 @@ import org.apache.iotdb.db.mpp.plan.expression.binary.GreaterThanExpression;
 import org.apache.iotdb.db.mpp.plan.expression.binary.LogicAndExpression;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
-import org.apache.iotdb.db.mpp.plan.expression.leaf.TimestampOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.AggregationNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.DeviceViewNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.FilterNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.GroupByLevelNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LastQueryMergeNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.LimitNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.OffsetNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.TimeJoinNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.process.last.LastQueryNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedLastQueryScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesAggregationScanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.source.AlignedSeriesScanNode;
@@ -115,16 +114,13 @@ public class QueryLogicalPlanUtil {
     List<PlanNode> sourceNodeList = new ArrayList<>();
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3")));
-    sourceNodeList.add(
-        new LastQueryScanNode(
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s1")));
     sourceNodeList.add(
         new LastQueryScanNode(
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s2")));
     sourceNodeList.add(
         new LastQueryScanNode(
-            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4")));
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d1.s3")));
     sourceNodeList.add(
         new AlignedLastQueryScanNode(
             queryId.genPlanNodeId(),
@@ -139,9 +135,12 @@ public class QueryLogicalPlanUtil {
     sourceNodeList.add(
         new LastQueryScanNode(
             queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s2")));
+    sourceNodeList.add(
+        new LastQueryScanNode(
+            queryId.genPlanNodeId(), (MeasurementPath) schemaMap.get("root.sg.d2.s4")));
 
-    LastQueryMergeNode lastQueryMergeNode =
-        new LastQueryMergeNode(
+    LastQueryNode lastQueryNode =
+        new LastQueryNode(
             queryId.genPlanNodeId(),
             sourceNodeList,
             TimeFilter.gt(100),
@@ -149,7 +148,7 @@ public class QueryLogicalPlanUtil {
                 Collections.singletonList(new SortItem(SortKey.TIMESERIES, Ordering.ASC))));
 
     querySQLs.add(sql);
-    sqlToPlanMap.put(sql, lastQueryMergeNode);
+    sqlToPlanMap.put(sql, lastQueryNode);
   }
 
   /* Simple Query */
@@ -214,9 +213,6 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
 
-    GreaterThanExpression timeFilter =
-        new GreaterThanExpression(
-            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
@@ -225,8 +221,9 @@ public class QueryLogicalPlanUtil {
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
-    LogicAndExpression predicate =
-        new LogicAndExpression(timeFilter, new LogicAndExpression(valueFilter1, valueFilter2));
+
+    // Duplicate timeFilter has been removed, here only valueFilters are kept
+    LogicAndExpression predicate = new LogicAndExpression(valueFilter1, valueFilter2);
 
     FilterNode filterNode =
         new FilterNode(
@@ -274,14 +271,10 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode1 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
 
-    GreaterThanExpression timeFilter =
-        new GreaterThanExpression(
-            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
-    GreaterThanExpression valueFilter1 =
+    GreaterThanExpression predicate1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s1")),
             new ConstantOperand(TSDataType.INT64, "10"));
-    LogicAndExpression predicate1 = new LogicAndExpression(timeFilter, valueFilter1);
 
     FilterNode filterNode1 =
         new FilterNode(
@@ -319,11 +312,10 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode2 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
 
-    GreaterThanExpression valueFilter2 =
+    GreaterThanExpression predicate2 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d2.s1")),
             new ConstantOperand(TSDataType.INT32, "10"));
-    LogicAndExpression predicate2 = new LogicAndExpression(timeFilter, valueFilter2);
 
     FilterNode filterNode2 =
         new FilterNode(
@@ -775,9 +767,6 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList);
 
-    GreaterThanExpression timeFilter =
-        new GreaterThanExpression(
-            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
     GreaterThanExpression valueFilter1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
@@ -786,8 +775,7 @@ public class QueryLogicalPlanUtil {
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
-    LogicAndExpression predicate =
-        new LogicAndExpression(timeFilter, new LogicAndExpression(valueFilter1, valueFilter2));
+    LogicAndExpression predicate = new LogicAndExpression(valueFilter1, valueFilter2);
     FilterNode filterNode =
         new FilterNode(
             queryId.genPlanNodeId(),
@@ -903,14 +891,10 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode1 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList1);
 
-    GreaterThanExpression timeFilter =
-        new GreaterThanExpression(
-            new TimestampOperand(), new ConstantOperand(TSDataType.INT64, "100"));
-    GreaterThanExpression valueFilter1 =
+    GreaterThanExpression predicate1 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d1.s2")),
             new ConstantOperand(TSDataType.INT64, "10"));
-    LogicAndExpression predicate1 = new LogicAndExpression(timeFilter, valueFilter1);
 
     FilterNode filterNode1 =
         new FilterNode(
@@ -965,11 +949,10 @@ public class QueryLogicalPlanUtil {
     TimeJoinNode timeJoinNode2 =
         new TimeJoinNode(queryId.genPlanNodeId(), Ordering.DESC, sourceNodeList2);
 
-    GreaterThanExpression valueFilter2 =
+    GreaterThanExpression predicate2 =
         new GreaterThanExpression(
             new TimeSeriesOperand(schemaMap.get("root.sg.d2.s2")),
             new ConstantOperand(TSDataType.INT32, "10"));
-    LogicAndExpression predicate2 = new LogicAndExpression(timeFilter, valueFilter2);
 
     FilterNode filterNode2 =
         new FilterNode(

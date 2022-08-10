@@ -19,10 +19,9 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
-import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
-import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -43,8 +42,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected boolean isAlign;
 
   protected String deviceId;
-  private final long targetChunkSize =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+
   private final boolean enableMetrics =
       MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
@@ -69,42 +67,12 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   public abstract void write(long timestamp, Object value, int subTaskId) throws IOException;
 
-  public abstract void write(long[] timestamps, Object values);
+  public abstract void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException;
 
   public abstract void endFile() throws IOException;
 
   public abstract void close() throws IOException;
-
-  protected void flushChunkToFileWriter(TsFileIOWriter targetWriter, int subTaskId)
-      throws IOException {
-    writeRateLimit(chunkWriters[subTaskId].estimateMaxSeriesMemSize());
-    synchronized (targetWriter) {
-      chunkWriters[subTaskId].writeToFileWriter(targetWriter);
-    }
-  }
-
-  protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter, int subTaskId)
-      throws IOException {
-    if (measurementPointCountArray[subTaskId] % 10 == 0 && checkChunkSize(subTaskId)) {
-      flushChunkToFileWriter(fileWriter, subTaskId);
-      CompactionMetricsRecorder.recordWriteInfo(
-          this instanceof CrossSpaceCompactionWriter
-              ? CompactionType.CROSS_COMPACTION
-              : CompactionType.INNER_UNSEQ_COMPACTION,
-          ProcessChunkType.DESERIALIZE_CHUNK,
-          this.isAlign,
-          chunkWriters[subTaskId].estimateMaxSeriesMemSize());
-    }
-  }
-
-  protected boolean checkChunkSize(int subTaskId) {
-    if (chunkWriters[subTaskId] instanceof AlignedChunkWriterImpl) {
-      return ((AlignedChunkWriterImpl) chunkWriters[subTaskId])
-          .checkIsChunkSizeOverThreshold(targetChunkSize);
-    } else {
-      return chunkWriters[subTaskId].estimateMaxSeriesMemSize() > targetChunkSize;
-    }
-  }
 
   public abstract List<TsFileIOWriter> getFileIOWriter();
 }

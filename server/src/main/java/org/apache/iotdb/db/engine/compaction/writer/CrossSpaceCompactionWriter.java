@@ -21,6 +21,9 @@ package org.apache.iotdb.db.engine.compaction.writer;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -91,7 +94,8 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
-    flushChunkToFileWriter(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
+    CompactionWriterUtils.flushChunkToFileWriter(
+        fileWriterList.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId]);
     seqFileIndexArray[subTaskId] = 0;
   }
 
@@ -99,14 +103,27 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
     CompactionWriterUtils.writeDataPoint(timestamp, value, isAlign, chunkWriters[subTaskId]);
-    checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndexArray[subTaskId]), subTaskId);
+    measurementPointCountArray[subTaskId] += 1;
+    if (measurementPointCountArray[subTaskId] % 10 == 0) {
+      CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
+          fileWriterList.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId], true);
+    }
     isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
     isEmptyFile[seqFileIndexArray[subTaskId]] = false;
-    measurementPointCountArray[subTaskId] += 1;
   }
 
   @Override
-  public void write(long[] timestamps, Object values) {}
+  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException {
+    // todo control time range of target tsfile
+    checkTimeAndMayFlushChunkToCurrentFile(timestamps.getStartTime(), subTaskId);
+    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
+    chunkWriter.write(timestamps, columns, batchSize);
+    CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
+        fileWriterList.get(seqFileIndexArray[subTaskId]), chunkWriter, true);
+    isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
+    isEmptyFile[seqFileIndexArray[subTaskId]] = false;
+  }
 
   @Override
   public void endFile() throws IOException {
@@ -141,7 +158,8 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
     while (timestamp > currentDeviceEndTime[fileIndex]) {
       if (fileIndex != seqTsFileResources.size() - 1) {
-        flushChunkToFileWriter(fileWriterList.get(fileIndex), subTaskId);
+        CompactionWriterUtils.flushChunkToFileWriter(
+            fileWriterList.get(fileIndex), chunkWriters[subTaskId]);
         seqFileIndexArray[subTaskId] = ++fileIndex;
       } else {
         // If the seq file is deleted for various reasons, the following two situations may occur

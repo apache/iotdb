@@ -95,7 +95,11 @@ public class SessionConnection {
     this.endPoint = endPoint;
     endPointList.add(endPoint);
     this.zoneId = zoneId == null ? ZoneId.systemDefault() : zoneId;
-    init(endPoint);
+    try {
+      init(endPoint);
+    } catch (IoTDBConnectionException e) {
+      throw new IoTDBConnectionException(logForReconnectionFailure());
+    }
   }
 
   public SessionConnection(Session session, ZoneId zoneId) throws IoTDBConnectionException {
@@ -168,7 +172,7 @@ public class SessionConnection {
       } catch (IoTDBConnectionException e) {
         if (!reconnect()) {
           logger.error("Cluster has no nodes to connect");
-          throw new IoTDBConnectionException(e);
+          throw new IoTDBConnectionException(logForReconnectionFailure());
         }
       }
       break;

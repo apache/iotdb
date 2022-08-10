@@ -20,6 +20,7 @@ package org.apache.iotdb.confignode.service;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.exception.StartupException;
 import org.apache.iotdb.commons.service.JMXService;
@@ -35,7 +36,6 @@ import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.conf.SystemPropertiesUtils;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -58,6 +58,7 @@ public class ConfigNode implements ConfigNodeMBean {
           "%s:%s=%s",
           ConfigNodeConstant.CONFIGNODE_PACKAGE, ConfigNodeConstant.JMX_TYPE, "ConfigNode");
 
+  private static final int scheduleWaitingRetryNum = 20;
   private final RegisterManager registerManager = new RegisterManager();
 
   private ConfigManager configManager;
@@ -74,12 +75,11 @@ public class ConfigNode implements ConfigNodeMBean {
     LOGGER.info("Activating {}...", ConfigNodeConstant.GLOBAL_NAME);
 
     try {
-      // Init ConfigManager
-      initConfigManager();
       // Set up internal services
       setUpInternalServices();
-      // Add some Metrics for configManager
-      configManager.addMetrics();
+      // Init ConfigManager
+      initConfigManager();
+
       /* Restart */
       if (SystemPropertiesUtils.isRestarted()) {
         setUpRPCService();
@@ -119,6 +119,27 @@ public class ConfigNode implements ConfigNodeMBean {
           "{} has registered successfully. Waiting for the leader's scheduling to join the cluster.",
           ConfigNodeConstant.GLOBAL_NAME);
 
+      boolean isJoinedCluster = false;
+      for (int retry = 0; retry < scheduleWaitingRetryNum; retry++) {
+        if (configManager.getConsensusManager().getConsensusImpl().getAllConsensusGroupIds().size()
+            > 0) {
+          isJoinedCluster = true;
+          break;
+        }
+
+        try {
+          TimeUnit.MILLISECONDS.sleep(1000);
+        } catch (InterruptedException e) {
+          LOGGER.warn("Waiting leader's scheduling is interrupted.");
+        }
+      }
+
+      if (!isJoinedCluster) {
+        LOGGER.error(
+            "The current ConfigNode can't joined the cluster because leader's scheduling failed. The possible cause is that the ip:port configuration is incorrect.");
+        stop();
+      }
+
     } catch (StartupException | IOException e) {
       LOGGER.error("Meet error while starting up.", e);
       try {
@@ -139,8 +160,9 @@ public class ConfigNode implements ConfigNodeMBean {
       } catch (IOException e2) {
         LOGGER.error("Meet error when stop ConfigNode!", e);
       }
-      System.exit(-1);
     }
+    // Add some Metrics for configManager
+    configManager.addMetrics();
     LOGGER.info("Successfully initialize ConfigManager.");
   }
 
@@ -163,7 +185,7 @@ public class ConfigNode implements ConfigNodeMBean {
   }
 
   /** Register Non-seed ConfigNode when first startup */
-  private void registerConfigNode() throws StartupException {
+  private void registerConfigNode() throws StartupException, IOException {
     TConfigNodeRegisterReq req =
         new TConfigNodeRegisterReq(
             new TConfigNodeLocation(
@@ -183,20 +205,19 @@ public class ConfigNode implements ConfigNodeMBean {
             conf.getReadConsistencyLevel());
 
     TEndPoint targetConfigNode = conf.getTargetConfigNode();
-    while (true) {
-      TConfigNodeRegisterResp resp =
-          (TConfigNodeRegisterResp)
+    for (int retry = 0; retry < 3; retry++) {
+      TSStatus status =
+          (TSStatus)
               SyncConfigNodeClientPool.getInstance()
                   .sendSyncRequestToConfigNodeWithRetry(
                       targetConfigNode, req, ConfigNodeRequestType.REGISTER_CONFIG_NODE);
-      if (resp.getStatus().getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        conf.setPartitionRegionId(resp.getPartitionRegionId().getId());
-        break;
-      } else if (resp.getStatus().getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
-        targetConfigNode = resp.getStatus().getRedirectNode();
+      if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        return;
+      } else if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+        targetConfigNode = status.getRedirectNode();
         LOGGER.info("ConfigNode need redirect to  {}.", targetConfigNode);
-      } else if (resp.getStatus().getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
-        LOGGER.error("Configuration may not be consistent, {}", req);
+      } else if (status.getCode() == TSStatusCode.ERROR_GLOBAL_CONFIG.getStatusCode()) {
+        LOGGER.error(status.getMessage());
         throw new StartupException("Configuration are not consistent!");
       }
 
@@ -206,6 +227,10 @@ public class ConfigNode implements ConfigNodeMBean {
         throw new StartupException("Register ConfigNode failed!");
       }
     }
+
+    LOGGER.error(
+        "The current ConfigNode can't send register request to the Seed-ConfigNode after all retries!");
+    stop();
   }
 
   private void setUpRPCService() throws StartupException {
@@ -225,6 +250,7 @@ public class ConfigNode implements ConfigNodeMBean {
       configManager.close();
     }
     LOGGER.info("{} is deactivated.", ConfigNodeConstant.GLOBAL_NAME);
+    System.exit(-1);
   }
 
   private static class ConfigNodeHolder {

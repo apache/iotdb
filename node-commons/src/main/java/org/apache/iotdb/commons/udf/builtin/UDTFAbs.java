@@ -73,6 +73,9 @@ public class UDTFAbs extends UDTFMath {
 
   @Override
   public Object transform(Row row) throws IOException {
+    if (row.isNull(0)) {
+      return null;
+    }
     switch (dataType) {
       case INT32:
         return Math.abs(row.getInt(0));

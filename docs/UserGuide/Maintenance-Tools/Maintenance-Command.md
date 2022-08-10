@@ -22,7 +22,7 @@
 # Maintenance Command
 ## FLUSH
 
-Persist all the data points in the memory table of the storage group to the disk, and seal the data file.
+Persist all the data points in the memory table of the storage group to the disk, and seal the data file.In cluster mode, we provide commands to persist the specified storage group cache of a single node and persist the specified storage group cache of the cluster.
 
 Note: This command does not need to be invoked manually by the client. IoTDB has WAL to ensure data security
 and IoTDB will flush when appropriate.
@@ -30,8 +30,11 @@ Frequently call flush can result in small data files that degrade query performa
 
 ```sql
 IoTDB> FLUSH 
+IoTDB> FLUSH ON LOCAL
+IoTDB> FLUSH ON CLUSTER
 IoTDB> FLUSH root.ln
-IoTDB> FLUSH root.sg1,root.sg2
+IoTDB> FLUSH root.sg1,root.sg2 ON LOCAL
+IoTDB> FLUSH root.sg1,root.sg2 ON CLUSTER
 ```
 
 ## MERGE
@@ -45,13 +48,22 @@ Execute Level Compaction and unsequence Compaction task. Currently IoTDB support
 IoTDB> MERGE
 IoTDB> FULL MERGE
 ```
+At the same time, manually trigger the compaction process of data files are supported for individual nodes or the entire cluster in cluster mode:
+```sql
+IoTDB> MERGE ON LOCAL
+IoTDB> MERGE ON CLUSTER
+IoTDB> FULL MERGE ON LOCAL
+IoTDB> FULL MERGE ON CLUSTER
+```
 
 ## CLEAR CACHE
 
-Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint.
+Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint. In cluster mode, we provide commands to clear a single node cache and clear the cluster cache.
 
 ```sql
 IoTDB> CLEAR CACHE
+IoTDB> CLEAR CACHE ON LOCAL
+IoTDB> CLEAR CACHE ON CLUSTER
 ```
 
 
@@ -309,6 +321,44 @@ IoTDB> show datanodes
 |     4|Unknown|127.0.0.1|6669|            0|              0|
 |     5|Running|127.0.0.1|6671|            0|              0|
 +------+-------+---------+----+-------------+---------------+
+Total line number = 3
+It costs 0.009s
+```
+
+### Show all ConfigNode information
+
+Currently, IoTDB supports ConfigNode query using the following SQL：
+
+```
+SHOW CONFIGNODES
+```
+
+Eg :
+
+```
+IoTDB> show confignodes
++------+-------+-------+-----+
+|NodeID| Status|   Host| Port|
++------+-------+-------+-----+
+|     0|Running|0.0.0.0|22277|
+|     1|Running|0.0.0.0|22279|
+|     2|Running|0.0.0.0|22281|
++------+-------+-------+-----+
+Total line number = 3
+It costs 0.030s
+```
+
+After a ConfigNode is stopped, its status will change, as shown below:
+
+```
+IoTDB> show confignodes
++------+-------+-------+-----+
+|NodeID| Status|   Host| Port|
++------+-------+-------+-----+
+|     0|Running|0.0.0.0|22277|
+|     1|Running|0.0.0.0|22279|
+|     2|Unknown|0.0.0.0|22281|
++------+-------+-------+-----+
 Total line number = 3
 It costs 0.009s
 ```

@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
@@ -91,5 +92,15 @@ public class MicrometerMetricManagerTest {
     list = null;
     System.gc();
     assertEquals(0L, autoGauge.value());
+  }
+
+  @Test
+  public void removeGauge() {
+    Gauge gauge1 =
+        metricManager.getOrCreateGauge("gauge_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
+    metricManager.removeGauge("gauge_remove", "tag1", "tag2");
+    Gauge gauge2 =
+        metricManager.getOrCreateGauge("gauge_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
+    assertNotEquals(gauge1, gauge2);
   }
 }

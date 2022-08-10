@@ -26,13 +26,15 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
+import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
+import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.execution.config.CountStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -223,10 +225,36 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
+  public SettableFuture<ConfigTaskResult> merge(TMergeReq mergeReq) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
+    TSStatus tsStatus = localConfigNode.executeMergeOperation();
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
   public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
     LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
     TSStatus tsStatus = localConfigNode.executeFlushOperation(tFlushReq);
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> clearCache(TClearCacheReq tclearCacheReq) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
+    TSStatus tsStatus = localConfigNode.executeClearCacheOperation();
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
@@ -254,11 +282,15 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       Map<PartialPath, Long> allStorageGroupToTTL =
           LocalConfigNode.getInstance().getStorageGroupsTTL();
-      for (PartialPath storageGroupPath : storageGroupPaths) {
-        if (showTTLStatement.isAll()) {
-          storageGroupToTTL.put(
-              storageGroupPath.getFullPath(), allStorageGroupToTTL.get(storageGroupPath));
-        } else {
+      if (showTTLStatement.isAll()) {
+        allStorageGroupToTTL
+            .entrySet()
+            .forEach(
+                (entry) -> {
+                  storageGroupToTTL.put(entry.getKey().getFullPath(), entry.getValue());
+                });
+      } else {
+        for (PartialPath storageGroupPath : storageGroupPaths) {
           List<PartialPath> matchedStorageGroupPaths =
               LocalConfigNode.getInstance()
                   .getMatchedStorageGroups(storageGroupPath, showTTLStatement.isPrefixPath());
@@ -297,6 +329,17 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
             RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR,
                 "Executing show datanodes in standalone mode is not supported")));
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> showConfigNodes() {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    future.setException(
+        new StatementExecutionException(
+            RpcUtils.getStatus(
+                TSStatusCode.EXECUTE_STATEMENT_ERROR,
+                "Executing show confignodes in standalone mode is not supported")));
     return future;
   }
 

@@ -23,9 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.client.ClientPoolFactory;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.client.ConfigNodeClientPoolFactory;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.mpp.rpc.thrift.TAddConsensusGroup;
 import org.apache.iotdb.mpp.rpc.thrift.TDisableDataNodeReq;
@@ -33,6 +33,7 @@ import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
+import org.apache.iotdb.mpp.rpc.thrift.TUpdateTemplateReq;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 
@@ -61,7 +62,7 @@ public class SyncDataNodeClientPool {
     clientManager =
         new IClientManager.Factory<TEndPoint, SyncDataNodeInternalServiceClient>()
             .createClientManager(
-                new ConfigNodeClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
+                new ClientPoolFactory.SyncDataNodeInternalServiceClientPoolFactory());
   }
 
   public TSStatus sendSyncRequestToDataNodeWithRetry(
@@ -84,6 +85,8 @@ public class SyncDataNodeClientPool {
             return client.disableDataNode((TDisableDataNodeReq) req);
           case STOP_DATA_NODE:
             return client.stopDataNode();
+          case UPDATE_TEMPLATE:
+            return client.updateTemplate((TUpdateTemplateReq) req);
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);

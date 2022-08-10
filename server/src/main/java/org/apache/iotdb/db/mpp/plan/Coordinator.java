@@ -122,21 +122,26 @@ public class Coordinator {
       if (sql != null && sql.length() > 0) {
         LOGGER.info("start executing sql: {}", sql);
       }
+      MPPQueryContext queryContext =
+          new MPPQueryContext(
+              sql,
+              globalQueryId,
+              session,
+              DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
+              DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT);
       IQueryExecution execution =
           createQueryExecution(
               statement,
-              new MPPQueryContext(
-                  sql,
-                  globalQueryId,
-                  session,
-                  DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
-                  DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
+              queryContext,
               partitionFetcher,
               schemaFetcher,
-              timeOut,
+              timeOut > 0 ? timeOut : config.getQueryTimeoutThreshold(),
               startTime);
       if (execution.isQuery()) {
         queryExecutionMap.put(queryId, execution);
+      } else {
+        // we won't limit write operation's execution time
+        queryContext.setTimeOut(Long.MAX_VALUE);
       }
       execution.start();
 
@@ -152,32 +157,8 @@ public class Coordinator {
       String sql,
       IPartitionFetcher partitionFetcher,
       ISchemaFetcher schemaFetcher) {
-    long startTime = System.currentTimeMillis();
-    QueryId globalQueryId = queryIdGenerator.createNextQueryId();
-    try (SetThreadName queryName = new SetThreadName(globalQueryId.getId())) {
-      if (sql != null && sql.length() > 0) {
-        LOGGER.info("start executing sql: {}", sql);
-      }
-      IQueryExecution execution =
-          createQueryExecution(
-              statement,
-              new MPPQueryContext(
-                  sql,
-                  globalQueryId,
-                  session,
-                  DataNodeEndPoints.LOCAL_HOST_DATA_BLOCK_ENDPOINT,
-                  DataNodeEndPoints.LOCAL_HOST_INTERNAL_ENDPOINT),
-              partitionFetcher,
-              schemaFetcher,
-              Long.MAX_VALUE,
-              startTime);
-      if (execution.isQuery()) {
-        queryExecutionMap.put(queryId, execution);
-      }
-      execution.start();
-
-      return execution.getStatus();
-    }
+    return execute(
+        statement, queryId, session, sql, partitionFetcher, schemaFetcher, Long.MAX_VALUE);
   }
 
   public IQueryExecution getQueryExecution(Long queryId) {
@@ -191,14 +172,13 @@ public class Coordinator {
   // TODO: (xingtanzjr) need to redo once we have a concrete policy for the threadPool management
   private ExecutorService getQueryExecutor() {
     int coordinatorReadExecutorSize =
-        IoTDBDescriptor.getInstance().getConfig().getCoordinatorReadExecutorSize();
+        config.isClusterMode() ? config.getCoordinatorReadExecutorSize() : 1;
     return IoTDBThreadPoolFactory.newFixedThreadPool(
         coordinatorReadExecutorSize, COORDINATOR_EXECUTOR_NAME);
   }
 
   private ExecutorService getWriteExecutor() {
-    int coordinatorWriteExecutorSize =
-        IoTDBDescriptor.getInstance().getConfig().getCoordinatorWriteExecutorSize();
+    int coordinatorWriteExecutorSize = config.getCoordinatorWriteExecutorSize();
     return IoTDBThreadPoolFactory.newFixedThreadPool(
         coordinatorWriteExecutorSize, COORDINATOR_WRITE_EXECUTOR_NAME);
   }

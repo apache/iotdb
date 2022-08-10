@@ -18,25 +18,17 @@
  */
 package org.apache.iotdb.confignode.client.async.handlers;
 
-import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.confignode.manager.load.heartbeat.ConfigNodeHeartbeatCache;
 import org.apache.iotdb.confignode.manager.load.heartbeat.NodeHeartbeatSample;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ConfigNodeHeartbeatHandler implements AsyncMethodCallback<Long> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ConfigNodeHeartbeatHandler.class);
-
   // Update ConfigNodeHeartbeatCache when success
-  private final TConfigNodeLocation configNodeLocation;
   private final ConfigNodeHeartbeatCache configNodeHeartbeatCache;
 
-  public ConfigNodeHeartbeatHandler(
-      TConfigNodeLocation configNodeLocation, ConfigNodeHeartbeatCache configNodeHeartbeatCache) {
-    this.configNodeLocation = configNodeLocation;
+  public ConfigNodeHeartbeatHandler(ConfigNodeHeartbeatCache configNodeHeartbeatCache) {
     this.configNodeHeartbeatCache = configNodeHeartbeatCache;
   }
 
@@ -48,10 +40,6 @@ public class ConfigNodeHeartbeatHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onError(Exception e) {
-    LOGGER.warn(
-        "Heartbeat error on ConfigNode: {id={}, internalEndPoint={}}",
-        configNodeLocation.getConfigNodeId(),
-        configNodeLocation.getInternalEndPoint(),
-        e);
+    // Do nothing
   }
 }

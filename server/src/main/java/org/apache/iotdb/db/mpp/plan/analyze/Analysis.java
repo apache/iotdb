@@ -24,14 +24,16 @@ import org.apache.iotdb.common.rpc.thrift.TSchemaNode;
 import org.apache.iotdb.commons.partition.DataPartition;
 import org.apache.iotdb.commons.partition.SchemaPartition;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.common.header.DatasetHeader;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.FillDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.OrderByParameter;
 import org.apache.iotdb.db.mpp.plan.statement.Statement;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 import java.util.Map;
@@ -54,7 +56,7 @@ public class Analysis {
 
   private SchemaPartition schemaPartition;
 
-  private SchemaTree schemaTree;
+  private ISchemaTree schemaTree;
 
   // map from output column name (for every node) to its datatype
   private TypeProvider typeProvider;
@@ -143,6 +145,12 @@ public class Analysis {
   // extra mesaage from config node, used for node management
   private Set<TSchemaNode> matchedNodes;
 
+  // template and paths set template
+  private Pair<Template, List<PartialPath>> templateSetInfo;
+
+  // potential template used in timeseries query or fetch
+  private Map<Integer, Template> relatedTemplateInfo;
+
   public Analysis() {
     this.finishQueryAfterAnalyze = false;
   }
@@ -180,11 +188,11 @@ public class Analysis {
     this.schemaPartition = schemaPartition;
   }
 
-  public SchemaTree getSchemaTree() {
+  public ISchemaTree getSchemaTree() {
     return schemaTree;
   }
 
-  public void setSchemaTree(SchemaTree schemaTree) {
+  public void setSchemaTree(ISchemaTree schemaTree) {
     this.schemaTree = schemaTree;
   }
 
@@ -402,5 +410,21 @@ public class Analysis {
 
   public void setMergeOrderParameter(OrderByParameter mergeOrderParameter) {
     this.mergeOrderParameter = mergeOrderParameter;
+  }
+
+  public Pair<Template, List<PartialPath>> getTemplateSetInfo() {
+    return templateSetInfo;
+  }
+
+  public void setTemplateSetInfo(Pair<Template, List<PartialPath>> templateSetInfo) {
+    this.templateSetInfo = templateSetInfo;
+  }
+
+  public Map<Integer, Template> getRelatedTemplateInfo() {
+    return relatedTemplateInfo;
+  }
+
+  public void setRelatedTemplateInfo(Map<Integer, Template> relatedTemplateInfo) {
+    this.relatedTemplateInfo = relatedTemplateInfo;
   }
 }

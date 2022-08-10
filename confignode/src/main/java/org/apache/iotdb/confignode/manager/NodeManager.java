@@ -21,14 +21,11 @@ package org.apache.iotdb.confignode.manager;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
-import org.apache.iotdb.common.rpc.thrift.TDataNodesInfo;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
-import org.apache.iotdb.confignode.client.async.handlers.FlushHandler;
 import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
 import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.consensus.request.read.GetDataNodeConfigurationPlan;
@@ -42,9 +39,11 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
+import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
+import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
+import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -55,13 +54,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /** NodeManager manages cluster node addition and removal requests */
@@ -73,9 +69,6 @@ public class NodeManager {
   private final NodeInfo nodeInfo;
 
   private final ReentrantLock removeConfigNodeLock;
-
-  /** TODO:do some operate after add node or remove node */
-  private final List<ChangeServerListener> listeners = new CopyOnWriteArrayList<>();
 
   public NodeManager(IManager configManager, NodeInfo nodeInfo) {
     this.configManager = configManager;
@@ -179,6 +172,7 @@ public class NodeManager {
   public DataNodeConfigurationResp getDataNodeConfiguration(GetDataNodeConfigurationPlan req) {
     return (DataNodeConfigurationResp) getConsensusManager().read(req).getDataset();
   }
+
   /**
    * Only leader use this interface
    *
@@ -186,6 +180,15 @@ public class NodeManager {
    */
   public int getRegisteredDataNodeCount() {
     return nodeInfo.getRegisteredDataNodeCount();
+  }
+
+  /**
+   * Only leader use this interface
+   *
+   * @return The number of registered TotalNodes
+   */
+  public int getRegisteredNodeCount() {
+    return nodeInfo.getRegisteredNodeCount();
   }
 
   /**
@@ -208,45 +211,57 @@ public class NodeManager {
     return nodeInfo.getRegisteredDataNodes(dataNodeId);
   }
 
-  public List<TDataNodesInfo> getRegisteredDataNodesInfoList() {
-    List<TDataNodesInfo> dataNodesLocations = new ArrayList<>();
+  public Map<Integer, TDataNodeLocation> getRegisteredDataNodeLocations(int dataNodeId) {
+    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
+    nodeInfo
+        .getRegisteredDataNodes(dataNodeId)
+        .forEach(
+            dataNodeConfiguration ->
+                dataNodeLocations.put(
+                    dataNodeConfiguration.getLocation().getDataNodeId(),
+                    dataNodeConfiguration.getLocation()));
+    return dataNodeLocations;
+  }
+
+  public List<TDataNodeInfo> getRegisteredDataNodeInfoList() {
+    List<TDataNodeInfo> dataNodeInfoList = new ArrayList<>();
     List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes(-1);
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
           (dataNodeInfo) -> {
-            TDataNodesInfo tDataNodesLocation = new TDataNodesInfo();
+            TDataNodeInfo info = new TDataNodeInfo();
             int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
-            tDataNodesLocation.setDataNodeId(dataNodeId);
-            tDataNodesLocation.setStatus(
+            info.setDataNodeId(dataNodeId);
+            info.setStatus(
                 getLoadManager().getNodeCacheMap().get(dataNodeId).getNodeStatus().getStatus());
-            tDataNodesLocation.setRpcAddresss(
-                dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
-            tDataNodesLocation.setRpcPort(
-                dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
-            tDataNodesLocation.setDataRegionNum(0);
-            tDataNodesLocation.setSchemaRegionNum(0);
-            dataNodesLocations.add(tDataNodesLocation);
+            info.setRpcAddresss(dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
+            info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
+            info.setDataRegionNum(0);
+            info.setSchemaRegionNum(0);
+            dataNodeInfoList.add(info);
           });
     }
-    return dataNodesLocations;
+    return dataNodeInfoList;
   }
-  /**
-   * Provides ConfigNodeGroup information for the newly registered ConfigNode
-   *
-   * @param req TConfigNodeRegisterReq
-   * @return TConfigNodeRegisterResp with PartitionRegionId and online ConfigNodes
-   */
-  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) {
-    TConfigNodeRegisterResp resp = new TConfigNodeRegisterResp();
 
-    resp.setStatus(new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode()));
-
-    // Return PartitionRegionId
-    resp.setPartitionRegionId(
-        getConsensusManager().getConsensusGroupId().convertToTConsensusGroupId());
-
-    resp.setConfigNodeList(nodeInfo.getRegisteredConfigNodes());
-    return resp;
+  public List<TConfigNodeInfo> getRegisteredConfigNodeInfoList() {
+    List<TConfigNodeInfo> configNodeInfoList = new ArrayList<>();
+    List<TConfigNodeLocation> registeredConfigNodes = this.getRegisteredConfigNodes();
+    if (registeredConfigNodes != null) {
+      registeredConfigNodes.forEach(
+          (configNodeLocation) -> {
+            TConfigNodeInfo info = new TConfigNodeInfo();
+            int configNodeId = configNodeLocation.getConfigNodeId();
+            info.setConfigNodeId(configNodeId);
+            info.setStatus(
+                getLoadManager().getNodeCacheMap().get(configNodeId).getNodeStatus().getStatus());
+            info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
+            info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
+            configNodeInfoList.add(info);
+          });
+    }
+    configNodeInfoList.sort(Comparator.comparingInt(TConfigNodeInfo::getConfigNodeId));
+    return configNodeInfoList;
   }
 
   /**
@@ -348,6 +363,39 @@ public class NodeManager {
                 + ".");
   }
 
+  public List<TSStatus> merge(TMergeReq req) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            null, dataNodeLocationMap, DataNodeRequestType.MERGE, dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
+  public List<TSStatus> flush(TFlushReq req) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            req, dataNodeLocationMap, DataNodeRequestType.FLUSH, dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
+  public List<TSStatus> clearCache(TClearCacheReq req) {
+    Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+    List<TSStatus> dataNodeResponseStatus =
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
+    AsyncDataNodeClientPool.getInstance()
+        .sendAsyncRequestToDataNodeWithRetry(
+            null, dataNodeLocationMap, DataNodeRequestType.CLEAR_CACHE, dataNodeResponseStatus);
+    return dataNodeResponseStatus;
+  }
+
   public List<TConfigNodeLocation> getRegisteredConfigNodes() {
     return nodeInfo.getRegisteredConfigNodes();
   }
@@ -358,96 +406,6 @@ public class NodeManager {
 
   private ClusterSchemaManager getClusterSchemaManager() {
     return configManager.getClusterSchemaManager();
-  }
-
-  public void registerListener(final ChangeServerListener serverListener) {
-    listeners.add(serverListener);
-  }
-
-  public boolean unregisterListener(final ChangeServerListener serverListener) {
-    return listeners.remove(serverListener);
-  }
-
-  /** TODO: wait data node register, wait */
-  public void waitForDataNodes() {
-    listeners.stream().forEach(serverListener -> serverListener.waiting());
-  }
-
-  private class ServerStartListenerThread extends Thread implements ChangeServerListener {
-    private boolean changed = false;
-
-    ServerStartListenerThread() {
-      setDaemon(true);
-    }
-
-    @Override
-    public void addDataNode(TDataNodeLocation DataNodeInfo) {
-      serverChanged();
-    }
-
-    @Override
-    public void removeDataNode(TDataNodeLocation dataNodeInfo) {
-      // TODO: When removing a datanode, do the following
-      //  configManager.getLoadManager().removeNodeHeartbeatHandCache(dataNodeId);
-      serverChanged();
-    }
-
-    private synchronized void serverChanged() {
-      changed = true;
-      this.notify();
-    }
-
-    @Override
-    public void run() {
-      while (!configManager.isStopped()) {}
-    }
-  }
-
-  /** TODO: For listener for add or remove data node */
-  public interface ChangeServerListener {
-
-    /** Started waiting on DataNode to check */
-    default void waiting() {};
-
-    /**
-     * The server has joined the cluster
-     *
-     * @param dataNodeInfo datanode info
-     */
-    void addDataNode(final TDataNodeLocation dataNodeInfo);
-
-    /**
-     * remove data node
-     *
-     * @param dataNodeInfo data node info
-     */
-    void removeDataNode(final TDataNodeLocation dataNodeInfo);
-  }
-
-  public List<TSStatus> flush(TFlushReq req) {
-    List<TDataNodeConfiguration> registeredDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(req.dataNodeId);
-    List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
-    CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
-    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
-    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
-    AtomicInteger index = new AtomicInteger();
-    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
-      handlerMap.put(
-          index.get(),
-          new FlushHandler(
-              dataNodeInfo.getLocation(),
-              countDownLatch,
-              DataNodeRequestType.FLUSH,
-              dataNodeResponseStatus,
-              dataNodeLocations,
-              index.get()));
-      dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
-    }
-    AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(req, handlerMap, dataNodeLocations);
-    return dataNodeResponseStatus;
   }
 
   private LoadManager getLoadManager() {

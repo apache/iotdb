@@ -22,7 +22,8 @@ namespace java org.apache.iotdb.consensus.multileader.thrift
 
 struct TLogBatch {
   1: required binary data
-  2: required bool fromWAL
+  2: required i64 searchIndex
+  3: required bool fromWAL
 }
 
 struct TSyncLogReq {

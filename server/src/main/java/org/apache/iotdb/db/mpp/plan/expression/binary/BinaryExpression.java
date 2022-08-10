@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.ExpressionVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
@@ -61,6 +62,11 @@ public abstract class BinaryExpression extends Expression {
   protected BinaryExpression(ByteBuffer byteBuffer) {
     this.leftExpression = Expression.deserialize(byteBuffer);
     this.rightExpression = Expression.deserialize(byteBuffer);
+  }
+
+  @Override
+  public <R, C> R accept(ExpressionVisitor<R, C> visitor, C context) {
+    return visitor.visitBinaryExpression(this, context);
   }
 
   public Expression getLeftExpression() {
@@ -314,6 +320,11 @@ public abstract class BinaryExpression extends Expression {
     }
 
     return expressionIntermediateLayerMap.get(this);
+  }
+
+  @Override
+  public boolean isMappable(TypeProvider typeProvider) {
+    return leftExpression.isMappable(typeProvider) && rightExpression.isMappable(typeProvider);
   }
 
   protected abstract BinaryTransformer constructTransformer(

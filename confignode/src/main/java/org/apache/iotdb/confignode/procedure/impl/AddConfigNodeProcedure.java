@@ -73,6 +73,7 @@ public class AddConfigNodeProcedure extends AbstractNodeProcedure<AddConfigNodeS
         case REGISTER_SUCCESS:
           env.notifyRegisterSuccess(tConfigNodeLocation);
           env.applyConfigNode(tConfigNodeLocation);
+          env.broadCastTheLatestConfigNodeGroup();
           return Flow.NO_MORE_STATE;
       }
     } catch (Exception e) {

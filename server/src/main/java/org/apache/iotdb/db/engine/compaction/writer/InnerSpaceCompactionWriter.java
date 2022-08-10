@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.read.common.block.column.Column;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -49,19 +52,28 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void endMeasurement(int subTaskId) throws IOException {
-    flushChunkToFileWriter(fileWriter, subTaskId);
+    CompactionWriterUtils.flushChunkToFileWriter(fileWriter, chunkWriters[subTaskId]);
   }
 
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     CompactionWriterUtils.writeDataPoint(timestamp, value, isAlign, chunkWriters[subTaskId]);
-    checkChunkSizeAndMayOpenANewChunk(fileWriter, subTaskId);
-    isEmptyFile = false;
     measurementPointCountArray[subTaskId] += 1;
+    if (measurementPointCountArray[subTaskId] % 10 == 0) {
+      CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
+          fileWriter, chunkWriters[subTaskId], false);
+    }
+    isEmptyFile = false;
   }
 
   @Override
-  public void write(long[] timestamps, Object values) {}
+  public void write(TimeColumn timestamps, Column[] columns, int subTaskId, int batchSize)
+      throws IOException {
+    AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriters[subTaskId];
+    chunkWriter.write(timestamps, columns, batchSize);
+    CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(fileWriter, chunkWriter, false);
+    isEmptyFile = false;
+  }
 
   @Override
   public void endFile() throws IOException {

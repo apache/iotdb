@@ -32,6 +32,7 @@ public class TimeColumn implements Column {
 
   private final int arrayOffset;
   private final int positionCount;
+
   private final long[] values;
 
   private final long retainedSizeInBytes;
@@ -93,6 +94,12 @@ public class TimeColumn implements Column {
   }
 
   @Override
+  public boolean[] isNull() {
+    // todo
+    return null;
+  }
+
+  @Override
   public int getPositionCount() {
     return positionCount;
   }
@@ -131,6 +138,10 @@ public class TimeColumn implements Column {
 
   public long getEndTime() {
     return values[getPositionCount() + arrayOffset - 1];
+  }
+
+  public long[] getTimes() {
+    return values;
   }
 
   private void checkReadablePosition(int position) {

@@ -1,6 +1,10 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
+import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
+import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -12,6 +16,9 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import java.io.IOException;
 
 public class CompactionWriterUtils {
+  private static final long targetChunkSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+
   public static void writeDataPoint(
       Long timestamp, Object value, boolean isAlign, IChunkWriter iChunkWriter) {
     if (!isAlign) {
@@ -110,5 +117,27 @@ public class CompactionWriterUtils {
   private static void writeRateLimit(long bytesLength) {
     CompactionTaskManager.mergeRateLimiterAcquire(
         CompactionTaskManager.getInstance().getMergeWriteRateLimiter(), bytesLength);
+  }
+
+  public static void checkChunkSizeAndMayOpenANewChunk(
+      TsFileIOWriter fileWriter, IChunkWriter iChunkWriter, boolean isCrossSpace)
+      throws IOException {
+    if (checkChunkSize(iChunkWriter)) {
+      flushChunkToFileWriter(fileWriter, iChunkWriter);
+      boolean isAlign = iChunkWriter instanceof AlignedChunkWriterImpl;
+      CompactionMetricsRecorder.recordWriteInfo(
+          isCrossSpace ? CompactionType.CROSS_COMPACTION : CompactionType.INNER_UNSEQ_COMPACTION,
+          ProcessChunkType.DESERIALIZE_CHUNK,
+          isAlign,
+          iChunkWriter.estimateMaxSeriesMemSize());
+    }
+  }
+
+  private static boolean checkChunkSize(IChunkWriter iChunkWriter) {
+    if (iChunkWriter instanceof AlignedChunkWriterImpl) {
+      return ((AlignedChunkWriterImpl) iChunkWriter).checkIsChunkSizeOverThreshold(targetChunkSize);
+    } else {
+      return iChunkWriter.estimateMaxSeriesMemSize() > targetChunkSize;
+    }
   }
 }

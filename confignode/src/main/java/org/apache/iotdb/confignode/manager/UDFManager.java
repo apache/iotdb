@@ -19,13 +19,10 @@
 
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
-import org.apache.iotdb.confignode.client.async.handlers.AbstractRetryHandler;
-import org.apache.iotdb.confignode.client.async.handlers.FunctionManagementHandler;
 import org.apache.iotdb.confignode.consensus.request.write.CreateFunctionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DropFunctionPlan;
 import org.apache.iotdb.confignode.persistence.UDFInfo;
@@ -39,12 +36,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class UDFManager {
 
@@ -86,30 +79,18 @@ public class UDFManager {
 
   private List<TSStatus> createFunctionOnDataNodes(
       String functionName, String className, List<String> uris) {
-    final List<TDataNodeConfiguration> registeredDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
     final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
-    final CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TCreateFunctionRequest request =
         new TCreateFunctionRequest(functionName, className, uris);
-    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
-    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
-    AtomicInteger index = new AtomicInteger(0);
-    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
-      handlerMap.put(
-          index.get(),
-          new FunctionManagementHandler(
-              countDownLatch,
-              dataNodeInfo.getLocation(),
-              dataNodeResponseStatus,
-              DataNodeRequestType.CREATE_FUNCTION,
-              dataNodeLocations,
-              index.get()));
-      dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
-    }
     AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(request, handlerMap, dataNodeLocations);
+        .sendAsyncRequestToDataNodeWithRetry(
+            request,
+            dataNodeLocationMap,
+            DataNodeRequestType.CREATE_FUNCTION,
+            dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 
@@ -130,29 +111,17 @@ public class UDFManager {
   }
 
   private List<TSStatus> dropFunctionOnDataNodes(String functionName) {
-    final List<TDataNodeConfiguration> registeredDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+    final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
+        configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
     final List<TSStatus> dataNodeResponseStatus =
-        Collections.synchronizedList(new ArrayList<>(registeredDataNodes.size()));
-    final CountDownLatch countDownLatch = new CountDownLatch(registeredDataNodes.size());
+        Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TDropFunctionRequest request = new TDropFunctionRequest(functionName);
-    Map<Integer, AbstractRetryHandler> handlerMap = new HashMap<>();
-    Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
-    AtomicInteger index = new AtomicInteger(0);
-    for (TDataNodeConfiguration dataNodeInfo : registeredDataNodes) {
-      handlerMap.put(
-          index.get(),
-          new FunctionManagementHandler(
-              countDownLatch,
-              dataNodeInfo.getLocation(),
-              dataNodeResponseStatus,
-              DataNodeRequestType.DROP_FUNCTION,
-              dataNodeLocations,
-              index.get()));
-      dataNodeLocations.put(index.getAndIncrement(), dataNodeInfo.getLocation());
-    }
     AsyncDataNodeClientPool.getInstance()
-        .sendAsyncRequestToDataNodeWithRetry(request, handlerMap, dataNodeLocations);
+        .sendAsyncRequestToDataNodeWithRetry(
+            request,
+            dataNodeLocationMap,
+            DataNodeRequestType.DROP_FUNCTION,
+            dataNodeResponseStatus);
     return dataNodeResponseStatus;
   }
 }

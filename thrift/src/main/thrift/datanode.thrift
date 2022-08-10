@@ -194,6 +194,15 @@ struct TRegionRouteReq {
   2: required map<common.TConsensusGroupId, common.TRegionReplicaSet> regionRouteMap
 }
 
+struct TUpdateConfigNodeGroupReq {
+  1: required list<common.TConfigNodeLocation> configNodeLocations
+}
+
+struct TUpdateTemplateReq{
+    1: required byte type
+    2: required binary templateInfo
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -321,9 +330,27 @@ service IDataNodeRPCService {
    */
   common.TSStatus invalidatePermissionCache(TInvalidatePermissionCacheReq req)
 
+  /* Maintenance Tools */
+
+  common.TSStatus merge()
+
   common.TSStatus flush(common.TFlushReq req)
 
+  common.TSStatus clearCache()
+
+  /**
+   * Config node will Set the TTL for the storage group on a list of data nodes.
+   */
   common.TSStatus setTTL(common.TSetTTLReq req)
+  
+  /**
+   * configNode will notify all DataNodes when the capacity of the ConfigNodeGroup is expanded or reduced
+   *
+   * @param list<common.TConfigNodeLocation> configNodeLocations
+   */
+  common.TSStatus updateConfigNodeGroup(TUpdateConfigNodeGroupReq req)
+
+  common.TSStatus updateTemplate(TUpdateTemplateReq req)
 }
 
 service MPPDataExchangeService {
