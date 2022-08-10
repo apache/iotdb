@@ -754,7 +754,7 @@ public class PartitionInfo implements SnapshotProcessor {
   }
 
   public void clear() {
-    nextRegionGroupId.set(0);
+    nextRegionGroupId.set(-1);
     storageGroupPartitionTables.clear();
     deletedRegionSet.clear();
   }
