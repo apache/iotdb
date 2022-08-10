@@ -117,11 +117,7 @@ public class ProcedureManager {
     }
   }
 
-  /**
-   * generate a procedure, and execute by one by one
-   *
-   * @param req new config node
-   */
+  /** Generate a AddConfigNodeProcedure, and serially execute all the AddConfigNodeProcedure */
   public void addConfigNode(TConfigNodeRegisterReq req) {
     AddConfigNodeProcedure addConfigNodeProcedure =
         new AddConfigNodeProcedure(req.getConfigNodeLocation());
@@ -129,9 +125,7 @@ public class ProcedureManager {
   }
 
   /**
-   * generate a procedure, and execute remove confignode one by one
-   *
-   * @param removeConfigNodePlan remove config node plan
+   * Generate a RemoveConfigNodeProcedure, and serially execute all the RemoveConfigNodeProcedure
    */
   public void removeConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
     RemoveConfigNodeProcedure removeConfigNodeProcedure =
@@ -140,12 +134,7 @@ public class ProcedureManager {
     LOGGER.info("Submit to remove ConfigNode, {}", removeConfigNodePlan);
   }
 
-  /**
-   * generate a procedure, and execute remove datanode one by one
-   *
-   * @param removeDataNodePlan
-   * @return
-   */
+  /** Generate RemoveDataNodeProcedures, and serially execute all the RemoveDataNodeProcedure */
   public boolean removeDataNode(RemoveDataNodePlan removeDataNodePlan) {
     removeDataNodePlan
         .getDataNodeLocations()
@@ -240,13 +229,21 @@ public class ProcedureManager {
   }
 
   public void reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
-    this.executor.getProcedures().values().stream()
+    LOGGER.info("receive DataNode region:{} migrate result:{}", req.getRegionId(), req);
+    this.executor
+        .getProcedures()
+        .values()
         .forEach(
             procedure -> {
               if (procedure instanceof RegionMigrateProcedure) {
                 RegionMigrateProcedure regionMigrateProcedure = (RegionMigrateProcedure) procedure;
                 if (regionMigrateProcedure.getConsensusGroupId().equals(req.getRegionId())) {
                   regionMigrateProcedure.notifyTheRegionMigrateFinished(req);
+                } else {
+                  LOGGER.warn(
+                      "DataNode report region:{} is not equals ConfigNode send region:{}",
+                      req.getRegionId(),
+                      regionMigrateProcedure.getConsensusGroupId());
                 }
               }
             });

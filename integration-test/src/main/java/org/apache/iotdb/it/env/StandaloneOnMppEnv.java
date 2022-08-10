@@ -31,7 +31,10 @@ public class StandaloneOnMppEnv extends AbstractEnv {
   private void initEnvironment() {
     DataNodeWrapper dataNodeWrapper =
         new StandaloneDataNodeWrapper(
-            null, super.getTestClassName(), super.getTestMethodName(), searchAvailablePorts());
+            null,
+            super.getTestClassName(),
+            super.getTestMethodName(),
+            EnvUtils.searchAvailablePorts());
     dataNodeWrapper.createDir();
     dataNodeWrapper.changeConfig(ConfigFactory.getConfig().getEngineProperties());
     dataNodeWrapper.start();

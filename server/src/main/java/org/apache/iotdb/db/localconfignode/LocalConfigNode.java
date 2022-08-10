@@ -56,6 +56,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -99,6 +100,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1125,78 +1127,67 @@ public class LocalConfigNode {
         AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
     switch (authorType) {
       case LIST_USER:
-        return executeListUser();
+        return executeListRoleUsers(authorStatement);
       case LIST_ROLE:
-        return executeListRole();
+        return executeListRoles(authorStatement);
       case LIST_USER_PRIVILEGE:
         return executeListUserPrivileges(authorStatement);
       case LIST_ROLE_PRIVILEGE:
         return executeListRolePrivileges(authorStatement);
-      case LIST_USER_ROLES:
-        return executeListUserRoles(authorStatement);
-      case LIST_ROLE_USERS:
-        return executeListRoleUsers(authorStatement);
       default:
         throw new AuthException("Unsupported operation " + authorType);
     }
   }
 
-  public Map<String, List<String>> executeListRole() {
-    List<String> roleList = iAuthorizer.listAllRoles();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
-    return permissionInfo;
-  }
-
-  public Map<String, List<String>> executeListUser() {
+  public Map<String, List<String>> executeListRoleUsers(AuthorStatement authorStatement)
+      throws AuthException {
     List<String> userList = iAuthorizer.listAllUsers();
+    if (authorStatement.getRoleName() != null && !authorStatement.getRoleName().isEmpty()) {
+      Role role;
+      try {
+        role = iAuthorizer.getRole(authorStatement.getRoleName());
+        if (role == null) {
+          throw new AuthException("No such role : " + authorStatement.getRoleName());
+        }
+      } catch (AuthException e) {
+        throw new AuthException(e);
+      }
+      Iterator<String> itr = userList.iterator();
+      while (itr.hasNext()) {
+        User userObj = iAuthorizer.getUser(itr.next());
+        if (userObj == null || !userObj.hasRole(authorStatement.getRoleName())) {
+          itr.remove();
+        }
+      }
+    }
+
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
     return permissionInfo;
   }
 
-  public Map<String, List<String>> executeListRoleUsers(AuthorStatement authorStatement)
+  public Map<String, List<String>> executeListRoles(AuthorStatement authorStatement)
       throws AuthException {
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    Role role;
-    try {
-      role = iAuthorizer.getRole(authorStatement.getRoleName());
-      if (role == null) {
-        throw new AuthException("No such role : " + authorStatement.getRoleName());
+    List<String> roleList = new ArrayList<>();
+    if (authorStatement.getUserName() == null || authorStatement.getUserName().isEmpty()) {
+      roleList.addAll(iAuthorizer.listAllRoles());
+    } else {
+      User user;
+      try {
+        user = iAuthorizer.getUser(authorStatement.getUserName());
+        if (user == null) {
+          throw new AuthException("No such user : " + authorStatement.getUserName());
+        }
+      } catch (AuthException e) {
+        throw new AuthException(e);
       }
-    } catch (AuthException e) {
-      throw new AuthException(e);
-    }
-    List<String> roleUsersList = new ArrayList<>();
-    List<String> userList = iAuthorizer.listAllUsers();
-    for (String userN : userList) {
-      User userObj = iAuthorizer.getUser(userN);
-      if (userObj != null && userObj.hasRole(authorStatement.getRoleName())) {
-        roleUsersList.add(userN);
+      for (String roleN : user.getRoleList()) {
+        roleList.add(roleN);
       }
-    }
-    permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
-    return permissionInfo;
-  }
-
-  public Map<String, List<String>> executeListUserRoles(AuthorStatement authorStatement)
-      throws AuthException {
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    User user;
-    try {
-      user = iAuthorizer.getUser(authorStatement.getUserName());
-      if (user == null) {
-        throw new AuthException("No such user : " + authorStatement.getUserName());
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
-    }
-    List<String> userRoleList = new ArrayList<>();
-    for (String roleN : user.getRoleList()) {
-      userRoleList.add(roleN);
     }
 
-    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
     return permissionInfo;
   }
 
@@ -1302,6 +1293,15 @@ public class LocalConfigNode {
   public boolean checkUserPrivileges(String username, String path, int permission)
       throws AuthException {
     return iAuthorizer.checkUserPrivileges(username, path, permission);
+  }
+
+  public TSStatus executeMergeOperation() {
+    try {
+      storageEngine.mergeAll();
+    } catch (StorageEngineException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public TSStatus executeFlushOperation(TFlushReq tFlushReq) {

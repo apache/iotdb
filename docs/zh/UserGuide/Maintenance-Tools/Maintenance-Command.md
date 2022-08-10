@@ -22,15 +22,18 @@
 
 ## FLUSH
 
-将指定存储组的内存缓存区 Memory Table 的数据持久化到磁盘上，并将数据文件封口。
+将指定存储组的内存缓存区 Memory Table 的数据持久化到磁盘上，并将数据文件封口。在集群模式下，我们提供了持久化单个节点的指定存储组的缓存、持久化整个集群指定存储组的缓存命令。
 
 注意：此命令客户端不需要手动调用，IoTDB 有 wal 保证数据安全，IoTDB 会选择合适的时机进行 flush。
 如果频繁调用 flush 会导致数据文件很小，降低查询性能。
 
 ```sql
 IoTDB> FLUSH 
+IoTDB> FLUSH ON LOCAL
+IoTDB> FLUSH ON CLUSTER
 IoTDB> FLUSH root.ln
-IoTDB> FLUSH root.sg1,root.sg2
+IoTDB> FLUSH root.sg1,root.sg2 ON LOCAL
+IoTDB> FLUSH root.sg1,root.sg2 ON CLUSTER
 ```
 
 ## MERGE
@@ -43,6 +46,13 @@ IoTDB> FLUSH root.sg1,root.sg2
 ```sql
 IoTDB> MERGE
 IoTDB> FULL MERGE
+```
+同时，在集群模式中支持对单个节点或整个集群手动触发数据文件的合并:
+```sql
+IoTDB> MERGE ON LOCAL
+IoTDB> MERGE ON CLUSTER
+IoTDB> FULL MERGE ON LOCAL
+IoTDB> FULL MERGE ON CLUSTER
 ```
 
 ## CLEAR CACHE
@@ -80,7 +90,7 @@ Session 超时默认未开启。可以在配置文件中通过 `session_timeout_
 对于执行时间过长的查询，IoTDB 将强行中断该查询，并抛出超时异常，如下所示：
 
 ```sql
-IoTDB> select * from root;
+IoTDB> select * from root.**;
 Msg: 701 Current query is time out, please check your statement or modify timeout parameter.
 ```
 

@@ -274,6 +274,18 @@ bool SessionDataSet::hasNext() {
             } else {
                 tsQueryDataSet = make_shared<TSQueryDataSet>(resp->queryDataSet);
                 tsQueryDataSetTimeBuffer.str = tsQueryDataSet->time;
+                tsQueryDataSetTimeBuffer.pos = 0;
+                for (size_t i = 0; i < columnNameList.size(); i++) {
+                    valueBuffers.pop_back();
+                    bitmapBuffers.pop_back();
+                }
+                for (size_t i = 0; i < columnNameList.size(); i++) {
+                    std::string name = columnNameList[i];
+                    valueBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(tsQueryDataSet->valueList[columnMap[name]])));
+                    bitmapBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(tsQueryDataSet->bitmapList[columnMap[name]])));
+                }
                 rowsIndex = 0;
             }
         }

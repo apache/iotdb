@@ -58,30 +58,6 @@ public class IoTDBDeletePartitionIT {
   }
 
   @Test
-  public void testDeletePartition() {
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-
-      statement.execute("set storage group to root.test");
-      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(1000,true)");
-      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(2000,true)");
-      statement.execute("insert into root.test.wf02.wt02(timestamp,status) values(3000,true)");
-      statement.execute("DELETE PARTITION root.test 1,2");
-
-      int cnt = 0;
-      try (ResultSet resultSet = statement.executeQuery("select * from root.test.wf02.wt02")) {
-        while (resultSet.next()) {
-          cnt++;
-        }
-      }
-      assertEquals(1, cnt);
-
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-  }
-
-  @Test
   public void testRemoveOnePartitionAndInsertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

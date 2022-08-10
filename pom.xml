@@ -210,7 +210,7 @@
         <commons-beanutils.version>1.9.4</commons-beanutils.version>
         <commons-compress.version>1.21</commons-compress.version>
         <error_prone_annotations.version>2.7.1</error_prone_annotations.version>
-        <testcontainers.version>1.15.2</testcontainers.version>
+        <testcontainers.version>1.15.3</testcontainers.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
         <awaitility.version>4.0.3</awaitility.version>
         <!-- JDK1.8 only support google java format 1.7-->

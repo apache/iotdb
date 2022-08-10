@@ -39,30 +39,37 @@ public class Int32ArrayColumnEncoder implements ColumnEncoder {
 
     boolean[] nullIndicators = ColumnEncoder.deserializeNullIndicators(input, positionCount);
 
-    ColumnBuilder columnBuilder;
     if (TSDataType.INT32.equals(dataType)) {
-      columnBuilder = new IntColumnBuilder(null, positionCount);
-      for (int i = 0; i < positionCount; i++) {
-        if (nullIndicators == null || !nullIndicators[i]) {
-          columnBuilder.writeInt(input.getInt());
-        } else {
-          columnBuilder.appendNull();
+      int[] values = new int[positionCount];
+      if (nullIndicators == null) {
+        for (int i = 0; i < positionCount; i++) {
+          values[i] = input.getInt();
+        }
+      } else {
+        for (int i = 0; i < positionCount; i++) {
+          if (!nullIndicators[i]) {
+            values[i] = input.getInt();
+          }
         }
       }
+      return new IntColumn(0, positionCount, nullIndicators, values);
     } else if (TSDataType.FLOAT.equals(dataType)) {
-      columnBuilder = new FloatColumnBuilder(null, positionCount);
-      for (int i = 0; i < positionCount; i++) {
-        if (nullIndicators == null || !nullIndicators[i]) {
-          columnBuilder.writeFloat(Float.intBitsToFloat(input.getInt()));
-        } else {
-          columnBuilder.appendNull();
+      float[] values = new float[positionCount];
+      if (nullIndicators == null) {
+        for (int i = 0; i < positionCount; i++) {
+          values[i] = Float.intBitsToFloat(input.getInt());
+        }
+      } else {
+        for (int i = 0; i < positionCount; i++) {
+          if (!nullIndicators[i]) {
+            values[i] = Float.intBitsToFloat(input.getInt());
+          }
         }
       }
+      return new FloatColumn(0, positionCount, nullIndicators, values);
     } else {
       throw new IllegalArgumentException("Invalid data type: " + dataType);
     }
-
-    return columnBuilder.build();
   }
 
   @Override

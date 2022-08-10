@@ -251,7 +251,7 @@ public class ConfigNodeRPCServiceProcessorTest {
   }
 
   @Test
-  public void testSetAndQueryStorageGroup() throws TException {
+  public void testSetAndQueryStorageGroup() throws IllegalPathException, TException {
     TSStatus status;
     final String sg0 = "root.sg0";
     final String sg1 = "root.sg1";
@@ -315,7 +315,9 @@ public class ConfigNodeRPCServiceProcessorTest {
         TSStatusCode.STORAGE_GROUP_ALREADY_EXISTS.getStatusCode(), status.getCode());
 
     // test StorageGroup setter interfaces
-    status = processor.setTTL(new TSetTTLReq(sg1, Long.MAX_VALUE));
+    PartialPath patternPath = new PartialPath(sg1);
+    status =
+        processor.setTTL(new TSetTTLReq(Arrays.asList(patternPath.getNodes()), Long.MAX_VALUE));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
     status = processor.setSchemaReplicationFactor(new TSetSchemaReplicationFactorReq(sg1, 1));
     Assert.assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.getCode());
@@ -910,7 +912,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     // list all role of user
     authorizerReq =
         new TAuthorizerReq(
-            AuthorOperator.AuthorType.LIST_USER_ROLES.ordinal(),
+            AuthorOperator.AuthorType.LIST_ROLE.ordinal(),
             "tempuser0",
             "",
             "",
@@ -927,7 +929,7 @@ public class ConfigNodeRPCServiceProcessorTest {
     // list all user of role
     authorizerReq =
         new TAuthorizerReq(
-            AuthorOperator.AuthorType.LIST_ROLE_USERS.ordinal(),
+            AuthorOperator.AuthorType.LIST_USER.ordinal(),
             "",
             "temprole0",
             "",

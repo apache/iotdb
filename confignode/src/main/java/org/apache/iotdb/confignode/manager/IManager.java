@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.confignode.manager;
 
-import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDeletePartitionReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -40,12 +39,15 @@ import org.apache.iotdb.confignode.consensus.request.write.SetStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTTLPlan;
 import org.apache.iotdb.confignode.consensus.request.write.SetTimePartitionIntervalPlan;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetAllTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetPathsSetTemplatesResp;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSetSchemaTemplateReq;
@@ -133,6 +135,14 @@ public interface IManager {
    * @return DataNodeToStatusResp
    */
   DataSet removeDataNode(RemoveDataNodePlan removeDataNodePlan);
+
+  /**
+   * DataNode report region migrate result to ConfigNode when remove DataNode
+   *
+   * @param req TRegionMigrateResultReportReq
+   * @return TSStatus
+   */
+  TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req);
 
   /**
    * Get DataNode info
@@ -268,6 +278,8 @@ public interface IManager {
   TSStatus createFunction(String udfName, String className, List<String> uris);
 
   TSStatus dropFunction(String udfName);
+
+  TSStatus merge(TMergeReq req);
 
   TSStatus flush(TFlushReq req);
 

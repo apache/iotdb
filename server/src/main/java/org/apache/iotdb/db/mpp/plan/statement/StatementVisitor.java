@@ -68,6 +68,7 @@ import org.apache.iotdb.db.mpp.plan.statement.sys.AuthorStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ClearCacheStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ExplainStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.FlushStatement;
+import org.apache.iotdb.db.mpp.plan.statement.sys.MergeStatement;
 import org.apache.iotdb.db.mpp.plan.statement.sys.ShowVersionStatement;
 
 /**
@@ -253,6 +254,10 @@ public abstract class StatementVisitor<R, C> {
 
   public R visitDeleteData(DeleteDataStatement deleteDataStatement, C context) {
     return visitStatement(deleteDataStatement, context);
+  }
+
+  public R visitMerge(MergeStatement mergeStatement, C context) {
+    return visitStatement(mergeStatement, context);
   }
 
   public R visitFlush(FlushStatement flushStatement, C context) {

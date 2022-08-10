@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
 import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
-import org.apache.iotdb.common.rpc.thrift.TDeletePartitionReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSetTTLReq;
@@ -28,11 +27,13 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
+import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
@@ -47,17 +48,17 @@ import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.execution.config.CountStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.SetStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowClusterTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowConfigNodesTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowDataNodesTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowNodesInSchemaTemplateTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowPathSetTemplateTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowRegionTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowSchemaTemplateTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.SetStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowClusterTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowConfigNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowDataNodesTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowRegionTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowNodesInSchemaTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowPathSetTemplateTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.template.ShowSchemaTemplateTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -245,9 +246,9 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   @Override
   public SettableFuture<ConfigTaskResult> setTTL(SetTTLStatement setTTLStatement, String taskName) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    TSetTTLReq setTTLReq =
-        new TSetTTLReq(
-            setTTLStatement.getStorageGroupPath().getFullPath(), setTTLStatement.getTTL());
+    List<String> storageGroupPathPattern =
+        Arrays.asList(setTTLStatement.getStorageGroupPath().getNodes());
+    TSetTTLReq setTTLReq = new TSetTTLReq(storageGroupPathPattern, setTTLStatement.getTTL());
     try (ConfigNodeClient configNodeClient =
         CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
       // Send request to some API server
@@ -259,11 +260,30 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
             taskName,
             setTTLStatement.getStorageGroupPath(),
             tsStatus);
-        future.setException(new StatementExecutionException(tsStatus));
+        future.setException(new IoTDBException(tsStatus.getMessage(), tsStatus.getCode()));
       } else {
         future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
       }
     } catch (TException | IOException e) {
+      future.setException(e);
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> merge(TMergeReq tMergeReq) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    try (ConfigNodeClient client =
+        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+      // Send request to some API server
+      TSStatus tsStatus = client.merge(tMergeReq);
+      // Get response or throw exception
+      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+      } else {
+        future.setException(new StatementExecutionException(tsStatus));
+      }
+    } catch (IOException | TException e) {
       future.setException(e);
     }
     return future;
