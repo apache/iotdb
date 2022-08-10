@@ -158,7 +158,7 @@ public class DataNodeRemoveHandler {
     }
 
     TMigrateRegionReq migrateRegionReq =
-        new TMigrateRegionReq(regionId, destDataNode, destDataNode);
+        new TMigrateRegionReq(regionId, originalDataNode, destDataNode);
     migrateRegionReq.setNewLeaderNode(otherNode.get());
 
     // send to otherNode node
