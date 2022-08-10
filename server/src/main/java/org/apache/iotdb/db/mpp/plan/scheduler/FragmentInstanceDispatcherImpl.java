@@ -275,9 +275,14 @@ public class FragmentInstanceDispatcherImpl implements IFragInstanceDispatcher {
           writeResponse = SchemaRegionConsensusImpl.getInstance().write(groupId, planNode);
         }
 
-        if (writeResponse.getStatus().getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          logger.error(writeResponse.getStatus().message);
-          throw new FragmentInstanceDispatchException(writeResponse.getStatus());
+        if (!writeResponse.isSuccessful()) {
+          logger.error(writeResponse.getErrorMessage());
+          TSStatus failureStatus =
+              writeResponse.getStatus() != null
+                  ? writeResponse.getStatus()
+                  : RpcUtils.getStatus(
+                      TSStatusCode.EXECUTE_STATEMENT_ERROR, writeResponse.getErrorMessage());
+          throw new FragmentInstanceDispatchException(failureStatus);
         } else if (hasFailedMeasurement) {
           throw new FragmentInstanceDispatchException(
               RpcUtils.getStatus(
