@@ -67,7 +67,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
   /** init the field with dropwizard library. */
   public DropwizardMetricManager() {
     metricRegistry = new MetricRegistry();
-    isEnable = METRIC_CONFIG.getEnableMetric();
+    isEnableMetric = METRIC_CONFIG.getEnableMetric();
     currentMeters = new ConcurrentHashMap<>();
   }
 
@@ -241,7 +241,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
 
   @Override
   public void removeCounter(String metric, String... tags) {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return;
     }
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
@@ -251,7 +251,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
 
   @Override
   public void removeGauge(String metric, String... tags) {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return;
     }
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
@@ -261,7 +261,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
 
   @Override
   public void removeRate(String metric, String... tags) {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return;
     }
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
@@ -271,7 +271,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
 
   @Override
   public void removeHistogram(String metric, String... tags) {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return;
     }
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
@@ -281,7 +281,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
 
   @Override
   public void removeTimer(String metric, String... tags) {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return;
     }
     MicrometerMetricName name = new MicrometerMetricName(metric, tags);
@@ -291,7 +291,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
 
   @Override
   public List<String[]> getAllMetricKeys() {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return Collections.emptyList();
     }
     List<String[]> keys = new ArrayList<>(currentMeters.size());
@@ -360,7 +360,7 @@ public class DropwizardMetricManager extends AbstractMetricManager {
 
   @Override
   public boolean stop() {
-    isEnable = METRIC_CONFIG.getEnableMetric();
+    isEnableMetric = METRIC_CONFIG.getEnableMetric();
     metricRegistry.removeMatching(MetricFilter.ALL);
     currentMeters = new ConcurrentHashMap<>();
     return true;

@@ -2123,7 +2123,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
   private void addOperationLatency(Operation operation, long startTime) {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
       MetricService.getInstance()
-          .getMetricManager()
           .histogram(
               System.currentTimeMillis() - startTime,
               "operation_histogram",
@@ -2131,7 +2130,6 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
               "name",
               operation.getName());
       MetricService.getInstance()
-          .getMetricManager()
           .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
     }
   }

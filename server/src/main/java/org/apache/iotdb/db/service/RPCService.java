@@ -84,7 +84,6 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
     }
     thriftServiceThread.setName(ThreadName.RPC_SERVICE.getName());
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
             MetricLevel.CORE,

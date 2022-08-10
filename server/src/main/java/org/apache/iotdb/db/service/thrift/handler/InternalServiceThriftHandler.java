@@ -37,7 +37,6 @@ public class InternalServiceThriftHandler implements TServerEventHandler {
   @Override
   public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "Internal")
         .incr(1L);
@@ -48,7 +47,6 @@ public class InternalServiceThriftHandler implements TServerEventHandler {
   public void deleteContext(
       ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "Internal")
         .decr(1L);

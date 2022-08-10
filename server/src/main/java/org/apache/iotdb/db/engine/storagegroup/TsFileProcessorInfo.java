@@ -44,7 +44,6 @@ public class TsFileProcessorInfo {
     storageGroupInfo.addStorageGroupMemCost(cost);
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,
@@ -60,7 +59,6 @@ public class TsFileProcessorInfo {
     memCost -= cost;
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,
@@ -75,7 +73,6 @@ public class TsFileProcessorInfo {
     storageGroupInfo.releaseStorageGroupMemCost(memCost);
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,

@@ -89,7 +89,6 @@ public class ChunkCache {
     // add metrics
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
               MetricLevel.IMPORTANT,

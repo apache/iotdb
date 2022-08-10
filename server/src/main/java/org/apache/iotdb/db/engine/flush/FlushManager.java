@@ -58,7 +58,6 @@ public class FlushManager implements FlushManagerMBean, IService {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
         MetricService.getInstance()
-            .getMetricManager()
             .getOrCreateAutoGauge(
                 Metric.QUEUE.toString(),
                 MetricLevel.IMPORTANT,
@@ -69,7 +68,6 @@ public class FlushManager implements FlushManagerMBean, IService {
                 Tag.STATUS.toString(),
                 "waiting");
         MetricService.getInstance()
-            .getMetricManager()
             .getOrCreateAutoGauge(
                 Metric.QUEUE.toString(),
                 MetricLevel.IMPORTANT,

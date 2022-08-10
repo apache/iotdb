@@ -37,7 +37,8 @@ import java.util.function.ToLongFunction;
 public abstract class AbstractMetricManager {
   protected static final MetricConfig METRIC_CONFIG =
       MetricConfigDescriptor.getInstance().getMetricConfig();
-  protected static boolean isEnable;
+  /** Is metric service enabled */
+  protected static boolean isEnableMetric;
 
   // region get or create metric
   /**
@@ -48,7 +49,7 @@ public abstract class AbstractMetricManager {
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   public Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
+    if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingCounter;
     }
     return getOrCreateCounter(metric, tags);
@@ -70,7 +71,7 @@ public abstract class AbstractMetricManager {
    */
   public <T> Gauge getOrCreateAutoGauge(
       String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
-    if (!isEnable(metricLevel)) {
+    if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
     return getOrCreateAutoGauge(metric, obj, mapper, tags);
@@ -87,7 +88,7 @@ public abstract class AbstractMetricManager {
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   public Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
+    if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
     return getOrCreateGauge(metric, tags);
@@ -103,7 +104,7 @@ public abstract class AbstractMetricManager {
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   public Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
+    if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingRate;
     }
     return getOrCreateRate(metric, tags);
@@ -119,7 +120,7 @@ public abstract class AbstractMetricManager {
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   public Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
+    if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingHistogram;
     }
     return getOrCreateHistogram(metric, tags);
@@ -135,7 +136,7 @@ public abstract class AbstractMetricManager {
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   public Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags) {
-    if (!isEnable(metricLevel)) {
+    if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingTimer;
     }
     return getOrCreateTimer(metric, tags);
@@ -156,7 +157,7 @@ public abstract class AbstractMetricManager {
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   public void count(long delta, String metric, MetricLevel metricLevel, String... tags) {
-    if (isEnable(metricLevel)) {
+    if (isEnableMetricInGivenLevel(metricLevel)) {
       count(delta, metric, tags);
     }
   }
@@ -172,7 +173,7 @@ public abstract class AbstractMetricManager {
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   public void gauge(long value, String metric, MetricLevel metricLevel, String... tags) {
-    if (isEnable(metricLevel)) {
+    if (isEnableMetricInGivenLevel(metricLevel)) {
       gauge(value, metric, tags);
     }
   }
@@ -188,7 +189,7 @@ public abstract class AbstractMetricManager {
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   public void rate(long value, String metric, MetricLevel metricLevel, String... tags) {
-    if (isEnable(metricLevel)) {
+    if (isEnableMetricInGivenLevel(metricLevel)) {
       rate(value, metric, tags);
     }
   }
@@ -204,7 +205,7 @@ public abstract class AbstractMetricManager {
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
   public void histogram(long value, String metric, MetricLevel metricLevel, String... tags) {
-    if (isEnable(metricLevel)) {
+    if (isEnableMetricInGivenLevel(metricLevel)) {
       histogram(value, metric, tags);
     }
   }
@@ -223,7 +224,7 @@ public abstract class AbstractMetricManager {
    */
   public void timer(
       long delta, TimeUnit timeUnit, String metric, MetricLevel metricLevel, String... tags) {
-    if (isEnable(metricLevel)) {
+    if (isEnableMetricInGivenLevel(metricLevel)) {
       timer(delta, timeUnit, metric, tags);
     }
   }
@@ -323,13 +324,13 @@ public abstract class AbstractMetricManager {
   // endregion
 
   /** Is metric service enabled */
-  public boolean isEnable() {
-    return isEnable;
+  public boolean isEnableMetric() {
+    return isEnableMetric;
   }
 
   /** Is metric service enabled in specific level */
-  public boolean isEnable(MetricLevel metricLevel) {
-    return isEnable() && MetricLevel.higherOrEqual(metricLevel, METRIC_CONFIG.getMetricLevel());
+  public boolean isEnableMetricInGivenLevel(MetricLevel metricLevel) {
+    return isEnableMetric() && MetricLevel.higherOrEqual(metricLevel, METRIC_CONFIG.getMetricLevel());
   }
 
   /** Stop and clear metric manager */

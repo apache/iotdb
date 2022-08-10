@@ -40,7 +40,6 @@ public class CacheMetricsRecorder {
       if (result) {
         // cache hit
         MetricService.getInstance()
-            .getMetricManager()
             .count(
                 1,
                 Metric.CACHE.toString(),
@@ -51,7 +50,6 @@ public class CacheMetricsRecorder {
                 "hit");
       }
       MetricService.getInstance()
-          .getMetricManager()
           .count(
               1,
               Metric.CACHE.toString(),

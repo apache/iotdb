@@ -111,7 +111,6 @@ public class TimeSeriesMetadataCache {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       // add metrics
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
               MetricLevel.IMPORTANT,
@@ -121,7 +120,6 @@ public class TimeSeriesMetadataCache {
               "timeSeriesMeta");
       // add metrics
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CACHE_HIT.toString(),
               MetricLevel.IMPORTANT,

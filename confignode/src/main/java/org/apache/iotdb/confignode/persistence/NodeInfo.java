@@ -105,7 +105,6 @@ public class NodeInfo implements SnapshotProcessor {
   public void addMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.CONFIG_NODE.toString(),
               MetricLevel.CORE,
@@ -116,7 +115,6 @@ public class NodeInfo implements SnapshotProcessor {
               Tag.STATUS.toString(),
               NodeStatus.Registered.toString());
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.DATA_NODE.toString(),
               MetricLevel.CORE,

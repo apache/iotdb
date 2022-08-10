@@ -128,12 +128,12 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public boolean isEnable() {
+  public boolean isEnableMetric() {
     return false;
   }
 
   @Override
-  public boolean isEnable(MetricLevel metricLevel) {
+  public boolean isEnableMetricInGivenLevel(MetricLevel metricLevel) {
     return false;
   }
 

@@ -36,7 +36,6 @@ public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(),
             MetricLevel.CORE,
@@ -51,7 +50,6 @@ public class ConfigNodeRPCServiceHandler implements TServerEventHandler {
     // release query resources.
     processor.handleClientExit();
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(),
             MetricLevel.CORE,

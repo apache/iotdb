@@ -38,7 +38,6 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "RPC")
         .incr(1L);
@@ -51,7 +50,6 @@ public class RPCServiceThriftHandler implements TServerEventHandler {
     eventHandler.handleClientExit();
 
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "RPC")
         .decr(1L);

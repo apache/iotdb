@@ -115,7 +115,6 @@ public class PartitionInfo implements SnapshotProcessor {
   public void addMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.STORAGE_GROUP.toString(),
               MetricLevel.CORE,
@@ -124,7 +123,6 @@ public class PartitionInfo implements SnapshotProcessor {
               Tag.NAME.toString(),
               "number");
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.REGION.toString(),
               MetricLevel.IMPORTANT,
@@ -135,7 +133,6 @@ public class PartitionInfo implements SnapshotProcessor {
               Tag.TYPE.toString(),
               TConsensusGroupType.SchemaRegion.toString());
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.REGION.toString(),
               MetricLevel.IMPORTANT,
@@ -648,7 +645,6 @@ public class PartitionInfo implements SnapshotProcessor {
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.REGION.toString(),
               MetricLevel.IMPORTANT,

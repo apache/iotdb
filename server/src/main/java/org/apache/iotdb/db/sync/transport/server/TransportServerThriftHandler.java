@@ -43,7 +43,6 @@ public class TransportServerThriftHandler implements TServerEventHandler {
   @Override
   public ServerContext createContext(TProtocol input, TProtocol output) {
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(),
             MetricLevel.CORE,
@@ -58,7 +57,6 @@ public class TransportServerThriftHandler implements TServerEventHandler {
     // release query resources.
     serviceImpl.handleClientExit();
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(),
             MetricLevel.CORE,

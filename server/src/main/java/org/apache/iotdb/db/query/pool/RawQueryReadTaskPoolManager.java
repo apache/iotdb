@@ -53,7 +53,6 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
             threadCnt, ThreadName.SUB_RAW_QUERY_SERVICE.getName());
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.QUEUE.toString(),
               MetricLevel.IMPORTANT,
@@ -64,7 +63,6 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
               Tag.STATUS.toString(),
               "running");
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.QUEUE.toString(),
               MetricLevel.IMPORTANT,

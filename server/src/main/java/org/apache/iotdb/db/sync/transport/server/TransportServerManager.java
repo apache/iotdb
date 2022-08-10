@@ -90,7 +90,6 @@ public class TransportServerManager extends ThriftService
             config.isRpcThriftCompressionEnable());
     thriftServiceThread.setName(ThreadName.SYNC_SERVER.getName());
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
             MetricLevel.CORE,

@@ -164,7 +164,6 @@ public class MemTableFlushTask {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .timer(
               System.currentTimeMillis() - start,
               TimeUnit.MILLISECONDS,

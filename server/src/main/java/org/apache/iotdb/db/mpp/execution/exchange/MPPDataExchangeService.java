@@ -111,7 +111,6 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
     }
     thriftServiceThread.setName(ThreadName.MPP_DATA_EXCHANGE_RPC_SERVER.getName());
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
             MetricLevel.CORE,

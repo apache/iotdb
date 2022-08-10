@@ -77,7 +77,6 @@ public class DataNodeInternalRPCService extends ThriftService
     }
     thriftServiceThread.setName(ThreadName.INTERNAL_SERVICE_RPC_SERVER.getName());
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
             MetricLevel.CORE,

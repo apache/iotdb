@@ -199,7 +199,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .count(
               pointsInserted,
               Metric.QUANTITY.toString(),
@@ -252,7 +251,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .count(
               pointsInserted,
               Metric.QUANTITY.toString(),
@@ -296,7 +294,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .count(
               pointsInserted,
               Metric.QUANTITY.toString(),
@@ -339,7 +336,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .count(
               pointsInserted,
               Metric.QUANTITY.toString(),
@@ -362,7 +358,6 @@ public abstract class AbstractMemTable implements IMemTable {
       totalPointsNum += pointsInserted;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
         MetricService.getInstance()
-            .getMetricManager()
             .count(
                 pointsInserted,
                 Metric.QUANTITY.toString(),
@@ -388,7 +383,6 @@ public abstract class AbstractMemTable implements IMemTable {
       totalPointsNum += pointsInserted;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
         MetricService.getInstance()
-            .getMetricManager()
             .count(
                 pointsInserted,
                 Metric.QUANTITY.toString(),
@@ -414,7 +408,6 @@ public abstract class AbstractMemTable implements IMemTable {
       totalPointsNum += pointsInserted;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
         MetricService.getInstance()
-            .getMetricManager()
             .count(
                 pointsInserted,
                 Metric.QUANTITY.toString(),
@@ -440,7 +433,6 @@ public abstract class AbstractMemTable implements IMemTable {
       totalPointsNum += pointsInserted;
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
         MetricService.getInstance()
-            .getMetricManager()
             .count(
                 pointsInserted,
                 Metric.QUANTITY.toString(),

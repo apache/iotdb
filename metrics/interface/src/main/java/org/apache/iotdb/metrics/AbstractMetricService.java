@@ -266,6 +266,4 @@ public abstract class AbstractMetricService {
   public boolean isEnable() {
     return isEnableMetric;
   }
-
-  // TODO remove level in metric manager, and fix IMetricSet
 }

@@ -395,7 +395,6 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
         && req.isNeedSamplingLoad()) {
       long cpuLoad =
           MetricService.getInstance()
-              .getMetricManager()
               .getOrCreateGauge(
                   Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
               .value();
@@ -457,14 +456,12 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
       for (String id : heapIds) {
         Gauge gauge =
             MetricService.getInstance()
-                .getMetricManager()
                 .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "heap");
         result += gauge.value();
       }
       for (String id : noHeapIds) {
         Gauge gauge =
             MetricService.getInstance()
-                .getMetricManager()
                 .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "noheap");
         result += gauge.value();
       }

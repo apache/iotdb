@@ -324,7 +324,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
 
   @Override
   public void removeCounter(String metric, String... tags) {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return;
     }
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.COUNTER, tags);
@@ -333,7 +333,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
 
   @Override
   public void removeGauge(String metric, String... tags) {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return;
     }
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
@@ -342,7 +342,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
 
   @Override
   public void removeRate(String metric, String... tags) {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return;
     }
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
@@ -351,7 +351,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
 
   @Override
   public void removeHistogram(String metric, String... tags) {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return;
     }
     MicrometerMetricName metricName =
@@ -361,7 +361,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
 
   @Override
   public void removeTimer(String metric, String... tags) {
-    if (!isEnable()) {
+    if (!isEnableMetric()) {
       return;
     }
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.TIMER, tags);
@@ -371,7 +371,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
   /** stop everything and clear */
   @Override
   public boolean stop() {
-    isEnable = METRIC_CONFIG.getEnableMetric();
+    isEnableMetric = METRIC_CONFIG.getEnableMetric();
     meterRegistry.clear();
     currentMeters = new ConcurrentHashMap<>();
     return true;

@@ -497,7 +497,6 @@ public class LoadManager {
               + configNodeLocation.getInternalEndPoint().port
               + ")";
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
               MetricLevel.IMPORTANT,
@@ -524,7 +523,6 @@ public class LoadManager {
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
               MetricLevel.IMPORTANT,
@@ -550,7 +548,6 @@ public class LoadManager {
               + configNodeLocation.getInternalEndPoint().port
               + ")";
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
               MetricLevel.IMPORTANT,
@@ -577,7 +574,6 @@ public class LoadManager {
               + dataNodeLocation.getClientRpcEndPoint().port
               + ")";
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
               MetricLevel.IMPORTANT,
@@ -593,7 +589,6 @@ public class LoadManager {
   public void addMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.CONFIG_NODE.toString(),
               MetricLevel.CORE,
@@ -603,7 +598,6 @@ public class LoadManager {
               NodeStatus.Online.toString())
           .set(getRunningConfigNodesNum());
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.DATA_NODE.toString(),
               MetricLevel.CORE,
@@ -613,7 +607,6 @@ public class LoadManager {
               NodeStatus.Online.toString())
           .set(getRunningDataNodesNum());
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.CONFIG_NODE.toString(),
               MetricLevel.CORE,
@@ -623,7 +616,6 @@ public class LoadManager {
               NodeStatus.Unknown.toString())
           .set(getUnknownConfigNodesNum());
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateGauge(
               Metric.DATA_NODE.toString(),
               MetricLevel.CORE,
@@ -637,7 +629,6 @@ public class LoadManager {
 
   public void removeMetrics() {
     MetricService.getInstance()
-        .getMetricManager()
         .removeGauge(
             Metric.CONFIG_NODE.toString(),
             Tag.NAME.toString(),
@@ -645,7 +636,6 @@ public class LoadManager {
             Tag.STATUS.toString(),
             NodeStatus.Online.toString());
     MetricService.getInstance()
-        .getMetricManager()
         .removeGauge(
             Metric.DATA_NODE.toString(),
             Tag.NAME.toString(),
@@ -653,7 +643,6 @@ public class LoadManager {
             Tag.STATUS.toString(),
             NodeStatus.Online.toString());
     MetricService.getInstance()
-        .getMetricManager()
         .removeGauge(
             Metric.CONFIG_NODE.toString(),
             Tag.NAME.toString(),
@@ -661,7 +650,6 @@ public class LoadManager {
             Tag.STATUS.toString(),
             NodeStatus.Unknown.toString());
     MetricService.getInstance()
-        .getMetricManager()
         .removeGauge(
             Metric.DATA_NODE.toString(),
             Tag.NAME.toString(),

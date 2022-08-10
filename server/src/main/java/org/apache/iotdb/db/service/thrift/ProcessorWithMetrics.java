@@ -65,7 +65,6 @@ public class ProcessorWithMetrics extends Processor {
     }
     long cost = System.currentTimeMillis() - startTime;
     MetricService.getInstance()
-        .getMetricManager()
         .timer(
             cost,
             TimeUnit.MILLISECONDS,

@@ -81,7 +81,6 @@ public class ConfigNodeRPCService extends ThriftService implements ConfigNodeRPC
     }
     thriftServiceThread.setName(ThreadName.CONFIG_NODE_RPC_SERVER.getName());
     MetricService.getInstance()
-        .getMetricManager()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
             MetricLevel.CORE,

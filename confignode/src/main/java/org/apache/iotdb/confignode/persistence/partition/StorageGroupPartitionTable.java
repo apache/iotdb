@@ -90,7 +90,6 @@ public class StorageGroupPartitionTable {
   private void addMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.REGION.toString(),
               MetricLevel.NORMAL,
@@ -101,7 +100,6 @@ public class StorageGroupPartitionTable {
               Tag.TYPE.toString(),
               TConsensusGroupType.SchemaRegion.toString());
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.REGION.toString(),
               MetricLevel.NORMAL,
@@ -113,7 +111,6 @@ public class StorageGroupPartitionTable {
               TConsensusGroupType.DataRegion.toString());
       // TODO slot will be updated in the future
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.SLOT.toString(),
               MetricLevel.NORMAL,
@@ -124,7 +121,6 @@ public class StorageGroupPartitionTable {
               Tag.TYPE.toString(),
               "schemaSlotNumber");
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.SLOT.toString(),
               MetricLevel.NORMAL,

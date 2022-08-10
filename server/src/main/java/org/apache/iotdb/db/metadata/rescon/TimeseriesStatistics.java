@@ -47,7 +47,6 @@ public class TimeseriesStatistics {
   public void init() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.QUANTITY.toString(),
               MetricLevel.IMPORTANT,

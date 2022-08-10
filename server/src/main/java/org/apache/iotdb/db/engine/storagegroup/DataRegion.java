@@ -347,7 +347,6 @@ public class DataRegion {
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricService.getInstance()
-          .getMetricManager()
           .getOrCreateAutoGauge(
               Metric.MEM.toString(),
               MetricLevel.IMPORTANT,
