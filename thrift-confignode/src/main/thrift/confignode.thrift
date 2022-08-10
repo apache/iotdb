@@ -551,11 +551,23 @@ service IConfigNodeRPCService {
   i64 getConfigNodeHeartBeat(i64 timestamp)
 
   // ======================================================
-  // UDF TODO: @SteveYurongSu add interface annotation
+  // UDF
   // ======================================================
 
+  /**
+     * Create a function on all online ConfigNodes and DataNodes
+     *
+     * @return SUCCESS_STATUS if the function was created successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
   common.TSStatus createFunction(TCreateFunctionReq req)
 
+  /**
+     * Remove a function on all online ConfigNodes and DataNodes
+     *
+     * @return SUCCESS_STATUS if the function was removed successfully
+     *         EXECUTE_STATEMENT_ERROR if operations on any node failed
+     */
   common.TSStatus dropFunction(TDropFunctionReq req)
 
   // ======================================================
