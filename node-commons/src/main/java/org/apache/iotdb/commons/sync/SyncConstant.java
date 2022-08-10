@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.conf;
+package org.apache.iotdb.commons.sync;
 
 import org.apache.iotdb.rpc.RpcUtils;
 
@@ -34,6 +34,11 @@ public class SyncConstant {
   public static final String COMMIT_LOG_NAME = "commit.log";
   public static final Long DEFAULT_PIPE_LOG_SIZE_IN_BYTE = 10485760L;
 
+  // persistence
+
+  public static final String SYNC_LOG_NAME = "syncService.log";
+  public static final String SYNC_MSG_LOG_NAME = "syncMessage.log";
+
   /** sender */
 
   // dir structure
@@ -44,7 +49,6 @@ public class SyncConstant {
   public static final String MODS_OFFSET_FILE_SUFFIX = ".offset";
 
   // recover
-  public static final String SENDER_LOG_NAME = "senderService.log";
   public static final String PLAN_SERIALIZE_SPLIT_CHARACTER = ",";
   public static final String SENDER_LOG_SPLIT_CHARACTER = "#";
 
@@ -66,12 +70,20 @@ public class SyncConstant {
 
   // Split data file, block size at each transmission */
   public static final int DATA_CHUNK_SIZE =
-      Math.min(64 * 1024 * 1024, RpcUtils.THRIFT_FRAME_MAX_SIZE);
+      Math.min(16 * 1024 * 1024, RpcUtils.THRIFT_FRAME_MAX_SIZE);
+
+  public static final int SUCCESS_CODE = 1;
+  public static final int ERROR_CODE = -1;
+  public static final int REBASE_CODE = -2;
+  public static final int RETRY_CODE = -3;
+  public static final int CONFLICT_CODE = -4;
 
   /** receiver */
   public static final String RECEIVER_DIR_NAME = "receiver";
 
-  public static final String RECEIVER_LOG_NAME = "receiverService.log";
-  public static final String RECEIVER_MSG_LOG_NAME = "receiverMessage.log";
   public static final String IP_SEPARATOR = "\\.";
+
+  // TODO: serialize AbstractReceiverInfo
+  public static final byte PIPE_NAME_MAP_TYPE = 0;
+  public static final byte PIPE_MESSAGE_TYPE = 2;
 }

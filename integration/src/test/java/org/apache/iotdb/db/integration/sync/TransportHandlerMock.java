@@ -50,9 +50,6 @@ public class TransportHandlerMock extends TransportHandler {
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             ThreadName.SYNC_SENDER_PIPE.getName() + "-" + pipe.getName());
-    this.heartbeatExecutorService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.SYNC_SENDER_HEARTBEAT.getName() + "-" + pipe.getName());
   }
 
   public TransportClientMock getTransportClientMock() {
