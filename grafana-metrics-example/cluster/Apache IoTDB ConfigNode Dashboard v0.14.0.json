@@ -365,13 +365,26 @@
               "mode": "off"
             }
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "index": 1,
+                  "text": "Unknown"
+                },
+                "1": {
+                  "index": 0,
+                  "text": "Online"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               }
             ]
           }
@@ -411,7 +424,7 @@
           "refId": "A"
         }
       ],
-      "title": "Select the node that you want to view",
+      "title": "The status of cluster node",
       "type": "timeseries"
     },
     {
