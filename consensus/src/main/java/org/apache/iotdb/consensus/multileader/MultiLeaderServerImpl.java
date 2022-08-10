@@ -118,6 +118,7 @@ public class MultiLeaderServerImpl {
           stateMachine.wait(config.getReplication().getThrottleTimeOutMs());
         } catch (InterruptedException e) {
           logger.error("Failed to throttle down because ", e);
+          Thread.currentThread().interrupt();
         }
       }
       IndexedConsensusRequest indexedConsensusRequest =
