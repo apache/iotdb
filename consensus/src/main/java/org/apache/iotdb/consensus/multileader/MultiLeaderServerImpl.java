@@ -138,7 +138,6 @@ public class MultiLeaderServerImpl {
             thisNode.getGroupId(),
             indexedConsensusRequest.getSearchIndex(),
             result.getCode());
-        index.decrementAndGet();
       }
       return result;
     }
