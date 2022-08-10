@@ -297,23 +297,6 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /**
-   * Return the specific registered DataNode
-   *
-   * @param dataNodeId Specific DataNodeId
-   * @return return the specific DataNode
-   */
-  public TDataNodeConfiguration getRegisteredDataNodeById(int dataNodeId) {
-    TDataNodeConfiguration result;
-    dataNodeInfoReadWriteLock.readLock().lock();
-    try {
-      result = registeredDataNodes.get(dataNodeId);
-    } finally {
-      dataNodeInfoReadWriteLock.readLock().unlock();
-    }
-    return result;
-  }
-
   /** Return All registered DataNodes */
   public List<TDataNodeConfiguration> getRegisteredDataNodes() {
     List<TDataNodeConfiguration> result;
