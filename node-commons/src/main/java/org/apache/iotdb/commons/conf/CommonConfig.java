@@ -21,6 +21,7 @@ package org.apache.iotdb.commons.conf;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import java.io.File;
+import java.util.concurrent.TimeUnit;
 
 public class CommonConfig {
 
@@ -73,6 +74,21 @@ public class CommonConfig {
    * will also be affected. Unit: millisecond
    */
   private long defaultTTL = Long.MAX_VALUE;
+
+  /** Thrift socket and connection timeout between data node and config node. */
+  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+
+  /**
+   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private int selectorNumOfClientManager =
+      Runtime.getRuntime().availableProcessors() / 4 > 0
+          ? Runtime.getRuntime().availableProcessors() / 4
+          : 1;
+
+  /** whether to use thrift compression. */
+  private boolean isRpcThriftCompressionEnabled = false;
 
   CommonConfig() {}
 
@@ -179,5 +195,29 @@ public class CommonConfig {
 
   public void setDefaultTTL(long defaultTTL) {
     this.defaultTTL = defaultTTL;
+  }
+
+  public int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    this.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public int getSelectorNumOfClientManager() {
+    return selectorNumOfClientManager;
+  }
+
+  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
+    this.selectorNumOfClientManager = selectorNumOfClientManager;
+  }
+
+  public boolean isRpcThriftCompressionEnabled() {
+    return isRpcThriftCompressionEnabled;
+  }
+
+  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
+    isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
   }
 }
