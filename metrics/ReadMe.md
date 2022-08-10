@@ -110,40 +110,12 @@ System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources"
 | monitorType        | The type of monitor manager                           | DROPWIZARD, MICROMETER |
 | pushPeriodInSecond | the period time of push(used for prometheus, unit: s) | 5                      |
 
-## 3.2. Module Use Guide
-1. After all above, you can use it in the following way
-   1. use `startService` method to load manager and reporters.
-   2. use `MetricService.getMetricManager()` to get metric manager.
-   3. use the method in metric manager, method details in `metrics/interface/src/main/java/org/apache/iotdb/metrics/MetricManager`
-2. example code
-
-```java
-public class PrometheusRunTest {
-  static MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
-  static MetricService metricService = new DoNothingMetricService();
-  static MetricManager metricManager;
-
-  public static void main(String[] args) throws InterruptedException {
-    metricConfig.setMonitorType(MonitorType.dropwizard);
-    metricConfig.setPredefinedMetrics(new ArrayList<>());
-    metricService.startService();
-    metricManager = metricService.getMetricManager();
-    Counter counter = metricManager.getOrCreateCounter("counter", MetricLevel.IMPORTANT);
-    while (true) {
-      counter.inc();
-      TimeUnit.SECONDS.sleep(1);
-    }
-  }
-}
-```
-
-## 3.3. Use Guide in IoTDB Server Module
+## 3.2. Use Guide in IoTDB Server Module
 1. Now, MetricsService is registered as IService in server module, you can simple set properties: `enableMetric: true` to get a instance of MetricsService.
-2. In server module you can easily use these metric by `MetricsService.getInstance().getMetricManager()`, for example:
+2. In server module you can easily use these metric by `MetricsService.getInstance()`, for example:
 
 ```java
-MetricsService.getInstance()
-   .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
+MetricsService.getInstance().count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
 ```
 
 # 4. How to implement your own metric framework?
@@ -165,5 +137,5 @@ MetricsService.getInstance()
    2. then you need to fix the implementation of `enablePredefinedMetric(PredefinedMetric metric)` in your manager.
 
 # 5. Some docs
-1. <a href = "https://cwiki.apache.org/confluence/display/IOTDB/Monitor+Module">Monitor Module</a>
-2. <a href = "https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=184616789">Monitor Module(zh)</a>
+1. <a href = "https://iotdb.apache.org/UserGuide/Master/Maintenance-Tools/Metric-Tool.html">Metric Tool</a>
+2. <a href = "https://iotdb.apache.org/zh/UserGuide/Master/Maintenance-Tools/Metric-Tool.html">Metric Tool(zh)</a>
