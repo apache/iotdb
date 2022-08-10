@@ -134,7 +134,7 @@ public class SystemMetrics implements IMetricSet {
         this::collect,
         1,
         MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
-        TimeUnit.MILLISECONDS);
+        TimeUnit.SECONDS);
   }
 
   @Override
