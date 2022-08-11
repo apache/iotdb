@@ -29,372 +29,96 @@ import org.apache.iotdb.metrics.micrometer.type.MicrometerTimer;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.IMetric;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
+import org.apache.iotdb.metrics.utils.MetricInfo;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.ToLongFunction;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class MicrometerMetricManager extends AbstractMetricManager {
-  private static final Logger logger = LoggerFactory.getLogger(MicrometerMetricManager.class);
 
-  Map<MicrometerMetricName, IMetric> currentMeters;
   io.micrometer.core.instrument.MeterRegistry meterRegistry;
 
   public MicrometerMetricManager() {
     meterRegistry = Metrics.globalRegistry;
-    currentMeters = new ConcurrentHashMap<>();
-    isEnableMetric = METRIC_CONFIG.getEnableMetric();
   }
 
   @Override
-  public Counter getOrCreateCounter(String metric, String... tags) {
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.COUNTER, tags);
-    IMetric m =
-        currentMeters.computeIfAbsent(
-            metricName, key -> new MicrometerCounter(meterRegistry.counter(metric, tags)));
-    if (m instanceof Counter) {
-      return (Counter) m;
-    }
-    throw new IllegalArgumentException(
-        metricName + " is already used for a different type of metric");
+  public Counter createCounter(MetricInfo metricInfo) {
+    return new MicrometerCounter(
+        meterRegistry.counter(metricInfo.getName(), metricInfo.getTagsInArray()));
   }
 
   @Override
-  public <T> Gauge getOrCreateAutoGauge(
-      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
-    IMetric m =
-        currentMeters.computeIfAbsent(
-            metricName,
-            key -> new MicrometerAutoGauge<T>(meterRegistry, metric, obj, mapper, tags));
-    if (m instanceof Gauge) {
-      return (Gauge) m;
-    }
-    throw new IllegalArgumentException(
-        metricName + " is already used for a different type of metric");
+  public <T> Gauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
+    return new MicrometerAutoGauge<T>(
+        meterRegistry, metricInfo.getName(), obj, mapper, metricInfo.getTagsInArray());
   }
 
   @Override
-  public Gauge getOrCreateGauge(String metric, String... tags) {
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
-    IMetric m =
-        currentMeters.computeIfAbsent(
-            metricName, key -> new MicrometerGauge(meterRegistry, metric, tags));
-    if (m instanceof Gauge) {
-      return (Gauge) m;
-    }
-    throw new IllegalArgumentException(
-        metricName + " is already used for a different type of metric");
+  public Gauge createGauge(MetricInfo metricInfo) {
+    return new MicrometerGauge(meterRegistry, metricInfo.getName(), metricInfo.getTagsInArray());
   }
 
   @Override
-  public Histogram getOrCreateHistogram(String metric, String... tags) {
-    MicrometerMetricName metricName =
-        new MicrometerMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
-    IMetric m =
-        currentMeters.computeIfAbsent(
-            metricName,
-            key -> {
-              io.micrometer.core.instrument.DistributionSummary distributionSummary =
-                  io.micrometer.core.instrument.DistributionSummary.builder(metric)
-                      .tags(tags)
-                      .register(meterRegistry);
-              return new MicrometerHistogram(distributionSummary);
-            });
-    if (m instanceof Histogram) {
-      return (Histogram) m;
-    }
-    throw new IllegalArgumentException(
-        metricName + " is already used for a different type of metric");
+  public Histogram createHistogram(MetricInfo metricInfo) {
+    io.micrometer.core.instrument.DistributionSummary distributionSummary =
+        io.micrometer.core.instrument.DistributionSummary.builder(metricInfo.getName())
+            .tags(metricInfo.getTagsInArray())
+            .register(meterRegistry);
+    return new MicrometerHistogram(distributionSummary);
   }
 
   @Override
-  public Rate getOrCreateRate(String metric, String... tags) {
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
-
-    IMetric m =
-        currentMeters.computeIfAbsent(
-            metricName,
-            key ->
-                new MicrometerRate(meterRegistry.gauge(metric, Tags.of(tags), new AtomicLong(0))));
-    if (m instanceof Rate) {
-      return (Rate) m;
-    }
-    throw new IllegalArgumentException(
-        metricName + " is already used for a different type of metric");
+  public Rate createRate(MetricInfo metricInfo) {
+    return new MicrometerRate(
+        meterRegistry.gauge(
+            metricInfo.getName(), Tags.of(metricInfo.getTagsInArray()), new AtomicLong(0)));
   }
 
   @Override
-  public Timer getOrCreateTimer(String metric, String... tags) {
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.TIMER, tags);
-    IMetric m =
-        currentMeters.computeIfAbsent(
-            metricName,
-            key -> {
-              io.micrometer.core.instrument.Timer timer =
-                  io.micrometer.core.instrument.Timer.builder(metric)
-                      .tags(tags)
-                      .register(meterRegistry);
-              logger.info("create getOrCreateTimer {}", metric);
-              return new MicrometerTimer(timer);
-            });
-    if (m instanceof Timer) {
-      return (Timer) m;
-    }
-    throw new IllegalArgumentException(
-        metricName + " is already used for a different type of metric");
+  public Timer createTimer(MetricInfo metricInfo) {
+    io.micrometer.core.instrument.Timer timer =
+        io.micrometer.core.instrument.Timer.builder(metricInfo.getName())
+            .tags(metricInfo.getTagsInArray())
+            .register(meterRegistry);
+    return new MicrometerTimer(timer);
   }
 
   @Override
-  public void count(long delta, String metric, String... tags) {
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.COUNTER, tags);
-    IMetric m =
-        currentMeters.computeIfAbsent(
-            metricName, key -> new MicrometerCounter(meterRegistry.counter(metric, tags)));
-    if (m instanceof Counter) {
-      ((Counter) m).inc(delta);
-    }
-  }
-
-  @Override
-  public void histogram(long value, String metric, String... tags) {
-    MicrometerMetricName metricName =
-        new MicrometerMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
-    IMetric m =
-        currentMeters.computeIfAbsent(
-            metricName,
-            key -> {
-              io.micrometer.core.instrument.DistributionSummary distributionSummary =
-                  io.micrometer.core.instrument.DistributionSummary.builder(metric)
-                      .tags(tags)
-                      .publishPercentileHistogram()
-                      .publishPercentiles(0)
-                      .register(meterRegistry);
-              return new MicrometerHistogram(distributionSummary);
-            });
-    if (m instanceof Histogram) {
-      ((Histogram) m).update(value);
-      return;
-    }
-    throw new IllegalArgumentException(
-        metricName + " is already used for a different type of metric");
-  }
-
-  @Override
-  public void gauge(long value, String metric, String... tags) {
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
-    IMetric m =
-        (currentMeters.computeIfAbsent(
-            metricName, key -> new MicrometerGauge(meterRegistry, metric, tags)));
-    if (m instanceof Gauge) {
-      ((Gauge) m).set(value);
-      return;
-    }
-    throw new IllegalArgumentException(
-        metricName + " is already used for a different type of metric");
-  }
-
-  @Override
-  public void rate(long value, String metric, String... tags) {
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
-    IMetric m =
-        currentMeters.computeIfAbsent(
-            metricName,
-            key ->
-                new MicrometerRate(meterRegistry.gauge(metric, Tags.of(tags), new AtomicLong(0))));
-
-    if (m instanceof Rate) {
-      ((Rate) m).mark(value);
-      return;
-    }
-    throw new IllegalArgumentException(
-        metricName + " is already used for a different type of metric");
-  }
-
-  @Override
-  public synchronized void timer(long delta, TimeUnit timeUnit, String metric, String... tags) {
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.TIMER, tags);
-    IMetric m =
-        currentMeters.computeIfAbsent(
-            metricName,
-            key -> {
-              io.micrometer.core.instrument.Timer timer =
-                  io.micrometer.core.instrument.Timer.builder(metric)
-                      .tags(tags)
-                      .register(meterRegistry);
-              return new MicrometerTimer(timer);
-            });
-    if (m instanceof Timer) {
-      ((Timer) m).update(delta, timeUnit);
-      return;
-    }
-    throw new IllegalArgumentException(
-        metricName + " is already used for a different type of metric");
-  }
-
-  @Override
-  public List<String[]> getAllMetricKeys() {
-    List<String[]> keys = new ArrayList<>(currentMeters.size());
-    List<Meter> meterList = meterRegistry.getMeters();
-    for (Meter meter : meterList) {
-      List<String> tags = new ArrayList<>(meter.getId().getTags().size() * 2 + 1);
-      tags.add(meter.getId().getName());
-      for (Tag tag : meter.getId().getTags()) {
-        tags.add(tag.getKey());
-        tags.add(tag.getValue());
-      }
-      keys.add(tags.toArray(new String[0]));
-    }
-    return keys;
-  }
-
-  @Override
-  public Map<String[], Counter> getAllCounters() {
-    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.COUNTER);
-    Map<String[], Counter> counterMap = new HashMap<>();
-    metricMap.forEach((k, v) -> counterMap.put(k, (Counter) v));
-    return counterMap;
-  }
-
-  @Override
-  public Map<String[], Gauge> getAllGauges() {
-    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.GAUGE);
-    Map<String[], Gauge> gaugeMap = new HashMap<>();
-    metricMap.forEach((k, v) -> gaugeMap.put(k, (Gauge) v));
-    return gaugeMap;
-  }
-
-  @Override
-  public Map<String[], Rate> getAllRates() {
-    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.GAUGE);
-    Map<String[], Rate> rateMap = new HashMap<>();
-    metricMap.forEach((k, v) -> rateMap.put(k, (Rate) v));
-    return rateMap;
-  }
-
-  @Override
-  public Map<String[], Histogram> getAllHistograms() {
-    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.DISTRIBUTION_SUMMARY);
-    Map<String[], Histogram> histogramMap = new HashMap<>();
-    metricMap.forEach((k, v) -> histogramMap.put(k, (Histogram) v));
-    return histogramMap;
-  }
-
-  @Override
-  public Map<String[], Timer> getAllTimers() {
-    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.TIMER);
-    Map<String[], Timer> timerMap = new HashMap<>();
-    metricMap.forEach((k, v) -> timerMap.put(k, (Timer) v));
-    return timerMap;
-  }
-
-  private Map<String[], IMetric> getMetricByType(Meter.Type type) {
-    Map<String[], IMetric> metricMap = new HashMap<>();
-    for (Map.Entry<MicrometerMetricName, IMetric> entry : currentMeters.entrySet()) {
-      if (entry.getKey().getId().getType() == type) {
-        List<String> tags = new ArrayList<>(entry.getKey().getId().getTags().size() * 2);
-        tags.add(entry.getKey().getId().getName());
-        for (Tag tag : entry.getKey().getId().getTags()) {
-          tags.add(tag.getKey());
-          tags.add(tag.getValue());
-        }
-        metricMap.put(tags.toArray(new String[0]), entry.getValue());
-      }
-    }
-    return metricMap;
-  }
-
-  @Override
-  public void removeCounter(String metric, String... tags) {
-    if (!isEnableMetric()) {
-      return;
-    }
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.COUNTER, tags);
-    currentMeters.remove(metricName);
+  protected void remove(MetricType type, MetricInfo metricInfo) {
+    Meter.Type meterType = transformType(type);
+    MicrometerMetricName metricName = new MicrometerMetricName(metricInfo, meterType);
     meterRegistry.remove(metricName.getId());
   }
 
   @Override
-  public void removeGauge(String metric, String... tags) {
-    if (!isEnableMetric()) {
-      return;
-    }
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
-    currentMeters.remove(metricName);
-    meterRegistry.remove(metricName.getId());
-  }
-
-  @Override
-  public void removeRate(String metric, String... tags) {
-    if (!isEnableMetric()) {
-      return;
-    }
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
-    currentMeters.remove(metricName);
-    meterRegistry.remove(metricName.getId());
-  }
-
-  @Override
-  public void removeHistogram(String metric, String... tags) {
-    if (!isEnableMetric()) {
-      return;
-    }
-    MicrometerMetricName metricName =
-        new MicrometerMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
-    currentMeters.remove(metricName);
-    meterRegistry.remove(metricName.getId());
-  }
-
-  @Override
-  public void removeTimer(String metric, String... tags) {
-    if (!isEnableMetric()) {
-      return;
-    }
-    MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.TIMER, tags);
-    currentMeters.remove(metricName);
-    meterRegistry.remove(metricName.getId());
-  }
-
-  @Override
-  public boolean stop() {
-    isEnableMetric = METRIC_CONFIG.getEnableMetric();
+  public boolean stopFramework() {
     meterRegistry.clear();
-    currentMeters = new ConcurrentHashMap<>();
     return true;
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
+  private Meter.Type transformType(MetricType type) {
+    switch (type) {
+      case COUNTER:
+        return Meter.Type.COUNTER;
+      case GAUGE:
+      case RATE:
+        return Meter.Type.GAUGE;
+      case HISTOGRAM:
+        return Meter.Type.DISTRIBUTION_SUMMARY;
+      case TIMER:
+        return Meter.Type.TIMER;
+      default:
+        return Meter.Type.OTHER;
     }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    MicrometerMetricManager that = (MicrometerMetricManager) o;
-    return Objects.equals(currentMeters, that.currentMeters);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hashCode(currentMeters);
   }
 }

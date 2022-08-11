@@ -26,13 +26,14 @@ import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.reporter.CompositeReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
-import org.apache.iotdb.metrics.reporter.ReporterType;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -237,24 +238,8 @@ public abstract class AbstractMetricService {
     return metricManager.getAllTimers();
   }
 
-  public void removeCounter(String metric, String... tags) {
-    metricManager.removeCounter(metric, tags);
-  }
-
-  public void removeGauge(String metric, String... tags) {
-    metricManager.removeGauge(metric, tags);
-  }
-
-  public void removeRate(String metric, String... tags) {
-    metricManager.removeRate(metric, tags);
-  }
-
-  public void removeHistogram(String metric, String... tags) {
-    metricManager.removeHistogram(metric, tags);
-  }
-
-  public void removeTimer(String metric, String... tags) {
-    metricManager.removeTimer(metric, tags);
+  public void remove(MetricType type, String metric, String... tags) {
+    metricManager.remove(type, metric, tags);
   }
 
   // endregion

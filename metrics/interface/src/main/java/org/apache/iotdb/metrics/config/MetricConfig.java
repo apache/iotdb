@@ -20,9 +20,9 @@
 package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.predefined.PredefinedMetric;
-import org.apache.iotdb.metrics.reporter.ReporterType;
 import org.apache.iotdb.metrics.utils.MetricFrameworkType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
 import java.util.List;

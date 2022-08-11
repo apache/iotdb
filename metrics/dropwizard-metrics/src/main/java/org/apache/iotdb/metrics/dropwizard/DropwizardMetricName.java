@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
+import org.apache.iotdb.metrics.utils.MetricInfo;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,6 +41,11 @@ public class DropwizardMetricName {
         this.tags.put(tags[i], tags[i + 1]);
       }
     }
+  }
+
+  public DropwizardMetricName(MetricInfo metricInfo) {
+    this.name = metricInfo.getName();
+    this.tags = metricInfo.getTags();
   }
 
   /** Create metric name from flatString */

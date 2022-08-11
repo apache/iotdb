@@ -1,0 +1,164 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.metrics.utils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+public class MetricInfo {
+
+  private static final Logger logger = LoggerFactory.getLogger(MetricInfo.class);
+  private static final Integer PAIR_SIZE = 2;
+  private final String name;
+  private final TagInfo tagInfo;
+  private final Map<String, String> tags = new LinkedHashMap<>();
+
+  public MetricInfo(String name, String... tags) {
+    this.name = name;
+    if (tags.length % PAIR_SIZE == 0) {
+      for (int i = 0; i < tags.length; i += PAIR_SIZE) {
+        this.tags.put(tags[i], tags[i + 1]);
+      }
+    } else {
+      logger.error("The size of metric tags should be even.");
+    }
+    this.tagInfo = new TagInfo(this.tags.keySet());
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public String[] getTagsInArray() {
+    String[] tags = new String[this.tags.size() * 2];
+    int index = 0;
+    for (Map.Entry<String, String> entry : this.tags.entrySet()) {
+      tags[index++] = entry.getKey();
+      tags[index++] = entry.getValue();
+    }
+    return tags;
+  }
+
+  public Map<String, String> getTags() {
+    return tags;
+  }
+
+  public TagInfo getTagMetaInfo() {
+    return tagInfo;
+  }
+
+  /** convert the metric name to string array. */
+  public String[] toStringArray() {
+    List<String> allNames = new ArrayList<>();
+    allNames.add(name);
+    tags.forEach(
+        (k, v) -> {
+          allNames.add(k);
+          allNames.add(v);
+        });
+    return allNames.toArray(new String[0]);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    MetricInfo that = (MetricInfo) o;
+    if (!this.name.equals(that.name)) {
+      return false;
+    }
+    if (that.getTags().size() != this.tags.size()) {
+      return false;
+    }
+    Map<String, String> thatTags = that.getTags();
+    for (Map.Entry<String, String> entry : this.tags.entrySet()) {
+      if (!thatTags.containsKey(entry.getKey())) {
+        return false;
+      }
+      if (!thatTags.get(entry.getKey()).equals(entry.getValue())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name, tags);
+  }
+
+  @Override
+  public String toString() {
+    return "MetricInfo{" + "name='" + name + '\'' + ", tagInfo=" + tagInfo + ", tags=" + tags + '}';
+  }
+
+  public static class TagInfo {
+    private final Set<String> tagNames;
+
+    public TagInfo(Set<String> tagNames) {
+      this.tagNames = tagNames;
+    }
+
+    public Set<String> getTagNames() {
+      return tagNames;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      TagInfo that = (TagInfo) o;
+      if (tagNames == null || that.tagNames == null) {
+        return false;
+      }
+      for (String tagName : that.tagNames) {
+        if (!tagNames.contains(tagName)) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(tagNames);
+    }
+
+    @Override
+    public String toString() {
+      return "TagInfo{" + "tagNames=" + tagNames + '}';
+    }
+  }
+}

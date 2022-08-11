@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.micrometer.reporter;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.reporter.Reporter;
-import org.apache.iotdb.metrics.reporter.ReporterType;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MeterRegistry;

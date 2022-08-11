@@ -19,14 +19,17 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
+import org.apache.iotdb.metrics.utils.MetricInfo;
+
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tags;
 
 public class MicrometerMetricName {
   private Meter.Id id;
 
-  public MicrometerMetricName(String name, Meter.Type type, String... tags) {
-    this.id = new Meter.Id(name, Tags.of(tags), null, null, type);
+  public MicrometerMetricName(MetricInfo metricInfo, Meter.Type type) {
+    this.id =
+        new Meter.Id(metricInfo.getName(), Tags.of(metricInfo.getTagsInArray()), null, null, type);
   }
 
   public Meter.Id getId() {

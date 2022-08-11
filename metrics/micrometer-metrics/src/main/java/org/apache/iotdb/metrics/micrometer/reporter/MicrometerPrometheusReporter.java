@@ -23,7 +23,7 @@ import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.reporter.Reporter;
-import org.apache.iotdb.metrics.reporter.ReporterType;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;

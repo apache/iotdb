@@ -20,7 +20,6 @@
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricName;
-import org.apache.iotdb.metrics.type.MetricType;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
@@ -70,7 +69,7 @@ class DropwizardMetricsExporter {
     DropwizardMetricName metricName = new DropwizardMetricName(dropwizardName);
     String sanitizeName = metricName.getName();
     writer.writeHelp(sanitizeName, getHelpMessage(dropwizardName, gauge));
-    writer.writeType(sanitizeName, MetricType.GAUGE);
+    writer.writeType(sanitizeName, DropwizardMetricType.GAUGE);
 
     Object obj = gauge.getValue();
     double value;
@@ -90,7 +89,7 @@ class DropwizardMetricsExporter {
     DropwizardMetricName metricName = new DropwizardMetricName(dropwizardName);
     String sanitizeName = metricName.getName() + "_total";
     writer.writeHelp(sanitizeName, getHelpMessage(dropwizardName, counter));
-    writer.writeType(sanitizeName, MetricType.GAUGE);
+    writer.writeType(sanitizeName, DropwizardMetricType.GAUGE);
     writer.writeSample(sanitizeName, metricName.getTags(), counter.getCount());
   }
 
@@ -114,7 +113,7 @@ class DropwizardMetricsExporter {
       throws IOException {
     String sanitizeName = metricName.getName() + "_seconds";
     writer.writeHelp(sanitizeName, helpMessage);
-    writer.writeType(sanitizeName, MetricType.SUMMARY);
+    writer.writeType(sanitizeName, DropwizardMetricType.SUMMARY);
     Map<String, String> tags = metricName.getTags();
     writer.writeSample(sanitizeName + "_max", tags, snapshot.getMax() * factor);
     writer.writeSample(
@@ -138,7 +137,7 @@ class DropwizardMetricsExporter {
     String sanitizeName = metricName.getName() + "_total";
 
     writer.writeHelp(sanitizeName, getHelpMessage(dropwizardName, meter));
-    writer.writeType(sanitizeName, MetricType.COUNTER);
+    writer.writeType(sanitizeName, DropwizardMetricType.COUNTER);
     writer.writeSample(sanitizeName, metricName.getTags(), meter.getCount());
 
     writeMetered(new DropwizardMetricName(dropwizardName), meter);

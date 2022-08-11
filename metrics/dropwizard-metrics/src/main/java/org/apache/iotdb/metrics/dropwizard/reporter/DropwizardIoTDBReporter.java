@@ -23,7 +23,7 @@ import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
 import org.apache.iotdb.metrics.reporter.Reporter;
-import org.apache.iotdb.metrics.reporter.ReporterType;
+import org.apache.iotdb.metrics.utils.ReporterType;
 
 import com.codahale.metrics.MetricFilter;
 import org.slf4j.Logger;

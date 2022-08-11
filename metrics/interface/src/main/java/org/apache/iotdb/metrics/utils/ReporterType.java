@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.type;
+package org.apache.iotdb.metrics.utils;
 
-public enum OutPutFormat {
+public enum ReporterType {
+  JMX,
   PROMETHEUS,
-  JSON;
+  IOTDB;
 
   @Override
   public String toString() {

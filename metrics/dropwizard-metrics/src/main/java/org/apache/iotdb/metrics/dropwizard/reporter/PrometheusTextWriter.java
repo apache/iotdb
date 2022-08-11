@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.metrics.type.MetricType;
-
 import java.io.FilterWriter;
 import java.io.IOException;
 import java.io.Writer;
@@ -40,7 +38,7 @@ class PrometheusTextWriter extends FilterWriter {
     write('\n');
   }
 
-  public void writeType(String name, MetricType type) throws IOException {
+  public void writeType(String name, DropwizardMetricType type) throws IOException {
     write("# TYPE ");
     write(name);
     write(' ');

@@ -17,22 +17,17 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.type;
+package org.apache.iotdb.metrics.utils;
 
 public enum MetricType {
-  COUNTER("counter"),
-  GAUGE("gauge"),
-  SUMMARY("summary"),
-  HISTOGRAM("histogram"),
-  UNTYPED("untyped");
+  COUNTER,
+  GAUGE,
+  RATE,
+  HISTOGRAM,
+  TIMER;
 
-  private final String text;
-
-  MetricType(String text) {
-    this.text = text;
-  }
-
-  public String getText() {
-    return text;
+  @Override
+  public String toString() {
+    return name();
   }
 }
