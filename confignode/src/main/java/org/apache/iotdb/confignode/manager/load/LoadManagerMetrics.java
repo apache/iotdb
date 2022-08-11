@@ -74,8 +74,7 @@ public class LoadManagerMetrics {
   }
 
   private int getRunningDataNodesNum() {
-    List<TDataNodeConfiguration> allDataNodes =
-        configManager.getLoadManager().getOnlineDataNodes();
+    List<TDataNodeConfiguration> allDataNodes = configManager.getLoadManager().getOnlineDataNodes();
     if (allDataNodes == null) {
       return 0;
     }
@@ -201,38 +200,35 @@ public class LoadManagerMetrics {
    *
    * @return Map<DataNodeId, LeaderCount>
    */
-  public Map<Integer, Integer> getLeadershipCountByDatanode() {
+  public Integer getLeadershipCountByDatanode(int DataNodeId) {
     Map<Integer, Integer> idToCountMap = new ConcurrentHashMap<>();
 
     configManager
         .getLoadManager()
         .getAllLeadership()
         .forEach((consensusGroupId, nodeId) -> idToCountMap.merge(nodeId, 1, Integer::sum));
-    return idToCountMap;
+    return idToCountMap.get(DataNodeId);
   }
 
   public void addLeaderCount() {
-    Map<Integer, Integer> idToCountMap = getLeadershipCountByDatanode();
     getNodeManager()
         .getRegisteredDataNodes()
         .forEach(
             dataNodeInfo -> {
               TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
               int dataNodeId = dataNodeLocation.getDataNodeId();
-              if (idToCountMap.containsKey(dataNodeId)) {
-                String name =
-                    NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
+              String name =
+                  NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
 
-                MetricsService.getInstance()
-                        .getMetricManager()
-                        .getOrCreateAutoGauge(
-                                Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
-                                MetricLevel.IMPORTANT,
-                                idToCountMap,
-                                o -> get(dataNodeId),
-                                Tag.NAME.toString(),
-                                name);
-              }
+              MetricsService.getInstance()
+                  .getMetricManager()
+                  .getOrCreateAutoGauge(
+                      Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
+                      MetricLevel.IMPORTANT,
+                      this,
+                      o -> getLeadershipCountByDatanode(dataNodeId),
+                      Tag.NAME.toString(),
+                      name);
             });
   }
 

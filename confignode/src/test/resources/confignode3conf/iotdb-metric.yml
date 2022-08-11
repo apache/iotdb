@@ -18,7 +18,7 @@
 #
 
 # whether enable the module
-enableMetric: true
+enableMetric: false
 
 # Is stat performance of operation latency
 enablePerformanceStat: false
@@ -38,12 +38,9 @@ metricLevel: IMPORTANT
 predefinedMetrics:
   - JVM
   - FILE
-  - LOGBACK
-  - PROCESS
-  - SYSTEM
 
 # The http server's port for prometheus exporter to get metric data.
-prometheusExporterPort: 9096
+prometheusExporterPort: 9095
 
 # The config of iotdb reporter
 ioTDBReporterConfig:
