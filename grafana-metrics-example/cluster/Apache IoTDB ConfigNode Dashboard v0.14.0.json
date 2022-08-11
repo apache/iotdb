@@ -418,7 +418,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "cluster_node_status{name =~ \"EndPoint.*\"}",
+          "expr": "cluster_node_status{}",
           "legendFormat": "{{instance}}  {{type}} {{name}}",
           "range": true,
           "refId": "A"
@@ -493,7 +493,7 @@
           },
           "editorMode": "code",
           "exemplar": true,
-          "expr": "cluster_node_leader_count{name =~ \"EndPoint.*\"}",
+          "expr": "cluster_node_leader_count{}",
           "legendFormat": "{{name}} total leaders",
           "range": true,
           "refId": "A"
