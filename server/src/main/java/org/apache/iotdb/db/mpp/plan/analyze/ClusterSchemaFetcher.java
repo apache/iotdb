@@ -68,6 +68,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
@@ -172,7 +173,14 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ISchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean isAligned) {
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean isAligned) {
+    TSDataType[] tsDataTypes = new TSDataType[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      tsDataTypes[i] = getDataType.apply(i);
+    }
 
     ClusterSchemaTree schemaTree = schemaCache.get(devicePath, measurements);
     Pair<List<String>, List<TSDataType>> missingMeasurements =

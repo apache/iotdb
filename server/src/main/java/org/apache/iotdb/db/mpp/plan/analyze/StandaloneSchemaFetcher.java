@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
@@ -81,21 +82,27 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
 
   @Override
   public ISchemaTree fetchSchemaWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned) {
     DeviceSchemaInfo deviceSchemaInfo =
-        getDeviceSchemaInfoWithAutoCreate(devicePath, measurements, tsDataTypes, aligned);
+        getDeviceSchemaInfoWithAutoCreate(devicePath, measurements, getDataType, aligned);
     DeviceGroupSchemaTree schemaTree = new DeviceGroupSchemaTree();
     schemaTree.addDeviceInfo(deviceSchemaInfo);
     return schemaTree;
   }
 
   private DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned) {
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned) {
     try {
       SchemaRegionId schemaRegionId = localConfigNode.getBelongedSchemaRegionId(devicePath);
       ISchemaRegion schemaRegion = schemaEngine.getSchemaRegion(schemaRegionId);
       return schemaRegion.getDeviceSchemaInfoWithAutoCreate(
-          devicePath, measurements, tsDataTypes, aligned);
+          devicePath, measurements, getDataType, aligned);
     } catch (MetadataException e) {
       throw new RuntimeException(e);
     }
@@ -142,7 +149,8 @@ public class StandaloneSchemaFetcher implements ISchemaFetcher {
       }
 
       schemaTree.addDeviceInfo(
-          getDeviceSchemaInfoWithAutoCreate(entry.getKey(), measurements, tsDataTypes, isAligned));
+          getDeviceSchemaInfoWithAutoCreate(
+              entry.getKey(), measurements, index -> tsDataTypes[index], isAligned));
     }
 
     return schemaTree;
