@@ -25,7 +25,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -166,7 +166,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public boolean validateAndSetSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(ISchemaTree schemaTree) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
     if (deviceSchemaInfo.isAligned() != isAligned) {
@@ -790,7 +790,7 @@ public class InsertTabletNode extends InsertNode implements WALEntryValue {
   }
 
   public void serializeToWAL(IWALByteBufferView buffer, int start, int end) {
-    buffer.putShort((short) PlanNodeType.INSERT_TABLET.ordinal());
+    buffer.putShort(PlanNodeType.INSERT_TABLET.getNodeType());
     subSerialize(buffer, start, end);
   }
 

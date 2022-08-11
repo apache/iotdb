@@ -146,7 +146,7 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void SetTTLPlanTest() throws IOException {
-    SetTTLPlan req0 = new SetTTLPlan("root.sg0", Long.MAX_VALUE);
+    SetTTLPlan req0 = new SetTTLPlan(Arrays.asList("root", "sg0"), Long.MAX_VALUE);
     SetTTLPlan req1 = (SetTTLPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
@@ -382,27 +382,49 @@ public class ConfigPhysicalPlanSerDeTest {
     // create user
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.CreateUser, "thulab", "", "passwd", "", new HashSet<>(), "");
+            ConfigPhysicalPlanType.CreateUser,
+            "thulab",
+            "",
+            "passwd",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // create role
     req0 =
-        new AuthorPlan(ConfigPhysicalPlanType.CreateRole, "", "admin", "", "", new HashSet<>(), "");
+        new AuthorPlan(
+            ConfigPhysicalPlanType.CreateRole,
+            "",
+            "admin",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // alter user
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.UpdateUser, "tempuser", "", "", "newpwd", new HashSet<>(), "");
+            ConfigPhysicalPlanType.UpdateUser,
+            "tempuser",
+            "",
+            "",
+            "newpwd",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // grant user
+    List<String> nodeNameList = new ArrayList<>();
+    nodeNameList.add("root.ln.**");
+    nodeNameList.add("root.abc.**");
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.GrantUser, "tempuser", "", "", "", permissions, "root.ln");
+            ConfigPhysicalPlanType.GrantUser, "tempuser", "", "", "", permissions, nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
@@ -415,28 +437,34 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             permissions,
-            "root.ln");
+            nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // grant role to user
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.GrantRole, "", "temprole", "", "", new HashSet<>(), "");
+            ConfigPhysicalPlanType.GrantRole,
+            "",
+            "temprole",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // revoke user
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.RevokeUser, "tempuser", "", "", "", permissions, "root.ln");
+            ConfigPhysicalPlanType.RevokeUser, "tempuser", "", "", "", permissions, nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // revoke role
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.RevokeRole, "", "temprole", "", "", permissions, "root.ln");
+            ConfigPhysicalPlanType.RevokeRole, "", "temprole", "", "", permissions, nodeNameList);
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
@@ -449,70 +477,125 @@ public class ConfigPhysicalPlanSerDeTest {
             "",
             "",
             new HashSet<>(),
-            "");
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // drop user
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.DropUser, "xiaoming", "", "", "", new HashSet<>(), "");
+            ConfigPhysicalPlanType.DropUser,
+            "xiaoming",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // drop role
     req0 =
-        new AuthorPlan(ConfigPhysicalPlanType.DropRole, "", "admin", "", "", new HashSet<>(), "");
+        new AuthorPlan(
+            ConfigPhysicalPlanType.DropRole,
+            "",
+            "admin",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // list user
-    req0 = new AuthorPlan(ConfigPhysicalPlanType.ListUser, "", "", "", "", new HashSet<>(), "");
+    req0 =
+        new AuthorPlan(
+            ConfigPhysicalPlanType.ListUser, "", "", "", "", new HashSet<>(), new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // list role
-    req0 = new AuthorPlan(ConfigPhysicalPlanType.ListRole, "", "", "", "", new HashSet<>(), "");
+    req0 =
+        new AuthorPlan(
+            ConfigPhysicalPlanType.ListRole, "", "", "", "", new HashSet<>(), new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // list privileges user
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.ListUserPrivilege, "", "", "", "", new HashSet<>(), "");
+            ConfigPhysicalPlanType.ListUserPrivilege,
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // list privileges role
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.ListRolePrivilege, "", "", "", "", new HashSet<>(), "");
+            ConfigPhysicalPlanType.ListRolePrivilege,
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // list user privileges
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.ListUserPrivilege, "", "", "", "", new HashSet<>(), "");
+            ConfigPhysicalPlanType.ListUserPrivilege,
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // list role privileges
     req0 =
         new AuthorPlan(
-            ConfigPhysicalPlanType.ListRolePrivilege, "", "", "", "", new HashSet<>(), "");
+            ConfigPhysicalPlanType.ListRolePrivilege,
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // list all role of user
     req0 =
-        new AuthorPlan(ConfigPhysicalPlanType.ListUserRoles, "", "", "", "", new HashSet<>(), "");
+        new AuthorPlan(
+            ConfigPhysicalPlanType.ListUserRoles,
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
 
     // list all user of role
     req0 =
-        new AuthorPlan(ConfigPhysicalPlanType.ListRoleUsers, "", "", "", "", new HashSet<>(), "");
+        new AuthorPlan(
+            ConfigPhysicalPlanType.ListRoleUsers,
+            "",
+            "",
+            "",
+            "",
+            new HashSet<>(),
+            new ArrayList<>());
     req1 = (AuthorPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }

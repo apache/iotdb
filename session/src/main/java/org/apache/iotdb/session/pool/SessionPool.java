@@ -2096,6 +2096,7 @@ public class SessionPool {
       try {
         session.setSchemaTemplate(templateName, prefixPath);
         putBack(session);
+        return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn(
@@ -2115,6 +2116,7 @@ public class SessionPool {
       try {
         session.unsetSchemaTemplate(prefixPath, templateName);
         putBack(session);
+        return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn(
@@ -2134,6 +2136,7 @@ public class SessionPool {
       try {
         session.dropSchemaTemplate(templateName);
         putBack(session);
+        return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn(String.format("dropSchemaTemplate [%s] failed", templateName), e);

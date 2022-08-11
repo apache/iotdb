@@ -193,4 +193,37 @@ public interface BaseConfig {
   default BaseConfig setMaxTsBlockLineNumber(int maxTsBlockLineNumber) {
     return this;
   }
+
+  default BaseConfig setConfigNodeConsesusProtocolClass(String configNodeConsesusProtocolClass) {
+    return this;
+  }
+
+  default String getConfigNodeConsesusProtocolClass() {
+    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+  }
+
+  default BaseConfig setSchemaRegionConsensusProtocolClass(
+      String schemaRegionConsensusProtocolClass) {
+    return this;
+  }
+
+  default String getSchemaRegionConsensusProtocolClass() {
+    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+  }
+
+  default BaseConfig setDataRegionConsensusProtocolClass(String dataRegionConsensusProtocolClass) {
+    return this;
+  }
+
+  default String getDataRegionConsensusProtocolClass() {
+    return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
+  }
+
+  default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
+    return this;
+  }
+
+  default long getTimePartitionInterval() {
+    return 86400;
+  }
 }

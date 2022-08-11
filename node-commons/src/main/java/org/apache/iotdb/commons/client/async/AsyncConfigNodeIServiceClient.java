@@ -112,8 +112,9 @@ public class AsyncConfigNodeIServiceClient extends IConfigNodeRPCService.AsyncCl
 
     public Factory(
         ClientManager<TEndPoint, AsyncConfigNodeIServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ClientFactoryProperty clientFactoryProperty,
+        String threadName) {
+      super(clientManager, clientFactoryProperty, threadName);
     }
 
     @Override

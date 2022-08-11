@@ -36,7 +36,6 @@
         <influxdb.ut.skip>${influxdb.test.skip}</influxdb.ut.skip>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <influxdb-java.version>2.21</influxdb-java.version>
     </properties>
     <dependencies>
         <dependency>
@@ -62,7 +61,6 @@
         <dependency>
             <groupId>org.influxdb</groupId>
             <artifactId>influxdb-java</artifactId>
-            <version>${influxdb-java.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>

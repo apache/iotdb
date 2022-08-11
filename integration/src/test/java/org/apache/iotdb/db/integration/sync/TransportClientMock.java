@@ -18,13 +18,9 @@
  */
 package org.apache.iotdb.db.integration.sync;
 
-import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.transport.client.ITransportClient;
-import org.apache.iotdb.service.transport.thrift.ResponseType;
-import org.apache.iotdb.service.transport.thrift.SyncRequest;
-import org.apache.iotdb.service.transport.thrift.SyncResponse;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,11 +38,6 @@ public class TransportClientMock implements ITransportClient {
     this.port = port;
 
     this.pipeDataList = new ArrayList<>();
-  }
-
-  @Override
-  public SyncResponse heartbeat(SyncRequest syncRequest) throws SyncConnectionException {
-    return new SyncResponse(ResponseType.INFO, "");
   }
 
   public void resetInfo(Pipe pipe, String ipAddress, int port) {

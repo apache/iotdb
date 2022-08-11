@@ -36,10 +36,10 @@ public class RegionGroupCache implements IRegionGroupCache {
   // TODO: This class might be split into SchemaRegionGroupCache and DataRegionGroupCache
 
   private static final int maximumWindowSize = 100;
-  // Map<DataNodeId(where a RegionReplica resides), LinkedList<RegionHeartbeatSample>>
 
   private final TConsensusGroupId consensusGroupId;
 
+  // Map<DataNodeId(where a RegionReplica resides), LinkedList<RegionHeartbeatSample>>
   private final Map<Integer, LinkedList<RegionHeartbeatSample>> slidingWindow;
 
   // Indicates the version of the statistics
@@ -106,5 +106,10 @@ public class RegionGroupCache implements IRegionGroupCache {
   @Override
   public int getLeaderDataNodeId() {
     return leaderDataNodeId.get();
+  }
+
+  @Override
+  public TConsensusGroupId getConsensusGroupId() {
+    return consensusGroupId;
   }
 }

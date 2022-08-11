@@ -115,6 +115,11 @@ public class FilterNode extends TransformNode {
   }
 
   @Override
+  public String toString() {
+    return "FilterNode-" + this.getPlanNodeId();
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

@@ -198,6 +198,10 @@ public class TsBlock {
     return timeColumn;
   }
 
+  public Column[] getValueColumns() {
+    return valueColumns;
+  }
+
   public Column getColumn(int columnIndex) {
     return valueColumns[columnIndex];
   }
