@@ -300,7 +300,7 @@ public class StorageEngine implements IService {
           return null;
         }
       }
-      return ((InsertPlan) plan).getDevicePath().getDevice();
+      return physicalPlan.getDevicePath().getDevice();
     }
     return null;
   }
