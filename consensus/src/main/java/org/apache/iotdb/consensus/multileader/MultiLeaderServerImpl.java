@@ -241,8 +241,11 @@ public class MultiLeaderServerImpl {
   }
 
   public boolean needToThrottleUp() {
-    return reader.getTotalSize() < config.getReplication().getMaxWalBufferSize() - config.getReplication().getThrottleWalSize();
+    return reader.getTotalSize()
+        < config.getReplication().getMaxWalBufferSize()
+            - config.getReplication().getThrottleWalSize();
   }
+
   public AtomicLong getIndexObject() {
     return index;
   }
