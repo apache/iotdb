@@ -22,7 +22,7 @@
 # Maintenance Command
 ## FLUSH
 
-Persist all the data points in the memory table of the storage group to the disk, and seal the data file.In cluster mode, we provide commands to persist the specified storage group cache of local node and persist the specified storage group cache of the cluster.
+Persist all the data points in the memory table of the storage group to the disk, and seal the data file. In cluster mode, we provide commands to persist the specified storage group cache of local node and persist the specified storage group cache of the cluster.
 
 Note: This command does not need to be invoked manually by the client. IoTDB has WAL to ensure data security
 and IoTDB will flush when appropriate.
