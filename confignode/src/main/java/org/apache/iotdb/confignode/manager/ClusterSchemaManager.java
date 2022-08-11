@@ -407,7 +407,7 @@ public class ClusterSchemaManager {
     // sync template set info to all dataNodes
     TSStatus status;
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
     for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
       status =
           SyncDataNodeClientPool.getInstance()
@@ -447,7 +447,7 @@ public class ClusterSchemaManager {
 
     // get all dataNodes
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
 
     // send rollbackReq
     TSStatus status;

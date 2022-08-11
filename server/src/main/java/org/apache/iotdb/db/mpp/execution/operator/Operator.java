@@ -76,8 +76,10 @@ public interface Operator extends AutoCloseable {
   }
 
   // TODO remove the default while completing all the operators
-
-  /** @return each operator's retained size after calling its next() method */
+  /**
+   * @return each operator's retained size(including all its children's retained size) after calling
+   *     its next() method
+   */
   default long calculateRetainedSizeAfterCallingNext() {
     return 0L;
   }

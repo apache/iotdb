@@ -137,9 +137,6 @@ public class IoTDBConfig {
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
 
-  /** Memory allocated proportion for timeIndex */
-  private double timeIndexMemoryProportion = 0.2;
-
   /** Flush proportion for system */
   private double flushProportion = 0.4;
 
@@ -236,10 +233,6 @@ public class IoTDBConfig {
           + IoTDBConstant.SYSTEM_FOLDER_NAME
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
-
-  /** Sync directory, including the log and hardlink tsfiles */
-  private String syncDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
 
   /** Performance tracing directory, stores performance tracing files */
   private String tracingDir =
@@ -475,10 +468,19 @@ public class IoTDBConfig {
   private long allocateMemoryForCoordinator = allocateMemoryForRead * 50 / 1001;
 
   /** Memory allocated for operators */
-  private long allocateMemoryForOperators = allocateMemoryForRead * 300 / 1001;
+  private long allocateMemoryForOperators = allocateMemoryForRead * 200 / 1001;
 
   /** Memory allocated for operators */
-  private long allocateMemoryForDataExchange = allocateMemoryForRead * 350 / 1001;
+  private long allocateMemoryForDataExchange = allocateMemoryForRead * 200 / 1001;
+
+  /** Memory allocated proportion for timeIndex */
+  private long allocateMemoryForTimeIndex = allocateMemoryForRead * 200 / 1001;
+
+  /**
+   * If true, we will estimate each query's possible memory footprint before executing it and deny
+   * it if its estimated memory exceeds current free memory
+   */
+  private boolean enableQueryMemoryEstimation = true;
 
   /** Whether to enable Last cache */
   private boolean lastCacheEnable = true;
@@ -1058,7 +1060,6 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
-    syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
     consensusDir = addHomeDir(consensusDir);
     dataRegionConsensusDir = addHomeDir(dataRegionConsensusDir);
@@ -1215,14 +1216,6 @@ public class IoTDBConfig {
 
   public void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
-  }
-
-  public String getSyncDir() {
-    return syncDir;
-  }
-
-  void setSyncDir(String syncDir) {
-    this.syncDir = syncDir;
   }
 
   public String getTracingDir() {
@@ -1665,14 +1658,6 @@ public class IoTDBConfig {
     this.bufferedArraysMemoryProportion = bufferedArraysMemoryProportion;
   }
 
-  public double getTimeIndexMemoryProportion() {
-    return timeIndexMemoryProportion;
-  }
-
-  public void setTimeIndexMemoryProportion(double timeIndexMemoryProportion) {
-    this.timeIndexMemoryProportion = timeIndexMemoryProportion;
-  }
-
   public double getFlushProportion() {
     return flushProportion;
   }
@@ -1954,6 +1939,22 @@ public class IoTDBConfig {
 
   public void setAllocateMemoryForDataExchange(long allocateMemoryForDataExchange) {
     this.allocateMemoryForDataExchange = allocateMemoryForDataExchange;
+  }
+
+  public long getAllocateMemoryForTimeIndex() {
+    return allocateMemoryForTimeIndex;
+  }
+
+  public void setAllocateMemoryForTimeIndex(long allocateMemoryForTimeIndex) {
+    this.allocateMemoryForTimeIndex = allocateMemoryForTimeIndex;
+  }
+
+  public boolean isEnableQueryMemoryEstimation() {
+    return enableQueryMemoryEstimation;
+  }
+
+  public void setEnableQueryMemoryEstimation(boolean enableQueryMemoryEstimation) {
+    this.enableQueryMemoryEstimation = enableQueryMemoryEstimation;
   }
 
   public boolean isLastCacheEnabled() {

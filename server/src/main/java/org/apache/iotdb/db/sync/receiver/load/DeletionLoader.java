@@ -22,7 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
-import org.apache.iotdb.db.exception.sync.PipeDataLoadUnbearableException;
 
 /** This loader is used to load deletion plan. */
 public class DeletionLoader implements ILoader {
@@ -36,13 +35,13 @@ public class DeletionLoader implements ILoader {
   @Override
   public void load() throws PipeDataLoadException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new PipeDataLoadUnbearableException("storage engine readonly");
+      throw new PipeDataLoadException("storage engine readonly");
     }
     try {
       StorageEngine.getInstance()
           .delete(deletion.getPath(), deletion.getStartTime(), deletion.getEndTime(), 0, null);
     } catch (Exception e) {
-      throw new PipeDataLoadUnbearableException(e.getMessage());
+      throw new PipeDataLoadException(e.getMessage());
     }
   }
 }

@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.sync.conf;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+package org.apache.iotdb.commons.sync;
+
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.service.transport.thrift.IdentityInfo;
 
 import java.io.File;
@@ -40,13 +40,14 @@ public class SyncPathUtil {
   // |             |----realtime pipe log dir
   // |             |----file data dir
   // |----receiver dir
-  //        |-----receiver pipe dir
-  //                |----receiver pipe log dir
-  //                |----file data dir
+  // |      |-----receiver pipe dir
+  // |              |----receiver pipe log dir
+  // |              |----file data dir
+  // |----sys dir
 
   /** sender */
   public static String getSenderDir() {
-    return IoTDBDescriptor.getInstance().getConfig().getSyncDir()
+    return CommonDescriptor.getInstance().getConfig().getSyncFolder()
         + File.separator
         + SyncConstant.SENDER_DIR_NAME;
   }
@@ -77,7 +78,7 @@ public class SyncPathUtil {
 
   /** receiver */
   public static String getReceiverDir() {
-    return IoTDBDescriptor.getInstance().getConfig().getSyncDir()
+    return CommonDescriptor.getInstance().getConfig().getSyncFolder()
         + File.separator
         + SyncConstant.RECEIVER_DIR_NAME;
   }
@@ -116,7 +117,7 @@ public class SyncPathUtil {
 
   /** common */
   public static String getSysDir() {
-    return IoTDBDescriptor.getInstance().getConfig().getSyncDir()
+    return CommonDescriptor.getInstance().getConfig().getSyncFolder()
         + File.separator
         + SyncConstant.SYNC_SYS_DIR;
   }
@@ -136,8 +137,7 @@ public class SyncPathUtil {
     return file.createNewFile();
   }
 
-  public static String createMsg(String msg) {
-    return String.format(
-        "[%s] %s", DatetimeUtils.convertLongToDate(DatetimeUtils.currentTime()), msg);
+  public static String createMsg(String timeStr, String msg) {
+    return String.format("[%s] %s", timeStr, msg);
   }
 }

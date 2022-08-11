@@ -65,6 +65,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
@@ -216,9 +217,16 @@ public class PartitionManager {
       // Map<StorageGroup, unassigned SeriesPartitionSlot count>
       Map<String, Integer> unassignedDataPartitionSlotsCountMap = new ConcurrentHashMap<>();
       unassignedDataPartitionSlotsMap.forEach(
-          (storageGroup, unassignedDataPartitionSlots) ->
-              unassignedDataPartitionSlotsCountMap.put(
-                  storageGroup, unassignedDataPartitionSlots.size()));
+          (storageGroup, unassignedDataPartitionSlots) -> {
+            AtomicInteger unassignedDataPartitionSlotsCount = new AtomicInteger(0);
+            unassignedDataPartitionSlots
+                .values()
+                .forEach(
+                    timePartitionSlots ->
+                        unassignedDataPartitionSlotsCount.getAndAdd(timePartitionSlots.size()));
+            unassignedDataPartitionSlotsCountMap.put(
+                storageGroup, unassignedDataPartitionSlotsCount.get());
+          });
       TSStatus status =
           extendRegionsIfNecessary(
               unassignedDataPartitionSlotsCountMap, TConsensusGroupType.DataRegion);
@@ -318,6 +326,25 @@ public class PartitionManager {
     }
 
     return result;
+  }
+
+  /**
+   * Only leader use this interface. Checks whether the specified DataPartition has a predecessor
+   * and returns if it does
+   *
+   * @param storageGroup StorageGroupName
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @param timePartitionInterval Time partition interval
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPrecededDataPartition(
+      String storageGroup,
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot,
+      long timePartitionInterval) {
+    return partitionInfo.getPrecededDataPartition(
+        storageGroup, seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
   }
 
   /**

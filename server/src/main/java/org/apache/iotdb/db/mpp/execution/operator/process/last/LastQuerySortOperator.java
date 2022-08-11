@@ -194,18 +194,27 @@ public class LastQuerySortOperator implements ProcessOperator {
   @Override
   public long calculateMaxPeekMemory() {
     long maxPeekMemory = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + cachedTsBlock.getRetainedSizeInBytes();
-    long maxChildrenReturnSize = 0;
-    long maxChildrenPeekMemory = 0;
+    long res = 0;
     for (Operator child : children) {
-      maxChildrenReturnSize = Math.max(maxChildrenReturnSize, child.calculateMaxReturnSize());
-      maxChildrenPeekMemory = Math.max(maxChildrenPeekMemory, child.calculateMaxPeekMemory());
+      res = Math.max(res, maxPeekMemory + child.calculateMaxPeekMemory());
     }
-    return Math.max(maxPeekMemory + maxChildrenReturnSize, maxChildrenPeekMemory);
+    return res;
   }
 
   @Override
   public long calculateMaxReturnSize() {
     return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long childrenMaxReturnSize = 0;
+    long childrenSumRetainedSize = 0;
+    for (Operator child : children) {
+      childrenMaxReturnSize = Math.max(childrenMaxReturnSize, child.calculateMaxReturnSize());
+      childrenSumRetainedSize += child.calculateRetainedSizeAfterCallingNext();
+    }
+    return cachedTsBlock.getRetainedSizeInBytes() + childrenMaxReturnSize + childrenSumRetainedSize;
   }
 
   private int getEndIndex() {

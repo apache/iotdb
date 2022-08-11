@@ -77,5 +77,23 @@ public class CommonDescriptor {
     config.setDefaultTTL(
         Long.parseLong(
             properties.getProperty("default_ttl", String.valueOf(config.getDefaultTTL()))));
+    config.setSyncFolder(properties.getProperty("sync_dir", config.getSyncFolder()));
+
+    config.setRpcThriftCompressionEnabled(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "rpc_thrift_compression_enable",
+                String.valueOf(config.isRpcThriftCompressionEnabled()))));
+
+    config.setConnectionTimeoutInMS(
+        Integer.parseInt(
+            properties.getProperty(
+                "connection_timeout_ms", String.valueOf(config.getConnectionTimeoutInMS()))));
+
+    config.setSelectorNumOfClientManager(
+        Integer.parseInt(
+            properties.getProperty(
+                "selector_thread_nums_of_client_manager",
+                String.valueOf(config.getSelectorNumOfClientManager()))));
   }
 }
