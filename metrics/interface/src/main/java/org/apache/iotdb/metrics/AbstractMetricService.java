@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.reporter.CompositeReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
@@ -38,6 +39,7 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -59,6 +61,8 @@ public abstract class AbstractMetricService {
   protected CompositeReporter compositeReporter = new CompositeReporter();
   /** Is metric service enabled */
   protected boolean isEnableMetric = metricConfig.getEnableMetric();
+  /** The list of metric sets */
+  protected List<IMetricSet> metricSets = new ArrayList<>();
 
   public AbstractMetricService() {}
 
@@ -85,6 +89,10 @@ public abstract class AbstractMetricService {
     metricManager.stop();
     metricManager = new DoNothingMetricManager();
     compositeReporter = new CompositeReporter();
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.stopAsyncCollectedMetrics();
+    }
+    metricSets = new ArrayList<>();
   }
 
   /** Load metric manager according to configuration */

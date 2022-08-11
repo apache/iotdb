@@ -61,6 +61,7 @@ import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
 
@@ -647,28 +648,32 @@ public class LoadManager {
 
   public void removeMetrics() {
     MetricService.getInstance()
-        .removeGauge(
+        .remove(
+            MetricType.GAUGE,
             Metric.CONFIG_NODE.toString(),
             Tag.NAME.toString(),
             "total",
             Tag.STATUS.toString(),
             NodeStatus.Online.toString());
     MetricService.getInstance()
-        .removeGauge(
+        .remove(
+            MetricType.GAUGE,
             Metric.DATA_NODE.toString(),
             Tag.NAME.toString(),
             "total",
             Tag.STATUS.toString(),
             NodeStatus.Online.toString());
     MetricService.getInstance()
-        .removeGauge(
+        .remove(
+            MetricType.GAUGE,
             Metric.CONFIG_NODE.toString(),
             Tag.NAME.toString(),
             "total",
             Tag.STATUS.toString(),
             NodeStatus.Unknown.toString());
     MetricService.getInstance()
-        .removeGauge(
+        .remove(
+            MetricType.GAUGE,
             Metric.DATA_NODE.toString(),
             Tag.NAME.toString(),
             "total",
