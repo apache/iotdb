@@ -142,7 +142,8 @@ public class TsFileRewriteExcutor {
       return;
     }
     // TODO To be optimized: Non-target modification measurements are directly written to data
-    Pair<List<IMeasurementSchema>, List<IMeasurementSchema>> listPair = collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, isTargetDevice);
+    Pair<List<IMeasurementSchema>, List<IMeasurementSchema>> listPair =
+        collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, isTargetDevice);
     List<IMeasurementSchema> schemaList = listPair.left;
     List<IMeasurementSchema> schemaOldList = listPair.right;
     AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemaList);
@@ -194,16 +195,17 @@ public class TsFileRewriteExcutor {
             isTargetDevice
                 && CommonUtils.equal(chunkMetadata.getMeasurementUid(), targetMeasurement);
         MeasurementSchema measurementSchema =
-                new MeasurementSchema(
-                        header.getMeasurementID(),
-                        header.getDataType(),
-                        header.getEncodingType(),
-                        header.getCompressionType());
-        if(!findTarget) {
+            new MeasurementSchema(
+                header.getMeasurementID(),
+                header.getDataType(),
+                header.getEncodingType(),
+                header.getCompressionType());
+        if (!findTarget) {
           schemaList.add(measurementSchema);
           schemaOldList.add(measurementSchema);
         } else {
-          schemaList.add(new MeasurementSchema(
+          schemaList.add(
+              new MeasurementSchema(
                   header.getMeasurementID(),
                   header.getDataType(),
                   this.curEncoding,
