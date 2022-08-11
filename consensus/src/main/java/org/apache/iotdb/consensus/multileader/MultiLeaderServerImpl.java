@@ -118,6 +118,7 @@ public class MultiLeaderServerImpl {
           stateMachine.wait(config.getReplication().getThrottleTimeOutMs());
         } catch (InterruptedException e) {
           logger.error("Failed to throttle down because ", e);
+          Thread.currentThread().interrupt();
         }
       }
       IndexedConsensusRequest indexedConsensusRequest =
@@ -237,13 +238,13 @@ public class MultiLeaderServerImpl {
   }
 
   public boolean needToThrottleDown() {
-    return reader.getTotalSize() > config.getReplication().getMaxWalBufferSize();
+    return reader.getTotalSize() > config.getReplication().getThrottleDownThreshold();
   }
 
   public boolean needToThrottleUp() {
     return reader.getTotalSize()
-        < config.getReplication().getMaxWalBufferSize()
-            - config.getReplication().getThrottleWalSize();
+        < config.getReplication().getThrottleDownThreshold()
+            - config.getReplication().getThrottleUpThreshold();
   }
 
   public AtomicLong getIndexObject() {

@@ -1074,13 +1074,13 @@ public class IoTDBDescriptor {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
 
-    long multiLeaderMaxBufferSize =
+    long throttleDownThresholdInByte =
         Long.parseLong(
             properties.getProperty(
-                "multiLeader_max_wal_buffer_size_in_byte",
-                Long.toString(conf.getMultiLeaderMaxWalBufferSize())));
-    if (multiLeaderMaxBufferSize > 0) {
-      conf.setMultiLeaderMaxWalBufferSize(multiLeaderMaxBufferSize);
+                "multi_leader_throttle_down_threshold_in_byte",
+                Long.toString(conf.getThrottleDownThreshold())));
+    if (throttleDownThresholdInByte > 0) {
+      conf.setThrottleDownThreshold(throttleDownThresholdInByte);
     }
   }
 

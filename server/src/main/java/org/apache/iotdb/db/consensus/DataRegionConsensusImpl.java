@@ -79,7 +79,7 @@ public class DataRegionConsensusImpl {
                                       .build())
                               .setReplication(
                                   MultiLeaderConfig.Replication.newBuilder()
-                                      .setMaxWalBufferSize(conf.getMultiLeaderMaxWalBufferSize())
+                                      .setThrottleDownThreshold(conf.getThrottleDownThreshold())
                                       .build())
                               .build())
                       .setRatisConfig(
