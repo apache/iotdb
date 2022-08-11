@@ -29,9 +29,9 @@ import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.MetricFrameworkType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.MetricType;
+import org.apache.iotdb.metrics.utils.MonitorType;
 
 import org.junit.Test;
 
@@ -54,10 +54,10 @@ public class MetricServiceTest {
 
   @Test
   public void testMetricService() {
-    for (MetricFrameworkType type : MetricFrameworkType.values()) {
+    for (MonitorType type : MonitorType.values()) {
       // init metric service
       metricConfig.setEnableMetric(true);
-      metricConfig.setMetricFrameworkType(type);
+      metricConfig.setMonitorType(type);
       metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
       metricService = new DoNothingMetricService();
       metricService.startService();

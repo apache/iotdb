@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.utils.MetricFrameworkType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MonitorType;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -54,9 +54,10 @@ public class MetricConfigTest {
     assertTrue(metricConfig.getEnableMetric());
     assertTrue(metricConfig.getEnablePerformanceStat());
     assertEquals(3, metricConfig.getMetricReporterList().size());
-    assertEquals(MetricFrameworkType.DROPWIZARD, metricConfig.getMetricFrameworkType());
+    assertEquals(MonitorType.DROPWIZARD, metricConfig.getMonitorType());
     assertEquals(MetricLevel.ALL, metricConfig.getMetricLevel());
     assertEquals(5, metricConfig.getPredefinedMetrics().size());
+    assertEquals(10, (int) metricConfig.getAsyncCollectPeriodInSecond());
     assertEquals(9090, (int) metricConfig.getPrometheusExporterPort());
 
     MetricConfig.IoTDBReporterConfig reporterConfig = metricConfig.getIoTDBReporterConfig();

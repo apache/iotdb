@@ -20,8 +20,8 @@
 package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.predefined.PredefinedMetric;
-import org.apache.iotdb.metrics.utils.MetricFrameworkType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MonitorType;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
@@ -36,7 +36,7 @@ public class MetricConfig {
   private Boolean enablePerformanceStat = false;
 
   /** The type of the implementation of metric service */
-  private MetricFrameworkType metricFrameworkType = MetricFrameworkType.MICROMETER;
+  private MonitorType monitorType = MonitorType.MICROMETER;
 
   /** The list of reporters provide data for external system */
   private List<ReporterType> metricReporterList =
@@ -51,8 +51,6 @@ public class MetricConfig {
 
   private Integer asyncCollectPeriodInSecond = 5;
 
-  /** the http server's port for prometheus exporter to get metric data. */
-  private String prometheusExporterPort = "9091";
   /** The http server's port for prometheus reporter to get metric data. */
   private Integer prometheusExporterPort = 9091;
 
@@ -161,7 +159,7 @@ public class MetricConfig {
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
-    metricFrameworkType = newMetricConfig.getMetricFrameworkType();
+    monitorType = newMetricConfig.getMonitorType();
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
     predefinedMetrics = newMetricConfig.getPredefinedMetrics();
@@ -191,12 +189,12 @@ public class MetricConfig {
     this.enablePerformanceStat = enablePerformanceStat;
   }
 
-  public MetricFrameworkType getMetricFrameworkType() {
-    return metricFrameworkType;
+  public MonitorType getMonitorType() {
+    return monitorType;
   }
 
-  public void setMetricFrameworkType(MetricFrameworkType metricFrameworkType) {
-    this.metricFrameworkType = metricFrameworkType;
+  public void setMonitorType(MonitorType monitorType) {
+    this.monitorType = monitorType;
   }
 
   public List<ReporterType> getMetricReporterList() {
@@ -231,7 +229,6 @@ public class MetricConfig {
     this.asyncCollectPeriodInSecond = asyncCollectPeriodInSecond;
   }
 
-  public String getPrometheusExporterPort() {
   public Integer getPrometheusExporterPort() {
     return prometheusExporterPort;
   }
@@ -263,7 +260,7 @@ public class MetricConfig {
     }
     MetricConfig anotherMetricConfig = (MetricConfig) obj;
     return enableMetric.equals(anotherMetricConfig.getEnableMetric())
-        && metricFrameworkType.equals(anotherMetricConfig.getMetricFrameworkType())
+        && monitorType.equals(anotherMetricConfig.getMonitorType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())

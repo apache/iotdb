@@ -89,7 +89,7 @@ public abstract class AbstractMetricService {
 
   /** Load metric manager according to configuration */
   private void loadManager() {
-    logger.info("Load metricManager, type: {}", metricConfig.getMetricFrameworkType());
+    logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
     ServiceLoader<AbstractMetricManager> metricManagers =
         ServiceLoader.load(AbstractMetricManager.class);
     int size = 0;
@@ -98,7 +98,7 @@ public abstract class AbstractMetricService {
       if (mf.getClass()
           .getName()
           .toLowerCase()
-          .contains(metricConfig.getMetricFrameworkType().name().toLowerCase())) {
+          .contains(metricConfig.getMonitorType().name().toLowerCase())) {
         metricManager = mf;
         break;
       }
@@ -125,7 +125,7 @@ public abstract class AbstractMetricService {
               .getClass()
               .getName()
               .toLowerCase()
-              .contains(metricConfig.getMetricFrameworkType().name().toLowerCase())) {
+              .contains(metricConfig.getMonitorType().name().toLowerCase())) {
         reporter.setMetricManager(metricManager);
         compositeReporter.addReporter(reporter);
       }
