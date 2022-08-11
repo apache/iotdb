@@ -86,9 +86,10 @@ public class MetricConfigDescriptor {
         // restart reporters or restart service
         if (!metricConfig.getMetricFrameworkType().equals(newMetricConfig.getMetricFrameworkType())
             || !metricConfig.getMetricLevel().equals(newMetricConfig.getMetricLevel())
+            || !metricConfig.getPredefinedMetrics().equals(newMetricConfig.getPredefinedMetrics())
             || !metricConfig
-                .getPredefinedMetrics()
-                .equals(newMetricConfig.getPredefinedMetrics())) {
+                .getAsyncCollectPeriodInSecond()
+                .equals(newMetricConfig.getAsyncCollectPeriodInSecond())) {
           reloadLevel = ReloadLevel.RESTART_METRIC;
         } else {
           reloadLevel = ReloadLevel.RESTART_REPORTER;

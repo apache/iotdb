@@ -27,4 +27,10 @@ public interface IMetricSet {
 
   /** get type of metric set */
   PredefinedMetric getType();
+
+  /** start async collectd metric */
+  default void startAsyncCollectedMetrics() {}
+
+  /** stop async collectd metric */
+  default void stopAsyncCollectedMetrics() {}
 }
