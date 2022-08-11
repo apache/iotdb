@@ -133,6 +133,11 @@ public class AlignedSeriesScanOperator implements DataSourceOperator {
     return maxReturnSize;
   }
 
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
+  }
+
   private boolean readChunkData() throws IOException {
     while (seriesScanUtil.hasNextChunk()) {
       if (readPageData()) {

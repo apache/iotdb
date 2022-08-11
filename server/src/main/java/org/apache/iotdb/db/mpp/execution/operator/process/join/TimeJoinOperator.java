@@ -246,12 +246,16 @@ public class TimeJoinOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxPeekMemory() {
-    long maxPeekMemory = calculateMaxReturnSize();
+    long maxPeekMemory = 0;
     long childrenMaxPeekMemory = 0;
     for (Operator child : children) {
-      maxPeekMemory += child.calculateMaxReturnSize();
-      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+      childrenMaxPeekMemory =
+          Math.max(childrenMaxPeekMemory, maxPeekMemory + child.calculateMaxPeekMemory());
+      maxPeekMemory +=
+          (child.calculateMaxReturnSize() + child.calculateRetainedSizeAfterCallingNext());
     }
+
+    maxPeekMemory += calculateMaxReturnSize();
     return Math.max(maxPeekMemory, childrenMaxPeekMemory);
   }
 
@@ -260,6 +264,18 @@ public class TimeJoinOperator implements ProcessOperator {
     // time + all value columns
     return (1L + outputColumnCount)
         * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long currentRetainedSize = 0, minChildReturnSize = Long.MAX_VALUE;
+    for (Operator child : children) {
+      long maxReturnSize = child.calculateMaxReturnSize();
+      currentRetainedSize += (maxReturnSize + child.calculateRetainedSizeAfterCallingNext());
+      minChildReturnSize = Math.min(minChildReturnSize, maxReturnSize);
+    }
+    // max cached TsBlock
+    return currentRetainedSize - minChildReturnSize;
   }
 
   /**

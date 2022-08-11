@@ -108,6 +108,8 @@ public class OperatorMemoryTest {
       assertEquals(
           TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
           seriesScanOperator.calculateMaxReturnSize());
+      assertEquals(0, seriesScanOperator.calculateRetainedSizeAfterCallingNext());
+
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -152,6 +154,8 @@ public class OperatorMemoryTest {
           4 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
           seriesScanOperator.calculateMaxReturnSize());
 
+      assertEquals(0, seriesScanOperator.calculateRetainedSizeAfterCallingNext());
+
     } catch (IllegalPathException e) {
       e.printStackTrace();
       fail();
@@ -166,6 +170,7 @@ public class OperatorMemoryTest {
 
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, exchangeOperator.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, exchangeOperator.calculateMaxReturnSize());
+    assertEquals(0, exchangeOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -176,6 +181,7 @@ public class OperatorMemoryTest {
 
     assertEquals(1024, lastCacheScanOperator.calculateMaxPeekMemory());
     assertEquals(1024, lastCacheScanOperator.calculateMaxReturnSize());
+    assertEquals(0, lastCacheScanOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -183,12 +189,14 @@ public class OperatorMemoryTest {
     Operator child = Mockito.mock(Operator.class);
     Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
     FillOperator fillOperator =
         new FillOperator(Mockito.mock(OperatorContext.class), new IFill[] {null, null}, child);
 
-    assertEquals(2048 * 2, fillOperator.calculateMaxPeekMemory());
+    assertEquals(2048 * 2 + 512, fillOperator.calculateMaxPeekMemory());
     assertEquals(1024, fillOperator.calculateMaxReturnSize());
+    assertEquals(512, fillOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -203,6 +211,7 @@ public class OperatorMemoryTest {
       long currentMaxReturnSize = random.nextInt(1024);
       Mockito.when(child.calculateMaxPeekMemory()).thenReturn(currentMaxPeekMemory);
       Mockito.when(child.calculateMaxReturnSize()).thenReturn(currentMaxReturnSize);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
       children.add(child);
       expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, currentMaxPeekMemory);
       expectedMaxReturnSize = Math.max(expectedMaxReturnSize, currentMaxReturnSize);
@@ -212,6 +221,7 @@ public class OperatorMemoryTest {
 
     assertEquals(expectedMaxPeekMemory, lastQueryCollectOperator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, lastQueryCollectOperator.calculateMaxReturnSize());
+    assertEquals(4 * 512, lastQueryCollectOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -219,18 +229,24 @@ public class OperatorMemoryTest {
     List<Operator> children = new ArrayList<>(4);
     Random random = new Random();
     long expectedMaxPeekMemory = 0;
+    long temp = 0;
     long expectedMaxReturnSize = 0;
     long childSumReturnSize = 0;
+    long minReturnSize = Long.MAX_VALUE;
     for (int i = 0; i < 4; i++) {
       Operator child = Mockito.mock(Operator.class);
       long currentMaxPeekMemory = random.nextInt(1024) + 1024;
       long currentMaxReturnSize = random.nextInt(1024);
+      minReturnSize = Math.min(minReturnSize, currentMaxReturnSize);
       childSumReturnSize += currentMaxReturnSize;
       Mockito.when(child.calculateMaxPeekMemory()).thenReturn(currentMaxPeekMemory);
       Mockito.when(child.calculateMaxReturnSize()).thenReturn(currentMaxReturnSize);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
       children.add(child);
       expectedMaxReturnSize = Math.max(expectedMaxReturnSize, currentMaxReturnSize);
-      expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, currentMaxPeekMemory);
+      expectedMaxPeekMemory =
+          Math.max(expectedMaxPeekMemory, temp + child.calculateMaxPeekMemory());
+      temp += (child.calculateMaxReturnSize() + child.calculateRetainedSizeAfterCallingNext());
     }
     // we need to cache all the TsBlocks of children and then return a new TsBlock as result whose
     // max possible should be equal to max return size among all its children and then we should
@@ -238,7 +254,7 @@ public class OperatorMemoryTest {
     expectedMaxPeekMemory =
         Math.max(
             expectedMaxPeekMemory,
-            childSumReturnSize
+            temp
                 + expectedMaxReturnSize
                 + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()
                     * MAP_NODE_RETRAINED_SIZE);
@@ -249,6 +265,13 @@ public class OperatorMemoryTest {
 
     assertEquals(expectedMaxPeekMemory, lastQueryMergeOperator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, lastQueryMergeOperator.calculateMaxReturnSize());
+    assertEquals(
+        childSumReturnSize
+            - minReturnSize
+            + 4 * 512
+            + TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber()
+                * MAP_NODE_RETRAINED_SIZE,
+        lastQueryMergeOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -256,25 +279,28 @@ public class OperatorMemoryTest {
     TsBlockBuilder builder = Mockito.mock(TsBlockBuilder.class);
     Mockito.when(builder.getRetainedSizeInBytes()).thenReturn(1024L);
     List<UpdateLastCacheOperator> children = new ArrayList<>(4);
-    long expectedMaxPeekMemory = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     long expectedMaxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
     for (int i = 0; i < 4; i++) {
       UpdateLastCacheOperator child = Mockito.mock(UpdateLastCacheOperator.class);
       Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2 * 1024 * 1024L);
       Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
       children.add(child);
-      expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, 2 * 1024 * 1024L);
       expectedMaxReturnSize = Math.max(expectedMaxReturnSize, 1024L);
     }
     LastQueryOperator lastQueryOperator =
         new LastQueryOperator(Mockito.mock(OperatorContext.class), children, builder);
 
-    assertEquals(expectedMaxPeekMemory, lastQueryOperator.calculateMaxPeekMemory());
+    assertEquals(
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + 2 * 1024 * 1024L,
+        lastQueryOperator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, lastQueryOperator.calculateMaxReturnSize());
+    assertEquals(4 * 512L, lastQueryOperator.calculateRetainedSizeAfterCallingNext());
 
     Mockito.when(builder.getRetainedSizeInBytes()).thenReturn(4 * 1024 * 1024L);
-    assertEquals(4 * 1024 * 1024L, lastQueryOperator.calculateMaxPeekMemory());
+    assertEquals(4 * 1024 * 1024L + 2 * 1024 * 1024L, lastQueryOperator.calculateMaxPeekMemory());
     assertEquals(4 * 1024 * 1024L, lastQueryOperator.calculateMaxReturnSize());
+    assertEquals(4 * 512L, lastQueryOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -283,23 +309,26 @@ public class OperatorMemoryTest {
     Mockito.when(tsBlock.getRetainedSizeInBytes()).thenReturn(16 * 1024L);
     Mockito.when(tsBlock.getPositionCount()).thenReturn(16);
     List<UpdateLastCacheOperator> children = new ArrayList<>(4);
-    long expectedMaxPeekMemory =
-        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + tsBlock.getRetainedSizeInBytes();
+
     for (int i = 0; i < 4; i++) {
       UpdateLastCacheOperator child = Mockito.mock(UpdateLastCacheOperator.class);
       Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2 * 1024L);
       Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
       children.add(child);
     }
-
-    expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory + 1024, 2 * 1024);
 
     LastQuerySortOperator lastQuerySortOperator =
         new LastQuerySortOperator(
             Mockito.mock(OperatorContext.class), tsBlock, children, Comparator.naturalOrder());
 
-    assertEquals(expectedMaxPeekMemory, lastQuerySortOperator.calculateMaxPeekMemory());
+    assertEquals(
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + tsBlock.getRetainedSizeInBytes() + 2 * 1024L,
+        lastQuerySortOperator.calculateMaxPeekMemory());
     assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, lastQuerySortOperator.calculateMaxReturnSize());
+    assertEquals(
+        16 * 1024L + 1024L + 4 * 512L,
+        lastQuerySortOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -307,12 +336,14 @@ public class OperatorMemoryTest {
     Operator child = Mockito.mock(Operator.class);
     Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2 * 1024L);
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
     LimitOperator limitOperator =
         new LimitOperator(Mockito.mock(OperatorContext.class), 100, child);
 
     assertEquals(2 * 1024L, limitOperator.calculateMaxPeekMemory());
     assertEquals(1024, limitOperator.calculateMaxReturnSize());
+    assertEquals(512, limitOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -320,12 +351,14 @@ public class OperatorMemoryTest {
     Operator child = Mockito.mock(Operator.class);
     Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2 * 1024L);
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
     OffsetOperator offsetOperator =
         new OffsetOperator(Mockito.mock(OperatorContext.class), 100, child);
 
     assertEquals(2 * 1024L, offsetOperator.calculateMaxPeekMemory());
     assertEquals(1024, offsetOperator.calculateMaxReturnSize());
+    assertEquals(512, offsetOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -336,19 +369,22 @@ public class OperatorMemoryTest {
     dataTypeList.add(TSDataType.INT32);
     long expectedMaxReturnSize =
         3L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
-    long expectedMaxPeekMemory = expectedMaxReturnSize;
+    long expectedMaxPeekMemory = 0;
     long childrenMaxPeekMemory = 0;
 
     for (int i = 0; i < 4; i++) {
       Operator child = Mockito.mock(Operator.class);
       Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
       Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+      childrenMaxPeekMemory =
+          Math.max(childrenMaxPeekMemory, expectedMaxPeekMemory + child.calculateMaxPeekMemory());
       expectedMaxPeekMemory += 64 * 1024L;
-      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
       children.add(child);
     }
 
-    expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory);
+    expectedMaxPeekMemory =
+        Math.max(expectedMaxPeekMemory + expectedMaxReturnSize, childrenMaxPeekMemory);
 
     RowBasedTimeJoinOperator rowBasedTimeJoinOperator =
         new RowBasedTimeJoinOperator(
@@ -356,6 +392,7 @@ public class OperatorMemoryTest {
 
     assertEquals(expectedMaxPeekMemory, rowBasedTimeJoinOperator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, rowBasedTimeJoinOperator.calculateMaxReturnSize());
+    assertEquals(3 * 64 * 1024L, rowBasedTimeJoinOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -363,6 +400,7 @@ public class OperatorMemoryTest {
     SortOperator sortOperator = new SortOperator();
     assertEquals(0, sortOperator.calculateMaxPeekMemory());
     assertEquals(0, sortOperator.calculateMaxReturnSize());
+    assertEquals(0, sortOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -373,19 +411,22 @@ public class OperatorMemoryTest {
     dataTypeList.add(TSDataType.INT32);
     long expectedMaxReturnSize =
         3L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
-    long expectedMaxPeekMemory = expectedMaxReturnSize;
+    long expectedMaxPeekMemory = 0;
     long childrenMaxPeekMemory = 0;
 
     for (int i = 0; i < 4; i++) {
       Operator child = Mockito.mock(Operator.class);
       Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
       Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+      childrenMaxPeekMemory =
+          Math.max(childrenMaxPeekMemory, expectedMaxPeekMemory + child.calculateMaxPeekMemory());
       expectedMaxPeekMemory += 64 * 1024L;
-      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
       children.add(child);
     }
 
-    expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory);
+    expectedMaxPeekMemory =
+        Math.max(expectedMaxPeekMemory + expectedMaxReturnSize, childrenMaxPeekMemory);
 
     TimeJoinOperator timeJoinOperator =
         new TimeJoinOperator(
@@ -393,6 +434,7 @@ public class OperatorMemoryTest {
 
     assertEquals(expectedMaxPeekMemory, timeJoinOperator.calculateMaxPeekMemory());
     assertEquals(expectedMaxReturnSize, timeJoinOperator.calculateMaxReturnSize());
+    assertEquals(3 * 64 * 1024L, timeJoinOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -400,12 +442,14 @@ public class OperatorMemoryTest {
     Operator child = Mockito.mock(Operator.class);
     Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
     UpdateLastCacheOperator updateLastCacheOperator =
         new UpdateLastCacheOperator(null, child, null, TSDataType.BOOLEAN, null, true);
 
     assertEquals(2048, updateLastCacheOperator.calculateMaxPeekMemory());
     assertEquals(1024, updateLastCacheOperator.calculateMaxReturnSize());
+    assertEquals(512, updateLastCacheOperator.calculateRetainedSizeAfterCallingNext());
   }
 
   @Test
@@ -413,12 +457,14 @@ public class OperatorMemoryTest {
     Operator child = Mockito.mock(Operator.class);
     Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
     Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
 
     LinearFillOperator linearFillOperator =
         new LinearFillOperator(
             Mockito.mock(OperatorContext.class), new LinearFill[] {null, null}, child);
 
-    assertEquals(2048 * 3, linearFillOperator.calculateMaxPeekMemory());
+    assertEquals(2048 * 3 + 512L, linearFillOperator.calculateMaxPeekMemory());
     assertEquals(1024, linearFillOperator.calculateMaxReturnSize());
+    assertEquals(512, linearFillOperator.calculateRetainedSizeAfterCallingNext());
   }
 }
