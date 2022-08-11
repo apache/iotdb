@@ -56,7 +56,7 @@ public class LoadManagerMetrics {
 
   private int getRunningDataNodesNum() {
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getLoadManager().getOnlineDataNodes(-1);
+        configManager.getLoadManager().getOnlineDataNodes();
     if (allDataNodes == null) {
       return 0;
     }
@@ -103,7 +103,7 @@ public class LoadManagerMetrics {
 
   private int getUnknownDataNodesNum() {
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getLoadManager().getUnknownDataNodes(-1);
+        configManager.getLoadManager().getUnknownDataNodes();
     if (allDataNodes == null) {
       return 0;
     }
@@ -195,7 +195,7 @@ public class LoadManagerMetrics {
   public void addLeaderCount() {
     Map<Integer, Integer> idToCountMap = getLeadershipCountByDatanode();
     getNodeManager()
-        .getRegisteredDataNodes(-1)
+        .getRegisteredDataNodes()
         .forEach(
             dataNodeInfo -> {
               TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
