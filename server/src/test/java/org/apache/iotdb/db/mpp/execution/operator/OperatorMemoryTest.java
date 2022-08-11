@@ -28,6 +28,7 @@ import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
@@ -469,5 +470,50 @@ public class OperatorMemoryTest {
     assertEquals(
         expectedRetainedSizeAfterCallingNext - 64 * 1024L,
         deviceMergeOperator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void deviceViewOperatorTest() {
+    List<Operator> children = new ArrayList<>(4);
+    List<TSDataType> dataTypeList = new ArrayList<>(2);
+    dataTypeList.add(TSDataType.INT32);
+    dataTypeList.add(TSDataType.INT32);
+    List<String> devices = new ArrayList<>(4);
+    devices.add("device1");
+    devices.add("device2");
+    devices.add("device3");
+    devices.add("device4");
+    long expectedMaxReturnSize =
+        2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    long expectedMaxPeekMemory = expectedMaxReturnSize;
+    long expectedRetainedSizeAfterCallingNext = 0;
+    long childrenMaxPeekMemory = 0;
+
+    for (int i = 0; i < 4; i++) {
+      Operator child = Mockito.mock(Operator.class);
+      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(1024L);
+      Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(1024L);
+      expectedMaxPeekMemory += 1024L;
+      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+      expectedRetainedSizeAfterCallingNext += 1024L;
+      children.add(child);
+    }
+
+    expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory);
+
+    DeviceViewOperator deviceViewOperator =
+        new DeviceViewOperator(
+            Mockito.mock(OperatorContext.class),
+            devices,
+            children,
+            new ArrayList<>(),
+            dataTypeList);
+
+    assertEquals(expectedMaxPeekMemory, deviceViewOperator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, deviceViewOperator.calculateMaxReturnSize());
+    assertEquals(
+        expectedRetainedSizeAfterCallingNext,
+        deviceViewOperator.calculateRetainedSizeAfterCallingNext());
   }
 }

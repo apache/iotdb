@@ -165,7 +165,7 @@ public class DeviceViewOperator implements ProcessOperator {
 
   @Override
   public long calculateMaxReturnSize() {
-    // null column would be filled, so return size equals to
+    // null columns would be filled, so return size equals to
     // (numberOfValueColumns(dataTypes.size() - 1) + 1(timeColumn)) * columnSize + deviceColumnSize
     // size of device name column is ignored
     return (long) (dataTypes.size())
