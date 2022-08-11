@@ -106,6 +106,7 @@ public class LoadManager {
 
   private final PartitionBalancer partitionBalancer;
   private final RouteBalancer routeBalancer;
+  private final LoadManagerMetrics loadManagerMetrics;
 
   /** Heartbeat executor service */
   private final AtomicInteger heartbeatCounter = new AtomicInteger(0);
@@ -131,6 +132,7 @@ public class LoadManager {
     this.regionBalancer = new RegionBalancer(configManager);
     this.partitionBalancer = new PartitionBalancer(configManager);
     this.routeBalancer = new RouteBalancer(configManager);
+    this.loadManagerMetrics = new LoadManagerMetrics(configManager);
   }
 
   /**
@@ -257,7 +259,7 @@ public class LoadManager {
 
   /** Stop the heartbeat service and the load balancing service */
   public void stop() {
-    removeMetrics();
+    loadManagerMetrics.removeMetrics();
     LOGGER.debug("Stop Heartbeat Service and LoadBalancing Service of LoadManager");
     synchronized (scheduleMonitor) {
       if (currentHeartbeatFuture != null) {
@@ -327,8 +329,8 @@ public class LoadManager {
       broadcastLatestRegionRouteMap();
     }
     if (nodeCacheMap.size() == getNodeManager().getRegisteredNodeCount()) {
-      addNodeMetrics();
-      addLeaderCount();
+      loadManagerMetrics.addNodeMetrics();
+      loadManagerMetrics.addLeaderCount();
     }
   }
 
