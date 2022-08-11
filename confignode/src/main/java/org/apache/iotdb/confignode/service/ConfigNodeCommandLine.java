@@ -95,7 +95,7 @@ public class ConfigNodeCommandLine extends ServerCommandLine {
   private void doRemoveNode(String[] args) throws IOException {
     LOGGER.info("Starting to remove {}...", ConfigNodeConstant.GLOBAL_NAME);
     if (args.length != 3) {
-      LOGGER.info("Usage: -r <ip>:<rpcPort>");
+      LOGGER.info("Usage: -r <internal_address>:<internal_port>");
       return;
     }
 
