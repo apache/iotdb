@@ -23,7 +23,7 @@ import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager;
 import org.apache.iotdb.metrics.reporter.Reporter;
-import org.apache.iotdb.metrics.utils.ReporterType;
+import org.apache.iotdb.metrics.reporter.ReporterType;
 
 import com.codahale.metrics.MetricRegistry;
 import io.netty.channel.ChannelOption;
@@ -50,8 +50,7 @@ public class DropwizardPrometheusReporter implements Reporter {
       LOGGER.warn("Dropwizard Prometheus Reporter already start!");
       return false;
     }
-    int port =
-        MetricConfigDescriptor.getInstance().getMetricConfig().getPrometheusExporterPort();
+    int port = MetricConfigDescriptor.getInstance().getMetricConfig().getPrometheusExporterPort();
     httpServer =
         HttpServer.create()
             .idleTimeout(Duration.ofMillis(30_000L))

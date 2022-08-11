@@ -21,9 +21,9 @@ package org.apache.iotdb.metrics.predefined.logback;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
+import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;

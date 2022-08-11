@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.metrics.reporter;
 
-import org.apache.iotdb.metrics.utils.ReporterType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

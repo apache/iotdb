@@ -284,7 +284,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
 
   @Override
   public Map<String[], Rate> getAllRates() {
-    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.OTHER);
+    Map<String[], IMetric> metricMap = getMetricByType(Meter.Type.GAUGE);
     Map<String[], Rate> rateMap = new HashMap<>();
     metricMap.forEach((k, v) -> rateMap.put(k, (Rate) v));
     return rateMap;
@@ -329,6 +329,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     }
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.COUNTER, tags);
     currentMeters.remove(metricName);
+    meterRegistry.remove(metricName.getId());
   }
 
   @Override
@@ -338,6 +339,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     }
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
     currentMeters.remove(metricName);
+    meterRegistry.remove(metricName.getId());
   }
 
   @Override
@@ -347,6 +349,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     }
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.GAUGE, tags);
     currentMeters.remove(metricName);
+    meterRegistry.remove(metricName.getId());
   }
 
   @Override
@@ -357,6 +360,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     MicrometerMetricName metricName =
         new MicrometerMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
     currentMeters.remove(metricName);
+    meterRegistry.remove(metricName.getId());
   }
 
   @Override
@@ -366,6 +370,7 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     }
     MicrometerMetricName metricName = new MicrometerMetricName(metric, Meter.Type.TIMER, tags);
     currentMeters.remove(metricName);
+    meterRegistry.remove(metricName.getId());
   }
 
   @Override

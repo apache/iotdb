@@ -20,7 +20,6 @@
 package org.apache.iotdb.metrics.reporter;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.utils.ReporterType;
 
 public interface Reporter {
   /** start reporter */

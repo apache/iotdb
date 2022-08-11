@@ -21,7 +21,7 @@ package org.apache.iotdb.metrics.predefined.jvm;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
+import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 
 public class JvmMetrics implements IMetricSet {
   @Override

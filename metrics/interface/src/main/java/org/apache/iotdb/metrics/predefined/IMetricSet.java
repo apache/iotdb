@@ -20,7 +20,6 @@
 package org.apache.iotdb.metrics.predefined;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 public interface IMetricSet {
   /** bind related metric to metric manager */

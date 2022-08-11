@@ -21,10 +21,10 @@ package org.apache.iotdb.metrics.predefined.jvm;
 
 import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
+import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.sun.management.GarbageCollectionNotificationInfo;
 import com.sun.management.GcInfo;

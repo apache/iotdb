@@ -17,14 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.utils;
+package org.apache.iotdb.metrics.type;
 
-public enum PredefinedMetric {
-  JVM,
-  LOGBACK,
-  FILE,
-  PROCESS,
-  SYSTEM;
+public enum OutPutFormat {
+  PROMETHEUS,
+  JSON;
 
   @Override
   public String toString() {

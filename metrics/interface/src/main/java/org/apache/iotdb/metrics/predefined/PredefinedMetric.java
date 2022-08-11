@@ -17,12 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.utils;
+package org.apache.iotdb.metrics.predefined;
 
-public enum ReporterType {
-  JMX,
-  PROMETHEUS,
-  IOTDB;
+public enum PredefinedMetric {
+  JVM,
+  LOGBACK,
+  FILE,
+  PROCESS,
+  SYSTEM;
 
   @Override
   public String toString() {
