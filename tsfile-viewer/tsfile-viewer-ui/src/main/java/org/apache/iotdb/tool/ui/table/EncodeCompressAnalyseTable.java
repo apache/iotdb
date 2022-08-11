@@ -22,7 +22,6 @@ package org.apache.iotdb.tool.ui.table;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleLongProperty;
 import javafx.beans.property.SimpleStringProperty;
-import org.apache.iotdb.tool.ui.scene.IoTDBParsePageV3;
 
 /**
  * EncodeCompressAnalyseTable
@@ -51,16 +50,16 @@ public class EncodeCompressAnalyseTable {
   private final SimpleDoubleProperty score;
 
   public EncodeCompressAnalyseTable(
-          String typeName,
-          String encodeName,
-          String compressName,
-          Long originSize,
-          Long encodedSize,
-          Long uncompressSize,
-          Long compressedSize,
-          Double compressedCost,
-          Double compressedRatio,
-          Double score) {
+      String typeName,
+      String encodeName,
+      String compressName,
+      Long originSize,
+      Long encodedSize,
+      Long uncompressSize,
+      Long compressedSize,
+      Double compressedCost,
+      Double compressedRatio,
+      Double score) {
     this.typeName = new SimpleStringProperty(typeName);
     this.encodeName = new SimpleStringProperty(encodeName);
     this.compressName = new SimpleStringProperty(compressName);

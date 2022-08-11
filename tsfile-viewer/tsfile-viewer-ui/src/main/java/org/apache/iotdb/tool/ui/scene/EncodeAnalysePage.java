@@ -56,7 +56,7 @@ public class EncodeAnalysePage {
       FXCollections.observableArrayList();
 
   /** table datas */
-//  private TableView pageHeaderTableView;
+  //  private TableView pageHeaderTableView;
 
   private TableView analyseTableView;
 
@@ -72,7 +72,7 @@ public class EncodeAnalysePage {
   }
 
   private void init(Stage stage) {
-//    pageHeaderTableView = new TableView();
+    //    pageHeaderTableView = new TableView();
     analyseTableView = new TableView();
 
     AnchorPane anchorPane = new AnchorPane();
@@ -130,25 +130,47 @@ public class EncodeAnalysePage {
     pageDataPane.setPrefHeight(ENCODE_ANALYSE_PAGE_HEIGHT * 0.2);
     anchorPane.getChildren().add(pageDataPane);
     TableColumn<String, String> typeNameCol =
-        baseTableView.genColumn(TableAlign.CENTER, "typeName", "typeName", "EncodeCompressAnalyseTable");
+        baseTableView.genColumn(
+            TableAlign.CENTER, "typeName", "typeName", "EncodeCompressAnalyseTable");
     TableColumn<String, String> encodeNameCol =
-        baseTableView.genColumn(TableAlign.CENTER_LEFT, "encodeName", "encodeName", "EncodeCompressAnalyseTable");
+        baseTableView.genColumn(
+            TableAlign.CENTER_LEFT, "encodeName", "encodeName", "EncodeCompressAnalyseTable");
     TableColumn<String, String> compressNameCol =
-        baseTableView.genColumn(TableAlign.CENTER_LEFT, "compressName", "compressName", "EncodeCompressAnalyseTable");
+        baseTableView.genColumn(
+            TableAlign.CENTER_LEFT, "compressName", "compressName", "EncodeCompressAnalyseTable");
     TableColumn<String, String> originSizeCol =
-        baseTableView.genColumn(TableAlign.CENTER_LEFT, "originSize", "originSize", "EncodeCompressAnalyseTable");
+        baseTableView.genColumn(
+            TableAlign.CENTER_LEFT, "originSize", "originSize", "EncodeCompressAnalyseTable");
     TableColumn<String, String> encodeSizeCol =
-        baseTableView.genColumn(TableAlign.CENTER_LEFT, "encodedSize", "encodedSize", "EncodeCompressAnalyseTable");
+        baseTableView.genColumn(
+            TableAlign.CENTER_LEFT, "encodedSize", "encodedSize", "EncodeCompressAnalyseTable");
     TableColumn<String, String> uncompressSizeCol =
-        baseTableView.genColumn(TableAlign.CENTER_LEFT, "uncompressSize", "uncompressSize", "EncodeCompressAnalyseTable");
+        baseTableView.genColumn(
+            TableAlign.CENTER_LEFT,
+            "uncompressSize",
+            "uncompressSize",
+            "EncodeCompressAnalyseTable");
     TableColumn<String, String> compressedSizeCol =
-        baseTableView.genColumn(TableAlign.CENTER_LEFT, "compressedSize", "compressedSize", "EncodeCompressAnalyseTable");
+        baseTableView.genColumn(
+            TableAlign.CENTER_LEFT,
+            "compressedSize",
+            "compressedSize",
+            "EncodeCompressAnalyseTable");
     TableColumn<String, String> compressedRatioCol =
-            baseTableView.genColumn(TableAlign.CENTER_LEFT, "compressedRatio", "compressedRatio", "EncodeCompressAnalyseTable");
+        baseTableView.genColumn(
+            TableAlign.CENTER_LEFT,
+            "compressedRatio",
+            "compressedRatio",
+            "EncodeCompressAnalyseTable");
     TableColumn<String, String> compressedCostCol =
-        baseTableView.genColumn(TableAlign.CENTER_LEFT, "compressedCost(ns)", "compressedCost", "EncodeCompressAnalyseTable");
+        baseTableView.genColumn(
+            TableAlign.CENTER_LEFT,
+            "compressedCost(ns)",
+            "compressedCost",
+            "EncodeCompressAnalyseTable");
     TableColumn<String, String> scoreCol =
-            baseTableView.genColumn(TableAlign.CENTER_LEFT, "score", "score", "EncodeCompressAnalyseTable");
+        baseTableView.genColumn(
+            TableAlign.CENTER_LEFT, "score", "score", "EncodeCompressAnalyseTable");
 
     baseTableView.tableViewInit(
         pageDataPane,
@@ -164,7 +186,7 @@ public class EncodeAnalysePage {
         compressedSizeCol,
         compressedRatioCol,
         compressedCostCol,
-            scoreCol);
+        scoreCol);
     analyseTableView.setLayoutX(0);
     analyseTableView.setLayoutY(0);
     analyseTableView.setPrefWidth(ENCODE_ANALYSE_PAGE_WIDTH);
@@ -181,7 +203,8 @@ public class EncodeAnalysePage {
     EncodeCompressAnalysedModel currentAnalysed = analysedResultModel.getCurrentAnalysed();
     List<EncodeCompressAnalysedModel> analysedList = analysedResultModel.getAnalysedList();
     // 1. currentAnalysed result
-    analyseDataList.add(new EncodeCompressAnalyseTable(
+    analyseDataList.add(
+        new EncodeCompressAnalyseTable(
             currentAnalysed.getTypeName(),
             currentAnalysed.getEncodeName(),
             currentAnalysed.getCompressName(),
@@ -191,14 +214,15 @@ public class EncodeAnalysePage {
             currentAnalysed.getCompressedSize(),
             (double) (currentAnalysed.getUncompressSize() / currentAnalysed.getCompressedSize()),
             (double) currentAnalysed.getCompressedCost() / (1e-6),
-            currentAnalysed.getScore()
-    ));
+            currentAnalysed.getScore()));
     // 2. others analysed results
     for (EncodeCompressAnalysedModel encodeCompressAnalysedModel : analysedList) {
-      if (encodeCompressAnalysedModel.getEncodeName() == currentAnalysed.getEncodeName() && encodeCompressAnalysedModel.getCompressName() == currentAnalysed.getCompressName()) {
+      if (encodeCompressAnalysedModel.getEncodeName() == currentAnalysed.getEncodeName()
+          && encodeCompressAnalysedModel.getCompressName() == currentAnalysed.getCompressName()) {
         continue;
       }
-      analyseDataList.add(new EncodeCompressAnalyseTable(
+      analyseDataList.add(
+          new EncodeCompressAnalyseTable(
               encodeCompressAnalysedModel.getTypeName(),
               encodeCompressAnalysedModel.getEncodeName(),
               encodeCompressAnalysedModel.getCompressName(),
@@ -206,10 +230,11 @@ public class EncodeAnalysePage {
               encodeCompressAnalysedModel.getEncodedSize(),
               encodeCompressAnalysedModel.getUncompressSize(),
               encodeCompressAnalysedModel.getCompressedSize(),
-              (double) (encodeCompressAnalysedModel.getUncompressSize() / encodeCompressAnalysedModel.getCompressedSize()),
+              (double)
+                  (encodeCompressAnalysedModel.getUncompressSize()
+                      / encodeCompressAnalysedModel.getCompressedSize()),
               (double) encodeCompressAnalysedModel.getCompressedCost() / (1e-6),
-              encodeCompressAnalysedModel.getScore()
-      ));
+              encodeCompressAnalysedModel.getScore()));
     }
 
     analyseTableView.setVisible(true);

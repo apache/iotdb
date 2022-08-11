@@ -30,7 +30,6 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.Pane;
 import javafx.util.Callback;
-import org.apache.iotdb.tool.ui.scene.IoTDBParsePageV3;
 
 /**
  * base table view
@@ -52,16 +51,18 @@ public class BaseTableView {
     pane.getChildren().add(tableView);
     tableView.getColumns().addAll(genColumn);
     tableView.setVisible(isShow);
-//    tableView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
-//      Object value = observable.getValue();
-//      if(value != null && value instanceof IoTDBParsePageV3.TimesValues) {
-//        IoTDBParsePageV3.TimesValues cur = (IoTDBParsePageV3.TimesValues) value;
-//        System.out.println(cur.getTimestamp() + "," + cur.getValue());
-//        System.out.println(observable);
-//        System.out.println(oldValue);
-////        System.out.println(tableView.getItems().get(tableView.getItems().indexOf(observable)));
-//      }
-//    });
+    //    tableView.getSelectionModel().selectedItemProperty().addListener((observable, oldValue,
+    // newValue) -> {
+    //      Object value = observable.getValue();
+    //      if(value != null && value instanceof IoTDBParsePageV3.TimesValues) {
+    //        IoTDBParsePageV3.TimesValues cur = (IoTDBParsePageV3.TimesValues) value;
+    //        System.out.println(cur.getTimestamp() + "," + cur.getValue());
+    //        System.out.println(observable);
+    //        System.out.println(oldValue);
+    ////
+    // System.out.println(tableView.getItems().get(tableView.getItems().indexOf(observable)));
+    //      }
+    //    });
   }
 
   public TableColumn genColumn(TableAlign align, String showName, String name, String tableName) {
@@ -96,7 +97,9 @@ public class BaseTableView {
                   super.setTooltip(tooltip);
                   tooltip.setText(item.toString());
                   // TODO
-                  if(tableName != null && "EncodeCompressAnalyseTable".equals(tableName) && getIndex() == 0) {
+                  if (tableName != null
+                      && "EncodeCompressAnalyseTable".equals(tableName)
+                      && getIndex() == 0) {
                     super.setStyle("-fx-background-color: #607B8B");
                   }
                 }
