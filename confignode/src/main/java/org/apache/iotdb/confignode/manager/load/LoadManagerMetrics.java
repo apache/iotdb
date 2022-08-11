@@ -26,6 +26,11 @@ public class LoadManagerMetrics {
     this.configManager = configManager;
   }
 
+  public void addMetrics() {
+    addNodeMetrics();
+    addLeaderCount();
+  }
+
   private int getRunningConfigNodesNum() {
     List<TConfigNodeLocation> allConfigNodes =
         configManager.getLoadManager().getOnlineConfigNodes();
@@ -196,7 +201,8 @@ public class LoadManagerMetrics {
               TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
               int dataNodeId = dataNodeLocation.getDataNodeId();
               if (idToCountMap.containsKey(dataNodeId)) {
-                String name = NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
+                String name =
+                    NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
 
                 MetricsService.getInstance()
                     .getMetricManager()
