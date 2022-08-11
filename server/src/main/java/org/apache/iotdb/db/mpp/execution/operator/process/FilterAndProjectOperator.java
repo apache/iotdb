@@ -192,7 +192,6 @@ public class FilterAndProjectOperator implements ProcessOperator {
     return inputOperator.isBlocked();
   }
 
-
   @Override
   public long calculateMaxPeekMemory() {
     TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
@@ -207,10 +206,5 @@ public class FilterAndProjectOperator implements ProcessOperator {
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
     return ProcessOperator.super.calculateRetainedSizeAfterCallingNext();
-  }
-
-  /** Only for memory control. */
-  private int getMaxLevelOfColumnTransformerTree(ColumnTransformer columnTransformer){
-    if(columnTransformer instanceof )
   }
 }
