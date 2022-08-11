@@ -128,18 +128,25 @@ public class ClusterSchemaTree implements ISchemaTree {
       return null;
     }
 
-    List<SchemaMeasurementNode> measurementNodeList = new ArrayList<>();
+    List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>();
     SchemaNode node;
+    SchemaMeasurementNode measurementNode;
     for (String measurement : measurements) {
       node = cur.getChild(measurement);
       if (node == null) {
-        measurementNodeList.add(null);
+        measurementSchemaInfoList.add(null);
       } else {
-        measurementNodeList.add(node.getAsMeasurementNode());
+        measurementNode = node.getAsMeasurementNode();
+        measurementSchemaInfoList.add(
+            new MeasurementSchemaInfo(
+                measurementNode.getName(),
+                measurementNode.getSchema(),
+                measurementNode.getAlias()));
       }
     }
 
-    return new DeviceSchemaInfo(devicePath, cur.getAsEntityNode().isAligned(), measurementNodeList);
+    return new DeviceSchemaInfo(
+        devicePath, cur.getAsEntityNode().isAligned(), measurementSchemaInfoList);
   }
 
   public void appendMeasurementPaths(List<MeasurementPath> measurementPathList) {

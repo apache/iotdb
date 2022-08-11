@@ -21,17 +21,12 @@ package org.apache.iotdb.db.sync.sender.service;
 
 import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.concurrent.ThreadName;
-import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
+import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
-import org.apache.iotdb.db.exception.SyncConnectionException;
-import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.sync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.transport.client.ITransportClient;
-import org.apache.iotdb.db.sync.transport.client.TransportClient;
-import org.apache.iotdb.service.transport.thrift.RequestType;
-import org.apache.iotdb.service.transport.thrift.SyncRequest;
-import org.apache.iotdb.service.transport.thrift.SyncResponse;
+import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +37,6 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class TransportHandler {
@@ -58,9 +52,6 @@ public class TransportHandler {
   protected ExecutorService transportExecutorService;
   private Future transportFuture;
 
-  protected ScheduledExecutorService heartbeatExecutorService;
-  private Future heartbeatFuture;
-
   public TransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
     this.pipe = pipe;
     this.pipeName = pipe.getName();
@@ -69,12 +60,10 @@ public class TransportHandler {
     this.transportExecutorService =
         IoTDBThreadPoolFactory.newSingleThreadExecutor(
             ThreadName.SYNC_SENDER_PIPE.getName() + "-" + pipeName);
-    this.heartbeatExecutorService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-            ThreadName.SYNC_SENDER_HEARTBEAT.getName() + "-" + pipeName);
 
     this.localIP = getLocalIP(pipeSink);
-    this.transportClient = new TransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIP);
+    this.transportClient =
+        new IoTDBSInkTransportClient(pipe, pipeSink.getIp(), pipeSink.getPort(), localIP);
   }
 
   private String getLocalIP(IoTDBPipeSink pipeSink) {
@@ -98,21 +87,11 @@ public class TransportHandler {
 
   public void start() {
     transportFuture = transportExecutorService.submit(transportClient);
-    heartbeatFuture =
-        ScheduledExecutorUtil.safelyScheduleWithFixedDelay(
-            heartbeatExecutorService,
-            this::sendHeartbeat,
-            0,
-            SyncConstant.HEARTBEAT_DELAY_SECONDS,
-            TimeUnit.SECONDS);
   }
 
   public void stop() {
     if (transportFuture != null) {
       transportFuture.cancel(true);
-    }
-    if (heartbeatFuture != null) {
-      heartbeatFuture.cancel(true);
     }
   }
 
@@ -122,34 +101,7 @@ public class TransportHandler {
     isClosed =
         transportExecutorService.awaitTermination(
             SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
-    heartbeatExecutorService.shutdownNow();
-    isClosed &=
-        heartbeatExecutorService.awaitTermination(
-            SyncConstant.DEFAULT_WAITING_FOR_STOP_MILLISECONDS, TimeUnit.MILLISECONDS);
     return isClosed;
-  }
-
-  public SyncResponse sendMsg(RequestType type) throws SyncConnectionException {
-    return transportClient.heartbeat(new SyncRequest(type, pipeName, localIP, createTime));
-  }
-
-  private void sendHeartbeat() {
-    try {
-      SenderService.getInstance()
-          .receiveMsg(
-              transportClient.heartbeat(
-                  new SyncRequest(RequestType.HEARTBEAT, pipeName, localIP, createTime)));
-      synchronized (((TransportClient) transportClient).getWaitLock()) {
-        pipe.setDisconnected(false);
-        ((TransportClient) transportClient).getWaitLock().notifyAll();
-      }
-    } catch (SyncConnectionException e) {
-      pipe.setDisconnected(true);
-      logger.warn(
-          String.format(
-              "Pipe %s sends heartbeat to receiver error, skip this time, because %s.",
-              pipeName, e));
-    }
   }
 
   public static TransportHandler getNewTransportHandler(Pipe pipe, IoTDBPipeSink pipeSink) {
