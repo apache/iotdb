@@ -73,6 +73,8 @@ public class MicrometerMetricManager extends AbstractMetricManager {
     io.micrometer.core.instrument.DistributionSummary distributionSummary =
         io.micrometer.core.instrument.DistributionSummary.builder(metricInfo.getName())
             .tags(metricInfo.getTagsInArray())
+            .publishPercentileHistogram()
+            .publishPercentiles(0)
             .register(meterRegistry);
     return new MicrometerHistogram(distributionSummary);
   }
