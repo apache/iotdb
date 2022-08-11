@@ -71,7 +71,7 @@ public class ScenesManager {
     ioTDBParsePage.init(baseStage);
     baseStage.setScene(ioTDBParsePage.getScene());
     baseStage.setTitle(ioTDBParsePage.getName());
-    baseStage.getIcons().add(new Image("/icons/yonyou-logo.png"));
+    baseStage.getIcons().add(new Image("/icons/iotdb-logo.png"));
     baseStage.centerOnScreen();
     baseStage.show();
     // 关闭 stage 时清空缓存
