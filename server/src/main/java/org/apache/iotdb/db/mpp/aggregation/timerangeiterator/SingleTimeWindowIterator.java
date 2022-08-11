@@ -73,7 +73,7 @@ public class SingleTimeWindowIterator implements ITimeRangeIterator {
   }
 
   @Override
-  public int getTotalTimeRangeNum() {
+  public long getTotalIntervalNum() {
     return 1;
   }
 }

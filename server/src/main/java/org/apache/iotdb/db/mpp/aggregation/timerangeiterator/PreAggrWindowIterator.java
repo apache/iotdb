@@ -173,4 +173,9 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
   public long currentOutputTime() {
     return leftCRightO ? curTimeRange.getMin() : curTimeRange.getMax();
   }
+
+  @Override
+  public long getTotalIntervalNum() {
+    return (long) Math.ceil((endTime - startTime) / (double) slidingStep);
+  }
 }
