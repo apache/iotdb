@@ -187,7 +187,7 @@ public abstract class AbstractEnv implements BaseEnv {
     try {
       long startTime = System.currentTimeMillis();
       testDelegate.requestAll();
-      if(!configNodeWrapperList.isEmpty()){
+      if (!configNodeWrapperList.isEmpty()) {
         checkNodeHeartbeat();
       }
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
