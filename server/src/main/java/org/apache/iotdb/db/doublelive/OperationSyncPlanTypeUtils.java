@@ -47,7 +47,9 @@ import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 public class OperationSyncPlanTypeUtils {
 
   public static OperationSyncPlanType getOperationSyncPlanType(PhysicalPlan plan) {
-    if (plan instanceof SetStorageGroupPlan
+    if (plan instanceof DeletePlan || plan instanceof InsertPlan) {
+      return OperationSyncPlanType.DMLPlan;
+    } else if (plan instanceof SetStorageGroupPlan
         || plan instanceof DeleteStorageGroupPlan
         || plan instanceof CreateTimeSeriesPlan
         || plan instanceof CreateMultiTimeSeriesPlan
@@ -70,8 +72,6 @@ public class OperationSyncPlanTypeUtils {
         || plan instanceof ChangeTagOffsetPlan
         || plan instanceof AuthorPlan) {
       return OperationSyncPlanType.DDLPlan;
-    } else if (plan instanceof DeletePlan || plan instanceof InsertPlan) {
-      return OperationSyncPlanType.DMLPlan;
     }
     return null;
   }

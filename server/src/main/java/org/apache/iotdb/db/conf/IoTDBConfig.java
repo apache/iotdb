@@ -849,9 +849,6 @@ public class IoTDBConfig {
   // OperationSyncProducer DML cache number
   private int operationSyncProducerCacheNum = 8;
 
-  // OperationSyncConsumer concurrency size
-  private int operationSyncConsumerConcurrencySize = 4;
-
   // The max record num returned in one schema query.
   private int schemaQueryFetchSize = 10000000;
 
@@ -2720,14 +2717,6 @@ public class IoTDBConfig {
 
   public void setOperationSyncProducerCacheNum(int operationSyncProducerCacheNum) {
     this.operationSyncProducerCacheNum = operationSyncProducerCacheNum;
-  }
-
-  public int getOperationSyncConsumerConcurrencySize() {
-    return operationSyncConsumerConcurrencySize;
-  }
-
-  public void setOperationSyncConsumerConcurrencySize(int operationSyncConsumerConcurrencySize) {
-    this.operationSyncConsumerConcurrencySize = operationSyncConsumerConcurrencySize;
   }
 
   public int getSchemaQueryFetchSize() {

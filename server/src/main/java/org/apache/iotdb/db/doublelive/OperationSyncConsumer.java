@@ -34,7 +34,7 @@ public class OperationSyncConsumer implements Runnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncConsumer.class);
 
   private BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>
-      OperationSyncQueue;
+      operationSyncQueue;
   private final SessionPool operationSyncSessionPool;
   private final OperationSyncLogService dmlLogService;
 
@@ -43,7 +43,7 @@ public class OperationSyncConsumer implements Runnable {
           operationSyncQueue,
       SessionPool operationSyncSessionPool,
       OperationSyncLogService dmlLogService) {
-    this.OperationSyncQueue = operationSyncQueue;
+    this.operationSyncQueue = operationSyncQueue;
     this.operationSyncSessionPool = operationSyncSessionPool;
     this.dmlLogService = dmlLogService;
   }
@@ -55,18 +55,17 @@ public class OperationSyncConsumer implements Runnable {
       ByteBuffer headBuffer;
       OperationSyncPlanTypeUtils.OperationSyncPlanType headType;
       try {
-        head = OperationSyncQueue.take();
+        head = operationSyncQueue.take();
         headBuffer = head.left;
         headType = head.right;
       } catch (InterruptedException e) {
         LOGGER.error("OperationSyncConsumer been interrupted: ", e);
         continue;
       }
-      headBuffer.position(0);
       boolean transmitStatus = false;
       if (StorageEngine.isSecondaryAlive().get()) {
         try {
-
+          headBuffer.position(0);
           transmitStatus = operationSyncSessionPool.operationSyncTransmit(headBuffer);
         } catch (IoTDBConnectionException connectionException) {
           // warn IoTDBConnectionException and do serialization

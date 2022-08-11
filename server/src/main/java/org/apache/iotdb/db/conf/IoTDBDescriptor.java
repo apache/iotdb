@@ -845,12 +845,6 @@ public class IoTDBDescriptor {
                   "operation_sync_producer_cache_num",
                   String.valueOf(conf.getOperationSyncProducerCacheNum()))));
 
-      conf.setOperationSyncConsumerConcurrencySize(
-          Integer.parseInt(
-              properties.getProperty(
-                  "operation_sync_consumer_concurrency_size",
-                  String.valueOf(conf.getOperationSyncConsumerConcurrencySize()))));
-
       conf.setSchemaQueryFetchSize(
           Integer.parseInt(
               properties.getProperty(
