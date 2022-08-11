@@ -47,7 +47,7 @@ public abstract class AbstractMetricManager {
   /** Is metric service enabled */
   protected static boolean isEnableMetric;
   /** metric name -> tag keys */
-  protected Map<String, MetricInfo.TagInfo> nameToTagInfo;
+  protected Map<MetricInfo, MetricInfo.MetaInfo> nameToTagInfo;
   /** metric type -> metric name -> metric info */
   protected Map<MetricInfo, IMetric> metrics;
 
@@ -69,7 +69,7 @@ public abstract class AbstractMetricManager {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingCounter;
     }
-    MetricInfo metricInfo = new MetricInfo(metric, tags);
+    MetricInfo metricInfo = new MetricInfo(MetricType.COUNTER, metric, tags);
     IMetric counter = metrics.computeIfAbsent(metricInfo, key -> createCounter(metricInfo));
     if (counter instanceof Counter) {
       add(metricInfo, counter);
@@ -98,7 +98,7 @@ public abstract class AbstractMetricManager {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricInfo metricInfo = new MetricInfo(metric, tags);
+    MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, metric, tags);
     IMetric gauge =
         metrics.computeIfAbsent(metricInfo, key -> createAutoGauge(metricInfo, obj, mapper));
     if (gauge instanceof Gauge) {
@@ -123,7 +123,7 @@ public abstract class AbstractMetricManager {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricInfo metricInfo = new MetricInfo(metric, tags);
+    MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, metric, tags);
     IMetric gauge = metrics.computeIfAbsent(metricInfo, key -> createGauge(metricInfo));
     if (gauge instanceof Gauge) {
       add(metricInfo, gauge);
@@ -146,7 +146,7 @@ public abstract class AbstractMetricManager {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingRate;
     }
-    MetricInfo metricInfo = new MetricInfo(metric, tags);
+    MetricInfo metricInfo = new MetricInfo(MetricType.RATE, metric, tags);
     IMetric rate = metrics.computeIfAbsent(metricInfo, key -> createRate(metricInfo));
     if (rate instanceof Rate) {
       add(metricInfo, rate);
@@ -169,7 +169,7 @@ public abstract class AbstractMetricManager {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingHistogram;
     }
-    MetricInfo metricInfo = new MetricInfo(metric, tags);
+    MetricInfo metricInfo = new MetricInfo(MetricType.HISTOGRAM, metric, tags);
     IMetric histogram = metrics.computeIfAbsent(metricInfo, key -> createHistogram(metricInfo));
     if (histogram instanceof Histogram) {
       add(metricInfo, histogram);
@@ -192,7 +192,7 @@ public abstract class AbstractMetricManager {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingTimer;
     }
-    MetricInfo metricInfo = new MetricInfo(metric, tags);
+    MetricInfo metricInfo = new MetricInfo(MetricType.TIMER, metric, tags);
     IMetric timer = metrics.computeIfAbsent(metricInfo, key -> createTimer(metricInfo));
     if (timer instanceof Timer) {
       add(metricInfo, timer);
@@ -379,9 +379,15 @@ public abstract class AbstractMetricManager {
    */
   public void remove(MetricType type, String metric, String... tags) {
     if (isEnableMetric()) {
-      MetricInfo metricInfo = new MetricInfo(metric, tags);
-      removeFromMap(metricInfo);
-      remove(type, metricInfo);
+      MetricInfo metricInfo = new MetricInfo(type, metric, tags);
+      MetricInfo.MetaInfo metaInfo = nameToTagInfo.get(metricInfo);
+      if (type == metaInfo.getType()) {
+        removeFromMap(metricInfo);
+        remove(type, metricInfo);
+      } else {
+        throw new IllegalArgumentException(
+            metricInfo + " failed to remove because the mismatch of type. ");
+      }
     }
   }
 
@@ -412,7 +418,7 @@ public abstract class AbstractMetricManager {
 
   private void add(MetricInfo metricInfo, IMetric metric) {
     metrics.put(metricInfo, metric);
-    nameToTagInfo.put(metricInfo.getName(), metricInfo.getTagMetaInfo());
+    nameToTagInfo.put(metricInfo, metricInfo.getTagMetaInfo());
   }
 
   private void removeFromMap(MetricInfo metricInfo) {

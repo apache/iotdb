@@ -34,10 +34,10 @@ public class MetricInfo {
   private static final Logger logger = LoggerFactory.getLogger(MetricInfo.class);
   private static final Integer PAIR_SIZE = 2;
   private final String name;
-  private final TagInfo tagInfo;
+  private final MetaInfo metaInfo;
   private final Map<String, String> tags = new LinkedHashMap<>();
 
-  public MetricInfo(String name, String... tags) {
+  public MetricInfo(MetricType type, String name, String... tags) {
     this.name = name;
     if (tags.length % PAIR_SIZE == 0) {
       for (int i = 0; i < tags.length; i += PAIR_SIZE) {
@@ -46,7 +46,7 @@ public class MetricInfo {
     } else {
       logger.error("The size of metric tags should be even.");
     }
-    this.tagInfo = new TagInfo(this.tags.keySet());
+    this.metaInfo = new MetaInfo(type, this.tags.keySet());
   }
 
   public String getName() {
@@ -67,8 +67,8 @@ public class MetricInfo {
     return tags;
   }
 
-  public TagInfo getTagMetaInfo() {
-    return tagInfo;
+  public MetaInfo getTagMetaInfo() {
+    return metaInfo;
   }
 
   /** convert the metric name to string array. */
@@ -117,14 +117,28 @@ public class MetricInfo {
 
   @Override
   public String toString() {
-    return "MetricInfo{" + "name='" + name + '\'' + ", tagInfo=" + tagInfo + ", tags=" + tags + '}';
+    return "MetricInfo{"
+        + "name='"
+        + name
+        + '\''
+        + ", metaInfo="
+        + metaInfo
+        + ", tags="
+        + tags
+        + '}';
   }
 
-  public static class TagInfo {
+  public static class MetaInfo {
+    private final MetricType type;
     private final Set<String> tagNames;
 
-    public TagInfo(Set<String> tagNames) {
+    public MetaInfo(MetricType type, Set<String> tagNames) {
+      this.type = type;
       this.tagNames = tagNames;
+    }
+
+    public MetricType getType() {
+      return type;
     }
 
     public Set<String> getTagNames() {
@@ -139,7 +153,7 @@ public class MetricInfo {
       if (o == null || getClass() != o.getClass()) {
         return false;
       }
-      TagInfo that = (TagInfo) o;
+      MetaInfo that = (MetaInfo) o;
       if (tagNames == null || that.tagNames == null) {
         return false;
       }
@@ -158,7 +172,7 @@ public class MetricInfo {
 
     @Override
     public String toString() {
-      return "TagInfo{" + "tagNames=" + tagNames + '}';
+      return "MetaInfo{" + "type=" + type + ", tagNames=" + tagNames + '}';
     }
   }
 }

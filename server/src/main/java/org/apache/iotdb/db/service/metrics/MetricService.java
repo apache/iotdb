@@ -30,9 +30,9 @@ import org.apache.iotdb.db.service.metrics.predefined.SystemMetrics;
 import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
+import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.predefined.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.predefined.logback.LogbackMetrics;
-import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -31,6 +31,8 @@ import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricFrameworkType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
+
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -104,9 +106,9 @@ public class MetricServiceTest {
     assertEquals(4, metricService.getAllCounters().size());
     metricService.count(10, "counter6", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, metricService.getAllCounters().size());
-    metricService.removeCounter("counter6");
+    metricService.remove(MetricType.COUNTER, "counter6");
     assertEquals(5, metricService.getAllCounters().size());
-    metricService.removeCounter("counter6", "tag", "value");
+    metricService.remove(MetricType.COUNTER, "counter6", "tag", "value");
     assertEquals(4, metricService.getAllCounters().size());
     assertEquals(4, metricService.getAllMetricKeys().size());
 
@@ -130,9 +132,9 @@ public class MetricServiceTest {
     assertEquals(4, metricService.getAllGauges().size());
     metricService.gauge(10, "gauge6", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, metricService.getAllGauges().size());
-    metricService.removeGauge("gauge6");
+    metricService.remove(MetricType.GAUGE, "gauge6");
     assertEquals(5, metricService.getAllGauges().size());
-    metricService.removeGauge("gauge6", "tag", "value");
+    metricService.remove(MetricType.GAUGE, "gauge6", "tag", "value");
     assertEquals(4, metricService.getAllGauges().size());
     assertEquals(8, metricService.getAllMetricKeys().size());
 
@@ -152,7 +154,7 @@ public class MetricServiceTest {
     System.gc();
     assertEquals(0L, autoGauge.value());
     assertEquals(5, metricService.getAllGauges().size());
-    metricService.removeGauge("autoGauge", "tag", "value");
+    metricService.remove(MetricType.GAUGE, "autoGauge", "tag", "value");
     assertEquals(4, metricService.getAllGauges().size());
     assertEquals(8, metricService.getAllMetricKeys().size());
 
@@ -178,9 +180,9 @@ public class MetricServiceTest {
     assertEquals(DoNothingMetricManager.doNothingRate, rate2);
     metricService.rate(10, "rate6", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, metricService.getAllRates().size());
-    metricService.removeRate("rate6");
+    metricService.remove(MetricType.RATE, "rate6");
     assertEquals(5, metricService.getAllRates().size());
-    metricService.removeRate("rate6", "tag", "value");
+    metricService.remove(MetricType.RATE, "rate6", "tag", "value");
     assertEquals(4, metricService.getAllRates().size());
     assertEquals(12, metricService.getAllMetricKeys().size());
 
@@ -222,9 +224,9 @@ public class MetricServiceTest {
     assertEquals(4, metricService.getAllHistograms().size());
     metricService.histogram(10, "histogram6", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, metricService.getAllHistograms().size());
-    metricService.removeHistogram("histogram6");
+    metricService.remove(MetricType.HISTOGRAM, "histogram6");
     assertEquals(5, metricService.getAllHistograms().size());
-    metricService.removeHistogram("histogram6", "tag", "value");
+    metricService.remove(MetricType.HISTOGRAM, "histogram6", "tag", "value");
     assertEquals(4, metricService.getAllHistograms().size());
     assertEquals(16, metricService.getAllMetricKeys().size());
 
@@ -262,9 +264,9 @@ public class MetricServiceTest {
     assertEquals(4, metricService.getAllTimers().size());
     metricService.timer(10, TimeUnit.MILLISECONDS, "timer6", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, metricService.getAllTimers().size());
-    metricService.removeTimer("timer6");
+    metricService.remove(MetricType.TIMER, "timer6");
     assertEquals(5, metricService.getAllTimers().size());
-    metricService.removeTimer("timer6", "tag", "value");
+    metricService.remove(MetricType.TIMER, "timer6", "tag", "value");
     assertEquals(4, metricService.getAllTimers().size());
     assertEquals(20, metricService.getAllMetricKeys().size());
   }
