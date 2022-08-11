@@ -69,12 +69,15 @@ public class OperationSyncProducer {
     for (int i = 0; i < RETRY; i++) {
       // retry 3 times
       if (operationSyncQueues.get(index).offer(planPair)) {
-        try {
-          Thread.sleep(500);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
         return;
+      }
+      if (i == RETRY - 1) {
+        break;
+      }
+      try {
+        Thread.sleep(500);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
       }
     }
     try {
