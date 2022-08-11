@@ -27,11 +27,8 @@ import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricInfo;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.function.ToLongFunction;
 
 public class DoNothingMetricManager extends AbstractMetricManager {
@@ -43,88 +40,33 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   public static final DoNothingTimer doNothingTimer = new DoNothingTimer();
 
   @Override
-  public Counter getOrCreateCounter(MetricInfo metricInfo) {
+  public Counter createCounter(MetricInfo metricInfo) {
     return doNothingCounter;
   }
 
   @Override
-  public <T> Gauge getOrCreateAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
+  public <T> Gauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
     return doNothingGauge;
   }
 
   @Override
-  public Gauge getOrCreateGauge(MetricInfo metricInfo) {
+  public Gauge createGauge(MetricInfo metricInfo) {
     return doNothingGauge;
   }
 
   @Override
-  public Histogram getOrCreateHistogram(MetricInfo metricInfo) {
+  public Histogram createHistogram(MetricInfo metricInfo) {
     return doNothingHistogram;
   }
 
   @Override
-  public Rate getOrCreateRate(MetricInfo metricInfo) {
+  public Rate createRate(MetricInfo metricInfo) {
     return doNothingRate;
   }
 
   @Override
-  public Timer getOrCreateTimer(MetricInfo metricInfo) {
+  public Timer createTimer(MetricInfo metricInfo) {
     return doNothingTimer;
-  }
-
-  @Override
-  public void count(long delta, String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public void histogram(long value, String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public void gauge(long value, String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public void rate(long value, String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public void timer(long delta, TimeUnit timeUnit, String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public List<String[]> getAllMetricKeys() {
-    return Collections.emptyList();
-  }
-
-  @Override
-  public Map<String[], Counter> getAllCounters() {
-    return Collections.emptyMap();
-  }
-
-  @Override
-  public Map<String[], Gauge> getAllGauges() {
-    return Collections.emptyMap();
-  }
-
-  @Override
-  public Map<String[], Rate> getAllRates() {
-    return Collections.emptyMap();
-  }
-
-  @Override
-  public Map<String[], Histogram> getAllHistograms() {
-    return Collections.emptyMap();
-  }
-
-  @Override
-  public Map<String[], Timer> getAllTimers() {
-    return Collections.emptyMap();
   }
 
   @Override
@@ -138,32 +80,12 @@ public class DoNothingMetricManager extends AbstractMetricManager {
   }
 
   @Override
-  public void removeCounter(String metric, String... tags) {
+  protected void remove(MetricType type, MetricInfo metricInfo) {
     // do nothing
   }
 
   @Override
-  public void removeGauge(String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public void removeRate(String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public void removeHistogram(String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public void removeTimer(String metric, String... tags) {
-    // do nothing
-  }
-
-  @Override
-  public boolean stop() {
-    return false;
+  protected boolean stopFramework() {
+    return true;
   }
 }

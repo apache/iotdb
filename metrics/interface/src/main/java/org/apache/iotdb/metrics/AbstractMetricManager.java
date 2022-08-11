@@ -61,22 +61,28 @@ public abstract class AbstractMetricManager {
   /**
    * Get counter. return if exists, create if not.
    *
-   * @param metric the name of metric
-   * @param metricLevel the level of metric
+   * @param name the name of name
+   * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Counter getOrCreateCounter(String metric, MetricLevel metricLevel, String... tags) {
+  public Counter getOrCreateCounter(String name, MetricLevel metricLevel, String... tags) {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingCounter;
     }
-    MetricInfo metricInfo = new MetricInfo(MetricType.COUNTER, metric, tags);
-    IMetric counter = metrics.computeIfAbsent(metricInfo, key -> createCounter(metricInfo));
-    if (counter instanceof Counter) {
-      add(metricInfo, counter);
-      return (Counter) counter;
+    MetricInfo metricInfo = new MetricInfo(MetricType.COUNTER, name, tags);
+    IMetric metric =
+        metrics.computeIfAbsent(
+            metricInfo,
+            key -> {
+              Counter counter = createCounter(metricInfo);
+              add(metricInfo, counter);
+              return counter;
+            });
+    if (metric instanceof Counter) {
+      return (Counter) metric;
     }
     throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of metric");
+        metricInfo + " is already used for a different type of name");
   }
 
   protected abstract Counter createCounter(MetricInfo metricInfo);
@@ -88,25 +94,30 @@ public abstract class AbstractMetricManager {
    * you call this gauge's value() when the obj has already been cleared by gc, then you will get
    * 0L.
    *
-   * @param metric the name of metric
-   * @param metricLevel the level of metric
+   * @param name the name of name
+   * @param metricLevel the level of name
    * @param obj which will be monitored automatically
    * @param mapper use which to map the obj to a long value
    */
   public <T> Gauge getOrCreateAutoGauge(
-      String metric, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
+      String name, MetricLevel metricLevel, T obj, ToLongFunction<T> mapper, String... tags) {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, metric, tags);
-    IMetric gauge =
-        metrics.computeIfAbsent(metricInfo, key -> createAutoGauge(metricInfo, obj, mapper));
-    if (gauge instanceof Gauge) {
-      add(metricInfo, gauge);
-      return (Gauge) gauge;
+    MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
+    IMetric metric =
+        metrics.computeIfAbsent(
+            metricInfo,
+            key -> {
+              Gauge gauge = createAutoGauge(metricInfo, obj, mapper);
+              add(metricInfo, gauge);
+              return gauge;
+            });
+    if (metric instanceof Gauge) {
+      return (Gauge) metric;
     }
     throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of metric");
+        metricInfo + " is already used for a different type of name");
   }
 
   protected abstract <T> Gauge createAutoGauge(
@@ -115,22 +126,28 @@ public abstract class AbstractMetricManager {
   /**
    * Get counter. return if exists, create if not.
    *
-   * @param metric the name of metric
-   * @param metricLevel the level of metric
+   * @param name the name of name
+   * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Gauge getOrCreateGauge(String metric, MetricLevel metricLevel, String... tags) {
+  public Gauge getOrCreateGauge(String name, MetricLevel metricLevel, String... tags) {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingGauge;
     }
-    MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, metric, tags);
-    IMetric gauge = metrics.computeIfAbsent(metricInfo, key -> createGauge(metricInfo));
-    if (gauge instanceof Gauge) {
-      add(metricInfo, gauge);
-      return (Gauge) gauge;
+    MetricInfo metricInfo = new MetricInfo(MetricType.GAUGE, name, tags);
+    IMetric metric =
+        metrics.computeIfAbsent(
+            metricInfo,
+            key -> {
+              Gauge gauge = createGauge(metricInfo);
+              add(metricInfo, gauge);
+              return gauge;
+            });
+    if (metric instanceof Gauge) {
+      return (Gauge) metric;
     }
     throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of metric");
+        metricInfo + " is already used for a different type of name");
   }
 
   protected abstract Gauge createGauge(MetricInfo metricInfo);
@@ -138,22 +155,28 @@ public abstract class AbstractMetricManager {
   /**
    * Get rate. return if exists, create if not.
    *
-   * @param metric the name of metric
-   * @param metricLevel the level of metric
+   * @param name the name of name
+   * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Rate getOrCreateRate(String metric, MetricLevel metricLevel, String... tags) {
+  public Rate getOrCreateRate(String name, MetricLevel metricLevel, String... tags) {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingRate;
     }
-    MetricInfo metricInfo = new MetricInfo(MetricType.RATE, metric, tags);
-    IMetric rate = metrics.computeIfAbsent(metricInfo, key -> createRate(metricInfo));
-    if (rate instanceof Rate) {
-      add(metricInfo, rate);
-      return (Rate) rate;
+    MetricInfo metricInfo = new MetricInfo(MetricType.RATE, name, tags);
+    IMetric metric =
+        metrics.computeIfAbsent(
+            metricInfo,
+            key -> {
+              Rate rate = createRate(metricInfo);
+              add(metricInfo, rate);
+              return rate;
+            });
+    if (metric instanceof Rate) {
+      return (Rate) metric;
     }
     throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of metric");
+        metricInfo + " is already used for a different type of name");
   }
 
   protected abstract Rate createRate(MetricInfo metricInfo);
@@ -161,22 +184,28 @@ public abstract class AbstractMetricManager {
   /**
    * Get histogram. return if exists, create if not.
    *
-   * @param metric the name of metric
-   * @param metricLevel the level of metric
+   * @param name the name of name
+   * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Histogram getOrCreateHistogram(String metric, MetricLevel metricLevel, String... tags) {
+  public Histogram getOrCreateHistogram(String name, MetricLevel metricLevel, String... tags) {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingHistogram;
     }
-    MetricInfo metricInfo = new MetricInfo(MetricType.HISTOGRAM, metric, tags);
-    IMetric histogram = metrics.computeIfAbsent(metricInfo, key -> createHistogram(metricInfo));
-    if (histogram instanceof Histogram) {
-      add(metricInfo, histogram);
-      return (Histogram) histogram;
+    MetricInfo metricInfo = new MetricInfo(MetricType.HISTOGRAM, name, tags);
+    IMetric metric =
+        metrics.computeIfAbsent(
+            metricInfo,
+            key -> {
+              Histogram histogram = createHistogram(metricInfo);
+              add(metricInfo, histogram);
+              return histogram;
+            });
+    if (metric instanceof Histogram) {
+      return (Histogram) metric;
     }
     throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of metric");
+        metricInfo + " is already used for a different type of name");
   }
 
   protected abstract Histogram createHistogram(MetricInfo metricInfo);
@@ -184,22 +213,28 @@ public abstract class AbstractMetricManager {
   /**
    * Get timer. return if exists, create if not.
    *
-   * @param metric the name of metric
-   * @param metricLevel the level of metric
+   * @param name the name of name
+   * @param metricLevel the level of name
    * @param tags string pairs, like sg="ln" will be "sg", "ln"
    */
-  public Timer getOrCreateTimer(String metric, MetricLevel metricLevel, String... tags) {
+  public Timer getOrCreateTimer(String name, MetricLevel metricLevel, String... tags) {
     if (!isEnableMetricInGivenLevel(metricLevel)) {
       return DoNothingMetricManager.doNothingTimer;
     }
-    MetricInfo metricInfo = new MetricInfo(MetricType.TIMER, metric, tags);
-    IMetric timer = metrics.computeIfAbsent(metricInfo, key -> createTimer(metricInfo));
-    if (timer instanceof Timer) {
-      add(metricInfo, timer);
-      return (Timer) timer;
+    MetricInfo metricInfo = new MetricInfo(MetricType.TIMER, name, tags);
+    IMetric metric =
+        metrics.computeIfAbsent(
+            metricInfo,
+            key -> {
+              Timer timer = createTimer(metricInfo);
+              add(metricInfo, timer);
+              return timer;
+            });
+    if (metric instanceof Timer) {
+      return (Timer) metric;
     }
     throw new IllegalArgumentException(
-        metricInfo + " is already used for a different type of metric");
+        metricInfo + " is already used for a different type of name");
   }
 
   protected abstract Timer createTimer(MetricInfo metricInfo);
@@ -380,13 +415,15 @@ public abstract class AbstractMetricManager {
   public void remove(MetricType type, String metric, String... tags) {
     if (isEnableMetric()) {
       MetricInfo metricInfo = new MetricInfo(type, metric, tags);
-      MetricInfo.MetaInfo metaInfo = nameToTagInfo.get(metricInfo);
-      if (type == metaInfo.getType()) {
-        removeFromMap(metricInfo);
-        remove(type, metricInfo);
-      } else {
-        throw new IllegalArgumentException(
-            metricInfo + " failed to remove because the mismatch of type. ");
+      if (nameToTagInfo.containsKey(metricInfo)) {
+        MetricInfo.MetaInfo metaInfo = nameToTagInfo.get(metricInfo);
+        if (type == metaInfo.getType()) {
+          removeFromMap(metricInfo);
+          remove(type, metricInfo);
+        } else {
+          throw new IllegalArgumentException(
+              metricInfo + " failed to remove because the mismatch of type. ");
+        }
       }
     }
   }
