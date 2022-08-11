@@ -37,9 +37,8 @@ import static org.junit.Assert.assertTrue;
 public class MetricConfigTest {
 
   @Test
-  public void yamlConfigTest() {
+  public void testYamlConfig() {
     String url = this.getClass().getClassLoader().getResource("iotdb-metric.yml").getPath();
-    System.out.println(url);
 
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
     Constructor constructor = new Constructor(MetricConfig.class);

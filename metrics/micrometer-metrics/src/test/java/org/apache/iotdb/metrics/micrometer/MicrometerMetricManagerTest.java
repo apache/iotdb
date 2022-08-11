@@ -27,7 +27,6 @@ import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.MetricFrameType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-
 import org.junit.BeforeClass;
 import org.junit.Test;
 
