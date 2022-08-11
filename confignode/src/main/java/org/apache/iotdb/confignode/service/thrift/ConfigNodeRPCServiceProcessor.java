@@ -532,8 +532,7 @@ public class ConfigNodeRPCServiceProcessor implements IConfigNodeRPCService.Ifac
   @Override
   public TShowRegionResp showRegion(TShowRegionReq showRegionReq) throws TException {
     GetRegionInfoListPlan getRegionInfoListPlan = new GetRegionInfoListPlan(showRegionReq);
-    RegionInfoListResp dataSet =
-        (RegionInfoListResp) configManager.showRegion(getRegionInfoListPlan);
+    RegionInfoListResp dataSet = configManager.showRegion(getRegionInfoListPlan);
     TShowRegionResp showRegionResp = new TShowRegionResp();
     showRegionResp.setStatus(dataSet.getStatus());
     showRegionResp.setRegionInfoList(dataSet.getRegionInfoList());

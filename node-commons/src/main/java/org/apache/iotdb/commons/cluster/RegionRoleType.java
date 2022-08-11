@@ -16,31 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.commons.cluster;
 
-package org.apache.iotdb.confignode.client;
+/** Region Role for showing regions */
+public enum RegionRoleType {
+  // Region role type : Leader
+  Leader("Leader"),
+  // Region role type : Follower
+  Follower("Follower");
 
-public enum DataNodeRequestType {
-  DELETE_REGIONS,
-  INVALIDATE_PARTITION_CACHE,
-  INVALIDATE_PERMISSION_CACHE,
-  INVALIDATE_SCHEMA_CACHE,
-  ADD_REGION_CONSENSUS_GROUP,
-  ADD_REGION_PEER,
-  REMOVE_REGION_PEER,
-  REMOVE_REGION_CONSENSUS_GROUP,
-  DISABLE_DATA_NODE,
-  STOP_DATA_NODE,
+  private final String status;
 
-  SET_TTL,
-  CREATE_DATA_REGIONS,
-  CREATE_SCHEMA_REGIONS,
-  CREATE_FUNCTION,
-  DROP_FUNCTION,
-  FLUSH,
-  UPDATE_REGION_ROUTE_MAP,
-  BROADCAST_LATEST_CONFIG_NODE_GROUP,
-  UPDATE_TEMPLATE,
-  CLEAR_CACHE,
-  MERGE,
-  FULL_MERGE
+  RegionRoleType(String status) {
+    this.status = status;
+  }
+
+  public String getStatus() {
+    return status;
+  }
 }
