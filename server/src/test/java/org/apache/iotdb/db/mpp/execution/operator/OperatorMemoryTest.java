@@ -27,7 +27,10 @@ import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
+import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
@@ -36,6 +39,7 @@ import org.apache.iotdb.db.mpp.execution.operator.process.fill.IFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.fill.linear.LinearFill;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.RowBasedTimeJoinOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.join.TimeJoinOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.join.merge.TimeComparator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryCollectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
@@ -47,10 +51,20 @@ import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
+import org.apache.iotdb.tsfile.read.common.type.BooleanType;
+import org.apache.iotdb.tsfile.read.common.type.LongType;
+import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 import com.google.common.collect.Sets;
 import org.junit.Test;
@@ -466,5 +480,143 @@ public class OperatorMemoryTest {
     assertEquals(2048 * 3 + 512L, linearFillOperator.calculateMaxPeekMemory());
     assertEquals(1024, linearFillOperator.calculateMaxReturnSize());
     assertEquals(512, linearFillOperator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void deviceMergeOperatorTest() {
+    List<Operator> children = new ArrayList<>(4);
+    List<TSDataType> dataTypeList = new ArrayList<>(2);
+    dataTypeList.add(TSDataType.INT32);
+    dataTypeList.add(TSDataType.INT32);
+    List<String> devices = new ArrayList<>(4);
+    devices.add("device1");
+    devices.add("device2");
+    devices.add("device3");
+    devices.add("device4");
+    long expectedMaxReturnSize =
+        3L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    long expectedMaxPeekMemory = TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    long expectedRetainedSizeAfterCallingNext = 0;
+    long childrenMaxPeekMemory = 0;
+
+    for (int i = 0; i < 4; i++) {
+      Operator child = Mockito.mock(Operator.class);
+      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(64 * 1024L);
+      expectedMaxPeekMemory += 128 * 1024L;
+      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+      expectedRetainedSizeAfterCallingNext += 128 * 1024L;
+      children.add(child);
+    }
+
+    expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory);
+
+    DeviceMergeOperator deviceMergeOperator =
+        new DeviceMergeOperator(
+            Mockito.mock(OperatorContext.class),
+            devices,
+            children,
+            dataTypeList,
+            Mockito.mock(TimeSelector.class),
+            Mockito.mock(TimeComparator.class));
+
+    assertEquals(expectedMaxPeekMemory, deviceMergeOperator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, deviceMergeOperator.calculateMaxReturnSize());
+    assertEquals(
+        expectedRetainedSizeAfterCallingNext - 64 * 1024L,
+        deviceMergeOperator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void deviceViewOperatorTest() {
+    List<Operator> children = new ArrayList<>(4);
+    List<TSDataType> dataTypeList = new ArrayList<>(2);
+    dataTypeList.add(TSDataType.INT32);
+    dataTypeList.add(TSDataType.INT32);
+    List<String> devices = new ArrayList<>(4);
+    devices.add("device1");
+    devices.add("device2");
+    devices.add("device3");
+    devices.add("device4");
+    long expectedMaxReturnSize =
+        2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    long expectedMaxPeekMemory = expectedMaxReturnSize;
+    long expectedRetainedSizeAfterCallingNext = 0;
+    long childrenMaxPeekMemory = 0;
+
+    for (int i = 0; i < 4; i++) {
+      Operator child = Mockito.mock(Operator.class);
+      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(1024L);
+      Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(1024L);
+      expectedMaxPeekMemory += 1024L;
+      childrenMaxPeekMemory = Math.max(childrenMaxPeekMemory, child.calculateMaxPeekMemory());
+      expectedRetainedSizeAfterCallingNext += 1024L;
+      children.add(child);
+    }
+
+    expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, childrenMaxPeekMemory);
+
+    DeviceViewOperator deviceViewOperator =
+        new DeviceViewOperator(
+            Mockito.mock(OperatorContext.class),
+            devices,
+            children,
+            new ArrayList<>(),
+            dataTypeList);
+
+    assertEquals(expectedMaxPeekMemory, deviceViewOperator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, deviceViewOperator.calculateMaxReturnSize());
+    assertEquals(
+        expectedRetainedSizeAfterCallingNext,
+        deviceViewOperator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void filterAndProjectOperatorTest() {
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
+    Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
+    BooleanType booleanType = Mockito.mock(BooleanType.class);
+    Mockito.when(booleanType.getTypeEnum()).thenReturn(TypeEnum.BOOLEAN);
+    LongType longType = Mockito.mock(LongType.class);
+    Mockito.when(longType.getTypeEnum()).thenReturn(TypeEnum.INT64);
+    ColumnTransformer filterColumnTransformer =
+        new CompareLessEqualColumnTransformer(
+            booleanType,
+            new TimeColumnTransformer(longType),
+            new ConstantColumnTransformer(longType, Mockito.mock(IntColumn.class)));
+    List<TSDataType> filterOutputTypes = new ArrayList<>();
+    filterOutputTypes.add(TSDataType.INT32);
+    filterOutputTypes.add(TSDataType.INT64);
+    List<ColumnTransformer> projectColumnTransformers = new ArrayList<>();
+    projectColumnTransformers.add(
+        new ArithmeticAdditionColumnTransformer(
+            booleanType,
+            new TimeColumnTransformer(longType),
+            new ConstantColumnTransformer(longType, Mockito.mock(IntColumn.class))));
+
+    FilterAndProjectOperator operator =
+        new FilterAndProjectOperator(
+            Mockito.mock(OperatorContext.class),
+            child,
+            filterOutputTypes,
+            new ArrayList<>(),
+            filterColumnTransformer,
+            new ArrayList<>(),
+            new ArrayList<>(),
+            projectColumnTransformers,
+            false,
+            true);
+
+    assertEquals(
+        4L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() + 512L,
+        operator.calculateMaxPeekMemory());
+    assertEquals(
+        2 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
+        operator.calculateMaxReturnSize());
+    assertEquals(512, operator.calculateRetainedSizeAfterCallingNext());
   }
 }

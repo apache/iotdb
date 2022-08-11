@@ -41,4 +41,16 @@ public abstract class TernaryColumnTransformer extends ColumnTransformer {
     this.thirdColumnTransformer = thirdColumnTransformer;
     checkType();
   }
+
+  public ColumnTransformer getFirstColumnTransformer() {
+    return firstColumnTransformer;
+  }
+
+  public ColumnTransformer getSecondColumnTransformer() {
+    return secondColumnTransformer;
+  }
+
+  public ColumnTransformer getThirdColumnTransformer() {
+    return thirdColumnTransformer;
+  }
 }

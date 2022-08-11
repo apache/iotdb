@@ -22,7 +22,14 @@ package org.apache.iotdb.db.mpp.execution.operator.process;
 import org.apache.iotdb.db.mpp.execution.operator.Operator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.binary.BinaryColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.LeafColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.multi.MappableUDFColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ternary.TernaryColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.unary.UnaryColumnTransformer;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
@@ -198,5 +205,106 @@ public class FilterAndProjectOperator implements ProcessOperator {
   @Override
   public ListenableFuture<?> isBlocked() {
     return inputOperator.isBlocked();
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    long maxPeekMemory = inputOperator.calculateMaxReturnSize();
+    int maxCachedColumn = 0;
+    // Only do projection, calculate max cached column size of calc tree
+    if (!hasFilter) {
+      for (int i = 0; i < projectOutputTransformerList.size(); i++) {
+        ColumnTransformer c = projectOutputTransformerList.get(i);
+        maxCachedColumn = Math.max(maxCachedColumn, 1 + i + getMaxLevelOfColumnTransformerTree(c));
+      }
+      return Math.max(
+              maxPeekMemory,
+              (long) maxCachedColumn
+                  * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte())
+          + inputOperator.calculateRetainedSizeAfterCallingNext();
+    }
+
+    // has Filter
+    maxCachedColumn =
+        Math.max(
+            1 + getMaxLevelOfColumnTransformerTree(filterOutputTransformer),
+            1 + commonTransformerList.size());
+    if (!hasNonMappableUDF) {
+      for (int i = 0; i < projectOutputTransformerList.size(); i++) {
+        ColumnTransformer c = projectOutputTransformerList.get(i);
+        maxCachedColumn = Math.max(maxCachedColumn, 1 + i + getMaxLevelOfColumnTransformerTree(c));
+      }
+    }
+    return Math.max(
+            maxPeekMemory,
+            (long) maxCachedColumn * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte())
+        + inputOperator.calculateRetainedSizeAfterCallingNext();
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    // time + all value columns
+    if (!hasFilter || !hasNonMappableUDF) {
+      return (long) (1 + projectOutputTransformerList.size())
+          * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    } else {
+      return (long) (1 + filterTsBlockBuilder.getValueColumnBuilders().length)
+          * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    }
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return inputOperator.calculateRetainedSizeAfterCallingNext();
+  }
+
+  private int getMaxLevelOfColumnTransformerTree(ColumnTransformer columnTransformer) {
+    if (columnTransformer instanceof LeafColumnTransformer) {
+      // Time column is always calculated, we ignore it here. Constant column is ignored.
+      if (columnTransformer instanceof ConstantColumnTransformer
+          || columnTransformer instanceof TimeColumnTransformer) {
+        return 0;
+      } else {
+        return 1;
+      }
+    } else if (columnTransformer instanceof UnaryColumnTransformer) {
+      return Math.max(
+          2,
+          getMaxLevelOfColumnTransformerTree(
+              ((UnaryColumnTransformer) columnTransformer).getChildColumnTransformer()));
+    } else if (columnTransformer instanceof BinaryColumnTransformer) {
+      int childMaxLevel =
+          Math.max(
+              getMaxLevelOfColumnTransformerTree(
+                  ((BinaryColumnTransformer) columnTransformer).getLeftTransformer()),
+              getMaxLevelOfColumnTransformerTree(
+                  ((BinaryColumnTransformer) columnTransformer).getRightTransformer()));
+      return Math.max(3, childMaxLevel);
+    } else if (columnTransformer instanceof TernaryColumnTransformer) {
+      int childMaxLevel =
+          Math.max(
+              getMaxLevelOfColumnTransformerTree(
+                  ((TernaryColumnTransformer) columnTransformer).getFirstColumnTransformer()),
+              Math.max(
+                  getMaxLevelOfColumnTransformerTree(
+                      ((TernaryColumnTransformer) columnTransformer).getSecondColumnTransformer()),
+                  getMaxLevelOfColumnTransformerTree(
+                      ((TernaryColumnTransformer) columnTransformer).getThirdColumnTransformer())));
+      return Math.max(4, childMaxLevel);
+    } else if (columnTransformer instanceof MappableUDFColumnTransformer) {
+      int childMaxLevel = 0;
+      for (ColumnTransformer c :
+          ((MappableUDFColumnTransformer) columnTransformer).getInputColumnTransformers()) {
+        childMaxLevel = Math.max(childMaxLevel, getMaxLevelOfColumnTransformerTree(c));
+      }
+      return Math.max(
+          1
+              + ((MappableUDFColumnTransformer) columnTransformer)
+                  .getInputColumnTransformers()
+                  .length,
+          childMaxLevel);
+    } else {
+      throw new UnsupportedOperationException("Unsupported ColumnTransformer");
+    }
   }
 }

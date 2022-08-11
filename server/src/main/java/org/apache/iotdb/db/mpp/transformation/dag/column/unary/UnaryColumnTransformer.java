@@ -42,6 +42,10 @@ public abstract class UnaryColumnTransformer extends ColumnTransformer {
     initializeColumnCache(columnBuilder.build());
   }
 
+  public ColumnTransformer getChildColumnTransformer() {
+    return childColumnTransformer;
+  }
+
   @Override
   protected void checkType() {
     // do nothing

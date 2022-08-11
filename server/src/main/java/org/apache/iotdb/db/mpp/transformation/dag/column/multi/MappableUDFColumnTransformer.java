@@ -88,4 +88,8 @@ public class MappableUDFColumnTransformer extends ColumnTransformer {
   protected void checkType() {
     // do nothing
   }
+
+  public ColumnTransformer[] getInputColumnTransformers() {
+    return inputColumnTransformers;
+  }
 }
