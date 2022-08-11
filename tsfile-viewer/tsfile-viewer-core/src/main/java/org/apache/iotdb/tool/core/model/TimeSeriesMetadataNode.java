@@ -1,5 +1,6 @@
 package org.apache.iotdb.tool.core.model;
 
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 
@@ -18,7 +19,9 @@ public class TimeSeriesMetadataNode {
 
   private long position;
 
-  private TimeseriesMetadata timeseriesMetadata;
+  private ITimeSeriesMetadata timeseriesMetadata;
+
+  private boolean aligned;
 
   public TimeSeriesMetadataNode() {}
 
@@ -67,11 +70,11 @@ public class TimeSeriesMetadataNode {
     this.position = position;
   }
 
-  public TimeseriesMetadata getTimeseriesMetadata() {
+  public ITimeSeriesMetadata getTimeseriesMetadata() {
     return timeseriesMetadata;
   }
 
-  public void setTimeseriesMetadata(TimeseriesMetadata timeseriesMetadata) {
+  public void setTimeseriesMetadata(ITimeSeriesMetadata timeseriesMetadata) {
     this.timeseriesMetadata = timeseriesMetadata;
   }
 
@@ -81,5 +84,13 @@ public class TimeSeriesMetadataNode {
 
   public void setNodeType(MetadataIndexNodeType nodeType) {
     this.nodeType = nodeType;
+  }
+
+  public boolean isAligned() {
+    return aligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    this.aligned = aligned;
   }
 }

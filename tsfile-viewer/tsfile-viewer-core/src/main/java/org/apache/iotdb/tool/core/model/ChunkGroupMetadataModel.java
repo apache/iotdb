@@ -19,7 +19,7 @@
 package org.apache.iotdb.tool.core.model;
 
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 
 import java.util.List;
 
@@ -28,26 +28,28 @@ public class ChunkGroupMetadataModel {
 
   private String device;
 
-  private List<ChunkMetadata> chunkMetadataList;
+  private List<IChunkMetadata> chunkMetadataList;
 
-  private List<ChunkHeader> chunkHeaderList;
+  private List<List<ChunkHeader>> chunkHeaderLists;
 
   public ChunkGroupMetadataModel(
-      String device, List<ChunkMetadata> chunkMetadataList, List<ChunkHeader> chunkHeaderList) {
+      String device,
+      List<IChunkMetadata> chunkMetadataList,
+      List<List<ChunkHeader>> chunkHeaderList) {
     this.device = device;
     this.chunkMetadataList = chunkMetadataList;
-    this.chunkHeaderList = chunkHeaderList;
+    this.chunkHeaderLists = chunkHeaderList;
   }
 
   public String getDevice() {
     return device;
   }
 
-  public List<ChunkMetadata> getChunkMetadataList() {
+  public List<IChunkMetadata> getChunkMetadataList() {
     return chunkMetadataList;
   }
 
-  public List<ChunkHeader> getChunkHeaderList() {
-    return chunkHeaderList;
+  public List<List<ChunkHeader>> getChunkHeaderLists() {
+    return chunkHeaderLists;
   }
 }

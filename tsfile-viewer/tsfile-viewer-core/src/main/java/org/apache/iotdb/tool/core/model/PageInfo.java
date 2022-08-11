@@ -7,7 +7,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 import java.io.Serializable;
 
-public class PageInfo {
+public class PageInfo implements IPageInfo {
 
   private int uncompressedSize;
 

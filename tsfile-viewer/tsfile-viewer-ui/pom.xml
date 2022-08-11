@@ -1,21 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
-        <artifactId>tsfile-viewer</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.1-SNAPSHOT</version>
+        <artifactId>iotdb-tsfile-viewer</artifactId>
+        <version>0.13.2-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
+    <artifactId>iotdb-tsfile-viewer-ui</artifactId>
+    <name>IoTDB tsfile viewer tool</name>
     <modelVersion>4.0.0</modelVersion>
-    <name>IoTDB tsfile offline tool</name>
-    <artifactId>tsfile-viewer-ui</artifactId>
-
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
     </properties>
-
     <build>
         <plugins>
             <plugin>
