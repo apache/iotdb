@@ -67,7 +67,7 @@ public class MetricInfo {
     return tags;
   }
 
-  public MetaInfo getTagMetaInfo() {
+  public MetaInfo getMetaInfo() {
     return metaInfo;
   }
 

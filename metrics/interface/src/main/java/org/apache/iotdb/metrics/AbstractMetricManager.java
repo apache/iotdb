@@ -75,7 +75,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Counter counter = createCounter(metricInfo);
-              add(metricInfo, counter);
+              nameToTagInfo.put(metricInfo, metricInfo.getMetaInfo());
               return counter;
             });
     if (metric instanceof Counter) {
@@ -110,7 +110,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Gauge gauge = createAutoGauge(metricInfo, obj, mapper);
-              add(metricInfo, gauge);
+              nameToTagInfo.put(metricInfo, metricInfo.getMetaInfo());
               return gauge;
             });
     if (metric instanceof Gauge) {
@@ -140,7 +140,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Gauge gauge = createGauge(metricInfo);
-              add(metricInfo, gauge);
+              nameToTagInfo.put(metricInfo, metricInfo.getMetaInfo());
               return gauge;
             });
     if (metric instanceof Gauge) {
@@ -169,7 +169,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Rate rate = createRate(metricInfo);
-              add(metricInfo, rate);
+              nameToTagInfo.put(metricInfo, metricInfo.getMetaInfo());
               return rate;
             });
     if (metric instanceof Rate) {
@@ -198,7 +198,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Histogram histogram = createHistogram(metricInfo);
-              add(metricInfo, histogram);
+              nameToTagInfo.put(metricInfo, metricInfo.getMetaInfo());
               return histogram;
             });
     if (metric instanceof Histogram) {
@@ -227,7 +227,7 @@ public abstract class AbstractMetricManager {
             metricInfo,
             key -> {
               Timer timer = createTimer(metricInfo);
-              add(metricInfo, timer);
+              nameToTagInfo.put(metricInfo, metricInfo.getMetaInfo());
               return timer;
             });
     if (metric instanceof Timer) {
@@ -453,13 +453,8 @@ public abstract class AbstractMetricManager {
 
   protected abstract boolean stopFramework();
 
-  private void add(MetricInfo metricInfo, IMetric metric) {
-    metrics.put(metricInfo, metric);
-    nameToTagInfo.put(metricInfo, metricInfo.getTagMetaInfo());
-  }
-
   private void removeFromMap(MetricInfo metricInfo) {
-    nameToTagInfo.remove(metricInfo.getName());
+    nameToTagInfo.remove(metricInfo);
     metrics.remove(metricInfo);
   }
 
