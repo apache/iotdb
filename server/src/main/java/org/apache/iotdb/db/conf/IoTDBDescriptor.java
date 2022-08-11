@@ -200,12 +200,6 @@ public class IoTDBDescriptor {
                   "buffered_arrays_memory_proportion",
                   Double.toString(conf.getBufferedArraysMemoryProportion()))));
 
-      conf.setTimeIndexMemoryProportion(
-          Double.parseDouble(
-              properties.getProperty(
-                  "time_index_memory_proportion",
-                  Double.toString(conf.getTimeIndexMemoryProportion()))));
-
       conf.setFlushProportion(
           Double.parseDouble(
               properties.getProperty(
@@ -1416,6 +1410,13 @@ public class IoTDBDescriptor {
                   .trim()));
       conf.setIpWhiteList(properties.getProperty("ip_white_list", conf.getIpWhiteList()));
 
+      // update enable query memory estimation for memory control
+      conf.setEnableQueryMemoryEstimation(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_query_memory_estimation",
+                  Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
+
       // update wal config
       long prevDeleteWalFilesPeriodInMs = conf.getDeleteWalFilesPeriodInMs();
       loadWALHotModifiedProps(properties);
@@ -1480,9 +1481,11 @@ public class IoTDBDescriptor {
                 "max_deduplicated_path_num",
                 Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
 
-    if (!conf.isMetaDataCacheEnable()) {
-      return;
-    }
+    conf.setEnableQueryMemoryEstimation(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_query_memory_estimation",
+                Boolean.toString(conf.isEnableQueryMemoryEstimation()))));
 
     String queryMemoryAllocateProportion =
         properties.getProperty("chunk_timeseriesmeta_free_memory_proportion");
@@ -1507,6 +1510,8 @@ public class IoTDBDescriptor {
               maxMemoryAvailable * Integer.parseInt(proportions[4].trim()) / proportionSum);
           conf.setAllocateMemoryForDataExchange(
               maxMemoryAvailable * Integer.parseInt(proportions[5].trim()) / proportionSum);
+          conf.setAllocateMemoryForTimeIndex(
+              maxMemoryAvailable * Integer.parseInt(proportions[6].trim()) / proportionSum);
         } catch (Exception e) {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
@@ -1514,6 +1519,22 @@ public class IoTDBDescriptor {
                   + queryMemoryAllocateProportion);
         }
       }
+    }
+
+    // metadata cache is disabled, we need to move all their allocated memory to other parts
+    if (!conf.isMetaDataCacheEnable()) {
+      long sum =
+          conf.getAllocateMemoryForBloomFilterCache()
+              + conf.getAllocateMemoryForChunkCache()
+              + conf.getAllocateMemoryForTimeSeriesMetaDataCache();
+      conf.setAllocateMemoryForBloomFilterCache(0);
+      conf.setAllocateMemoryForChunkCache(0);
+      conf.setAllocateMemoryForTimeSeriesMetaDataCache(0);
+      long partForDataExchange = sum / 2;
+      long partForOperators = sum - partForDataExchange;
+      conf.setAllocateMemoryForDataExchange(
+          conf.getAllocateMemoryForDataExchange() + partForDataExchange);
+      conf.setAllocateMemoryForOperators(conf.getAllocateMemoryForOperators() + partForOperators);
     }
   }
 
