@@ -30,13 +30,13 @@ import java.util.Objects;
 
 public class MetricConfig {
   /** Is metric service enabled */
-  private Boolean enableMetric = false;
+  private Boolean enableMetric = true;
 
   /** Is stat performance of operations enabled */
   private Boolean enablePerformanceStat = false;
 
   /** The type of the implementation of metric service */
-  private MonitorType monitorType = MonitorType.MICROMETER;
+  private MonitorType monitorType = MonitorType.DROPWIZARD;
 
   /** The list of reporters provide data for external system */
   private List<ReporterType> metricReporterList =

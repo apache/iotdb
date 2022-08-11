@@ -29,17 +29,23 @@ public class DropwizardMetricNameTool {
   private static final String TAG_SEPARATOR = ".";
 
   public static MetricInfo transformFromString(MetricType metricType, String flatString) {
+    MetricInfo metricInfo;
     String name;
     int firstIndex = flatString.indexOf("{");
     int lastIndex = flatString.indexOf("}");
     if (firstIndex == -1 || lastIndex == -1) {
       name = flatString.replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
-      return new MetricInfo(metricType, name);
+      metricInfo = new MetricInfo(metricType, name);
     } else {
       name = flatString.substring(0, firstIndex).replaceAll("[^a-zA-Z0-9:_\\]\\[]", "_");
-      String[] tags = flatString.substring(firstIndex + 1, lastIndex).split("\\.");
-      return new MetricInfo(metricType, name, tags);
+      String tagsPart = flatString.substring(firstIndex + 1, lastIndex);
+      if (0 == tagsPart.length()) {
+        metricInfo = new MetricInfo(metricType, name);
+      } else {
+        metricInfo = new MetricInfo(metricType, name, tagsPart.split("\\."));
+      }
     }
+    return metricInfo;
   }
 
   public static String toFlatString(MetricInfo metricInfo) {

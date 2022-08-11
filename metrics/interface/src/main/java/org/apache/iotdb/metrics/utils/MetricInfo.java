@@ -44,7 +44,7 @@ public class MetricInfo {
         this.tags.put(tags[i], tags[i + 1]);
       }
     } else {
-      logger.error("The size of metric tags should be even.");
+      logger.error("The size of metric tags should be even, but was {}.", String.join(",", tags));
     }
     this.metaInfo = new MetaInfo(type, this.tags.keySet());
   }
