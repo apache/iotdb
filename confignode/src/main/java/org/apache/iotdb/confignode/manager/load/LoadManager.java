@@ -214,11 +214,29 @@ public class LoadManager {
    */
   public Map<TConsensusGroupId, Integer> getAllLeadership() {
     Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
-
-    regionGroupCacheMap.forEach(
-        (consensusGroupId, regionGroupCache) ->
-            result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId()));
-
+    if (ConfigNodeDescriptor.getInstance()
+        .getConf()
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      regionGroupCacheMap.forEach(
+          (consensusGroupId, regionGroupCache) -> {
+            if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
+              result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId());
+            }
+          });
+      routeBalancer
+          .getRouteMap()
+          .forEach(
+              (consensusGroupId, regionReplicaSet) -> {
+                result.put(
+                    consensusGroupId,
+                    regionReplicaSet.getDataNodeLocations().get(0).getDataNodeId());
+              });
+    } else {
+      regionGroupCacheMap.forEach(
+          (consensusGroupId, regionGroupCache) ->
+              result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId()));
+    }
     return result;
   }
 
@@ -331,7 +349,7 @@ public class LoadManager {
   public void broadcastLatestRegionRouteMap() {
     Map<TConsensusGroupId, TRegionReplicaSet> latestRegionRouteMap = genLatestRegionRouteMap();
     Map<Integer, TDataNodeLocation> dataNodeLocationMap = new ConcurrentHashMap<>();
-    getOnlineDataNodes(-1)
+    getOnlineDataNodes()
         .forEach(
             onlineDataNode ->
                 dataNodeLocationMap.put(
@@ -355,7 +373,7 @@ public class LoadManager {
       // Generate HeartbeatReq
       THeartbeatReq heartbeatReq = genHeartbeatReq();
       // Send heartbeat requests to all the registered DataNodes
-      pingRegisteredDataNodes(heartbeatReq, getNodeManager().getRegisteredDataNodes(-1));
+      pingRegisteredDataNodes(heartbeatReq, getNodeManager().getRegisteredDataNodes());
       // Send heartbeat requests to all the registered ConfigNodes
       pingRegisteredConfigNodes(heartbeatReq, getNodeManager().getRegisteredConfigNodes());
     }
@@ -448,8 +466,8 @@ public class LoadManager {
         .collect(Collectors.toList());
   }
 
-  public List<TDataNodeConfiguration> getOnlineDataNodes(int dataNodeId) {
-    return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
+  public List<TDataNodeConfiguration> getOnlineDataNodes() {
+    return getNodeManager().getRegisteredDataNodes().stream()
         .filter(
             registeredDataNode -> {
               int id = registeredDataNode.getLocation().getDataNodeId();
@@ -470,8 +488,8 @@ public class LoadManager {
         .collect(Collectors.toList());
   }
 
-  public List<TDataNodeConfiguration> getUnknownDataNodes(int dataNodeId) {
-    return getNodeManager().getRegisteredDataNodes(dataNodeId).stream()
+  public List<TDataNodeConfiguration> getUnknownDataNodes() {
+    return getNodeManager().getRegisteredDataNodes().stream()
         .filter(
             registeredDataNode -> {
               int id = registeredDataNode.getLocation().getDataNodeId();
