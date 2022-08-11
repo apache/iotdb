@@ -91,7 +91,7 @@ public class RewriteFileTool {
    * -b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path
    * of output log] -u=[username, default="root"] -pw=[password, default="root"]
    */
-  public static void main(String[] args) throws IOException, IoTDBConnectionException {
+  public static void main(String[] args) throws IOException {
     if (!checkArgs(args)) {
       System.exit(1);
     }
