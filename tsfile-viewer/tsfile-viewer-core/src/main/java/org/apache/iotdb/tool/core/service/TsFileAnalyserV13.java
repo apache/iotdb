@@ -45,7 +45,6 @@ import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.tool.core.util.TsFileEncodeCompressAnalysedUtil.*;
 
