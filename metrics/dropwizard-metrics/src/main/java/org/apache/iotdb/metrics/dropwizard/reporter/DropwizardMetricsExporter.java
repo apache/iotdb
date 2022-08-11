@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
-import org.apache.iotdb.metrics.dropwizard.DropwizardMetricName;
+import org.apache.iotdb.metrics.dropwizard.DropwizardMetricNameTool;
+import org.apache.iotdb.metrics.utils.MetricInfo;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
@@ -66,8 +68,9 @@ class DropwizardMetricsExporter {
 
   /** Export Gauge as Prometheus Gauge */
   public void writeGauge(String dropwizardName, Gauge<?> gauge) throws IOException {
-    DropwizardMetricName metricName = new DropwizardMetricName(dropwizardName);
-    String sanitizeName = metricName.getName();
+    MetricInfo metricInfo =
+        DropwizardMetricNameTool.transformFromString(MetricType.GAUGE, dropwizardName);
+    String sanitizeName = metricInfo.getName();
     writer.writeHelp(sanitizeName, getHelpMessage(dropwizardName, gauge));
     writer.writeType(sanitizeName, DropwizardMetricType.GAUGE);
 
@@ -81,22 +84,23 @@ class DropwizardMetricsExporter {
       return;
     }
 
-    writer.writeSample(sanitizeName, metricName.getTags(), value);
+    writer.writeSample(sanitizeName, metricInfo.getTags(), value);
   }
 
   /** Export counter as Prometheus Gauge */
   public void writeCounter(String dropwizardName, Counter counter) throws IOException {
-    DropwizardMetricName metricName = new DropwizardMetricName(dropwizardName);
-    String sanitizeName = metricName.getName() + "_total";
+    MetricInfo metricInfo =
+        DropwizardMetricNameTool.transformFromString(MetricType.COUNTER, dropwizardName);
+    String sanitizeName = metricInfo.getName() + "_total";
     writer.writeHelp(sanitizeName, getHelpMessage(dropwizardName, counter));
     writer.writeType(sanitizeName, DropwizardMetricType.GAUGE);
-    writer.writeSample(sanitizeName, metricName.getTags(), counter.getCount());
+    writer.writeSample(sanitizeName, metricInfo.getTags(), counter.getCount());
   }
 
   /** Export histogram snapshot as Prometheus SUMMARY */
   public void writeHistogram(String dropwizardName, Histogram histogram) throws IOException {
     writeSnapshotAndCount(
-        new DropwizardMetricName(dropwizardName),
+        DropwizardMetricNameTool.transformFromString(MetricType.HISTOGRAM, dropwizardName),
         histogram.getSnapshot(),
         histogram.getCount(),
         1.0,
@@ -105,16 +109,12 @@ class DropwizardMetricsExporter {
 
   /** Export histogram snapshot */
   private void writeSnapshotAndCount(
-      DropwizardMetricName metricName,
-      Snapshot snapshot,
-      long count,
-      double factor,
-      String helpMessage)
+      MetricInfo metricInfo, Snapshot snapshot, long count, double factor, String helpMessage)
       throws IOException {
-    String sanitizeName = metricName.getName() + "_seconds";
+    String sanitizeName = metricInfo.getName() + "_seconds";
     writer.writeHelp(sanitizeName, helpMessage);
     writer.writeType(sanitizeName, DropwizardMetricType.SUMMARY);
-    Map<String, String> tags = metricName.getTags();
+    Map<String, String> tags = metricInfo.getTags();
     writer.writeSample(sanitizeName + "_max", tags, snapshot.getMax() * factor);
     writer.writeSample(
         sanitizeName + "_sum", tags, Arrays.stream(snapshot.getValues()).sum() * factor);
@@ -124,7 +124,7 @@ class DropwizardMetricsExporter {
   /** Export Timer as Prometheus Summary */
   public void writeTimer(String dropwizardName, Timer timer) throws IOException {
     writeSnapshotAndCount(
-        new DropwizardMetricName(dropwizardName),
+        DropwizardMetricNameTool.transformFromString(MetricType.TIMER, dropwizardName),
         timer.getSnapshot(),
         timer.getCount(),
         1.0D / TimeUnit.SECONDS.toNanos(1L),
@@ -133,20 +133,21 @@ class DropwizardMetricsExporter {
 
   /** Export Meter as Prometheus Counter */
   public void writeMeter(String dropwizardName, Meter meter) throws IOException {
-    DropwizardMetricName metricName = new DropwizardMetricName(dropwizardName);
-    String sanitizeName = metricName.getName() + "_total";
+    MetricInfo metricInfo =
+        DropwizardMetricNameTool.transformFromString(MetricType.COUNTER, dropwizardName);
+    String sanitizeName = metricInfo.getName() + "_total";
 
     writer.writeHelp(sanitizeName, getHelpMessage(dropwizardName, meter));
     writer.writeType(sanitizeName, DropwizardMetricType.COUNTER);
-    writer.writeSample(sanitizeName, metricName.getTags(), meter.getCount());
+    writer.writeSample(sanitizeName, metricInfo.getTags(), meter.getCount());
 
-    writeMetered(new DropwizardMetricName(dropwizardName), meter);
+    writeMetered(metricInfo, meter);
   }
 
   /** Export meter for multi type */
-  private void writeMetered(DropwizardMetricName metricName, Metered metered) throws IOException {
-    String sanitizeName = metricName.getName();
-    Map<String, String> tags = metricName.getTags();
+  private void writeMetered(MetricInfo metricInfo, Metered metered) throws IOException {
+    String sanitizeName = metricInfo.getName();
+    Map<String, String> tags = metricInfo.getTags();
     writer.writeSample(sanitizeName, addTags(tags, "rate", "m1"), metered.getOneMinuteRate());
     writer.writeSample(sanitizeName, addTags(tags, "rate", "m5"), metered.getFiveMinuteRate());
     writer.writeSample(sanitizeName, addTags(tags, "rate", "m15"), metered.getFifteenMinuteRate());

@@ -98,8 +98,10 @@ public class MicrometerMetricManager extends AbstractMetricManager {
   @Override
   protected void remove(MetricType type, MetricInfo metricInfo) {
     Meter.Type meterType = transformType(type);
-    MicrometerMetricName metricName = new MicrometerMetricName(metricInfo, meterType);
-    meterRegistry.remove(metricName.getId());
+    Meter.Id id =
+        new Meter.Id(
+            metricInfo.getName(), Tags.of(metricInfo.getTagsInArray()), null, null, meterType);
+    meterRegistry.remove(id);
   }
 
   @Override

@@ -52,48 +52,47 @@ public class DropwizardMetricManager extends AbstractMetricManager {
 
   @Override
   public Counter createCounter(MetricInfo metricInfo) {
-    DropwizardMetricName name = new DropwizardMetricName(metricInfo);
-    return new DropwizardCounter(metricRegistry.counter(name.toFlatString()));
+    return new DropwizardCounter(
+        metricRegistry.counter(DropwizardMetricNameTool.toFlatString(metricInfo)));
   }
 
   @Override
   public <T> Gauge createAutoGauge(MetricInfo metricInfo, T obj, ToLongFunction<T> mapper) {
-    DropwizardMetricName name = new DropwizardMetricName(metricInfo);
     DropwizardAutoGauge<T> dropwizardGauge = new DropwizardAutoGauge<>(obj, mapper);
-    metricRegistry.register(name.toFlatString(), dropwizardGauge);
+    metricRegistry.register(DropwizardMetricNameTool.toFlatString(metricInfo), dropwizardGauge);
     return dropwizardGauge;
   }
 
   @Override
   public Gauge createGauge(MetricInfo metricInfo) {
-    DropwizardMetricName name = new DropwizardMetricName(metricInfo);
     DropwizardGauge dropwizardGauge = new DropwizardGauge();
-    metricRegistry.register(name.toFlatString(), dropwizardGauge.getDropwizardCachedGauge());
+    metricRegistry.register(
+        DropwizardMetricNameTool.toFlatString(metricInfo),
+        dropwizardGauge.getDropwizardCachedGauge());
     return dropwizardGauge;
   }
 
   @Override
   public Rate createRate(MetricInfo metricInfo) {
-    DropwizardMetricName name = new DropwizardMetricName(metricInfo);
-    return new DropwizardRate(metricRegistry.meter(name.toFlatString()));
+    return new DropwizardRate(
+        metricRegistry.meter(DropwizardMetricNameTool.toFlatString(metricInfo)));
   }
 
   @Override
   public Histogram createHistogram(MetricInfo metricInfo) {
-    DropwizardMetricName name = new DropwizardMetricName(metricInfo);
-    return new DropwizardHistogram(metricRegistry.histogram(name.toFlatString()));
+    return new DropwizardHistogram(
+        metricRegistry.histogram(DropwizardMetricNameTool.toFlatString(metricInfo)));
   }
 
   @Override
   public Timer createTimer(MetricInfo metricInfo) {
-    DropwizardMetricName name = new DropwizardMetricName(metricInfo);
-    return new DropwizardTimer(metricRegistry.timer(name.toFlatString()));
+    return new DropwizardTimer(
+        metricRegistry.timer(DropwizardMetricNameTool.toFlatString(metricInfo)));
   }
 
   @Override
   protected void remove(MetricType type, MetricInfo metricInfo) {
-    DropwizardMetricName name = new DropwizardMetricName(metricInfo);
-    metricRegistry.remove(name.toFlatString());
+    metricRegistry.remove(DropwizardMetricNameTool.toFlatString(metricInfo));
   }
 
   public MetricRegistry getMetricRegistry() {
