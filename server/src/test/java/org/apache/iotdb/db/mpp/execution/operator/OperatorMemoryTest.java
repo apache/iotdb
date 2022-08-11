@@ -30,6 +30,7 @@ import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceStateMachine;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceMergeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.DeviceViewOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.FillOperator;
+import org.apache.iotdb.db.mpp.execution.operator.process.FilterAndProjectOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LimitOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.LinearFillOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.OffsetOperator;
@@ -50,11 +51,20 @@ import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
+import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
+import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransformer;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
+import org.apache.iotdb.tsfile.read.common.type.BooleanType;
+import org.apache.iotdb.tsfile.read.common.type.LongType;
+import org.apache.iotdb.tsfile.read.common.type.TypeEnum;
 
 import com.google.common.collect.Sets;
 import org.junit.Test;
@@ -561,5 +571,52 @@ public class OperatorMemoryTest {
     assertEquals(
         expectedRetainedSizeAfterCallingNext,
         deviceViewOperator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void filterAndProjectOperatorTest() {
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(2048L);
+    Mockito.when(child.calculateMaxReturnSize()).thenReturn(1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(512L);
+    BooleanType booleanType = Mockito.mock(BooleanType.class);
+    Mockito.when(booleanType.getTypeEnum()).thenReturn(TypeEnum.BOOLEAN);
+    LongType longType = Mockito.mock(LongType.class);
+    Mockito.when(longType.getTypeEnum()).thenReturn(TypeEnum.INT64);
+    ColumnTransformer filterColumnTransformer =
+        new CompareLessEqualColumnTransformer(
+            booleanType,
+            new TimeColumnTransformer(longType),
+            new ConstantColumnTransformer(longType, Mockito.mock(IntColumn.class)));
+    List<TSDataType> filterOutputTypes = new ArrayList<>();
+    filterOutputTypes.add(TSDataType.INT32);
+    filterOutputTypes.add(TSDataType.INT64);
+    List<ColumnTransformer> projectColumnTransformers = new ArrayList<>();
+    projectColumnTransformers.add(
+        new ArithmeticAdditionColumnTransformer(
+            booleanType,
+            new TimeColumnTransformer(longType),
+            new ConstantColumnTransformer(longType, Mockito.mock(IntColumn.class))));
+
+    FilterAndProjectOperator operator =
+        new FilterAndProjectOperator(
+            Mockito.mock(OperatorContext.class),
+            child,
+            filterOutputTypes,
+            new ArrayList<>(),
+            filterColumnTransformer,
+            new ArrayList<>(),
+            new ArrayList<>(),
+            projectColumnTransformers,
+            false,
+            true);
+
+    assertEquals(
+        4L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte() + 512L,
+        operator.calculateMaxPeekMemory());
+    assertEquals(
+        2 * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte(),
+        operator.calculateMaxReturnSize());
+    assertEquals(512, operator.calculateRetainedSizeAfterCallingNext());
   }
 }
