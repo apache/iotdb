@@ -87,7 +87,7 @@ public class DataNodeRemoveHandler {
         "DataNodeRemoveService start send disable the Data Node to cluster, {}", disabledDataNode);
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     List<TEndPoint> otherOnlineDataNodes =
-        configManager.getLoadManager().getOnlineDataNodes(-1).stream()
+        configManager.getLoadManager().getOnlineDataNodes().stream()
             .map(TDataNodeConfiguration::getLocation)
             .filter(loc -> !loc.equals(disabledDataNode))
             .map(TDataNodeLocation::getInternalEndPoint)
@@ -232,7 +232,7 @@ public class DataNodeRemoveHandler {
 
   private Optional<TDataNodeLocation> pickNewReplicaNodeForRegion(
       List<TDataNodeLocation> regionReplicaNodes) {
-    return configManager.getLoadManager().getOnlineDataNodes(-1).stream()
+    return configManager.getLoadManager().getOnlineDataNodes().stream()
         .map(TDataNodeConfiguration::getLocation)
         .filter(e -> !regionReplicaNodes.contains(e))
         .findAny();
@@ -337,7 +337,7 @@ public class DataNodeRemoveHandler {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
     List<TDataNodeLocation> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1).stream()
+        configManager.getNodeManager().getRegisteredDataNodes().stream()
             .map(TDataNodeConfiguration::getLocation)
             .collect(Collectors.toList());
     boolean hasNotExistNode =

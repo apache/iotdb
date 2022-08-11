@@ -25,6 +25,7 @@ import org.apache.iotdb.common.rpc.thrift.TTimePartitionSlot;
 import org.apache.iotdb.commons.partition.DataPartitionTable;
 import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.commons.partition.SeriesPartitionTable;
+import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -92,12 +93,24 @@ public class GreedyPartitionAllocator implements IPartitionAllocator {
             Map<TTimePartitionSlot, List<TConsensusGroupId>> seriesPartitionMap =
                 new ConcurrentHashMap<>();
             for (TTimePartitionSlot timePartitionSlot : seriesPartitionEntry.getValue()) {
-              // Greedy allocation
-              seriesPartitionMap.put(
-                  timePartitionSlot,
-                  Collections.singletonList(regionSlotsCounter.get(0).getRight()));
-              // Bubble sort
-              bubbleSort(regionSlotsCounter);
+              TConsensusGroupId predecessor =
+                  getPartitionManager()
+                      .getPrecededDataPartition(
+                          storageGroup,
+                          seriesPartitionEntry.getKey(),
+                          timePartitionSlot,
+                          ConfigNodeDescriptor.getInstance().getConf().getTimePartitionInterval());
+              if (predecessor != null) {
+                // For DataPartition allocation, we consider predecessor first
+                seriesPartitionMap.put(timePartitionSlot, Collections.singletonList(predecessor));
+              } else {
+                // Greedy allocation
+                seriesPartitionMap.put(
+                    timePartitionSlot,
+                    Collections.singletonList(regionSlotsCounter.get(0).getRight()));
+                // Bubble sort
+                bubbleSort(regionSlotsCounter);
+              }
             }
             dataPartitionMap.put(
                 seriesPartitionEntry.getKey(), new SeriesPartitionTable(seriesPartitionMap));
