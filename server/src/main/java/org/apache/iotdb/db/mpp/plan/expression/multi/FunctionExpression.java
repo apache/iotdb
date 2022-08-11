@@ -431,6 +431,9 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isMappable(TypeProvider typeProvider) {
+    if (isBuiltInAggregationFunctionExpression) {
+      return false;
+    }
     return new UDTFInformationInferrer(functionName)
         .getAccessStrategy(
             expressions.stream().map(Expression::toString).collect(Collectors.toList()),

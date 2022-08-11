@@ -20,26 +20,26 @@
 package org.apache.iotdb.db.sync.transport;
 
 import org.apache.iotdb.commons.path.PartialPath;
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueue;
-import org.apache.iotdb.db.sync.pipedata.queue.PipeDataQueueFactory;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.transport.client.TransportClient;
+import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
 import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
@@ -48,15 +48,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.BufferedInputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileWriter;
-import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class TransportServiceTest {
   /** create tsfile and move to tmpDir for sync test */
@@ -66,24 +61,35 @@ public class TransportServiceTest {
   String remoteIp1;
   long createdTime1 = System.currentTimeMillis();
   File fileDir;
-  PipeDataQueue pipeDataQueue;
 
   @Before
   public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
     remoteIp1 = "127.0.0.1";
     fileDir = new File(SyncPathUtil.getReceiverFileDataDir(pipeName1, remoteIp1, createdTime1));
-    pipeDataQueue =
-        PipeDataQueueFactory.getBufferedPipeDataQueue(
-            SyncPathUtil.getReceiverPipeLogDir(pipeName1, remoteIp1, createdTime1));
-    EnvironmentUtils.envSetUp();
-    if (!tmpDir.exists()) {
-      tmpDir.mkdirs();
+    prepareData();
+    EnvironmentUtils.shutdownDaemon();
+    File srcDir =
+        new File(
+            IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
+                + File.separator
+                + "sequence"
+                + File.separator
+                + "root.vehicle"
+                + File.separator
+                + "0"
+                + File.separator
+                + "0");
+    if (tmpDir.exists()) {
+      FileUtils.deleteDirectory(tmpDir);
     }
+    FileUtils.moveDirectory(srcDir, tmpDir);
+    EnvironmentUtils.cleanEnv();
+    EnvironmentUtils.envSetUp();
   }
 
   @After
   public void tearDown() throws Exception {
-    pipeDataQueue.clear();
     FileUtils.deleteDirectory(tmpDir);
     EnvironmentUtils.cleanEnv();
   }
@@ -91,21 +97,22 @@ public class TransportServiceTest {
   @Test
   public void test() throws Exception {
     // 1. prepare fake file
-    File tsfile = new File(tmpDir, "test.tsfile");
-    File resourceFile = new File(tsfile.getAbsoluteFile() + TsFileResource.RESOURCE_SUFFIX);
-    File modsFile = new File(tsfile.getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
-    FileWriter out = new FileWriter(tsfile);
-    out.write("tsfile");
-    out.flush();
-    out.close();
-    out = new FileWriter(resourceFile);
-    out.write("resource");
-    out.flush();
-    out.close();
-    out = new FileWriter(modsFile);
-    out.write("mods");
-    out.flush();
-    out.close();
+    File[] fileList = tmpDir.listFiles();
+    File tsfile = null;
+    File resourceFile = null;
+    File modsFile = null;
+    for (File f : fileList) {
+      if (f.getName().endsWith(".tsfile")) {
+        tsfile = f;
+      } else if (f.getName().endsWith(".mods")) {
+        modsFile = f;
+      } else if (f.getName().endsWith(".resource")) {
+        resourceFile = f;
+      }
+    }
+    Assert.assertNotNull(tsfile);
+    Assert.assertNotNull(modsFile);
+    Assert.assertNotNull(resourceFile);
 
     // 2. prepare pipelog and pipeDataQueue
     int serialNum = 0;
@@ -128,8 +135,8 @@ public class TransportServiceTest {
 
     // 4. start client
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
-    TransportClient client =
-        new TransportClient(
+    IoTDBSInkTransportClient client =
+        new IoTDBSInkTransportClient(
             pipe,
             "127.0.0.1",
             IoTDBDescriptor.getInstance().getConfig().getPipeServerPort(),
@@ -139,72 +146,68 @@ public class TransportServiceTest {
       client.senderTransport(pipeData);
     }
 
-    // 5. check file
-    Thread.sleep(1000);
-    client.close();
-    TransportServerManager.getInstance().stopService();
-    File[] targetFiles = fileDir.listFiles((dir1, name) -> name.equals(tsfile.getName()));
-    Assert.assertNotNull(targetFiles);
-    Assert.assertEquals(1, targetFiles.length);
-    compareFile(targetFiles[0], tsfile);
-    File[] resourceFiles = fileDir.listFiles((dir1, name) -> name.equals(resourceFile.getName()));
-    Assert.assertNotNull(resourceFiles);
-    Assert.assertEquals(1, resourceFiles.length);
-    compareFile(resourceFiles[0], resourceFile);
-    File[] modsFiles = fileDir.listFiles((dir1, name) -> name.equals(modsFile.getName()));
-    Assert.assertNotNull(modsFiles);
-    Assert.assertEquals(1, modsFiles.length);
-    compareFile(modsFiles[0], modsFile);
-
-    // 6. check pipedata
-    tsFilePipeData.setParentDirPath(fileDir.getAbsolutePath());
-    ExecutorService es1 = Executors.newSingleThreadExecutor();
-    List<PipeData> resPipeData = new ArrayList<>();
-    es1.execute(
-        () -> {
-          for (int i = 0; i < pipeDataList.size(); i++) {
-            try {
-              resPipeData.add(pipeDataQueue.take());
-              pipeDataQueue.commit();
-            } catch (InterruptedException e) {
-              Thread.currentThread().interrupt();
-            }
-          }
-        });
-    try {
-      Thread.sleep(500);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    es1.shutdownNow();
-    Assert.assertEquals(pipeDataList.size(), resPipeData.size());
-    for (int i = 0; i < resPipeData.size(); i++) {
-      Assert.assertEquals(pipeDataList.get(i), resPipeData.get(i));
-    }
-    pipeDataQueue.clear();
+    // 5. check result
+    checkResult(
+        "select ** from root.vehicle",
+        new String[] {"Time", "root.vehicle.d0.s0"},
+        new String[] {"2,2"});
   }
 
-  private void compareFile(File firFile, File secFile) {
+  private void prepareData() throws Exception {
+    Session session =
+        new Session.Builder()
+            .host("127.0.0.1")
+            .port(6667)
+            .username("root")
+            .password("root")
+            .version(Version.V_0_13)
+            .build();
     try {
-      MessageDigest messageDigest1 = MessageDigest.getInstance("SHA-256");
-      MessageDigest messageDigest2 = MessageDigest.getInstance("SHA-256");
-      BufferedInputStream fir = new BufferedInputStream(new FileInputStream(firFile));
-      BufferedInputStream sec = new BufferedInputStream(new FileInputStream(secFile));
-      // To compare the length and hash of the files.
-      Assert.assertEquals(fir.available(), sec.available());
-      byte[] firstBytes = new byte[1024];
-      byte[] secondBytes = new byte[1024];
-      int length = -1;
-      while ((length = fir.read(firstBytes)) != -1) {
-        Assert.assertEquals(length, sec.read(secondBytes));
-        messageDigest1.update(firstBytes, 0, length);
-        messageDigest2.update(secondBytes, 0, length);
+      session.open(false);
+
+      // set session fetchSize
+      session.setFetchSize(10000);
+      session.setStorageGroup("root.vehicle");
+
+      List<String> measurements = Collections.singletonList("s0");
+      List<TSDataType> types = Collections.singletonList(TSDataType.INT32);
+      session.insertRecord("root.vehicle.d0", 1, measurements, types, Collections.singletonList(1));
+      session.insertRecord("root.vehicle.d0", 2, measurements, types, Collections.singletonList(2));
+      session.insertRecord(
+          "root.vehicle.d0", 35, measurements, types, Collections.singletonList(35));
+      session.executeNonQueryStatement("flush");
+      session.executeNonQueryStatement("delete from root.vehicle.d0.s0 where time<2");
+    } finally {
+      session.close();
+    }
+  }
+
+  private void checkResult(String sql, String[] columnNames, String[] retArray) throws Exception {
+    Session session =
+        new Session.Builder()
+            .host("127.0.0.1")
+            .port(6667)
+            .username("root")
+            .password("root")
+            .version(Version.V_0_13)
+            .build();
+    try {
+      session.open(false);
+      // set session fetchSize
+      session.setFetchSize(10000);
+      try (SessionDataSet dataSet = session.executeQueryStatement(sql)) {
+        Assert.assertArrayEquals(columnNames, dataSet.getColumnNames().toArray(new String[0]));
+        List<String> actualRetArray = new ArrayList<>();
+        while (dataSet.hasNext()) {
+          RowRecord rowRecord = dataSet.next();
+          StringBuilder rowString = new StringBuilder(rowRecord.getTimestamp() + ",");
+          rowRecord.getFields().forEach(i -> rowString.append(i.getStringValue()));
+          actualRetArray.add(rowString.toString());
+        }
+        Assert.assertArrayEquals(retArray, actualRetArray.toArray(new String[0]));
       }
-      fir.close();
-      sec.close();
-      Assert.assertArrayEquals(messageDigest1.digest(), messageDigest2.digest());
-    } catch (Exception e) {
-      Assert.fail(e.getMessage());
+    } finally {
+      session.close();
     }
   }
 }

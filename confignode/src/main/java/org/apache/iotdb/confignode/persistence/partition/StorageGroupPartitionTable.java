@@ -233,6 +233,22 @@ public class StorageGroupPartitionTable {
   }
 
   /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does
+   *
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @param timePartitionInterval Time partition interval
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPrecededDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot,
+      long timePartitionInterval) {
+    return dataPartitionTable.getPrecededDataPartition(
+        seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
+  }
+
+  /**
    * Create SchemaPartition within the specific StorageGroup
    *
    * @param assignedSchemaPartition Assigned result
@@ -354,22 +370,22 @@ public class StorageGroupPartitionTable {
         .getDataNodeLocations()
         .forEach(
             (dataNodeLocation) -> {
-              TRegionInfo tRegionInfoList = new TRegionInfo();
-              tRegionInfoList.setConsensusGroupId(replicaSet.getRegionId());
-              tRegionInfoList.setStorageGroup(storageGroupName);
+              TRegionInfo regionInfo = new TRegionInfo();
+              regionInfo.setConsensusGroupId(replicaSet.getRegionId());
+              regionInfo.setStorageGroup(storageGroupName);
               if (replicaSet.getRegionId().getType() == TConsensusGroupType.DataRegion) {
-                tRegionInfoList.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
-                tRegionInfoList.setTimeSlots(regionGroup.getCounter());
+                regionInfo.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
+                regionInfo.setTimeSlots(regionGroup.getCounter());
               } else if (replicaSet.getRegionId().getType() == TConsensusGroupType.SchemaRegion) {
-                tRegionInfoList.setSeriesSlots(regionGroup.getCounter());
-                tRegionInfoList.setTimeSlots(0);
+                regionInfo.setSeriesSlots(regionGroup.getCounter());
+                regionInfo.setTimeSlots(0);
               }
-              tRegionInfoList.setDataNodeId(dataNodeLocation.getDataNodeId());
-              tRegionInfoList.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
-              tRegionInfoList.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
+              regionInfo.setDataNodeId(dataNodeLocation.getDataNodeId());
+              regionInfo.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
+              regionInfo.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
               // TODO: Wait for data migration. And then add the state
-              tRegionInfoList.setStatus(RegionStatus.Up.getStatus());
-              regionInfoList.add(tRegionInfoList);
+              regionInfo.setStatus(RegionStatus.Up.getStatus());
+              regionInfoList.add(regionInfo);
             });
   }
 

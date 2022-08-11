@@ -20,12 +20,14 @@
 package org.apache.iotdb.confignode.manager;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
+import org.apache.iotdb.common.rpc.thrift.TConsensusGroupId;
 import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.common.rpc.thrift.TSeriesPartitionSlot;
+import org.apache.iotdb.commons.cluster.RegionRoleType;
 import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.IllegalPathException;
@@ -85,6 +87,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
 import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TPermissionInfoResp;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
+import org.apache.iotdb.confignode.rpc.thrift.TRegionMigrateResultReportReq;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionRouteMapResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaNodeManagementResp;
 import org.apache.iotdb.confignode.rpc.thrift.TSchemaPartitionResp;
@@ -211,6 +214,15 @@ public class ConfigManager implements IManager {
   }
 
   @Override
+  public TSStatus reportRegionMigrateResult(TRegionMigrateResultReportReq req) {
+    TSStatus status = confirmLeader();
+    if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      procedureManager.reportRegionMigrateResult(req);
+    }
+    return status;
+  }
+
+  @Override
   public DataSet getDataNodeConfiguration(
       GetDataNodeConfigurationPlan getDataNodeConfigurationPlan) {
     TSStatus status = confirmLeader();
@@ -230,7 +242,7 @@ public class ConfigManager implements IManager {
       List<TConfigNodeLocation> configNodeLocations = getNodeManager().getRegisteredConfigNodes();
       configNodeLocations.sort(Comparator.comparingInt(TConfigNodeLocation::getConfigNodeId));
       List<TDataNodeLocation> dataNodeInfoLocations =
-          getNodeManager().getRegisteredDataNodes(-1).stream()
+          getNodeManager().getRegisteredDataNodes().stream()
               .map(TDataNodeConfiguration::getLocation)
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
@@ -839,10 +851,26 @@ public class ConfigManager implements IManager {
   }
 
   @Override
-  public DataSet showRegion(GetRegionInfoListPlan getRegionInfoListPlan) {
+  public RegionInfoListResp showRegion(GetRegionInfoListPlan getRegionInfoListPlan) {
     TSStatus status = confirmLeader();
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      return partitionManager.getRegionInfoList(getRegionInfoListPlan);
+      RegionInfoListResp regionInfoListResp =
+          (RegionInfoListResp) partitionManager.getRegionInfoList(getRegionInfoListPlan);
+      regionInfoListResp
+          .getRegionInfoList()
+          .forEach(
+              regionInfo -> {
+                Map<TConsensusGroupId, Integer> allLeadership = loadManager.getAllLeadership();
+                if (!allLeadership.isEmpty()) {
+                  String regionType =
+                      regionInfo.getDataNodeId()
+                              == allLeadership.get(regionInfo.getConsensusGroupId())
+                          ? RegionRoleType.Leader.toString()
+                          : RegionRoleType.Follower.toString();
+                  regionInfo.setRoleType(regionType);
+                }
+              });
+      return regionInfoListResp;
     } else {
       RegionInfoListResp regionResp = new RegionInfoListResp();
       regionResp.setStatus(status);
