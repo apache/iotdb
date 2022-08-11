@@ -20,6 +20,7 @@
 package org.apache.iotdb.consensus.common.request;
 
 import java.nio.ByteBuffer;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
@@ -29,11 +30,27 @@ public class IndexedConsensusRequest implements IConsensusRequest {
   /** we do not need to serialize these two fields as they are useless in other nodes. */
   private final long searchIndex;
 
-  private final List<IConsensusRequest> requests;
+  private final long syncIndex;
+  private List<IConsensusRequest> requests;
+  private List<ByteBuffer> serializedRequests;
 
   public IndexedConsensusRequest(long searchIndex, List<IConsensusRequest> requests) {
     this.searchIndex = searchIndex;
     this.requests = requests;
+    this.syncIndex = -1L;
+  }
+
+  public IndexedConsensusRequest(List<ByteBuffer> serializedRequests, long searchIndex) {
+    this.searchIndex = searchIndex;
+    this.serializedRequests = serializedRequests;
+    this.syncIndex = -1L;
+  }
+
+  public IndexedConsensusRequest(
+      long searchIndex, long syncIndex, List<IConsensusRequest> requests) {
+    this.searchIndex = searchIndex;
+    this.requests = requests;
+    this.syncIndex = syncIndex;
   }
 
   @Override
@@ -45,8 +62,22 @@ public class IndexedConsensusRequest implements IConsensusRequest {
     return requests;
   }
 
+  public List<ByteBuffer> getSerializedRequests() {
+    return serializedRequests;
+  }
+
+  public List<ByteBuffer> buildSerializedRequests() {
+    List<ByteBuffer> result = new LinkedList<>();
+    this.requests.forEach(r -> result.add(r.serializeToByteBuffer()));
+    return result;
+  }
+
   public long getSearchIndex() {
     return searchIndex;
+  }
+
+  public long getSyncIndex() {
+    return syncIndex;
   }
 
   @Override

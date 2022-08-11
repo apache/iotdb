@@ -109,4 +109,8 @@ public class RouteBalancer {
   private LoadManager getLoadManager() {
     return configManager.getLoadManager();
   }
+
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRouteMap() {
+    return lazyGreedyRouter.getRouteMap();
+  }
 }

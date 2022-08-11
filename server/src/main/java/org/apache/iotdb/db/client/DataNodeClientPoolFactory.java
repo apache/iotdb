@@ -29,6 +29,7 @@ import org.apache.iotdb.commons.client.async.AsyncDataNodeMPPDataExchangeService
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeMPPDataExchangeServiceClient;
+import org.apache.iotdb.commons.concurrent.ThreadName;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,10 +40,6 @@ import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 public class DataNodeClientPoolFactory {
 
   private static final IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-  private static final String CONFIG_NODE_CLIENT_POOL_THREAD_NAME =
-      "AsyncConfigNodeIServiceClientPool";
-  private static final String DATA_NODE_MPP_DATA_EXCHANGE_CLIENT_POOL_THREAD_NAME =
-      "AsyncDataNodeMPPDataExchangeServiceClientPool";
 
   private DataNodeClientPoolFactory() {}
 
@@ -76,7 +73,7 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
-              CONFIG_NODE_CLIENT_POOL_THREAD_NAME),
+              ThreadName.CONFIG_NODE_CLIENT_POOL_THREAD_NAME.getName()),
           new ClientPoolProperty.Builder<AsyncConfigNodeIServiceClient>().build().getConfig());
     }
   }
@@ -130,7 +127,7 @@ public class DataNodeClientPoolFactory {
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnable())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
                   .build(),
-              DATA_NODE_MPP_DATA_EXCHANGE_CLIENT_POOL_THREAD_NAME),
+              ThreadName.DATA_NODE_MPP_DATA_EXCHANGE_CLIENT_POOL_THREAD_NAME.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeMPPDataExchangeServiceClient>()
               .build()
               .getConfig());
