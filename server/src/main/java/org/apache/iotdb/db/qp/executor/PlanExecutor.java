@@ -55,7 +55,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -1863,15 +1862,12 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean operateAuthor(AuthorPlan author) throws QueryProcessException {
     AuthorOperator.AuthorType authorType = author.getAuthorType();
-    PartialPath nodeName = author.getNodeName();
-    if (nodeName != null && !MManager.getInstance().isPathExist(nodeName)) {
-      throw new QueryProcessException("path " + nodeName + " is not exist.");
-    }
     String userName = author.getUserName();
     String roleName = author.getRoleName();
     String password = author.getPassword();
     String newPassword = author.getNewPassword();
     Set<Integer> permissions = author.getPermissions();
+    PartialPath nodeName = author.getNodeName();
     try {
       switch (authorType) {
         case UPDATE_USER:
@@ -2107,12 +2103,9 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected QueryDataSet processAuthorQuery(AuthorPlan plan) throws QueryProcessException {
     AuthorType authorType = plan.getAuthorType();
-    PartialPath path = plan.getNodeName();
-    if (path != null && !MManager.getInstance().isPathExist(path)) {
-      throw new QueryProcessException("path " + path + " is not exist.");
-    }
     String userName = plan.getUserName();
     String roleName = plan.getRoleName();
+    PartialPath path = plan.getNodeName();
 
     ListDataSet dataSet;
 
