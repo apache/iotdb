@@ -261,6 +261,6 @@ public abstract class QueryDataSet {
   }
 
   public void setColumnNum(int columnNum) {
-    this.columnNum=columnNum;
+    this.columnNum = columnNum;
   }
 }
