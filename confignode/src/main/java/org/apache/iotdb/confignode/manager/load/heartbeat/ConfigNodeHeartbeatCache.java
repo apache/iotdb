@@ -38,7 +38,7 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
   public ConfigNodeHeartbeatCache(TConfigNodeLocation configNodeLocation) {
     this.configNodeLocation = configNodeLocation;
     this.slidingWindow = new LinkedList<>();
-    this.status = NodeStatus.Running;
+    this.status = NodeStatus.Unknown;
   }
 
   @Override
@@ -60,7 +60,7 @@ public class ConfigNodeHeartbeatCache implements INodeCache {
   @Override
   public boolean updateLoadStatistic() {
     if (configNodeLocation.getInternalEndPoint().equals(LoadManager.CURRENT_NODE)) {
-      // We don't need to update itself
+      this.status = NodeStatus.Running;
       return false;
     }
 

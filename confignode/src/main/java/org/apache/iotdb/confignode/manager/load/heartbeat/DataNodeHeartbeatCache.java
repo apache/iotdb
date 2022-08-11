@@ -40,7 +40,7 @@ public class DataNodeHeartbeatCache implements INodeCache {
     this.slidingWindow = new LinkedList<>();
 
     this.loadScore = 0;
-    this.status = NodeStatus.Running;
+    this.status = NodeStatus.Unknown;
   }
 
   @Override
