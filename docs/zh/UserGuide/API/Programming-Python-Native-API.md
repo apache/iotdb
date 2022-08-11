@@ -163,7 +163,7 @@ session.insert_tablet(tablet_)
 
 **注意**
 1. Tablet 中的每一列时间戳和值记录为一个 ndarray
-2. ndarray 推荐使用如下面例子中特定的 numpy.dtype，如果指定也不会影响正确性。
+2. Numpy Tablet 只支持大端类型数据，ndarray 构建时如果不指定数据类型会使用小端，因此推荐在构建 ndarray 时指定下面例子中类型使用大端。如果不指定，IoTDB Python客户端也会进行大小端转换，不影响使用正确性。
 
 ```python
 import numpy as np
