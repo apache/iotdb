@@ -419,10 +419,14 @@ public class BTreePageManager extends PageManager {
         }
 
         try {
-          ISchemaPage nPage = getPageInstance(getPageIndex(nextSeg));
-          children = nPage.getAsSegmentedPage().getChildren(getSegIndex(nextSeg));
-          nextSeg = nPage.getAsSegmentedPage().getNextSegAddress(getSegIndex(nextSeg));
+          ISchemaPage nPage;
+          while (children.size() == 0 && nextSeg >= 0) {
+            nPage = getPageInstance(getPageIndex(nextSeg));
+            children = nPage.getAsSegmentedPage().getChildren(getSegIndex(nextSeg));
+            nextSeg = nPage.getAsSegmentedPage().getNextSegAddress(getSegIndex(nextSeg));
+          }
         } catch (MetadataException | IOException e) {
+          logger.error(e.getMessage());
           return false;
         }
 

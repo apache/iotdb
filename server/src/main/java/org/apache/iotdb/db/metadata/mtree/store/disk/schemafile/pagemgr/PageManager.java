@@ -29,6 +29,9 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.RecordUtils;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SegmentedPage;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -64,6 +67,7 @@ import static org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFil
  * <p>Hierarchy of index may be decoupled from this framework in further improvement.
  */
 public abstract class PageManager implements IPageManager {
+  protected static final Logger logger = LoggerFactory.getLogger(PageManager.class);
 
   protected final Map<Integer, ISchemaPage> pageInstCache;
   protected final Map<Integer, ISchemaPage> dirtyPages;
