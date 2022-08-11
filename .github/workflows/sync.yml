@@ -1,16 +1,16 @@
 name: Sync Tests
 
 on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - 'docs/**'
-  pull_request:
-    branches:
-      - master
-    paths-ignore:
-      - 'docs/**'
+#  push:
+#    branches:
+#      - master
+#    paths-ignore:
+#      - 'docs/**'
+#  pull_request:
+#    branches:
+#      - master
+#    paths-ignore:
+#      - 'docs/**'
   # allow manually run the action:
   workflow_dispatch:
 

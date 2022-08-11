@@ -120,7 +120,7 @@ public class ConfigNodeProcedureEnv {
       return invalidCacheResult;
     }
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
     TInvalidateCacheReq invalidateCacheReq = new TInvalidateCacheReq();
     invalidateCacheReq.setStorageGroup(true);
     invalidateCacheReq.setFullPath(storageGroupName);
@@ -264,7 +264,7 @@ public class ConfigNodeProcedureEnv {
   public void broadCastTheLatestConfigNodeGroup() {
     AsyncDataNodeClientPool.getInstance()
         .broadCastTheLatestConfigNodeGroup(
-            configManager.getNodeManager().getRegisteredDataNodeLocations(-1),
+            configManager.getNodeManager().getRegisteredDataNodeLocations(),
             configManager.getNodeManager().getRegisteredConfigNodes());
   }
 

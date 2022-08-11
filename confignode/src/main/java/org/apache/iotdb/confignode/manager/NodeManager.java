@@ -60,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 /** NodeManager manages cluster node addition and removal requests */
 public class NodeManager {
@@ -205,17 +206,16 @@ public class NodeManager {
    * Only leader use this interface
    *
    * @param dataNodeId Specific DataNodeId
-   * @return All registered DataNodes if dataNodeId equals -1. And return the specific DataNode
-   *     otherwise.
+   * @return All registered DataNodes
    */
-  public List<TDataNodeConfiguration> getRegisteredDataNodes(int dataNodeId) {
-    return nodeInfo.getRegisteredDataNodes(dataNodeId);
+  public List<TDataNodeConfiguration> getRegisteredDataNodes() {
+    return nodeInfo.getRegisteredDataNodes();
   }
 
-  public Map<Integer, TDataNodeLocation> getRegisteredDataNodeLocations(int dataNodeId) {
+  public Map<Integer, TDataNodeLocation> getRegisteredDataNodeLocations() {
     Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
     nodeInfo
-        .getRegisteredDataNodes(dataNodeId)
+        .getRegisteredDataNodes()
         .forEach(
             dataNodeConfiguration ->
                 dataNodeLocations.put(
@@ -235,7 +235,7 @@ public class NodeManager {
 
   public List<TDataNodeInfo> getRegisteredDataNodeInfoList() {
     List<TDataNodeInfo> dataNodeInfoList = new ArrayList<>();
-    List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes(-1);
+    List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
           (dataNodeInfo) -> {
@@ -373,7 +373,13 @@ public class NodeManager {
 
   public List<TSStatus> merge(TMergeReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (req.dataNodeId != -1) {
+      dataNodeLocationMap =
+          dataNodeLocationMap.entrySet().stream()
+              .filter((e) -> req.dataNodeId == e.getKey())
+              .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
+    }
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
@@ -384,7 +390,13 @@ public class NodeManager {
 
   public List<TSStatus> flush(TFlushReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (req.dataNodeId != -1) {
+      dataNodeLocationMap =
+          dataNodeLocationMap.entrySet().stream()
+              .filter((e) -> req.dataNodeId == e.getKey())
+              .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
+    }
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
@@ -395,7 +407,13 @@ public class NodeManager {
 
   public List<TSStatus> clearCache(TClearCacheReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
+    if (req.dataNodeId != -1) {
+      dataNodeLocationMap =
+          dataNodeLocationMap.entrySet().stream()
+              .filter((e) -> req.dataNodeId == e.getKey())
+              .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
+    }
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()

@@ -107,8 +107,9 @@ public class AsyncConfigNodeHeartbeatServiceClient extends IConfigNodeRPCService
 
     public Factory(
         ClientManager<TEndPoint, AsyncConfigNodeHeartbeatServiceClient> clientManager,
-        ClientFactoryProperty clientFactoryProperty) {
-      super(clientManager, clientFactoryProperty);
+        ClientFactoryProperty clientFactoryProperty,
+        String threadName) {
+      super(clientManager, clientFactoryProperty, threadName);
     }
 
     @Override
