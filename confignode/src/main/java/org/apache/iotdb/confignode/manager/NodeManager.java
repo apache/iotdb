@@ -205,7 +205,6 @@ public class NodeManager {
   /**
    * Only leader use this interface
    *
-   * @param dataNodeId Specific DataNodeId
    * @return All registered DataNodes
    */
   public List<TDataNodeConfiguration> getRegisteredDataNodes() {
