@@ -187,6 +187,11 @@ public class AbstractCompactionTest {
           isAlign,
           isSeq);
     }
+    try {
+      Thread.sleep(10);
+    } catch (Exception e) {
+
+    }
   }
 
   private void addResource(
