@@ -75,10 +75,10 @@ public class TypeInferenceUtils {
         } else {
           return floatingStringInferType;
         }
-      } else if ("null".equals(strValue) || "NULL".equals(strValue)) {
+      } else if ("NULL".equalsIgnoreCase(strValue)) {
         return null;
         // "NaN" is returned if the NaN Literal is given in Parser
-      } else if ("NaN".equals(strValue)) {
+      } else if ("NAN".equalsIgnoreCase(strValue)) {
         return nanStringInferType;
       } else {
         return TSDataType.TEXT;

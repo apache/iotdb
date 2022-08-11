@@ -121,4 +121,21 @@ public class TypeInferenceUtilsTest {
       assertEquals(is_value[i], TypeInferenceUtils.isNumber(values[i]));
     }
   }
+
+  @Test
+  public void testNullAndNan() {
+    String[] values = {"NAN", "Nan", "nan", "NULL", "null", "Null"};
+    TSDataType[] encodings = {
+      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType(),
+      IoTDBDescriptor.getInstance().getConfig().getNanStringInferType(),
+      null,
+      null,
+      null
+    };
+
+    for (int i = 0; i < values.length; i++) {
+      assertEquals(encodings[i], TypeInferenceUtils.getPredictedDataType(values[i], true));
+    }
+  }
 }
