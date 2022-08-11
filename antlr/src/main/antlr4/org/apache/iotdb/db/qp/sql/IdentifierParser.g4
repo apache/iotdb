@@ -84,6 +84,7 @@ keyWords
     | GLOBAL
     | GRANT
     | GROUP
+    | HAVING
     | INDEX
     | INFO
     | INSERT
