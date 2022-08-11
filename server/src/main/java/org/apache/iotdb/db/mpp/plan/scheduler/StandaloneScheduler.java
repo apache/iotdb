@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
 import org.apache.iotdb.commons.consensus.DataRegionId;
 import org.apache.iotdb.commons.consensus.SchemaRegionId;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -123,6 +124,13 @@ public class StandaloneScheduler implements IScheduler {
         LOGGER.info("{} state tracker starts", getLogHeader());
         break;
       case WRITE:
+        // reject non-query operations when system is read-only
+        if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+          TSStatus failedStatus = new TSStatus(TSStatusCode.NODE_READ_ONLY.getStatusCode());
+          failedStatus.setMessage("Fail to do non-query operations because system is read-only.");
+          stateMachine.transitionToFailed(failedStatus);
+          return;
+        }
         try {
           for (FragmentInstance fragmentInstance : instances) {
             PlanNode planNode = fragmentInstance.getFragment().getRoot();

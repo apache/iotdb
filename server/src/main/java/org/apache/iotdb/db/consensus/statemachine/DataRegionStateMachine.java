@@ -26,6 +26,7 @@ import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IndexedConsensusRequest;
 import org.apache.iotdb.consensus.multileader.wal.GetConsensusReqReaderPlan;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.consensus.statemachine.visitor.DataExecutionVisitor;
 import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.snapshot.SnapshotLoader;
@@ -67,6 +68,11 @@ public class DataRegionStateMachine extends BaseStateMachine {
 
   @Override
   public void stop() {}
+
+  @Override
+  public boolean isReadOnly() {
+    return IoTDBDescriptor.getInstance().getConfig().isReadOnly();
+  }
 
   @Override
   public boolean takeSnapshot(File snapshotDir) {

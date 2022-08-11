@@ -41,6 +41,10 @@ public interface IStateMachine {
 
   void stop();
 
+  default boolean isReadOnly() {
+    return false;
+  }
+
   /**
    * apply a write-request from user
    *

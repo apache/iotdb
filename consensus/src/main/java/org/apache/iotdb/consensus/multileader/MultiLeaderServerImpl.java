@@ -217,4 +217,8 @@ public class MultiLeaderServerImpl {
   public MultiLeaderConfig getConfig() {
     return config;
   }
+
+  public boolean isReadOnly() {
+    return stateMachine.isReadOnly();
+  }
 }

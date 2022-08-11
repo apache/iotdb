@@ -21,6 +21,7 @@ package org.apache.iotdb.consensus.multileader.service;
 
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.consensus.ConsensusGroupId;
+import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
 import org.apache.iotdb.consensus.common.request.MultiLeaderConsensusRequest;
@@ -65,6 +66,13 @@ public class MultiLeaderRPCServiceProcessor implements MultiLeaderConsensusIServ
         TSStatus status = new TSStatus(TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode());
         status.setMessage(message);
         resultHandler.onComplete(new TSyncLogRes(Collections.singletonList(status)));
+        return;
+      }
+      if (impl.isReadOnly()) {
+        String message = "Fail to sync log because system is read-only.";
+        logger.error(message);
+        resultHandler.onError(
+            new IoTDBException(message, TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode()));
         return;
       }
       List<TSStatus> statuses = new ArrayList<>();
