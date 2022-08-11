@@ -298,7 +298,7 @@ public class TsFileRewriteExcutorTest {
             throw new RuntimeException("excutor is null");
           }
           List<IMeasurementSchema> schemaList =
-              excutor.collectSchemaList(alignedChunkMetadatas, reader, curMeasurementId, true);
+              excutor.collectSchemaList(alignedChunkMetadatas, reader, curMeasurementId, true).left;
           TsFileAlignedSeriesReaderIterator readerIterator =
               new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaList);
           while (readerIterator.hasNext()) {

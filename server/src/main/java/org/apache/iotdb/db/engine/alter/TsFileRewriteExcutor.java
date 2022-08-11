@@ -142,10 +142,9 @@ public class TsFileRewriteExcutor {
       return;
     }
     // TODO To be optimized: Non-target modification measurements are directly written to data
-    List<IMeasurementSchema> schemaList =
-        collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, isTargetDevice);
-    List<IMeasurementSchema> schemaOldList =
-        collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, false);
+    Pair<List<IMeasurementSchema>, List<IMeasurementSchema>> listPair = collectSchemaList(alignedChunkMetadatas, reader, targetMeasurement, isTargetDevice);
+    List<IMeasurementSchema> schemaList = listPair.left;
+    List<IMeasurementSchema> schemaOldList = listPair.right;
     AlignedChunkWriterImpl chunkWriter = new AlignedChunkWriterImpl(schemaList);
     TsFileAlignedSeriesReaderIterator readerIterator =
         new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadatas, schemaOldList);
@@ -168,14 +167,15 @@ public class TsFileRewriteExcutor {
     chunkWriter.writeToFileWriter(writer);
   }
 
-  protected List<IMeasurementSchema> collectSchemaList(
+  protected Pair<List<IMeasurementSchema>, List<IMeasurementSchema>> collectSchemaList(
       List<AlignedChunkMetadata> alignedChunkMetadatas,
       TsFileSequenceReader reader,
       String targetMeasurement,
       boolean isTargetDevice)
       throws IOException {
 
-    Set<MeasurementSchema> schemaSet = new HashSet<>();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<IMeasurementSchema> schemaOldList = new ArrayList<>();
     Set<String> measurementSet = new HashSet<>();
     for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadatas) {
       List<IChunkMetadata> valueChunkMetadataList =
@@ -194,18 +194,28 @@ public class TsFileRewriteExcutor {
             isTargetDevice
                 && CommonUtils.equal(chunkMetadata.getMeasurementUid(), targetMeasurement);
         MeasurementSchema measurementSchema =
-            new MeasurementSchema(
-                header.getMeasurementID(),
-                header.getDataType(),
-                findTarget ? this.curEncoding : header.getEncodingType(),
-                findTarget ? this.curCompressionType : header.getCompressionType());
-
-        schemaSet.add(measurementSchema);
+                new MeasurementSchema(
+                        header.getMeasurementID(),
+                        header.getDataType(),
+                        header.getEncodingType(),
+                        header.getCompressionType());
+        if(!findTarget) {
+          schemaList.add(measurementSchema);
+          schemaOldList.add(measurementSchema);
+        } else {
+          schemaList.add(new MeasurementSchema(
+                  header.getMeasurementID(),
+                  header.getDataType(),
+                  this.curEncoding,
+                  this.curCompressionType));
+          schemaOldList.add(measurementSchema);
+        }
       }
     }
-    List<IMeasurementSchema> schemaList = new ArrayList<>(schemaSet);
+
     schemaList.sort(Comparator.comparing(IMeasurementSchema::getMeasurementId));
-    return schemaList;
+    schemaOldList.sort(Comparator.comparing(IMeasurementSchema::getMeasurementId));
+    return new Pair<>(schemaList, schemaOldList);
   }
 
   private void rewriteNotAligned(
