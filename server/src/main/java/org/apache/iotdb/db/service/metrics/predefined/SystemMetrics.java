@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.service.metrics.predefined;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.commons.concurrent.threadpool.ScheduledExecutorUtil;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
@@ -30,9 +31,15 @@ import com.sun.management.OperatingSystemMXBean;
 
 import java.io.File;
 import java.lang.management.ManagementFactory;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class SystemMetrics implements IMetricSet {
   private com.sun.management.OperatingSystemMXBean osMXBean;
+  private final ScheduledExecutorService service = Executors.newSingleThreadScheduledExecutor();
+  private long systemDiskTotalSpace = 0L;
+  private long systemDiskFreeSpace = 0L;
 
   public SystemMetrics() {
     osMXBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
@@ -108,34 +115,58 @@ public class SystemMetrics implements IMetricSet {
         Metric.SYS_DISK_TOTAL_SPACE.toString(),
         MetricLevel.CORE,
         this,
-        a -> getSysDiskTotalSpace(),
+        SystemMetrics::getSystemDiskTotalSpace,
         Tag.NAME.toString(),
         "system");
     metricManager.getOrCreateAutoGauge(
         Metric.SYS_DISK_FREE_SPACE.toString(),
         MetricLevel.CORE,
         this,
-        a -> getSysDickFreeSpace(),
+        SystemMetrics::getSystemDiskFreeSpace,
         Tag.NAME.toString(),
         "system");
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
   }
 
-  private long getSysDiskTotalSpace() {
+  @Override
+  public void startAsyncCollectedMetrics() {
+    ScheduledExecutorUtil.safelyScheduleAtFixedRate(
+        service,
+        this::collect,
+        1,
+        MetricConfigDescriptor.getInstance().getMetricConfig().getAsyncCollectPeriodInSecond(),
+        TimeUnit.SECONDS);
+  }
+
+  @Override
+  public void stopAsyncCollectedMetrics() {
+    service.shutdown();
+  }
+
+  private void collect() {
     File[] files = File.listRoots();
     long sysTotalSpace = 0L;
-    for (File file : files) {
-      sysTotalSpace += file.getTotalSpace();
-    }
-    return sysTotalSpace;
-  }
-
-  private long getSysDickFreeSpace() {
-    File[] files = File.listRoots();
     long sysFreeSpace = 0L;
     for (File file : files) {
+      sysTotalSpace += file.getTotalSpace();
       sysFreeSpace += file.getFreeSpace();
     }
-    return sysFreeSpace;
+    systemDiskTotalSpace = sysTotalSpace;
+    systemDiskFreeSpace = sysFreeSpace;
+  }
+
+  public long getSystemDiskTotalSpace() {
+    return systemDiskTotalSpace;
+  }
+
+  public void setSystemDiskTotalSpace(long systemDiskTotalSpace) {
+    this.systemDiskTotalSpace = systemDiskTotalSpace;
+  }
+
+  public long getSystemDiskFreeSpace() {
+    return systemDiskFreeSpace;
+  }
+
+  public void setSystemDiskFreeSpace(long systemDiskFreeSpace) {
+    this.systemDiskFreeSpace = systemDiskFreeSpace;
   }
 }

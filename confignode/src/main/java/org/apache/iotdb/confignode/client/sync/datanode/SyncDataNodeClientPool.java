@@ -79,14 +79,20 @@ public class SyncDataNodeClientPool {
             return client.deleteRegion((TConsensusGroupId) req);
           case INVALIDATE_PERMISSION_CACHE:
             return client.invalidatePermissionCache((TInvalidatePermissionCacheReq) req);
-          case MIGRATE_REGION:
-            return client.migrateRegion((TMigrateRegionReq) req);
           case DISABLE_DATA_NODE:
             return client.disableDataNode((TDisableDataNodeReq) req);
           case STOP_DATA_NODE:
             return client.stopDataNode();
           case UPDATE_TEMPLATE:
             return client.updateTemplate((TUpdateTemplateReq) req);
+          case ADD_REGION_CONSENSUS_GROUP:
+            return client.addToRegionConsensusGroup((TAddConsensusGroup) req);
+          case ADD_REGION_PEER:
+            return client.addRegionPeer((TMigrateRegionReq) req);
+          case REMOVE_REGION_PEER:
+            return client.removeRegionPeer((TMigrateRegionReq) req);
+          case REMOVE_REGION_CONSENSUS_GROUP:
+            return client.removeToRegionConsensusGroup((TMigrateRegionReq) req);
           default:
             return RpcUtils.getStatus(
                 TSStatusCode.EXECUTE_STATEMENT_ERROR, "Unknown request type: " + requestType);
@@ -170,34 +176,6 @@ public class SyncDataNodeClientPool {
     } catch (TException e) {
       LOGGER.error("Change regions leader error on Date node: {}", dataNode, e);
       status = new TSStatus(TSStatusCode.REGION_LEADER_CHANGE_FAILED.getStatusCode());
-      status.setMessage(e.getMessage());
-    }
-    return status;
-  }
-
-  public TSStatus addToRegionConsensusGroup(
-      List<TDataNodeLocation> regionOriginalPeerNodes,
-      TConsensusGroupId regionId,
-      TDataNodeLocation newPeerNode,
-      String storageGroup,
-      long ttl) {
-    TSStatus status;
-    // do addConsensusGroup in new node locally
-    try (SyncDataNodeInternalServiceClient client =
-        clientManager.borrowClient(newPeerNode.getInternalEndPoint())) {
-      List<TDataNodeLocation> currentPeerNodes = new ArrayList<>(regionOriginalPeerNodes);
-      currentPeerNodes.add(newPeerNode);
-      TAddConsensusGroup req = new TAddConsensusGroup(regionId, currentPeerNodes, storageGroup);
-      req.setTtl(ttl);
-      status = client.addToRegionConsensusGroup(req);
-    } catch (IOException e) {
-      LOGGER.error("Can't connect to Data Node {}.", newPeerNode.getInternalEndPoint(), e);
-      status = new TSStatus(TSStatusCode.NO_CONNECTION.getStatusCode());
-      status.setMessage(e.getMessage());
-    } catch (TException e) {
-      LOGGER.error(
-          "Add region consensus {} group failed to Date node: {}", regionId, newPeerNode, e);
-      status = new TSStatus(TSStatusCode.REGION_MIGRATE_FAILED.getStatusCode());
       status.setMessage(e.getMessage());
     }
     return status;

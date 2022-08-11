@@ -47,6 +47,8 @@ public class MetricConfig {
   private List<PredefinedMetric> predefinedMetrics =
       Arrays.asList(PredefinedMetric.JVM, PredefinedMetric.FILE);
 
+  private Integer asyncCollectPeriodInSecond = 5;
+
   /** the http server's port for prometheus exporter to get metric data. */
   private String prometheusExporterPort = "9091";
 
@@ -158,6 +160,7 @@ public class MetricConfig {
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
     predefinedMetrics = newMetricConfig.getPredefinedMetrics();
+    asyncCollectPeriodInSecond = newMetricConfig.getAsyncCollectPeriodInSecond();
     prometheusExporterPort = newMetricConfig.getPrometheusExporterPort();
     ioTDBReporterConfig = newMetricConfig.ioTDBReporterConfig;
   }
@@ -215,6 +218,14 @@ public class MetricConfig {
     this.predefinedMetrics = predefinedMetrics;
   }
 
+  public Integer getAsyncCollectPeriodInSecond() {
+    return asyncCollectPeriodInSecond;
+  }
+
+  public void setAsyncCollectPeriodInSecond(Integer asyncCollectPeriodInSecond) {
+    this.asyncCollectPeriodInSecond = asyncCollectPeriodInSecond;
+  }
+
   public String getPrometheusExporterPort() {
     return prometheusExporterPort;
   }
@@ -250,6 +261,7 @@ public class MetricConfig {
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
+        && asyncCollectPeriodInSecond.equals(anotherMetricConfig.getAsyncCollectPeriodInSecond())
         && prometheusExporterPort.equals(anotherMetricConfig.getPrometheusExporterPort())
         && ioTDBReporterConfig.equals(anotherMetricConfig.getIoTDBReporterConfig());
   }

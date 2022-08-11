@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.predefined.IMetricSet;
 import org.apache.iotdb.metrics.reporter.CompositeReporter;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
@@ -31,6 +32,8 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -44,11 +47,13 @@ public abstract class MetricService {
 
   protected MetricManager metricManager = new DoNothingMetricManager();
 
+  protected List<IMetricSet> metricSets = new ArrayList<>();
+
   protected CompositeReporter compositeReporter = new CompositeReporter();
 
   protected boolean isEnableMetric = metricConfig.getEnableMetric();
 
-  private AtomicBoolean firstInit = new AtomicBoolean(true);
+  private final AtomicBoolean firstInit = new AtomicBoolean(true);
 
   public MetricService() {}
 
@@ -79,6 +84,10 @@ public abstract class MetricService {
     compositeReporter.stopAll();
     metricManager = new DoNothingMetricManager();
     compositeReporter = new CompositeReporter();
+    for (IMetricSet metricSet : metricSets) {
+      metricSet.stopAsyncCollectedMetrics();
+    }
+    metricSets = new ArrayList<>();
   }
 
   protected void loadManager() {
