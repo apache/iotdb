@@ -87,12 +87,9 @@ public class RegionMigrateProcedure
         case MIGRATE_REGION:
           env.getDataNodeRemoveHandler()
               .migrateRegion(originalDataNode, destDataNode, consensusGroupId);
-          setNextState(RegionTransitionState.WAIT_FOR_REGION_MIGRATE_FINISHED);
-          break;
-        case WAIT_FOR_REGION_MIGRATE_FINISHED:
           waitForTheRegionMigrateFinished(consensusGroupId);
-          setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
           LOG.info("Wait for region {}  migrate finished", consensusGroupId);
+          setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
           break;
         case UPDATE_REGION_LOCATION_CACHE:
           env.getDataNodeRemoveHandler()
@@ -219,11 +216,7 @@ public class RegionMigrateProcedure
     return status;
   }
 
-  /**
-   * DN report region migrate result to CN, and continue
-   *
-   * @param req
-   */
+  /** DataNode report region migrate result to ConfigNode, and continue */
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
     // TODO the req is used in roll back
     synchronized (regionMigrateLock) {

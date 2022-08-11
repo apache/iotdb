@@ -90,7 +90,7 @@ Session 超时默认未开启。可以在配置文件中通过 `session_timeout_
 对于执行时间过长的查询，IoTDB 将强行中断该查询，并抛出超时异常，如下所示：
 
 ```sql
-IoTDB> select * from root;
+IoTDB> select * from root.**;
 Msg: 701 Current query is time out, please check your statement or modify timeout parameter.
 ```
 

@@ -1735,14 +1735,22 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitListUser(IoTDBSqlParser.ListUserContext ctx) {
-    return new AuthorStatement(AuthorOperator.AuthorType.LIST_USER);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.LIST_USER);
+    if (ctx.roleName != null) {
+      authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
+    }
+    return authorStatement;
   }
 
   // List Roles
 
   @Override
   public Statement visitListRole(IoTDBSqlParser.ListRoleContext ctx) {
-    return new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE);
+    AuthorStatement authorStatement = new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE);
+    if (ctx.userName != null) {
+      authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
+    }
+    return authorStatement;
   }
 
   // List Privileges
@@ -1768,46 +1776,6 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
     List<PartialPath> nodeNameList =
         ctx.prefixPath().stream().map(this::parsePrefixPath).collect(Collectors.toList());
     authorStatement.setNodeNameList(nodeNameList);
-    return authorStatement;
-  }
-
-  // List Privileges of Users
-
-  @Override
-  public Statement visitListUserPrivileges(IoTDBSqlParser.ListUserPrivilegesContext ctx) {
-    AuthorStatement authorStatement =
-        new AuthorStatement(AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
-    return authorStatement;
-  }
-
-  // List Privileges of Roles
-
-  @Override
-  public Statement visitListRolePrivileges(IoTDBSqlParser.ListRolePrivilegesContext ctx) {
-    AuthorStatement authorStatement =
-        new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-    authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    return authorStatement;
-  }
-
-  // List Roles of Users
-
-  @Override
-  public Statement visitListAllRoleOfUser(IoTDBSqlParser.ListAllRoleOfUserContext ctx) {
-    AuthorStatement authorStatement =
-        new AuthorStatement(AuthorOperator.AuthorType.LIST_USER_ROLES);
-    authorStatement.setUserName(parseIdentifier(ctx.userName.getText()));
-    return authorStatement;
-  }
-
-  // List Users of Role
-
-  @Override
-  public Statement visitListAllUserOfRole(IoTDBSqlParser.ListAllUserOfRoleContext ctx) {
-    AuthorStatement authorStatement =
-        new AuthorStatement(AuthorOperator.AuthorType.LIST_ROLE_USERS);
-    authorStatement.setRoleName(parseIdentifier(ctx.roleName.getText()));
     return authorStatement;
   }
 
@@ -2265,6 +2233,9 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_LITERAL() != null) {
+      if (ctx.MINUS() != null) {
+        return -Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      }
       return Long.parseLong(ctx.INTEGER_LITERAL().getText());
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);

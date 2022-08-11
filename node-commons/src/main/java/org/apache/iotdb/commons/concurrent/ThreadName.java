@@ -82,7 +82,8 @@ public enum ThreadName {
   MPP_DATA_EXCHANGE_RPC_SERVER("MPPDataExchangeRPC"),
   MPP_DATA_EXCHANGE_RPC_CLIENT("MPPDataExchangeRPC-Client"),
   INTERNAL_SERVICE_RPC_SERVER("InternalServiceRPC"),
-  INTERNAL_SERVICE_RPC_CLIENT("InternalServiceRPC-Client");
+  INTERNAL_SERVICE_RPC_CLIENT("InternalServiceRPC-Client"),
+  EXT_PIPE_PLUGIN_WORKER("ExtPipePlugin-Worker");
 
   private final String name;
 

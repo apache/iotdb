@@ -2097,14 +2097,24 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitListUser(IoTDBSqlParser.ListUserContext ctx) {
-    return new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER);
+    AuthorOperator operator =
+        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER);
+    if (ctx.roleName != null) {
+      operator.setRoleName(parseIdentifier(ctx.roleName.getText()));
+    }
+    return operator;
   }
 
   // List Roles
 
   @Override
   public Operator visitListRole(IoTDBSqlParser.ListRoleContext ctx) {
-    return new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE);
+    AuthorOperator operator =
+        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE);
+    if (ctx.userName != null) {
+      operator.setUserName(parseIdentifier(ctx.userName.getText()));
+    }
+    return operator;
   }
 
   // List Privileges
@@ -2134,46 +2144,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
             .map(prefixPath -> parsePrefixPath(prefixPath))
             .collect(Collectors.toList());
     operator.setNodeNameList(nodeNameList);
-    return operator;
-  }
-
-  // List Privileges of Users
-
-  @Override
-  public Operator visitListUserPrivileges(IoTDBSqlParser.ListUserPrivilegesContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    operator.setUserName(parseIdentifier(ctx.userName.getText()));
-    return operator;
-  }
-
-  // List Privileges of Roles
-
-  @Override
-  public Operator visitListRolePrivileges(IoTDBSqlParser.ListRolePrivilegesContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-    operator.setRoleName(parseIdentifier(ctx.roleName.getText()));
-    return operator;
-  }
-
-  // List Roles of Users
-
-  @Override
-  public Operator visitListAllRoleOfUser(IoTDBSqlParser.ListAllRoleOfUserContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_ROLES);
-    operator.setUserName(parseIdentifier(ctx.userName.getText()));
-    return operator;
-  }
-
-  // List Users of Role
-
-  @Override
-  public Operator visitListAllUserOfRole(IoTDBSqlParser.ListAllUserOfRoleContext ctx) {
-    AuthorOperator operator =
-        new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_USERS);
-    operator.setRoleName(parseIdentifier(ctx.roleName.getText()));
     return operator;
   }
 
@@ -2821,6 +2791,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_LITERAL() != null) {
+      if (ctx.MINUS() != null) {
+        return -Long.parseLong(ctx.INTEGER_LITERAL().getText());
+      }
       return Long.parseLong(ctx.INTEGER_LITERAL().getText());
     } else if (ctx.dateExpression() != null) {
       return parseDateExpression(ctx.dateExpression(), currentTime);
