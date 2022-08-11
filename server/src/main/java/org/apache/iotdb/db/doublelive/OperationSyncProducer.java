@@ -35,7 +35,6 @@ import java.util.concurrent.BlockingQueue;
 public class OperationSyncProducer {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(OperationSyncProducer.class);
-  private static final Integer RETRY = 3;
   private final ArrayList<
           BlockingQueue<Pair<ByteBuffer, OperationSyncPlanTypeUtils.OperationSyncPlanType>>>
       operationSyncQueues;
@@ -66,19 +65,8 @@ public class OperationSyncProducer {
         index = 0;
       }
     }
-    for (int i = 0; i < RETRY; i++) {
-      // retry 3 times
-      if (operationSyncQueues.get(index).offer(planPair)) {
+    if (operationSyncQueues.get(index).offer(planPair)) {
         return;
-      }
-      if (i == RETRY - 1) {
-        break;
-      }
-      try {
-        Thread.sleep(500);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
     }
     try {
       // must set buffer position to limit() before serialization
