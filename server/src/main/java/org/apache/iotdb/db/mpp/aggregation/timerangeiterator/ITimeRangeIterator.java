@@ -56,5 +56,5 @@ public interface ITimeRangeIterator {
    */
   long currentOutputTime();
 
-  int getTotalTimeRangeNum();
+  long getTotalIntervalNum();
 }
