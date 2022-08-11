@@ -108,7 +108,7 @@ public class IoTDBSnapshotTest {
                 });
         Assert.assertEquals(files.length, 1);
         SnapshotLogAnalyzer analyzer = new SnapshotLogAnalyzer(files[0]);
-        Assert.assertEquals(analyzer.getType(), SnapshotLogger.SnapshotType.LOCAL_DISK);
+        Assert.assertEquals(analyzer.getType(), SnapshotLogger.SnapshotType.LOCAL_FS);
         int cnt = 0;
         while (analyzer.hasNext()) {
           analyzer.getNextPairs();

@@ -63,7 +63,7 @@ public class SnapshotLogger implements AutoCloseable {
   }
 
   public static enum SnapshotType {
-    LOCAL_DISK,
-    REMOTE_DISK
+    LOCAL_FS,
+    REMOTE_FS
   }
 }

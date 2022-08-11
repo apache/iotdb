@@ -36,6 +36,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.util.LinkedList;
 import java.util.List;
@@ -74,7 +75,7 @@ public class SnapshotTaker {
       throw new IOException(String.format("Failed to create directory %s", snapshotDir));
     }
 
-    boolean inSameDisk = isSnapshotDirAndDataDirOnSameDisk(snapshotDir);
+    boolean inSameFs = isSnapshotDirAndDataDirOnSameFs(snapshotDir);
 
     if (flushBeforeSnapshot) {
       dataRegion.syncCloseAllWorkingTsFileProcessors();
@@ -84,10 +85,10 @@ public class SnapshotTaker {
     try {
       snapshotLogger = new SnapshotLogger(snapshotLog);
       boolean success = false;
-      if (inSameDisk) {
-        success = createSnapshotInLocalDisk(snapshotDir);
+      if (inSameFs) {
+        success = createSnapshotInLocalFs(snapshotDir);
       } else {
-        success = createSnapshotInAnotherDisk(snapshotDir);
+        success = createSnapshotInAnotherFs(snapshotDir);
       }
 
       LOGGER.info(
@@ -151,7 +152,7 @@ public class SnapshotTaker {
     }
   }
 
-  private boolean createSnapshotInLocalDisk(File snapshotDir) {
+  private boolean createSnapshotInLocalFs(File snapshotDir) {
     seqBaseDir =
         new File(
             snapshotDir,
@@ -174,7 +175,7 @@ public class SnapshotTaker {
     manager.readLock();
     try {
       try {
-        snapshotLogger.logSnapshotType(SnapshotLogger.SnapshotType.LOCAL_DISK);
+        snapshotLogger.logSnapshotType(SnapshotLogger.SnapshotType.LOCAL_FS);
       } catch (IOException e) {
         LOGGER.error("Fail to create snapshot", e);
         cleanUpWhenFail(snapshotDir);
@@ -212,9 +213,9 @@ public class SnapshotTaker {
     return true;
   }
 
-  private boolean createSnapshotInAnotherDisk(File snapshotDir) {
+  private boolean createSnapshotInAnotherFs(File snapshotDir) {
     try {
-      snapshotLogger.logSnapshotType(SnapshotLogger.SnapshotType.REMOTE_DISK);
+      snapshotLogger.logSnapshotType(SnapshotLogger.SnapshotType.REMOTE_FS);
     } catch (IOException e) {
       LOGGER.error("Fail to create snapshot", e);
       cleanUpWhenFail(snapshotDir);
@@ -319,12 +320,17 @@ public class SnapshotTaker {
     }
   }
 
-  private boolean isSnapshotDirAndDataDirOnSameDisk(File snapshotDir) throws IOException {
+  /**
+   * Test whether all data dirs is under the same fs with snapshot dir.
+   *
+   * @throws IOException
+   */
+  private boolean isSnapshotDirAndDataDirOnSameFs(File snapshotDir) throws IOException {
     String testFileName = "test.txt";
     File testFile = new File(snapshotDir, testFileName);
     if (!testFile.createNewFile() || !createTestFile(testFile)) {
       throw new IOException(
-          "Failed to test whether the data dir and snapshot dir is on the same disk");
+          "Failed to test whether the data dir and snapshot dir is on the same file system");
     }
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     try {
@@ -333,7 +339,8 @@ public class SnapshotTaker {
         File testSnapshotFile = new File(dirFile, testFileName);
         try {
           Files.createLink(testSnapshotFile.toPath(), testFile.toPath());
-        } catch (IOException e) {
+        } catch (FileSystemException e) {
+          // if the fs rejects to create the link, it means they are in the different fs
           return false;
         }
         testSnapshotFile.delete();
