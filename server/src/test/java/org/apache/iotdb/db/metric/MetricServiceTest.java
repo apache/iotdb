@@ -261,8 +261,10 @@ public class MetricServiceTest {
     Timer timer =
         metricService.getOrCreateTimer("same_name", MetricLevel.IMPORTANT, "tag", "value");
     assertNotNull(timer);
+    assertNotEquals(DoNothingMetricManager.doNothingTimer, timer);
     Counter counter = metricService.getOrCreateCounter("same_name", MetricLevel.IMPORTANT);
     assertNotNull(counter);
+    assertEquals(DoNothingMetricManager.doNothingCounter, counter);
   }
 
   private void getOrCreateDifferentMetricsWithSameName() {

@@ -137,6 +137,19 @@ public class MetricInfo {
       this.tagNames = tagNames;
     }
 
+    /** check whether the key in tags is same */
+    public boolean hasSameKey(String... tags) {
+      if (tags.length != tagNames.size() * 2) {
+        return false;
+      }
+      for (int i = 0; i < tags.length; i += PAIR_SIZE) {
+        if (!tagNames.contains(tags[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+
     public MetricType getType() {
       return type;
     }
