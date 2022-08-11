@@ -191,8 +191,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
-    schemaTree.mergeSchemaTree(remoteSchemaTree);
-    schemaCache.put(remoteSchemaTree);
+    if (!remoteSchemaTree.isEmpty()) {
+      schemaTree.mergeSchemaTree(remoteSchemaTree);
+      schemaCache.put(remoteSchemaTree);
+    }
 
     if (!config.isAutoCreateSchemaEnabled()) {
       return schemaTree;
@@ -238,8 +240,10 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
     }
 
     ClusterSchemaTree remoteSchemaTree = fetchSchema(patternTree);
-    schemaTree.mergeSchemaTree(remoteSchemaTree);
-    schemaCache.put(remoteSchemaTree);
+    if (!remoteSchemaTree.isEmpty()) {
+      schemaTree.mergeSchemaTree(remoteSchemaTree);
+      schemaCache.put(remoteSchemaTree);
+    }
 
     if (!config.isAutoCreateSchemaEnabled()) {
       return schemaTree;
@@ -284,9 +288,12 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
       String[] measurements,
       Function<Integer, TSDataType> getDataType,
       boolean isAligned) {
-
     DeviceSchemaInfo deviceSchemaInfo =
-        schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
+        schemaTree.searchDeviceSchemaInfo(
+            devicePath,
+            indexOfMissingMeasurements.stream()
+                .map(index -> measurements[index])
+                .collect(Collectors.toList()));
     if (deviceSchemaInfo != null) {
       List<MeasurementSchema> schemaList = deviceSchemaInfo.getMeasurementSchemaList();
       int removedCount = 0;
@@ -412,6 +419,8 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
           isAligned);
     }
 
+    schemaCache.put(schemaTree);
+
     return schemaTree;
   }
 
@@ -420,7 +429,6 @@ public class ClusterSchemaFetcher implements ISchemaFetcher {
 
     ExecutionResult executionResult = executeStatement(statement);
 
-    // TODO: throw exception
     int statusCode = executionResult.status.getCode();
     if (statusCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       return Collections.emptyList();
