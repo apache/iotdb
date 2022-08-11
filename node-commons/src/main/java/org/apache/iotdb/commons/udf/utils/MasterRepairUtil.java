@@ -226,7 +226,7 @@ public class MasterRepairUtil {
         }
       }
       if (k == -1) {
-        k = 5;
+        k = Integer.min(5, this.md.size());
       }
     }
   }
