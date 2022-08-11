@@ -34,6 +34,7 @@ import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -43,8 +44,10 @@ import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -72,7 +75,7 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(512);
     Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
@@ -3912,6 +3915,38 @@ public class ReadPointCompactionPerformerTest extends AbstractCompactionTest {
             // the disk file is corrupted, using this file may be dangerous
             throw new IOException("Unexpected marker " + marker);
         }
+      }
+    }
+  }
+
+  @Test
+  public void Tests() throws MetadataException, IOException, WriteProcessException {
+    registerTimeseriesInMManger(4, 5, true);
+    createFiles(1, 1, 1, 1000, 0, 0, 50, 50, false, true);
+    createFiles(1, 1, 1, 300, 50, 10050, 50, 50, false, false);
+    createFiles(1, 1, 1, 300, 400, 20400, 50, 50, false, false);
+    createFiles(1, 1, 1, 800, 200, 30200, 50, 50, false, false);
+    PartialPath path =
+        new MeasurementPath(
+            COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + 0,
+            "s0",
+            new MeasurementSchema("s0", TSDataType.INT64));
+    IBatchReader tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            TSDataType.INT64,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            seqResources,
+            unseqResources,
+            null,
+            null,
+            true);
+
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      while (batchData.hasCurrent()) {
+        System.out.println(batchData.currentTime() + "," + batchData.currentValue());
+        batchData.next();
       }
     }
   }

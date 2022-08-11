@@ -47,20 +47,19 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
-  public final Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new ConcurrentHashMap<>();
+  public Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new ConcurrentHashMap<>();
 
   // measurementID -> schema, schemas of measurements under one device
-  public final Map<String, MeasurementSchema> schemaMapCache = new ConcurrentHashMap<>();
+  public Map<String, MeasurementSchema> schemaMapCache = new ConcurrentHashMap<>();
 
   private CompactionTaskSummary summary;
 
   private List<TsFileResource> targetFiles;
 
-  public final Map<TsFileResource, List<Modification>> modificationCache =
-      new ConcurrentHashMap<>();
+  public Map<TsFileResource, List<Modification>> modificationCache = new ConcurrentHashMap<>();
 
   // measurementID -> unseq reader, unseq reader of sensors in one device
-  public final Map<String, IPointReader> unseqReaders = new ConcurrentHashMap<>();
+  public Map<String, IPointReader> unseqReaders = new ConcurrentHashMap<>();
 
   private final Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
       measurementChunkMetadataListMapIteratorCache =
@@ -102,7 +101,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
           if (!seqFiles.get(i).mayContainsDevice(device) && !isLastFile) {
             continue;
           } else {
-            compactionWriter.startChunkGroup(i, device);
+            compactionWriter.startChunkGroup(i, device, isAligned);
 
             TsFileResource seqFile = seqFiles.get(i);
 
@@ -136,7 +135,7 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
               }
             }
 
-            // get schema of measurements
+            // get schema of measurements under this device
             schemaMapCache.putAll(
                 CompactionUtils.getMeasurementSchema(
                     device, measurmentMetadataList.keySet(), seqFiles, unseqFiles, readerCacheMap));
@@ -151,10 +150,10 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
                   new ArrayList<>(measurmentMetadataList.values()),
                   compactionWriter);
             }
-            compactionWriter.endChunkGroup(i);
+            compactionWriter.endChunkGroup();
           }
         }
-
+        schemaMapCache.clear();
         unseqReaders.clear();
       }
       compactionWriter.endFile();
@@ -168,6 +167,11 @@ public class FastCompactionPerformer implements ICrossCompactionPerformer {
       for (TsFileSequenceReader reader : readerCacheMap.values()) {
         reader.close();
       }
+      // clean cache
+      schemaMapCache = null;
+      readerCacheMap = null;
+      modificationCache = null;
+      unseqReaders = null;
     }
   }
 

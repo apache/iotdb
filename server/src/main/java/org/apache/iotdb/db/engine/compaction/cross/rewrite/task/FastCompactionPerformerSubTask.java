@@ -26,8 +26,6 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
 
   private final TsFileResource seqFile;
 
-  private final int seqFileIndex;
-
   private final boolean isLastFile;
 
   // all measurements id of this device
@@ -57,7 +55,6 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       String deviceID,
       int subTaskId) {
     this.seqFile = fastCompactionPerformer.getSeqFiles().get(seqFileIndex);
-    this.seqFileIndex = seqFileIndex;
     this.isLastFile = seqFileIndex == fastCompactionPerformer.getSeqFiles().size() - 1;
     this.allMeasurements = allMeasurements;
     this.pathsIndex = pathsIndex;
@@ -87,7 +84,6 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
       fastCrossCompactionWriter.startMeasurement(
           Collections.singletonList(
               fastCompactionPerformer.schemaMapCache.get(allMeasurements.get(index))),
-          false,
           subTaskId);
 
       // iterate seq chunk
@@ -112,14 +108,14 @@ public class FastCompactionPerformerSubTask implements Callable<Void> {
             fastCrossCompactionWriter.compactWithOverlapSeqChunk(chunk, unseqReader, subTaskId);
           } else {
             fastCrossCompactionWriter.compactWithNonOverlapSeqChunk(
-                chunk, isChunkModified, curChunkMetadata, seqFileIndex, subTaskId);
+                chunk, isChunkModified, curChunkMetadata, subTaskId);
           }
         }
       }
       // write remaining unseq data points
       fastCrossCompactionWriter.writeRemainingUnseqPoints(
           unseqReader, isLastFile ? Long.MAX_VALUE : seqFile.getEndTime(deviceID), subTaskId);
-      fastCrossCompactionWriter.endMeasurment(seqFileIndex, subTaskId);
+      fastCrossCompactionWriter.endMeasurment(subTaskId);
     }
     return null;
   }

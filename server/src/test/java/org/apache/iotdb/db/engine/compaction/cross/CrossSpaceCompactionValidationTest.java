@@ -1482,7 +1482,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
    * 5 Seq files: 0 ~ 1000, 1100 ~ 2100, 4200 ~ 5200, 5300 ~ 6300, 6400 ~ 7400<br>
    * 2 Unseq files: 1500 ~ 3000, 3100 ~ 4100<br>
    * [DeviceNum, SensorNum]:<br>
-   * seq files: [10,10], [5,5], [5,5], [5,10], [10,10], [10,10]<br>
+   * seq files: [10,10], [5,5], [5,5], [10,10], [10,10]<br>
    * unseq files: [10,10], [10,10]<br>
    * Selected seq file index: 2, 3, 4<br>
    * Selected unseq file index: 1, 2

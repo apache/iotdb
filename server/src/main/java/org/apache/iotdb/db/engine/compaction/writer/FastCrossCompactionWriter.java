@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
@@ -25,16 +26,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class FastCrossCompactionWriter implements AutoCloseable {
+  protected static final int subTaskNum =
+      IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
+
   List<TsFileIOWriter> targetFileWriters = new ArrayList<>();
 
   // Each sub task has its own chunk writer.
   // The index of the array corresponds to subTaskId.
-  protected IChunkWriter[] chunkWriters = new IChunkWriter[4];
+  protected IChunkWriter[] chunkWriters = new IChunkWriter[subTaskNum];
 
   private boolean isAlign;
 
   // whether each target file has device data or not
   private final boolean[] isDeviceExistedInTargetFiles;
+
+  // Each sub task has point count in current measurment, which is used to check size.
+  // The index of the array corresponds to subTaskId.
+  protected int[] measurementPointCountArray = new int[subTaskNum];
+
+  private int targetFileIndex;
+
+  String deviceID;
 
   public FastCrossCompactionWriter(List<TsFileResource> targetResources) throws IOException {
     for (int i = 0; i < targetResources.size(); i++) {
@@ -43,17 +55,19 @@ public class FastCrossCompactionWriter implements AutoCloseable {
     isDeviceExistedInTargetFiles = new boolean[targetResources.size()];
   }
 
-  public void startChunkGroup(int targetFileIndex, String deviceId) throws IOException {
+  public void startChunkGroup(int targetFileIndex, String deviceId, boolean isAlign)
+      throws IOException {
+    this.isAlign = isAlign;
+    this.deviceID = deviceId;
+    this.targetFileIndex = targetFileIndex;
     targetFileWriters.get(targetFileIndex).startChunkGroup(deviceId);
   }
 
-  public void endChunkGroup(int targetFileIndex) throws IOException {
+  public void endChunkGroup() throws IOException {
     targetFileWriters.get(targetFileIndex).endChunkGroup();
   }
 
-  public void startMeasurement(
-      List<IMeasurementSchema> measurementSchemaList, boolean isAlign, int subTaskId) {
-    this.isAlign = isAlign;
+  public void startMeasurement(List<IMeasurementSchema> measurementSchemaList, int subTaskId) {
     if (isAlign) {
       chunkWriters[subTaskId] = new AlignedChunkWriterImpl(measurementSchemaList);
     } else {
@@ -61,8 +75,9 @@ public class FastCrossCompactionWriter implements AutoCloseable {
     }
   }
 
-  public void endMeasurment(int targetFileIndex, int subTaskId) throws IOException {
-    flushChunkToFileWriter(targetFileWriters.get(targetFileIndex), subTaskId);
+  public void endMeasurment(int subTaskId) throws IOException {
+    CompactionWriterUtils.flushChunkToFileWriter(
+        targetFileWriters.get(targetFileIndex), chunkWriters[subTaskId]);
     chunkWriters[subTaskId] = null;
   }
 
@@ -76,20 +91,8 @@ public class FastCrossCompactionWriter implements AutoCloseable {
     return targetFileWriters;
   }
 
-  protected void flushChunkToFileWriter(TsFileIOWriter targetWriter, int subTaskId)
-      throws IOException {
-    // writeRateLimit(chunkWriters[subTaskId].estimateMaxSeriesMemSize());
-    synchronized (targetWriter) {
-      chunkWriters[subTaskId].writeToFileWriter(targetWriter);
-    }
-  }
-
   public void compactWithNonOverlapSeqChunk(
-      Chunk seqChunk,
-      boolean isChunkModified,
-      ChunkMetadata seqChunkMetadata,
-      int targetFileIndex,
-      int subTaskId)
+      Chunk seqChunk, boolean isChunkModified, ChunkMetadata seqChunkMetadata, int subTaskId)
       throws IOException, PageException {
     if (!isChunkModified) {
       // flush chunk to tsfileIOWriter directly
@@ -124,7 +127,11 @@ public class FastCrossCompactionWriter implements AutoCloseable {
                   batchData.currentTime(),
                   batchData.currentValue(),
                   isAlign,
-                  chunkWriters[subTaskId]);
+                  chunkWriters[subTaskId],
+                  ++measurementPointCountArray[subTaskId] % 5 == 0
+                      ? targetFileWriters.get(targetFileIndex)
+                      : null,
+                  true);
               batchData.next();
             }
             break;
@@ -157,7 +164,13 @@ public class FastCrossCompactionWriter implements AutoCloseable {
       while (unseqReader.hasNextTimeValuePair()
           && unseqReader.currentTimeValuePair().getTimestamp() < pageHeader.getStartTime()) {
         TimeValuePair timeValuePair = unseqReader.nextTimeValuePair();
-        CompactionWriterUtils.writeTVPair(timeValuePair, chunkWriters[subTaskId]);
+        CompactionWriterUtils.writeTVPair(
+            timeValuePair,
+            chunkWriters[subTaskId],
+            ++measurementPointCountArray[subTaskId] % 5 == 0
+                ? targetFileWriters.get(targetFileIndex)
+                : null,
+            true);
       }
 
       // 2. compact with this seq page, write point.time < seq page.endTime
@@ -176,12 +189,25 @@ public class FastCrossCompactionWriter implements AutoCloseable {
             if (unseqTimestamp == seqTimestamp) {
               hasOverWritenSeqPoint = true;
             }
-            CompactionWriterUtils.writeTVPair(timeValuePair, chunkWriters[subTaskId]);
+            CompactionWriterUtils.writeTVPair(
+                timeValuePair,
+                chunkWriters[subTaskId],
+                ++measurementPointCountArray[subTaskId] % 5 == 0
+                    ? targetFileWriters.get(targetFileIndex)
+                    : null,
+                true);
           }
           // write seq point
           if (!hasOverWritenSeqPoint) {
             CompactionWriterUtils.writeDataPoint(
-                seqTimestamp, batchData.currentValue(), isAlign, chunkWriters[subTaskId]);
+                seqTimestamp,
+                batchData.currentValue(),
+                isAlign,
+                chunkWriters[subTaskId],
+                ++measurementPointCountArray[subTaskId] % 5 == 0
+                    ? targetFileWriters.get(targetFileIndex)
+                    : null,
+                true);
           }
           batchData.next();
         }
@@ -197,7 +223,13 @@ public class FastCrossCompactionWriter implements AutoCloseable {
     while (unseqReader.hasNextTimeValuePair()
         && unseqReader.currentTimeValuePair().getTimestamp() <= timeLimit) {
       TimeValuePair timeValuePair = unseqReader.nextTimeValuePair();
-      CompactionWriterUtils.writeTVPair(timeValuePair, chunkWriters[subTaskId]);
+      CompactionWriterUtils.writeTVPair(
+          timeValuePair,
+          chunkWriters[subTaskId],
+          ++measurementPointCountArray[subTaskId] % 5 == 0
+              ? targetFileWriters.get(targetFileIndex)
+              : null,
+          true);
     }
   }
 
@@ -215,8 +247,15 @@ public class FastCrossCompactionWriter implements AutoCloseable {
               + chunkDataBuffer.remaining());
     }
     chunkDataBuffer.get(compressedPageBody);
-    ((ChunkWriterImpl) chunkWriters[subTaskId])
-        .writePageHeaderAndDataIntoBuff(ByteBuffer.wrap(compressedPageBody), pageHeader);
+    ChunkWriterImpl chunkWriter = (ChunkWriterImpl) chunkWriters[subTaskId];
+    // seal current page
+    chunkWriter.sealCurrentPage();
+    // flush new page to chunk writer directly
+    chunkWriter.writePageHeaderAndDataIntoBuff(ByteBuffer.wrap(compressedPageBody), pageHeader);
+
+    // check chunk size and may open a new chunk
+    CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
+        targetFileWriters.get(targetFileIndex), chunkWriter, true);
   }
 
   /**

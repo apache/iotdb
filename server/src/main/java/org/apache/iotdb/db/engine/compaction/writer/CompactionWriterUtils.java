@@ -5,6 +5,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -19,8 +20,17 @@ public class CompactionWriterUtils {
   private static final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
+  private static final boolean enableMetrics =
+      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
+
   public static void writeDataPoint(
-      Long timestamp, Object value, boolean isAlign, IChunkWriter iChunkWriter) {
+      Long timestamp,
+      Object value,
+      boolean isAlign,
+      IChunkWriter iChunkWriter,
+      TsFileIOWriter tsFileIOWriter,
+      boolean isCrossSpace)
+      throws IOException {
     if (!isAlign) {
       ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
       switch (chunkWriter.getDataType()) {
@@ -78,9 +88,19 @@ public class CompactionWriterUtils {
       }
       chunkWriter.write(timestamp);
     }
+
+    // check chunk size and may open a new chunk
+    if (tsFileIOWriter != null) {
+      checkChunkSizeAndMayOpenANewChunk(tsFileIOWriter, iChunkWriter, isCrossSpace);
+    }
   }
 
-  public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter iChunkWriter) {
+  public static void writeTVPair(
+      TimeValuePair timeValuePair,
+      IChunkWriter iChunkWriter,
+      TsFileIOWriter tsFileIOWriter,
+      boolean isCrossSpace)
+      throws IOException {
     ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
     switch (chunkWriter.getDataType()) {
       case TEXT:
@@ -104,6 +124,11 @@ public class CompactionWriterUtils {
       default:
         throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
     }
+
+    // check chunk size and may open a new chunk
+    if (tsFileIOWriter != null) {
+      checkChunkSizeAndMayOpenANewChunk(tsFileIOWriter, iChunkWriter, isCrossSpace);
+    }
   }
 
   public static void flushChunkToFileWriter(TsFileIOWriter targetWriter, IChunkWriter iChunkWriter)
@@ -124,12 +149,14 @@ public class CompactionWriterUtils {
       throws IOException {
     if (checkChunkSize(iChunkWriter)) {
       flushChunkToFileWriter(fileWriter, iChunkWriter);
-      boolean isAlign = iChunkWriter instanceof AlignedChunkWriterImpl;
-      CompactionMetricsRecorder.recordWriteInfo(
-          isCrossSpace ? CompactionType.CROSS_COMPACTION : CompactionType.INNER_UNSEQ_COMPACTION,
-          ProcessChunkType.DESERIALIZE_CHUNK,
-          isAlign,
-          iChunkWriter.estimateMaxSeriesMemSize());
+      if (enableMetrics) {
+        boolean isAlign = iChunkWriter instanceof AlignedChunkWriterImpl;
+        CompactionMetricsRecorder.recordWriteInfo(
+            isCrossSpace ? CompactionType.CROSS_COMPACTION : CompactionType.INNER_UNSEQ_COMPACTION,
+            ProcessChunkType.DESERIALIZE_CHUNK,
+            isAlign,
+            iChunkWriter.estimateMaxSeriesMemSize());
+      }
     }
   }
 

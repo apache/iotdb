@@ -102,14 +102,16 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp, subTaskId);
-    CompactionWriterUtils.writeDataPoint(timestamp, value, isAlign, chunkWriters[subTaskId]);
-    measurementPointCountArray[subTaskId] += 1;
-    if (measurementPointCountArray[subTaskId] % 10 == 0) {
-      CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
-          fileWriterList.get(seqFileIndexArray[subTaskId]), chunkWriters[subTaskId], true);
-    }
-    isDeviceExistedInTargetFiles[seqFileIndexArray[subTaskId]] = true;
-    isEmptyFile[seqFileIndexArray[subTaskId]] = false;
+    int seqFileIndex = seqFileIndexArray[subTaskId];
+    CompactionWriterUtils.writeDataPoint(
+        timestamp,
+        value,
+        isAlign,
+        chunkWriters[subTaskId],
+        ++measurementPointCountArray[subTaskId] % 50 == 0 ? fileWriterList.get(seqFileIndex) : null,
+        true);
+    isDeviceExistedInTargetFiles[seqFileIndex] = true;
+    isEmptyFile[seqFileIndex] = false;
   }
 
   @Override

@@ -47,7 +47,8 @@ public class FastCompactionPerformerTest extends AbstractCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(512);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(10);
   }
 
   @After

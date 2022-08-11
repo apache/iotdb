@@ -57,12 +57,13 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void write(long timestamp, Object value, int subTaskId) throws IOException {
-    CompactionWriterUtils.writeDataPoint(timestamp, value, isAlign, chunkWriters[subTaskId]);
-    measurementPointCountArray[subTaskId] += 1;
-    if (measurementPointCountArray[subTaskId] % 10 == 0) {
-      CompactionWriterUtils.checkChunkSizeAndMayOpenANewChunk(
-          fileWriter, chunkWriters[subTaskId], false);
-    }
+    CompactionWriterUtils.writeDataPoint(
+        timestamp,
+        value,
+        isAlign,
+        chunkWriters[subTaskId],
+        ++measurementPointCountArray[subTaskId] % 50 == 0 ? fileWriter : null,
+        false);
     isEmptyFile = false;
   }
 

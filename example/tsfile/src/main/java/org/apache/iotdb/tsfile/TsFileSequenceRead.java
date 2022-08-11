@@ -46,7 +46,7 @@ import java.util.Map;
 /** This tool is used to read TsFile sequentially, including nonAligned or aligned timeseries. */
 public class TsFileSequenceRead {
   // if you wanna print detailed datas in pages, then turn it true.
-  private static boolean printDetail = false;
+  private static boolean printDetail = true;
 
   @SuppressWarnings({
     "squid:S3776",
@@ -54,7 +54,7 @@ public class TsFileSequenceRead {
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
     String filename =
-        "/Users/bensonchou/PersonalFiles/IOTDB/projects/choubenson/iotdb/server/target/sequence/root.compactionTest/0/0/4-4-0-1.tsfile";
+        "/Users/bensonchou/PersonalFiles/IOTDB/projects/choubenson/iotdb/server/target/data/sequence/root.compactionTest/0/0/1660201900196-0-0-1.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -157,8 +157,7 @@ public class TsFileSequenceRead {
                 } else {
                   System.out.println("\t\tpoints in the page: " + batchData.length());
                 }
-                if (deviceID.equals("root.compactionTest.device0")
-                    && header.getMeasurementID().equals("sensor3")) {
+                if (printDetail) {
                   while (batchData.hasCurrent()) {
                     System.out.println(
                         "\t\t\ttime, value: "
