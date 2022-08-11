@@ -193,18 +193,11 @@ public class MetricServiceTest {
     metricService.histogram(10, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.histogram(20, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.histogram(30, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
-    try {
-      Thread.sleep(1000);
-    } catch (Exception e) {
-      // do nothing
-    }
     metricService.histogram(40, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.histogram(50, "histogram1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, histogram1.count());
     assertEquals(5, histogram1.takeSnapshot().size());
     assertEquals(10, histogram1.takeSnapshot().getMin());
-    assertEquals(30.0, histogram1.takeSnapshot().getMedian(), 1e-5);
-    assertEquals(30.0, histogram1.takeSnapshot().getMean(), 1e-5);
     assertEquals(50, histogram1.takeSnapshot().getMax());
     Histogram histogram2 =
         metricService.getOrCreateHistogram("histogram1", MetricLevel.IMPORTANT, "tag", "value");
@@ -236,19 +229,10 @@ public class MetricServiceTest {
     metricService.timer(2, TimeUnit.MINUTES, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.timer(4, TimeUnit.MINUTES, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.timer(6, TimeUnit.MINUTES, "timer1", MetricLevel.IMPORTANT, "tag", "value");
-    try {
-      Thread.sleep(1000);
-    } catch (Exception e) {
-      // do nothing
-    }
     metricService.timer(8, TimeUnit.MINUTES, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     metricService.timer(10, TimeUnit.MINUTES, "timer1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(5, timer1.getImmutableRate().getCount());
     assertEquals(5, timer1.takeSnapshot().size());
-    assertEquals(120000000000L, timer1.takeSnapshot().getMin());
-    assertEquals(360000000000L, timer1.takeSnapshot().getMedian(), 1e-5);
-    assertEquals(360000000000L, timer1.takeSnapshot().getMean(), 1e-5);
-    assertEquals(600000000000L, timer1.takeSnapshot().getMax());
     Timer timer2 = metricService.getOrCreateTimer("timer1", MetricLevel.IMPORTANT, "tag", "value");
     assertEquals(timer1, timer2);
     timer2 = metricService.getOrCreateTimer("timer2", MetricLevel.IMPORTANT);

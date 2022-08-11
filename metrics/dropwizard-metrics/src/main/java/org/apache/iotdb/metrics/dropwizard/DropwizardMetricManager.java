@@ -36,7 +36,6 @@ import org.apache.iotdb.metrics.utils.MetricType;
 
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.UniformReservoir;
 
 import java.util.function.ToLongFunction;
 
@@ -46,11 +45,6 @@ import java.util.function.ToLongFunction;
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class DropwizardMetricManager extends AbstractMetricManager {
   com.codahale.metrics.MetricRegistry metricRegistry;
-
-  MetricRegistry.MetricSupplier<com.codahale.metrics.Timer> timerMetricSupplier =
-      () -> new com.codahale.metrics.Timer(new UniformReservoir());
-  MetricRegistry.MetricSupplier<com.codahale.metrics.Histogram> histogramMetricSupplier =
-      () -> new com.codahale.metrics.Histogram(new UniformReservoir());
 
   public DropwizardMetricManager() {
     metricRegistry = new MetricRegistry();
@@ -87,14 +81,13 @@ public class DropwizardMetricManager extends AbstractMetricManager {
   @Override
   public Histogram createHistogram(MetricInfo metricInfo) {
     DropwizardMetricName name = new DropwizardMetricName(metricInfo);
-    return new DropwizardHistogram(
-        metricRegistry.histogram(name.toFlatString(), histogramMetricSupplier));
+    return new DropwizardHistogram(metricRegistry.histogram(name.toFlatString()));
   }
 
   @Override
   public Timer createTimer(MetricInfo metricInfo) {
     DropwizardMetricName name = new DropwizardMetricName(metricInfo);
-    return new DropwizardTimer(metricRegistry.timer(name.toFlatString(), timerMetricSupplier));
+    return new DropwizardTimer(metricRegistry.timer(name.toFlatString()));
   }
 
   @Override
