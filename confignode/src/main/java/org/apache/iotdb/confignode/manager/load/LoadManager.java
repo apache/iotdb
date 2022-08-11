@@ -249,6 +249,7 @@ public class LoadManager {
                 TimeUnit.MILLISECONDS);
         LOGGER.info("LoadBalancing service is started successfully.");
       }
+      loadManagerMetrics.addMetrics();
     }
   }
 
@@ -322,9 +323,6 @@ public class LoadManager {
 
     if (isNeedBroadcast) {
       broadcastLatestRegionRouteMap();
-    }
-    if (nodeCacheMap.size() == getNodeManager().getRegisteredNodeCount()) {
-      loadManagerMetrics.addMetrics();
     }
   }
 

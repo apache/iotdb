@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.confignode.manager.load;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
@@ -21,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LoadManagerMetrics {
 
   private final IManager configManager;
+  Map<Integer, Integer> idToCountMap = new ConcurrentHashMap<>();
 
   public LoadManagerMetrics(IManager configManager) {
     this.configManager = configManager;
@@ -205,13 +224,14 @@ public class LoadManagerMetrics {
                     NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
 
                 MetricsService.getInstance()
-                    .getMetricManager()
-                    .getOrCreateGauge(
-                        Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
-                        MetricLevel.IMPORTANT,
-                        Tag.NAME.toString(),
-                        name)
-                    .set(idToCountMap.get(dataNodeId));
+                        .getMetricManager()
+                        .getOrCreateAutoGauge(
+                                Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
+                                MetricLevel.IMPORTANT,
+                                idToCountMap,
+                                o -> get(dataNodeId),
+                                Tag.NAME.toString(),
+                                name);
               }
             });
   }
