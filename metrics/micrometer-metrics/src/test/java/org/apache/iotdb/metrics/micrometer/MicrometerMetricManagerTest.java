@@ -25,7 +25,7 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.MetricFrameType;
+import org.apache.iotdb.metrics.utils.MetricFrameworkType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -46,7 +46,7 @@ public class MicrometerMetricManagerTest {
   @BeforeClass
   public static void init() {
     metricConfig.setEnableMetric(true);
-    metricConfig.setMonitorType(MetricFrameType.MICROMETER);
+    metricConfig.setMetricFrameworkType(MetricFrameworkType.MICROMETER);
     metricService.startService();
     metricService.startAllReporter();
     metricManager = (MicrometerMetricManager) metricService.getMetricManager();

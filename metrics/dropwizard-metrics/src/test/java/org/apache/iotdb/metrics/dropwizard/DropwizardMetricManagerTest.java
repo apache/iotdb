@@ -28,9 +28,8 @@ import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Histogram;
 import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.MetricFrameType;
+import org.apache.iotdb.metrics.utils.MetricFrameworkType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -38,9 +37,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
@@ -54,21 +51,11 @@ public class DropwizardMetricManagerTest {
   @BeforeClass
   public static void init() {
     metricConfig.setEnableMetric(true);
-    metricConfig.setMonitorType(MetricFrameType.DROPWIZARD);
+    metricConfig.setMetricFrameworkType(MetricFrameworkType.DROPWIZARD);
     metricConfig.setMetricLevel(MetricLevel.IMPORTANT);
     metricConfig.setPredefinedMetrics(new ArrayList<>());
     metricService.startService();
     metricManager = (DropwizardMetricManager) metricService.getMetricManager();
-  }
-
-  @Test
-  public void getOrCreateCounter() {
-    Counter counter1 =
-        metricManager.getOrCreateCounter("counter_test", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotNull(counter1);
-    Counter counter2 =
-        metricManager.getOrCreateCounter("counter_test", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(counter1, counter2);
   }
 
   private void getOrCreateDifferentMetricsWithSameName() {
@@ -80,172 +67,6 @@ public class DropwizardMetricManagerTest {
   @Test
   public void getOrCreateDifferentMetricsWithSameNameTest() {
     assertThrows(IllegalArgumentException.class, this::getOrCreateDifferentMetricsWithSameName);
-  }
-
-  @Test
-  public void getOrCreateGauge() {
-    Gauge gauge1 =
-        metricManager.getOrCreateGauge("gauge_test", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotNull(gauge1);
-    Gauge gauge2 =
-        metricManager.getOrCreateGauge("gauge_test", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(gauge1, gauge2);
-  }
-
-  @Test
-  public void testAutoGauge() {
-    List<Integer> list = new ArrayList<>();
-    Gauge autoGauge =
-        metricManager.getOrCreateAutoGauge(
-            "autoGaugeMetric", MetricLevel.IMPORTANT, list, List::size, "tagk", "tagv");
-    assertEquals(0L, autoGauge.value());
-    list.add(1);
-    assertEquals(1L, autoGauge.value());
-    list.clear();
-    assertEquals(0L, autoGauge.value());
-    list.add(1);
-    assertEquals(1L, autoGauge.value());
-    list = null;
-    System.gc();
-    assertEquals(0L, autoGauge.value());
-  }
-
-  @Test
-  public void getOrCreateRate() {
-    Rate rate1 = metricManager.getOrCreateRate("rate_test", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotNull(rate1);
-    Rate rate2 = metricManager.getOrCreateRate("rate_test", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(rate1, rate2);
-  }
-
-  @Test
-  public void getOrCreateHistogram() {
-    Histogram histogram1 =
-        metricManager.getOrCreateHistogram("histogram_test", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotNull(histogram1);
-    Histogram histogram2 =
-        metricManager.getOrCreateHistogram("histogram_test", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(histogram1, histogram2);
-  }
-
-  @Test
-  public void getOrCreateTimer() {
-    Timer timer1 =
-        metricManager.getOrCreateTimer("timer_test", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotNull(timer1);
-    Timer timer2 =
-        metricManager.getOrCreateTimer("timer_test", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(timer1, timer2);
-  }
-
-  @Test
-  public void count() {
-    Counter counter =
-        metricManager.getOrCreateCounter("count_inc", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotNull(counter);
-    metricManager.count(10, "count_inc", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(counter.count(), 10);
-    metricManager.count(10L, "count_inc", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(counter.count(), 20);
-  }
-
-  @Test
-  public void gauge() {
-    Gauge gauge1 =
-        metricManager.getOrCreateGauge("gauge_set1", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotNull(gauge1);
-    metricManager.gauge(10, "gauge_set1", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(10, gauge1.value());
-    Gauge gauge2 =
-        metricManager.getOrCreateGauge("gauge_set2", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.gauge(20L, "gauge_set2", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(20, gauge2.value());
-  }
-
-  @Test
-  public void rate() {
-    Rate rate = metricManager.getOrCreateRate("rate_mark", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotNull(rate);
-    metricManager.rate(10, "rate_mark", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(10, rate.getCount());
-    metricManager.rate(20L, "rate_mark", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(30, rate.getCount());
-  }
-
-  @Test
-  public void histogram() {
-    Histogram histogram =
-        metricManager.getOrCreateHistogram("history_count", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotNull(histogram);
-    metricManager.histogram(10, "history_count", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.histogram(20L, "history_count", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.histogram(30, "history_count", MetricLevel.IMPORTANT, "tag1", "tag2");
-    try {
-      Thread.sleep(1000);
-    } catch (Exception e) {
-      // do nothing
-    }
-    metricManager.histogram(40L, "history_count", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.histogram(50, "history_count", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(5, histogram.count());
-    assertEquals(5, histogram.takeSnapshot().size());
-    assertEquals(10, histogram.takeSnapshot().getMin());
-    assertEquals(30.0, histogram.takeSnapshot().getMedian(), 1e-5);
-    assertEquals(30.0, histogram.takeSnapshot().getMean(), 1e-5);
-    assertEquals(50, histogram.takeSnapshot().getMax());
-  }
-
-  @Test
-  public void timer() {
-    Timer timer =
-        metricManager.getOrCreateTimer("timer_mark", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.timer(2L, TimeUnit.MINUTES, "timer_mark", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.timer(
-        4L, TimeUnit.MINUTES, "timer_" + "mark", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.timer(6L, TimeUnit.MINUTES, "timer_mark", MetricLevel.IMPORTANT, "tag1", "tag2");
-    try {
-      Thread.sleep(1000);
-    } catch (Exception e) {
-      // do nothing
-    }
-    metricManager.timer(8L, TimeUnit.MINUTES, "timer_mark", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.timer(10L, TimeUnit.MINUTES, "timer_mark", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertEquals(5, timer.getImmutableRate().getCount());
-    assertEquals(5, timer.takeSnapshot().size());
-    assertEquals(120000000000L, timer.takeSnapshot().getMin());
-    assertEquals(360000000000L, timer.takeSnapshot().getMedian(), 1e-5);
-    assertEquals(360000000000L, timer.takeSnapshot().getMean(), 1e-5);
-    assertEquals(600000000000L, timer.takeSnapshot().getMax());
-  }
-
-  @Test
-  public void removeCounter() {
-    Counter counter1 =
-        metricManager.getOrCreateCounter("counter_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.removeCounter("counter_remove", "tag1", "tag2");
-    Counter counter2 =
-        metricManager.getOrCreateCounter("counter_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotEquals(counter1, counter2);
-  }
-
-  @Test
-  public void removeGauge() {
-    Gauge gauge1 =
-        metricManager.getOrCreateGauge("gauge_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.removeGauge("gauge_remove", "tag1", "tag2");
-    Gauge gauge2 =
-        metricManager.getOrCreateGauge("gauge_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotEquals(gauge1, gauge2);
-  }
-
-  @Test
-  public void removeRate() {
-    Rate rate1 =
-        metricManager.getOrCreateRate("rate_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
-    metricManager.removeRate("rate_remove", "tag1", "tag2");
-    Rate rate2 =
-        metricManager.getOrCreateRate("rate_remove", MetricLevel.IMPORTANT, "tag1", "tag2");
-    assertNotEquals(rate1, rate2);
   }
 
   @Test

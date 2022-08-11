@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.utils.MetricFrameType;
+import org.apache.iotdb.metrics.utils.MetricFrameworkType;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -36,7 +36,7 @@ public class MetricConfig {
   private Boolean enablePerformanceStat = false;
 
   /** The type of the implementation of metric service */
-  private MetricFrameType metricFrameworkType = MetricFrameType.MICROMETER;
+  private MetricFrameworkType metricFrameworkType = MetricFrameworkType.MICROMETER;
 
   /** The list of reporters provide data for external system */
   private List<ReporterType> metricReporterList =
@@ -157,7 +157,7 @@ public class MetricConfig {
 
   public void copy(MetricConfig newMetricConfig) {
     enableMetric = newMetricConfig.getEnableMetric();
-    metricFrameworkType = newMetricConfig.getMonitorType();
+    metricFrameworkType = newMetricConfig.getMetricFrameworkType();
     metricReporterList = newMetricConfig.getMetricReporterList();
     metricLevel = newMetricConfig.getMetricLevel();
     predefinedMetrics = newMetricConfig.getPredefinedMetrics();
@@ -186,11 +186,11 @@ public class MetricConfig {
     this.enablePerformanceStat = enablePerformanceStat;
   }
 
-  public MetricFrameType getMonitorType() {
+  public MetricFrameworkType getMetricFrameworkType() {
     return metricFrameworkType;
   }
 
-  public void setMonitorType(MetricFrameType metricFrameworkType) {
+  public void setMetricFrameworkType(MetricFrameworkType metricFrameworkType) {
     this.metricFrameworkType = metricFrameworkType;
   }
 
@@ -249,7 +249,7 @@ public class MetricConfig {
     }
     MetricConfig anotherMetricConfig = (MetricConfig) obj;
     return enableMetric.equals(anotherMetricConfig.getEnableMetric())
-        && metricFrameworkType.equals(anotherMetricConfig.getMonitorType())
+        && metricFrameworkType.equals(anotherMetricConfig.getMetricFrameworkType())
         && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
         && metricLevel.equals(anotherMetricConfig.getMetricLevel())
         && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
