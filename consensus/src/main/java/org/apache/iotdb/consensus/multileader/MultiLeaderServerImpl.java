@@ -236,6 +236,6 @@ public class MultiLeaderServerImpl {
   public boolean needToThrottleUp() {
     return reader.getTotalSize()
         < config.getReplication().getThrottleDownThreshold()
-            - config.getReplication().getThrottleWalSize();
+            - config.getReplication().getThrottleUpThreshold();
   }
 }

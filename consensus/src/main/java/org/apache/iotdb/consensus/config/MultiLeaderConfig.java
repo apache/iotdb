@@ -203,7 +203,7 @@ public class MultiLeaderConfig {
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
     private final long throttleDownThreshold;
-    private final long throttleWalSize;
+    private final long throttleUpThreshold;
     private final long throttleTimeOutMs;
 
     private Replication(
@@ -214,7 +214,7 @@ public class MultiLeaderConfig {
         long basicRetryWaitTimeMs,
         long maxRetryWaitTimeMs,
         long throttleDownThreshold,
-        long throttleWalSize,
+        long throttleUpThreshold,
         long throttleTimeOutMs) {
       this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
       this.maxRequestPerBatch = maxRequestPerBatch;
@@ -223,7 +223,7 @@ public class MultiLeaderConfig {
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
       this.throttleDownThreshold = throttleDownThreshold;
-      this.throttleWalSize = throttleWalSize;
+      this.throttleUpThreshold = throttleUpThreshold;
       this.throttleTimeOutMs = throttleTimeOutMs;
     }
 
@@ -255,8 +255,8 @@ public class MultiLeaderConfig {
       return throttleDownThreshold;
     }
 
-    public long getThrottleWalSize() {
-      return throttleWalSize;
+    public long getThrottleUpThreshold() {
+      return throttleUpThreshold;
     }
 
     public long getThrottleTimeOutMs() {
