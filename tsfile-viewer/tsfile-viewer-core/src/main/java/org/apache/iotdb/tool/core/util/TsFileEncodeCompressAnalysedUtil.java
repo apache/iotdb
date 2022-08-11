@@ -17,9 +17,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class TsFileEncodeCompressAnalysedUtil {
-  /**
-   * support compression type array
-   */
+  /** support compression type array */
   private static final CompressionType[] compressTypes =
       new CompressionType[] {
         CompressionType.SNAPPY,
@@ -28,28 +26,21 @@ public class TsFileEncodeCompressAnalysedUtil {
         CompressionType.UNCOMPRESSED
       };
 
-  /**
-   * compressed rate weight
-   */
+  /** compressed rate weight */
   private static final double compressedWeight = 2.5;
 
-  /**
-   * compressed sequence weight
-   */
+  /** compressed sequence weight */
   private static final double compressedSequenceWeight = 2.5;
 
-  /**
-   * compressed cost weight
-   */
+  /** compressed cost weight */
   private static final double compressedCostWeight = 5;
 
-  /**
-   * score rate
-   */
+  /** score rate */
   private static final double zeroRate = 0.8;
 
   /**
    * generate encode and compress analysed with batchData
+   *
    * @param batchData batch data
    * @return EncodeCompressAnalysedModel list
    * @throws IOException throw io exception
@@ -72,6 +63,7 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * generate encode and compress analysed with tsPrimitiveType array
+   *
    * @param tsPrimitiveTypes tsPrimitiveType array
    * @return EncodeCompressAnalysedModel list
    * @throws IOException throw io exception
@@ -93,7 +85,8 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * generate encode and compress analysed base method
-   * @param encodeModel  encode model
+   *
+   * @param encodeModel encode model
    * @return EncodeCompressAnalysedModel list
    * @throws IOException throw io exception
    */
@@ -126,6 +119,7 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * encode tsPrimitiveType data
+   *
    * @param tsPrimitiveType tsPrimitiveType
    * @param encoders encode list
    * @param publicBAOS publicBAOS list
@@ -169,6 +163,7 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * generate dsTypeEncodeModel
+   *
    * @param dataType data type
    * @return dsTypeEncodeModel
    */
@@ -192,6 +187,7 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * generate int encode model
+   *
    * @param typeName int type name
    * @return int dsTypeEncodeModel
    */
@@ -215,6 +211,7 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * generate long encode model
+   *
    * @param typeName long type name
    * @return long type dsTypeEncodeModel
    */
@@ -239,6 +236,7 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * generate float encode model
+   *
    * @param typeName float type name
    * @return dsTypeEncodeModel
    */
@@ -256,6 +254,7 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * generate double encode model
+   *
    * @param typeName double type name
    * @return dsTypeEncodeModel
    */
@@ -275,6 +274,7 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * generate text encode model
+   *
    * @param typeName text type name
    * @return dsTypeEncodeModel
    */
@@ -291,7 +291,6 @@ public class TsFileEncodeCompressAnalysedUtil {
   }
 
   /**
-   *
    * @param typeName type name
    * @param encoders encode list
    * @param encodeNameList encodeName list
@@ -314,12 +313,13 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * 组装EncodeCompressAnalysedModel模型
+   *
    * @param compressionType compress type
-   * @param encodeName  encode name
-   * @param originSize  origin size
-   * @param typeName  type name
-   * @param baos  baos
-   * @return  encode compress analysed model
+   * @param encodeName encode name
+   * @param originSize origin size
+   * @param typeName type name
+   * @param baos baos
+   * @return encode compress analysed model
    * @throws IOException throw io exception
    */
   private static EncodeCompressAnalysedModel generateAnalysedModel(
@@ -356,19 +356,28 @@ public class TsFileEncodeCompressAnalysedUtil {
 
   /**
    * sorted analysed model
+   *
    * @param map encodeCompressAnalysedModel map
    * @return EncodeCompressAnalysedModel list
    */
-  public static List<EncodeCompressAnalysedModel> sortedAnalysedModel(Map<String,EncodeCompressAnalysedModel> map) {
-    List<EncodeCompressAnalysedModel> sortedCostModels = map.values().stream().sorted(Comparator.comparing(EncodeCompressAnalysedModel::getCompressedCost)).collect(Collectors.toList());
-    List<EncodeCompressAnalysedModel> sortedCompressedModels = map.values().stream().sorted(Comparator.comparing(EncodeCompressAnalysedModel::getCompressedSize)).collect(Collectors.toList());
+  public static List<EncodeCompressAnalysedModel> sortedAnalysedModel(
+      Map<String, EncodeCompressAnalysedModel> map) {
+    List<EncodeCompressAnalysedModel> sortedCostModels =
+        map.values().stream()
+            .sorted(Comparator.comparing(EncodeCompressAnalysedModel::getCompressedCost))
+            .collect(Collectors.toList());
+    List<EncodeCompressAnalysedModel> sortedCompressedModels =
+        map.values().stream()
+            .sorted(Comparator.comparing(EncodeCompressAnalysedModel::getCompressedSize))
+            .collect(Collectors.toList());
     Map<String, EncodeCompressAnalysedModel> scoresMap = new HashMap<>();
     // 计算压缩得分
-    for (int i = 0; i < sortedCompressedModels.size(); i ++) {
+    for (int i = 0; i < sortedCompressedModels.size(); i++) {
       EncodeCompressAnalysedModel model = sortedCompressedModels.get(i);
-      double compressedScores = compressedWeight * (1 - (double)model.getCompressedSize()/model.getOriginSize());
+      double compressedScores =
+          compressedWeight * (1 - (double) model.getCompressedSize() / model.getOriginSize());
       double sequenceScores = 0;
-      double rate = (double)i/ sortedCostModels.size();
+      double rate = (double) i / sortedCostModels.size();
       if (rate < zeroRate) {
         sequenceScores = compressedSequenceWeight * (1 - rate);
       }
@@ -377,16 +386,18 @@ public class TsFileEncodeCompressAnalysedUtil {
       scoresMap.put(key, model);
     }
     // 计算耗时得分
-    for (int i = 0 ; i < sortedCostModels.size(); i++) {
+    for (int i = 0; i < sortedCostModels.size(); i++) {
       EncodeCompressAnalysedModel model = sortedCostModels.get(i);
       double sequenceScores = 0;
-      double rate = (double)i/ sortedCostModels.size();
+      double rate = (double) i / sortedCostModels.size();
       if (rate < zeroRate) {
         sequenceScores = compressedCostWeight * (1 - rate);
       }
       String key = model.getCompressName() + "-" + model.getEncodeName();
       scoresMap.get(key).setScore(scoresMap.get(key).getScore() + sequenceScores);
     }
-    return scoresMap.values().stream().sorted(Comparator.comparing(EncodeCompressAnalysedModel::getScore).reversed()).collect(Collectors.toList());
+    return scoresMap.values().stream()
+        .sorted(Comparator.comparing(EncodeCompressAnalysedModel::getScore).reversed())
+        .collect(Collectors.toList());
   }
 }
