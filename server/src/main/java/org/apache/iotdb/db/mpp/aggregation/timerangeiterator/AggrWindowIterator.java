@@ -176,4 +176,9 @@ public class AggrWindowIterator implements ITimeRangeIterator {
   public long currentOutputTime() {
     return leftCRightO ? curTimeRange.getMin() : curTimeRange.getMax();
   }
+
+  @Override
+  public int getTotalTimeRangeNum() {
+    return 0;
+  }
 }

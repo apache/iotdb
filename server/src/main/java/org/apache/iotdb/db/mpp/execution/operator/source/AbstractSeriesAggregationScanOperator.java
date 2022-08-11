@@ -70,6 +70,7 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
   protected boolean finished = false;
 
+  private final long maxRetainedSize;
   private final long maxReturnSize;
 
   public AbstractSeriesAggregationScanOperator(
@@ -96,9 +97,9 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
     }
     this.resultTsBlockBuilder = new TsBlockBuilder(dataTypes);
 
-    this.maxReturnSize =
-        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
-            + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    this.maxRetainedSize =
+        (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
+    this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
@@ -118,12 +119,17 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
   @Override
   public long calculateMaxPeekMemory() {
-    return maxReturnSize;
+    return maxRetainedSize + maxReturnSize;
   }
 
   @Override
   public long calculateMaxReturnSize() {
     return maxReturnSize;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return maxRetainedSize;
   }
 
   @Override
