@@ -337,15 +337,6 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
-// Maintenance Tools
-struct TMergeReq {
-  1: optional i32 dataNodeId
-}
-
-struct TClearCacheReq {
-   1: optional i32 dataNodeId
-}
-
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -574,11 +565,11 @@ service IConfigNodeRPCService {
   // Maintenance Tools TODO: @RYH61 add interface annotation
   // ======================================================
 
-  common.TSStatus merge(TMergeReq req)
+  common.TSStatus merge()
 
   common.TSStatus flush(common.TFlushReq req)
 
-  common.TSStatus clearCache(TClearCacheReq req)
+  common.TSStatus clearCache()
 
   // ======================================================
   // Cluster Tools

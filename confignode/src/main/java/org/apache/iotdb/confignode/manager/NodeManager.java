@@ -40,11 +40,9 @@ import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
-import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
-import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -60,7 +58,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 /** NodeManager manages cluster node addition and removal requests */
 public class NodeManager {
@@ -371,15 +368,9 @@ public class NodeManager {
                 + ".");
   }
 
-  public List<TSStatus> merge(TMergeReq req) {
+  public List<TSStatus> merge() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    if (req.dataNodeId != -1) {
-      dataNodeLocationMap =
-          dataNodeLocationMap.entrySet().stream()
-              .filter((e) -> req.dataNodeId == e.getKey())
-              .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
-    }
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
@@ -391,12 +382,6 @@ public class NodeManager {
   public List<TSStatus> flush(TFlushReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    if (req.dataNodeId != -1) {
-      dataNodeLocationMap =
-          dataNodeLocationMap.entrySet().stream()
-              .filter((e) -> req.dataNodeId == e.getKey())
-              .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
-    }
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
@@ -405,15 +390,9 @@ public class NodeManager {
     return dataNodeResponseStatus;
   }
 
-  public List<TSStatus> clearCache(TClearCacheReq req) {
+  public List<TSStatus> clearCache() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
         configManager.getNodeManager().getRegisteredDataNodeLocations();
-    if (req.dataNodeId != -1) {
-      dataNodeLocationMap =
-          dataNodeLocationMap.entrySet().stream()
-              .filter((e) -> req.dataNodeId == e.getKey())
-              .collect(Collectors.toMap((e) -> e.getKey(), (e) -> e.getValue()));
-    }
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
