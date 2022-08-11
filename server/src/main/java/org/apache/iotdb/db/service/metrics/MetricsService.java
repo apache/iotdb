@@ -100,6 +100,8 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         return;
     }
     metricSet.bindTo(metricManager);
+    metricSet.startAsyncCollectedMetrics();
+    metricSets.add(metricSet);
   }
 
   @Override

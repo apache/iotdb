@@ -142,7 +142,6 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -157,11 +156,7 @@ import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.sync.externalpipe.ExtPipePluginManager;
-import org.apache.iotdb.db.sync.externalpipe.ExternalPipeStatus;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
-import org.apache.iotdb.db.sync.sender.pipe.ExternalPipeSink;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.service.SenderService;
 import org.apache.iotdb.db.tools.TsFileSplitByPartitionTool;
@@ -1349,55 +1344,7 @@ public class PlanExecutor implements IPlanExecutor {
                 TSDataType.TEXT,
                 TSDataType.TEXT,
                 TSDataType.TEXT));
-    boolean showAll = "".equals(plan.getPipeName());
-    for (Pipe pipe : SenderService.getInstance().getAllPipes()) {
-      if (showAll || plan.getPipeName().equals(pipe.getName())) {
-        RowRecord record = new RowRecord(0);
-        record.addField(
-            Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
-        record.addField(Binary.valueOf(IoTDBConstant.SYNC_SENDER_ROLE), TSDataType.TEXT);
-        record.addField(Binary.valueOf(pipe.getPipeSink().getPipeSinkName()), TSDataType.TEXT);
-        if (pipe.getStatus().equals(Pipe.PipeStatus.RUNNING) && pipe.isDisconnected()) {
-          record.addField(
-              Binary.valueOf(pipe.getStatus().name() + "(DISCONNECTED)"), TSDataType.TEXT);
-        } else {
-          record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
-        }
-        record.addField(
-            Binary.valueOf(SenderService.getInstance().getPipeMsg(pipe)), TSDataType.TEXT);
-
-        boolean needSetFields = true;
-        if (pipe.getPipeSink().getType()
-            == PipeSink.PipeSinkType.ExternalPipe) { // for external pipe
-          ExtPipePluginManager extPipePluginManager =
-              SenderService.getInstance().getExternalPipeManager();
-
-          if (extPipePluginManager != null) {
-            String extPipeType = ((ExternalPipeSink) pipe.getPipeSink()).getExtPipeSinkTypeName();
-            ExternalPipeStatus externalPipeStatus =
-                extPipePluginManager.getExternalPipeStatus(extPipeType);
-
-            if (externalPipeStatus != null) {
-              record.addField(
-                  Binary.valueOf(externalPipeStatus.getWriterInvocationFailures().toString()),
-                  TSDataType.TEXT);
-              record.addField(
-                  Binary.valueOf(externalPipeStatus.getWriterStatuses().toString()),
-                  TSDataType.TEXT);
-              needSetFields = false;
-            }
-          }
-        }
-
-        if (needSetFields) {
-          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
-          record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
-        }
-
-        listDataSet.putRecord(record);
-      }
-    }
+    SenderService.getInstance().showPipe(plan, listDataSet);
     ReceiverService.getInstance().showPipe(plan, listDataSet);
     // sort by create time
     listDataSet.sort(Comparator.comparing(o -> o.getFields().get(0).getStringValue()));

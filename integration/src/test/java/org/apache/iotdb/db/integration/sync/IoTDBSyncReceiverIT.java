@@ -26,22 +26,16 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
-import org.apache.iotdb.db.sync.transport.client.TransportClient;
+import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.service.transport.thrift.RequestType;
-import org.apache.iotdb.service.transport.thrift.ResponseType;
-import org.apache.iotdb.service.transport.thrift.SyncRequest;
-import org.apache.iotdb.service.transport.thrift.SyncResponse;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -77,7 +71,7 @@ public class IoTDBSyncReceiverIT {
   String remoteIp1;
   long createdTime1 = System.currentTimeMillis();
   String showPipeSql = "SHOW PIPE";
-  TransportClient client;
+  IoTDBSInkTransportClient client;
 
   @Before
   public void setUp() throws Exception {
@@ -108,7 +102,7 @@ public class IoTDBSyncReceiverIT {
     }
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     remoteIp1 = "127.0.0.1";
-    client = new TransportClient(pipe, remoteIp1, 6670, "127.0.0.1");
+    client = new IoTDBSInkTransportClient(pipe, remoteIp1, 6670, "127.0.0.1");
     client.handshake();
   }
 
@@ -126,157 +120,13 @@ public class IoTDBSyncReceiverIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  /** cannot stop */
   @Test
-  public void testStopPipeServerCheck() {
+  public void testStopPipeServer() {
     logger.info("testStopPipeServerCheck");
-    ReceiverService.getInstance()
-        .receiveMsg(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
-    ReceiverService.getInstance()
-        .receiveMsg(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
     try {
       ReceiverService.getInstance().stopPipeServer();
-      Assert.fail("Should not stop pipe server");
     } catch (PipeServerException e) {
-      // nothing
-    }
-    ReceiverService.getInstance()
-        .receiveMsg(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
-  }
-
-  @Test
-  public void testPipeOperation() {
-    logger.info("testPipeOperation");
-    String[] columnNames = {
-      "create time", "name", "role", "remote", "status", "message", "errors", "performance_info"
-    };
-    try {
-      // create
-      client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
-      String[] retArray =
-          new String[] {
-            String.format(
-                "%s,%s,%s,%s,%s,%s,%s,%s",
-                DatetimeUtils.convertLongToDate(createdTime1),
-                pipeName1,
-                "receiver",
-                remoteIp1,
-                PipeStatus.STOP.name(),
-                "",
-                "null",
-                "null")
-          };
-      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
-      // start
-      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
-      retArray =
-          new String[] {
-            String.format(
-                "%s,%s,%s,%s,%s,%s,%s,%s",
-                DatetimeUtils.convertLongToDate(createdTime1),
-                pipeName1,
-                "receiver",
-                remoteIp1,
-                PipeStatus.RUNNING.name(),
-                "",
-                "null",
-                "null")
-          };
-      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
-      // restart
-      EnvironmentUtils.shutdownDaemon();
-      EnvironmentUtils.reactiveDaemon();
-      retArray =
-          new String[] {
-            String.format(
-                "%s,%s,%s,%s,%s,%s,%s,%s",
-                DatetimeUtils.convertLongToDate(createdTime1),
-                pipeName1,
-                "receiver",
-                remoteIp1,
-                PipeStatus.STOP.name(),
-                "",
-                "null",
-                "null")
-          };
-      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
-      // start again
-      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
-      retArray =
-          new String[] {
-            String.format(
-                "%s,%s,%s,%s,%s,%s,%s,%s",
-                DatetimeUtils.convertLongToDate(createdTime1),
-                pipeName1,
-                "receiver",
-                remoteIp1,
-                PipeStatus.RUNNING.name(),
-                "",
-                "null",
-                "null")
-          };
-      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
-      // stop
-      client.heartbeat(new SyncRequest(RequestType.STOP, pipeName1, remoteIp1, createdTime1));
-      retArray =
-          new String[] {
-            String.format(
-                "%s,%s,%s,%s,%s,%s,%s,%s",
-                DatetimeUtils.convertLongToDate(createdTime1),
-                pipeName1,
-                "receiver",
-                remoteIp1,
-                PipeStatus.STOP.name(),
-                "",
-                "null",
-                "null")
-          };
-      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
-      // drop
-      client.heartbeat(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
-      retArray =
-          new String[] {
-            String.format(
-                "%s,%s,%s,%s,%s,%s,%s,%s",
-                DatetimeUtils.convertLongToDate(createdTime1),
-                pipeName1,
-                "receiver",
-                remoteIp1,
-                PipeStatus.DROP.name(),
-                "",
-                "null",
-                "null")
-          };
-      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
-      // create again
-      client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1 + 1));
-      retArray =
-          new String[] {
-            String.format(
-                "%s,%s,%s,%s,%s,%s,%s,%s",
-                DatetimeUtils.convertLongToDate(createdTime1),
-                pipeName1,
-                "receiver",
-                remoteIp1,
-                PipeStatus.DROP.name(),
-                "",
-                "null",
-                "null"),
-            String.format(
-                "%s,%s,%s,%s,%s,%s,%s,%s",
-                DatetimeUtils.convertLongToDate(createdTime1 + 1),
-                pipeName1,
-                "receiver",
-                remoteIp1,
-                PipeStatus.STOP.name(),
-                "",
-                "null",
-                "null")
-          };
-      SyncTestUtil.checkResult(showPipeSql, columnNames, retArray, false);
-    } catch (Exception e) {
-      e.printStackTrace();
-      Assert.fail(e.getMessage());
+      Assert.fail("Can not stop pipe server");
     }
   }
 
@@ -284,9 +134,8 @@ public class IoTDBSyncReceiverIT {
   public void testReceiveDataAndLoad() {
     logger.info("testReceiveDataAndLoad");
     try {
-      // 1. create pipe
-      client.heartbeat(new SyncRequest(RequestType.CREATE, pipeName1, remoteIp1, createdTime1));
-      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
+      // 1. handshake
+      client.handshake();
 
       // 2. send pipe data
       int serialNum = 0;
@@ -382,41 +231,6 @@ public class IoTDBSyncReceiverIT {
       String[] columnNames2 = {
         "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5",
       };
-      SyncTestUtil.checkResult(sql2, columnNames2, retArray2);
-
-      // 4. stop pipe
-      client.heartbeat(new SyncRequest(RequestType.STOP, pipeName1, remoteIp1, createdTime1));
-      Thread.sleep(500);
-      client.senderTransport(
-          new DeletionPipeData(
-              new Deletion(new PartialPath("root.vehicle.**"), 0, 0, 99), serialNum++));
-      Thread.sleep(1000);
-      SyncTestUtil.checkResult(sql1, columnNames1, retArray1);
-      // check heartbeat
-      SyncResponse response1 =
-          ReceiverService.getInstance()
-              .receiveMsg(
-                  new SyncRequest(RequestType.HEARTBEAT, pipeName1, remoteIp1, createdTime1));
-      Assert.assertEquals(ResponseType.WARN, response1.type);
-
-      // 5. restart pipe
-      client.heartbeat(new SyncRequest(RequestType.START, pipeName1, remoteIp1, createdTime1));
-      Thread.sleep(1000);
-      SyncTestUtil.checkResult(sql1, columnNames1, new String[] {});
-      // check heartbeat
-      SyncResponse response2 =
-          ReceiverService.getInstance()
-              .receiveMsg(
-                  new SyncRequest(RequestType.HEARTBEAT, pipeName1, remoteIp1, createdTime1));
-      Assert.assertEquals(ResponseType.INFO, response2.type);
-
-      // 6. drop pipe
-      client.heartbeat(new SyncRequest(RequestType.DROP, pipeName1, remoteIp1, createdTime1));
-      Thread.sleep(500);
-      client.senderTransport(
-          new DeletionPipeData(
-              new Deletion(new PartialPath("root.sg1.**"), 0, 0, 99), serialNum++));
-      Thread.sleep(1000);
       SyncTestUtil.checkResult(sql2, columnNames2, retArray2);
 
     } catch (Exception e) {

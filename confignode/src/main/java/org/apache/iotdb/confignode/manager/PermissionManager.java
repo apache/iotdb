@@ -100,7 +100,7 @@ public class PermissionManager {
    */
   public TSStatus invalidateCache(String username, String roleName) {
     List<TDataNodeConfiguration> allDataNodes =
-        configManager.getNodeManager().getRegisteredDataNodes(-1);
+        configManager.getNodeManager().getRegisteredDataNodes();
     TInvalidatePermissionCacheReq req = new TInvalidatePermissionCacheReq();
     TSStatus status;
     req.setUsername(username);

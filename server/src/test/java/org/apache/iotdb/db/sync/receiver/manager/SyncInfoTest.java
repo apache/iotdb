@@ -19,7 +19,11 @@
 package org.apache.iotdb.db.sync.receiver.manager;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
+import org.apache.iotdb.db.exception.sync.PipeException;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.sync.common.SyncInfo;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -30,11 +34,9 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.List;
 
-public class ReceiverManagerTest {
+public class SyncInfoTest {
   private static final String pipe1 = "pipe1";
   private static final String pipe2 = "pipe2";
-  private static final String ip1 = "192.168.1.11";
-  private static final String ip2 = "192.168.2.22";
   private static final long createdTime1 = System.currentTimeMillis();
   private static final long createdTime2 = System.currentTimeMillis() + 1;
 
@@ -49,50 +51,51 @@ public class ReceiverManagerTest {
   }
 
   @Test
-  public void test() {
+  public void testOperatePipe() throws Exception {
+    SyncInfo syncInfo = new SyncInfo();
     try {
-      ReceiverManager manager = ReceiverManager.getInstance();
-      manager.startServer();
-      manager.createPipe(pipe1, ip1, 1);
-      manager.createPipe(pipe2, ip2, 2);
-      manager.createPipe(pipe1, ip2, 3);
-      manager.stopPipe(pipe1, ip1, 1);
-      manager.stopPipe(pipe2, ip2, 2);
-      manager.dropPipe(pipe1, ip2, 3);
-      manager.startPipe(pipe1, ip1, 1);
-      List<PipeInfo> allPipeInfos = manager.getAllPipeInfos();
-      Assert.assertEquals(3, allPipeInfos.size());
-      List<PipeInfo> pipeInfos1 = manager.getPipeInfosByPipeName(pipe1);
-      List<PipeInfo> pipeInfos2 = manager.getPipeInfosByPipeName(pipe2);
-      Assert.assertEquals(2, pipeInfos1.size());
-      Assert.assertEquals(1, pipeInfos2.size());
-      for (PipeInfo pipeInfo : pipeInfos2) {
-        Assert.assertEquals(new PipeInfo(pipe2, ip2, PipeStatus.STOP, 2), pipeInfo);
+      syncInfo.startServer();
+      CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan("demo", "iotdb");
+      createPipeSinkPlan.addPipeSinkAttribute("ip", "127.0.0.1");
+      createPipeSinkPlan.addPipeSinkAttribute("port", "6670");
+      try {
+        syncInfo.addPipe(new CreatePipePlan(pipe1, "demo"), createdTime1);
+        Assert.fail();
+      } catch (PipeException e) {
+        // throw exception because can not find pipeSink
       }
-      for (PipeInfo pipeInfo : pipeInfos1) {
-        if (pipeInfo.getRemoteIp().equals(ip1)) {
-          Assert.assertEquals(new PipeInfo(pipe1, ip1, PipeStatus.RUNNING, 1), pipeInfo);
-        } else {
-          Assert.assertEquals(new PipeInfo(pipe1, ip2, PipeStatus.DROP, 3), pipeInfo);
-        }
+      syncInfo.addPipeSink(createPipeSinkPlan);
+      syncInfo.addPipe(new CreatePipePlan(pipe1, "demo"), createdTime1);
+      try {
+        syncInfo.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
+        Assert.fail();
+      } catch (PipeException e) {
+        // throw exception because only one pipe is allowed now
       }
+      syncInfo.operatePipe(pipe1, Operator.OperatorType.DROP_PIPE);
+      syncInfo.addPipe(new CreatePipePlan(pipe2, "demo"), createdTime2);
+      syncInfo.operatePipe(pipe2, Operator.OperatorType.STOP_PIPE);
+      syncInfo.operatePipe(pipe2, Operator.OperatorType.START_PIPE);
+      Assert.assertEquals(2, syncInfo.getAllPipeInfos().size());
+      Assert.assertEquals(1, syncInfo.getAllPipeSink().size());
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
       PipeMessage warn = new PipeMessage(PipeMessage.MsgType.WARN, "warn");
       PipeMessage error = new PipeMessage(PipeMessage.MsgType.ERROR, "error");
-      manager.writePipeMessage(pipe1, ip1, createdTime1, info);
-      manager.writePipeMessage(pipe1, ip1, createdTime1, warn);
-      List<PipeMessage> messages = manager.getPipeMessages(pipe1, ip1, createdTime1, true);
+      syncInfo.writePipeMessage(pipe2, createdTime2, info);
+      syncInfo.writePipeMessage(pipe2, createdTime2, warn);
+      List<PipeMessage> messages = syncInfo.getPipeMessages(pipe2, createdTime2, true);
       Assert.assertEquals(2, messages.size());
       Assert.assertEquals(info, messages.get(0));
       Assert.assertEquals(warn, messages.get(1));
-      manager.writePipeMessage(pipe1, ip1, createdTime1, error);
-      messages = manager.getPipeMessages(pipe1, ip1, createdTime1, true);
+      syncInfo.writePipeMessage(pipe2, createdTime2, error);
+      messages = syncInfo.getPipeMessages(pipe2, createdTime2, true);
       Assert.assertEquals(1, messages.size());
       Assert.assertEquals(error, messages.get(0));
-      manager.close();
     } catch (Exception e) {
       e.printStackTrace();
       Assert.fail();
+    } finally {
+      syncInfo.close();
     }
   }
 }

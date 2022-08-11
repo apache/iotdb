@@ -80,7 +80,7 @@ public class UDFManager {
   private List<TSStatus> createFunctionOnDataNodes(
       String functionName, String className, List<String> uris) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TCreateFunctionRequest request =
@@ -112,7 +112,7 @@ public class UDFManager {
 
   private List<TSStatus> dropFunctionOnDataNodes(String functionName) {
     final Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(-1);
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     final List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     final TDropFunctionRequest request = new TDropFunctionRequest(functionName);
