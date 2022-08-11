@@ -189,7 +189,7 @@ public class AbstractCompactionTest {
     }
     // sleep a few milliseconds to avoid generating files with same timestamps
     try {
-      Thread.sleep(5);
+      Thread.sleep(10);
     } catch (Exception e) {
 
     }
