@@ -211,7 +211,8 @@ public abstract class AbstractEnv implements BaseEnv {
             break;
           }
         }
-        if (flag) {
+        int nodeNum = configNodeWrapperList.size() + dataNodeWrapperList.size();
+        if (flag && nodeStatus.size() == nodeNum) {
           return;
         }
         Thread.sleep(1000);
