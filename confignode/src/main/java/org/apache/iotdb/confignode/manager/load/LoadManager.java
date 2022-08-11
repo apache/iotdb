@@ -217,11 +217,29 @@ public class LoadManager {
    */
   public Map<TConsensusGroupId, Integer> getAllLeadership() {
     Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
-
-    regionGroupCacheMap.forEach(
-        (consensusGroupId, regionGroupCache) ->
-            result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId()));
-
+    if (ConfigNodeDescriptor.getInstance()
+        .getConf()
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      regionGroupCacheMap.forEach(
+          (consensusGroupId, regionGroupCache) -> {
+            if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
+              result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId());
+            }
+          });
+      routeBalancer
+          .getRouteMap()
+          .forEach(
+              (consensusGroupId, regionReplicaSet) -> {
+                result.put(
+                    consensusGroupId,
+                    regionReplicaSet.getDataNodeLocations().get(0).getDataNodeId());
+              });
+    } else {
+      regionGroupCacheMap.forEach(
+          (consensusGroupId, regionGroupCache) ->
+              result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId()));
+    }
     return result;
   }
 
