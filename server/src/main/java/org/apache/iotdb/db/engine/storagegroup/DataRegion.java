@@ -2401,16 +2401,16 @@ public class DataRegion {
         logger.debug("[alter timeseries] {} replace tsfile", logKey);
         if (sequence) {
           tsFileManager.replace(
-              new ArrayList<>(Collections.singletonList(tsFileResource)),
+              Collections.singletonList(tsFileResource),
               Collections.emptyList(),
-              new ArrayList<>(Collections.singletonList(targetTsFileResource)),
+              Collections.singletonList(targetTsFileResource),
               timePartition,
               true);
         } else {
           tsFileManager.replace(
               Collections.emptyList(),
-              new ArrayList<>(Collections.singletonList(tsFileResource)),
-              new ArrayList<>(Collections.singletonList(targetTsFileResource)),
+              Collections.singletonList(tsFileResource),
+              Collections.singletonList(targetTsFileResource),
               timePartition,
               false);
         }
