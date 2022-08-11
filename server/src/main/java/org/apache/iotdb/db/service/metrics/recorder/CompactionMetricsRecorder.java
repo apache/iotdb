@@ -166,7 +166,7 @@ public class CompactionMetricsRecorder {
                   Tag.NAME.toString(),
                   "cross_compaction",
                   Tag.TYPE.toString(),
-                  "total");
+                  "cross");
         }
         break;
       default:

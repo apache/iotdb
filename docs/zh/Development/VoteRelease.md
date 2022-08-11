@@ -135,7 +135,7 @@ CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;
 insert into root.turbine.d1(timestamp,s0) values(1,1);
 insert into root.turbine.d1(timestamp,s0) values(2,2);
 insert into root.turbine.d1(timestamp,s0) values(3,3);
-select * from root;
+select * from root.**;
 
 打印如下内容：
 +-----------------------------------+------------------+
@@ -173,7 +173,7 @@ CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;
 insert into root.turbine.d1(timestamp,s0) values(1,1);
 insert into root.turbine.d1(timestamp,s0) values(2,2);
 insert into root.turbine.d1(timestamp,s0) values(3,3);
-select * from root;
+select * from root.**;
 
 Thanks,
 xxx

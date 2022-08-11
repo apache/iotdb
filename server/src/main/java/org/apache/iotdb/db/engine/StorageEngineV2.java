@@ -43,6 +43,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
@@ -547,6 +548,18 @@ public class StorageEngineV2 implements IService {
     }
   }
 
+  /**
+   * merge all storage groups.
+   *
+   * @throws StorageEngineException StorageEngineException
+   */
+  public void mergeAll() throws StorageEngineException {
+    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+      throw new StorageEngineException("Current system mode is read only, does not support merge");
+    }
+    dataRegionMap.values().forEach(DataRegion::compact);
+  }
+
   public TSStatus operateFlush(TFlushReq req) {
     if (req.storageGroups == null) {
       StorageEngineV2.getInstance().syncCloseAllProcessor();
@@ -678,10 +691,25 @@ public class StorageEngineV2 implements IService {
     dataRegionMap.put(regionId, newRegion);
   }
 
+  //  public TSStatus setTTL(TSetTTLReq req) {
+  //    Map<String, List<DataRegionId>> localDataRegionInfo =
+  //        StorageEngineV2.getInstance().getLocalDataRegionInfo();
+  //    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
+  //    for (DataRegionId dataRegionId : dataRegionIdList) {
+  //      DataRegion dataRegion = dataRegionMap.get(dataRegionId);
+  //      if (dataRegion != null) {
+  //        dataRegion.setDataTTL(req.TTL);
+  //      }
+  //    }
+  //    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  //  }
+
   public TSStatus setTTL(TSetTTLReq req) {
     Map<String, List<DataRegionId>> localDataRegionInfo =
         StorageEngineV2.getInstance().getLocalDataRegionInfo();
-    List<DataRegionId> dataRegionIdList = localDataRegionInfo.get(req.storageGroup);
+    List<DataRegionId> dataRegionIdList = new ArrayList<>();
+    req.storageGroupPathPattern.forEach(
+        storageGroup -> dataRegionIdList.addAll(localDataRegionInfo.get(storageGroup)));
     for (DataRegionId dataRegionId : dataRegionIdList) {
       DataRegion dataRegion = dataRegionMap.get(dataRegionId);
       if (dataRegion != null) {

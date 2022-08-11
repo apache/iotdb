@@ -23,10 +23,9 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
-import org.apache.iotdb.commons.utils.StatusUtils;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
+import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -36,7 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /** Synchronously send RPC requests to ConfigNode. See confignode.thrift for more details. */
@@ -76,8 +74,7 @@ public class SyncConfigNodeClientPool {
             // Only use registerConfigNode when the ConfigNode is first startup.
             return client.registerConfigNode((TConfigNodeRegisterReq) req);
           case ADD_CONSENSUS_GROUP:
-            addConsensusGroup((List<TConfigNodeLocation>) req, client);
-            return null;
+            return client.addConsensusGroup((TAddConsensusGroupReq) req);
           case NOTIFY_REGISTER_SUCCESS:
             client.notifyRegisterSuccess();
             return null;
@@ -105,25 +102,10 @@ public class SyncConfigNodeClientPool {
     }
     LOGGER.error("{} failed on ConfigNode {}", requestType, endPoint, lastException);
     switch (requestType) {
-      case REGISTER_CONFIG_NODE:
-        return new TConfigNodeRegisterResp(
-            RpcUtils.getStatus(
-                TSStatusCode.ALL_RETRY_FAILED,
-                "All retry failed due to" + lastException.getMessage()));
       default:
         return RpcUtils.getStatus(
             TSStatusCode.ALL_RETRY_FAILED, "All retry failed due to" + lastException.getMessage());
     }
-  }
-
-  public void addConsensusGroup(
-      List<TConfigNodeLocation> configNodeLocation, SyncConfigNodeIServiceClient client)
-      throws TException {
-    TConfigNodeRegisterResp registerResp = new TConfigNodeRegisterResp();
-    registerResp.setConfigNodeList(configNodeLocation);
-    registerResp.setStatus(StatusUtils.OK);
-    client.addConsensusGroup(registerResp);
-    return;
   }
 
   /**

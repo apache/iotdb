@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.GuardedBy;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
@@ -186,7 +185,7 @@ public abstract class Driver implements IDriver {
       if (root.hasNext()) {
         TsBlock tsBlock = root.next();
         if (tsBlock != null && !tsBlock.isEmpty()) {
-          sinkHandle.send(Collections.singletonList(tsBlock));
+          sinkHandle.send(tsBlock);
         }
       }
       return NOT_BLOCKED;

@@ -56,6 +56,7 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.exception.DataRegionException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -99,11 +100,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.commons.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
@@ -1059,8 +1062,10 @@ public class LocalConfigNode {
     String password = authorStatement.getPassWord();
     String newPassword = authorStatement.getNewPassword();
     Set<Integer> permissions = AuthUtils.strToPermissions(authorStatement.getPrivilegeList());
-    PartialPath partialPath = authorStatement.getNodeName();
-    String nodeName = partialPath == null ? null : partialPath.getFullPath();
+    List<String> nodeNameList =
+        authorStatement.getNodeNameList().stream()
+            .map(PartialPath::getFullPath)
+            .collect(Collectors.toList());
     switch (authorType) {
       case UPDATE_USER:
         iAuthorizer.updateUserPassword(userName, newPassword);
@@ -1079,12 +1084,16 @@ public class LocalConfigNode {
         break;
       case GRANT_ROLE:
         for (int i : permissions) {
-          iAuthorizer.grantPrivilegeToRole(roleName, nodeName, i);
+          for (String path : nodeNameList) {
+            iAuthorizer.grantPrivilegeToRole(roleName, path, i);
+          }
         }
         break;
       case GRANT_USER:
         for (int i : permissions) {
-          iAuthorizer.grantPrivilegeToUser(userName, nodeName, i);
+          for (String path : nodeNameList) {
+            iAuthorizer.grantPrivilegeToUser(userName, path, i);
+          }
         }
         break;
       case GRANT_ROLE_TO_USER:
@@ -1092,12 +1101,16 @@ public class LocalConfigNode {
         break;
       case REVOKE_USER:
         for (int i : permissions) {
-          iAuthorizer.revokePrivilegeFromUser(userName, nodeName, i);
+          for (String path : nodeNameList) {
+            iAuthorizer.revokePrivilegeFromUser(userName, path, i);
+          }
         }
         break;
       case REVOKE_ROLE:
         for (int i : permissions) {
-          iAuthorizer.revokePrivilegeFromRole(roleName, nodeName, i);
+          for (String path : nodeNameList) {
+            iAuthorizer.revokePrivilegeFromRole(roleName, path, i);
+          }
         }
         break;
       case REVOKE_ROLE_FROM_USER:
@@ -1114,78 +1127,67 @@ public class LocalConfigNode {
         AuthorOperator.AuthorType.values()[authorStatement.getAuthorType().ordinal()];
     switch (authorType) {
       case LIST_USER:
-        return executeListUser();
+        return executeListRoleUsers(authorStatement);
       case LIST_ROLE:
-        return executeListRole();
+        return executeListRoles(authorStatement);
       case LIST_USER_PRIVILEGE:
         return executeListUserPrivileges(authorStatement);
       case LIST_ROLE_PRIVILEGE:
         return executeListRolePrivileges(authorStatement);
-      case LIST_USER_ROLES:
-        return executeListUserRoles(authorStatement);
-      case LIST_ROLE_USERS:
-        return executeListRoleUsers(authorStatement);
       default:
         throw new AuthException("Unsupported operation " + authorType);
     }
   }
 
-  public Map<String, List<String>> executeListRole() {
-    List<String> roleList = iAuthorizer.listAllRoles();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
-    return permissionInfo;
-  }
-
-  public Map<String, List<String>> executeListUser() {
+  public Map<String, List<String>> executeListRoleUsers(AuthorStatement authorStatement)
+      throws AuthException {
     List<String> userList = iAuthorizer.listAllUsers();
+    if (authorStatement.getRoleName() != null && !authorStatement.getRoleName().isEmpty()) {
+      Role role;
+      try {
+        role = iAuthorizer.getRole(authorStatement.getRoleName());
+        if (role == null) {
+          throw new AuthException("No such role : " + authorStatement.getRoleName());
+        }
+      } catch (AuthException e) {
+        throw new AuthException(e);
+      }
+      Iterator<String> itr = userList.iterator();
+      while (itr.hasNext()) {
+        User userObj = iAuthorizer.getUser(itr.next());
+        if (userObj == null || !userObj.hasRole(authorStatement.getRoleName())) {
+          itr.remove();
+        }
+      }
+    }
+
     Map<String, List<String>> permissionInfo = new HashMap<>();
     permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
     return permissionInfo;
   }
 
-  public Map<String, List<String>> executeListRoleUsers(AuthorStatement authorStatement)
+  public Map<String, List<String>> executeListRoles(AuthorStatement authorStatement)
       throws AuthException {
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    Role role;
-    try {
-      role = iAuthorizer.getRole(authorStatement.getRoleName());
-      if (role == null) {
-        throw new AuthException("No such role : " + authorStatement.getRoleName());
+    List<String> roleList = new ArrayList<>();
+    if (authorStatement.getUserName() == null || authorStatement.getUserName().isEmpty()) {
+      roleList.addAll(iAuthorizer.listAllRoles());
+    } else {
+      User user;
+      try {
+        user = iAuthorizer.getUser(authorStatement.getUserName());
+        if (user == null) {
+          throw new AuthException("No such user : " + authorStatement.getUserName());
+        }
+      } catch (AuthException e) {
+        throw new AuthException(e);
       }
-    } catch (AuthException e) {
-      throw new AuthException(e);
-    }
-    List<String> roleUsersList = new ArrayList<>();
-    List<String> userList = iAuthorizer.listAllUsers();
-    for (String userN : userList) {
-      User userObj = iAuthorizer.getUser(userN);
-      if (userObj != null && userObj.hasRole(authorStatement.getRoleName())) {
-        roleUsersList.add(userN);
+      for (String roleN : user.getRoleList()) {
+        roleList.add(roleN);
       }
-    }
-    permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
-    return permissionInfo;
-  }
-
-  public Map<String, List<String>> executeListUserRoles(AuthorStatement authorStatement)
-      throws AuthException {
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    User user;
-    try {
-      user = iAuthorizer.getUser(authorStatement.getUserName());
-      if (user == null) {
-        throw new AuthException("No such user : " + authorStatement.getUserName());
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
-    }
-    List<String> userRoleList = new ArrayList<>();
-    for (String roleN : user.getRoleList()) {
-      userRoleList.add(roleN);
     }
 
-    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
+    Map<String, List<String>> permissionInfo = new HashMap<>();
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
     return permissionInfo;
   }
 
@@ -1201,16 +1203,20 @@ public class LocalConfigNode {
     } catch (AuthException e) {
       throw new AuthException(e);
     }
-    List<String> rolePrivilegesList = new ArrayList<>();
+    Set<String> rolePrivilegeSet = new HashSet<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-      if (authorStatement.getNodeName().getFullPath().equals("")
-          || AuthUtils.pathOrBelongsTo(
-              authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
-        rolePrivilegesList.add(pathPrivilege.toString());
+      if (authorStatement.getNodeNameList().isEmpty()) {
+        rolePrivilegeSet.add(pathPrivilege.toString());
+        continue;
+      }
+      for (PartialPath path : authorStatement.getNodeNameList()) {
+        if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())) {
+          rolePrivilegeSet.add(pathPrivilege.toString());
+        }
       }
     }
 
-    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
+    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, new ArrayList<>(rolePrivilegeSet));
     return permissionInfo;
   }
 
@@ -1234,27 +1240,45 @@ public class LocalConfigNode {
       }
     } else {
       List<String> rolePrivileges = new ArrayList<>();
+      Set<String> userPrivilegeSet = new HashSet<>();
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-        if (authorStatement.getNodeName().getFullPath().equals("")
-            || AuthUtils.pathOrBelongsTo(
-                authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
+        if (authorStatement.getNodeNameList().isEmpty()
+            && !userPrivilegeSet.contains(pathPrivilege.toString())) {
           rolePrivileges.add("");
-          userPrivilegesList.add(pathPrivilege.toString());
+          userPrivilegeSet.add(pathPrivilege.toString());
+          continue;
+        }
+        for (PartialPath path : authorStatement.getNodeNameList()) {
+          if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())
+              && !userPrivilegeSet.contains(pathPrivilege.toString())) {
+            rolePrivileges.add("");
+            userPrivilegeSet.add(pathPrivilege.toString());
+          }
         }
       }
+      userPrivilegesList.addAll(userPrivilegeSet);
       for (String roleN : user.getRoleList()) {
         Role role = iAuthorizer.getRole(roleN);
         if (roleN == null) {
           continue;
         }
+        Set<String> rolePrivilegeSet = new HashSet<>();
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-          if (authorStatement.getNodeName().getFullPath().equals("")
-              || AuthUtils.pathOrBelongsTo(
-                  authorStatement.getNodeName().getFullPath(), pathPrivilege.getPath())) {
+          if (authorStatement.getNodeNameList().isEmpty()
+              && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
             rolePrivileges.add(roleN);
-            userPrivilegesList.add(pathPrivilege.toString());
+            rolePrivilegeSet.add(pathPrivilege.toString());
+            continue;
+          }
+          for (PartialPath path : authorStatement.getNodeNameList()) {
+            if (AuthUtils.pathOrBelongsTo(path.getFullPath(), pathPrivilege.getPath())
+                && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
+              rolePrivileges.add(roleN);
+              rolePrivilegeSet.add(pathPrivilege.toString());
+            }
           }
         }
+        userPrivilegesList.addAll(rolePrivilegeSet);
       }
       permissionInfo.put(IoTDBConstant.COLUMN_ROLE, rolePrivileges);
     }
@@ -1269,6 +1293,15 @@ public class LocalConfigNode {
   public boolean checkUserPrivileges(String username, String path, int permission)
       throws AuthException {
     return iAuthorizer.checkUserPrivileges(username, path, permission);
+  }
+
+  public TSStatus executeMergeOperation() {
+    try {
+      storageEngine.mergeAll();
+    } catch (StorageEngineException e) {
+      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    }
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   public TSStatus executeFlushOperation(TFlushReq tFlushReq) {

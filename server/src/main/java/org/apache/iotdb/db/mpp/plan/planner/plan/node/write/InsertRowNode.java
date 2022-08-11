@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
-import org.apache.iotdb.db.mpp.common.schematree.SchemaTree;
+import org.apache.iotdb.db.mpp.common.schematree.ISchemaTree;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
@@ -169,7 +169,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
   }
 
   @Override
-  public boolean validateAndSetSchema(SchemaTree schemaTree) {
+  public boolean validateAndSetSchema(ISchemaTree schemaTree) {
     DeviceSchemaInfo deviceSchemaInfo =
         schemaTree.searchDeviceSchemaInfo(devicePath, Arrays.asList(measurements));
     if (deviceSchemaInfo.isAligned() != isAligned) {
@@ -179,10 +179,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
 
     // transfer data types from string values when necessary
-    try {
-      transferType();
-    } catch (QueryProcessException e) {
-      return false;
+    if (isNeedInferType) {
+      try {
+        transferType();
+        return true;
+      } catch (QueryProcessException e) {
+        return false;
+      }
     }
 
     // validate whether data types are matched
@@ -195,9 +198,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void transferType() throws QueryProcessException {
-    if (!isNeedInferType) {
-      return;
-    }
 
     for (int i = 0; i < measurementSchemas.length; i++) {
       // null when time series doesn't exist
@@ -575,7 +575,7 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   @Override
   public void serializeToWAL(IWALByteBufferView buffer) {
-    buffer.putShort((short) PlanNodeType.INSERT_ROW.ordinal());
+    buffer.putShort(PlanNodeType.INSERT_ROW.getNodeType());
     subSerialize(buffer);
   }
 

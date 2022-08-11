@@ -74,6 +74,7 @@ public class RegionMigrateProcedure
     if (consensusGroupId == null) {
       return Flow.NO_MORE_STATE;
     }
+    TSStatus tsStatus = null;
     try {
       switch (state) {
         case REGION_MIGRATE_PREPARE:
@@ -82,17 +83,47 @@ public class RegionMigrateProcedure
         case ADD_NEW_NODE_TO_REGION_CONSENSUS_GROUP:
           env.getDataNodeRemoveHandler()
               .addNewNodeToRegionConsensusGroup(consensusGroupId, destDataNode);
-          setNextState(RegionTransitionState.MIGRATE_REGION);
+          setNextState(RegionTransitionState.ADD_REGION_PEER);
           break;
-        case MIGRATE_REGION:
-          env.getDataNodeRemoveHandler()
-              .migrateRegion(originalDataNode, destDataNode, consensusGroupId);
-          setNextState(RegionTransitionState.WAIT_FOR_REGION_MIGRATE_FINISHED);
+        case ADD_REGION_PEER:
+          tsStatus =
+              env.getDataNodeRemoveHandler()
+                  .addRegionPeer(originalDataNode, destDataNode, consensusGroupId);
+          if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            waitForOneMigrationStepFinished(consensusGroupId);
+            LOG.info("Wait for region {}  add peer finished", consensusGroupId);
+          } else {
+            throw new ProcedureException("Failed to add region peer");
+          }
+          setNextState(RegionTransitionState.CHANGE_REGION_LEADER);
           break;
-        case WAIT_FOR_REGION_MIGRATE_FINISHED:
-          waitForTheRegionMigrateFinished(consensusGroupId);
+        case CHANGE_REGION_LEADER:
+          env.getDataNodeRemoveHandler().changeRegionLeader(consensusGroupId, originalDataNode);
+          setNextState(RegionTransitionState.REMOVE_REGION_PEER);
+          break;
+        case REMOVE_REGION_PEER:
+          tsStatus =
+              env.getDataNodeRemoveHandler()
+                  .removeRegionPeer(originalDataNode, destDataNode, consensusGroupId);
+          if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            waitForOneMigrationStepFinished(consensusGroupId);
+            LOG.info("Wait for region {} remove peer finished", consensusGroupId);
+          } else {
+            throw new ProcedureException("Failed to remove region peer");
+          }
+          setNextState(RegionTransitionState.REMOVE_REGION_CONSENSUS_GROUP);
+          break;
+        case REMOVE_REGION_CONSENSUS_GROUP:
+          tsStatus =
+              env.getDataNodeRemoveHandler()
+                  .removeRegionConsensusGroup(originalDataNode, destDataNode, consensusGroupId);
+          if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            waitForOneMigrationStepFinished(consensusGroupId);
+            LOG.info("Wait for region {}  remove consensus group finished", consensusGroupId);
+          }
+          // remove consensus group after a node stop, which will be failed, but we will continue
+          // execute.
           setNextState(RegionTransitionState.UPDATE_REGION_LOCATION_CACHE);
-          LOG.info("Wait for region {}  migrate finished", consensusGroupId);
           break;
         case UPDATE_REGION_LOCATION_CACHE:
           env.getDataNodeRemoveHandler()
@@ -203,7 +234,7 @@ public class RegionMigrateProcedure
     return false;
   }
 
-  public TSStatus waitForTheRegionMigrateFinished(TConsensusGroupId consensusGroupId) {
+  public TSStatus waitForOneMigrationStepFinished(TConsensusGroupId consensusGroupId) {
     TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     synchronized (regionMigrateLock) {
       try {
@@ -219,17 +250,14 @@ public class RegionMigrateProcedure
     return status;
   }
 
-  /**
-   * DN report region migrate result to CN, and continue
-   *
-   * @param req
-   */
+  /** DataNode report region migrate result to ConfigNode, and continue */
   public void notifyTheRegionMigrateFinished(TRegionMigrateResultReportReq req) {
-    LOG.info("DataNode reported region {} migrate result:{} ", req.getRegionId(), req);
     // TODO the req is used in roll back
     synchronized (regionMigrateLock) {
       regionMigrateLock.notify();
     }
+    LOG.info(
+        "notified after DataNode reported region {} migrate result:{} ", req.getRegionId(), req);
   }
 
   public TConsensusGroupId getConsensusGroupId() {

@@ -29,8 +29,6 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import java.util.Collections;
-
 public class LocalSinkHandleTest {
   @Test
   public void testSend() {
@@ -68,7 +66,7 @@ public class LocalSinkHandleTest {
     // Send TsBlocks.
     int numOfSentTsblocks = 0;
     while (localSinkHandle.isFull().isDone()) {
-      localSinkHandle.send(Collections.singletonList(Utils.createMockTsBlock(mockTsBlockSize)));
+      localSinkHandle.send(Utils.createMockTsBlock(mockTsBlockSize));
       numOfSentTsblocks += 1;
     }
     Assert.assertEquals(6, numOfSentTsblocks);
@@ -133,7 +131,7 @@ public class LocalSinkHandleTest {
     // Send TsBlocks.
     int numOfSentTsblocks = 0;
     while (localSinkHandle.isFull().isDone()) {
-      localSinkHandle.send(Collections.singletonList(Utils.createMockTsBlock(mockTsBlockSize)));
+      localSinkHandle.send(Utils.createMockTsBlock(mockTsBlockSize));
       numOfSentTsblocks += 1;
     }
     Assert.assertEquals(6, numOfSentTsblocks);
