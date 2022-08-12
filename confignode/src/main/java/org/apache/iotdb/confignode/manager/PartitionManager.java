@@ -507,6 +507,7 @@ public class PartitionManager {
         /* Stop the RegionCleaner service */
         currentRegionCleanerFuture.cancel(false);
         currentRegionCleanerFuture = null;
+        regionGroupCacheMap.clear();
         LOGGER.info("RegionCleaner is stopped successfully.");
       }
     }

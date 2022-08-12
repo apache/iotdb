@@ -217,15 +217,6 @@ public class NodeManager {
   /**
    * Only leader use this interface
    *
-   * @return The number of registered TotalNodes
-   */
-  public int getRegisteredNodeCount() {
-    return nodeInfo.getRegisteredNodeCount();
-  }
-
-  /**
-   * Only leader use this interface
-   *
    * @return The number of total cpu cores in online DataNodes
    */
   public int getTotalCpuCoreCount() {
@@ -509,6 +500,7 @@ public class NodeManager {
       if (currentHeartbeatFuture != null) {
         currentHeartbeatFuture.cancel(false);
         currentHeartbeatFuture = null;
+        nodeCacheMap.clear();
         LOGGER.info("Heartbeat service is stopped successfully.");
       }
     }
@@ -527,15 +519,6 @@ public class NodeManager {
   private String getNodeStatus(int nodeId) {
     INodeCache nodeCache = nodeCacheMap.get(nodeId);
     return nodeCache == null ? "Unknown" : nodeCache.getNodeStatus().getStatus();
-  }
-
-  /**
-   * When a node is removed, clear the node's cache
-   *
-   * @param nodeId removed node id
-   */
-  public void removeNodeHeartbeatHandCache(Integer nodeId) {
-    nodeCacheMap.remove(nodeId);
   }
 
   /**
@@ -600,9 +583,5 @@ public class NodeManager {
 
   private PartitionManager getPartitionManager() {
     return configManager.getPartitionManager();
-  }
-
-  private LoadManager getLoadManager() {
-    return configManager.getLoadManager();
   }
 }
