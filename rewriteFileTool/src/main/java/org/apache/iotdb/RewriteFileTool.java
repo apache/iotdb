@@ -496,7 +496,7 @@ public class RewriteFileTool {
 
   private static boolean checkArgs(String[] args) {
     String paramConfig =
-        "-b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path of output log] -u=[username, default=\"root\"] -pw=[password, default=\"root\"]";
+        "-b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path of output log] -u=[username, default=\"root\"] -pw=[password, default=\"root\"] -p=[rpc port, default=6667] -h=[rpc host, default=\"localhost\"]";
     for (String arg : args) {
       if (arg.startsWith("-b")) {
         backUpDirPath = arg.substring(arg.indexOf('=') + 1);
