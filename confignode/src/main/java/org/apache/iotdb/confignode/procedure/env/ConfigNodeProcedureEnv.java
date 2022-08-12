@@ -203,9 +203,6 @@ public class ConfigNodeProcedureEnv {
     try {
       // Execute removePeer
       if (getConsensusManager().removeConfigNodePeer(tConfigNodeLocation)) {
-        configManager
-            .getLoadManager()
-            .removeNodeHeartbeatHandCache(tConfigNodeLocation.getConfigNodeId());
         tsStatus =
             getConsensusManager().write(new RemoveConfigNodePlan(tConfigNodeLocation)).getStatus();
       } else {
