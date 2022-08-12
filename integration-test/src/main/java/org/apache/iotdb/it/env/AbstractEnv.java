@@ -196,12 +196,13 @@ public abstract class AbstractEnv implements BaseEnv {
     }
   }
 
-  private void checkNodeHeartbeat() {
+  private void checkNodeHeartbeat() throws Exception {
     TShowClusterResp showClusterResp;
-    try (SyncConfigNodeIServiceClient client =
-        (SyncConfigNodeIServiceClient) getConfigNodeConnection()) {
-      boolean flag;
-      for (int i = 0; i < 30; i++) {
+    Exception lastException = null;
+    boolean flag;
+    for (int i = 0; i < 30; i++) {
+      try (SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) getConfigNodeConnection()) {
         flag = true;
         showClusterResp = client.showCluster();
         Map<Integer, String> nodeStatus = showClusterResp.getNodeStatus();
@@ -215,11 +216,12 @@ public abstract class AbstractEnv implements BaseEnv {
         if (flag && nodeStatus.size() == nodeNum) {
           return;
         }
-        Thread.sleep(1000);
+      } catch (Exception e) {
+        lastException = e;
       }
-    } catch (Exception e) {
-      fail("Not all nodes are in the Running states");
+      TimeUnit.SECONDS.sleep(1L);
     }
+    throw lastException;
   }
 
   @Override
