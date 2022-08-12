@@ -714,7 +714,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = false;
+  private boolean enablePartition = true;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is

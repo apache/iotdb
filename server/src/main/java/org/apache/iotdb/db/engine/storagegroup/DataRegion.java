@@ -902,7 +902,7 @@ public class DataRegion {
     writeLock("InsertRow");
     try {
       // init map
-      long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+      long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
 
       lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
 
@@ -3496,7 +3496,7 @@ public class DataRegion {
           continue;
         }
         // init map
-        long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+        long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
 
         lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
         // as the plans have been ordered, and we have get the write lock,
