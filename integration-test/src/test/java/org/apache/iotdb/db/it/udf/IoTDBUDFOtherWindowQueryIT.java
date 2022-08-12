@@ -376,9 +376,9 @@ public class IoTDBUDFOtherWindowQueryIT {
         Statement statement = conn.createStatement();
         ResultSet resultSet = statement.executeQuery(sql)) {
       assertEquals(2, resultSet.getMetaData().getColumnCount());
-//      while (resultSet.next()) {
-//        System.out.println(resultSet.getLong(1) + " " + resultSet.getLong(2));
-//      }
+      //      while (resultSet.next()) {
+      //        System.out.println(resultSet.getLong(1) + " " + resultSet.getLong(2));
+      //      }
       for (int i = 0; i < windowStart.length; i++) {
         resultSet.next();
         Assert.assertEquals(resultSet.getLong(1), windowStart[i]);
