@@ -110,6 +110,12 @@ public class LocalExecutionPlanner {
 
   private void checkMemory(Operator root, FragmentInstanceStateMachine stateMachine)
       throws MemoryNotEnoughException {
+
+    // if it is disabled, just return
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableQueryMemoryEstimation()) {
+      return;
+    }
+
     long estimatedMemorySize = root.calculateMaxPeekMemory();
 
     synchronized (this) {

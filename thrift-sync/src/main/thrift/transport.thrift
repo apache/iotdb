@@ -45,20 +45,6 @@ enum Type {
   FILE
 }
 
-enum RequestType {
-  CREATE,
-  START,
-  STOP,
-  DROP,
-  HEARTBEAT
-}
-
-enum ResponseType {
-  INFO,
-  WARN,
-  ERROR
-}
-
 struct MetaInfo{
   // The type of the pipeData in sending.
   1:required Type type
@@ -70,21 +56,8 @@ struct MetaInfo{
   3:required i64 startIndex
 }
 
-struct SyncRequest{
-  1:required RequestType type
-  2:required string pipeName
-  3:required string remoteIp
-  4:required i64 createTime
-}
-
-struct SyncResponse{
-  1:required ResponseType type
-  2:required string msg
-}
-
 service TransportService{
   TransportStatus handshake(IdentityInfo info);
   TransportStatus transportData(1:MetaInfo metaInfo, 2:binary buff, 3:binary digest);
   TransportStatus checkFileDigest(1:MetaInfo metaInfo, 2:binary digest);
-  SyncResponse heartbeat(SyncRequest syncRequest)
 }

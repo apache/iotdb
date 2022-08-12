@@ -195,8 +195,10 @@ public class ExtPipePluginManager {
 
             String sgName = tsFilePipeData.getStorageGroupName();
             String tsFileFullName = tsFilePipeData.getTsFilePath();
+            String modsFileFullName = tsFilePipeData.getModsFilePath();
             try {
-              pipeOpManager.appendTsFile(sgName, tsFileFullName, pipeDataSerialNumber);
+              pipeOpManager.appendTsFile(
+                  sgName, tsFileFullName, modsFileFullName, pipeDataSerialNumber);
             } catch (IOException e) {
               logger.error("monitorPipeData(), Can not append TsFile: {}" + tsFileFullName);
             }

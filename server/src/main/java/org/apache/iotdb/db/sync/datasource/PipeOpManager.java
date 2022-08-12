@@ -74,7 +74,8 @@ public class PipeOpManager {
     pipeOpSgManager.addPipeOpBlock(dataSrcEntry);
   }
 
-  public void appendTsFile(String sgName, String tsFilename, long pipeDataSerialNumber)
+  public void appendTsFile(
+      String sgName, String tsFilename, String modsFileFullName, long pipeDataSerialNumber)
       throws IOException {
     File file = new File(tsFilename);
     if (!file.exists()) {
@@ -87,7 +88,8 @@ public class PipeOpManager {
       maxFilePipeSerialNumber = pipeDataSerialNumber;
     }
 
-    TsFileOpBlock tsfileDataSrcEntry = new TsFileOpBlock(sgName, tsFilename, pipeDataSerialNumber);
+    TsFileOpBlock tsfileDataSrcEntry =
+        new TsFileOpBlock(sgName, tsFilename, modsFileFullName, pipeDataSerialNumber);
     appendDataSrc(sgName, tsfileDataSrcEntry);
   }
 

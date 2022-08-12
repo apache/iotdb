@@ -26,7 +26,6 @@ import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 
 import java.io.File;
-import java.util.concurrent.TimeUnit;
 
 public class ConfigNodeConfig {
 
@@ -44,9 +43,6 @@ public class ConfigNodeConfig {
 
   // TODO: Read from iotdb-confignode.properties
   private int partitionRegionId = 0;
-
-  /** Thrift socket and connection timeout between nodes */
-  private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
 
   /** ConfigNodeGroup consensus protocol */
   private String configNodeConsensusProtocolClass = ConsensusFactory.RatisConsensus;
@@ -67,15 +63,6 @@ public class ConfigNodeConfig {
   private RegionBalancer.RegionAllocateStrategy regionAllocateStrategy =
       RegionBalancer.RegionAllocateStrategy.GREEDY;
 
-  /**
-   * ClientManager will have so many selector threads (TAsyncClientManager) to distribute to its
-   * clients.
-   */
-  private int selectorNumOfClientManager =
-      Runtime.getRuntime().availableProcessors() / 4 > 0
-          ? Runtime.getRuntime().availableProcessors() / 4
-          : 1;
-
   /** Number of SeriesPartitionSlots per StorageGroup */
   private int seriesPartitionSlotNum = 10000;
 
@@ -85,9 +72,6 @@ public class ConfigNodeConfig {
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
-
-  /** whether to use thrift compression. */
-  private boolean isRpcThriftCompressionEnabled = false;
 
   /** whether to use Snappy compression before sending data through the network */
   private boolean rpcAdvancedCompressionEnable = false;
@@ -121,7 +105,7 @@ public class ConfigNodeConfig {
       IoTDBConstant.EXT_FOLDER_NAME + File.separator + IoTDBConstant.TMP_FOLDER_NAME;
 
   /** Time partition interval in seconds */
-  private long timePartitionInterval = 604800;
+  private long timePartitionInterval = 86400;
 
   /** Default number of SchemaRegion replicas */
   private int schemaReplicationFactor = 1;
@@ -231,10 +215,6 @@ public class ConfigNodeConfig {
     this.seriesPartitionExecutorClass = seriesPartitionExecutorClass;
   }
 
-  public int getSelectorNumOfClientManager() {
-    return selectorNumOfClientManager;
-  }
-
   public long getTimePartitionInterval() {
     return timePartitionInterval;
   }
@@ -249,14 +229,6 @@ public class ConfigNodeConfig {
 
   public void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
-  }
-
-  public boolean isRpcThriftCompressionEnabled() {
-    return isRpcThriftCompressionEnabled;
-  }
-
-  public void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
-    isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
   }
 
   public boolean isRpcAdvancedCompressionEnable() {
@@ -281,19 +253,6 @@ public class ConfigNodeConfig {
 
   public void setThriftDefaultBufferSize(int thriftDefaultBufferSize) {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
-  }
-
-  public int getConnectionTimeoutInMS() {
-    return connectionTimeoutInMS;
-  }
-
-  public ConfigNodeConfig setConnectionTimeoutInMS(int connectionTimeoutInMS) {
-    this.connectionTimeoutInMS = connectionTimeoutInMS;
-    return this;
-  }
-
-  public void setSelectorNumOfClientManager(int selectorNumOfClientManager) {
-    this.selectorNumOfClientManager = selectorNumOfClientManager;
   }
 
   public String getConsensusDir() {
