@@ -26,7 +26,6 @@ import org.apache.iotdb.db.rescon.AbstractPoolManager;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import org.slf4j.Logger;
@@ -51,28 +50,26 @@ public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
     pool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
             threadCnt, ThreadName.SUB_RAW_QUERY_SERVICE.getName());
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.QUEUE.toString(),
-              MetricLevel.IMPORTANT,
-              pool,
-              p -> ((ThreadPoolExecutor) p).getActiveCount(),
-              Tag.NAME.toString(),
-              ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
-              Tag.STATUS.toString(),
-              "running");
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.QUEUE.toString(),
-              MetricLevel.IMPORTANT,
-              pool,
-              p -> ((ThreadPoolExecutor) p).getQueue().size(),
-              Tag.NAME.toString(),
-              ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
-              Tag.STATUS.toString(),
-              "waiting");
-    }
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.QUEUE.toString(),
+            MetricLevel.IMPORTANT,
+            pool,
+            p -> ((ThreadPoolExecutor) p).getActiveCount(),
+            Tag.NAME.toString(),
+            ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
+            Tag.STATUS.toString(),
+            "running");
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.QUEUE.toString(),
+            MetricLevel.IMPORTANT,
+            pool,
+            p -> ((ThreadPoolExecutor) p).getQueue().size(),
+            Tag.NAME.toString(),
+            ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
+            Tag.STATUS.toString(),
+            "waiting");
   }
 
   public static RawQueryReadTaskPoolManager getInstance() {

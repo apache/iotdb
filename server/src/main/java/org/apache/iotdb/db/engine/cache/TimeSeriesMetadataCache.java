@@ -27,7 +27,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -108,32 +107,29 @@ public class TimeSeriesMetadataCache {
             .recordStats()
             .build();
 
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      // add metrics
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.CACHE_HIT.toString(),
-              MetricLevel.IMPORTANT,
-              lruCache,
-              l -> (long) (l.stats().hitRate() * 100),
-              Tag.NAME.toString(),
-              "timeSeriesMeta");
-      // add metrics
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.CACHE_HIT.toString(),
-              MetricLevel.IMPORTANT,
-              bloomFilterPreventCount,
-              prevent -> {
-                if (bloomFilterRequestCount.get() == 0L) {
-                  return 1L;
-                }
-                return (long)
-                    ((double) prevent.get() / (double) bloomFilterRequestCount.get() * 100L);
-              },
-              Tag.NAME.toString(),
-              "bloomFilter");
-    }
+    // add metrics
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.CACHE_HIT.toString(),
+            MetricLevel.IMPORTANT,
+            lruCache,
+            l -> (long) (l.stats().hitRate() * 100),
+            Tag.NAME.toString(),
+            "timeSeriesMeta");
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.CACHE_HIT.toString(),
+            MetricLevel.IMPORTANT,
+            bloomFilterPreventCount,
+            prevent -> {
+              if (bloomFilterRequestCount.get() == 0L) {
+                return 1L;
+              }
+              return (long)
+                  ((double) prevent.get() / (double) bloomFilterRequestCount.get() * 100L);
+            },
+            Tag.NAME.toString(),
+            "bloomFilter");
   }
 
   public static TimeSeriesMetadataCache getInstance() {

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata.rescon;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 import java.util.concurrent.atomic.AtomicLong;
@@ -45,16 +44,14 @@ public class TimeseriesStatistics {
   }
 
   public void init() {
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricService.getInstance()
-          .getOrCreateAutoGauge(
-              Metric.QUANTITY.toString(),
-              MetricLevel.IMPORTANT,
-              totalSeriesNumber,
-              AtomicLong::get,
-              Tag.NAME.toString(),
-              "timeSeries");
-    }
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.QUANTITY.toString(),
+            MetricLevel.IMPORTANT,
+            totalSeriesNumber,
+            AtomicLong::get,
+            Tag.NAME.toString(),
+            "timeSeries");
   }
 
   public long getTotalSeriesNumber() {
