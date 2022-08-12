@@ -26,13 +26,11 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.commons.exception.IoTDBException;
 import org.apache.iotdb.commons.path.PartialPath;
-import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDeleteStorageGroupsReq;
 import org.apache.iotdb.confignode.rpc.thrift.TDropFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TGetTemplateResp;
-import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TSetStorageGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TShowConfigNodesResp;
@@ -44,6 +42,7 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchemaResp;
 import org.apache.iotdb.db.client.ConfigNodeClient;
 import org.apache.iotdb.db.client.ConfigNodeInfo;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
+import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.template.ClusterTemplateManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
@@ -270,60 +269,70 @@ public class ClusterConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> merge(TMergeReq tMergeReq) {
+  public SettableFuture<ConfigTaskResult> merge(boolean isCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      // Send request to some API server
-      TSStatus tsStatus = client.merge(tMergeReq);
-      // Get response or throw exception
-      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      } else {
-        future.setException(new StatementExecutionException(tsStatus));
+    TSStatus tsStatus = new TSStatus();
+    if (isCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        // Send request to some API server
+        tsStatus = client.merge();
+      } catch (IOException | TException e) {
+        future.setException(e);
       }
-    } catch (IOException | TException e) {
-      future.setException(e);
+    } else {
+      tsStatus = LocalConfigNode.getInstance().executeMergeOperation();
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq) {
+  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean isCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      // Send request to some API server
-      TSStatus tsStatus = client.flush(tFlushReq);
-      // Get response or throw exception
-      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      } else {
-        future.setException(new StatementExecutionException(tsStatus));
+    TSStatus tsStatus = new TSStatus();
+    if (isCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        // Send request to some API server
+        tsStatus = client.flush(tFlushReq);
+      } catch (IOException | TException e) {
+        future.setException(e);
       }
-    } catch (IOException | TException e) {
-      future.setException(e);
+    } else {
+      tsStatus = LocalConfigNode.getInstance().executeFlushOperation(tFlushReq);
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
     }
     return future;
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> clearCache(TClearCacheReq tClearCacheReq) {
+  public SettableFuture<ConfigTaskResult> clearCache(boolean isCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-
-    try (ConfigNodeClient client =
-        CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
-      // Send request to some API server
-      TSStatus tsStatus = client.clearCache(tClearCacheReq);
-      // Get response or throw exception
-      if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
-      } else {
-        future.setException(new StatementExecutionException(tsStatus));
+    TSStatus tsStatus = new TSStatus();
+    if (isCluster) {
+      try (ConfigNodeClient client =
+          CONFIG_NODE_CLIENT_MANAGER.borrowClient(ConfigNodeInfo.partitionRegionId)) {
+        // Send request to some API server
+        tsStatus = client.clearCache();
+      } catch (IOException | TException e) {
+        future.setException(e);
       }
-    } catch (IOException | TException e) {
-      future.setException(e);
+    } else {
+      tsStatus = LocalConfigNode.getInstance().executeClearCacheOperation();
+    }
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
     }
     return future;
   }

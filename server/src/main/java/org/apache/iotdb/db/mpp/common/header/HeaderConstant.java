@@ -78,6 +78,7 @@ public class HeaderConstant {
   public static final String COLUMN_DATANODE_ID = "DataNodeId";
   public static final String COLUMN_SERIES_SLOTS = "Series Slots";
   public static final String COLUMN_TIME_SLOTS = "Time Slots";
+  public static final String COLUMN_ROLE = "Role";
 
   // column names for show datanodes
   public static final String COLUMN_DATA_REGION_NUM = "DataRegionNum";
@@ -258,7 +259,8 @@ public class HeaderConstant {
                 new ColumnHeader(COLUMN_TIME_SLOTS, TSDataType.INT64),
                 new ColumnHeader(COLUMN_DATANODE_ID, TSDataType.INT32),
                 new ColumnHeader(COLUMN_HOST, TSDataType.TEXT),
-                new ColumnHeader(COLUMN_PORT, TSDataType.INT32)),
+                new ColumnHeader(COLUMN_PORT, TSDataType.INT32),
+                new ColumnHeader(COLUMN_ROLE, TSDataType.TEXT)),
             true);
   }
 

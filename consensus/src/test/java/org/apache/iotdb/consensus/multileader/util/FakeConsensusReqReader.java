@@ -47,6 +47,11 @@ public class FakeConsensusReqReader implements ConsensusReqReader, DataSet {
     return requestSets.getLocalRequestNumber();
   }
 
+  @Override
+  public long getTotalSize() {
+    return 0;
+  }
+
   private class FakeConsensusReqIterator implements ConsensusReqReader.ReqIterator {
     private long nextSearchIndex;
 

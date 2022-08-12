@@ -64,28 +64,21 @@ public class RegionMigrateService implements IService {
   }
 
   /**
-   * migrate a region from fromNode to toNode
+   * add a region peer
    *
-   * @param fromNode from which node
-   * @param regionId which region
-   * @param toNode to which node
-   * @param newLeaderNode transfer region leader to which node
+   * @param req TMigrateRegionReq
    * @return submit task succeed?
    */
-  private boolean submitRegionMigrateTask(
-      TDataNodeLocation fromNode,
-      TConsensusGroupId regionId,
-      TDataNodeLocation toNode,
-      TDataNodeLocation newLeaderNode) {
+  public synchronized boolean submitAddRegionPeerTask(TMigrateRegionReq req) {
+
     boolean submitSucceed = true;
     try {
-      regionMigratePool.submit(new RegionMigrateTask(regionId, fromNode, toNode, newLeaderNode));
+      regionMigratePool.submit(new AddRegionPeerTask(req.getRegionId(), req.getToNode()));
     } catch (Exception e) {
       LOGGER.error(
-          "submit region migrate task error. region: {}, from: {} --> to: {}.",
-          regionId,
-          fromNode.getInternalEndPoint().getIp(),
-          toNode.getInternalEndPoint().getIp(),
+          "submit add region peer task error. region: {}, to: {}.",
+          req.getRegionId(),
+          req.getToNode().getInternalEndPoint().getIp(),
           e);
       submitSucceed = false;
     }
@@ -93,14 +86,49 @@ public class RegionMigrateService implements IService {
   }
 
   /**
-   * migrate a region
+   * remove a region peer
    *
    * @param req TMigrateRegionReq
    * @return submit task succeed?
    */
-  public synchronized boolean submitRegionMigrateTask(TMigrateRegionReq req) {
-    return submitRegionMigrateTask(
-        req.getFromNode(), req.getRegionId(), req.getToNode(), req.getNewLeaderNode());
+  public synchronized boolean submitRemoveRegionPeerTask(TMigrateRegionReq req) {
+
+    boolean submitSucceed = true;
+    try {
+      regionMigratePool.submit(
+          new RemoveRegionPeerTask(req.getRegionId(), req.getFromNode(), req.getNewLeaderNode()));
+    } catch (Exception e) {
+      LOGGER.error(
+          "submit remove region peer task error. region: {}, from: {}.",
+          req.getRegionId(),
+          req.getFromNode().getInternalEndPoint().getIp(),
+          e);
+      submitSucceed = false;
+    }
+    return submitSucceed;
+  }
+
+  /**
+   * remove a region peer
+   *
+   * @param req TMigrateRegionReq
+   * @return submit task succeed?
+   */
+  public synchronized boolean submitRemoveRegionConsensusGroupTask(TMigrateRegionReq req) {
+
+    boolean submitSucceed = true;
+    try {
+      regionMigratePool.submit(
+          new RemoveRegionConsensusGroupTask(req.getRegionId(), req.getFromNode()));
+    } catch (Exception e) {
+      LOGGER.error(
+          "submit remove region consensus group task error. region: {}, from: {}.",
+          req.getRegionId(),
+          req.getFromNode().getInternalEndPoint().getIp(),
+          e);
+      submitSucceed = false;
+    }
+    return submitSucceed;
   }
 
   @Override
@@ -155,160 +183,80 @@ public class RegionMigrateService implements IService {
     }
   }
 
-  private static class RegionMigrateTask implements Runnable {
-    private static final Logger taskLogger = LoggerFactory.getLogger(RegionMigrateTask.class);
+  private static void reportSucceed(TConsensusGroupId tRegionId) {
+    TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+    status.setMessage("Region: " + tRegionId + " migrated succeed");
+    TRegionMigrateResultReportReq req = new TRegionMigrateResultReportReq(tRegionId, status);
+    try {
+      reportRegionMigrateResultToConfigNode(req);
+    } catch (Throwable e) {
+      LOGGER.error(
+          "Report region {} migrate successful result error, result:{}", tRegionId, req, e);
+    }
+  }
+
+  private static void reportFailed(
+      TConsensusGroupId tRegionId,
+      TDataNodeLocation failedNode,
+      TRegionMigrateFailedType failedType,
+      TSStatus status) {
+    TRegionMigrateResultReportReq req =
+        createFailedRequest(tRegionId, failedNode, failedType, status);
+    try {
+      reportRegionMigrateResultToConfigNode(req);
+    } catch (Throwable e) {
+      LOGGER.error("Report region {} migrate failed result error, result:{}", tRegionId, req, e);
+    }
+  }
+
+  private static TRegionMigrateResultReportReq createFailedRequest(
+      TConsensusGroupId tRegionId,
+      TDataNodeLocation failedNode,
+      TRegionMigrateFailedType failedType,
+      TSStatus status) {
+    Map<TDataNodeLocation, TRegionMigrateFailedType> failedNodeAndReason = new HashMap<>();
+    failedNodeAndReason.put(failedNode, failedType);
+    TRegionMigrateResultReportReq req = new TRegionMigrateResultReportReq(tRegionId, status);
+    req.setFailedNodeAndReason(failedNodeAndReason);
+    return req;
+  }
+
+  private static void reportRegionMigrateResultToConfigNode(TRegionMigrateResultReportReq req)
+      throws TException {
+    TSStatus status;
+    try (ConfigNodeClient client = new ConfigNodeClient()) {
+      status = client.reportRegionMigrateResult(req);
+      LOGGER.info(
+          "Report region {} migrate result {} to Config node succeed, result: {}",
+          req.getRegionId(),
+          req,
+          status);
+    }
+  }
+
+  private static class AddRegionPeerTask implements Runnable {
+    private static final Logger taskLogger = LoggerFactory.getLogger(AddRegionPeerTask.class);
 
     // migrate which region
     private final TConsensusGroupId tRegionId;
 
-    // migrate from which node
-    private final TDataNodeLocation fromNode;
-
     // migrate to which node
     private final TDataNodeLocation toNode;
 
-    // transfer leader to which node
-    private final TDataNodeLocation newLeaderNode;
-
-    public RegionMigrateTask(
-        TConsensusGroupId tRegionId,
-        TDataNodeLocation fromNode,
-        TDataNodeLocation toNode,
-        TDataNodeLocation newLeaderNode) {
+    public AddRegionPeerTask(TConsensusGroupId tRegionId, TDataNodeLocation toNode) {
       this.tRegionId = tRegionId;
-      this.fromNode = fromNode;
       this.toNode = toNode;
-      this.newLeaderNode = newLeaderNode;
     }
 
     @Override
     public void run() {
       TSStatus runResult = addPeer();
       if (isFailed(runResult)) {
-        reportFailed(toNode, TRegionMigrateFailedType.AddPeerFailed, runResult);
+        reportFailed(tRegionId, toNode, TRegionMigrateFailedType.AddPeerFailed, runResult);
         return;
       }
 
-      changeLeader();
-
-      runResult = removePeer();
-      if (isFailed(runResult)) {
-        reportFailed(fromNode, TRegionMigrateFailedType.RemovePeerFailed, runResult);
-      }
-      runResult = removeConsensusGroup();
-      if (isFailed(runResult)) {
-        reportFailed(fromNode, TRegionMigrateFailedType.RemoveConsensusGroupFailed, runResult);
-      }
-
-      runResult = deleteRegion();
-      if (isFailed(runResult)) {
-        reportFailed(fromNode, TRegionMigrateFailedType.DeleteRegionFailed, runResult);
-      }
-
-      reportSucceed();
-    }
-
-    private void changeLeader() {
-      ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
-      taskLogger.debug("start to transfer region {} leader", regionId);
-      try {
-        if (!isLeader(regionId)) {
-          taskLogger.debug("region {} is not leader, no need to transfer", regionId);
-          return;
-        }
-        transferLeader(regionId);
-      } catch (Throwable e) {
-        taskLogger.error(
-            "transfer region {} leader to node {} error",
-            regionId,
-            newLeaderNode.getInternalEndPoint(),
-            e);
-      }
-      taskLogger.debug("finished to change region {} leader", regionId);
-    }
-
-    private void transferLeader(ConsensusGroupId regionId) {
-      taskLogger.debug("transfer region {} leader to {} ", regionId, newLeaderNode);
-      if (regionId instanceof DataRegionId) {
-        Peer newLeaderPeer = new Peer(regionId, newLeaderNode.getDataRegionConsensusEndPoint());
-        DataRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
-      } else {
-        Peer newLeaderPeer = new Peer(regionId, newLeaderNode.getSchemaRegionConsensusEndPoint());
-        SchemaRegionConsensusImpl.getInstance().transferLeader(regionId, newLeaderPeer);
-      }
-    }
-
-    private boolean isLeader(ConsensusGroupId regionId) {
-      if (regionId instanceof DataRegionId) {
-        return DataRegionConsensusImpl.getInstance().isLeader(regionId);
-      }
-      return SchemaRegionConsensusImpl.getInstance().isLeader(regionId);
-    }
-
-    private TSStatus deleteRegion() {
-      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
-      taskLogger.debug("start to delete region {}", regionId);
-      try {
-        if (regionId instanceof DataRegionId) {
-          StorageEngineV2.getInstance().deleteDataRegion((DataRegionId) regionId);
-        } else {
-          SchemaEngine.getInstance().deleteSchemaRegion((SchemaRegionId) regionId);
-        }
-      } catch (Throwable e) {
-        taskLogger.error("delete the region {} failed", regionId, e);
-        status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
-        status.setMessage("delete region " + regionId + "failed, " + e.getMessage());
-        return status;
-      }
-      status.setMessage("delete region " + regionId + " succeed");
-      taskLogger.debug("finished to delete region {}", regionId);
-      return status;
-    }
-
-    private void reportSucceed() {
-      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("Region: " + tRegionId + " migrated succeed");
-      TRegionMigrateResultReportReq req = new TRegionMigrateResultReportReq(tRegionId, status);
-      try {
-        reportRegionMigrateResultToConfigNode(req);
-      } catch (Throwable e) {
-        taskLogger.error(
-            "report region {} migrate successful result error, result:{}", tRegionId, req, e);
-      }
-    }
-
-    private void reportFailed(
-        TDataNodeLocation failedNode, TRegionMigrateFailedType failedType, TSStatus status) {
-      TRegionMigrateResultReportReq req = createFailedRequest(failedNode, failedType, status);
-      try {
-        reportRegionMigrateResultToConfigNode(req);
-      } catch (Throwable e) {
-        taskLogger.error(
-            "report region {} migrate failed result error, result:{}", tRegionId, req, e);
-      }
-    }
-
-    private TRegionMigrateResultReportReq createFailedRequest(
-        TDataNodeLocation failedNode, TRegionMigrateFailedType failedType, TSStatus status) {
-      Map<TDataNodeLocation, TRegionMigrateFailedType> failedNodeAndReason = new HashMap<>();
-      failedNodeAndReason.put(failedNode, failedType);
-      TRegionMigrateResultReportReq req = new TRegionMigrateResultReportReq(tRegionId, status);
-      req.setFailedNodeAndReason(failedNodeAndReason);
-      return req;
-    }
-
-    private void reportRegionMigrateResultToConfigNode(TRegionMigrateResultReportReq req)
-        throws TException {
-      TSStatus status;
-      try (ConfigNodeClient client = new ConfigNodeClient()) {
-        status = client.reportRegionMigrateResult(req);
-        taskLogger.info(
-            "report region {} migrate result {} to Config node succeed, result: {}",
-            tRegionId,
-            req,
-            status);
-      }
+      reportSucceed(tRegionId);
     }
 
     private TSStatus addPeer() {
@@ -316,7 +264,7 @@ public class RegionMigrateService implements IService {
       TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       ConsensusGenericResponse resp = null;
       TEndPoint newPeerNode = getConsensusEndPoint(toNode, regionId);
-      taskLogger.info("start to add peer {} for region {}", newPeerNode, tRegionId);
+      taskLogger.info("Start to add peer {} for region {}", newPeerNode, tRegionId);
       boolean addPeerSucceed = true;
       for (int i = 0; i < RETRY; i++) {
         try {
@@ -350,7 +298,7 @@ public class RegionMigrateService implements IService {
         return status;
       }
 
-      taskLogger.info("succeed to add peer {} for region {}", newPeerNode, regionId);
+      taskLogger.info("Succeed to add peer {} for region {}", newPeerNode, regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       status.setMessage("add peer " + newPeerNode + " for region " + regionId + " succeed");
       return status;
@@ -364,6 +312,48 @@ public class RegionMigrateService implements IService {
         resp = SchemaRegionConsensusImpl.getInstance().addPeer(regionId, newPeer);
       }
       return resp;
+    }
+
+    private TEndPoint getConsensusEndPoint(
+        TDataNodeLocation nodeLocation, ConsensusGroupId regionId) {
+      if (regionId instanceof DataRegionId) {
+        return nodeLocation.getDataRegionConsensusEndPoint();
+      }
+      return nodeLocation.getSchemaRegionConsensusEndPoint();
+    }
+
+    private boolean isSucceed(TSStatus status) {
+      return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    }
+
+    private boolean isFailed(TSStatus status) {
+      return !isSucceed(status);
+    }
+  }
+
+  private static class RemoveRegionPeerTask implements Runnable {
+    private static final Logger taskLogger = LoggerFactory.getLogger(RemoveRegionPeerTask.class);
+
+    // migrate which region
+    private final TConsensusGroupId tRegionId;
+
+    // migrate from which node
+    private final TDataNodeLocation fromNode;
+
+    public RemoveRegionPeerTask(
+        TConsensusGroupId tRegionId, TDataNodeLocation fromNode, TDataNodeLocation newLeaderNode) {
+      this.tRegionId = tRegionId;
+      this.fromNode = fromNode;
+    }
+
+    @Override
+    public void run() {
+      TSStatus runResult = removePeer();
+      if (isFailed(runResult)) {
+        reportFailed(tRegionId, fromNode, TRegionMigrateFailedType.RemovePeerFailed, runResult);
+      }
+
+      reportSucceed(tRegionId);
     }
 
     private ConsensusGenericResponse removeRegionPeer(ConsensusGroupId regionId, Peer oldPeer) {
@@ -410,15 +400,84 @@ public class RegionMigrateService implements IService {
 
       if (!removePeerSucceed || resp == null || !resp.isSuccess()) {
         taskLogger.error(
-            "remove old peer {} for region {} failed, resp: {}", oldPeerNode, regionId, resp);
+            "Remove old peer {} for region {} failed, resp: {}", oldPeerNode, regionId, resp);
         status.setCode(TSStatusCode.MIGRATE_REGION_ERROR.getStatusCode());
         status.setMessage("remove old peer " + oldPeerNode + " for region " + regionId + " failed");
         return status;
       }
 
-      taskLogger.info("succeed to remove peer {} for region {}", oldPeerNode, regionId);
+      taskLogger.info("Succeed to remove peer {} for region {}", oldPeerNode, regionId);
       status.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
-      status.setMessage("remove peer " + oldPeerNode + " for region " + regionId + " succeed");
+      status.setMessage("Remove peer " + oldPeerNode + " for region " + regionId + " succeed");
+      return status;
+    }
+
+    private TEndPoint getConsensusEndPoint(
+        TDataNodeLocation nodeLocation, ConsensusGroupId regionId) {
+      if (regionId instanceof DataRegionId) {
+        return nodeLocation.getDataRegionConsensusEndPoint();
+      }
+      return nodeLocation.getSchemaRegionConsensusEndPoint();
+    }
+
+    private boolean isSucceed(TSStatus status) {
+      return status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode();
+    }
+
+    private boolean isFailed(TSStatus status) {
+      return !isSucceed(status);
+    }
+  }
+
+  private static class RemoveRegionConsensusGroupTask implements Runnable {
+    private static final Logger taskLogger =
+        LoggerFactory.getLogger(RemoveRegionConsensusGroupTask.class);
+
+    // migrate which region
+    private final TConsensusGroupId tRegionId;
+
+    // migrate from which node
+    private final TDataNodeLocation fromNode;
+
+    public RemoveRegionConsensusGroupTask(TConsensusGroupId tRegionId, TDataNodeLocation fromNode) {
+      this.tRegionId = tRegionId;
+      this.fromNode = fromNode;
+    }
+
+    @Override
+    public void run() {
+      TSStatus runResult = removeConsensusGroup();
+      if (isFailed(runResult)) {
+        reportFailed(
+            tRegionId, fromNode, TRegionMigrateFailedType.RemoveConsensusGroupFailed, runResult);
+      }
+
+      runResult = deleteRegion();
+      if (isFailed(runResult)) {
+        reportFailed(tRegionId, fromNode, TRegionMigrateFailedType.DeleteRegionFailed, runResult);
+      }
+
+      reportSucceed(tRegionId);
+    }
+
+    private TSStatus deleteRegion() {
+      TSStatus status = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
+      ConsensusGroupId regionId = ConsensusGroupId.Factory.createFromTConsensusGroupId(tRegionId);
+      taskLogger.debug("start to delete region {}", regionId);
+      try {
+        if (regionId instanceof DataRegionId) {
+          StorageEngineV2.getInstance().deleteDataRegion((DataRegionId) regionId);
+        } else {
+          SchemaEngine.getInstance().deleteSchemaRegion((SchemaRegionId) regionId);
+        }
+      } catch (Throwable e) {
+        taskLogger.error("delete the region {} failed", regionId, e);
+        status.setCode(TSStatusCode.DELETE_REGION_ERROR.getStatusCode());
+        status.setMessage("delete region " + regionId + "failed, " + e.getMessage());
+        return status;
+      }
+      status.setMessage("delete region " + regionId + " succeed");
+      taskLogger.info("Finished to delete region {}", regionId);
       return status;
     }
 
@@ -456,14 +515,6 @@ public class RegionMigrateService implements IService {
       taskLogger.info("succeed to remove region {} consensus group", regionId);
       status.setMessage("remove region consensus group " + regionId + "succeed");
       return status;
-    }
-
-    private TEndPoint getConsensusEndPoint(
-        TDataNodeLocation nodeLocation, ConsensusGroupId regionId) {
-      if (regionId instanceof DataRegionId) {
-        return nodeLocation.getDataRegionConsensusEndPoint();
-      }
-      return nodeLocation.getSchemaRegionConsensusEndPoint();
     }
 
     private boolean isSucceed(TSStatus status) {
