@@ -25,15 +25,17 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.checkPoint;
+
 public class FastCrossCompactionWriter implements AutoCloseable {
-  protected static final int subTaskNum =
+  private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
 
   List<TsFileIOWriter> targetFileWriters = new ArrayList<>();
 
   // Each sub task has its own chunk writer.
   // The index of the array corresponds to subTaskId.
-  protected IChunkWriter[] chunkWriters = new IChunkWriter[subTaskNum];
+  private final IChunkWriter[] chunkWriters = new IChunkWriter[subTaskNum];
 
   private boolean isAlign;
 
@@ -42,11 +44,9 @@ public class FastCrossCompactionWriter implements AutoCloseable {
 
   // Each sub task has point count in current measurment, which is used to check size.
   // The index of the array corresponds to subTaskId.
-  protected int[] measurementPointCountArray = new int[subTaskNum];
+  private final long[] measurementPointCountArray = new long[subTaskNum];
 
   private int targetFileIndex;
-
-  String deviceID;
 
   public FastCrossCompactionWriter(List<TsFileResource> targetResources) throws IOException {
     for (int i = 0; i < targetResources.size(); i++) {
@@ -58,7 +58,6 @@ public class FastCrossCompactionWriter implements AutoCloseable {
   public void startChunkGroup(int targetFileIndex, String deviceId, boolean isAlign)
       throws IOException {
     this.isAlign = isAlign;
-    this.deviceID = deviceId;
     this.targetFileIndex = targetFileIndex;
     targetFileWriters.get(targetFileIndex).startChunkGroup(deviceId);
   }
@@ -128,7 +127,7 @@ public class FastCrossCompactionWriter implements AutoCloseable {
                   batchData.currentValue(),
                   isAlign,
                   chunkWriters[subTaskId],
-                  ++measurementPointCountArray[subTaskId] % 5 == 0
+                  ++measurementPointCountArray[subTaskId] % checkPoint == 0
                       ? targetFileWriters.get(targetFileIndex)
                       : null,
                   true);
@@ -167,7 +166,7 @@ public class FastCrossCompactionWriter implements AutoCloseable {
         CompactionWriterUtils.writeTVPair(
             timeValuePair,
             chunkWriters[subTaskId],
-            ++measurementPointCountArray[subTaskId] % 5 == 0
+            ++measurementPointCountArray[subTaskId] % checkPoint == 0
                 ? targetFileWriters.get(targetFileIndex)
                 : null,
             true);
@@ -192,7 +191,7 @@ public class FastCrossCompactionWriter implements AutoCloseable {
             CompactionWriterUtils.writeTVPair(
                 timeValuePair,
                 chunkWriters[subTaskId],
-                ++measurementPointCountArray[subTaskId] % 5 == 0
+                ++measurementPointCountArray[subTaskId] % checkPoint == 0
                     ? targetFileWriters.get(targetFileIndex)
                     : null,
                 true);
@@ -204,7 +203,7 @@ public class FastCrossCompactionWriter implements AutoCloseable {
                 batchData.currentValue(),
                 isAlign,
                 chunkWriters[subTaskId],
-                ++measurementPointCountArray[subTaskId] % 5 == 0
+                ++measurementPointCountArray[subTaskId] % checkPoint == 0
                     ? targetFileWriters.get(targetFileIndex)
                     : null,
                 true);
@@ -226,7 +225,7 @@ public class FastCrossCompactionWriter implements AutoCloseable {
       CompactionWriterUtils.writeTVPair(
           timeValuePair,
           chunkWriters[subTaskId],
-          ++measurementPointCountArray[subTaskId] % 5 == 0
+          ++measurementPointCountArray[subTaskId] % checkPoint == 0
               ? targetFileWriters.get(targetFileIndex)
               : null,
           true);

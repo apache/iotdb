@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.compaction.constant.CompactionType;
 import org.apache.iotdb.db.engine.compaction.constant.ProcessChunkType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -68,6 +69,9 @@ public class AlignedSeriesCompactionExecutor {
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
   private final long chunkPointNumThreshold =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+
+  private final boolean enableMetrics =
+      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   public AlignedSeriesCompactionExecutor(
       String device,
@@ -144,11 +148,13 @@ public class AlignedSeriesCompactionExecutor {
     if (remainingPointInChunkWriter != 0L) {
       CompactionTaskManager.mergeRateLimiterAcquire(
           rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      CompactionMetricsRecorder.recordWriteInfo(
-          CompactionType.INNER_SEQ_COMPACTION,
-          ProcessChunkType.DESERIALIZE_CHUNK,
-          true,
-          chunkWriter.estimateMaxSeriesMemSize());
+      if (enableMetrics) {
+        CompactionMetricsRecorder.recordWriteInfo(
+            CompactionType.INNER_SEQ_COMPACTION,
+            ProcessChunkType.DESERIALIZE_CHUNK,
+            true,
+            chunkWriter.estimateMaxSeriesMemSize());
+      }
       chunkWriter.writeToFileWriter(writer);
     }
   }
@@ -182,11 +188,13 @@ public class AlignedSeriesCompactionExecutor {
         || chunkWriter.estimateMaxSeriesMemSize() >= chunkSizeThreshold * schemaList.size()) {
       CompactionTaskManager.mergeRateLimiterAcquire(
           rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      CompactionMetricsRecorder.recordWriteInfo(
-          CompactionType.INNER_SEQ_COMPACTION,
-          ProcessChunkType.DESERIALIZE_CHUNK,
-          true,
-          chunkWriter.estimateMaxSeriesMemSize());
+      if (enableMetrics) {
+        CompactionMetricsRecorder.recordWriteInfo(
+            CompactionType.INNER_SEQ_COMPACTION,
+            ProcessChunkType.DESERIALIZE_CHUNK,
+            true,
+            chunkWriter.estimateMaxSeriesMemSize());
+      }
       chunkWriter.writeToFileWriter(writer);
       remainingPointInChunkWriter = 0L;
     }

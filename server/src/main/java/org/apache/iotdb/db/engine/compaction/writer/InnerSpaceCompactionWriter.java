@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.checkPoint;
+
 public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   private TsFileIOWriter fileWriter;
 
@@ -62,7 +64,7 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
         value,
         isAlign,
         chunkWriters[subTaskId],
-        ++measurementPointCountArray[subTaskId] % 50 == 0 ? fileWriter : null,
+        ++measurementPointCountArray[subTaskId] % checkPoint == 0 ? fileWriter : null,
         false);
     isEmptyFile = false;
   }

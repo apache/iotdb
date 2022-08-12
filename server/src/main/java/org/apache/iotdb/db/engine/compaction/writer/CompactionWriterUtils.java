@@ -20,6 +20,10 @@ public class CompactionWriterUtils {
   private static final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
+  // When num of points writing into target files reaches, then check chunk size
+  public static final long checkPoint =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum() / 10;
+
   private static final boolean enableMetrics =
       MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 

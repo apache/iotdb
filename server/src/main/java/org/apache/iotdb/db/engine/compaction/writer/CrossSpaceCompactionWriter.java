@@ -31,6 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.db.engine.compaction.writer.CompactionWriterUtils.checkPoint;
+
 public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   // target fileIOWriters
   private List<TsFileIOWriter> fileWriterList = new ArrayList<>();
@@ -108,7 +110,9 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
         value,
         isAlign,
         chunkWriters[subTaskId],
-        ++measurementPointCountArray[subTaskId] % 50 == 0 ? fileWriterList.get(seqFileIndex) : null,
+        ++measurementPointCountArray[subTaskId] % checkPoint == 0
+            ? fileWriterList.get(seqFileIndex)
+            : null,
         true);
     isDeviceExistedInTargetFiles[seqFileIndex] = true;
     isEmptyFile[seqFileIndex] = false;
