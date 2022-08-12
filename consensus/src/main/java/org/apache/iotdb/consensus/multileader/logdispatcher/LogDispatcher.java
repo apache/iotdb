@@ -222,6 +222,12 @@ public class LogDispatcher {
       // indicating that insert nodes whose search index are before this value can be deleted
       // safely
       reader.setSafelyDeletedSearchIndex(impl.getCurrentSafelyDeletedSearchIndex());
+      // notify
+      if (impl.needToThrottleUp()) {
+        synchronized (impl.getStateMachine()) {
+          impl.getStateMachine().notifyAll();
+        }
+      }
     }
 
     public PendingBatch getBatch() {
