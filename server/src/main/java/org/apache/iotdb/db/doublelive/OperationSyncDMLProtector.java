@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.doublelive;
 
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.session.pool.SessionPool;
@@ -53,6 +54,7 @@ public class OperationSyncDMLProtector extends OperationSyncProtector {
     while (true) {
       // transmit E-Plan until it's been received
       boolean transmitStatus = false;
+      if (StorageEngine.isSecondaryAlive().get()){
       try {
         // try operation sync
         planBuffer.position(0);
@@ -64,6 +66,12 @@ public class OperationSyncDMLProtector extends OperationSyncProtector {
         // error exception and break
         LOGGER.error("OperationSyncDMLProtector can't transmit", e);
         break;
+      }}else {
+        try {
+          TimeUnit.SECONDS.sleep(30);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
       if (transmitStatus) {
         break;

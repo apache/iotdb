@@ -432,7 +432,6 @@ public class StorageEngine implements IService {
   private void checkSecondaryIsLife() {
     try {
       isSecondaryAlive.set(operationSyncsessionPool.getSystemStatus() == SystemStatus.NORMAL);
-      ;
     } catch (IoTDBConnectionException e) {
       isSecondaryAlive.set(false);
     }
