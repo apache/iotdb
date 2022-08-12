@@ -54,19 +54,20 @@ public class OperationSyncDMLProtector extends OperationSyncProtector {
     while (true) {
       // transmit E-Plan until it's been received
       boolean transmitStatus = false;
-      if (StorageEngine.isSecondaryAlive().get()){
-      try {
-        // try operation sync
-        planBuffer.position(0);
-        transmitStatus = operationSyncSessionPool.operationSyncTransmit(planBuffer);
-      } catch (IoTDBConnectionException connectionException) {
-        // warn IoTDBConnectionException and retry
-        LOGGER.warn("OperationSyncDMLProtector can't transmit, retrying...", connectionException);
-      } catch (Exception e) {
-        // error exception and break
-        LOGGER.error("OperationSyncDMLProtector can't transmit", e);
-        break;
-      }}else {
+      if (StorageEngine.isSecondaryAlive().get()) {
+        try {
+          // try operation sync
+          planBuffer.position(0);
+          transmitStatus = operationSyncSessionPool.operationSyncTransmit(planBuffer);
+        } catch (IoTDBConnectionException connectionException) {
+          // warn IoTDBConnectionException and retry
+          LOGGER.warn("OperationSyncDMLProtector can't transmit, retrying...", connectionException);
+        } catch (Exception e) {
+          // error exception and break
+          LOGGER.error("OperationSyncDMLProtector can't transmit", e);
+          break;
+        }
+      } else {
         try {
           TimeUnit.SECONDS.sleep(30);
         } catch (InterruptedException e) {

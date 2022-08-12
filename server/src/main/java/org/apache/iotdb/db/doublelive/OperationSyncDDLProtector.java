@@ -50,7 +50,7 @@ public class OperationSyncDDLProtector extends OperationSyncProtector {
     while (true) {
       // transmit E-Plan until it's been received
       boolean transmitStatus = false;
-      if(StorageEngine.isSecondaryAlive().get()) {
+      if (StorageEngine.isSecondaryAlive().get()) {
         try {
           // try operation sync
           planBuffer.position(0);
@@ -63,7 +63,7 @@ public class OperationSyncDDLProtector extends OperationSyncProtector {
           LOGGER.error("OperationSyncDDLProtector can't transmit", e);
           break;
         }
-      }else {
+      } else {
         try {
           TimeUnit.SECONDS.sleep(30);
         } catch (InterruptedException e) {
