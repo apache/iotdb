@@ -29,8 +29,8 @@ import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.ClusterSchemaManager;
 import org.apache.iotdb.confignode.manager.IManager;
-import org.apache.iotdb.confignode.manager.NodeManager;
 import org.apache.iotdb.confignode.manager.PartitionManager;
+import org.apache.iotdb.confignode.manager.load.LoadManager;
 import org.apache.iotdb.confignode.manager.load.balancer.region.CopySetRegionAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.GreedyRegionAllocator;
 import org.apache.iotdb.confignode.manager.load.balancer.region.IRegionAllocator;
@@ -68,9 +68,7 @@ public class RegionBalancer {
     CreateRegionGroupsPlan createRegionGroupsPlan = new CreateRegionGroupsPlan();
     IRegionAllocator regionAllocator = genRegionAllocator();
 
-    // TODO: After waiting for the IT framework to complete, change the following code to:
-    //  List<TDataNodeInfo> onlineDataNodes = getLoadManager().getOnlineDataNodes(-1);
-    List<TDataNodeConfiguration> registeredDataNodes = getNodeManager().getRegisteredDataNodes();
+    List<TDataNodeConfiguration> onlineDataNodes = getLoadManager().getOnlineDataNodes();
     List<TRegionReplicaSet> allocatedRegions = getPartitionManager().getAllReplicaSets();
 
     for (Map.Entry<String, Integer> entry : allotmentMap.entrySet()) {
@@ -86,7 +84,7 @@ public class RegionBalancer {
               : storageGroupSchema.getDataReplicationFactor();
 
       // Check validity
-      if (registeredDataNodes.size() < replicationFactor) {
+      if (onlineDataNodes.size() < replicationFactor) {
         throw new NotEnoughDataNodeException();
       }
 
@@ -94,7 +92,7 @@ public class RegionBalancer {
         // Generate allocation plan
         TRegionReplicaSet newRegion =
             regionAllocator.allocateRegion(
-                registeredDataNodes,
+                onlineDataNodes,
                 allocatedRegions,
                 replicationFactor,
                 new TConsensusGroupId(
@@ -122,8 +120,8 @@ public class RegionBalancer {
     }
   }
 
-  private NodeManager getNodeManager() {
-    return configManager.getNodeManager();
+  private LoadManager getLoadManager() {
+    return configManager.getLoadManager();
   }
 
   private ClusterSchemaManager getClusterSchemaManager() {
