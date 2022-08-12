@@ -3021,7 +3021,7 @@ public class IoTDBConfig {
   public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
   }
-  
+
   public long getThrottleDownThreshold() {
     return throttleDownThreshold;
   }
