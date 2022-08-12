@@ -101,7 +101,7 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   }
 
   @Override
-  public List<PipeSink> getAllPipeSink() {
+  public List<PipeSink> getAllPipeSinks() {
     return syncInfo.getAllPipeSink();
   }
 
@@ -152,6 +152,11 @@ public class LocalSyncInfoFetcher implements ISyncInfoFetcher {
   @Override
   public List<PipeInfo> getAllPipeInfos() {
     return syncInfo.getAllPipeInfos();
+  }
+
+  @Override
+  public PipeInfo getRunningPipeInfo() {
+    return syncInfo.getRunningPipeInfo();
   }
 
   @Override

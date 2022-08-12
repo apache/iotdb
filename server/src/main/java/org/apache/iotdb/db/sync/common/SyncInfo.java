@@ -186,6 +186,11 @@ public class SyncInfo {
     return pipes;
   }
 
+  /** @return null if no pipe has been created */
+  public PipeInfo getRunningPipeInfo() {
+    return runningPipe;
+  }
+
   private void checkIfPipeExistAndRunning(String pipeName) throws PipeException {
     if (runningPipe == null || runningPipe.getStatus() == Pipe.PipeStatus.DROP) {
       throw new PipeException("There is no existing pipe.");
