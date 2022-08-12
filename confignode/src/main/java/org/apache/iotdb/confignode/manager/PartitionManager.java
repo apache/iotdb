@@ -49,7 +49,9 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -86,15 +88,19 @@ public class PartitionManager {
   private final ScheduledExecutorService regionCleaner;
   private Future<?> currentRegionCleanerFuture;
 
+  // Map<RegionId, RegionGroupCache>
+  private final Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap;
+
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
     this.regionCleaner =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Cleaner");
+    this.regionGroupCacheMap = new ConcurrentHashMap<>();
     setSeriesPartitionExecutor();
   }
 
-  /** Construct SeriesPartitionExecutor by iotdb-confignode.propertis */
+  /** Construct SeriesPartitionExecutor by iotdb-confignode.properties */
   private void setSeriesPartitionExecutor() {
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     this.executor =
@@ -407,7 +413,7 @@ public class PartitionManager {
    *
    * @param physicalPlan GetNodesPathsPartitionReq
    * @return SchemaNodeManagementPartitionDataSet that contains only existing matched
-   *     SchemaPartition and matched child paths aboveMtree
+   *     SchemaPartition and matched child paths aboveMTree
    */
   public DataSet getNodePathsPartition(GetNodePathsPartitionPlan physicalPlan) {
     SchemaNodeManagementResp schemaNodeManagementResp;
@@ -506,16 +512,49 @@ public class PartitionManager {
     }
   }
 
+  public Map<TConsensusGroupId, IRegionGroupCache> getRegionGroupCacheMap() {
+    return regionGroupCacheMap;
+  }
+
+  /**
+   * Get the leadership of each RegionGroup
+   *
+   * @return Map<RegionGroupId, leader location>
+   */
+  public Map<TConsensusGroupId, Integer> getAllLeadership() {
+    Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
+    if (ConfigNodeDescriptor.getInstance()
+        .getConf()
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      regionGroupCacheMap.forEach(
+          (consensusGroupId, regionGroupCache) -> {
+            if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
+              result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId());
+            }
+          });
+      getLoadManager()
+          .getRouteBalancer()
+          .getRouteMap()
+          .forEach(
+              (consensusGroupId, regionReplicaSet) ->
+                  result.put(
+                      consensusGroupId,
+                      regionReplicaSet.getDataNodeLocations().get(0).getDataNodeId()));
+    } else {
+      regionGroupCacheMap.forEach(
+          (consensusGroupId, regionGroupCache) ->
+              result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId()));
+    }
+    return result;
+  }
+
   public ScheduledExecutorService getRegionCleaner() {
     return regionCleaner;
   }
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
-  }
-
-  private NodeManager getNodeManager() {
-    return configManager.getNodeManager();
   }
 
   private ClusterSchemaManager getClusterSchemaManager() {

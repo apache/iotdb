@@ -245,7 +245,7 @@ public class ConfigManager implements IManager {
               .sorted(Comparator.comparingInt(TDataNodeLocation::getDataNodeId))
               .collect(Collectors.toList());
       Map<Integer, String> nodeStatus = new HashMap<>();
-      getLoadManager()
+      getNodeManager()
           .getNodeCacheMap()
           .forEach(
               (nodeId, heartbeatCache) ->
@@ -858,7 +858,8 @@ public class ConfigManager implements IManager {
           .getRegionInfoList()
           .forEach(
               regionInfo -> {
-                Map<TConsensusGroupId, Integer> allLeadership = loadManager.getAllLeadership();
+                Map<TConsensusGroupId, Integer> allLeadership =
+                    getPartitionManager().getAllLeadership();
                 if (!allLeadership.isEmpty()) {
                   String regionType =
                       regionInfo.getDataNodeId()

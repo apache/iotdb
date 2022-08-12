@@ -25,6 +25,7 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.NodeManager;
+import org.apache.iotdb.confignode.manager.PartitionManager;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
@@ -50,12 +51,12 @@ public class LoadManagerMetrics {
   }
 
   private int getRunningConfigNodesNum() {
-    List<TConfigNodeLocation> allConfigNodes =
-        configManager.getLoadManager().getOnlineConfigNodes();
-    if (allConfigNodes == null) {
+    List<TConfigNodeLocation> runningConfigNodes =
+        getNodeManager().filterConfigNodeThroughStatus(NodeStatus.Running);
+    if (runningConfigNodes == null) {
       return 0;
     }
-    for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
+    for (TConfigNodeLocation configNodeLocation : runningConfigNodes) {
       String name = NodeUrlUtils.convertTEndPointUrl(configNodeLocation.getInternalEndPoint());
 
       MetricsService.getInstance()
@@ -69,15 +70,16 @@ public class LoadManagerMetrics {
               "ConfigNode")
           .set(1);
     }
-    return allConfigNodes.size();
+    return runningConfigNodes.size();
   }
 
   private int getRunningDataNodesNum() {
-    List<TDataNodeConfiguration> allDataNodes = configManager.getLoadManager().getOnlineDataNodes();
-    if (allDataNodes == null) {
+    List<TDataNodeConfiguration> runningDataNodes =
+        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Running);
+    if (runningDataNodes == null) {
       return 0;
     }
-    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
+    for (TDataNodeConfiguration dataNodeInfo : runningDataNodes) {
       TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
       String name = NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
 
@@ -92,16 +94,16 @@ public class LoadManagerMetrics {
               "DataNode")
           .set(1);
     }
-    return allDataNodes.size();
+    return runningDataNodes.size();
   }
 
   private int getUnknownConfigNodesNum() {
-    List<TConfigNodeLocation> allConfigNodes =
-        configManager.getLoadManager().getUnknownConfigNodes();
-    if (allConfigNodes == null) {
+    List<TConfigNodeLocation> unknownConfigNodes =
+        getNodeManager().filterConfigNodeThroughStatus(NodeStatus.Unknown);
+    if (unknownConfigNodes == null) {
       return 0;
     }
-    for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
+    for (TConfigNodeLocation configNodeLocation : unknownConfigNodes) {
       String name = NodeUrlUtils.convertTEndPointUrl(configNodeLocation.getInternalEndPoint());
 
       MetricsService.getInstance()
@@ -115,16 +117,16 @@ public class LoadManagerMetrics {
               "ConfigNode")
           .set(0);
     }
-    return allConfigNodes.size();
+    return unknownConfigNodes.size();
   }
 
   private int getUnknownDataNodesNum() {
-    List<TDataNodeConfiguration> allDataNodes =
-        configManager.getLoadManager().getUnknownDataNodes();
-    if (allDataNodes == null) {
+    List<TDataNodeConfiguration> unknownDataNodes =
+        getNodeManager().filterDataNodeThroughStatus(NodeStatus.Unknown);
+    if (unknownDataNodes == null) {
       return 0;
     }
-    for (TDataNodeConfiguration dataNodeInfo : allDataNodes) {
+    for (TDataNodeConfiguration dataNodeInfo : unknownDataNodes) {
       TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
       String name = NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
 
@@ -139,7 +141,7 @@ public class LoadManagerMetrics {
               "DataNode")
           .set(0);
     }
-    return allDataNodes.size();
+    return unknownDataNodes.size();
   }
 
   public void addNodeMetrics() {
@@ -202,8 +204,7 @@ public class LoadManagerMetrics {
   public Integer getLeadershipCountByDatanode(int dataNodeId) {
     Map<Integer, Integer> idToCountMap = new ConcurrentHashMap<>();
 
-    configManager
-        .getLoadManager()
+    getPartitionManager()
         .getAllLeadership()
         .forEach((consensusGroupId, nodeId) -> idToCountMap.merge(nodeId, 1, Integer::sum));
     return idToCountMap.get(dataNodeId);
@@ -268,5 +269,9 @@ public class LoadManagerMetrics {
 
   private NodeManager getNodeManager() {
     return configManager.getNodeManager();
+  }
+
+  private PartitionManager getPartitionManager() {
+    return configManager.getPartitionManager();
   }
 }
