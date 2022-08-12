@@ -65,6 +65,7 @@ public class CrossSpaceCompactionValidationTest extends AbstractCompactionTest {
     super.tearDown();
     Thread.currentThread().setName(oldThreadName);
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    TsFileValidationTool.badFileNum = 0;
   }
 
   /**

@@ -48,7 +48,7 @@ public class SchemaValidator {
           SCHEMA_FETCHER.fetchSchemaWithAutoCreate(
               insertNode.getDevicePath(),
               insertNode.getMeasurements(),
-              insertNode.getDataTypes(),
+              insertNode::getDataType,
               insertNode.isAligned());
     }
 

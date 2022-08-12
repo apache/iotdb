@@ -18,10 +18,17 @@
  */
 package org.apache.iotdb.db.sync.receiver.recovery;
 
+import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.sync.conf.SyncPathUtil;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogReader;
+import org.apache.iotdb.db.sync.common.persistence.SyncLogWriter;
 import org.apache.iotdb.db.sync.receiver.manager.PipeMessage;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe.PipeStatus;
+import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
+import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -34,7 +41,7 @@ import java.util.List;
 import java.util.Map;
 
 /** This test is for ReceiverLog and ReceiverLogAnalyzer */
-public class ReceiverLogAnalyzerTest {
+public class SyncLogTest {
 
   private static final String pipe1 = "pipe1";
   private static final String pipe2 = "pipe2";
@@ -56,29 +63,40 @@ public class ReceiverLogAnalyzerTest {
   @Test
   public void testServiceLog() {
     try {
-      ReceiverLog log = new ReceiverLog();
+      SyncLogWriter log = SyncLogWriter.getInstance();
       log.startPipeServer();
-      log.createPipe(pipe1, ip1, 1);
-      log.createPipe(pipe2, ip2, 2);
-      log.createPipe(pipe1, ip2, 3);
-      log.stopPipe(pipe1, ip1, 1);
+      CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan("demo", "iotdb");
+      createPipeSinkPlan.addPipeSinkAttribute("ip", "127.0.0.1");
+      createPipeSinkPlan.addPipeSinkAttribute("port", "6670");
+      log.addPipeSink(createPipeSinkPlan);
+      log.addPipe(new CreatePipePlan(pipe1, "demo"), 1);
+      log.operatePipe(pipe1, Operator.OperatorType.DROP_PIPE);
       log.stopPipeServer();
       log.startPipeServer();
-      log.stopPipe(pipe2, ip2, 2);
-      log.dropPipe(pipe1, ip2, 3);
-      log.startPipe(pipe1, ip1, 1);
+
+      log.addPipe(new CreatePipePlan(pipe2, "demo"), 2);
+      log.operatePipe(pipe1, Operator.OperatorType.STOP_PIPE);
+      log.operatePipe(pipe1, Operator.OperatorType.START_PIPE);
       log.close();
-      ReceiverLogAnalyzer receiverLogAnalyzer = new ReceiverLogAnalyzer();
-      receiverLogAnalyzer.scan();
-      Map<String, Map<String, Map<Long, PipeStatus>>> map = receiverLogAnalyzer.getPipeInfos();
-      Assert.assertTrue(receiverLogAnalyzer.isPipeServerEnable());
-      Assert.assertNotNull(map);
-      Assert.assertEquals(2, map.get(pipe1).size());
-      Assert.assertEquals(1, map.get(pipe2).size());
-      Assert.assertEquals(1, map.get(pipe2).size());
-      Assert.assertEquals(PipeStatus.STOP, map.get(pipe2).get(ip2).get(2L));
-      Assert.assertEquals(PipeStatus.STOP, map.get(pipe1).get(ip1).get(1L));
-      Assert.assertEquals(PipeStatus.DROP, map.get(pipe1).get(ip2).get(3L));
+      SyncLogReader syncLogReader = new SyncLogReader();
+      syncLogReader.recover();
+      List<PipeInfo> pipes = syncLogReader.getAllPipeInfos();
+      Map<String, PipeSink> allPipeSinks = syncLogReader.getAllPipeSinks();
+      PipeInfo runningPipe = syncLogReader.getRunningPipeInfo();
+      Assert.assertTrue(syncLogReader.isPipeServerEnable());
+      Assert.assertEquals(1, allPipeSinks.size());
+      Assert.assertEquals(2, pipes.size());
+      Assert.assertEquals(pipe2, runningPipe.getPipeName());
+      for (PipeInfo p : pipes) {
+        if (p.getPipeName().equals(pipe1)) {
+          Assert.assertEquals(1, p.getCreateTime());
+          Assert.assertEquals("demo", p.getPipeSinkName());
+        } else if (p.getPipeName().equals(pipe2)) {
+          Assert.assertEquals(2, p.getCreateTime());
+          Assert.assertEquals("demo", p.getPipeSinkName());
+        }
+      }
+      Assert.assertEquals(PipeStatus.RUNNING, runningPipe.getStatus());
     } catch (Exception e) {
       Assert.fail();
       e.printStackTrace();
@@ -90,7 +108,7 @@ public class ReceiverLogAnalyzerTest {
     String pipeIdentifier1 = SyncPathUtil.getReceiverPipeDirName(pipe1, ip1, createdTime1);
     String pipeIdentifier2 = SyncPathUtil.getReceiverPipeDirName(pipe2, ip2, createdTime2);
     try {
-      ReceiverLog log = new ReceiverLog();
+      SyncLogWriter log = SyncLogWriter.getInstance();
       PipeMessage info = new PipeMessage(PipeMessage.MsgType.INFO, "info");
       PipeMessage warn = new PipeMessage(PipeMessage.MsgType.WARN, "warn");
       PipeMessage error = new PipeMessage(PipeMessage.MsgType.ERROR, "error");
@@ -106,9 +124,9 @@ public class ReceiverLogAnalyzerTest {
       log.comsumePipeMsg(pipeIdentifier2);
       log.close();
 
-      ReceiverLogAnalyzer receiverLogAnalyzer = new ReceiverLogAnalyzer();
-      receiverLogAnalyzer.scan();
-      Map<String, List<PipeMessage>> map = receiverLogAnalyzer.getPipeMessageMap();
+      SyncLogReader syncLogReader = new SyncLogReader();
+      syncLogReader.recover();
+      Map<String, List<PipeMessage>> map = syncLogReader.getPipeMessageMap();
       Assert.assertNotNull(map);
       Assert.assertEquals(3, map.get(pipeIdentifier1).size());
       Assert.assertNull(map.get(pipeIdentifier2));
