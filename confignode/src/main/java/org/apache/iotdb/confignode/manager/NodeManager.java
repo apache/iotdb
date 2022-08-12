@@ -396,7 +396,7 @@ public class NodeManager {
     return configManager.getClusterSchemaManager();
   }
 
-  public LoadManager getLoadManager() {
+  private LoadManager getLoadManager() {
     return configManager.getLoadManager();
   }
 }
