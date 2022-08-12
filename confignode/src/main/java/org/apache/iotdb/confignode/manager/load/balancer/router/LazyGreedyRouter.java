@@ -151,4 +151,8 @@ public class LazyGreedyRouter implements IRouter {
         (dataNodeId, counter) -> (counter == null ? 1 : counter + 1));
     routeMap.put(newRouteEntry.getRegionId(), newRouteEntry);
   }
+
+  public Map<TConsensusGroupId, TRegionReplicaSet> getRouteMap() {
+    return routeMap;
+  }
 }

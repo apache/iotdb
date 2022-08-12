@@ -17,28 +17,25 @@
  * under the License.
  */
 
-package org.apache.iotdb.confignode.client;
+package org.apache.iotdb.commons.client;
 
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
-import org.apache.iotdb.commons.client.ClientFactoryProperty;
-import org.apache.iotdb.commons.client.ClientManager;
-import org.apache.iotdb.commons.client.ClientPoolProperty;
-import org.apache.iotdb.commons.client.IClientPoolFactory;
 import org.apache.iotdb.commons.client.async.AsyncConfigNodeHeartbeatServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeHeartbeatServiceClient;
 import org.apache.iotdb.commons.client.async.AsyncDataNodeInternalServiceClient;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
-import org.apache.iotdb.confignode.conf.ConfigNodeConfig;
-import org.apache.iotdb.confignode.conf.ConfigNodeDescriptor;
+import org.apache.iotdb.commons.concurrent.ThreadName;
+import org.apache.iotdb.commons.conf.CommonConfig;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 
 import org.apache.commons.pool2.KeyedObjectPool;
 import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 
-public class ConfigNodeClientPoolFactory {
+public class ClientPoolFactory {
 
-  private static final ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
+  private static final CommonConfig conf = CommonDescriptor.getInstance().getConfig();
 
-  private ConfigNodeClientPoolFactory() {}
+  private ClientPoolFactory() {}
 
   public static class SyncDataNodeInternalServiceClientPoolFactory
       implements IClientPoolFactory<TEndPoint, SyncDataNodeInternalServiceClient> {
@@ -69,7 +66,8 @@ public class ConfigNodeClientPoolFactory {
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
-                  .build()),
+                  .build(),
+              ThreadName.DATA_NODE_CLIENT_POOL_THREAD_NAME.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeInternalServiceClient>().build().getConfig());
     }
   }
@@ -86,7 +84,8 @@ public class ConfigNodeClientPoolFactory {
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
-                  .build()),
+                  .build(),
+              ThreadName.CONFIG_NODE_HEARTBEAT_CLIENT_POOL_THREAD_NAME.getName()),
           new ClientPoolProperty.Builder<AsyncConfigNodeHeartbeatServiceClient>()
               .build()
               .getConfig());
@@ -105,7 +104,8 @@ public class ConfigNodeClientPoolFactory {
                   .setConnectionTimeoutMs(conf.getConnectionTimeoutInMS())
                   .setRpcThriftCompressionEnabled(conf.isRpcThriftCompressionEnabled())
                   .setSelectorNumOfAsyncClientManager(conf.getSelectorNumOfClientManager())
-                  .build()),
+                  .build(),
+              ThreadName.DATA_NODE_HEARTBEAT_CLIENT_POOL_THREAD_NAME.getName()),
           new ClientPoolProperty.Builder<AsyncDataNodeHeartbeatServiceClient>()
               .build()
               .getConfig());

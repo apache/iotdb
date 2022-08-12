@@ -31,6 +31,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.FillComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.FromComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByLevelComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.GroupByTimeComponent;
+import org.apache.iotdb.db.mpp.plan.statement.component.HavingCondition;
 import org.apache.iotdb.db.mpp.plan.statement.component.OrderByComponent;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.plan.statement.component.ResultColumn;
@@ -66,6 +67,7 @@ public class QueryStatement extends Statement {
   protected SelectComponent selectComponent;
   protected FromComponent fromComponent;
   protected WhereCondition whereCondition;
+  protected HavingCondition havingCondition;
 
   // row limit and offset for result set. The default value is 0, which means no limit
   protected int rowLimit = 0;
@@ -120,6 +122,18 @@ public class QueryStatement extends Statement {
 
   public void setWhereCondition(WhereCondition whereCondition) {
     this.whereCondition = whereCondition;
+  }
+
+  public boolean hasHaving() {
+    return havingCondition != null;
+  }
+
+  public HavingCondition getHavingCondition() {
+    return havingCondition;
+  }
+
+  public void setHavingCondition(HavingCondition havingCondition) {
+    this.havingCondition = havingCondition;
   }
 
   public int getRowLimit() {
@@ -264,14 +278,37 @@ public class QueryStatement extends Statement {
       }
     }
 
+    if (getHavingCondition() != null) {
+      Expression havingExpression = getHavingCondition().getPredicate();
+      if (ExpressionAnalyzer.identifyOutputColumnType(havingExpression, true)
+          != ResultColumn.ColumnType.AGGREGATION) {
+        throw new SemanticException("Expression of HAVING clause must to be an Aggregation");
+      }
+      try {
+        if (isGroupByLevel()) { // check path in SELECT and HAVING only have one node
+          for (ResultColumn resultColumn : getSelectComponent().getResultColumns()) {
+            ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
+          }
+          ExpressionAnalyzer.checkIsAllMeasurement(havingExpression);
+        }
+      } catch (SemanticException e) {
+        throw new SemanticException("When Having used with GroupByLevel: " + e.getMessage());
+      }
+    }
+
     if (isAlignByDevice()) {
       // the paths can only be measurement or one-level wildcard in ALIGN BY DEVICE
-      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-        ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
+      try {
+        for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
+          ExpressionAnalyzer.checkIsAllMeasurement(resultColumn.getExpression());
+        }
+        if (getWhereCondition() != null) {
+          ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
+        }
+      } catch (SemanticException e) {
+        throw new SemanticException("ALIGN BY DEVICE: " + e.getMessage());
       }
-      if (getWhereCondition() != null) {
-        ExpressionAnalyzer.checkIsAllMeasurement(getWhereCondition().getPredicate());
-      }
+
       if (isOrderByTimeseries()) {
         throw new SemanticException("Sorting by timeseries is only supported in last queries.");
       }

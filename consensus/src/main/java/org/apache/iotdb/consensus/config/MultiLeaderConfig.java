@@ -202,6 +202,9 @@ public class MultiLeaderConfig {
     private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
+    private final long throttleDownThreshold;
+    private final long throttleUpThreshold;
+    private final long throttleTimeOutMs;
 
     private Replication(
         int maxPendingRequestNumPerNode,
@@ -209,13 +212,19 @@ public class MultiLeaderConfig {
         int maxPendingBatch,
         int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
-        long maxRetryWaitTimeMs) {
+        long maxRetryWaitTimeMs,
+        long throttleDownThreshold,
+        long throttleUpThreshold,
+        long throttleTimeOutMs) {
       this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
       this.maxRequestPerBatch = maxRequestPerBatch;
       this.maxPendingBatch = maxPendingBatch;
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
+      this.throttleDownThreshold = throttleDownThreshold;
+      this.throttleUpThreshold = throttleUpThreshold;
+      this.throttleTimeOutMs = throttleTimeOutMs;
     }
 
     public int getMaxPendingRequestNumPerNode() {
@@ -242,17 +251,34 @@ public class MultiLeaderConfig {
       return maxRetryWaitTimeMs;
     }
 
+    public long getThrottleDownThreshold() {
+      return throttleDownThreshold;
+    }
+
+    public long getThrottleUpThreshold() {
+      return throttleUpThreshold;
+    }
+
+    public long getThrottleTimeOutMs() {
+      return throttleTimeOutMs;
+    }
+
     public static Replication.Builder newBuilder() {
       return new Replication.Builder();
     }
 
     public static class Builder {
-      private int maxPendingRequestNumPerNode = 200;
-      private int maxRequestPerBatch = 40;
-      private int maxPendingBatch = 1;
+      private int maxPendingRequestNumPerNode = 600;
+      private int maxRequestPerBatch = 30;
+      // (IMPORTANT) Value of this variable should be the same with MAX_REQUEST_CACHE_SIZE
+      // in DataRegionStateMachine
+      private int maxPendingBatch = 5;
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
+      private long throttleDownThreshold = 50 * 1024 * 1024 * 1024L;
+      private long throttleUpThreshold = 1024 * 1024 * 1024L;
+      private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
 
       public Replication.Builder setMaxPendingRequestNumPerNode(int maxPendingRequestNumPerNode) {
         this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
@@ -285,6 +311,21 @@ public class MultiLeaderConfig {
         return this;
       }
 
+      public Replication.Builder setThrottleDownThreshold(long throttleDownThreshold) {
+        this.throttleDownThreshold = throttleDownThreshold;
+        return this;
+      }
+
+      public Replication.Builder setThrottleUpThreshold(long throttleUpThreshold) {
+        this.throttleUpThreshold = throttleUpThreshold;
+        return this;
+      }
+
+      public Replication.Builder setThrottleTimeOutMs(long throttleTimeOutMs) {
+        this.throttleTimeOutMs = throttleTimeOutMs;
+        return this;
+      }
+
       public Replication build() {
         return new Replication(
             maxPendingRequestNumPerNode,
@@ -292,7 +333,10 @@ public class MultiLeaderConfig {
             maxPendingBatch,
             maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,
-            maxRetryWaitTimeMs);
+            maxRetryWaitTimeMs,
+            throttleDownThreshold,
+            throttleUpThreshold,
+            throttleTimeOutMs);
       }
     }
   }

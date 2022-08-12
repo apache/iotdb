@@ -37,13 +37,12 @@ import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeRegisterResp;
 import org.apache.iotdb.confignode.consensus.response.DataNodeToStatusResp;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.heartbeat.INodeCache;
 import org.apache.iotdb.confignode.persistence.NodeInfo;
 import org.apache.iotdb.confignode.procedure.env.DataNodeRemoveHandler;
-import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TDataNodeInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
-import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.Peer;
 import org.apache.iotdb.consensus.common.response.ConsensusGenericResponse;
@@ -203,18 +202,16 @@ public class NodeManager {
   /**
    * Only leader use this interface
    *
-   * @param dataNodeId Specific DataNodeId
-   * @return All registered DataNodes if dataNodeId equals -1. And return the specific DataNode
-   *     otherwise.
+   * @return All registered DataNodes
    */
-  public List<TDataNodeConfiguration> getRegisteredDataNodes(int dataNodeId) {
-    return nodeInfo.getRegisteredDataNodes(dataNodeId);
+  public List<TDataNodeConfiguration> getRegisteredDataNodes() {
+    return nodeInfo.getRegisteredDataNodes();
   }
 
-  public Map<Integer, TDataNodeLocation> getRegisteredDataNodeLocations(int dataNodeId) {
+  public Map<Integer, TDataNodeLocation> getRegisteredDataNodeLocations() {
     Map<Integer, TDataNodeLocation> dataNodeLocations = new ConcurrentHashMap<>();
     nodeInfo
-        .getRegisteredDataNodes(dataNodeId)
+        .getRegisteredDataNodes()
         .forEach(
             dataNodeConfiguration ->
                 dataNodeLocations.put(
@@ -223,17 +220,25 @@ public class NodeManager {
     return dataNodeLocations;
   }
 
+  private INodeCache getNodeCache(int nodeId) {
+    return getLoadManager().getNodeCacheMap().get(nodeId);
+  }
+
+  private String getNodeStatus(int nodeId) {
+    INodeCache nodeCache = getNodeCache(nodeId);
+    return nodeCache == null ? "Unknown" : nodeCache.getNodeStatus().getStatus();
+  }
+
   public List<TDataNodeInfo> getRegisteredDataNodeInfoList() {
     List<TDataNodeInfo> dataNodeInfoList = new ArrayList<>();
-    List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes(-1);
+    List<TDataNodeConfiguration> registeredDataNodes = this.getRegisteredDataNodes();
     if (registeredDataNodes != null) {
       registeredDataNodes.forEach(
           (dataNodeInfo) -> {
             TDataNodeInfo info = new TDataNodeInfo();
             int dataNodeId = dataNodeInfo.getLocation().getDataNodeId();
             info.setDataNodeId(dataNodeId);
-            info.setStatus(
-                getLoadManager().getNodeCacheMap().get(dataNodeId).getNodeStatus().getStatus());
+            info.setStatus(getNodeStatus(dataNodeId));
             info.setRpcAddresss(dataNodeInfo.getLocation().getClientRpcEndPoint().getIp());
             info.setRpcPort(dataNodeInfo.getLocation().getClientRpcEndPoint().getPort());
             info.setDataRegionNum(0);
@@ -253,8 +258,7 @@ public class NodeManager {
             TConfigNodeInfo info = new TConfigNodeInfo();
             int configNodeId = configNodeLocation.getConfigNodeId();
             info.setConfigNodeId(configNodeId);
-            info.setStatus(
-                getLoadManager().getNodeCacheMap().get(configNodeId).getNodeStatus().getStatus());
+            info.setStatus(getNodeStatus(configNodeId));
             info.setInternalAddress(configNodeLocation.getInternalEndPoint().getIp());
             info.setInternalPort(configNodeLocation.getInternalEndPoint().getPort());
             configNodeInfoList.add(info);
@@ -280,28 +284,12 @@ public class NodeManager {
     nodeInfo.addMetrics();
   }
 
-  public TSStatus removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation) {
-    removeConfigNodeLock.tryLock();
-    try {
-      // Execute removePeer
-      if (getConsensusManager().removeConfigNodePeer(tConfigNodeLocation)) {
-        configManager
-            .getLoadManager()
-            .removeNodeHeartbeatHandCache(tConfigNodeLocation.getConfigNodeId());
-        return getConsensusManager()
-            .write(new RemoveConfigNodePlan(tConfigNodeLocation))
-            .getStatus();
-      } else {
-        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-            .setMessage(
-                "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
-      }
-    } finally {
-      removeConfigNodeLock.unlock();
-    }
-  }
-
-  public TSStatus checkConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
+  /**
+   * Only leader use this interface, check the ConfigNode before remove it
+   *
+   * @param removeConfigNodePlan RemoveConfigNodePlan
+   */
+  public TSStatus checkConfigNodeBeforeRemove(RemoveConfigNodePlan removeConfigNodePlan) {
     removeConfigNodeLock.tryLock();
     try {
       // Check OnlineConfigNodes number
@@ -363,9 +351,9 @@ public class NodeManager {
                 + ".");
   }
 
-  public List<TSStatus> merge(TMergeReq req) {
+  public List<TSStatus> merge() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
@@ -376,7 +364,7 @@ public class NodeManager {
 
   public List<TSStatus> flush(TFlushReq req) {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()
@@ -385,9 +373,9 @@ public class NodeManager {
     return dataNodeResponseStatus;
   }
 
-  public List<TSStatus> clearCache(TClearCacheReq req) {
+  public List<TSStatus> clearCache() {
     Map<Integer, TDataNodeLocation> dataNodeLocationMap =
-        configManager.getNodeManager().getRegisteredDataNodeLocations(req.dataNodeId);
+        configManager.getNodeManager().getRegisteredDataNodeLocations();
     List<TSStatus> dataNodeResponseStatus =
         Collections.synchronizedList(new ArrayList<>(dataNodeLocationMap.size()));
     AsyncDataNodeClientPool.getInstance()

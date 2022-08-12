@@ -297,22 +297,12 @@ public class NodeInfo implements SnapshotProcessor {
     return result;
   }
 
-  /**
-   * Return the specific registered DataNode
-   *
-   * @param dataNodeId Specific DataNodeId
-   * @return All registered DataNodes if dataNodeId equals -1. And return the specific DataNode
-   *     otherwise.
-   */
-  public List<TDataNodeConfiguration> getRegisteredDataNodes(int dataNodeId) {
+  /** Return All registered DataNodes */
+  public List<TDataNodeConfiguration> getRegisteredDataNodes() {
     List<TDataNodeConfiguration> result;
     dataNodeInfoReadWriteLock.readLock().lock();
     try {
-      if (dataNodeId == -1) {
-        result = new ArrayList<>(registeredDataNodes.values());
-      } else {
-        result = Collections.singletonList(registeredDataNodes.get(dataNodeId));
-      }
+      result = new ArrayList<>(registeredDataNodes.values());
     } finally {
       dataNodeInfoReadWriteLock.readLock().unlock();
     }
