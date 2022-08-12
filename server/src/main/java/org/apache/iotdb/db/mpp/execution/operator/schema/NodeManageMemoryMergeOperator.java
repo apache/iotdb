@@ -136,7 +136,7 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
   public long calculateMaxPeekMemory() {
     // todo calculate the result based on all the scan node; currently, this is shadowed by
     // schemaQueryMergeNode
-    return 2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    return Math.max(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, child.calculateMaxPeekMemory());
   }
 
   @Override
@@ -146,6 +146,6 @@ public class NodeManageMemoryMergeOperator implements ProcessOperator {
 
   @Override
   public long calculateRetainedSizeAfterCallingNext() {
-    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + child.calculateRetainedSizeAfterCallingNext();
   }
 }
