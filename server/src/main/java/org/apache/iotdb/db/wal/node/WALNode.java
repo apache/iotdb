@@ -749,6 +749,11 @@ public class WALNode implements IWALNode {
     return buffer.getCurrentSearchIndex();
   }
 
+  @Override
+  public long getTotalSize() {
+    return WALManager.getInstance().getTotalDiskUsage();
+  }
+
   // endregion
 
   @Override

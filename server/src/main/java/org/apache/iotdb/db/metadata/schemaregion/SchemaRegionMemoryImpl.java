@@ -107,6 +107,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -1749,7 +1750,10 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
 
   @Override
   public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned)
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned)
       throws MetadataException {
     try {
       List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>(measurements.length);
@@ -1763,10 +1767,11 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
               internalAlignedCreateTimeseries(
                   devicePath,
                   Collections.singletonList(measurements[i]),
-                  Collections.singletonList(tsDataTypes[i]));
+                  Collections.singletonList(getDataType.apply(i)));
 
             } else {
-              internalCreateTimeseries(devicePath.concatNode(measurements[i]), tsDataTypes[i]);
+              internalCreateTimeseries(
+                  devicePath.concatNode(measurements[i]), getDataType.apply(i));
             }
             // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
             deviceMNode = mtree.getNodeByPath(devicePath);
