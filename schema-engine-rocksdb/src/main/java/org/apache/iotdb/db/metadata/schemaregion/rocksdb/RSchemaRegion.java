@@ -1924,7 +1924,10 @@ public class RSchemaRegion implements ISchemaRegion {
 
   @Override
   public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
-      PartialPath devicePath, String[] measurements, TSDataType[] tsDataTypes, boolean aligned)
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned)
       throws MetadataException {
     throw new UnsupportedOperationException();
   }

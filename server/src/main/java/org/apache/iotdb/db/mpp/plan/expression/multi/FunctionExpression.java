@@ -432,7 +432,7 @@ public class FunctionExpression extends Expression {
   @Override
   public boolean isMappable(TypeProvider typeProvider) {
     if (isBuiltInAggregationFunctionExpression) {
-      return false;
+      return true;
     }
     return new UDTFInformationInferrer(functionName)
         .getAccessStrategy(
