@@ -22,7 +22,7 @@
 
 ## FLUSH
 
-将指定存储组的内存缓存区 Memory Table 的数据持久化到磁盘上，并将数据文件封口。在集群模式下，我们提供了持久化单个节点的指定存储组的缓存、持久化整个集群指定存储组的缓存命令。
+将指定存储组的内存缓存区 Memory Table 的数据持久化到磁盘上，并将数据文件封口。在集群模式下，我们提供了持久化本节点的指定存储组的缓存、持久化整个集群指定存储组的缓存命令。
 
 注意：此命令客户端不需要手动调用，IoTDB 有 wal 保证数据安全，IoTDB 会选择合适的时机进行 flush。
 如果频繁调用 flush 会导致数据文件很小，降低查询性能。
@@ -47,7 +47,7 @@ IoTDB> FLUSH root.sg1,root.sg2 ON CLUSTER
 IoTDB> MERGE
 IoTDB> FULL MERGE
 ```
-同时，在集群模式中支持对单个节点或整个集群手动触发数据文件的合并:
+同时，在集群模式中支持对本节点或整个集群手动触发数据文件的合并:
 ```sql
 IoTDB> MERGE ON LOCAL
 IoTDB> MERGE ON CLUSTER
@@ -58,7 +58,7 @@ IoTDB> FULL MERGE ON CLUSTER
 ## CLEAR CACHE
 
 
-手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。在集群模式下，我们提供了清空单个节点缓存、清空整个集群缓存命令。
+手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。在集群模式下，我们提供了清空本节点缓存、清空整个集群缓存命令。
 
 ```sql
 IoTDB> CLEAR CACHE
