@@ -61,13 +61,13 @@ mvn clean package -pl distribution -am -DskipTests
 
 ## 安装包说明
 
-| **目录**                  | **说明**                                |
-|-------------------------|---------------------------------------|
-| confignode              | 包含 ConfigNode 的启停脚本、配置文件、日志、数据        |
-| datanode                | 包含 DataNode 的启停脚本、配置文件、日志、数据；Cli的启动脚本 |
-| grafana-metrics-example | Grafana 监控界面模板                        |
-| lib                     | 库文件目录                                 |
-| tools                   | 系统工具目录                                |
+| **目录**                  | **说明**                                  |
+|-------------------------|-----------------------------------------|
+| confignode              | 包含 ConfigNode 的启停移除脚本、配置文件、日志、数据        |
+| datanode                | 包含 DataNode 的启停移除脚本、配置文件、日志、数据；Cli的启动脚本 |
+| grafana-metrics-example | Grafana 监控界面模板                          |
+| lib                     | 库文件目录                                   |
+| tools                   | 系统工具目录                                  |
 
 ## 启动集群
 
@@ -169,12 +169,16 @@ datanode\sbin\start-cli.bat
 
 ### 移除 ConfigNode
 
+需要在活跃的 ConfigNode 上执行 remove-confignode 脚本。
+
 Linux 移除方式：
 ```
 ./confignode/sbin/remove-confignode.sh -r <internal_address>:<internal_port>
 ```
 
 ### 移除 DataNode
+
+需要在活跃的 DataNode 上执行 remove-datanode 脚本。
 
 Linux 移除方式：
 
@@ -256,7 +260,7 @@ It costs 0.160s
 
 + 修改 DataNode 地址：
 
-| **配置项**                         | **说明**          |
+| **配置项**                         | **值**           |
 |---------------------------------|-----------------|
 | rpc\_address                    | 0.0.0.0         |
 | rpc\_port                       | 6668            |
@@ -280,7 +284,7 @@ It costs 0.160s
 
 + 修改 DataNode 地址：
 
-| **配置项**                         | **说明**          |
+| **配置项**                         | **值**           |
 |---------------------------------|-----------------|
 | rpc\_address                    | 0.0.0.0         |
 | rpc\_port                       | 6669            |
