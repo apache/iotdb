@@ -21,8 +21,13 @@ import javafx.stage.Popup;
 import javafx.stage.Window;
 
 /**
- * Extremely basic date and time picker control for JavaFX. Uses DatePicker JavaFX control to select
- * date.
+ * This class includes code from taipeiben's DataTimePicker project.
+ *
+ * <p>Copyright: 2014-2015 taipeiben and/or other contributors
+ *
+ * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ *
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
  */
 public class DateTimePicker extends HBox implements Initializable {
 

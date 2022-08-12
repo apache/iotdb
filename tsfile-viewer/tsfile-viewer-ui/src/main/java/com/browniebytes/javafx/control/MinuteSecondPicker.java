@@ -14,6 +14,15 @@ import javafx.scene.control.Slider;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.VBox;
 
+/**
+ * This class includes code from taipeiben's DataTimePicker project.
+ *
+ * <p>Copyright: 2014-2015 taipeiben and/or other contributors
+ *
+ * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ *
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
+ */
 public class MinuteSecondPicker extends VBox implements Initializable {
 
   private final DateTimePickerPopup parentContainer;

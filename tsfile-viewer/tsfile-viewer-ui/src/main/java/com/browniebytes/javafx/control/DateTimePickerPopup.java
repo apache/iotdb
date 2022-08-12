@@ -15,6 +15,15 @@ import javafx.scene.control.TitledPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
+/**
+ * This class includes code from taipeiben's DataTimePicker project.
+ *
+ * <p>Copyright: 2014-2015 taipeiben and/or other contributors
+ *
+ * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ *
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
+ */
 class DateTimePickerPopup extends VBox implements Initializable {
 
   private final DateTimePicker parentControl;
