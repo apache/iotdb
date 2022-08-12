@@ -698,9 +698,6 @@ public class DataRegion {
                 TsFileResource tsFileResource = new TsFileResource(alterOldTsFile);
                 tsFileResource.close();
                 deleteTsFile(tsFileResource, logicalStorageGroupName + "-" + dataRegionId);
-                deleteModificationForSourceFile(
-                    new ArrayList<>(Collections.singletonList(tsFileResource)),
-                    logicalStorageGroupName + "-" + dataRegionId);
                 removeList.add(tsFileIdentifier);
               }
             } else {
@@ -2266,11 +2263,10 @@ public class DataRegion {
         logicalStorageGroupName + "-" + dataRegionId + "-" + fullPath.getFullPath();
     // If there are still some old version tsfiles, the delete won't succeeded.
     if (upgradeFileCount.get() != 0) {
-      throw new IOException(
-          "Alter failed. " + "Please do not delete until the old files upgraded.");
+      throw new IOException("Alter failed. Please do not delete until the old files upgraded.");
     }
     if (SettleService.getINSTANCE().getFilesToBeSettledCount().get() != 0) {
-      throw new IOException("Alter failed. " + "Please do not delete until the old files settled.");
+      throw new IOException("Alter failed. Please do not delete until the old files settled.");
     }
     logger.info("[alter timeseries] {} syncCloseAllWorkingTsFileProcessors", logKey);
     // flush & close
@@ -2280,8 +2276,7 @@ public class DataRegion {
     if (!tsFileManager.rewriteLockWithTimeout(
         IoTDBDescriptor.getInstance().getConfig().getRewriteLockWaitTimeoutInMS())) {
       throw new IOException(
-          "Alter failed. "
-              + "Other file rewriting operations are in progress, please do it later.");
+          "Alter failed. Other file rewriting operations are in progress, please do it later.");
     }
     // recover log
     File logFile =
@@ -2290,8 +2285,7 @@ public class DataRegion {
       logger.info("[alter timeseries] {} rewriteUnlock", logKey);
       tsFileManager.rewriteUnlock();
       throw new IOException(
-          "Alter failed. "
-              + "alter.log detected, other alter operations may be running, please do it later.");
+          "Alter failed. alter.log detected, other alter operations may be running, please do it later.");
     }
     // rewrite target tsfiles
     boolean done = false;
@@ -2473,9 +2467,6 @@ public class DataRegion {
         tsFileResource.getTsFilePath());
     // delete the old files
     deleteTsFile(tsFileResource, logicalStorageGroupName + "-" + dataRegionId);
-    deleteModificationForSourceFile(
-        new ArrayList<>(Collections.singletonList(tsFileResource)),
-        logicalStorageGroupName + "-" + dataRegionId);
   }
 
   /**
@@ -4076,31 +4067,12 @@ public class DataRegion {
     try {
       logger.info("{} Start to delete TsFile {}", storageGroupName, seqFile.getTsFilePath());
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
-      //      seqFile.setStatus(TsFileResourceStatus.DELETED);
-      seqFile.delete();
+      seqFile.remove();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
       return false;
     }
     return true;
-  }
-
-  /** Delete all modification files for source files TODO We need to rename CompactionUtils */
-  public static void deleteModificationForSourceFile(
-      Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
-    logger.info("{} Start to delete modifications of source files", storageGroupName);
-    for (TsFileResource tsFileResource : sourceFiles) {
-      ModificationFile compactionModificationFile =
-          ModificationFile.getCompactionMods(tsFileResource);
-      if (compactionModificationFile.exists()) {
-        compactionModificationFile.remove();
-      }
-
-      ModificationFile normalModification = ModificationFile.getNormalMods(tsFileResource);
-      if (normalModification.exists()) {
-        normalModification.remove();
-      }
-    }
   }
 
   private enum LoadTsFileType {

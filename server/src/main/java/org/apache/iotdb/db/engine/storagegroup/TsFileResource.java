@@ -1007,18 +1007,26 @@ public class TsFileResource {
   }
 
   public void moveTsFile(String oldFileSuffix, String newFileSuffix) throws IOException {
-    // move to target file and delete old tmp target file
-    if (!getTsFile().exists()) {
-      return;
-    }
-    File newFile = new File(getTsFilePath().replace(oldFileSuffix, newFileSuffix));
-    if (!newFile.exists()) {
-      FSFactoryProducer.getFSFactory().moveFile(getTsFile(), newFile);
-    }
 
-    // serialize xxx.tsfile.resource
-    setFile(newFile);
-    serialize();
-    close();
+    writeLock();
+    try {
+      // move to target file and delete old tmp target file
+      if (!getTsFile().exists()) {
+        return;
+      }
+      File newFile = new File(getTsFilePath().replace(oldFileSuffix, newFileSuffix));
+      if (!newFile.exists()) {
+        FSFactoryProducer.getFSFactory().moveFile(getTsFile(), newFile);
+      }
+
+      // serialize xxx.tsfile.resource
+      setFile(newFile);
+      serialize();
+      close();
+    } catch (Exception e) {
+      throw e;
+    } finally {
+      writeUnlock();
+    }
   }
 }

@@ -92,7 +92,7 @@ public class TsFileRewriteExcutor {
   /** This function execute the rewrite task */
   public void execute() throws IOException {
 
-    tsFileResource.tryReadLock();
+    tsFileResource.readLock();
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
         TsFileIOWriter writer = new TsFileIOWriter(targetTsFileResource.getTsFile())) {
       // read devices
