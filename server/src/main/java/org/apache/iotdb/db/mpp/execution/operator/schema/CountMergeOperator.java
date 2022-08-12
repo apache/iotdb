@@ -153,4 +153,13 @@ public class CountMergeOperator implements ProcessOperator {
 
     return childrenMaxReturnSize;
   }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long retainedSize = 0L;
+    for (Operator child : children) {
+      retainedSize += child.calculateRetainedSizeAfterCallingNext();
+    }
+    return retainedSize;
+  }
 }

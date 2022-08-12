@@ -88,7 +88,9 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     hasCachedTsBlock = false;
-    return tsBlock;
+    TsBlock result = tsBlock;
+    tsBlock = null;
+    return result;
   }
 
   @Override
@@ -120,5 +122,10 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   @Override
   public long calculateMaxReturnSize() {
     return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
   }
 }

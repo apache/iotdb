@@ -104,11 +104,16 @@ public class NodePathsCountOperator implements ProcessOperator {
   public long calculateMaxPeekMemory() {
     // todo calculate the result based on all the scan node; currently, this is shadowed by
     // schemaQueryMergeNode
-    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    return 2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 
   @Override
   public long calculateMaxReturnSize() {
     return Math.max(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, child.calculateMaxReturnSize());
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 }

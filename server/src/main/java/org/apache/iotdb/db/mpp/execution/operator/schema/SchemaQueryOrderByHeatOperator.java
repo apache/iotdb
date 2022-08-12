@@ -203,4 +203,18 @@ public class SchemaQueryOrderByHeatOperator implements ProcessOperator {
 
     return maxReturnSize;
   }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    long retainedSize = 0L;
+
+    for (Operator child : operators) {
+      retainedSize += child.calculateMaxReturnSize();
+    }
+
+    for (Operator child : operators) {
+      retainedSize += child.calculateRetainedSizeAfterCallingNext();
+    }
+    return retainedSize;
+  }
 }

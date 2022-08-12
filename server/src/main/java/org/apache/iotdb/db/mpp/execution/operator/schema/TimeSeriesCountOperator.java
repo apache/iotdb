@@ -115,4 +115,9 @@ public class TimeSeriesCountOperator implements SourceOperator {
     // the integer used for count
     return 4L;
   }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
+  }
 }

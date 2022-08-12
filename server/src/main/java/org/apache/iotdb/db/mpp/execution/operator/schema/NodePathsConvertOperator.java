@@ -107,4 +107,9 @@ public class NodePathsConvertOperator implements ProcessOperator {
   public long calculateMaxReturnSize() {
     return child.calculateMaxReturnSize();
   }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return child.calculateRetainedSizeAfterCallingNext();
+  }
 }

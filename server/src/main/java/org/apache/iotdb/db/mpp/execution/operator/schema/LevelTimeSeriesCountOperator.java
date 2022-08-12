@@ -127,4 +127,9 @@ public class LevelTimeSeriesCountOperator implements SourceOperator {
   public long calculateMaxReturnSize() {
     return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
+  }
 }
