@@ -41,13 +41,15 @@ public class TsFileProcessorInfo {
   public void addTSPMemCost(long cost) {
     memCost += cost;
     storageGroupInfo.addStorageGroupMemCost(cost);
-    MetricService.getInstance()
-        .getOrCreateGauge(
-            Metric.MEM.toString(),
-            MetricLevel.IMPORTANT,
-            Tag.NAME.toString(),
-            "chunkMetaData_" + storageGroupInfo.getDataRegion().getLogicalStorageGroupName())
-        .incr(cost);
+    if (null != storageGroupInfo.getDataRegion()) {
+      MetricService.getInstance()
+          .getOrCreateGauge(
+              Metric.MEM.toString(),
+              MetricLevel.IMPORTANT,
+              Tag.NAME.toString(),
+              "chunkMetaData_" + storageGroupInfo.getDataRegion().getLogicalStorageGroupName())
+          .incr(cost);
+    }
   }
 
   /** called when meet exception */
