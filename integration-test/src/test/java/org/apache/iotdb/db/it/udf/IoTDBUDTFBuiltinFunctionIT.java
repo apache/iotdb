@@ -1403,25 +1403,25 @@ public class IoTDBUDTFBuiltinFunctionIT {
   }
 
   @Test
-  public void testDeDup() {
+  public void testChangePoints() {
     String[] createSQLs =
         new String[] {
-          "SET STORAGE GROUP TO root.testDeDup",
-          "CREATE TIMESERIES root.testDeDup.d1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.testDeDup.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.testDeDup.d1.s3 WITH DATATYPE=INT64, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.testDeDup.d1.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.testDeDup.d1.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.testDeDup.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+          "SET STORAGE GROUP TO root.testChangePoints",
+          "CREATE TIMESERIES root.testChangePoints.d1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s3 WITH DATATYPE=INT64, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
         };
 
     String[] insertSQLs =
         new String[] {
-          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(1, true, 1, 1, 1.0, 1.0, \"1test1\")",
-          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(2, true, 2, 2, 2.0, 1.0, \"2test2\")",
-          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(3, false, 1, 2, 1.0, 1.0, \"2test2\")",
-          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(4, true, 1, 3, 1.0, 1.0, \"1test1\")",
-          "INSERT INTO root.testDeDup.d1(timestamp, s1, s2, s3, s4, s5, s6) values(5, true, 1, 3, 1.0, 1.0, \"1test1\")"
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(1, true, 1, 1, 1.0, 1.0, \"1test1\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(2, true, 2, 2, 2.0, 1.0, \"2test2\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(3, false, 1, 2, 1.0, 1.0, \"2test2\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(4, true, 1, 3, 1.0, 1.0, \"1test1\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(5, true, 1, 3, 1.0, 1.0, \"1test1\")"
         };
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -1438,12 +1438,12 @@ public class IoTDBUDTFBuiltinFunctionIT {
       String[] expectedHeader =
           new String[] {
             TIMESTAMP_STR,
-            "deDup(root.testDeDup.d1.s1)",
-            "deDup(root.testDeDup.d1.s2)",
-            "deDup(root.testDeDup.d1.s3)",
-            "deDup(root.testDeDup.d1.s4)",
-            "deDup(root.testDeDup.d1.s5)",
-            "deDup(root.testDeDup.d1.s6)"
+            "change_points(root.testChangePoints.d1.s1)",
+            "change_points(root.testChangePoints.d1.s2)",
+            "change_points(root.testChangePoints.d1.s3)",
+            "change_points(root.testChangePoints.d1.s4)",
+            "change_points(root.testChangePoints.d1.s5)",
+            "change_points(root.testChangePoints.d1.s6)"
           };
 
       String[] retArray =
@@ -1455,7 +1455,7 @@ public class IoTDBUDTFBuiltinFunctionIT {
           };
 
       resultSetEqualTest(
-          "select deDup(s1), deDup(s2), deDup(s3), deDup(s4), deDup(s5), deDup(s6) from root.testDeDup.d1",
+          "select change_points(s1), change_points(s2), change_points(s3), change_points(s4), change_points(s5), change_points(s6) from root.testChangePoints.d1",
           expectedHeader,
           retArray);
     } catch (Exception e) {

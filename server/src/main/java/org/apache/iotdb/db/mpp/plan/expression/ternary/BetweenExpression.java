@@ -24,9 +24,6 @@ package org.apache.iotdb.db.mpp.plan.expression.ternary;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary.BetweenTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.ternary.TernaryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -59,18 +56,6 @@ public class BetweenExpression extends TernaryExpression {
   public BetweenExpression(ByteBuffer byteBuffer) {
     super(byteBuffer);
     this.isNotBetween = ReadWriteIOUtils.readBool(byteBuffer);
-  }
-
-  @Override
-  protected TernaryTransformer constructTransformer(
-      LayerPointReader firstParentLayerPointReader,
-      LayerPointReader secondParentLayerPointReader,
-      LayerPointReader thirdParentLayerPointReader) {
-    return new BetweenTransformer(
-        firstParentLayerPointReader,
-        secondParentLayerPointReader,
-        thirdParentLayerPointReader,
-        isNotBetween);
   }
 
   @Override

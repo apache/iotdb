@@ -116,6 +116,11 @@ public class WALFakeNode implements IWALNode {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public long getTotalSize() {
+    return 0;
+  }
+
   public static WALFakeNode getFailureInstance(Exception e) {
     return new WALFakeNode(
         WALFlushListener.Status.FAILURE,

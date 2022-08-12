@@ -32,7 +32,7 @@ import org.apache.iotdb.udf.api.type.Type;
  * Return a series that the consecutive identical values in input series are removed (keeping only
  * the first one).
  */
-public class UDTFDeDuplication implements UDTF {
+public class UDTFChangePoints implements UDTF {
   private boolean isFirst = true;
   private Type dataType;
   private boolean cacheBoolean;

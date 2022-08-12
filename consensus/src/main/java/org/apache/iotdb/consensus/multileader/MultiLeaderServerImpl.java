@@ -61,6 +61,7 @@ public class MultiLeaderServerImpl {
   private final AtomicLong index;
   private final LogDispatcher logDispatcher;
   private final MultiLeaderConfig config;
+  private final ConsensusReqReader reader;
 
   public MultiLeaderServerImpl(
       String storageDir,
@@ -80,9 +81,7 @@ public class MultiLeaderServerImpl {
     }
     this.config = config;
     this.logDispatcher = new LogDispatcher(this, clientManager);
-    // restart
-    ConsensusReqReader reader =
-        (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
+    reader = (ConsensusReqReader) stateMachine.read(new GetConsensusReqReaderPlan());
     long currentSearchIndex = reader.getCurrentSearchIndex();
     if (1 == configuration.size()) {
       // only one configuration means single replica.
@@ -110,6 +109,18 @@ public class MultiLeaderServerImpl {
    */
   public TSStatus write(IConsensusRequest request) {
     synchronized (stateMachine) {
+      if (needToThrottleDown()) {
+        logger.info(
+            "[Throttle Down] index:{}, safeIndex:{}",
+            getIndex(),
+            getCurrentSafelyDeletedSearchIndex());
+        try {
+          stateMachine.wait(config.getReplication().getThrottleTimeOutMs());
+        } catch (InterruptedException e) {
+          logger.error("Failed to throttle down because ", e);
+          Thread.currentThread().interrupt();
+        }
+      }
       IndexedConsensusRequest indexedConsensusRequest =
           buildIndexedConsensusRequestForLocalRequest(request);
       if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
@@ -224,6 +235,16 @@ public class MultiLeaderServerImpl {
 
   public MultiLeaderConfig getConfig() {
     return config;
+  }
+
+  public boolean needToThrottleDown() {
+    return reader.getTotalSize() > config.getReplication().getThrottleDownThreshold();
+  }
+
+  public boolean needToThrottleUp() {
+    return reader.getTotalSize()
+        < config.getReplication().getThrottleDownThreshold()
+            - config.getReplication().getThrottleUpThreshold();
   }
 
   public AtomicLong getIndexObject() {

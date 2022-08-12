@@ -1073,6 +1073,15 @@ public class IoTDBDescriptor {
     if (deleteWalFilesPeriod > 0) {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
+
+    long throttleDownThresholdInByte =
+        Long.parseLong(
+            properties.getProperty(
+                "multi_leader_throttle_down_threshold_in_byte",
+                Long.toString(conf.getThrottleDownThreshold())));
+    if (throttleDownThresholdInByte > 0) {
+      conf.setThrottleDownThreshold(throttleDownThresholdInByte);
+    }
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {

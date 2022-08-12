@@ -338,15 +338,6 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
-// Maintenance Tools
-struct TMergeReq {
-  1: optional i32 dataNodeId
-}
-
-struct TClearCacheReq {
-   1: optional i32 dataNodeId
-}
-
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -606,13 +597,13 @@ service IConfigNodeRPCService {
   // ======================================================
 
   /** Execute Level Compaction and unsequence Compaction task on all DataNodes */
-  common.TSStatus merge(TMergeReq req)
+  common.TSStatus merge()
 
   /** Persist all the data points in the memory table of the storage group to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
   /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
-  common.TSStatus clearCache(TClearCacheReq req)
+  common.TSStatus clearCache()
 
   // ======================================================
   // Cluster Tools
