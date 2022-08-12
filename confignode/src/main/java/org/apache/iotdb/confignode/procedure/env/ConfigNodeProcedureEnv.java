@@ -29,9 +29,11 @@ import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPo
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
+import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
+import org.apache.iotdb.confignode.manager.ConsensusManager;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -68,6 +70,8 @@ public class ConfigNodeProcedureEnv {
 
   private static boolean invalidCacheResult = true;
 
+  private final ReentrantLock removeConfigNodeLock;
+
   public static void setSkipForTest(boolean skipForTest) {
     ConfigNodeProcedureEnv.skipForTest = skipForTest;
   }
@@ -80,6 +84,7 @@ public class ConfigNodeProcedureEnv {
     this.configManager = configManager;
     this.scheduler = scheduler;
     this.dataNodeRemoveHandler = new DataNodeRemoveHandler(configManager);
+    this.removeConfigNodeLock = new ReentrantLock();
   }
 
   public ConfigManager getConfigManager() {
@@ -193,9 +198,27 @@ public class ConfigNodeProcedureEnv {
    */
   public void removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation)
       throws ProcedureException {
-    TSStatus tsStatus = configManager.getNodeManager().removeConfigNodePeer(tConfigNodeLocation);
-    if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new ProcedureException(tsStatus.getMessage());
+    removeConfigNodeLock.tryLock();
+    TSStatus tsStatus;
+    try {
+      // Execute removePeer
+      if (getConsensusManager().removeConfigNodePeer(tConfigNodeLocation)) {
+        configManager
+            .getLoadManager()
+            .removeNodeHeartbeatHandCache(tConfigNodeLocation.getConfigNodeId());
+        tsStatus =
+            getConsensusManager().write(new RemoveConfigNodePlan(tConfigNodeLocation)).getStatus();
+      } else {
+        tsStatus =
+            new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
+                .setMessage(
+                    "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
+      }
+      if (tsStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        throw new ProcedureException(tsStatus.getMessage());
+      }
+    } finally {
+      removeConfigNodeLock.unlock();
     }
   }
 
@@ -286,5 +309,9 @@ public class ConfigNodeProcedureEnv {
 
   public DataNodeRemoveHandler getDataNodeRemoveHandler() {
     return dataNodeRemoveHandler;
+  }
+
+  private ConsensusManager getConsensusManager() {
+    return configManager.getConsensusManager();
   }
 }
