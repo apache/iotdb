@@ -384,7 +384,7 @@ public class SourceHandle implements ISourceHandle {
             executorService.submit(
                 new SendAcknowledgeDataBlockEventTask(startSequenceId, endSequenceId));
             synchronized (SourceHandle.this) {
-              if (aborted) {
+              if (aborted || closed) {
                 return;
               }
               for (int i = startSequenceId; i < endSequenceId; i++) {

@@ -218,4 +218,12 @@ public interface BaseConfig {
   default String getDataRegionConsensusProtocolClass() {
     return "org.apache.iotdb.consensus.standalone.StandAloneConsensus";
   }
+
+  default BaseConfig setTimePartitionInterval(long timePartitionInterval) {
+    return this;
+  }
+
+  default long getTimePartitionInterval() {
+    return 86400;
+  }
 }

@@ -197,7 +197,7 @@ public class SinkHandle implements ISinkHandle {
   @Override
   public synchronized void setNoMoreTsBlocks() {
     logger.info("start to set no-more-tsblocks");
-    if (aborted) {
+    if (aborted || closed) {
       return;
     }
     try {
@@ -283,7 +283,7 @@ public class SinkHandle implements ISinkHandle {
   void acknowledgeTsBlock(int startSequenceId, int endSequenceId) {
     long freedBytes = 0L;
     synchronized (this) {
-      if (aborted) {
+      if (aborted || closed) {
         return;
       }
       Iterator<Entry<Integer, Pair<TsBlock, Long>>> iterator =

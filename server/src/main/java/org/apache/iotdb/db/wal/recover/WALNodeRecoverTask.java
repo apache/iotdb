@@ -141,7 +141,7 @@ public class WALNodeRecoverTask implements Runnable {
     long lastSearchIndex = WALFileUtils.parseStartSearchIndex(lastWALFile.getName());
     WALMetaData metaData = new WALMetaData(lastSearchIndex, new ArrayList<>());
     WALFileStatus fileStatus = WALFileStatus.CONTAINS_NONE_SEARCH_INDEX;
-    try (WALReader walReader = new WALReader(lastWALFile)) {
+    try (WALReader walReader = new WALReader(lastWALFile, true)) {
       while (walReader.hasNext()) {
         WALEntry walEntry = walReader.next();
         long searchIndex = DEFAULT_SEARCH_INDEX;
@@ -232,8 +232,10 @@ public class WALNodeRecoverTask implements Runnable {
     // asc sort by version id
     WALFileUtils.ascSortByVersionId(walFiles);
     // read .wal files and redo logs
-    for (File walFile : walFiles) {
-      try (WALReader walReader = new WALReader(walFile)) {
+    for (int i = 0; i < walFiles.length; ++i) {
+      File walFile = walFiles[i];
+      // last wal file may corrupt
+      try (WALReader walReader = new WALReader(walFile, i == walFiles.length - 1)) {
         while (walReader.hasNext()) {
           WALEntry walEntry = walReader.next();
           if (!memTableId2Info.containsKey(walEntry.getMemTableId())) {
