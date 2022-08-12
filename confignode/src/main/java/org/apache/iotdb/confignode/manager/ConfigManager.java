@@ -781,7 +781,7 @@ public class ConfigManager implements IManager {
     TSStatus status = confirmLeader();
 
     if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      status = nodeManager.checkConfigNode(removeConfigNodePlan);
+      status = nodeManager.checkConfigNodeBeforeRemove(removeConfigNodePlan);
       if (status.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         procedureManager.removeConfigNode(removeConfigNodePlan);
       }
