@@ -39,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class LoadManagerMetrics {
 
   private final IManager configManager;
-  Map<Integer, Integer> idToCountMap = new ConcurrentHashMap<>();
 
   public LoadManagerMetrics(IManager configManager) {
     this.configManager = configManager;
@@ -196,18 +195,18 @@ public class LoadManagerMetrics {
   }
 
   /**
-   * Get the LeaderCount of each DataNodeId
+   * Get the LeaderCount of Specific DataNodeId
    *
-   * @return Map<DataNodeId, LeaderCount>
+   * @return Integer
    */
-  public Integer getLeadershipCountByDatanode(int DataNodeId) {
+  public Integer getLeadershipCountByDatanode(int dataNodeId) {
     Map<Integer, Integer> idToCountMap = new ConcurrentHashMap<>();
 
     configManager
         .getLoadManager()
         .getAllLeadership()
         .forEach((consensusGroupId, nodeId) -> idToCountMap.merge(nodeId, 1, Integer::sum));
-    return idToCountMap.get(DataNodeId);
+    return idToCountMap.get(dataNodeId);
   }
 
   public void addLeaderCount() {
@@ -265,10 +264,6 @@ public class LoadManagerMetrics {
             "total",
             Tag.STATUS.toString(),
             NodeStatus.Unknown.toString());
-  }
-
-  private LoadManager getLoadManager() {
-    return configManager.getLoadManager();
   }
 
   private NodeManager getNodeManager() {
