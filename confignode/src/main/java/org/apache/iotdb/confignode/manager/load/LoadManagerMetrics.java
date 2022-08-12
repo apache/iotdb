@@ -25,11 +25,12 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.commons.utils.NodeUrlUtils;
 import org.apache.iotdb.confignode.manager.IManager;
 import org.apache.iotdb.confignode.manager.NodeManager;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
+import org.apache.iotdb.metrics.utils.MetricType;
 
 import java.util.List;
 import java.util.Map;
@@ -58,8 +59,7 @@ public class LoadManagerMetrics {
     for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
       String name = NodeUrlUtils.convertTEndPointUrl(configNodeLocation.getInternalEndPoint());
 
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
               MetricLevel.IMPORTANT,
@@ -81,8 +81,7 @@ public class LoadManagerMetrics {
       TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
       String name = NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
 
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
               MetricLevel.IMPORTANT,
@@ -104,8 +103,7 @@ public class LoadManagerMetrics {
     for (TConfigNodeLocation configNodeLocation : allConfigNodes) {
       String name = NodeUrlUtils.convertTEndPointUrl(configNodeLocation.getInternalEndPoint());
 
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
               MetricLevel.IMPORTANT,
@@ -128,8 +126,7 @@ public class LoadManagerMetrics {
       TDataNodeLocation dataNodeLocation = dataNodeInfo.getLocation();
       String name = NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
 
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateGauge(
               Metric.CLUSTER_NODE_STATUS.toString(),
               MetricLevel.IMPORTANT,
@@ -144,8 +141,7 @@ public class LoadManagerMetrics {
 
   public void addNodeMetrics() {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.CONFIG_NODE.toString(),
               MetricLevel.CORE,
@@ -156,8 +152,7 @@ public class LoadManagerMetrics {
               Tag.STATUS.toString(),
               NodeStatus.Online.toString());
 
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.DATA_NODE.toString(),
               MetricLevel.CORE,
@@ -168,8 +163,7 @@ public class LoadManagerMetrics {
               Tag.STATUS.toString(),
               NodeStatus.Online.toString());
 
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.CONFIG_NODE.toString(),
               MetricLevel.CORE,
@@ -180,8 +174,7 @@ public class LoadManagerMetrics {
               Tag.STATUS.toString(),
               NodeStatus.Unknown.toString());
 
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .getOrCreateAutoGauge(
               Metric.DATA_NODE.toString(),
               MetricLevel.CORE,
@@ -219,8 +212,7 @@ public class LoadManagerMetrics {
               String name =
                   NodeUrlUtils.convertTEndPointUrl(dataNodeLocation.getClientRpcEndPoint());
 
-              MetricsService.getInstance()
-                  .getMetricManager()
+              MetricService.getInstance()
                   .getOrCreateAutoGauge(
                       Metric.CLUSTER_NODE_LEADER_COUNT.toString(),
                       MetricLevel.IMPORTANT,
@@ -232,33 +224,33 @@ public class LoadManagerMetrics {
   }
 
   public void removeMetrics() {
-    MetricsService.getInstance()
-        .getMetricManager()
-        .removeGauge(
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE,
             Metric.CONFIG_NODE.toString(),
             Tag.NAME.toString(),
             "total",
             Tag.STATUS.toString(),
             NodeStatus.Online.toString());
-    MetricsService.getInstance()
-        .getMetricManager()
-        .removeGauge(
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE,
             Metric.DATA_NODE.toString(),
             Tag.NAME.toString(),
             "total",
             Tag.STATUS.toString(),
             NodeStatus.Online.toString());
-    MetricsService.getInstance()
-        .getMetricManager()
-        .removeGauge(
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE,
             Metric.CONFIG_NODE.toString(),
             Tag.NAME.toString(),
             "total",
             Tag.STATUS.toString(),
             NodeStatus.Unknown.toString());
-    MetricsService.getInstance()
-        .getMetricManager()
-        .removeGauge(
+    MetricService.getInstance()
+        .remove(
+            MetricType.GAUGE,
             Metric.DATA_NODE.toString(),
             Tag.NAME.toString(),
             "total",
