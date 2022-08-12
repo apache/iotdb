@@ -77,8 +77,8 @@ public class RewriteFileTool {
   // output file path
   private static String outputLogFilePath;
 
-  private static final String HostIP = "localhost";
-  private static final String rpcPort = "6667";
+  private static String HostIP = "localhost";
+  private static String rpcPort = "6667";
   private static String user = "root";
   private static String password = "root";
 
@@ -89,7 +89,8 @@ public class RewriteFileTool {
 
   /**
    * -b=[path of backUp directory] -vf=[path of validation file]/-f=[path of tsfile list] -o=[path
-   * of output log] -u=[username, default="root"] -pw=[password, default="root"]
+   * of output log] -u=[username, default="root"] -pw=[password, default="root"] -p=[rpc port,
+   * default="6667"] -h=[rpc host, default="localhost"]
    */
   public static void main(String[] args) throws IOException {
     if (!checkArgs(args)) {
@@ -509,6 +510,10 @@ public class RewriteFileTool {
         user = arg.substring(arg.indexOf('=') + 1);
       } else if (arg.startsWith("-pw")) {
         password = arg.substring(arg.indexOf('=') + 1);
+      } else if (arg.startsWith("-p")) {
+        rpcPort = arg.substring(arg.indexOf('=') + 1);
+      } else if (arg.startsWith("-h")) {
+        HostIP = arg.substring(arg.indexOf('=') + 1);
       } else {
         System.out.println("Param incorrect!" + paramConfig);
         return false;
