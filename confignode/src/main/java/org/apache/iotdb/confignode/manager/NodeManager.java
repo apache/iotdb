@@ -287,28 +287,12 @@ public class NodeManager {
     nodeInfo.addMetrics();
   }
 
-  public TSStatus removeConfigNodePeer(TConfigNodeLocation tConfigNodeLocation) {
-    removeConfigNodeLock.tryLock();
-    try {
-      // Execute removePeer
-      if (getConsensusManager().removeConfigNodePeer(tConfigNodeLocation)) {
-        configManager
-            .getLoadManager()
-            .removeNodeHeartbeatHandCache(tConfigNodeLocation.getConfigNodeId());
-        return getConsensusManager()
-            .write(new RemoveConfigNodePlan(tConfigNodeLocation))
-            .getStatus();
-      } else {
-        return new TSStatus(TSStatusCode.REMOVE_CONFIGNODE_FAILED.getStatusCode())
-            .setMessage(
-                "Remove ConfigNode failed because update ConsensusGroup peer information failed.");
-      }
-    } finally {
-      removeConfigNodeLock.unlock();
-    }
-  }
-
-  public TSStatus checkConfigNode(RemoveConfigNodePlan removeConfigNodePlan) {
+  /**
+   * Only leader use this interface, check the ConfigNode before remove it
+   *
+   * @param removeConfigNodePlan RemoveConfigNodePlan
+   */
+  public TSStatus checkConfigNodeBeforeRemove(RemoveConfigNodePlan removeConfigNodePlan) {
     removeConfigNodeLock.tryLock();
     try {
       // Check OnlineConfigNodes number
@@ -433,7 +417,7 @@ public class NodeManager {
     return configManager.getClusterSchemaManager();
   }
 
-  private LoadManager getLoadManager() {
+  public LoadManager getLoadManager() {
     return configManager.getLoadManager();
   }
 }
