@@ -109,11 +109,11 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
       }
 
       LOGGER.info(
-          "{}-{} [Compaction] CrossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}, total size is {} MB",
+          "{}-{} [Compaction] CrossSpaceCompaction task starts with {} seq files and {} unsequence files. Total size is {} MB",
           storageGroupName,
           dataRegionId,
-          selectedSequenceFiles,
-          selectedUnsequenceFiles,
+          selectedSequenceFiles.size(),
+          selectedUnsequenceFiles.size(),
           ((double) selectedFileSize) / 1024.0 / 1024.0);
       logFile =
           new File(
@@ -161,7 +161,7 @@ public class CrossSpaceCompactionTask extends AbstractCompactionTask {
         }
         long costTime = (System.currentTimeMillis() - startTime) / 1000;
         LOGGER.info(
-            "{}-{} [Compaction] CrossSpaceCompactionTask Costs {} s, compaction speed is {} MB/s",
+            "{}-{} [Compaction] CrossSpaceCompaction task finishes successfully, time cost is {} s, compaction speed is {} MB/s",
             storageGroupName,
             dataRegionId,
             costTime,

@@ -42,6 +42,8 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.COMPACTION_LOGGER_NAME);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  private static boolean hasPrintLog = false;
   protected String logicalStorageGroupName;
   protected String dataRegionId;
   protected long timePartition;
@@ -69,6 +71,7 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
   @Override
   public List selectCrossSpaceTask(
       List<TsFileResource> sequenceFileList, List<TsFileResource> unsequenceFileList) {
+
     if ((CompactionTaskManager.currentTaskNum.get() >= config.getConcurrentCompactionThread())
         || (!config.isEnableCrossSpaceCompaction())) {
       return Collections.emptyList();
@@ -96,12 +99,15 @@ public class RewriteCrossSpaceCompactionSelector implements ICrossSpaceSelector 
     try {
       List[] mergeFiles = fileSelector.select();
       if (mergeFiles.length == 0) {
+        if (!hasPrintLog) {
+          LOGGER.info(
+              "{} [Compaction] Cannot select any files, because source files may be occupied by other compaction threads.",
+              logicalStorageGroupName + "-" + dataRegionId);
+          hasPrintLog = true;
+        }
         return Collections.emptyList();
       }
-      LOGGER.info(
-          "select files for cross compaction, sequence files: {}, unsequence files {}",
-          mergeFiles[0],
-          mergeFiles[1]);
+      hasPrintLog = false;
 
       if (mergeFiles[0].size() > 0 && mergeFiles[1].size() > 0) {
         LOGGER.info(

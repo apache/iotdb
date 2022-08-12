@@ -8,6 +8,7 @@ import org.apache.iotdb.db.service.metrics.recorder.CompactionMetricsRecorder;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
@@ -39,7 +40,7 @@ public class CompactionWriterUtils {
       ChunkWriterImpl chunkWriter = (ChunkWriterImpl) iChunkWriter;
       switch (chunkWriter.getDataType()) {
         case TEXT:
-          chunkWriter.write(timestamp, (Long) value);
+          chunkWriter.write(timestamp, (Binary) value);
           break;
         case DOUBLE:
           chunkWriter.write(timestamp, (Double) value);

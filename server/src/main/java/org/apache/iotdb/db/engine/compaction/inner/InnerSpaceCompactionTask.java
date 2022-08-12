@@ -103,7 +103,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     LOGGER.info(
-        "{}-{} [Compaction] starting compaction task with {} files",
+        "{}-{} [Compaction] InnerSpaceCompaction task starts with {} files",
         storageGroupName,
         dataRegionId,
         selectedTsFileResourceList.size());
@@ -209,7 +209,7 @@ public class InnerSpaceCompactionTask extends AbstractCompactionTask {
 
       double costTime = (System.currentTimeMillis() - startTime) / 1000.0d;
       LOGGER.info(
-          "{}-{} [InnerSpaceCompactionTask] all compaction task finish, target file is {},"
+          "{}-{} [Compaction] InnerSpaceCompaction task finishes successfully, target file is {},"
               + "time cost is {} s, compaction speed is {} MB/s",
           storageGroupName,
           dataRegionId,

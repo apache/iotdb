@@ -41,12 +41,10 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -59,7 +57,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -75,7 +72,7 @@ public class ReadPointCompactionPerformer
   private List<TsFileResource> unseqFiles = Collections.emptyList();
   private static final int subTaskNum =
       IoTDBDescriptor.getInstance().getConfig().getSubCompactionTaskNum();
-  private final Map<TsFileResource, TsFileSequenceReader> readerCacheMap = new HashMap<>();
+
   private CompactionTaskSummary summary;
 
   private List<TsFileResource> targetFiles = Collections.emptyList();
@@ -134,7 +131,6 @@ public class ReadPointCompactionPerformer
           targetFiles, compactionWriter.getFileIOWriter());
       CompactionUtils.updatePlanIndexes(targetFiles, seqFiles, unseqFiles);
     } finally {
-      clearReaderCache();
       QueryResourceManager.getInstance().endQuery(queryId);
     }
   }
@@ -160,8 +156,7 @@ public class ReadPointCompactionPerformer
         deviceIterator.iterateAlignedSeries(device);
     Set<String> allMeasurements = alignedMeasurementIterator.getAllMeasurements();
     Map<String, MeasurementSchema> schemaMap =
-        CompactionUtils.getMeasurementSchema(
-            device, allMeasurements, seqFiles, unseqFiles, readerCacheMap);
+        CompactionUtils.getMeasurementSchema(device, allMeasurements, seqFiles, unseqFiles, null);
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>(schemaMap.values());
     if (measurementSchemas.isEmpty()) {
       return;
@@ -202,8 +197,7 @@ public class ReadPointCompactionPerformer
     Set<String> allMeasurements = measurementIterator.getAllMeasurements();
     int subTaskNums = Math.min(allMeasurements.size(), subTaskNum);
     Map<String, MeasurementSchema> schemaMap =
-        CompactionUtils.getMeasurementSchema(
-            device, allMeasurements, seqFiles, unseqFiles, readerCacheMap);
+        CompactionUtils.getMeasurementSchema(device, allMeasurements, seqFiles, unseqFiles, null);
 
     // assign all measurements to different sub tasks
     Set<String>[] measurementsForEachSubTask = new HashSet[subTaskNums];
@@ -243,12 +237,6 @@ public class ReadPointCompactionPerformer
     }
 
     compactionWriter.endChunkGroup();
-  }
-
-  private void clearReaderCache() {
-    for (TsFileResource resource : readerCacheMap.keySet()) {
-      FileReaderManager.getInstance().decreaseFileReaderReference(resource, true);
-    }
   }
 
   /**

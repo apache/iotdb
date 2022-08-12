@@ -321,23 +321,26 @@ public class CompactionUtils {
         if (!tsFileResource.mayContainsDevice(device)) {
           continue;
         }
+        TsFileSequenceReader reader;
+        if (readerCacheMap == null) {
+          // get reader from fileReaderManager, used by readPointCompactionPerformer
+          reader = FileReaderManager.getInstance().get(tsFileResource.getTsFilePath(), true);
+        } else {
+          reader =
+              readerCacheMap.computeIfAbsent(
+                  tsFileResource,
+                  resource -> {
+                    try {
+                      return new TsFileSequenceReader(resource.getTsFilePath());
+                    } catch (IOException e) {
+                      throw new RuntimeException(
+                          String.format(
+                              "Failed to construct sequence reader for %s", tsFileResource));
+                    }
+                  });
+        }
         MeasurementSchema schema =
-            getMeasurementSchemaFromReader(
-                tsFileResource,
-                readerCacheMap.computeIfAbsent(
-                    tsFileResource,
-                    x -> {
-                      try {
-                        FileReaderManager.getInstance().increaseFileReaderReference(x, true);
-                        return FileReaderManager.getInstance().get(x.getTsFilePath(), true);
-                      } catch (IOException e) {
-                        throw new RuntimeException(
-                            String.format(
-                                "Failed to construct sequence reader for %s", tsFileResource));
-                      }
-                    }),
-                device,
-                measurement);
+            getMeasurementSchemaFromReader(tsFileResource, reader, device, measurement);
         if (schema != null) {
           schemaMap.put(measurement, schema);
           break;
