@@ -60,8 +60,8 @@ import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticAdditi
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransformer;
-import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;

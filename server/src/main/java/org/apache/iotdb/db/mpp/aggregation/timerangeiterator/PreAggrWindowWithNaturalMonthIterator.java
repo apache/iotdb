@@ -19,20 +19,12 @@
 
 package org.apache.iotdb.db.mpp.aggregation.timerangeiterator;
 
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-
-import static org.apache.iotdb.db.qp.utils.DatetimeUtils.MS_TO_MONTH;
 
 public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator {
 
   private static final int HEAP_MAX_SIZE = 100;
-
-  private final long startTime;
-  private final long endTime;
-  private final long slidingStep;
-  private final boolean isSlidingStepByMonth;
 
   private final boolean isAscending;
   private final boolean leftCRightO;
@@ -54,10 +46,6 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
       boolean isSlidingStepByMonth,
       boolean isIntervalByMonth,
       boolean leftCRightO) {
-    this.startTime = startTime;
-    this.endTime = endTime;
-    this.slidingStep = slidingStep;
-    this.isSlidingStepByMonth = isSlidingStepByMonth;
     this.isAscending = isAscending;
     this.timeBoundaryHeap = new TimeSelector(HEAP_MAX_SIZE, isAscending);
     this.aggrWindowIterator =
@@ -162,19 +150,17 @@ public class PreAggrWindowWithNaturalMonthIterator implements ITimeRangeIterator
 
   @Override
   public long getTotalIntervalNum() {
-    long queryRange = endTime - startTime;
-
-    long intervalNum;
-    if (isSlidingStepByMonth) {
-      intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep * MS_TO_MONTH));
-      long retStartTime = DatetimeUtils.calcIntervalByMonth(startTime, intervalNum * slidingStep);
-      while (retStartTime >= endTime) {
-        intervalNum -= 1;
-        retStartTime = DatetimeUtils.calcIntervalByMonth(startTime, intervalNum * slidingStep);
-      }
-    } else {
-      intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
+    long tmpInterval = 0;
+    while (hasNextTimeRange()) {
+      tmpInterval++;
+      nextTimeRange();
     }
-    return intervalNum;
+
+    curTimeRange = null;
+    timeBoundaryHeap.clear();
+    aggrWindowIterator.reset();
+    initHeap();
+
+    return tmpInterval;
   }
 }

@@ -176,6 +176,18 @@ public class PreAggrWindowIterator implements ITimeRangeIterator {
 
   @Override
   public long getTotalIntervalNum() {
-    return (long) Math.ceil((endTime - startTime) / (double) slidingStep);
+    long queryRange = endTime - startTime;
+    if (slidingStep >= interval || interval % slidingStep == 0) {
+      return (long) Math.ceil(queryRange / (double) slidingStep);
+    }
+
+    long interval1 = interval % slidingStep, interval2 = slidingStep - interval % slidingStep;
+    long intervalNum = Math.floorDiv(queryRange, interval1 + interval2);
+    long tmpStartTime = startTime + intervalNum * (interval1 + interval2);
+    if (tmpStartTime + interval1 > endTime) {
+      return intervalNum * 2 + 1;
+    } else {
+      return intervalNum * 2 + 2;
+    }
   }
 }

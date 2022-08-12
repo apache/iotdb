@@ -194,4 +194,9 @@ public class AggrWindowIterator implements ITimeRangeIterator {
     }
     return intervalNum;
   }
+
+  public void reset() {
+    curTimeRange = null;
+    hasCachedTimeRange = false;
+  }
 }
