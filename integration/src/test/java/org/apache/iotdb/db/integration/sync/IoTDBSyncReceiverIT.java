@@ -26,11 +26,11 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
-import org.apache.iotdb.db.sync.receiver.ReceiverService;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
@@ -95,7 +95,7 @@ public class IoTDBSyncReceiverIT {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
     try {
-      ReceiverService.getInstance().startPipeServer(true);
+      SyncService.getInstance().startPipeServer(true);
       new Socket("localhost", 6670).close();
     } catch (Exception e) {
       Assert.fail("Failed to start pipe server because " + e.getMessage());
@@ -124,7 +124,7 @@ public class IoTDBSyncReceiverIT {
   public void testStopPipeServer() {
     logger.info("testStopPipeServerCheck");
     try {
-      ReceiverService.getInstance().stopPipeServer();
+      SyncService.getInstance().stopPipeServer();
     } catch (PipeServerException e) {
       Assert.fail("Can not stop pipe server");
     }

@@ -64,7 +64,7 @@ public class TransportServerManager extends ThriftService
 
   @Override
   public ServiceType getID() {
-    return ServiceType.SYNC_SERVICE;
+    return ServiceType.SYNC_RPC_SERVICE;
   }
 
   @Override
