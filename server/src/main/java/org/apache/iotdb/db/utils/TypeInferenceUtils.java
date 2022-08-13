@@ -47,7 +47,7 @@ public class TypeInferenceUtils {
   private TypeInferenceUtils() {}
 
   static boolean isNumber(String s) {
-    return s.matches("^\\.[0-9]+|[0-9]+\\.?[0-9]*$");
+    return s.trim().matches("^((\\+|-)?\\.[0-9]+)$|^((\\+|-)?[0-9]+\\.?[0-9]*)$");
   }
 
   private static boolean isBoolean(String s) {
@@ -62,7 +62,7 @@ public class TypeInferenceUtils {
   /** Get predicted DataType of the given value */
   public static TSDataType getPredictedDataType(Object value, boolean inferType) {
 
-    if (inferType) {
+    if (inferType && value instanceof String) {
       String strValue = value.toString();
       if (isBoolean(strValue)) {
         return booleanStringInferType;
