@@ -151,11 +151,16 @@ public class DataNodeSchemaCache {
     PartialPath seriesPath = measurementPath.transformToPartialPath();
     SchemaCacheEntry entry = cache.getIfPresent(seriesPath);
     if (null == entry) {
-      entry =
-          new SchemaCacheEntry(
-              (MeasurementSchema) measurementPath.getMeasurementSchema(),
-              measurementPath.isUnderAlignedEntity());
-      cache.put(seriesPath, entry);
+      synchronized (cache) {
+        entry = cache.getIfPresent(seriesPath);
+        if (null == entry) {
+          entry =
+              new SchemaCacheEntry(
+                  (MeasurementSchema) measurementPath.getMeasurementSchema(),
+                  measurementPath.isUnderAlignedEntity());
+          cache.put(seriesPath, entry);
+        }
+      }
     }
 
     DataNodeLastCacheManager.updateLastCache(
