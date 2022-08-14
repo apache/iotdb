@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.mpp.transformation.datastructure;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /** <b>Note: It's not thread safe.</b> */
 public abstract class Cache {
 
@@ -50,6 +53,8 @@ public abstract class Cache {
 
   protected final Node[] cachedNodes;
 
+  protected final Map<Integer, Node> valueToNode;
+
   protected final int cacheCapacity;
   protected int cacheSize;
 
@@ -64,16 +69,16 @@ public abstract class Cache {
       cachedNodes[i] = new Node();
     }
 
+    valueToNode = new HashMap<>();
+
     cacheCapacity = capacity;
     cacheSize = 0;
   }
 
   protected boolean removeFirstOccurrence(int value) {
-    for (Node node = head.succeeding; node != tail; node = node.succeeding) {
-      if (node.value == value) {
-        cachedNodes[--cacheSize] = node.remove();
-        return true;
-      }
+    if (valueToNode.containsKey(value)) {
+      cachedNodes[--cacheSize] = valueToNode.get(value).remove();
+      return true;
     }
     return false;
   }
@@ -81,16 +86,20 @@ public abstract class Cache {
   protected int removeLast() {
     Node last = tail.previous.remove();
     cachedNodes[--cacheSize] = last;
+    valueToNode.remove(last.value);
     return last.value;
   }
 
   protected void addFirst(int value) {
-    cachedNodes[cacheSize++].set(head, value, head.succeeding);
+    cachedNodes[cacheSize].set(head, value, head.succeeding);
+    valueToNode.put(value, cachedNodes[cacheSize]);
+    cacheSize++;
   }
 
   public void clear() {
     while (cacheSize != 0) {
       removeLast();
     }
+    valueToNode.clear();
   }
 }
