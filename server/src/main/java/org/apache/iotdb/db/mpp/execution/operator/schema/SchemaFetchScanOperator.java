@@ -44,6 +44,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
 public class SchemaFetchScanOperator implements SourceOperator {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFetchScanOperator.class);
@@ -55,7 +57,6 @@ public class SchemaFetchScanOperator implements SourceOperator {
 
   private final ISchemaRegion schemaRegion;
 
-  private TsBlock tsBlock;
   private boolean isFinished = false;
 
   public SchemaFetchScanOperator(
@@ -83,12 +84,11 @@ public class SchemaFetchScanOperator implements SourceOperator {
     }
     isFinished = true;
     try {
-      fetchSchema();
+      return fetchSchema();
     } catch (MetadataException e) {
       logger.error("Error occurred during execute SchemaFetchOperator {}", sourceId, e);
       throw new RuntimeException(e);
     }
-    return tsBlock;
   }
 
   @Override
@@ -106,7 +106,7 @@ public class SchemaFetchScanOperator implements SourceOperator {
     return sourceId;
   }
 
-  private void fetchSchema() throws MetadataException {
+  private TsBlock fetchSchema() throws MetadataException {
     ClusterSchemaTree schemaTree = new ClusterSchemaTree();
     List<PartialPath> partialPathList = patternTree.getAllPathPatterns();
     for (PartialPath path : partialPathList) {
@@ -122,10 +122,24 @@ public class SchemaFetchScanOperator implements SourceOperator {
     } catch (IOException e) {
       // Totally memory operation. This case won't happen.
     }
-    this.tsBlock =
-        new TsBlock(
-            new TimeColumn(1, new long[] {0}),
-            new BinaryColumn(
-                1, Optional.empty(), new Binary[] {new Binary(outputStream.toByteArray())}));
+    return new TsBlock(
+        new TimeColumn(1, new long[] {0}),
+        new BinaryColumn(
+            1, Optional.empty(), new Binary[] {new Binary(outputStream.toByteArray())}));
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
   }
 }

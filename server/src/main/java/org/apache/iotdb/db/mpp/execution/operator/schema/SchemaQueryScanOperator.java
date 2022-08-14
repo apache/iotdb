@@ -24,6 +24,8 @@ import org.apache.iotdb.db.mpp.execution.operator.source.SourceOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
 public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   protected OperatorContext operatorContext;
@@ -86,7 +88,9 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   @Override
   public TsBlock next() {
     hasCachedTsBlock = false;
-    return tsBlock;
+    TsBlock result = tsBlock;
+    tsBlock = null;
+    return result;
   }
 
   @Override
@@ -108,5 +112,20 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
   @Override
   public PlanNodeId getSourceId() {
     return sourceId;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
   }
 }

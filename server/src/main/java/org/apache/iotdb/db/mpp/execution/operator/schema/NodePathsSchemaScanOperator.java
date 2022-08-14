@@ -35,6 +35,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+
 public class NodePathsSchemaScanOperator implements SourceOperator {
   private final PlanNodeId sourceId;
 
@@ -119,5 +121,20 @@ public class NodePathsSchemaScanOperator implements SourceOperator {
   @Override
   public PlanNodeId getSourceId() {
     return sourceId;
+  }
+
+  @Override
+  public long calculateMaxPeekMemory() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateMaxReturnSize() {
+    return DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+  }
+
+  @Override
+  public long calculateRetainedSizeAfterCallingNext() {
+    return 0L;
   }
 }

@@ -22,8 +22,6 @@ import org.apache.iotdb.commons.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.mpp.aggregation.AccumulatorFactory;
-import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.common.QueryId;
@@ -47,20 +45,32 @@ import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryMergeOpe
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQueryOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.LastQuerySortOperator;
 import org.apache.iotdb.db.mpp.execution.operator.process.last.UpdateLastCacheOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.CountMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesCountOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.DevicesSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.LevelTimeSeriesCountOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.NodeManageMemoryMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsConvertOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsCountOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.NodePathsSchemaScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.PathsUsingTemplateScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaFetchScanOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryMergeOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.SchemaQueryOrderByHeatOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesCountOperator;
+import org.apache.iotdb.db.mpp.execution.operator.schema.TimeSeriesSchemaScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.AlignedSeriesScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.ExchangeOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.LastCacheScanOperator;
-import org.apache.iotdb.db.mpp.execution.operator.source.SeriesAggregationScanOperator;
 import org.apache.iotdb.db.mpp.execution.operator.source.SeriesScanOperator;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
-import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationStep;
 import org.apache.iotdb.db.mpp.plan.statement.component.Ordering;
 import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticAdditionColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.binary.CompareLessEqualColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.ConstantColumnTransformer;
 import org.apache.iotdb.db.mpp.transformation.dag.column.leaf.TimeColumnTransformer;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -77,6 +87,7 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
@@ -626,15 +637,10 @@ public class OperatorMemoryTest {
   }
 
   @Test
-  public void seriesAggregationScanOperatorTest() {
+  public void TimeSeriesSchemaScanOperatorTest() {
     ExecutorService instanceNotificationExecutor =
         IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
     try {
-      MeasurementPath measurementPath =
-          new MeasurementPath(
-              "root.SeriesAggregationScanOperatorTest.device0.sensor0", TSDataType.INT32);
-      Set<String> allSensors = Sets.newHashSet("sensor0");
-
       QueryId queryId = new QueryId("stub_query");
       FragmentInstanceId instanceId =
           new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
@@ -644,45 +650,427 @@ public class OperatorMemoryTest {
           createFragmentInstanceContext(instanceId, stateMachine);
       PlanNodeId planNodeId = new PlanNodeId("1");
       fragmentInstanceContext.addOperatorContext(
-          1, planNodeId, SeriesAggregationScanOperatorTest.class.getSimpleName());
+          1, planNodeId, SeriesScanOperator.class.getSimpleName());
 
-      SeriesAggregationScanOperator seriesAggregationScanOperator =
-          new SeriesAggregationScanOperator(
+      TimeSeriesSchemaScanOperator operator =
+          new TimeSeriesSchemaScanOperator(
               planNodeId,
-              measurementPath,
-              allSensors,
               fragmentInstanceContext.getOperatorContexts().get(0),
-              Arrays.asList(
-                  new Aggregator(
-                      AccumulatorFactory.createAccumulator(
-                          AggregationType.COUNT, TSDataType.INT32, true),
-                      AggregationStep.SINGLE),
-                  new Aggregator(
-                      AccumulatorFactory.createAccumulator(
-                          AggregationType.MAX_VALUE, TSDataType.INT32, true),
-                      AggregationStep.SINGLE),
-                  new Aggregator(
-                      AccumulatorFactory.createAccumulator(
-                          AggregationType.MIN_TIME, TSDataType.INT32, true),
-                      AggregationStep.SINGLE)),
+              0,
+              0,
               null,
-              true,
               null,
-              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
+              null,
+              false,
+              false,
+              false,
+              null);
 
-      assertEquals(
-          2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
-              + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-          seriesAggregationScanOperator.calculateMaxPeekMemory());
-      assertEquals(
-          2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
-              + DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-          seriesAggregationScanOperator.calculateMaxReturnSize());
-    } catch (IllegalPathException e) {
-      e.printStackTrace();
-      fail();
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
+      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
+
     } finally {
       instanceNotificationExecutor.shutdown();
     }
+  }
+
+  @Test
+  public void DeviceSchemaScanOperatorTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+
+      DevicesSchemaScanOperator operator =
+          new DevicesSchemaScanOperator(
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              0,
+              0,
+              null,
+              false,
+              false);
+
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
+      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void PathsUsingTemplateScanOperatorTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+
+      PathsUsingTemplateScanOperator operator =
+          new PathsUsingTemplateScanOperator(
+              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), 0);
+
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
+      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void TimeSeriesCountOperatorTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+
+      TimeSeriesCountOperator operator =
+          new TimeSeriesCountOperator(
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              null,
+              false,
+              null,
+              null,
+              false);
+
+      assertEquals(4L, operator.calculateMaxPeekMemory());
+      assertEquals(4L, operator.calculateMaxReturnSize());
+      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void LevelTimeSeriesCountOperatorTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+
+      LevelTimeSeriesCountOperator operator =
+          new LevelTimeSeriesCountOperator(
+              planNodeId,
+              fragmentInstanceContext.getOperatorContexts().get(0),
+              null,
+              false,
+              4,
+              null,
+              null,
+              false);
+
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
+      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void DevicesCountOperatorTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+
+      DevicesCountOperator operator =
+          new DevicesCountOperator(
+              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), null, false);
+
+      assertEquals(4L, operator.calculateMaxPeekMemory());
+      assertEquals(4L, operator.calculateMaxReturnSize());
+      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void SchemaQueryMergeOperatorTest() {
+    QueryId queryId = new QueryId("stub_query");
+    List<Operator> children = new ArrayList<>(4);
+
+    long expectedMaxReturnSize = 0;
+    long expectedMaxPeekMemory = 0;
+    long expectedRetainedSize = 0;
+
+    for (int i = 0; i < 4; i++) {
+      Operator child = Mockito.mock(Operator.class);
+      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+      expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, child.calculateMaxPeekMemory());
+      expectedMaxReturnSize = Math.max(expectedMaxReturnSize, child.calculateMaxReturnSize());
+      expectedRetainedSize += child.calculateRetainedSizeAfterCallingNext();
+      children.add(child);
+    }
+
+    SchemaQueryMergeOperator operator =
+        new SchemaQueryMergeOperator(
+            queryId.genPlanNodeId(), Mockito.mock(OperatorContext.class), children);
+
+    assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
+    assertEquals(expectedRetainedSize, operator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void CountMergeOperatorTest() {
+    QueryId queryId = new QueryId("stub_query");
+    List<Operator> children = new ArrayList<>(4);
+
+    long expectedMaxReturnSize = 0;
+    long expectedMaxPeekMemory = 0;
+    long expectedRetainedSize = 0;
+
+    for (int i = 0; i < 4; i++) {
+      Operator child = Mockito.mock(Operator.class);
+      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+      expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, child.calculateMaxPeekMemory());
+      expectedMaxReturnSize = Math.max(expectedMaxReturnSize, child.calculateMaxReturnSize());
+      expectedRetainedSize += child.calculateRetainedSizeAfterCallingNext();
+      children.add(child);
+    }
+
+    CountMergeOperator operator =
+        new CountMergeOperator(
+            queryId.genPlanNodeId(), Mockito.mock(OperatorContext.class), children);
+
+    assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
+    assertEquals(expectedRetainedSize, operator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void SchemaFetchScanOperatorTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+
+      SchemaFetchScanOperator operator =
+          new SchemaFetchScanOperator(
+              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), null, null, null);
+
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
+      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void SchemaFetchMergeOperatorTest() {
+    List<Operator> children = new ArrayList<>(4);
+
+    long expectedMaxReturnSize = 0;
+    long expectedMaxPeekMemory = 0;
+    long expectedRetainedSize = 0;
+
+    for (int i = 0; i < 4; i++) {
+      Operator child = Mockito.mock(Operator.class);
+      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+      expectedMaxPeekMemory = Math.max(expectedMaxPeekMemory, child.calculateMaxPeekMemory());
+      expectedMaxReturnSize = Math.max(expectedMaxReturnSize, child.calculateMaxReturnSize());
+      expectedRetainedSize += child.calculateRetainedSizeAfterCallingNext();
+      children.add(child);
+    }
+
+    SchemaFetchMergeOperator operator =
+        new SchemaFetchMergeOperator(Mockito.mock(OperatorContext.class), children, null);
+
+    assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
+    assertEquals(expectedRetainedSize, operator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void SchemaQueryOrderByHeatOperatorTest() {
+    List<Operator> children = new ArrayList<>(4);
+
+    long expectedMaxReturnSize = 0;
+    long expectedMaxPeekMemory = 0;
+    long expectedRetainedSize = 0;
+
+    for (int i = 0; i < 4; i++) {
+      Operator child = Mockito.mock(Operator.class);
+      Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+      Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+      Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+      expectedMaxPeekMemory += child.calculateMaxReturnSize();
+      expectedMaxReturnSize += child.calculateMaxReturnSize();
+      expectedRetainedSize +=
+          child.calculateRetainedSizeAfterCallingNext() + child.calculateMaxReturnSize();
+      children.add(child);
+    }
+
+    SchemaQueryOrderByHeatOperator operator =
+        new SchemaQueryOrderByHeatOperator(Mockito.mock(OperatorContext.class), children);
+
+    assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
+    assertEquals(expectedRetainedSize, operator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void NodePathsSchemaScanOperatorTest() {
+    ExecutorService instanceNotificationExecutor =
+        IoTDBThreadPoolFactory.newFixedThreadPool(1, "test-instance-notification");
+    try {
+      QueryId queryId = new QueryId("stub_query");
+      FragmentInstanceId instanceId =
+          new FragmentInstanceId(new PlanFragmentId(queryId, 0), "stub-instance");
+      FragmentInstanceStateMachine stateMachine =
+          new FragmentInstanceStateMachine(instanceId, instanceNotificationExecutor);
+      FragmentInstanceContext fragmentInstanceContext =
+          createFragmentInstanceContext(instanceId, stateMachine);
+      PlanNodeId planNodeId = new PlanNodeId("1");
+      fragmentInstanceContext.addOperatorContext(
+          1, planNodeId, SeriesScanOperator.class.getSimpleName());
+
+      NodePathsSchemaScanOperator operator =
+          new NodePathsSchemaScanOperator(
+              planNodeId, fragmentInstanceContext.getOperatorContexts().get(0), null, 4);
+
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxPeekMemory());
+      assertEquals(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, operator.calculateMaxReturnSize());
+      assertEquals(0, operator.calculateRetainedSizeAfterCallingNext());
+
+    } finally {
+      instanceNotificationExecutor.shutdown();
+    }
+  }
+
+  @Test
+  public void NodePathsConvertOperatorTest() {
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+    Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+
+    long expectedMaxPeekMemory = child.calculateMaxPeekMemory() + child.calculateMaxReturnSize();
+    long expectedMaxReturnSize = child.calculateMaxReturnSize();
+    long expectedRetainedSize = child.calculateRetainedSizeAfterCallingNext();
+
+    NodePathsConvertOperator operator =
+        new NodePathsConvertOperator(Mockito.mock(OperatorContext.class), child);
+
+    assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
+    assertEquals(expectedRetainedSize, operator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void NodePathsCountOperatorTest() {
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+    Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+
+    long expectedMaxPeekMemory =
+        Math.max(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, child.calculateMaxPeekMemory());
+    long expectedMaxReturnSize =
+        Math.max(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, child.calculateMaxReturnSize());
+    long expectedRetainedSize =
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + child.calculateRetainedSizeAfterCallingNext();
+
+    NodePathsCountOperator operator =
+        new NodePathsCountOperator(Mockito.mock(OperatorContext.class), child);
+
+    assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
+    assertEquals(expectedRetainedSize, operator.calculateRetainedSizeAfterCallingNext());
+  }
+
+  @Test
+  public void NodeManageMemoryMergeOperatorTest() {
+    Operator child = Mockito.mock(Operator.class);
+    Mockito.when(child.calculateMaxPeekMemory()).thenReturn(128 * 1024L);
+    Mockito.when(child.calculateMaxReturnSize()).thenReturn(64 * 1024L);
+    Mockito.when(child.calculateRetainedSizeAfterCallingNext()).thenReturn(0L);
+
+    long expectedMaxPeekMemory =
+        Math.max(2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, child.calculateMaxPeekMemory());
+    long expectedMaxReturnSize =
+        Math.max(DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES, child.calculateMaxReturnSize());
+    long expectedRetainedSize =
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES + child.calculateRetainedSizeAfterCallingNext();
+
+    NodeManageMemoryMergeOperator operator =
+        new NodeManageMemoryMergeOperator(
+            Mockito.mock(OperatorContext.class), Collections.emptySet(), child);
+
+    assertEquals(expectedMaxPeekMemory, operator.calculateMaxPeekMemory());
+    assertEquals(expectedMaxReturnSize, operator.calculateMaxReturnSize());
+    assertEquals(expectedRetainedSize, operator.calculateRetainedSizeAfterCallingNext());
   }
 }
