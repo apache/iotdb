@@ -177,7 +177,7 @@ public class AggregationUtil {
   }
 
   public static long calculateMaxAggregationResultSize(
-      List<AggregationDescriptor> aggregationDescriptors,
+      List<? extends AggregationDescriptor> aggregationDescriptors,
       ITimeRangeIterator timeRangeIterator,
       boolean isGroupByQuery,
       TypeProvider typeProvider) {
