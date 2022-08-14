@@ -196,6 +196,9 @@ public abstract class Operator {
 
     SHOW_QUERY_RESOURCE,
 
-    DEACTIVATE_TEMPLATE
+    DEACTIVATE_TEMPLATE,
+
+    MIGRATION,
+    PAUSE_MIGRATION
   }
 }

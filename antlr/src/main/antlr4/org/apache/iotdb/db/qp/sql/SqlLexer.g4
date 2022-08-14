@@ -322,6 +322,10 @@ METADATA
     : M E T A D A T A
     ;
 
+MIGRATION
+    : M I G R A T I O N
+    ;
+
 NODES
     : N O D E S
     ;
@@ -348,6 +352,10 @@ ON
 
 ORDER
     : O R D E R
+    ;
+
+PAUSE
+    : P A U S E
     ;
 
 PARTITION
@@ -548,6 +556,10 @@ UNLINK
 
 UNLOAD
     : U N L O A D
+    ;
+
+UNPAUSE
+    : U N P A U S E
     ;
 
 UNSET

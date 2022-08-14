@@ -46,6 +46,8 @@ ddlStatement
     | showSchemaTemplates | showNodesInSchemaTemplate
     | showPathsUsingSchemaTemplate | showPathsSetSchemaTemplate
     | countStorageGroup | countDevices | countTimeseries | countNodes
+    | setMigration | unsetMigration | pauseMigration | unpauseMigration | showMigration
+    | showAllMigration
     ;
 
 dmlStatement
@@ -328,6 +330,36 @@ countTimeseries
 // Count Nodes
 countNodes
     : COUNT NODES prefixPath LEVEL OPERATOR_EQ INTEGER_LITERAL
+    ;
+
+// Set Migration
+setMigration
+    : SET MIGRATION TO path=prefixPath startTime=DATETIME_LITERAL ttl=INTEGER_LITERAL targetDir=STRING_LITERAL
+    ;
+
+// Unset Migration
+unsetMigration
+    : UNSET MIGRATION (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+    ;
+
+// Pause Migration
+pauseMigration
+    : PAUSE MIGRATION (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+    ;
+
+// Continue/Unpause migration
+unpauseMigration
+    : UNPAUSE MIGRATION (ON storageGroup=prefixPath | taskId=INTEGER_LITERAL)
+    ;
+
+// Show Migration
+showMigration
+    : SHOW MIGRATION ON prefixPath (COMMA prefixPath)*
+    ;
+
+// Show All Migration
+showAllMigration
+    : SHOW ALL MIGRATION
     ;
 
 

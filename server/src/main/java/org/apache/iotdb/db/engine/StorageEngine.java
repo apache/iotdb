@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
+import org.apache.iotdb.db.engine.migration.MigrationManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
@@ -156,6 +157,8 @@ public class StorageEngine implements IService {
   // add customized listeners here for flush and close events
   private List<CloseFileListener> customCloseFileListeners = new ArrayList<>();
   private List<FlushListener> customFlushListeners = new ArrayList<>();
+
+  private MigrationManager migrationManager = MigrationManager.getInstance();
 
   private StorageEngine() {
     if (isEnableOperationSync) {
@@ -1252,6 +1255,46 @@ public class StorageEngine implements IService {
     } catch (IOException e) {
       throw new StorageEngineException(e);
     }
+  }
+
+  // push the migration info to migrationManager
+  public void setMigration(PartialPath storageGroup, File targetDir, long ttl, long startTime) {
+    migrationManager.setMigrate(storageGroup, targetDir, ttl, startTime);
+    logger.info("start check migration task successfully.");
+  }
+
+  public void unsetMigration(long taskId, PartialPath storageGroup) {
+    if (taskId != -1) {
+      migrationManager.unsetMigration(taskId);
+    } else if (storageGroup != null) {
+      migrationManager.unsetMigration(storageGroup);
+    } else {
+      logger.error("unset migration cannot recognize taskId or storagegroup");
+    }
+  }
+
+  public void pauseMigration(long taskId, PartialPath storageGroup) {
+    if (taskId != -1) {
+      migrationManager.pauseMigration(taskId);
+    } else if (storageGroup != null) {
+      migrationManager.pauseMigration(storageGroup);
+    } else {
+      logger.error("pause migration cannot recognize taskId or storagegroup");
+    }
+  }
+
+  public void unpauseMigration(long taskId, PartialPath storageGroup) {
+    if (taskId != -1) {
+      migrationManager.unpauseMigration(taskId);
+    } else if (storageGroup != null) {
+      migrationManager.unpauseMigration(storageGroup);
+    } else {
+      logger.error("unpause migration cannot recognize taskId or storagegroup");
+    }
+  }
+
+  public MigrationManager getMigrationManager() {
+    return migrationManager;
   }
 
   static class InstanceHolder {

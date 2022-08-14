@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.migration.MigrationTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -1548,6 +1549,72 @@ public class VirtualStorageGroupProcessor {
               logicalStorageGroupName,
               virtualStorageGroupId);
           fileFlushPolicy.apply(this, tsFileProcessor, tsFileProcessor.isSequence());
+        }
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /** iterate over TsFiles and migrate to targetDir if out of ttl */
+  public void checkMigration(MigrationTask task) {
+    if (task.getTTL() == Long.MAX_VALUE) {
+      logger.debug(
+          "{}: Migration ttl not set, ignore the check",
+          logicalStorageGroupName + "-" + virtualStorageGroupId);
+      return;
+    }
+    long ttlLowerBound = System.currentTimeMillis() - task.getTTL();
+    logger.debug(
+        "{}: TTL removing files before {}",
+        logicalStorageGroupName + "-" + virtualStorageGroupId,
+        new Date(ttlLowerBound));
+
+    // copy to avoid concurrent modification of deletion
+    List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
+    List<TsFileResource> unseqFiles = new ArrayList<>(tsFileManager.getTsFileList(false));
+
+    for (TsFileResource tsFileResource : seqFiles) {
+      if (task.getStatus() != MigrationTask.MigrationTaskStatus.RUNNING) {
+        // task stopped running (eg. the task is paused), return
+        return;
+      }
+      checkMigrateFile(tsFileResource, task.getTargetDir(), ttlLowerBound, true);
+    }
+
+    for (TsFileResource tsFileResource : unseqFiles) {
+      if (task.getStatus() != MigrationTask.MigrationTaskStatus.RUNNING) {
+        // task stopped running, return
+        return;
+      }
+      checkMigrateFile(tsFileResource, task.getTargetDir(), ttlLowerBound, false);
+    }
+  }
+
+  /** migrate the file to targetDir */
+  public void checkMigrateFile(
+      TsFileResource resource, File targetDir, long ttlLowerBound, boolean isSeq) {
+    writeLock("checkMigrationLock");
+    try {
+      if (!resource.isClosed() || !resource.isDeleted() && resource.stillLives(ttlLowerBound)) {
+        return;
+      }
+
+      resource.setStatus(TsFileResourceStatus.MIGRATED);
+
+      // ensure that the file is not used by any queries
+      if (resource.tryWriteLock()) {
+        try {
+          // try to migrate physical data file
+          tsFileManager.remove(resource, isSeq);
+          File migratedFile = resource.migrate(targetDir);
+          logger.info(
+              "Migrated a file {} to {} before {}",
+              resource.getTsFilePath(),
+              migratedFile.getAbsolutePath(),
+              new Date(ttlLowerBound));
+        } finally {
+          resource.writeUnlock();
         }
       }
     } finally {

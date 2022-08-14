@@ -535,6 +535,33 @@ public class TsFileResource {
     return true;
   }
 
+  /**
+   * Move its data file, resource file, and modification file physically.
+   *
+   * @return migrated data file
+   */
+  public File migrate(File targetDir) {
+    // get the resource and mod files
+    File resourceFile = fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX);
+    File modFile = fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX);
+
+    // get the target file locations
+    File migratedFile = fsFactory.getFile(targetDir, file.getName());
+    File migratedResourceFile = fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX);
+    File migratedModificationFile =
+        fsFactory.getFile(targetDir, file.getName() + ModificationFile.FILE_SUFFIX);
+
+    // move
+    fsFactory.moveFile(file, migratedFile);
+    if (resourceFile.exists()) {
+      fsFactory.moveFile(resourceFile, migratedResourceFile);
+    }
+    if (modFile.exists()) {
+      fsFactory.moveFile(modFile, migratedModificationFile);
+    }
+    return migratedFile;
+  }
+
   void moveTo(File targetDir) {
     fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
     fsFactory.moveFile(

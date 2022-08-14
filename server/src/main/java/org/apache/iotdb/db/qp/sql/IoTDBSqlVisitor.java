@@ -106,6 +106,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
@@ -783,6 +785,88 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     operator.setPrefixPath(parsePrefixPath(ctx.prefixPath()));
     operator.setTemplateName(parseIdentifier(ctx.templateName.getText()));
     return operator;
+  }
+
+  // Set Migration
+  @Override
+  public Operator visitSetMigration(IoTDBSqlParser.SetMigrationContext ctx) {
+    SetMigrationOperator operator = new SetMigrationOperator(SQLConstant.TOK_SET);
+    operator.setStorageGroup(parsePrefixPath(ctx.path));
+    operator.setTTL(Long.parseLong(ctx.ttl.getText()));
+    operator.setStartTime(parseDateFormat(ctx.startTime.getText()));
+
+    FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+    File targetDir = fsFactory.getFile(parseStringLiteral(ctx.targetDir.getText()));
+    if (!targetDir.exists()) {
+      throw new SQLParserException("unknown directory");
+    } else if (!targetDir.isDirectory()) {
+      throw new SQLParserException("not a directory");
+    }
+    operator.setTargetDir(targetDir);
+    return operator;
+  }
+
+  // Unset Migration
+  @Override
+  public Operator visitUnsetMigration(IoTDBSqlParser.UnsetMigrationContext ctx) {
+    UnsetMigrationOperator operator = new UnsetMigrationOperator(SQLConstant.TOK_UNSET);
+    if (ctx.storageGroup != null) {
+      operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
+    } else if (ctx.taskId != null) {
+      operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
+    } else {
+      // unknown case
+      throw new SQLParserException("unset migration unknown case");
+    }
+    return operator;
+  }
+
+  // Pause Migration
+  @Override
+  public Operator visitPauseMigration(IoTDBSqlParser.PauseMigrationContext ctx) {
+    PauseMigrationOperator operator = new PauseMigrationOperator(SQLConstant.TOK_SET);
+    if (ctx.storageGroup != null) {
+      operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
+    } else if (ctx.taskId != null) {
+      operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
+    } else {
+      // unknown case
+      throw new SQLParserException("pause migration unknown case");
+    }
+    return operator;
+  }
+
+  // Unpause Migration
+  @Override
+  public Operator visitUnpauseMigration(IoTDBSqlParser.UnpauseMigrationContext ctx) {
+    UnpauseMigrationOperator operator = new UnpauseMigrationOperator(SQLConstant.TOK_UNSET);
+    if (ctx.storageGroup != null) {
+      operator.setStorageGroup(parsePrefixPath(ctx.storageGroup));
+    } else if (ctx.taskId != null) {
+      operator.setTaskId(Long.parseLong(ctx.taskId.getText()));
+    } else {
+      // unknown case
+      throw new SQLParserException("unpause migration unknown case");
+    }
+    return operator;
+  }
+
+  // Show Migration
+  @Override
+  public Operator visitShowMigration(IoTDBSqlParser.ShowMigrationContext ctx) {
+    List<PartialPath> storageGroups = new ArrayList<>();
+    List<IoTDBSqlParser.PrefixPathContext> prefixPathList = ctx.prefixPath();
+    for (IoTDBSqlParser.PrefixPathContext prefixPath : prefixPathList) {
+      storageGroups.add(parsePrefixPath(prefixPath));
+    }
+    return new ShowMigrationOperator(storageGroups);
+  }
+
+  // Show All Migration
+  @Override
+  public Operator visitShowAllMigration(IoTDBSqlParser.ShowAllMigrationContext ctx) {
+    List<PartialPath> storageGroups = new ArrayList<>();
+    return new ShowMigrationOperator(storageGroups);
   }
 
   // Start Trigger
