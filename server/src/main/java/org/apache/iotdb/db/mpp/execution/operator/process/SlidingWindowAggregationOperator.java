@@ -30,7 +30,6 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public class SlidingWindowAggregationOperator extends SingleInputAggregationOperator {
 
@@ -41,10 +40,12 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
   public SlidingWindowAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
       Operator child,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter) {
-    super(operatorContext, aggregators, child, ascending, groupByTimeParameter, false);
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
+    super(operatorContext, aggregators, child, ascending, timeRangeIterator, maxReturnSize);
     checkArgument(
         groupByTimeParameter != null,
         "GroupByTimeParameter cannot be null in SlidingWindowAggregationOperator");
@@ -104,15 +105,5 @@ public class SlidingWindowAggregationOperator extends SingleInputAggregationOper
       inputTsBlock = null;
     }
     curSubTimeRange = null;
-  }
-
-  @Override
-  public long calculateMaxPeekMemory() {
-    return calculateMaxReturnSize() + child.calculateMaxReturnSize();
-  }
-
-  @Override
-  public long calculateMaxReturnSize() {
-    return 2L * DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
   }
 }
