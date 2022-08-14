@@ -21,6 +21,7 @@ package org.apache.iotdb.db.mpp.execution.operator.source;
 
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
+import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.execution.operator.OperatorContext;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
@@ -37,6 +38,7 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
       AlignedPath seriesPath,
       OperatorContext context,
       List<Aggregator> aggregators,
+      ITimeRangeIterator timeRangeIterator,
       Filter timeFilter,
       boolean ascending,
       GroupByTimeParameter groupByTimeParameter,
@@ -53,6 +55,7 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
             ascending),
         seriesPath.getMeasurementList().size(),
         aggregators,
+        timeRangeIterator,
         ascending,
         groupByTimeParameter,
         maxReturnSize);

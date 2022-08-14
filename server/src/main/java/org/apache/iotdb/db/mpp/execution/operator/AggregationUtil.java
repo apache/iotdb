@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.db.mpp.execution.operator;
 
+import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
+import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
+import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
 import org.apache.iotdb.db.mpp.statistics.StatisticsManager;
@@ -41,8 +44,11 @@ import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
 
@@ -173,33 +179,21 @@ public class AggregationUtil {
   public static long calculateMaxAggregationResultSize(
       List<AggregationDescriptor> aggregationDescriptors,
       ITimeRangeIterator timeRangeIterator,
-      boolean isGroupByQuery) {
+      boolean isGroupByQuery,
+      TypeProvider typeProvider) {
     long valueColumnsSizePerLine = 0;
-    for (AggregationDescriptor descriptor : aggregationDescriptors) {}
-
-    for (TSDataType tsDataType : outPutDataTypes) {
-      switch (tsDataType) {
-        case INT32:
-          valueColumnsSizePerLine += IntColumn.SIZE_IN_BYTES_PER_POSITION;
-          break;
-        case INT64:
-          valueColumnsSizePerLine += LongColumn.SIZE_IN_BYTES_PER_POSITION;
-          break;
-        case FLOAT:
-          valueColumnsSizePerLine += FloatColumn.SIZE_IN_BYTES_PER_POSITION;
-          break;
-        case DOUBLE:
-          valueColumnsSizePerLine += DoubleColumn.SIZE_IN_BYTES_PER_POSITION;
-          break;
-        case BOOLEAN:
-          valueColumnsSizePerLine += BooleanColumn.SIZE_IN_BYTES_PER_POSITION;
-          break;
-        case TEXT:
-          valueColumnsSizePerLine +=
-              StatisticsManager.getInstance().getMaxBinarySizeInBytes(seriesPath);
-          break;
-        default:
-          throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+    for (AggregationDescriptor descriptor : aggregationDescriptors) {
+      List<TSDataType> outPutDataTypes =
+          descriptor.getOutputColumnNames().stream()
+              .map(typeProvider::getType)
+              .collect(Collectors.toList());
+      for (TSDataType tsDataType : outPutDataTypes) {
+        checkArgument(
+            descriptor.getInputExpressions().get(0) instanceof TimeSeriesOperand,
+            "The input of aggregate function must be the original time series.");
+        PartialPath inputSeriesPath =
+            ((TimeSeriesOperand) descriptor.getInputExpressions().get(0)).getPath();
+        valueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, inputSeriesPath);
       }
     }
 
@@ -211,5 +205,38 @@ public class AggregationUtil {
                     timeRangeIterator.getTotalIntervalNum())
                 * (TimeColumn.SIZE_IN_BYTES_PER_POSITION + valueColumnsSizePerLine))
         : valueColumnsSizePerLine;
+  }
+
+  public static long calculateMaxAggregationResultSizeForLastQuery(
+      List<Aggregator> aggregators, PartialPath inputSeriesPath) {
+    long valueColumnsSizePerLine = 0;
+    List<TSDataType> outPutDataTypes =
+        aggregators.stream()
+            .flatMap(aggregator -> Arrays.stream(aggregator.getOutputType()))
+            .collect(Collectors.toList());
+    for (TSDataType tsDataType : outPutDataTypes) {
+      valueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, inputSeriesPath);
+    }
+    return valueColumnsSizePerLine;
+  }
+
+  private static long getOutputColumnSizePerLine(
+      TSDataType tsDataType, PartialPath inputSeriesPath) {
+    switch (tsDataType) {
+      case INT32:
+        return IntColumn.SIZE_IN_BYTES_PER_POSITION;
+      case INT64:
+        return LongColumn.SIZE_IN_BYTES_PER_POSITION;
+      case FLOAT:
+        return FloatColumn.SIZE_IN_BYTES_PER_POSITION;
+      case DOUBLE:
+        return DoubleColumn.SIZE_IN_BYTES_PER_POSITION;
+      case BOOLEAN:
+        return BooleanColumn.SIZE_IN_BYTES_PER_POSITION;
+      case TEXT:
+        return StatisticsManager.getInstance().getMaxBinarySizeInBytes(inputSeriesPath);
+      default:
+        throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+    }
   }
 }

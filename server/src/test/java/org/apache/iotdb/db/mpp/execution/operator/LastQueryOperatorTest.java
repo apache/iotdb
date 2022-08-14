@@ -56,6 +56,7 @@ import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
+import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -134,6 +135,7 @@ public class LastQueryOperatorTest {
               allSensors,
               fragmentInstanceContext.getOperatorContexts().get(0),
               aggregators1,
+              initTimeRangeIterator(null, false, true),
               null,
               false,
               null,
@@ -157,6 +159,7 @@ public class LastQueryOperatorTest {
               allSensors,
               fragmentInstanceContext.getOperatorContexts().get(2),
               aggregators2,
+              initTimeRangeIterator(null, false, true),
               null,
               false,
               null,
@@ -255,6 +258,7 @@ public class LastQueryOperatorTest {
               allSensors,
               fragmentInstanceContext.getOperatorContexts().get(0),
               aggregators1,
+              initTimeRangeIterator(null, false, true),
               null,
               false,
               null,
@@ -278,6 +282,7 @@ public class LastQueryOperatorTest {
               allSensors,
               fragmentInstanceContext.getOperatorContexts().get(2),
               aggregators2,
+              initTimeRangeIterator(null, false, true),
               null,
               false,
               null,
