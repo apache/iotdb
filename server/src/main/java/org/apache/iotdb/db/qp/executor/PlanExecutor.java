@@ -277,6 +277,7 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case INSERT:
         insert((InsertRowPlan) plan);
+        PlanSyncer.SyncInsertRowPlan((InsertRowPlan) plan);
         return true;
       case BATCH_INSERT_ONE_DEVICE:
         insert((InsertRowsOfOneDevicePlan) plan);
