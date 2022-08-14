@@ -22,7 +22,7 @@ package org.apache.iotdb.commons.service;
 public enum ServiceType {
   STORAGE_ENGINE_SERVICE("Storage Engine ServerService", ""),
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
-  METRICS_SERVICE("Metrics ServerService", "MetricsService"),
+  METRIC_SERVICE("Metrics ServerService", "MetricService"),
   RPC_SERVICE("RPC ServerService", "RPCService"),
   INFLUX_SERVICE("InfluxDB Protocol Service", "InfluxDB Protocol"),
   MQTT_SERVICE("MQTTService", ""),

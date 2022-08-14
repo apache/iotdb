@@ -46,7 +46,7 @@ import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
 import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
@@ -120,7 +120,7 @@ public class NewIoTDB implements NewIoTDBMBean {
         .getConfig()
         .setRpcImplClassName(ClientRPCServiceImpl.class.getName());
 
-    registerManager.register(MetricsService.getInstance());
+    registerManager.register(MetricService.getInstance());
     logger.info("recover the schema...");
     initConfigManager();
     registerManager.register(new JMXService());
@@ -175,7 +175,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     registerManager.register(ContinuousQueryService.getInstance());
 
     // start reporter
-    MetricsService.getInstance().startAllReporter();
+    MetricService.getInstance().startAllReporter();
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
