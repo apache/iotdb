@@ -75,7 +75,7 @@ import org.apache.iotdb.db.mpp.plan.statement.component.SortKey;
 import org.apache.iotdb.db.mpp.plan.statement.component.WhereCondition;
 import org.apache.iotdb.db.mpp.plan.statement.crud.DeleteDataStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.LoadFileStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.literal.BooleanLiteral;
 import org.apache.iotdb.db.mpp.plan.statement.literal.DoubleLiteral;
@@ -1348,29 +1348,29 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
 
   @Override
   public Statement visitLoadFile(IoTDBSqlParser.LoadFileContext ctx) {
-    LoadFileStatement loadFileStatement =
-        new LoadFileStatement(parseStringLiteral(ctx.fileName.getText()));
+    LoadTsFileStatement loadTsFileStatement =
+        new LoadTsFileStatement(parseStringLiteral(ctx.fileName.getText()));
     if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(loadFileStatement, ctx.loadFilesClause());
+      parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
     }
-    return loadFileStatement;
+    return loadTsFileStatement;
   }
 
   /**
    * used for parsing load tsfile, context will be one of "SCHEMA, LEVEL, METADATA", and maybe
    * followed by a recursion property statement
    *
-   * @param loadFileStatement the result statement, setting by clause context
+   * @param loadTsFileStatement the result statement, setting by clause context
    * @param ctx context of property statement
    */
   private void parseLoadFiles(
-      LoadFileStatement loadFileStatement, IoTDBSqlParser.LoadFilesClauseContext ctx) {
+          LoadTsFileStatement loadTsFileStatement, IoTDBSqlParser.LoadFilesClauseContext ctx) {
     if (ctx.AUTOREGISTER() != null) {
-      loadFileStatement.setAutoCreateSchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+      loadTsFileStatement.setAutoCreateSchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
     } else if (ctx.SGLEVEL() != null) {
-      loadFileStatement.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
+      loadTsFileStatement.setSgLevel(Integer.parseInt(ctx.INTEGER_LITERAL().getText()));
     } else if (ctx.VERIFY() != null) {
-      loadFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
+      loadTsFileStatement.setVerifySchema(Boolean.parseBoolean(ctx.BOOLEAN_LITERAL().getText()));
     } else {
       throw new SQLParserException(
           String.format(
@@ -1378,7 +1378,7 @@ public class ASTVisitor extends IoTDBSqlParserBaseVisitor<Statement> {
               ctx.getText()));
     }
     if (ctx.loadFilesClause() != null) {
-      parseLoadFiles(loadFileStatement, ctx.loadFilesClause());
+      parseLoadFiles(loadTsFileStatement, ctx.loadFilesClause());
     }
   }
 

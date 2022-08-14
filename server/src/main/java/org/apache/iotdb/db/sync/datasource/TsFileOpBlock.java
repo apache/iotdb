@@ -73,7 +73,7 @@ public class TsFileOpBlock extends AbstractOpBlock {
 
   // full Timeseries Metadata TreeMap : FileOffset => Pair(DeviceId, TimeseriesMetadata)
   private Map<Long, Pair<Path, TimeseriesMetadata>> fullTsMetadataMap;
-  // TreeMap: LocalIndex => Pair(SensorFullPath, ChunkOffset, PointCount)
+  // TreeMap: LocalIndex => Pair(SensorFullPath, NonAlignedChunkData, PointCount)
   private TreeMap<Long, Triple<String, Long, Long>> indexToChunkInfoMap;
 
   Decoder timeDecoder =

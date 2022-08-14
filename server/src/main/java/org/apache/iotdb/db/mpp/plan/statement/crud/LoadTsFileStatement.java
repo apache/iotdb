@@ -33,7 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class LoadFileStatement extends Statement {
+public class LoadTsFileStatement extends Statement {
   private File file;
   private boolean autoCreateSchema;
   private int sgLevel;
@@ -41,7 +41,7 @@ public class LoadFileStatement extends Statement {
 
   private List<File> tsFiles;
 
-  public LoadFileStatement(String filePath) {
+  public LoadTsFileStatement(String filePath) {
     this.file = new File(filePath);
     this.autoCreateSchema = true;
     this.sgLevel = IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel();
@@ -114,7 +114,7 @@ public class LoadFileStatement extends Statement {
 
   @Override
   public String toString() {
-    return "LoadFileStatement{"
+    return "LoadTsFileStatement{"
         + "file="
         + file
         + ", autoCreateSchema="

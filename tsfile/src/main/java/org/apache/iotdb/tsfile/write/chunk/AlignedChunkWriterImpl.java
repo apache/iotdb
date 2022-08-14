@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -298,5 +299,10 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
 
   public TSDataType getCurrentValueChunkType() {
     return valueChunkWriterList.get(valueIndex).getDataType();
+  }
+
+  @Override
+  public void serializeToDataOutputStream(DataOutputStream stream) throws IOException {
+
   }
 }

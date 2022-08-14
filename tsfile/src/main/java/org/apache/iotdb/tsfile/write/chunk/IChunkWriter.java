@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.write.chunk;
 
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import java.io.DataOutputStream;
 import java.io.IOException;
 
 /** IChunkWriter provides a list of writing methods for different value types. */
@@ -27,6 +28,8 @@ public interface IChunkWriter {
 
   /** flush data to TsFileIOWriter. */
   void writeToFileWriter(TsFileIOWriter tsfileWriter) throws IOException;
+
+  void serializeToDataOutputStream(DataOutputStream stream) throws IOException;
 
   /** estimate memory usage of this series. */
   long estimateMaxSeriesMemSize();

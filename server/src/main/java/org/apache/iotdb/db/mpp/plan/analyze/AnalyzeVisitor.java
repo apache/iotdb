@@ -65,7 +65,7 @@ import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsOfOneDeviceStatemen
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertRowsStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.InsertTabletStatement;
-import org.apache.iotdb.db.mpp.plan.statement.crud.LoadFileStatement;
+import org.apache.iotdb.db.mpp.plan.statement.crud.LoadTsFileStatement;
 import org.apache.iotdb.db.mpp.plan.statement.crud.QueryStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.InternalCreateTimeSeriesStatement;
 import org.apache.iotdb.db.mpp.plan.statement.internal.SchemaFetchStatement;
@@ -1195,12 +1195,12 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
   }
 
   @Override
-  public Analysis visitLoadFile(LoadFileStatement loadFileStatement, MPPQueryContext context) {
+  public Analysis visitLoadFile(LoadTsFileStatement loadTsFileStatement, MPPQueryContext context) {
     context.setQueryType(QueryType.WRITE);
 
     Map<String, Long> device2MinTime = new HashMap<>();
     Map<String, Long> device2MaxTime = new HashMap<>();
-    for (File tsFile : loadFileStatement.getTsFiles()) {
+    for (File tsFile : loadTsFileStatement.getTsFiles()) {
       try {
         TsFileResource resource = new TsFileResource(tsFile);
         FileLoaderUtils.loadOrGenerateResource(resource);
@@ -1237,12 +1237,13 @@ public class AnalyzeVisitor extends StatementVisitor<Analysis, MPPQueryContext> 
       DataPartitionQueryParam dataPartitionQueryParam = new DataPartitionQueryParam();
       dataPartitionQueryParam.setDevicePath(device);
       dataPartitionQueryParam.setTimePartitionSlotList(timePartitionSlots);
+      params.add(dataPartitionQueryParam);
     }
 
     DataPartition dataPartition = partitionFetcher.getOrCreateDataPartition(params);
 
     Analysis analysis = new Analysis();
-    analysis.setStatement(loadFileStatement);
+    analysis.setStatement(loadTsFileStatement);
     analysis.setDataPartitionInfo(dataPartition);
 
     return analysis;

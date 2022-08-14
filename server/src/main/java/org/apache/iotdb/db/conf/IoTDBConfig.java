@@ -42,6 +42,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFileNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -727,6 +729,11 @@ public class IoTDBConfig {
   private long partitionInterval = 604800;
 
   /**
+   * Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}.
+   */
+  private long maxPlanNodeSize = 500 * 1048576L;
+
+  /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
    * DEVICE_TIME_INDEX and FILE_TIME_INDEX are supported, and could not be changed after first set.
    */
@@ -1033,6 +1040,10 @@ public class IoTDBConfig {
 
   public void setPartitionInterval(long partitionInterval) {
     this.partitionInterval = partitionInterval;
+  }
+
+  public long getMaxPlanNodeSize() {
+    return maxPlanNodeSize;
   }
 
   public TimeIndexLevel getTimeIndexLevel() {

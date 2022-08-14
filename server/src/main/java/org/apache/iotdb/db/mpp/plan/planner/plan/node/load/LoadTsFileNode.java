@@ -17,23 +17,36 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.mpp.plan.planner.plan.node.write;
+package org.apache.iotdb.db.mpp.plan.planner.plan.node.load;
 
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.db.mpp.plan.analyze.Analysis;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeId;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.WritePlanNode;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
-public class LoadFileNode extends WritePlanNode {
+public class LoadTsFileNode extends WritePlanNode {
+  private static final Logger logger = LoggerFactory.getLogger(LoadTsFileNode.class);
 
-  protected LoadFileNode(PlanNodeId id) {
+  private final List<File> tsFiles;
+
+  public LoadTsFileNode(PlanNodeId id) {
+    this(id, new ArrayList<>());
+  }
+
+  public LoadTsFileNode(PlanNodeId id, List<File> tsFiles) {
     super(id);
+    this.tsFiles = tsFiles;
   }
 
   @Override
@@ -51,12 +64,12 @@ public class LoadFileNode extends WritePlanNode {
 
   @Override
   public PlanNode clone() {
-    return null;
+    throw new NotImplementedException("clone of load TsFile is not implemented");
   }
 
   @Override
   public int allowedChildCount() {
-    return 0;
+    return NO_CHILD_ALLOWED;
   }
 
   @Override
@@ -72,6 +85,16 @@ public class LoadFileNode extends WritePlanNode {
 
   @Override
   public List<WritePlanNode> splitByPartition(Analysis analysis) {
-    return null;
+    List<WritePlanNode> res = new ArrayList<>();
+    for (File file : tsFiles) {
+      try {
+        LoadSingleTsFileNode singleTsFileNode = new LoadSingleTsFileNode(getPlanNodeId(), file);
+        singleTsFileNode.splitTsFileByDataPartition(analysis.getDataPartitionInfo());
+        res.add(singleTsFileNode);
+      } catch (Exception e) {
+        logger.error(String.format("Parse TsFile %s error", file.getPath()), e);
+      }
+    }
+    return res;
   }
 }
