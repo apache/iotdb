@@ -43,7 +43,6 @@ import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEF
  * <p>Return aggregation result in many time intervals once.
  */
 public class RawDataAggregationOperator extends SingleInputAggregationOperator {
-
   public RawDataAggregationOperator(
       OperatorContext operatorContext,
       List<Aggregator> aggregators,

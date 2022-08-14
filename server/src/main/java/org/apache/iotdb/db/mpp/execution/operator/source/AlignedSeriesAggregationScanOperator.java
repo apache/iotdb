@@ -39,7 +39,8 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
       List<Aggregator> aggregators,
       Filter timeFilter,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
     super(
         sourceId,
         context,
@@ -53,6 +54,7 @@ public class AlignedSeriesAggregationScanOperator extends AbstractSeriesAggregat
         seriesPath.getMeasurementList().size(),
         aggregators,
         ascending,
-        groupByTimeParameter);
+        groupByTimeParameter,
+        maxReturnSize);
   }
 }

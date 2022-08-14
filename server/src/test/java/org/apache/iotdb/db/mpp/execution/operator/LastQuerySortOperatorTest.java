@@ -58,6 +58,7 @@ import java.util.concurrent.ExecutorService;
 
 import static org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceContext.createFragmentInstanceContext;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationOperatorTest.TEST_TIME_SLICE;
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -137,7 +138,8 @@ public class LastQuerySortOperatorTest {
               aggregators1,
               null,
               false,
-              null);
+              null,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator1.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 
@@ -159,7 +161,8 @@ public class LastQuerySortOperatorTest {
               aggregators2,
               null,
               false,
-              null);
+              null,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator2.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 
@@ -257,7 +260,8 @@ public class LastQuerySortOperatorTest {
               aggregators1,
               null,
               false,
-              null);
+              null,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator1.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 
@@ -279,7 +283,8 @@ public class LastQuerySortOperatorTest {
               aggregators2,
               null,
               false,
-              null);
+              null,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
       seriesAggregationScanOperator2.initQueryDataSource(
           new QueryDataSource(seqResources, unSeqResources));
 

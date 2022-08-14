@@ -43,7 +43,6 @@ import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.appendA
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.calculateAggregationFromRawData;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.initTimeRangeIterator;
 import static org.apache.iotdb.db.mpp.execution.operator.AggregationUtil.isAllAggregatorsHasFinalResult;
-import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 
 public abstract class AbstractSeriesAggregationScanOperator implements DataSourceOperator {
 
@@ -80,7 +79,8 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
       int subSensorSize,
       List<Aggregator> aggregators,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
     this.sourceId = sourceId;
     this.operatorContext = context;
     this.ascending = ascending;
@@ -99,7 +99,7 @@ public abstract class AbstractSeriesAggregationScanOperator implements DataSourc
 
     this.maxRetainedSize =
         (1L + subSensorSize) * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
-    this.maxReturnSize = DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
+    this.maxReturnSize = maxReturnSize;
   }
 
   @Override

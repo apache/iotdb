@@ -46,7 +46,8 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
       List<Aggregator> aggregators,
       Filter timeFilter,
       boolean ascending,
-      GroupByTimeParameter groupByTimeParameter) {
+      GroupByTimeParameter groupByTimeParameter,
+      long maxReturnSize) {
     super(
         sourceId,
         context,
@@ -61,6 +62,7 @@ public class SeriesAggregationScanOperator extends AbstractSeriesAggregationScan
         1,
         aggregators,
         ascending,
-        groupByTimeParameter);
+        groupByTimeParameter,
+        maxReturnSize);
   }
 }

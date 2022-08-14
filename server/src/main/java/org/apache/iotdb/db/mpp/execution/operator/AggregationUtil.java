@@ -23,16 +23,27 @@ import org.apache.iotdb.db.mpp.aggregation.Aggregator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.ITimeRangeIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.SingleTimeWindowIterator;
 import org.apache.iotdb.db.mpp.aggregation.timerangeiterator.TimeRangeIteratorFactory;
+import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.AggregationDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.GroupByTimeParameter;
+import org.apache.iotdb.db.mpp.statistics.StatisticsManager;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.common.block.TsBlock;
 import org.apache.iotdb.tsfile.read.common.block.TsBlockBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.BooleanColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.ColumnBuilder;
+import org.apache.iotdb.tsfile.read.common.block.column.DoubleColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.FloatColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.IntColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.LongColumn;
+import org.apache.iotdb.tsfile.read.common.block.column.TimeColumn;
 import org.apache.iotdb.tsfile.read.common.block.column.TimeColumnBuilder;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.List;
 
+import static org.apache.iotdb.tsfile.read.common.block.TsBlockBuilderStatus.DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES;
 import static org.apache.iotdb.tsfile.read.common.block.TsBlockUtil.skipPointsOutOfTimeRange;
 
 public class AggregationUtil {
@@ -157,5 +168,48 @@ public class AggregationUtil {
       }
     }
     return true;
+  }
+
+  public static long calculateMaxAggregationResultSize(
+      List<AggregationDescriptor> aggregationDescriptors,
+      ITimeRangeIterator timeRangeIterator,
+      boolean isGroupByQuery) {
+    long valueColumnsSizePerLine = 0;
+    for (AggregationDescriptor descriptor : aggregationDescriptors) {}
+
+    for (TSDataType tsDataType : outPutDataTypes) {
+      switch (tsDataType) {
+        case INT32:
+          valueColumnsSizePerLine += IntColumn.SIZE_IN_BYTES_PER_POSITION;
+          break;
+        case INT64:
+          valueColumnsSizePerLine += LongColumn.SIZE_IN_BYTES_PER_POSITION;
+          break;
+        case FLOAT:
+          valueColumnsSizePerLine += FloatColumn.SIZE_IN_BYTES_PER_POSITION;
+          break;
+        case DOUBLE:
+          valueColumnsSizePerLine += DoubleColumn.SIZE_IN_BYTES_PER_POSITION;
+          break;
+        case BOOLEAN:
+          valueColumnsSizePerLine += BooleanColumn.SIZE_IN_BYTES_PER_POSITION;
+          break;
+        case TEXT:
+          valueColumnsSizePerLine +=
+              StatisticsManager.getInstance().getMaxBinarySizeInBytes(seriesPath);
+          break;
+        default:
+          throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+      }
+    }
+
+    return isGroupByQuery
+        ? Math.min(
+            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+            Math.min(
+                    TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
+                    timeRangeIterator.getTotalIntervalNum())
+                * (TimeColumn.SIZE_IN_BYTES_PER_POSITION + valueColumnsSizePerLine))
+        : valueColumnsSizePerLine;
   }
 }

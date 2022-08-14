@@ -667,7 +667,8 @@ public class OperatorMemoryTest {
                       AggregationStep.SINGLE)),
               null,
               true,
-              null);
+              null,
+              DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES);
 
       assertEquals(
           2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte()
