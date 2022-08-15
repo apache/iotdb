@@ -139,14 +139,13 @@ public class TransportProcessor {
           "Sender IP is not in the white list of receiver IP and synchronization tasks are not allowed.");
     }
     // Version check
-    //    if
-    // (!config.getIoTDBMajorVersion(identityInfo.version).equals(config.getIoTDBMajorVersion())) {
-    //      return RpcUtils.getStatus(
-    //          TSStatusCode.PIPESERVER_ERROR,
-    //          String.format(
-    //              "Version mismatch: the sender <%s>, the receiver <%s>",
-    //              identityInfo.version, config.getIoTDBVersion()));
-    //    }
+    if (!config.getIoTDBMajorVersion(identityInfo.version).equals(config.getIoTDBMajorVersion())) {
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPESERVER_ERROR,
+          String.format(
+              "Version mismatch: the sender <%s>, the receiver <%s>",
+              identityInfo.version, config.getIoTDBVersion()));
+    }
 
     if (!new File(SyncPathUtil.getFileDataDirPath(identityInfo)).exists()) {
       new File(SyncPathUtil.getFileDataDirPath(identityInfo)).mkdirs();
