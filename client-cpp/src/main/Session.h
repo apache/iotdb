@@ -313,7 +313,7 @@ public:
     }
 
     void putString(const std::string &ins) {
-        putInt(ins.size());
+        putInt((int)(ins.size()));
         str += ins;
     }
 
@@ -488,11 +488,13 @@ public:
 class Tablet {
 private:
     static const int DEFAULT_SIZE = 1024;
+    void createColumns();
+    void deleteColumns();
 public:
     std::string deviceId; // deviceId of this tablet
     std::vector<std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
     std::vector<int64_t> timestamps;   // timestamps in this tablet
-    std::vector<std::vector<std::string>> values; // each object is a primitive type array, which represents values of one measurement
+    std::vector<void*> values; // each object is a primitive type array, which represents values of one measurement
     std::vector<std::unique_ptr<BitMap>> bitMaps; // each bitmap represents the existence of each value in the current column
     int rowSize;    //the number of rows to include in this tablet
     int maxRowNumber;   // the maximum number of rows for this tablet
@@ -527,19 +529,24 @@ public:
                                                         maxRowNumber(maxRowNumber), isAligned(_isAligned) {
         // create timestamp column
         timestamps.resize(maxRowNumber);
-        // create value columns and bitMaps
+        // create value columns
         values.resize(schemas.size());
+        createColumns();
+        // create bitMaps
         bitMaps.resize(schemas.size());
         for (size_t i = 0; i < schemas.size(); i++) {
-            values[i].resize(maxRowNumber);
             bitMaps[i] = std::unique_ptr<BitMap>(new BitMap(maxRowNumber));
         }
         this->rowSize = 0;
     }
 
-    void reset(); // Reset Tablet to the default state - set the rowSize to 0
+    ~Tablet() {
+        deleteColumns();
+    }
 
-    void createColumns();
+    void addValue(int schemaId, int rowIndex, void *value);
+
+    void reset(); // Reset Tablet to the default state - set the rowSize to 0
 
     int getTimeBytesSize();
 
@@ -673,7 +680,7 @@ public:
         this->client = client;
         this->columnNameList = columnNameList;
         this->currentBitmap = new char[columnNameList.size()];
-        this->columnSize = columnNameList.size();
+        this->columnSize = (int)columnNameList.size();
         this->isIgnoreTimeStamp = isIgnoreTimeStamp;
 
         // column name -> column location
@@ -682,7 +689,7 @@ public:
             if (this->columnMap.find(name) != this->columnMap.end()) {
                 duplicateLocation[i] = columnMap[name];
             } else {
-                this->columnMap[name] = i;
+                this->columnMap[name] = (int)i;
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
             if (!columnNameIndexMap.empty()) {
@@ -725,15 +732,6 @@ public:
 
     void closeOperationHandle();
 };
-
-template<typename T>
-std::vector<T> sortList(const std::vector<T> &valueList, const int *index, int indexLength) {
-    std::vector<T> sortedValues(valueList.size());
-    for (int i = 0; i < indexLength; i++) {
-        sortedValues[i] = valueList[index[i]];
-    }
-    return sortedValues;
-}
 
 class TemplateNode {
 public:
@@ -1154,6 +1152,8 @@ public:
     std::vector<std::string> showMeasurementsInTemplate(const std::string &template_name);
 
     std::vector<std::string> showMeasurementsInTemplate(const std::string &template_name, const std::string &pattern);
+
+    bool checkTemplateExists(const std::string &template_name);
 };
 
 #endif // IOTDB_SESSION_H
