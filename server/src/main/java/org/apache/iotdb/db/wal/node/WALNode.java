@@ -88,6 +88,9 @@ public class WALNode implements IWALNode {
   /** no multi-leader consensus, all insert nodes can be safely deleted */
   public static final long DEFAULT_SAFELY_DELETED_SEARCH_INDEX = Long.MAX_VALUE;
 
+  /** timeout threshold when waiting for next wal entry */
+  private static final long WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC = 30;
+
   /** unique identifier of this WALNode */
   private final String identifier;
   /** directory to store this node's files */
@@ -680,7 +683,12 @@ public class WALNode implements IWALNode {
     @Override
     public void waitForNextReady() throws InterruptedException {
       while (!hasNext()) {
-        buffer.waitForFlush();
+        boolean timeout =
+            !buffer.waitForFlush(WAIT_FOR_NEXT_WAL_ENTRY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
+        if (timeout) {
+          logger.info("timeout when waiting for next WAL entry ready, execute rollWALFile");
+          rollWALFile();
+        }
       }
     }
 
@@ -739,6 +747,11 @@ public class WALNode implements IWALNode {
   @Override
   public long getCurrentSearchIndex() {
     return buffer.getCurrentSearchIndex();
+  }
+
+  @Override
+  public long getTotalSize() {
+    return WALManager.getInstance().getTotalDiskUsage();
   }
 
   // endregion

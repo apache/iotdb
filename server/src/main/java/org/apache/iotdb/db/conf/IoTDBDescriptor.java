@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -1067,6 +1067,15 @@ public class IoTDBDescriptor {
     if (deleteWalFilesPeriod > 0) {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
     }
+
+    long throttleDownThresholdInByte =
+        Long.parseLong(
+            properties.getProperty(
+                "multi_leader_throttle_down_threshold_in_byte",
+                Long.toString(conf.getThrottleDownThreshold())));
+    if (throttleDownThresholdInByte > 0) {
+      conf.setThrottleDownThreshold(throttleDownThresholdInByte);
+    }
   }
 
   private void loadAutoCreateSchemaProps(Properties properties) {
@@ -1443,8 +1452,8 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
-    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProperties();
-    MetricsService.getInstance().reloadProperties(reloadLevel);
+    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps();
+    MetricService.getInstance().reloadProperties(reloadLevel);
   }
 
   private void initMemoryAllocate(Properties properties) {
@@ -1792,6 +1801,7 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
+    conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
   private static class IoTDBDescriptorHolder {

@@ -38,7 +38,7 @@ import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCService;
 import org.apache.iotdb.confignode.service.thrift.ConfigNodeRPCServiceProcessor;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -177,9 +177,9 @@ public class ConfigNode implements ConfigNodeMBean {
     registerManager.register(UDFClassLoaderManager.setupAndGetInstance(conf.getUdfLibDir()));
     registerManager.register(UDFRegistrationService.setupAndGetInstance(conf.getSystemUdfDir()));
 
-    // Setup MetricsService
-    registerManager.register(MetricsService.getInstance());
-    MetricsService.getInstance().startAllReporter();
+    // Setup MetricService
+    registerManager.register(MetricService.getInstance());
+    MetricService.getInstance().startAllReporter();
 
     LOGGER.info("Successfully setup internal services.");
   }

@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.metrics.predefined.jvm;
 
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
+import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Timer;
-import org.apache.iotdb.metrics.utils.JvmUtils;
 import org.apache.iotdb.metrics.utils.MetricLevel;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import com.sun.management.GarbageCollectionNotificationInfo;
 import com.sun.management.GcInfo;
@@ -72,7 +71,7 @@ public class JvmGcMetrics implements IMetricSet, AutoCloseable {
   }
 
   @Override
-  public void bindTo(MetricManager metricManager) {
+  public void bindTo(AbstractMetricManager metricManager) {
     if (ManagementFactory.getMemoryPoolMXBeans().isEmpty()) {
       logger.warn(
           "GC notifications will not be available because MemoryPoolMXBeans are not provided by the JVM");

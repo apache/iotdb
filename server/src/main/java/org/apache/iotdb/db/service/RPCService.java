@@ -26,7 +26,7 @@ import org.apache.iotdb.commons.service.ThriftService;
 import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.service.thrift.ProcessorWithMetrics;
@@ -83,8 +83,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
       throw new IllegalAccessException(e.getMessage());
     }
     thriftServiceThread.setName(ThreadName.RPC_SERVICE.getName());
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
             MetricLevel.CORE,
