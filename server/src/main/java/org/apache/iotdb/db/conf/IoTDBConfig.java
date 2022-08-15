@@ -32,6 +32,8 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.LocalSchemaProcessor;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
+import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFileNode;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.db.wal.utils.WALMode;
@@ -42,8 +44,6 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNode;
-import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFileNode;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -728,9 +728,7 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 604800;
 
-  /**
-   * Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}.
-   */
+  /** Max size of a {@link PlanNode}, mainly used to control memory of {@link LoadTsFileNode}. */
   private long maxPlanNodeSize = 500 * 1048576L;
 
   /**

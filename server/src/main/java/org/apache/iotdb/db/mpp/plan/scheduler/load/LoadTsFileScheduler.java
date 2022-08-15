@@ -19,14 +19,14 @@
 
 package org.apache.iotdb.db.mpp.plan.scheduler.load;
 
-import io.airlift.units.Duration;
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.mpp.common.FragmentInstanceId;
 import org.apache.iotdb.db.mpp.common.MPPQueryContext;
 import org.apache.iotdb.db.mpp.common.PlanFragmentId;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInfo;
-import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
-import org.apache.iotdb.db.mpp.plan.analyze.QueryType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.DistributedQueryPlan;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.planner.plan.PlanFragment;
@@ -34,6 +34,8 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadSingleTsFileNode;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.load.LoadTsFilePieceNode;
 import org.apache.iotdb.db.mpp.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
+
+import io.airlift.units.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,16 +51,18 @@ public class LoadTsFileScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
 
   private String uuid;
-  private LoadTsFileDispatcherImpl dispatcher;
-
-  private List<LoadSingleTsFileNode> tsFileNodeList;
   private MPPQueryContext queryContext;
+  private LoadTsFileDispatcherImpl dispatcher;
+  private List<LoadSingleTsFileNode> tsFileNodeList;
 
   public LoadTsFileScheduler(
-      DistributedQueryPlan distributedQueryPlan, MPPQueryContext queryContext) {
+      DistributedQueryPlan distributedQueryPlan,
+      MPPQueryContext queryContext,
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
     this.uuid = UUID.randomUUID().toString();
-    this.tsFileNodeList = new ArrayList<>();
     this.queryContext = queryContext;
+    this.tsFileNodeList = new ArrayList<>();
+    this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager);
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getRoot());
@@ -69,7 +73,12 @@ public class LoadTsFileScheduler implements IScheduler {
   public void start() {}
 
   private boolean firstPhase() {
-    for (LoadSingleTsFileNode node : tsFileNodeList) {}
+    for (LoadSingleTsFileNode node : tsFileNodeList) {
+      if (!dispatchOneTsFile(node)) {
+        // TODO: record it
+        return false;
+      }
+    }
     return true;
   }
 
@@ -85,20 +94,19 @@ public class LoadTsFileScheduler implements IScheduler {
                 queryContext.getQueryType(),
                 queryContext.getTimeOut());
         instance.setDataRegionAndHost(entry.getKey());
-        Future<FragInstanceDispatchResult> dispatchResultFuture = dispatcher.dispatch(Collections.singletonList(instance));
+        Future<FragInstanceDispatchResult> dispatchResultFuture =
+            dispatcher.dispatch(Collections.singletonList(instance));
 
         try {
           FragInstanceDispatchResult result = dispatchResultFuture.get();
           if (!result.isSuccessful()) {
-            logger.error("Dispatch pieceNode error");
+            // TODO: log error msg, and retry.
             return false;
           }
         } catch (InterruptedException | ExecutionException e) {
-          // If the dispatch request cannot be sent or TException is caught, we will retry this query.
           if (e instanceof InterruptedException) {
             Thread.currentThread().interrupt();
           }
-//          stateMachine.transitionToFailed(e);
           return false;
         }
       }

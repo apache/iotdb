@@ -460,7 +460,5 @@ public class ChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void serializeToDataOutputStream(DataOutputStream stream) throws IOException {
-
-  }
+  public void serializeToDataOutputStream(DataOutputStream stream) throws IOException {}
 }

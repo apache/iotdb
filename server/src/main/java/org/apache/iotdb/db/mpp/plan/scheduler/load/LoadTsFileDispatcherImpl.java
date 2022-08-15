@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.mpp.plan.scheduler.load;
 
+import org.apache.iotdb.common.rpc.thrift.TEndPoint;
+import org.apache.iotdb.commons.client.IClientManager;
+import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.mpp.plan.scheduler.IFragInstanceDispatcher;
@@ -27,8 +31,22 @@ import java.util.List;
 import java.util.concurrent.Future;
 
 public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
+
+  private final String localhostIpAddr;
+  private final int localhostInternalPort;
+  private final IClientManager<TEndPoint, SyncDataNodeInternalServiceClient>
+      internalServiceClientManager;
+
+  public LoadTsFileDispatcherImpl(
+      IClientManager<TEndPoint, SyncDataNodeInternalServiceClient> internalServiceClientManager) {
+    this.internalServiceClientManager = internalServiceClientManager;
+    this.localhostIpAddr = IoTDBDescriptor.getInstance().getConfig().getInternalAddress();
+    this.localhostInternalPort = IoTDBDescriptor.getInstance().getConfig().getInternalPort();
+  }
+
   @Override
   public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
+
     return null;
   }
 

@@ -302,7 +302,5 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
   }
 
   @Override
-  public void serializeToDataOutputStream(DataOutputStream stream) throws IOException {
-
-  }
+  public void serializeToDataOutputStream(DataOutputStream stream) throws IOException {}
 }
