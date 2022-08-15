@@ -54,8 +54,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
 import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
 
@@ -65,12 +63,10 @@ public class TransportProcessor {
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String RECORD_SUFFIX = ".record";
   private static final String PATCH_SUFFIX = ".patch";
-  private final ThreadLocal<TSyncIdentityInfo> identityInfoThreadLocal;
-  private final Map<TSyncIdentityInfo, Integer> identityInfoCounter;
+  private final SyncConnectionManager connectionManager;
 
   public TransportProcessor() {
-    identityInfoThreadLocal = new ThreadLocal<>();
-    identityInfoCounter = new ConcurrentHashMap<>();
+    connectionManager = SyncConnectionManager.getInstance();
   }
 
   private class CheckResult {
@@ -136,8 +132,6 @@ public class TransportProcessor {
 
   public TSStatus handshake(TSyncIdentityInfo identityInfo) {
     logger.debug("Invoke handshake method from client ip = {}", identityInfo.address);
-    identityInfoThreadLocal.set(identityInfo);
-    identityInfoCounter.compute(identityInfo, (k, v) -> v == null ? 1 : v + 1);
     // check ip address
     if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.address)) {
       return RpcUtils.getStatus(
@@ -145,17 +139,19 @@ public class TransportProcessor {
           "Sender IP is not in the white list of receiver IP and synchronization tasks are not allowed.");
     }
     // Version check
-    if (!config.getIoTDBMajorVersion(identityInfo.version).equals(config.getIoTDBMajorVersion())) {
-      return RpcUtils.getStatus(
-          TSStatusCode.PIPESERVER_ERROR,
-          String.format(
-              "Version mismatch: the sender <%s>, the receiver <%s>",
-              identityInfo.version, config.getIoTDBVersion()));
-    }
+    //    if
+    // (!config.getIoTDBMajorVersion(identityInfo.version).equals(config.getIoTDBMajorVersion())) {
+    //      return RpcUtils.getStatus(
+    //          TSStatusCode.PIPESERVER_ERROR,
+    //          String.format(
+    //              "Version mismatch: the sender <%s>, the receiver <%s>",
+    //              identityInfo.version, config.getIoTDBVersion()));
+    //    }
 
     if (!new File(SyncPathUtil.getFileDataDirPath(identityInfo)).exists()) {
       new File(SyncPathUtil.getFileDataDirPath(identityInfo)).mkdirs();
     }
+    connectionManager.createConnection(identityInfo);
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
@@ -199,9 +195,12 @@ public class TransportProcessor {
     return ipAddressBinary.equals(ipSegmentBinary);
   }
 
-  public TSStatus transportData(
-      TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest) {
-    TSyncIdentityInfo identityInfo = identityInfoThreadLocal.get();
+  public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
+      throws TException {
+    TSyncIdentityInfo identityInfo = connectionManager.getCurrentTSyncIdentityInfo();
+    if (identityInfo == null) {
+      throw new TException("Thrift connection is not alive.");
+    }
     logger.debug("Invoke transportData method from client ip = {}", identityInfo.address);
 
     String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
@@ -295,7 +294,10 @@ public class TransportProcessor {
 
   public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
       throws TException {
-    TSyncIdentityInfo identityInfo = identityInfoThreadLocal.get();
+    TSyncIdentityInfo identityInfo = connectionManager.getCurrentTSyncIdentityInfo();
+    if (identityInfo == null) {
+      throw new TException("Thrift connection is not alive.");
+    }
     logger.debug("Invoke checkFileDigest method from client ip = {}", identityInfo.address);
     String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
     synchronized (fileDir.intern()) {
@@ -351,18 +353,7 @@ public class TransportProcessor {
    */
   public void handleClientExit() {
     // Handle client exit here.
-    TSyncIdentityInfo identityInfo = identityInfoThreadLocal.get();
-    if (identityInfo != null) {
-      // if all connections exit, stop pipe
-      identityInfoThreadLocal.remove();
-      synchronized (identityInfoCounter) {
-        identityInfoCounter.compute(identityInfo, (k, v) -> v == null ? 0 : v - 1);
-        if (identityInfoCounter.get(identityInfo) == 0) {
-          identityInfoCounter.remove(identityInfo);
-          // TODO：发送端退出
-        }
-      }
-    }
+    connectionManager.exitConnection();
   }
 
   /**

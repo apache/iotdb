@@ -47,9 +47,11 @@ import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.sender.service.TransportHandler;
+import org.apache.iotdb.db.sync.transport.server.SyncConnectionManager;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -271,6 +273,7 @@ public class SyncService implements IService {
 
   public void showPipe(ShowPipePlan plan, ListDataSet listDataSet) {
     boolean showAll = "".equals(plan.getPipeName());
+    // show pipe in sender
     for (PipeInfo pipe : SyncService.getInstance().getAllPipeInfos()) {
       if (showAll || plan.getPipeName().equals(pipe.getPipeName())) {
         RowRecord record = new RowRecord(0);
@@ -313,7 +316,24 @@ public class SyncService implements IService {
         listDataSet.putRecord(record);
       }
     }
-    // TODO: implement show pipe in receiver
+    // show pipe in receiver
+    List<TSyncIdentityInfo> identityInfoList =
+        SyncConnectionManager.getInstance().getAllTSyncIdentityInfos();
+    for (TSyncIdentityInfo identityInfo : identityInfoList) {
+      // TODO(sync): Removing duplicate rows
+      RowRecord record = new RowRecord(0);
+      record.addField(
+          Binary.valueOf(DatetimeUtils.convertLongToDate(identityInfo.getCreateTime())),
+          TSDataType.TEXT);
+      record.addField(Binary.valueOf(identityInfo.getPipeName()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(IoTDBConstant.SYNC_RECEIVER_ROLE), TSDataType.TEXT);
+      record.addField(Binary.valueOf(identityInfo.getAddress()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(Pipe.PipeStatus.RUNNING.name()), TSDataType.TEXT);
+      record.addField(Binary.valueOf(""), TSDataType.TEXT);
+      record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+      record.addField(Binary.valueOf("N/A"), TSDataType.TEXT);
+      listDataSet.putRecord(record);
+    }
   }
 
   // endregion
