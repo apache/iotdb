@@ -26,8 +26,6 @@ import org.apache.iotdb.commons.exception.MetadataException;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.udf.service.UDFExecutableManager;
 import org.apache.iotdb.commons.udf.service.UDFRegistrationService;
-import org.apache.iotdb.confignode.rpc.thrift.TClearCacheReq;
-import org.apache.iotdb.confignode.rpc.thrift.TMergeReq;
 import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -225,10 +223,9 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> merge(TMergeReq mergeReq) {
+  public SettableFuture<ConfigTaskResult> merge(boolean isCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
-    TSStatus tsStatus = localConfigNode.executeMergeOperation();
+    TSStatus tsStatus = LocalConfigNode.getInstance().executeMergeOperation();
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
@@ -238,10 +235,9 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq) {
+  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean isCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
-    TSStatus tsStatus = localConfigNode.executeFlushOperation(tFlushReq);
+    TSStatus tsStatus = LocalConfigNode.getInstance().executeFlushOperation(tFlushReq);
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
@@ -251,10 +247,9 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> clearCache(TClearCacheReq tclearCacheReq) {
+  public SettableFuture<ConfigTaskResult> clearCache(boolean isCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
-    TSStatus tsStatus = localConfigNode.executeClearCacheOperation();
+    TSStatus tsStatus = LocalConfigNode.getInstance().executeClearCacheOperation();
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {

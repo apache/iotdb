@@ -714,13 +714,13 @@ public class IoTDBConfig {
   private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = false;
+  private boolean enablePartition = true;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
-   * a week.
+   * a day.
    */
-  private long partitionInterval = 604800;
+  private long partitionInterval = 86400;
 
   /**
    * Level of TimeIndex, which records the start time and end time of TsFileResource. Currently,
@@ -947,6 +947,9 @@ public class IoTDBConfig {
   /** Maximum execution time of a DriverTask */
   /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 100;
+
+  /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
+  private long throttleDownThreshold = 50 * 1024 * 1024 * 1024L;
 
   IoTDBConfig() {}
 
@@ -3015,5 +3018,13 @@ public class IoTDBConfig {
 
   public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
+  }
+
+  public long getThrottleDownThreshold() {
+    return throttleDownThreshold;
+  }
+
+  public void setThrottleDownThreshold(long throttleDownThreshold) {
+    this.throttleDownThreshold = throttleDownThreshold;
   }
 }

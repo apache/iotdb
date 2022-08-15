@@ -170,6 +170,7 @@ public class ClusterAuthorityFetcher implements IAuthorityFetcher {
       authorizerResp.setStatus(
           RpcUtils.getStatus(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Failed to connect to config node."));
+      future.setException(new StatementExecutionException(authorizerResp.getStatus()));
     } catch (AuthException e) {
       future.setException(e);
     }

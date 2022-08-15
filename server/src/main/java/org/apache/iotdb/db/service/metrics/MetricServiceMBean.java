@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,18 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.service.metrics;
 
-package org.apache.iotdb.metrics.utils;
+import org.apache.iotdb.commons.exception.StartupException;
 
-public enum PredefinedMetric {
-  JVM,
-  LOGBACK,
-  FILE,
-  PROCESS,
-  SYSTEM;
+public interface MetricServiceMBean {
 
-  @Override
-  public String toString() {
-    return name();
-  }
+  void startService() throws StartupException;
+
+  void restartService() throws StartupException;
+
+  void stopService();
 }

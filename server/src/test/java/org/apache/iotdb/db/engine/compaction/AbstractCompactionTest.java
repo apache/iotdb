@@ -187,6 +187,12 @@ public class AbstractCompactionTest {
           isAlign,
           isSeq);
     }
+    // sleep a few milliseconds to avoid generating files with same timestamps
+    try {
+      Thread.sleep(10);
+    } catch (Exception e) {
+
+    }
   }
 
   private void addResource(

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.mpp.transformation.dag.builder;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
+import org.apache.iotdb.db.mpp.plan.expression.visitor.IntermediateLayerVisitor;
 import org.apache.iotdb.db.mpp.plan.planner.plan.parameter.InputLocation;
 import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
 import org.apache.iotdb.db.mpp.transformation.dag.input.QueryDataSetInputLayer;
@@ -95,17 +96,17 @@ public class EvaluationDAGBuilder {
 
   public EvaluationDAGBuilder buildResultColumnPointReaders()
       throws QueryProcessException, IOException {
+    IntermediateLayerVisitor visitor = new IntermediateLayerVisitor();
+    IntermediateLayerVisitor.IntermediateLayerVisitorContext context =
+        new IntermediateLayerVisitor.IntermediateLayerVisitorContext(
+            queryId,
+            udtfContext,
+            inputLayer,
+            expressionIntermediateLayerMap,
+            typeProvider,
+            memoryAssigner);
     for (int i = 0; i < outputExpressions.length; ++i) {
-      outputPointReaders[i] =
-          outputExpressions[i]
-              .constructIntermediateLayer(
-                  queryId,
-                  udtfContext,
-                  inputLayer,
-                  expressionIntermediateLayerMap,
-                  typeProvider,
-                  memoryAssigner)
-              .constructPointReader();
+      outputPointReaders[i] = visitor.process(outputExpressions[i], context).constructPointReader();
     }
     return this;
   }

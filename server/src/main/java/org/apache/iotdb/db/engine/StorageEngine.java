@@ -179,6 +179,9 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartition(long time) {
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
     return enablePartition ? time / timePartitionInterval : 0;
   }
 

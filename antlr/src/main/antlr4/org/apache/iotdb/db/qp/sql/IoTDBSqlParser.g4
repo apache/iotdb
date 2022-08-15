@@ -384,9 +384,9 @@ intoPath
 specialClause
     : specialLimit #specialLimitStatement
     | orderByClause specialLimit? #orderByTimeStatement
-    | groupByTimeClause orderByClause? specialLimit? #groupByTimeStatement
-    | groupByFillClause orderByClause? specialLimit? #groupByFillStatement
-    | groupByLevelClause orderByClause? specialLimit? #groupByLevelStatement
+    | groupByTimeClause havingClause? orderByClause? specialLimit? #groupByTimeStatement
+    | groupByFillClause havingClause? orderByClause? specialLimit? #groupByFillStatement
+    | groupByLevelClause havingClause? orderByClause? specialLimit? #groupByLevelStatement
     | fillClause orderByClause? specialLimit? #fillStatement
     ;
 
@@ -395,6 +395,10 @@ specialLimit
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
     | withoutNullClause limitClause? slimitClause? alignByDeviceClauseOrDisableAlign? #withoutNullStatement
     | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
+    ;
+
+havingClause
+    : HAVING expression
     ;
 
 alignByDeviceClauseOrDisableAlign

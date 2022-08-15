@@ -30,10 +30,9 @@ import org.apache.iotdb.commons.partition.SchemaPartitionTable;
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.rpc.thrift.TRegionInfo;
 import org.apache.iotdb.confignode.rpc.thrift.TShowRegionReq;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -88,53 +87,47 @@ public class StorageGroupPartitionTable {
   }
 
   private void addMetrics() {
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.REGION.toString(),
-              MetricLevel.NORMAL,
-              this,
-              o -> o.getRegionGroupCount(TConsensusGroupType.SchemaRegion),
-              Tag.NAME.toString(),
-              storageGroupName,
-              Tag.TYPE.toString(),
-              TConsensusGroupType.SchemaRegion.toString());
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.REGION.toString(),
-              MetricLevel.NORMAL,
-              this,
-              o -> o.getRegionGroupCount(TConsensusGroupType.DataRegion),
-              Tag.NAME.toString(),
-              storageGroupName,
-              Tag.TYPE.toString(),
-              TConsensusGroupType.DataRegion.toString());
-      // TODO slot will be updated in the future
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.SLOT.toString(),
-              MetricLevel.NORMAL,
-              schemaPartitionTable,
-              o -> o.getSchemaPartitionMap().size(),
-              Tag.NAME.toString(),
-              storageGroupName,
-              Tag.TYPE.toString(),
-              "schemaSlotNumber");
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.SLOT.toString(),
-              MetricLevel.NORMAL,
-              dataPartitionTable,
-              o -> o.getDataPartitionMap().size(),
-              Tag.NAME.toString(),
-              storageGroupName,
-              Tag.TYPE.toString(),
-              "dataSlotNumber");
-    }
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.REGION.toString(),
+            MetricLevel.NORMAL,
+            this,
+            o -> o.getRegionGroupCount(TConsensusGroupType.SchemaRegion),
+            Tag.NAME.toString(),
+            storageGroupName,
+            Tag.TYPE.toString(),
+            TConsensusGroupType.SchemaRegion.toString());
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.REGION.toString(),
+            MetricLevel.NORMAL,
+            this,
+            o -> o.getRegionGroupCount(TConsensusGroupType.DataRegion),
+            Tag.NAME.toString(),
+            storageGroupName,
+            Tag.TYPE.toString(),
+            TConsensusGroupType.DataRegion.toString());
+    // TODO slot will be updated in the future
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.SLOT.toString(),
+            MetricLevel.NORMAL,
+            schemaPartitionTable,
+            o -> o.getSchemaPartitionMap().size(),
+            Tag.NAME.toString(),
+            storageGroupName,
+            Tag.TYPE.toString(),
+            "schemaSlotNumber");
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.SLOT.toString(),
+            MetricLevel.NORMAL,
+            dataPartitionTable,
+            o -> o.getDataPartitionMap().size(),
+            Tag.NAME.toString(),
+            storageGroupName,
+            Tag.TYPE.toString(),
+            "dataSlotNumber");
   }
 
   public boolean isPredeleted() {
@@ -230,6 +223,22 @@ public class StorageGroupPartitionTable {
       Map<TSeriesPartitionSlot, List<TTimePartitionSlot>> partitionSlots,
       DataPartitionTable dataPartition) {
     return dataPartitionTable.getDataPartition(partitionSlots, dataPartition);
+  }
+
+  /**
+   * Checks whether the specified DataPartition has a predecessor and returns if it does
+   *
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @param timePartitionInterval Time partition interval
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPrecededDataPartition(
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot,
+      long timePartitionInterval) {
+    return dataPartitionTable.getPrecededDataPartition(
+        seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
   }
 
   /**
@@ -354,22 +363,22 @@ public class StorageGroupPartitionTable {
         .getDataNodeLocations()
         .forEach(
             (dataNodeLocation) -> {
-              TRegionInfo tRegionInfoList = new TRegionInfo();
-              tRegionInfoList.setConsensusGroupId(replicaSet.getRegionId());
-              tRegionInfoList.setStorageGroup(storageGroupName);
+              TRegionInfo regionInfo = new TRegionInfo();
+              regionInfo.setConsensusGroupId(replicaSet.getRegionId());
+              regionInfo.setStorageGroup(storageGroupName);
               if (replicaSet.getRegionId().getType() == TConsensusGroupType.DataRegion) {
-                tRegionInfoList.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
-                tRegionInfoList.setTimeSlots(regionGroup.getCounter());
+                regionInfo.setSeriesSlots(dataPartitionTable.getDataPartitionMap().size());
+                regionInfo.setTimeSlots(regionGroup.getCounter());
               } else if (replicaSet.getRegionId().getType() == TConsensusGroupType.SchemaRegion) {
-                tRegionInfoList.setSeriesSlots(regionGroup.getCounter());
-                tRegionInfoList.setTimeSlots(0);
+                regionInfo.setSeriesSlots(regionGroup.getCounter());
+                regionInfo.setTimeSlots(0);
               }
-              tRegionInfoList.setDataNodeId(dataNodeLocation.getDataNodeId());
-              tRegionInfoList.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
-              tRegionInfoList.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
+              regionInfo.setDataNodeId(dataNodeLocation.getDataNodeId());
+              regionInfo.setClientRpcIp(dataNodeLocation.getClientRpcEndPoint().getIp());
+              regionInfo.setClientRpcPort(dataNodeLocation.getClientRpcEndPoint().getPort());
               // TODO: Wait for data migration. And then add the state
-              tRegionInfoList.setStatus(RegionStatus.Up.getStatus());
-              regionInfoList.add(tRegionInfoList);
+              regionInfo.setStatus(RegionStatus.Up.getStatus());
+              regionInfoList.add(regionInfo);
             });
   }
 

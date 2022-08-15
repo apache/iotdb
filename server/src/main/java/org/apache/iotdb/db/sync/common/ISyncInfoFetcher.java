@@ -45,7 +45,7 @@ public interface ISyncInfoFetcher {
 
   PipeSink getPipeSink(String name);
 
-  List<PipeSink> getAllPipeSink();
+  List<PipeSink> getAllPipeSinks();
   // endregion
 
   // region Interfaces of Pipe
@@ -60,6 +60,8 @@ public interface ISyncInfoFetcher {
   TSStatus dropPipe(String pipeName);
 
   List<PipeInfo> getAllPipeInfos();
+
+  PipeInfo getRunningPipeInfo();
 
   // endregion
 

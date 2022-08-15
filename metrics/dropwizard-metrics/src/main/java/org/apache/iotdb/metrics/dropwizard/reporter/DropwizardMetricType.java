@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.dropwizard.reporter;
 
-enum MetricType {
+public enum DropwizardMetricType {
   COUNTER("counter"),
   GAUGE("gauge"),
   SUMMARY("summary"),
@@ -28,7 +28,7 @@ enum MetricType {
 
   private final String text;
 
-  MetricType(String text) {
+  DropwizardMetricType(String text) {
     this.text = text;
   }
 

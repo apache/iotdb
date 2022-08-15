@@ -16,15 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service.metrics;
+package org.apache.iotdb.commons.cluster;
 
-import org.apache.iotdb.commons.exception.StartupException;
+/** Region Role for showing regions */
+public enum RegionRoleType {
+  // Region role type : Leader
+  Leader("Leader"),
+  // Region role type : Follower
+  Follower("Follower");
 
-public interface MetricsServiceMBean {
+  private final String status;
 
-  void startService() throws StartupException;
+  RegionRoleType(String status) {
+    this.status = status;
+  }
 
-  void restartService() throws StartupException;
-
-  void stopService();
+  public String getStatus() {
+    return status;
+  }
 }
