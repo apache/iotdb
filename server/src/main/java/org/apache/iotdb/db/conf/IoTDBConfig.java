@@ -3029,7 +3029,7 @@ public class IoTDBConfig {
   public void setThrottleDownThreshold(long throttleDownThreshold) {
     this.throttleDownThreshold = throttleDownThreshold;
   }
-  
+
   public String getConfigMessage() {
     String configMessage = "";
     String[] notShowArray = {
