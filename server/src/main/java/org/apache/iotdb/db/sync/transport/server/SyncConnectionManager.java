@@ -35,10 +35,7 @@ public class SyncConnectionManager {
   // When the client abnormally exits, we can still know who to disconnect
   private final ThreadLocal<Long> currentConnectionId;
   // Record the remote message for every rpc connection
-  private final Map<Long, String> connectionIdToPipeNameMap;
-  private final Map<Long, String> connectionIdToRemoteIpMap;
   private final Map<Long, TSyncIdentityInfo> connectionIdToIdentityInfoMap;
-  private final Map<Long, Long> connectionIdToCreateTimeMap;
 
   // The sync connectionId is unique in one IoTDB instance.
   private final AtomicLong connectionIdGenerator;
@@ -46,9 +43,6 @@ public class SyncConnectionManager {
   private SyncConnectionManager() {
     currentConnectionId = new ThreadLocal<>();
     connectionIdToIdentityInfoMap = new ConcurrentHashMap<>();
-    connectionIdToPipeNameMap = new ConcurrentHashMap<>();
-    connectionIdToRemoteIpMap = new ConcurrentHashMap<>();
-    connectionIdToCreateTimeMap = new ConcurrentHashMap<>();
     connectionIdGenerator = new AtomicLong();
   }
 
@@ -85,17 +79,12 @@ public class SyncConnectionManager {
     long connectionId = connectionIdGenerator.incrementAndGet();
     currentConnectionId.set(connectionId);
     connectionIdToIdentityInfoMap.put(connectionId, identityInfo);
-    connectionIdToPipeNameMap.put(connectionId, identityInfo.getPipeName());
-    connectionIdToRemoteIpMap.put(connectionId, identityInfo.getAddress());
-    connectionIdToCreateTimeMap.put(connectionId, identityInfo.getCreateTime());
   }
 
   public void exitConnection() {
     if (checkConnection()) {
       long id = currentConnectionId.get();
-      connectionIdToCreateTimeMap.remove(id);
-      connectionIdToRemoteIpMap.remove(id);
-      connectionIdToPipeNameMap.remove(id);
+      connectionIdToIdentityInfoMap.remove(id);
       currentConnectionId.remove();
     }
   }

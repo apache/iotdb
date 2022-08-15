@@ -1125,6 +1125,7 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
     }
+    transportService.handleClientExit();
   }
 
   @Override

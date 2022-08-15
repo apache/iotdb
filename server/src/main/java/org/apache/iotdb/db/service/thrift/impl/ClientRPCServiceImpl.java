@@ -1575,6 +1575,7 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
       closeSession(req);
     }
+    transportService.handleClientExit();
   }
 
   private void cleanupQueryExecution(Long queryId) {
