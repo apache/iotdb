@@ -19,18 +19,27 @@
 
 package org.apache.iotdb.db.mpp.plan.scheduler.load;
 
+import io.airlift.concurrent.SetThreadName;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.mpp.FragmentInstanceDispatchException;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
 import org.apache.iotdb.db.mpp.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.mpp.plan.scheduler.IFragInstanceDispatcher;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.concurrent.Future;
 
+import static com.google.common.util.concurrent.Futures.immediateFuture;
+
 public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
+  private static final Logger logger = LoggerFactory.getLogger(LoadTsFileDispatcherImpl.class);
 
   private final String localhostIpAddr;
   private final int localhostInternalPort;
@@ -46,8 +55,20 @@ public class LoadTsFileDispatcherImpl implements IFragInstanceDispatcher {
 
   @Override
   public Future<FragInstanceDispatchResult> dispatch(List<FragmentInstance> instances) {
-
-    return null;
+    for (FragmentInstance instance : instances) {
+      try (SetThreadName threadName = new SetThreadName(instance.getId().getFullId())) {
+        dispatchOneInstance(instance);
+      } catch (FragmentInstanceDispatchException e) {
+        return immediateFuture(new FragInstanceDispatchResult(e.getFailureStatus()));
+      } catch (Throwable t) {
+        logger.error("cannot dispatch FI for write operation", t);
+        return immediateFuture(
+                new FragInstanceDispatchResult(
+                        RpcUtils.getStatus(
+                                TSStatusCode.INTERNAL_SERVER_ERROR, "Unexpected errors: " + t.getMessage())));
+      }
+    }
+    return immediateFuture(new FragInstanceDispatchResult(true));
   }
 
   @Override
