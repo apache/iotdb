@@ -45,7 +45,7 @@ import static org.junit.Assert.fail;
 @Category({ClusterIT.class})
 public class IoTDBUDFSessionWindowQueryIT {
 
-  protected static final int ITERATION_TIMES = 10000;
+  protected static final int ITERATION_TIMES = 1000;
 
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
@@ -95,8 +95,8 @@ public class IoTDBUDFSessionWindowQueryIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 9996
-            || i == 9997 || i == 9998) {
+        if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 996
+            || i == 997 || i == 998) {
           continue;
         }
         statement.execute(
@@ -146,10 +146,11 @@ public class IoTDBUDFSessionWindowQueryIT {
         Statement statement = conn.createStatement();
         ResultSet resultSet = statement.executeQuery(sql)) {
       assertEquals(2, resultSet.getMetaData().getColumnCount());
-      for (int i = 0; i < windowStart.length; i++) {
-        resultSet.next();
-        Assert.assertEquals(resultSet.getLong(1), windowStart[i]);
-        Assert.assertEquals(resultSet.getLong(2), windowEnd[i]);
+      int cnt = 0;
+      while (resultSet.next()) {
+        Assert.assertEquals(resultSet.getLong(1), windowStart[cnt]);
+        Assert.assertEquals(resultSet.getLong(2), windowEnd[cnt]);
+        cnt++;
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -160,8 +161,8 @@ public class IoTDBUDFSessionWindowQueryIT {
   @Test
   public void testSessionTimeWindowSS1() {
     String sessionGap = "2";
-    long[] windowStart = new long[] {0, 8, 55, 9999};
-    long[] windowEnd = new long[] {4, 50, 9995, 9999};
+    long[] windowStart = new long[] {0, 8, 55, 999};
+    long[] windowEnd = new long[] {4, 50, 995, 999};
     testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, null, null);
   }
 
@@ -169,7 +170,7 @@ public class IoTDBUDFSessionWindowQueryIT {
   public void testSessionTimeWindowSS2() {
     String sessionGap = "5";
     long[] windowStart = new long[] {0, 55};
-    long[] windowEnd = new long[] {50, 9999};
+    long[] windowEnd = new long[] {50, 999};
     testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, null, null);
   }
 
@@ -177,7 +178,7 @@ public class IoTDBUDFSessionWindowQueryIT {
   public void testSessionTimeWindowSS3() {
     String sessionGap = "6";
     long[] windowStart = new long[] {0};
-    long[] windowEnd = new long[] {9999};
+    long[] windowEnd = new long[] {999};
     testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, null, null);
   }
 
@@ -185,9 +186,9 @@ public class IoTDBUDFSessionWindowQueryIT {
   public void testSessionTimeWindowSS4() {
     String sessionGap = "2";
     Long displayBegin = 1L;
-    Long displayEnd = 9993L;
+    Long displayEnd = 993L;
     long[] windowStart = new long[] {1, 8, 55};
-    long[] windowEnd = new long[] {4, 50, 9992};
+    long[] windowEnd = new long[] {4, 50, 992};
     testSessionTimeWindowSS(sessionGap, windowStart, windowEnd, displayBegin, displayEnd);
   }
 
@@ -208,9 +209,9 @@ public class IoTDBUDFSessionWindowQueryIT {
     Long displayEnd = 20000L;
     ArrayList<Long> windowStart = new ArrayList<>();
     ArrayList<Long> windowEnd = new ArrayList<>();
-    for (long i = displayBegin; i <= 9999; i++) {
-      if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 9996
-          || i == 9997 || i == 9998) {
+    for (long i = displayBegin; i < ITERATION_TIMES; i++) {
+      if (i == 5 || i == 6 || i == 7 || i == 51 || i == 52 || i == 53 || i == 54 || i == 996
+          || i == 997 || i == 998) {
         continue;
       }
       windowStart.add(i);
@@ -218,8 +219,8 @@ public class IoTDBUDFSessionWindowQueryIT {
     }
     testSessionTimeWindowSS(
         sessionGap,
-        windowStart.stream().mapToLong(t -> t.longValue()).toArray(),
-        windowEnd.stream().mapToLong(t -> t.longValue()).toArray(),
+        windowStart.stream().mapToLong(t -> t).toArray(),
+        windowEnd.stream().mapToLong(t -> t).toArray(),
         displayBegin,
         displayEnd);
   }
@@ -242,9 +243,9 @@ public class IoTDBUDFSessionWindowQueryIT {
               UDFTestConstant.ACCESS_STRATEGY_KEY,
               UDFTestConstant.ACCESS_STRATEGY_SESSION,
               UDFTestConstant.DISPLAY_WINDOW_BEGIN_KEY,
-              displayBegin.longValue(),
+              displayBegin,
               UDFTestConstant.DISPLAY_WINDOW_END_KEY,
-              displayEnd.longValue(),
+              displayEnd,
               UDFTestConstant.SESSION_GAP_KEY,
               sessionGap);
     }
