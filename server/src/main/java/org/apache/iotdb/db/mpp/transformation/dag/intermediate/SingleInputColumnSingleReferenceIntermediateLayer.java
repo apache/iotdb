@@ -29,6 +29,7 @@ import org.apache.iotdb.db.mpp.transformation.dag.adapter.ElasticSerializableTVL
 import org.apache.iotdb.db.mpp.transformation.dag.adapter.LayerPointReaderBackedSingleColumnRow;
 import org.apache.iotdb.db.mpp.transformation.dag.util.LayerCacheUtils;
 import org.apache.iotdb.db.mpp.transformation.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.mpp.transformation.datastructure.util.ValueRecorder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.udf.api.access.Row;
 import org.apache.iotdb.udf.api.access.RowWindow;
@@ -556,7 +557,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       private int nextIndexBegin = 0;
       private int nextIndexEnd = 1;
 
-      private ValueCacher valueCacher = new ValueCacher();
+      private ValueRecorder valueRecorder = new ValueRecorder();
 
       @Override
       public YieldableState yield() throws IOException, QueryProcessException {
@@ -582,7 +583,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
               LayerCacheUtils.yieldPoint(dataType, parentLayerPointReader, tvList);
           if (yieldableState == YieldableState.YIELDABLE) {
             if (tvList.getTime(tvList.size() - 2) >= displayWindowBegin
-                && splitWindow(valueCacher, delta, tvList)) {
+                && splitWindowForStateWindow(valueRecorder, delta, tvList)) {
               nextIndexEnd = tvList.size() - 1;
               break;
             } else {
@@ -649,147 +650,80 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
     };
   }
 
-  private class ValueCacher {
-
-    boolean cached = false;
-
-    int windowFirstValueInt = 0;
-    long windowFirstValueLong = 0;
-    float windowFirstValueFloat = 0;
-    double windowFirstValueDouble = 0;
-    boolean windowFirstValueBoolean = false;
-    String windowFirstValueString = "";
-
-    public boolean isCached() {
-      return cached;
-    }
-
-    public void setCached(boolean cached) {
-      this.cached = cached;
-    }
-
-    public void cacheInt(int value) {
-      windowFirstValueInt = value;
-    }
-
-    public void cacheLong(long value) {
-      windowFirstValueLong = value;
-    }
-
-    public void cacheFloat(float value) {
-      windowFirstValueFloat = value;
-    }
-
-    public void cacheDouble(double value) {
-      windowFirstValueDouble = value;
-    }
-
-    public void cacheBoolean(boolean value) {
-      windowFirstValueBoolean = value;
-    }
-
-    public void cacheString(String value) {
-      windowFirstValueString = value;
-    }
-
-    public int getInt() {
-      return windowFirstValueInt;
-    }
-
-    public long getLong() {
-      return windowFirstValueLong;
-    }
-
-    public float getFloat() {
-      return windowFirstValueFloat;
-    }
-
-    public double getDouble() {
-      return windowFirstValueDouble;
-    }
-
-    public boolean getBoolean() {
-      return windowFirstValueBoolean;
-    }
-
-    public String getString() {
-      return windowFirstValueString;
-    }
-  }
-
-  boolean splitWindow(ValueCacher valueCacher, double delta, ElasticSerializableTVList tvList)
+  boolean splitWindowForStateWindow(
+      ValueRecorder valueRecorder, double delta, ElasticSerializableTVList tvList)
       throws IOException {
     boolean res;
     switch (dataType) {
       case INT32:
         {
-          if (!valueCacher.isCached()) {
-            valueCacher.cacheInt(tvList.getInt(tvList.size() - 2));
-            valueCacher.setCached(true);
+          if (!valueRecorder.hasRecorded()) {
+            valueRecorder.recordInt(tvList.getInt(tvList.size() - 2));
+            valueRecorder.setRecorded(true);
           }
-          res = Math.abs(tvList.getInt(tvList.size() - 1) - valueCacher.getInt()) >= delta;
+          res = Math.abs(tvList.getInt(tvList.size() - 1) - valueRecorder.getInt()) >= delta;
           if (res) {
-            valueCacher.cacheInt(tvList.getInt(tvList.size() - 1));
+            valueRecorder.recordInt(tvList.getInt(tvList.size() - 1));
           }
           break;
         }
       case INT64:
         {
-          if (!valueCacher.isCached()) {
-            valueCacher.cacheLong(tvList.getLong(tvList.size() - 2));
-            valueCacher.setCached(true);
+          if (!valueRecorder.hasRecorded()) {
+            valueRecorder.recordLong(tvList.getLong(tvList.size() - 2));
+            valueRecorder.setRecorded(true);
           }
-          res = Math.abs(tvList.getLong(tvList.size() - 1) - valueCacher.getLong()) >= delta;
+          res = Math.abs(tvList.getLong(tvList.size() - 1) - valueRecorder.getLong()) >= delta;
           if (res) {
-            valueCacher.cacheLong(tvList.getLong(tvList.size() - 1));
+            valueRecorder.recordLong(tvList.getLong(tvList.size() - 1));
           }
           break;
         }
       case FLOAT:
         {
-          if (!valueCacher.isCached()) {
-            valueCacher.cacheFloat(tvList.getFloat(tvList.size() - 2));
-            valueCacher.setCached(true);
+          if (!valueRecorder.hasRecorded()) {
+            valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 2));
+            valueRecorder.setRecorded(true);
           }
-          res = Math.abs(tvList.getFloat(tvList.size() - 1) - valueCacher.getFloat()) >= delta;
+          res = Math.abs(tvList.getFloat(tvList.size() - 1) - valueRecorder.getFloat()) >= delta;
           if (res) {
-            valueCacher.cacheFloat(tvList.getFloat(tvList.size() - 1));
+            valueRecorder.recordFloat(tvList.getFloat(tvList.size() - 1));
           }
           break;
         }
       case DOUBLE:
         {
-          if (!valueCacher.isCached()) {
-            valueCacher.cacheDouble(tvList.getDouble(tvList.size() - 2));
-            valueCacher.setCached(true);
+          if (!valueRecorder.hasRecorded()) {
+            valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 2));
+            valueRecorder.setRecorded(true);
           }
-          res = Math.abs(tvList.getDouble(tvList.size() - 1) - valueCacher.getDouble()) >= delta;
+          res = Math.abs(tvList.getDouble(tvList.size() - 1) - valueRecorder.getDouble()) >= delta;
           if (res) {
-            valueCacher.cacheDouble(tvList.getDouble(tvList.size() - 1));
+            valueRecorder.recordDouble(tvList.getDouble(tvList.size() - 1));
           }
           break;
         }
       case BOOLEAN:
         {
-          if (!valueCacher.isCached()) {
-            valueCacher.cacheBoolean(tvList.getBoolean(tvList.size() - 2));
-            valueCacher.setCached(true);
+          if (!valueRecorder.hasRecorded()) {
+            valueRecorder.recordBoolean(tvList.getBoolean(tvList.size() - 2));
+            valueRecorder.setRecorded(true);
           }
-          res = tvList.getBoolean(tvList.size() - 1) != valueCacher.getBoolean();
+          res = tvList.getBoolean(tvList.size() - 1) != valueRecorder.getBoolean();
           if (res) {
-            valueCacher.cacheBoolean(tvList.getBoolean(tvList.size() - 1));
+            valueRecorder.recordBoolean(tvList.getBoolean(tvList.size() - 1));
           }
           break;
         }
       case TEXT:
         {
-          if (!valueCacher.isCached()) {
-            valueCacher.cacheString(tvList.getString(tvList.size() - 2));
-            valueCacher.setCached(true);
+          if (!valueRecorder.hasRecorded()) {
+            valueRecorder.recordString(tvList.getString(tvList.size() - 2));
+            valueRecorder.setRecorded(true);
           }
-          res = !tvList.getString(tvList.size() - 1).equals(valueCacher.getString());
+          res = !tvList.getString(tvList.size() - 1).equals(valueRecorder.getString());
           if (res) {
-            valueCacher.cacheString(tvList.getString(tvList.size() - 1));
+            valueRecorder.recordString(tvList.getString(tvList.size() - 1));
           }
           break;
         }
