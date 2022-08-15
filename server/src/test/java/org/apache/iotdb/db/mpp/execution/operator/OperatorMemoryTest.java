@@ -1121,7 +1121,10 @@ public class OperatorMemoryTest {
               null,
               typeProvider);
 
-      long expectedMaxReturnSize = 512 * Byte.BYTES + LongColumn.SIZE_IN_BYTES_PER_POSITION;
+      long expectedMaxReturnSize =
+          TimeColumn.SIZE_IN_BYTES_PER_POSITION
+              + 512 * Byte.BYTES
+              + LongColumn.SIZE_IN_BYTES_PER_POSITION;
       long expectedMaxRetainSize =
           2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
@@ -1153,7 +1156,10 @@ public class OperatorMemoryTest {
               null,
               typeProvider);
 
-      expectedMaxReturnSize = 512 * Byte.BYTES + 2 * LongColumn.SIZE_IN_BYTES_PER_POSITION;
+      expectedMaxReturnSize =
+          TimeColumn.SIZE_IN_BYTES_PER_POSITION
+              + 512 * Byte.BYTES
+              + 2 * LongColumn.SIZE_IN_BYTES_PER_POSITION;
       expectedMaxRetainSize = 2L * TSFileDescriptor.getInstance().getConfig().getPageSizeInByte();
 
       assertEquals(
@@ -1319,7 +1325,7 @@ public class OperatorMemoryTest {
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, true);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
-            aggregationDescriptors, timeRangeIterator, groupByTimeParameter != null, typeProvider);
+            aggregationDescriptors, timeRangeIterator, typeProvider);
 
     return new SeriesAggregationScanOperator(
         planNodeId,
@@ -1370,7 +1376,7 @@ public class OperatorMemoryTest {
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
-            aggregationDescriptors, timeRangeIterator, true, typeProvider);
+            aggregationDescriptors, timeRangeIterator, typeProvider);
 
     RawDataAggregationOperator rawDataAggregationOperator =
         new RawDataAggregationOperator(
@@ -1435,7 +1441,7 @@ public class OperatorMemoryTest {
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
-            aggregationDescriptors, timeRangeIterator, true, typeProvider);
+            aggregationDescriptors, timeRangeIterator, typeProvider);
 
     SlidingWindowAggregationOperator slidingWindowAggregationOperator =
         new SlidingWindowAggregationOperator(
@@ -1509,7 +1515,7 @@ public class OperatorMemoryTest {
     ITimeRangeIterator timeRangeIterator = initTimeRangeIterator(groupByTimeParameter, true, false);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
-            aggregationDescriptors, timeRangeIterator, true, typeProvider);
+            aggregationDescriptors, timeRangeIterator, typeProvider);
 
     AggregationOperator aggregationOperator =
         new AggregationOperator(

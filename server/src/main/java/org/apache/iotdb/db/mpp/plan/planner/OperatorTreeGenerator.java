@@ -306,10 +306,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         initTimeRangeIterator(groupByTimeParameter, ascending, true);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
-            node.getAggregationDescriptorList(),
-            timeRangeIterator,
-            groupByTimeParameter != null,
-            context.getTypeProvider());
+            node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     SeriesAggregationScanOperator aggregateScanOperator =
         new SeriesAggregationScanOperator(
@@ -370,10 +367,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         initTimeRangeIterator(groupByTimeParameter, ascending, true);
     long maxReturnSize =
         AggregationUtil.calculateMaxAggregationResultSize(
-            node.getAggregationDescriptorList(),
-            timeRangeIterator,
-            groupByTimeParameter != null,
-            context.getTypeProvider());
+            node.getAggregationDescriptorList(), timeRangeIterator, context.getTypeProvider());
 
     AlignedSeriesAggregationScanOperator seriesAggregationScanOperator =
         new AlignedSeriesAggregationScanOperator(
@@ -1073,10 +1067,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         initTimeRangeIterator(groupByTimeParameter, ascending, false);
     long maxReturnSize =
         calculateMaxAggregationResultSize(
-            aggregationDescriptors,
-            timeRangeIterator,
-            groupByTimeParameter != null,
-            context.getTypeProvider());
+            aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return new AggregationOperator(
@@ -1120,10 +1111,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
         initTimeRangeIterator(groupByTimeParameter, ascending, false);
     long maxReturnSize =
         calculateMaxAggregationResultSize(
-            aggregationDescriptors,
-            timeRangeIterator,
-            groupByTimeParameter != null,
-            context.getTypeProvider());
+            aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
     context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
     return new SlidingWindowAggregationOperator(
@@ -1211,10 +1199,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           initTimeRangeIterator(groupByTimeParameter, ascending, true);
       long maxReturnSize =
           calculateMaxAggregationResultSize(
-              aggregationDescriptors,
-              timeRangeIterator,
-              groupByTimeParameter != null,
-              context.getTypeProvider());
+              aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
       return new RawDataAggregationOperator(
           operatorContext,
@@ -1236,10 +1221,7 @@ public class OperatorTreeGenerator extends PlanVisitor<Operator, LocalExecutionP
           initTimeRangeIterator(groupByTimeParameter, ascending, true);
       long maxReturnSize =
           calculateMaxAggregationResultSize(
-              aggregationDescriptors,
-              timeRangeIterator,
-              groupByTimeParameter != null,
-              context.getTypeProvider());
+              aggregationDescriptors, timeRangeIterator, context.getTypeProvider());
 
       context.getTimeSliceAllocator().recordExecutionWeight(operatorContext, aggregators.size());
       return new AggregationOperator(

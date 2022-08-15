@@ -179,9 +179,8 @@ public class AggregationUtil {
   public static long calculateMaxAggregationResultSize(
       List<? extends AggregationDescriptor> aggregationDescriptors,
       ITimeRangeIterator timeRangeIterator,
-      boolean isGroupByQuery,
       TypeProvider typeProvider) {
-    long valueColumnsSizePerLine = 0;
+    long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
     for (AggregationDescriptor descriptor : aggregationDescriptors) {
       List<TSDataType> outPutDataTypes =
           descriptor.getOutputColumnNames().stream()
@@ -193,31 +192,29 @@ public class AggregationUtil {
             "The input of aggregate function must be the original time series.");
         PartialPath inputSeriesPath =
             ((TimeSeriesOperand) descriptor.getInputExpressions().get(0)).getPath();
-        valueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, inputSeriesPath);
+        timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, inputSeriesPath);
       }
     }
 
-    return isGroupByQuery
-        ? Math.min(
-            DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
-            Math.min(
-                    TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
-                    timeRangeIterator.getTotalIntervalNum())
-                * (TimeColumn.SIZE_IN_BYTES_PER_POSITION + valueColumnsSizePerLine))
-        : valueColumnsSizePerLine;
+    return Math.min(
+        DEFAULT_MAX_TSBLOCK_SIZE_IN_BYTES,
+        Math.min(
+                TSFileDescriptor.getInstance().getConfig().getMaxTsBlockLineNumber(),
+                timeRangeIterator.getTotalIntervalNum())
+            * timeValueColumnsSizePerLine);
   }
 
   public static long calculateMaxAggregationResultSizeForLastQuery(
       List<Aggregator> aggregators, PartialPath inputSeriesPath) {
-    long valueColumnsSizePerLine = 0;
+    long timeValueColumnsSizePerLine = TimeColumn.SIZE_IN_BYTES_PER_POSITION;
     List<TSDataType> outPutDataTypes =
         aggregators.stream()
             .flatMap(aggregator -> Arrays.stream(aggregator.getOutputType()))
             .collect(Collectors.toList());
     for (TSDataType tsDataType : outPutDataTypes) {
-      valueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, inputSeriesPath);
+      timeValueColumnsSizePerLine += getOutputColumnSizePerLine(tsDataType, inputSeriesPath);
     }
-    return valueColumnsSizePerLine;
+    return timeValueColumnsSizePerLine;
   }
 
   private static long getOutputColumnSizePerLine(
