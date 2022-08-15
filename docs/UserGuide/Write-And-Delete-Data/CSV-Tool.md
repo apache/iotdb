@@ -147,7 +147,9 @@ The data aligned by time, and headers with data type.
 ```sql
 Time,root.test.t1.str(TEXT),root.test.t2.str(TEXT),root.test.t2.int(INT32)
 1970-01-01T08:00:00.001+08:00,"123hello world","123\,abc",100
-1970-01-01T08:00:00.002+08:00,"123",,
+1970-01-01T08:00:00.002+08:00,123,hello world,123
+1970-01-01T08:00:00.003+08:00,"123",,
+1970-01-01T08:00:00.004+08:00,123,,12
 ```
 
 The data aligned by device, and headers without data type.
@@ -164,8 +166,8 @@ The data aligned by device,  and headers with data type.
 ```sql
 Time,Device,str(TEXT),int(INT32)
 1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",
-1970-01-01T08:00:00.002+08:00,root.test.t1,"123",
-1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+1970-01-01T08:00:00.002+08:00,root.test.t1,hello world,123
+1970-01-01T08:00:00.003+08:00,root.test.t1,,123
 ```
 
 ### Syntax
