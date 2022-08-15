@@ -34,7 +34,7 @@ import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.memory.LocalMemoryManager;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -110,8 +110,7 @@ public class MPPDataExchangeService extends ThriftService implements MPPDataExch
       throw new IllegalAccessException(e.getMessage());
     }
     thriftServiceThread.setName(ThreadName.MPP_DATA_EXCHANGE_RPC_SERVER.getName());
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
             MetricLevel.CORE,

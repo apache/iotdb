@@ -18,16 +18,12 @@
  */
 package org.apache.iotdb.db.service.metrics.recorder;
 
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 
 public class CacheMetricsRecorder {
-
-  private static final boolean ENABLE_METRIC =
-      MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric();
 
   /**
    * record the result of cache
@@ -36,22 +32,9 @@ public class CacheMetricsRecorder {
    * @param name the name of object that cached
    */
   public static void record(boolean result, String name) {
-    if (ENABLE_METRIC) {
-      if (result) {
-        // cache hit
-        MetricsService.getInstance()
-            .getMetricManager()
-            .count(
-                1,
-                Metric.CACHE.toString(),
-                MetricLevel.IMPORTANT,
-                Tag.NAME.toString(),
-                name,
-                Tag.TYPE.toString(),
-                "hit");
-      }
-      MetricsService.getInstance()
-          .getMetricManager()
+    if (result) {
+      // cache hit
+      MetricService.getInstance()
           .count(
               1,
               Metric.CACHE.toString(),
@@ -59,7 +42,16 @@ public class CacheMetricsRecorder {
               Tag.NAME.toString(),
               name,
               Tag.TYPE.toString(),
-              "all");
+              "hit");
     }
+    MetricService.getInstance()
+        .count(
+            1,
+            Metric.CACHE.toString(),
+            MetricLevel.IMPORTANT,
+            Tag.NAME.toString(),
+            name,
+            Tag.TYPE.toString(),
+            "all");
   }
 }

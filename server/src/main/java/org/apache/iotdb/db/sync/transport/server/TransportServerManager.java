@@ -28,7 +28,7 @@ import org.apache.iotdb.commons.service.ThriftServiceThread;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -64,7 +64,7 @@ public class TransportServerManager extends ThriftService
 
   @Override
   public ServiceType getID() {
-    return ServiceType.SYNC_SERVICE;
+    return ServiceType.SYNC_RPC_SERVICE;
   }
 
   @Override
@@ -89,8 +89,7 @@ public class TransportServerManager extends ThriftService
             new TransportServerThriftHandler(serviceImpl),
             config.isRpcThriftCompressionEnable());
     thriftServiceThread.setName(ThreadName.SYNC_SERVER.getName());
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateAutoGauge(
             Metric.THRIFT_ACTIVE_THREADS.toString(),
             MetricLevel.CORE,
