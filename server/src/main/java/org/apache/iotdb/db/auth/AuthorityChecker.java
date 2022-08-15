@@ -21,10 +21,10 @@ package org.apache.iotdb.db.auth;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.utils.AuthUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +83,7 @@ public class AuthorityChecker {
       throws AuthException {
     IAuthorizer authorizer = BasicAuthorizer.getInstance();
     try {
-      String fullPath = path == null ? AuthUtils.ROOT_PATH_PRIVILEGE : path.getFullPath();
+      String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
       if (authorizer.checkUserPrivileges(username, fullPath, permission)) {
         return true;
       }

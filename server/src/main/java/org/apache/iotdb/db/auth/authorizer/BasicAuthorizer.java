@@ -24,6 +24,7 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.role.IRoleManager;
 import org.apache.iotdb.db.auth.user.IUserManager;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
@@ -133,7 +134,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throw new AuthException("Invalid operation, administrator already has all privileges");
     }
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      newPath = AuthUtils.ROOT_PATH_PRIVILEGE;
+      newPath = IoTDBConstant.PATH_ROOT;
     }
     if (!userManager.grantPrivilegeToUser(username, newPath, privilegeId)) {
       throw new AuthException(
@@ -150,7 +151,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      p = AuthUtils.ROOT_PATH_PRIVILEGE;
+      p = IoTDBConstant.PATH_ROOT;
     }
     if (!userManager.revokePrivilegeFromUser(username, p, privilegeId)) {
       throw new AuthException(
@@ -194,7 +195,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throws AuthException {
     String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      p = AuthUtils.ROOT_PATH_PRIVILEGE;
+      p = IoTDBConstant.PATH_ROOT;
     }
     if (!roleManager.grantPrivilegeToRole(roleName, p, privilegeId)) {
       throw new AuthException(
@@ -208,7 +209,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       throws AuthException {
     String p = path;
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
-      p = AuthUtils.ROOT_PATH_PRIVILEGE;
+      p = IoTDBConstant.PATH_ROOT;
     }
     if (!roleManager.revokePrivilegeFromRole(roleName, p, privilegeId)) {
       throw new AuthException(

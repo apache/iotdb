@@ -23,8 +23,6 @@ import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.security.encrypt.AsymmetricEncryptFactory;
 
 import org.slf4j.Logger;
@@ -44,10 +42,6 @@ public class AuthUtils {
   private static final String ROOT_PREFIX = IoTDBConstant.PATH_ROOT;
   private static final String ENCRYPT_ALGORITHM = "MD5";
   private static final String STRING_ENCODING = "utf-8";
-  public static final String ROOT_PATH_PRIVILEGE =
-      IoTDBConstant.PATH_ROOT
-          + IoTDBConstant.PATH_SEPARATOR
-          + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 
   private AuthUtils() {}
 
@@ -135,7 +129,7 @@ public class AuthUtils {
   public static void validatePrivilegeOnPath(String path, int privilegeId) throws AuthException {
     validatePrivilege(privilegeId);
     PrivilegeType type = PrivilegeType.values()[privilegeId];
-    if (!path.equals(ROOT_PATH_PRIVILEGE)) {
+    if (!path.equals(IoTDBConstant.PATH_ROOT)) {
       validatePath(path);
       switch (type) {
         case READ_TIMESERIES:
@@ -191,21 +185,17 @@ public class AuthUtils {
   }
 
   /**
-   * check if pathA belongs to pathB according to path pattern.
+   * check if pathA belongs to pathB.
    *
    * @param pathA sub-path
    * @param pathB path
-   * @return True if pathA is a sub pattern of pathB, e.g. pathA = "root.a.b.c" and pathB =
-   *     "root.a.b.*", "root.a.**", "root.a.*.c", "root.**.c" or "root.*.b.**"
+   * @return True if pathA == pathB, or pathA is an extension of pathB, e.g. pathA = "root.a.b.c"
+   *     and pathB = "root.a"
    */
-  public static boolean pathBelongsTo(String pathA, String pathB) throws AuthException {
-    try {
-      PartialPath partialPathA = new PartialPath(pathA);
-      PartialPath partialPathB = new PartialPath(pathB);
-      return partialPathB.matchFullPath(partialPathA);
-    } catch (IllegalPathException e) {
-      throw new AuthException(e);
-    }
+  public static boolean pathBelongsTo(String pathA, String pathB) {
+    return pathA.equals(pathB)
+        || (pathA.startsWith(pathB)
+            && pathA.charAt(pathB.length()) == IoTDBConstant.PATH_SEPARATOR);
   }
 
   /**
@@ -217,7 +207,7 @@ public class AuthUtils {
    * @return True if privilege-check passed
    */
   public static boolean checkPrivilege(
-      String path, int privilegeId, List<PathPrivilege> privilegeList) throws AuthException {
+      String path, int privilegeId, List<PathPrivilege> privilegeList) {
     if (privilegeList == null) {
       return false;
     }
@@ -245,8 +235,7 @@ public class AuthUtils {
    *     are desired, this should be null.
    * @return The privileges granted to the role.
    */
-  public static Set<Integer> getPrivileges(String path, List<PathPrivilege> privilegeList)
-      throws AuthException {
+  public static Set<Integer> getPrivileges(String path, List<PathPrivilege> privilegeList) {
     if (privilegeList == null) {
       return new HashSet<>();
     }
