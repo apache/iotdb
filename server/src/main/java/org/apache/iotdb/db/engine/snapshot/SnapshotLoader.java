@@ -22,12 +22,8 @@ import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngineV2;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.io.FileUtils;
@@ -377,17 +373,6 @@ public class SnapshotLoader {
     return new LinkedList<>(
         Arrays.asList(
             Objects.requireNonNull(
-                new File(snapshotPath)
-                    .listFiles(
-                        (dir, name) ->
-                            name.endsWith(TsFileConstant.TSFILE_SUFFIX)
-                                || name.endsWith(TsFileResource.RESOURCE_SUFFIX)
-                                || name.endsWith(ModificationFile.FILE_SUFFIX)
-                                || name.endsWith(ModificationFile.COMPACTION_FILE_SUFFIX)
-                                || name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
-                                || name.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)
-                                || name.endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)
-                                || name.endsWith(
-                                    IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)))));
+                new File(snapshotPath).listFiles(StorageEngineV2::filterDataFiles))));
   }
 }

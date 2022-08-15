@@ -20,13 +20,10 @@ package org.apache.iotdb.db.engine.snapshot;
 
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.log.CompactionLogger;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.StorageEngineV2;
 import org.apache.iotdb.db.engine.snapshot.exception.DirectoryNotLegalException;
 import org.apache.iotdb.db.engine.storagegroup.DataRegion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.ratis.util.FileUtils;
 import org.slf4j.Logger;
@@ -296,17 +293,7 @@ public class SnapshotTaker {
   }
 
   private void createFileSnapshotToTargetOne(File sourceDir, File targetDir) throws IOException {
-    File[] files =
-        sourceDir.listFiles(
-            (dir, name) ->
-                name.endsWith(TsFileConstant.TSFILE_SUFFIX)
-                    || name.endsWith(TsFileResource.RESOURCE_SUFFIX)
-                    || name.endsWith(ModificationFile.FILE_SUFFIX)
-                    || name.endsWith(ModificationFile.COMPACTION_FILE_SUFFIX)
-                    || name.endsWith(CompactionLogger.INNER_COMPACTION_LOG_NAME_SUFFIX)
-                    || name.endsWith(CompactionLogger.CROSS_COMPACTION_LOG_NAME_SUFFIX)
-                    || name.endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)
-                    || name.endsWith(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX));
+    File[] files = sourceDir.listFiles(StorageEngineV2::filterDataFiles);
     if (files == null) {
       return;
     }
