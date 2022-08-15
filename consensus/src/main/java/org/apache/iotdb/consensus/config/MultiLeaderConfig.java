@@ -202,8 +202,7 @@ public class MultiLeaderConfig {
     private final int maxWaitingTimeForAccumulatingBatchInMs;
     private final long basicRetryWaitTimeMs;
     private final long maxRetryWaitTimeMs;
-    private final long throttleDownThreshold;
-    private final long throttleUpThreshold;
+    private final long walThrottleThreshold;
     private final long throttleTimeOutMs;
 
     private Replication(
@@ -213,8 +212,7 @@ public class MultiLeaderConfig {
         int maxWaitingTimeForAccumulatingBatchInMs,
         long basicRetryWaitTimeMs,
         long maxRetryWaitTimeMs,
-        long throttleDownThreshold,
-        long throttleUpThreshold,
+        long walThrottleThreshold,
         long throttleTimeOutMs) {
       this.maxPendingRequestNumPerNode = maxPendingRequestNumPerNode;
       this.maxRequestPerBatch = maxRequestPerBatch;
@@ -222,8 +220,7 @@ public class MultiLeaderConfig {
       this.maxWaitingTimeForAccumulatingBatchInMs = maxWaitingTimeForAccumulatingBatchInMs;
       this.basicRetryWaitTimeMs = basicRetryWaitTimeMs;
       this.maxRetryWaitTimeMs = maxRetryWaitTimeMs;
-      this.throttleDownThreshold = throttleDownThreshold;
-      this.throttleUpThreshold = throttleUpThreshold;
+      this.walThrottleThreshold = walThrottleThreshold;
       this.throttleTimeOutMs = throttleTimeOutMs;
     }
 
@@ -251,12 +248,8 @@ public class MultiLeaderConfig {
       return maxRetryWaitTimeMs;
     }
 
-    public long getThrottleDownThreshold() {
-      return throttleDownThreshold;
-    }
-
-    public long getThrottleUpThreshold() {
-      return throttleUpThreshold;
+    public long getWalThrottleThreshold() {
+      return walThrottleThreshold;
     }
 
     public long getThrottleTimeOutMs() {
@@ -276,8 +269,7 @@ public class MultiLeaderConfig {
       private int maxWaitingTimeForAccumulatingBatchInMs = 500;
       private long basicRetryWaitTimeMs = TimeUnit.MILLISECONDS.toMillis(100);
       private long maxRetryWaitTimeMs = TimeUnit.SECONDS.toMillis(20);
-      private long throttleDownThreshold = 50 * 1024 * 1024 * 1024L;
-      private long throttleUpThreshold = 1024 * 1024 * 1024L;
+      private long walThrottleThreshold = 50 * 1024 * 1024 * 1024L;
       private long throttleTimeOutMs = TimeUnit.SECONDS.toMillis(30);
 
       public Replication.Builder setMaxPendingRequestNumPerNode(int maxPendingRequestNumPerNode) {
@@ -311,13 +303,8 @@ public class MultiLeaderConfig {
         return this;
       }
 
-      public Replication.Builder setThrottleDownThreshold(long throttleDownThreshold) {
-        this.throttleDownThreshold = throttleDownThreshold;
-        return this;
-      }
-
-      public Replication.Builder setThrottleUpThreshold(long throttleUpThreshold) {
-        this.throttleUpThreshold = throttleUpThreshold;
+      public Replication.Builder setWalThrottleThreshold(long walThrottleThreshold) {
+        this.walThrottleThreshold = walThrottleThreshold;
         return this;
       }
 
@@ -334,8 +321,7 @@ public class MultiLeaderConfig {
             maxWaitingTimeForAccumulatingBatchInMs,
             basicRetryWaitTimeMs,
             maxRetryWaitTimeMs,
-            throttleDownThreshold,
-            throttleUpThreshold,
+            walThrottleThreshold,
             throttleTimeOutMs);
       }
     }
