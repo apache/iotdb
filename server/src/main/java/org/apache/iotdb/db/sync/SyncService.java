@@ -23,18 +23,15 @@ import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ShutdownException;
 import org.apache.iotdb.commons.exception.StartupException;
-import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.commons.service.IService;
 import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
 import org.apache.iotdb.db.exception.sync.PipeException;
-import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.exception.sync.PipeSinkException;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.sync.common.ISyncInfoFetcher;
@@ -54,9 +51,7 @@ import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.slf4j.Logger;
@@ -64,11 +59,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
-import static org.apache.iotdb.commons.conf.IoTDBConstant.COLUMN_PIPESERVER_STATUS;
 
 public class SyncService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(SyncService.class);
@@ -116,60 +108,6 @@ public class SyncService implements IService {
 
   public List<PipeSink> getAllPipeSink() {
     return syncInfoFetcher.getAllPipeSinks();
-  }
-
-  // endregion
-
-  // region Interfaces and Implementation of PipeServer
-
-  /**
-   * start receiver service
-   *
-   * @param isRecovery if isRecovery, it will ignore check and force a start
-   */
-  public synchronized void startPipeServer(boolean isRecovery) throws PipeServerException {
-    if (syncInfoFetcher.isPipeServerEnable() && !isRecovery) {
-      return;
-    }
-    //    try {
-    //      TransportServerManager.getInstance().startService();
-    TSStatus status = syncInfoFetcher.startPipeServer();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeServerException("Failed to start pipe server because " + status.getMessage());
-    }
-    //    } catch (StartupException e) {
-    //      throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
-    //    }
-  }
-
-  /** stop receiver service */
-  public synchronized void stopPipeServer() throws PipeServerException {
-    if (!syncInfoFetcher.isPipeServerEnable()) {
-      return;
-    }
-    //    TransportServerManager.getInstance().stopService();
-    TSStatus status = syncInfoFetcher.stopPipeServer();
-    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new PipeServerException("Failed to stop pipe server because " + status.getMessage());
-    }
-  }
-
-  /**
-   * query by sql SHOW PIPESERVER STATUS
-   *
-   * @return QueryDataSet contained one column: enable
-   */
-  public QueryDataSet showPipeServer(ShowPipeServerPlan plan) {
-    ListDataSet dataSet =
-        new ListDataSet(
-            Collections.singletonList(new PartialPath(COLUMN_PIPESERVER_STATUS, false)),
-            Collections.singletonList(TSDataType.BOOLEAN));
-    RowRecord rowRecord = new RowRecord(0);
-    Field status = new Field(TSDataType.BOOLEAN);
-    status.setBoolV(syncInfoFetcher.isPipeServerEnable());
-    rowRecord.addField(status);
-    dataSet.putRecord(rowRecord);
-    return dataSet;
   }
 
   // endregion
@@ -431,15 +369,6 @@ public class SyncService implements IService {
   /** IService * */
   @Override
   public void start() throws StartupException {
-    // recover receiver
-    if (syncInfoFetcher.isPipeServerEnable()) {
-      try {
-        startPipeServer(true);
-      } catch (PipeServerException e) {
-        throw new StartupException(e.getMessage());
-      }
-    }
-    // recover sender
     // == Check whether loading extPipe plugin successfully.
     ExtPipePluginRegister extPipePluginRegister = ExtPipePluginRegister.getInstance();
     if (extPipePluginRegister == null) {

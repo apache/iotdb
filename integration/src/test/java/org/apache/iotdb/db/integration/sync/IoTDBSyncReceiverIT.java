@@ -21,12 +21,10 @@ package org.apache.iotdb.db.integration.sync;
 import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.exception.sync.PipeServerException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
@@ -111,16 +109,6 @@ public class IoTDBSyncReceiverIT {
     FileUtils.deleteDirectory(tmpDir);
     client.close();
     EnvironmentUtils.cleanEnv();
-  }
-
-  @Test
-  public void testStopPipeServer() {
-    logger.info("testStopPipeServerCheck");
-    try {
-      SyncService.getInstance().stopPipeServer();
-    } catch (PipeServerException e) {
-      Assert.fail("Can not stop pipe server");
-    }
   }
 
   @Test
