@@ -53,7 +53,7 @@ import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPl
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteProcedurePlan;
-import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
@@ -235,12 +235,12 @@ public class ConfigPhysicalPlanSerDeTest {
 
   @Test
   public void DeleteRegionsPlanTest() throws IOException {
-    DeleteRegionsPlan req0 = new DeleteRegionsPlan();
+    DeleteRegionGroupsPlan req0 = new DeleteRegionGroupsPlan();
     req0.addDeleteRegion("sg", new TConsensusGroupId(TConsensusGroupType.SchemaRegion, 0));
     req0.addDeleteRegion("sg", new TConsensusGroupId(TConsensusGroupType.DataRegion, 1));
 
-    DeleteRegionsPlan req1 =
-        (DeleteRegionsPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
+    DeleteRegionGroupsPlan req1 =
+        (DeleteRegionGroupsPlan) ConfigPhysicalPlan.Factory.create(req0.serializeToByteBuffer());
     Assert.assertEquals(req0, req1);
   }
 

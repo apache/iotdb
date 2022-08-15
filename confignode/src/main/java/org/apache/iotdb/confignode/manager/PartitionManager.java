@@ -40,6 +40,7 @@ import org.apache.iotdb.confignode.consensus.request.read.GetOrCreateSchemaParti
 import org.apache.iotdb.confignode.consensus.request.read.GetRegionInfoListPlan;
 import org.apache.iotdb.confignode.consensus.request.read.GetSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateDataPartitionPlan;
+import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.CreateSchemaPartitionPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.UpdateRegionLocationPlan;
@@ -177,13 +178,22 @@ public class PartitionManager {
         return resp;
       }
 
-      // Allocate SchemaPartitions
-      Map<String, SchemaPartitionTable> assignedSchemaPartition =
-          getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
-      // Cache allocating result
-      CreateSchemaPartitionPlan createPlan = new CreateSchemaPartitionPlan();
-      createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
-      getConsensusManager().write(createPlan);
+      status = getConsensusManager().confirmLeader();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // Here we check the leadership second time
+        // since the RegionGroup creating process might take some time
+        resp.setStatus(status);
+        return resp;
+      } else {
+        // Allocate SchemaPartitions only if
+        // the current ConfigNode still holds its leadership
+        Map<String, SchemaPartitionTable> assignedSchemaPartition =
+            getLoadManager().allocateSchemaPartition(unassignedSchemaPartitionSlotsMap);
+        // Cache allocating result
+        CreateSchemaPartitionPlan createPlan = new CreateSchemaPartitionPlan();
+        createPlan.setAssignedSchemaPartition(assignedSchemaPartition);
+        getConsensusManager().write(createPlan);
+      }
     }
 
     return getSchemaPartition(req);
@@ -242,13 +252,22 @@ public class PartitionManager {
         return resp;
       }
 
-      // Allocate DataPartitions
-      Map<String, DataPartitionTable> assignedDataPartition =
-          getLoadManager().allocateDataPartition(unassignedDataPartitionSlotsMap);
-      // Cache allocating result
-      CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
-      createPlan.setAssignedDataPartition(assignedDataPartition);
-      getConsensusManager().write(createPlan);
+      status = getConsensusManager().confirmLeader();
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // Here we check the leadership second time
+        // since the RegionGroup creating process might take some time
+        resp.setStatus(status);
+        return resp;
+      } else {
+        // Allocate DataPartitions only if
+        // the current ConfigNode still holds its leadership
+        Map<String, DataPartitionTable> assignedDataPartition =
+            getLoadManager().allocateDataPartition(unassignedDataPartitionSlotsMap);
+        // Cache allocating result
+        CreateDataPartitionPlan createPlan = new CreateDataPartitionPlan();
+        createPlan.setAssignedDataPartition(assignedDataPartition);
+        getConsensusManager().write(createPlan);
+      }
     }
 
     return getDataPartition(req);
@@ -316,13 +335,11 @@ public class PartitionManager {
         }
       }
 
-      // TODO: Use procedure to protect the following process
       if (!allotmentMap.isEmpty()) {
-        // Do Region allocation and creation for StorageGroups based on the allotment
-        getLoadManager().doRegionCreation(allotmentMap, consensusGroupType);
+        CreateRegionGroupsPlan createRegionGroupsPlan =
+            getLoadManager().allocateRegionGroups(allotmentMap, consensusGroupType);
+        result = getProcedureManager().createRegionGroups(createRegionGroupsPlan);
       }
-
-      result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (NotEnoughDataNodeException e) {
       LOGGER.error("ConfigNode failed to extend Region because there are not enough DataNodes");
       result.setCode(TSStatusCode.NOT_ENOUGH_DATA_NODE.getStatusCode());
@@ -564,5 +581,9 @@ public class PartitionManager {
 
   private LoadManager getLoadManager() {
     return configManager.getLoadManager();
+  }
+
+  private ProcedureManager getProcedureManager() {
+    return configManager.getProcedureManager();
   }
 }

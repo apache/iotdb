@@ -33,30 +33,31 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class DeleteRegionsPlan extends ConfigPhysicalPlan {
+public class DeleteRegionGroupsPlan extends ConfigPhysicalPlan {
 
-  private final Map<String, List<TConsensusGroupId>> deleteRegionMap;
+  // Map<StorageGroupName, List<TRegionReplicaSet>>
+  private final Map<String, List<TConsensusGroupId>> regionGroupMap;
 
-  public DeleteRegionsPlan() {
-    super(ConfigPhysicalPlanType.DeleteRegions);
-    this.deleteRegionMap = new HashMap<>();
+  public DeleteRegionGroupsPlan() {
+    super(ConfigPhysicalPlanType.DeleteRegionGroups);
+    this.regionGroupMap = new HashMap<>();
   }
 
   public void addDeleteRegion(String name, TConsensusGroupId consensusGroupId) {
-    deleteRegionMap.computeIfAbsent(name, empty -> new ArrayList<>()).add(consensusGroupId);
+    regionGroupMap.computeIfAbsent(name, empty -> new ArrayList<>()).add(consensusGroupId);
   }
 
-  public Map<String, List<TConsensusGroupId>> getDeleteRegionMap() {
-    return deleteRegionMap;
+  public Map<String, List<TConsensusGroupId>> getRegionGroupMap() {
+    return regionGroupMap;
   }
 
   @Override
   protected void serializeImpl(DataOutputStream stream) throws IOException {
-    stream.writeInt(ConfigPhysicalPlanType.DeleteRegions.ordinal());
+    stream.writeInt(ConfigPhysicalPlanType.DeleteRegionGroups.ordinal());
 
-    stream.writeInt(deleteRegionMap.size());
+    stream.writeInt(regionGroupMap.size());
     for (Map.Entry<String, List<TConsensusGroupId>> consensusGroupIdsEntry :
-        deleteRegionMap.entrySet()) {
+        regionGroupMap.entrySet()) {
       BasicStructureSerDeUtil.write(consensusGroupIdsEntry.getKey(), stream);
       stream.writeInt(consensusGroupIdsEntry.getValue().size());
       for (TConsensusGroupId consensusGroupId : consensusGroupIdsEntry.getValue()) {
@@ -70,10 +71,10 @@ public class DeleteRegionsPlan extends ConfigPhysicalPlan {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
       String name = BasicStructureSerDeUtil.readString(buffer);
-      deleteRegionMap.put(name, new ArrayList<>());
+      regionGroupMap.put(name, new ArrayList<>());
       int regionNum = buffer.getInt();
       for (int j = 0; j < regionNum; j++) {
-        deleteRegionMap.get(name).add(ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
+        regionGroupMap.get(name).add(ThriftCommonsSerDeUtils.deserializeTConsensusGroupId(buffer));
       }
     }
   }
@@ -82,12 +83,12 @@ public class DeleteRegionsPlan extends ConfigPhysicalPlan {
   public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    DeleteRegionsPlan that = (DeleteRegionsPlan) o;
-    return deleteRegionMap.equals(that.deleteRegionMap);
+    DeleteRegionGroupsPlan that = (DeleteRegionGroupsPlan) o;
+    return regionGroupMap.equals(that.regionGroupMap);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(deleteRegionMap);
+    return Objects.hash(regionGroupMap);
   }
 }
