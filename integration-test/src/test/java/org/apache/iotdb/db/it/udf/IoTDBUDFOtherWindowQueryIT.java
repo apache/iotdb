@@ -111,8 +111,8 @@ public class IoTDBUDFOtherWindowQueryIT {
 
       // StateWindow INT32
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        if (i == 1 || i == 2 || i == 3 || i == 15 || i == 17 || i == 53 || i == 54 || i == 9996
-            || i == 9997 || i == 9998) {
+        if (i == 1 || i == 2 || i == 3 || i == 15 || i == 17 || i == 53 || i == 54 || i == 996
+            || i == 997 || i == 998) {
           statement.execute(
               (String.format(
                   "insert into root.vehicle.d1(timestamp,s4) values(%d,%d)", i, i + 100)));
@@ -130,8 +130,8 @@ public class IoTDBUDFOtherWindowQueryIT {
 
       // StateWindow BOOLEAN
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        if (i == 1 || i == 2 || i == 3 || i == 15 || i == 17 || i == 53 || i == 54 || i == 9996
-            || i == 9997 || i == 9998) {
+        if (i == 1 || i == 2 || i == 3 || i == 15 || i == 17 || i == 53 || i == 54 || i == 996
+            || i == 997 || i == 998) {
           statement.execute(
               (String.format("insert into root.vehicle.d1(timestamp,s5) values(%d, true)", i)));
         } else {
@@ -145,12 +145,12 @@ public class IoTDBUDFOtherWindowQueryIT {
         if (i < 500) {
           statement.execute(
               (String.format("insert into root.vehicle.d1(timestamp,s6) values(%d, '<500')", i)));
-        } else if (i < 9993) {
+        } else if (i < 993) {
           statement.execute(
-              (String.format("insert into root.vehicle.d1(timestamp,s6) values(%d, '<9993')", i)));
+              (String.format("insert into root.vehicle.d1(timestamp,s6) values(%d, '<993')", i)));
         } else {
           statement.execute(
-              (String.format("insert into root.vehicle.d1(timestamp,s6) values(%d, '>=9994')", i)));
+              (String.format("insert into root.vehicle.d1(timestamp,s6) values(%d, '>=994')", i)));
         }
       }
     } catch (SQLException throwable) {
@@ -186,9 +186,9 @@ public class IoTDBUDFOtherWindowQueryIT {
               UDFTestConstant.ACCESS_STRATEGY_KEY,
               UDFTestConstant.ACCESS_STRATEGY_SESSION,
               UDFTestConstant.DISPLAY_WINDOW_BEGIN_KEY,
-              displayBegin.longValue(),
+              displayBegin,
               UDFTestConstant.DISPLAY_WINDOW_END_KEY,
-              displayEnd.longValue(),
+              displayEnd,
               UDFTestConstant.SESSION_GAP_KEY,
               sessionGap);
     }
@@ -366,9 +366,9 @@ public class IoTDBUDFOtherWindowQueryIT {
               UDFTestConstant.ACCESS_STRATEGY_KEY,
               UDFTestConstant.ACCESS_STRATEGY_STATE,
               UDFTestConstant.DISPLAY_WINDOW_BEGIN_KEY,
-              displayBegin.longValue(),
+              displayBegin,
               UDFTestConstant.DISPLAY_WINDOW_END_KEY,
-              displayEnd.longValue(),
+              displayEnd,
               UDFTestConstant.STATE_DELTA_KEY,
               delta);
     }
@@ -377,13 +377,11 @@ public class IoTDBUDFOtherWindowQueryIT {
         Statement statement = conn.createStatement();
         ResultSet resultSet = statement.executeQuery(sql)) {
       assertEquals(2, resultSet.getMetaData().getColumnCount());
-      //      while (resultSet.next()) {
-      //        System.out.println(resultSet.getLong(1) + " " + resultSet.getLong(2));
-      //      }
-      for (int i = 0; i < windowStart.length; i++) {
-        resultSet.next();
-        Assert.assertEquals(resultSet.getLong(1), windowStart[i]);
-        Assert.assertEquals(resultSet.getLong(2), windowEnd[i]);
+      int cnt = 0;
+      while (resultSet.next()) {
+        Assert.assertEquals(resultSet.getLong(1), windowStart[cnt]);
+        Assert.assertEquals(resultSet.getLong(2), windowEnd[cnt]);
+        cnt++;
       }
     } catch (SQLException e) {
       e.printStackTrace();
@@ -395,9 +393,9 @@ public class IoTDBUDFOtherWindowQueryIT {
   public void testStateWindowSS1() {
     String delta = "10";
     Long displayBegin = 10L;
-    Long displayEnd = 9766L;
+    Long displayEnd = 976L;
     long[] windowStart = new long[] {10, 15, 16, 17, 18, 53, 55};
-    long[] windowEnd = new long[] {14, 15, 16, 17, 52, 54, 9765};
+    long[] windowEnd = new long[] {14, 15, 16, 17, 52, 54, 975};
     testStateWindowSS("s4", delta, windowStart, windowEnd, displayBegin, displayEnd);
   }
 
@@ -406,8 +404,8 @@ public class IoTDBUDFOtherWindowQueryIT {
     String delta = "9";
     Long displayBegin = 0L;
     Long displayEnd = 100000L;
-    long[] windowStart = new long[] {0, 1, 4, 15, 16, 17, 18, 53, 55, 500, 502, 9996, 9999};
-    long[] windowEnd = new long[] {0, 3, 14, 15, 16, 17, 52, 54, 499, 501, 9995, 9998, 9999};
+    long[] windowStart = new long[] {0, 1, 4, 15, 16, 17, 18, 53, 55, 500, 502, 996, 999};
+    long[] windowEnd = new long[] {0, 3, 14, 15, 16, 17, 52, 54, 499, 501, 995, 998, 999};
     testStateWindowSS("s4", delta, windowStart, windowEnd, displayBegin, displayEnd);
   }
 
@@ -416,16 +414,16 @@ public class IoTDBUDFOtherWindowQueryIT {
     String delta = "102";
     Long displayBegin = -100L;
     Long displayEnd = 100000L;
-    long[] windowStart = new long[] {0, 2, 4, 15, 16, 17, 18, 53, 55, 9996, 9999};
-    long[] windowEnd = new long[] {1, 3, 14, 15, 16, 17, 52, 54, 9995, 9998, 9999};
+    long[] windowStart = new long[] {0, 2, 4, 15, 16, 17, 18, 53, 55, 996, 999};
+    long[] windowEnd = new long[] {1, 3, 14, 15, 16, 17, 52, 54, 995, 998, 999};
     testStateWindowSS("s4", delta, windowStart, windowEnd, displayBegin, displayEnd);
   }
 
   @Test
   public void testStateWindowSS4() {
     String delta = "102";
-    long[] windowStart = new long[] {0, 2, 4, 15, 16, 17, 18, 53, 55, 9996, 9999};
-    long[] windowEnd = new long[] {1, 3, 14, 15, 16, 17, 52, 54, 9995, 9998, 9999};
+    long[] windowStart = new long[] {0, 2, 4, 15, 16, 17, 18, 53, 55, 996, 999};
+    long[] windowEnd = new long[] {1, 3, 14, 15, 16, 17, 52, 54, 995, 998, 999};
     testStateWindowSS("s4", delta, windowStart, windowEnd, null, null);
   }
 
@@ -468,9 +466,9 @@ public class IoTDBUDFOtherWindowQueryIT {
               UDFTestConstant.ACCESS_STRATEGY_KEY,
               UDFTestConstant.ACCESS_STRATEGY_STATE,
               UDFTestConstant.DISPLAY_WINDOW_BEGIN_KEY,
-              displayBegin.longValue(),
+              displayBegin,
               UDFTestConstant.DISPLAY_WINDOW_END_KEY,
-              displayEnd.longValue(),
+              displayEnd,
               UDFTestConstant.STATE_DELTA_KEY,
               delta);
     }
@@ -507,15 +505,15 @@ public class IoTDBUDFOtherWindowQueryIT {
 
   @Test
   public void testStateWindowSS8() {
-    long[] windowStart = new long[] {0, 1, 4, 15, 16, 17, 18, 53, 55, 9996, 9999};
-    long[] windowEnd = new long[] {0, 3, 14, 15, 16, 17, 52, 54, 9995, 9998, 9999};
+    long[] windowStart = new long[] {0, 1, 4, 15, 16, 17, 18, 53, 55, 996, 999};
+    long[] windowEnd = new long[] {0, 3, 14, 15, 16, 17, 52, 54, 995, 998, 999};
     testStateWindowSS("s5", null, windowStart, windowEnd, null, null);
   }
 
   @Test
   public void testStateWindowSS9() {
-    long[] windowStart = new long[] {0, 500, 9993};
-    long[] windowEnd = new long[] {499, 9992, 9999};
+    long[] windowStart = new long[] {0, 500, 993};
+    long[] windowEnd = new long[] {499, 992, 999};
     testStateWindowSS("s6", null, windowStart, windowEnd, null, null);
   }
 }
