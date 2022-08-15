@@ -126,7 +126,7 @@ public class StandaloneScheduler implements IScheduler {
       case WRITE:
         // reject non-query operations when system is read-only
         if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-          TSStatus failedStatus = new TSStatus(TSStatusCode.NODE_READ_ONLY.getStatusCode());
+          TSStatus failedStatus = new TSStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
           failedStatus.setMessage("Fail to do non-query operations because system is read-only.");
           stateMachine.transitionToFailed(failedStatus);
           return;
