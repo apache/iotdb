@@ -139,6 +139,15 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return dataTypes;
   }
 
+  @Override
+  public TSDataType getDataType(int index) {
+    if (isNeedInferType) {
+      return TypeInferenceUtils.getPredictedDataType(values[index], true);
+    } else {
+      return dataTypes[index];
+    }
+  }
+
   public Object[] getValues() {
     return values;
   }

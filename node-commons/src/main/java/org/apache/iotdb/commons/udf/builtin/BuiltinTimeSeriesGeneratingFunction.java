@@ -67,7 +67,7 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   STRING_LOWER("LOWER", UDTFLower.class),
   STRING_TRIM("TRIM", UDTFTrim.class),
   STRING_CMP("STRCMP", UDTFStrCompare.class),
-  DE_DUP("DEDUP", UDTFDeDuplication.class),
+  CHANGE_POINTS("CHANGE_POINTS", UDTFChangePoints.class),
   DIFFERENCE("DIFFERENCE", UDTFCommonValueDifference.class),
   NON_NEGATIVE_DIFFERENCE("NON_NEGATIVE_DIFFERENCE", UDTFNonNegativeValueDifference.class),
   TIME_DIFFERENCE("TIME_DIFFERENCE", UDTFTimeDifference.class),
@@ -88,7 +88,8 @@ public enum BuiltinTimeSeriesGeneratingFunction {
   EQUAL_SIZE_BUCKET_M4_SAMPLE("EQUAL_SIZE_BUCKET_M4_SAMPLE", UDTFEqualSizeBucketM4Sample.class),
   EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE(
       "EQUAL_SIZE_BUCKET_OUTLIER_SAMPLE", UDTFEqualSizeBucketOutlierSample.class),
-  JEXL("JEXL", UDTFJexl.class);
+  JEXL("JEXL", UDTFJexl.class),
+  MASTER_REPAIR("MASTER_REPAIR", UDTFMasterRepair.class);
 
   private final String functionName;
   private final Class<?> functionClass;

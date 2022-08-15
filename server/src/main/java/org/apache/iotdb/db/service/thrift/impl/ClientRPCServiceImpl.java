@@ -57,7 +57,7 @@ import org.apache.iotdb.db.mpp.plan.statement.metadata.template.SetSchemaTemplat
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -1531,16 +1531,14 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnablePerformanceStat()) {
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .histogram(
               System.currentTimeMillis() - startTime,
               "operation_histogram",
               MetricLevel.IMPORTANT,
               "name",
               operation.getName());
-      MetricsService.getInstance()
-          .getMetricManager()
+      MetricService.getInstance()
           .count(1, "operation_count", MetricLevel.IMPORTANT, "name", operation.getName());
     }
   }

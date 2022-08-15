@@ -21,9 +21,6 @@ package org.apache.iotdb.db.mpp.plan.expression.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.CompareBinaryTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.CompareLessEqualTransformer;
 
 import java.nio.ByteBuffer;
 
@@ -35,12 +32,6 @@ public class LessEqualExpression extends CompareBinaryExpression {
 
   public LessEqualExpression(ByteBuffer byteBuffer) {
     super(byteBuffer);
-  }
-
-  @Override
-  protected CompareBinaryTransformer constructTransformer(
-      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader) {
-    return new CompareLessEqualTransformer(leftParentLayerPointReader, rightParentLayerPointReader);
   }
 
   @Override

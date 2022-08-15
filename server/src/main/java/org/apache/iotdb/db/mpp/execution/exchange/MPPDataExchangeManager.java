@@ -121,6 +121,10 @@ public class MPPDataExchangeManager implements IMPPDataExchangeManager {
         }
         ((SinkHandle) sinkHandles.get(e.getSourceFragmentInstanceId()))
             .acknowledgeTsBlock(e.getStartSequenceId(), e.getEndSequenceId());
+      } catch (Throwable t) {
+        logger.error(
+            "ack TsBlock [{}, {}) failed.", e.getStartSequenceId(), e.getEndSequenceId(), t);
+        throw t;
       }
     }
 

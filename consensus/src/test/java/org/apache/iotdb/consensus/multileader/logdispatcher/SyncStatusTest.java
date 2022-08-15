@@ -138,7 +138,9 @@ public class SyncStatusTest {
         i++) {
       status.removeBatch(batchList.get(i));
       Assert.assertEquals(
-          config.getReplication().getMaxPendingBatch() / 2, status.getPendingBatches().size());
+          config.getReplication().getMaxPendingBatch()
+              - config.getReplication().getMaxPendingBatch() / 2,
+          status.getPendingBatches().size());
       Assert.assertEquals(
           config.getReplication().getMaxPendingBatch(), status.getNextSendingIndex());
     }

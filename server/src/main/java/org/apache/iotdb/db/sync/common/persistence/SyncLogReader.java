@@ -77,7 +77,7 @@ public class SyncLogReader {
           logger.error("Sync msg log recovery error: log file parse error at line " + lineNum);
           logger.error(e.getMessage());
           throw new StartupException(
-              ServiceType.RECEIVER_SERVICE.getName(),
+              ServiceType.SYNC_SERVICE.getName(),
               "Sync msg log file recover error at line " + lineNum);
         }
       }

@@ -142,7 +142,7 @@ public class LocalSourceHandle implements ISourceHandle {
       logger.info("Source handle is being aborted.");
       synchronized (queue) {
         synchronized (this) {
-          if (aborted) {
+          if (aborted || closed) {
             return;
           }
           queue.abort();
@@ -163,7 +163,7 @@ public class LocalSourceHandle implements ISourceHandle {
       logger.info("Source handle is being closed.");
       synchronized (queue) {
         synchronized (this) {
-          if (aborted) {
+          if (aborted || closed) {
             return;
           }
           queue.close();

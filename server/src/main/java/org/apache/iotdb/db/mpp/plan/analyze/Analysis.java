@@ -81,6 +81,8 @@ public class Analysis {
 
   private Expression queryFilter;
 
+  private Expression havingExpression;
+
   // map from grouped path name to list of input aggregation in `GROUP BY LEVEL` clause
   private Map<Expression, Set<Expression>> groupByLevelExpressions;
 
@@ -107,6 +109,9 @@ public class Analysis {
 
   // map from device name to query filter under this device
   private Map<String, Expression> deviceToQueryFilter;
+
+  // map from device name to havingExpression under this device
+  private Map<String, Expression> deviceToHavingExpression;
 
   // e.g. [s1,s2,s3] is query, but [s1, s3] exists in device1, then device1 -> [1, 3], s1 is 1 but
   // not 0 because device is the first column
@@ -290,6 +295,22 @@ public class Analysis {
 
   public GroupByTimeParameter getGroupByTimeParameter() {
     return groupByTimeParameter;
+  }
+
+  public Expression getHavingExpression() {
+    return havingExpression;
+  }
+
+  public void setHavingExpression(Expression havingExpression) {
+    this.havingExpression = havingExpression;
+  }
+
+  public Map<String, Expression> getDeviceToHavingExpression() {
+    return deviceToHavingExpression;
+  }
+
+  public void setDeviceToHavingExpression(Map<String, Expression> deviceTohavingExpression) {
+    this.deviceToHavingExpression = deviceTohavingExpression;
   }
 
   public void setGroupByTimeParameter(GroupByTimeParameter groupByTimeParameter) {

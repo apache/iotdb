@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncConfigNodeIServiceClient;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TShowClusterResp;
 import org.apache.iotdb.db.client.DataNodeClientPoolFactory;
 import org.apache.iotdb.it.framework.IoTDBTestLogger;
 import org.apache.iotdb.itbase.env.BaseEnv;
@@ -44,6 +45,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -185,10 +187,41 @@ public abstract class AbstractEnv implements BaseEnv {
     try {
       long startTime = System.currentTimeMillis();
       testDelegate.requestAll();
+      if (!configNodeWrapperList.isEmpty()) {
+        checkNodeHeartbeat();
+      }
       logger.info("Start cluster costs: {}s", (System.currentTimeMillis() - startTime) / 1000.0);
     } catch (Exception e) {
       fail("After 30 times retry, the cluster can't work!");
     }
+  }
+
+  private void checkNodeHeartbeat() throws Exception {
+    TShowClusterResp showClusterResp;
+    Exception lastException = null;
+    boolean flag;
+    for (int i = 0; i < 30; i++) {
+      try (SyncConfigNodeIServiceClient client =
+          (SyncConfigNodeIServiceClient) getConfigNodeConnection()) {
+        flag = true;
+        showClusterResp = client.showCluster();
+        Map<Integer, String> nodeStatus = showClusterResp.getNodeStatus();
+        for (String status : nodeStatus.values()) {
+          if (!status.equals("Running")) {
+            flag = false;
+            break;
+          }
+        }
+        int nodeNum = configNodeWrapperList.size() + dataNodeWrapperList.size();
+        if (flag && nodeStatus.size() == nodeNum) {
+          return;
+        }
+      } catch (Exception e) {
+        lastException = e;
+      }
+      TimeUnit.SECONDS.sleep(1L);
+    }
+    throw lastException;
   }
 
   @Override

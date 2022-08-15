@@ -338,15 +338,6 @@ struct TGetPathsSetTemplatesResp {
   2: optional list<string> pathList
 }
 
-// Maintenance Tools
-struct TMergeReq {
-  1: optional i32 dataNodeId
-}
-
-struct TClearCacheReq {
-   1: optional i32 dataNodeId
-}
-
 service IConfigNodeRPCService {
 
   // ======================================================
@@ -496,15 +487,45 @@ service IConfigNodeRPCService {
   TDataPartitionTableResp getOrCreateDataPartitionTable(TDataPartitionReq req)
 
   // ======================================================
-  // Authorize TODO: @RYH61 add interface annotation
+  // Authorize
   // ======================================================
 
+  /**
+   * Execute permission write operations such as create user, create role, and grant permission.
+   * There is no need to update the cache information of the DataNode for creating users and roles
+   *
+   * @return SUCCESS_STATUS if the permission write operation is executed successfully
+   *         INVALIDATE_PERMISSION_CACHE_ERROR if the update cache of the permission information in the datanode fails
+   *         EXECUTE_PERMISSION_EXCEPTION_ERROR if the permission write operation fails, like the user doesn't exist
+   *         INTERNAL_SERVER_ERROR if the permission type does not exist
+   */
   common.TSStatus operatePermission(TAuthorizerReq req)
 
+  /**
+   * Execute permission read operations such as list user
+   *
+   * @return SUCCESS_STATUS if the permission read operation is executed successfully
+   *         ROLE_NOT_EXIST_ERROR if the role does not exist
+   *         USER_NOT_EXIST_ERROR if the user does not exist
+   *         INTERNAL_SERVER_ERROR if the permission type does not exist
+   */
   TAuthorizerResp queryPermission(TAuthorizerReq req)
 
+  /**
+   * Authenticate user login
+   *
+   * @return SUCCESS_STATUS if the user exists and the correct username and password are entered
+   *         WRONG_LOGIN_PASSWORD_ERROR if the user enters the wrong username or password
+   */
   TPermissionInfoResp login(TLoginReq req)
 
+  /**
+   * Permission checking for user operations
+   *
+   * @return SUCCESS_STATUS if the user has the permission
+   *         EXECUTE_PERMISSION_EXCEPTION_ERROR if the seriesPath or the privilege is illegal.
+   *         NO_PERMISSION_ERROR if the user does not have this permission
+   */
   TPermissionInfoResp checkUserPrivileges(TCheckUserPrivilegesReq req)
 
   // ======================================================
@@ -572,14 +593,17 @@ service IConfigNodeRPCService {
   common.TSStatus dropFunction(TDropFunctionReq req)
 
   // ======================================================
-  // Maintenance Tools TODO: @RYH61 add interface annotation
+  // Maintenance Tools
   // ======================================================
 
-  common.TSStatus merge(TMergeReq req)
+  /** Execute Level Compaction and unsequence Compaction task on all DataNodes */
+  common.TSStatus merge()
 
+  /** Persist all the data points in the memory table of the storage group to the disk, and seal the data file on all DataNodes */
   common.TSStatus flush(common.TFlushReq req)
 
-  common.TSStatus clearCache(TClearCacheReq req)
+  /** Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint on all DataNodes */
+  common.TSStatus clearCache()
 
   // ======================================================
   // Cluster Tools

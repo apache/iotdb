@@ -106,7 +106,7 @@ public class ClusterScheduler implements IScheduler {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
         if (needRetry(result.getFailureStatus())) {
-          stateMachine.transitionToRetrying(result.getFailureStatus());
+          stateMachine.transitionToPendingRetry(result.getFailureStatus());
         } else {
           stateMachine.transitionToFailed(result.getFailureStatus());
         }
