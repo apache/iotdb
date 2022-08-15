@@ -135,9 +135,9 @@ public class IoTDBUDFSessionWindowQueryIT {
               UDFTestConstant.ACCESS_STRATEGY_KEY,
               UDFTestConstant.ACCESS_STRATEGY_SESSION,
               UDFTestConstant.DISPLAY_WINDOW_BEGIN_KEY,
-              displayBegin.longValue(),
+              displayBegin,
               UDFTestConstant.DISPLAY_WINDOW_END_KEY,
-              displayEnd.longValue(),
+              displayEnd,
               UDFTestConstant.SESSION_GAP_KEY,
               sessionGap);
     }
