@@ -91,6 +91,9 @@ import org.apache.iotdb.mpp.rpc.thrift.THeartbeatReq;
 import org.apache.iotdb.mpp.rpc.thrift.THeartbeatResp;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidateCacheReq;
 import org.apache.iotdb.mpp.rpc.thrift.TInvalidatePermissionCacheReq;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadResp;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadTsFileReq;
 import org.apache.iotdb.mpp.rpc.thrift.TMigrateRegionReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionLeaderChangeReq;
 import org.apache.iotdb.mpp.rpc.thrift.TRegionRouteReq;
@@ -295,6 +298,16 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
   @Override
   public TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public TLoadResp sendLoadNode(TLoadTsFileReq req) throws TException {
+    return null;
+  }
+
+  @Override
+  public TLoadResp sendLoadCommand(TLoadCommandReq req) throws TException {
+    return null;
   }
 
   @Override

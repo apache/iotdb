@@ -168,6 +168,15 @@ public class LoadTsFilePieceNode extends WritePlanNode {
     }
   }
 
+  @Override
+  public String toString() {
+    return "LoadTsFilePieceNode{" +
+            "tsFile=" + tsFile +
+            ", dataSize=" + dataSize +
+            ", chunkDataList=" + chunkDataList +
+            '}';
+  }
+
   public static class NonAlignedChunkData implements ChunkData {
     private long offset;
     private long dataSize;

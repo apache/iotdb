@@ -203,6 +203,21 @@ struct TUpdateTemplateReq{
     2: required binary templateInfo
 }
 
+struct TLoadTsFileReq{
+    1: required binary body
+    2: required string uuid
+}
+
+struct TLoadCommandReq{
+    1: required i32 commandType
+    2: required string uuid
+}
+
+struct TLoadResp{
+    1: required i32 loadRespStatus
+    2: required string info
+}
+
 service IDataNodeRPCService {
 
   // -----------------------------------For Data Node-----------------------------------------------
@@ -226,6 +241,10 @@ service IDataNodeRPCService {
   TCancelResp cancelFragmentInstance(TCancelFragmentInstanceReq req);
 
   TSchemaFetchResponse fetchSchema(TSchemaFetchRequest req)
+
+  TLoadResp sendLoadNode(TLoadTsFileReq req);
+
+  TLoadResp sendLoadCommand(TLoadCommandReq req);
 
 
   // -----------------------------------For Config Node-----------------------------------------------

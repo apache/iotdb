@@ -36,13 +36,16 @@ import org.apache.iotdb.db.mpp.plan.scheduler.FragInstanceDispatchResult;
 import org.apache.iotdb.db.mpp.plan.scheduler.IScheduler;
 
 import io.airlift.units.Duration;
+import org.apache.iotdb.mpp.rpc.thrift.TLoadCommandReq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -50,10 +53,13 @@ import java.util.concurrent.Future;
 public class LoadTsFileScheduler implements IScheduler {
   private static final Logger logger = LoggerFactory.getLogger(LoadTsFileScheduler.class);
 
-  private String uuid;
-  private MPPQueryContext queryContext;
+  private final String uuid;
+  private final MPPQueryContext queryContext;
   private LoadTsFileDispatcherImpl dispatcher;
   private List<LoadSingleTsFileNode> tsFileNodeList;
+  private PlanFragmentId fragmentId;
+
+  private Set<TRegionReplicaSet> allReplicaSets;
 
   public LoadTsFileScheduler(
       DistributedQueryPlan distributedQueryPlan,
@@ -62,7 +68,9 @@ public class LoadTsFileScheduler implements IScheduler {
     this.uuid = UUID.randomUUID().toString();
     this.queryContext = queryContext;
     this.tsFileNodeList = new ArrayList<>();
-    this.dispatcher = new LoadTsFileDispatcherImpl(internalServiceClientManager);
+    this.fragmentId = distributedQueryPlan.getRootSubPlan().getPlanFragment().getId();
+    this.dispatcher = new LoadTsFileDispatcherImpl(uuid, internalServiceClientManager);
+    this.allReplicaSets = new HashSet<>();
 
     for (FragmentInstance fragmentInstance : distributedQueryPlan.getInstances()) {
       tsFileNodeList.add((LoadSingleTsFileNode) fragmentInstance.getFragment().getRoot());
@@ -70,12 +78,16 @@ public class LoadTsFileScheduler implements IScheduler {
   }
 
   @Override
-  public void start() {}
+  public void start() {
+    boolean isFirstPhaseSuccess = firstPhase();
+    boolean isSuccess = secondPhase(isFirstPhaseSuccess);
+  }
 
   private boolean firstPhase() {
     for (LoadSingleTsFileNode node : tsFileNodeList) {
       if (!dispatchOneTsFile(node)) {
-        // TODO: record it
+        logger.error(
+            String.format("Dispatch Single TsFile Node error, LoadSingleTsFileNode %s.", node));
         return false;
       }
     }
@@ -85,11 +97,12 @@ public class LoadTsFileScheduler implements IScheduler {
   private boolean dispatchOneTsFile(LoadSingleTsFileNode node) {
     for (Map.Entry<TRegionReplicaSet, List<LoadTsFilePieceNode>> entry :
         node.getReplicaSet2Pieces().entrySet()) {
+      allReplicaSets.add(entry.getKey());
       for (LoadTsFilePieceNode pieceNode : entry.getValue()) {
         FragmentInstance instance =
             new FragmentInstance(
-                new PlanFragment(null, pieceNode),
-                null,
+                new PlanFragment(fragmentId, pieceNode),
+                fragmentId.genFragmentInstanceId(),
                 null,
                 queryContext.getQueryType(),
                 queryContext.getTimeOut());
@@ -100,13 +113,21 @@ public class LoadTsFileScheduler implements IScheduler {
         try {
           FragInstanceDispatchResult result = dispatchResultFuture.get();
           if (!result.isSuccessful()) {
-            // TODO: log error msg, and retry.
+            // TODO: retry.
+            logger.error(
+                String.format(
+                    "Dispatch one piece  to ReplicaSet %s error, result status code %s.",
+                    entry.getKey(), result.getFailureStatus().getCode()));
+            logger.error(
+                String.format("Result message %s.", result.getFailureStatus().getMessage()));
+            logger.error(String.format("Dispatch piece node:%n%s", pieceNode));
             return false;
           }
         } catch (InterruptedException | ExecutionException e) {
           if (e instanceof InterruptedException) {
             Thread.currentThread().interrupt();
           }
+          logger.warn("Interrupt or Execution error.", e);
           return false;
         }
       }
@@ -114,7 +135,31 @@ public class LoadTsFileScheduler implements IScheduler {
     return true;
   }
 
-  private boolean secondPhase() {
+  private boolean secondPhase(boolean isFirstPhaseSuccess) {
+    TLoadCommandReq loadCommandReq =
+        new TLoadCommandReq(
+            (isFirstPhaseSuccess ? LoadCommand.EXECUTE : LoadCommand.ROLLBACK).ordinal(), uuid);
+    Future<FragInstanceDispatchResult> dispatchResultFuture =
+        dispatcher.dispatchCommand(loadCommandReq, allReplicaSets);
+
+    try {
+      FragInstanceDispatchResult result = dispatchResultFuture.get();
+      if (!result.isSuccessful()) {
+        // TODO: retry.
+        logger.error(
+            String.format("Dispatch LoadCommand error to replicaSets %s error.", allReplicaSets));
+        logger.error(String.format("Result status code %s.", result.getFailureStatus().getCode()));
+        logger.error(
+            String.format("Result status message %s.", result.getFailureStatus().getMessage()));
+        return false;
+      }
+    } catch (InterruptedException | ExecutionException e) {
+      if (e instanceof InterruptedException) {
+        Thread.currentThread().interrupt();
+      }
+      logger.warn("Interrupt or Execution error.", e);
+      return false;
+    }
     return true;
   }
 
@@ -136,4 +181,14 @@ public class LoadTsFileScheduler implements IScheduler {
 
   @Override
   public void cancelFragment(PlanFragmentId planFragmentId) {}
+
+  public enum LoadCommand {
+    EXECUTE,
+    ROLLBACK
+  }
+
+  public enum LoadResult {
+    SUCCESS,
+    FAILED
+  }
 }

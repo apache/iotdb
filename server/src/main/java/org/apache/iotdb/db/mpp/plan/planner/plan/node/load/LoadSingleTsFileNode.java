@@ -130,6 +130,14 @@ public class LoadSingleTsFileNode extends WritePlanNode {
     throw new NotImplementedException("split load single TsFile is not implemented");
   }
 
+  @Override
+  public String toString() {
+    return "LoadSingleTsFileNode{" +
+            "tsFile=" + tsFile +
+            ", replicaSets=" + replicaSet2Pieces.keySet() +
+            '}';
+  }
+
   public void splitTsFileByDataPartition(DataPartition dataPartition) throws IOException {
     replicaSet2Pieces = new HashMap<>();
     List<ChunkData> chunkDataList = new ArrayList<>();
