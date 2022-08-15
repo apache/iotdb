@@ -53,7 +53,6 @@ public interface Operator extends AutoCloseable {
    */
   boolean isFinished();
 
-  // TODO remove the default while completing all the operators
   /**
    * We should also consider the memory used by its children operator, so the calculation logic may
    * be like: long estimatedOfCurrentOperator = XXXXX; return max(estimatedOfCurrentOperator,
@@ -65,22 +64,14 @@ public interface Operator extends AutoCloseable {
    * @return estimated max memory footprint that the Operator Tree(rooted from this operator) will
    *     use while doing its own query processing
    */
-  default long calculateMaxPeekMemory() {
-    return 0L;
-  }
+  long calculateMaxPeekMemory();
 
-  // TODO remove the default while completing all the operators
   /** @return estimated max memory footprint for returned TsBlock when calling operator.next() */
-  default long calculateMaxReturnSize() {
-    return 0L;
-  }
+  long calculateMaxReturnSize();
 
-  // TODO remove the default while completing all the operators
   /**
    * @return each operator's retained size(including all its children's retained size) after calling
    *     its next() method
    */
-  default long calculateRetainedSizeAfterCallingNext() {
-    return 0L;
-  }
+  long calculateRetainedSizeAfterCallingNext();
 }
