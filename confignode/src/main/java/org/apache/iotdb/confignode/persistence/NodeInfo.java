@@ -33,10 +33,9 @@ import org.apache.iotdb.confignode.consensus.request.write.RegisterDataNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveDataNodePlan;
 import org.apache.iotdb.confignode.consensus.response.DataNodeConfigurationResp;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -103,30 +102,26 @@ public class NodeInfo implements SnapshotProcessor {
   }
 
   public void addMetrics() {
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.CONFIG_NODE.toString(),
-              MetricLevel.CORE,
-              registeredConfigNodes,
-              o -> getRegisteredConfigNodeCount(),
-              Tag.NAME.toString(),
-              "total",
-              Tag.STATUS.toString(),
-              NodeStatus.Registered.toString());
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.DATA_NODE.toString(),
-              MetricLevel.CORE,
-              registeredDataNodes,
-              Map::size,
-              Tag.NAME.toString(),
-              "total",
-              Tag.STATUS.toString(),
-              NodeStatus.Registered.toString());
-    }
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.CONFIG_NODE.toString(),
+            MetricLevel.CORE,
+            registeredConfigNodes,
+            o -> getRegisteredConfigNodeCount(),
+            Tag.NAME.toString(),
+            "total",
+            Tag.STATUS.toString(),
+            NodeStatus.Registered.toString());
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.DATA_NODE.toString(),
+            MetricLevel.CORE,
+            registeredDataNodes,
+            Map::size,
+            Tag.NAME.toString(),
+            "total",
+            Tag.STATUS.toString(),
+            NodeStatus.Registered.toString());
   }
 
   /**

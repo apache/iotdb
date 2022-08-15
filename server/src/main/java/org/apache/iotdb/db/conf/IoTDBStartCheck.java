@@ -22,6 +22,7 @@ import org.apache.iotdb.common.rpc.thrift.TConsensusGroupType;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.exception.ConfigurationException;
 import org.apache.iotdb.commons.file.SystemFileFactory;
+import org.apache.iotdb.confignode.rpc.thrift.TGlobalConfig;
 import org.apache.iotdb.db.metadata.upgrade.MetadataUpgrader;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -454,6 +455,41 @@ public class IoTDBStartCheck {
       } else if (type == TConsensusGroupType.SchemaRegion) {
         properties.setProperty(SCHEMA_REGION_CONSENSUS_PROTOCOL, regionConsensusProtocol);
       }
+      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      // serialize finished, delete old system.properties file
+      if (propertiesFile.exists()) {
+        Files.delete(propertiesFile.toPath());
+      }
+    }
+    // rename system.properties.tmp to system.properties
+    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
+  }
+
+  public void serializeGlobalConfig(TGlobalConfig globalConfig) throws IOException {
+    // create an empty tmpPropertiesFile
+    if (tmpPropertiesFile.createNewFile()) {
+      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
+    } else {
+      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      System.exit(-1);
+    }
+
+    reloadProperties();
+
+    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+
+      if (!checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
+        properties.setProperty(
+            DATA_REGION_CONSENSUS_PROTOCOL, globalConfig.getDataRegionConsensusProtocolClass());
+      }
+      if (!checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
+        properties.setProperty(
+            SCHEMA_REGION_CONSENSUS_PROTOCOL, globalConfig.getSchemaRegionConsensusProtocolClass());
+      }
+      properties.setProperty(
+          PARTITION_INTERVAL_STRING, String.valueOf(globalConfig.timePartitionInterval));
+      properties.setProperty(
+          PARTITION_INTERVAL_STRING, String.valueOf(globalConfig.timePartitionInterval));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // serialize finished, delete old system.properties file
       if (propertiesFile.exists()) {

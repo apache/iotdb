@@ -59,10 +59,9 @@ import org.apache.iotdb.db.mpp.execution.schedule.DriverScheduler;
 import org.apache.iotdb.db.protocol.mpprest.MPPRestService;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.thrift.impl.ClientRPCServiceImpl;
-import org.apache.iotdb.db.sync.receiver.ReceiverService;
-import org.apache.iotdb.db.sync.sender.service.SenderService;
+import org.apache.iotdb.db.sync.SyncService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -194,28 +193,14 @@ public class DataNode implements DataNodeMBean {
               .checkConsensusProtocolExists(TConsensusGroupType.DataRegion)) {
             config.setDataRegionConsensusProtocolClass(
                 dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass());
-            IoTDBStartCheck.getInstance()
-                .serializeConsensusProtocol(
-                    dataNodeRegisterResp.globalConfig.getDataRegionConsensusProtocolClass(),
-                    TConsensusGroupType.DataRegion);
           }
 
           if (!IoTDBStartCheck.getInstance()
               .checkConsensusProtocolExists(TConsensusGroupType.SchemaRegion)) {
             config.setSchemaRegionConsensusProtocolClass(
                 dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass());
-            IoTDBStartCheck.getInstance()
-                .serializeConsensusProtocol(
-                    dataNodeRegisterResp.globalConfig.getSchemaRegionConsensusProtocolClass(),
-                    TConsensusGroupType.SchemaRegion);
           }
-
-          config.setSeriesPartitionExecutorClass(
-              dataNodeRegisterResp.globalConfig.getSeriesPartitionExecutorClass());
-          config.setSeriesPartitionSlotNum(
-              dataNodeRegisterResp.globalConfig.getSeriesPartitionSlotNum());
-          config.setReadConsistencyLevel(
-              dataNodeRegisterResp.globalConfig.getReadConsistencyLevel());
+          IoTDBStartCheck.getInstance().serializeGlobalConfig(dataNodeRegisterResp.globalConfig);
 
           logger.info("Register to the cluster successfully");
           return;
@@ -272,7 +257,7 @@ public class DataNode implements DataNodeMBean {
     initServiceProvider();
 
     // init metric service
-    registerManager.register(MetricsService.getInstance());
+    registerManager.register(MetricService.getInstance());
 
     logger.info("recover the schema...");
     initSchemaEngine();
@@ -296,8 +281,6 @@ public class DataNode implements DataNodeMBean {
 
     registerUdfServices();
 
-    registerManager.register(ReceiverService.getInstance());
-
     logger.info(
         "IoTDB DataNode is setting up, some storage groups may not be ready now, please wait several seconds...");
 
@@ -311,7 +294,7 @@ public class DataNode implements DataNodeMBean {
       }
     }
 
-    registerManager.register(SenderService.getInstance());
+    registerManager.register(SyncService.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     // in mpp mode we temporarily don't start settle service because it uses StorageEngine directly
     // in itself, but currently we need to use StorageEngineV2 instead of StorageEngine in mpp mode.
@@ -320,7 +303,7 @@ public class DataNode implements DataNodeMBean {
     registerManager.register(ContinuousQueryService.getInstance());
 
     // start reporter
-    MetricsService.getInstance().startAllReporter();
+    MetricService.getInstance().startAllReporter();
 
     // start region migrate service
     registerManager.register(RegionMigrateService.getInstance());
@@ -406,7 +389,7 @@ public class DataNode implements DataNodeMBean {
 
     // QSW
     try {
-      MetricsService.getInstance().stop();
+      MetricService.getInstance().stop();
       SchemaRegionConsensusImpl.getInstance().stop();
       DataRegionConsensusImpl.getInstance().stop();
     } catch (Exception e) {

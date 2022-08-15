@@ -764,12 +764,12 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
 
       @Override
       public TSDataType[] getDataTypes() {
-        return new TSDataType[0];
+        return dataTypes;
       }
 
       @Override
       public RowWindow currentWindow() {
-        return null;
+        return window;
       }
     };
   }

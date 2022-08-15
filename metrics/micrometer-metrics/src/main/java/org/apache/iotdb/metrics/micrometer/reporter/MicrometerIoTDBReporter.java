@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer.reporter;
 
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.reporter.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 public class MicrometerIoTDBReporter implements Reporter {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MicrometerIoTDBReporter.class);
-  private MetricManager metricManager;
+  private AbstractMetricManager metricManager;
 
   @Override
   public boolean start() {
@@ -86,7 +86,7 @@ public class MicrometerIoTDBReporter implements Reporter {
   }
 
   @Override
-  public void setMetricManager(MetricManager metricManager) {
+  public void setMetricManager(AbstractMetricManager metricManager) {
     this.metricManager = metricManager;
   }
 }
