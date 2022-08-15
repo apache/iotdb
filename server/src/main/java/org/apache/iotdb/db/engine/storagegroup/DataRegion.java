@@ -81,7 +81,7 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.db.sync.sender.manager.TsFileSyncManager;
@@ -96,7 +96,6 @@ import org.apache.iotdb.db.wal.recover.file.UnsealedTsFileRecoverPerformer;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.db.wal.utils.listener.WALFlushListener;
 import org.apache.iotdb.db.wal.utils.listener.WALRecoverListener;
-import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.MetricLevel;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -345,17 +344,14 @@ public class DataRegion {
       recover();
     }
 
-    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.MEM.toString(),
-              MetricLevel.IMPORTANT,
-              storageGroupInfo,
-              StorageGroupInfo::getMemCost,
-              Tag.NAME.toString(),
-              "storageGroup_" + getLogicalStorageGroupName());
-    }
+    MetricService.getInstance()
+        .getOrCreateAutoGauge(
+            Metric.MEM.toString(),
+            MetricLevel.IMPORTANT,
+            storageGroupInfo,
+            StorageGroupInfo::getMemCost,
+            Tag.NAME.toString(),
+            "storageGroup_" + getLogicalStorageGroupName());
   }
 
   public String getLogicalStorageGroupName() {
@@ -902,7 +898,7 @@ public class DataRegion {
     writeLock("InsertRow");
     try {
       // init map
-      long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+      long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
 
       lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
 
@@ -3496,7 +3492,7 @@ public class DataRegion {
           continue;
         }
         // init map
-        long timePartitionId = StorageEngine.getTimePartition(insertRowNode.getTime());
+        long timePartitionId = StorageEngineV2.getTimePartition(insertRowNode.getTime());
 
         lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
         // as the plans have been ordered, and we have get the write lock,

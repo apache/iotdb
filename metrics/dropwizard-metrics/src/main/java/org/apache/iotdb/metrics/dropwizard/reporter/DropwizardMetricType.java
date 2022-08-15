@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,15 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service.metrics;
 
-import org.apache.iotdb.commons.exception.StartupException;
+package org.apache.iotdb.metrics.dropwizard.reporter;
 
-public interface MetricsServiceMBean {
+public enum DropwizardMetricType {
+  COUNTER("counter"),
+  GAUGE("gauge"),
+  SUMMARY("summary"),
+  HISTOGRAM("histogram"),
+  UNTYPED("untyped");
 
-  void startService() throws StartupException;
+  private final String text;
 
-  void restartService() throws StartupException;
+  DropwizardMetricType(String text) {
+    this.text = text;
+  }
 
-  void stopService();
+  public String getText() {
+    return text;
+  }
 }

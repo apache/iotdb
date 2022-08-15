@@ -68,7 +68,7 @@ import org.apache.iotdb.db.mpp.plan.planner.plan.node.PlanNodeType;
 import org.apache.iotdb.db.mpp.plan.planner.plan.node.write.InsertNode;
 import org.apache.iotdb.db.service.DataNode;
 import org.apache.iotdb.db.service.RegionMigrateService;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -394,8 +394,7 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()
         && req.isNeedSamplingLoad()) {
       long cpuLoad =
-          MetricsService.getInstance()
-              .getMetricManager()
+          MetricService.getInstance()
               .getOrCreateGauge(
                   Metric.SYS_CPU_LOAD.toString(), MetricLevel.CORE, Tag.NAME.toString(), "system")
               .value();
@@ -456,15 +455,13 @@ public class DataNodeInternalRPCServiceImpl implements IDataNodeRPCService.Iface
 
       for (String id : heapIds) {
         Gauge gauge =
-            MetricsService.getInstance()
-                .getMetricManager()
+            MetricService.getInstance()
                 .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "heap");
         result += gauge.value();
       }
       for (String id : noHeapIds) {
         Gauge gauge =
-            MetricsService.getInstance()
-                .getMetricManager()
+            MetricService.getInstance()
                 .getOrCreateGauge(gaugeName, MetricLevel.IMPORTANT, "id", id, "area", "noheap");
         result += gauge.value();
       }

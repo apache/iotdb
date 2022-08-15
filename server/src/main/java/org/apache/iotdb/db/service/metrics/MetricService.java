@@ -27,23 +27,23 @@ import org.apache.iotdb.commons.service.ServiceType;
 import org.apache.iotdb.db.service.metrics.predefined.FileMetrics;
 import org.apache.iotdb.db.service.metrics.predefined.ProcessMetrics;
 import org.apache.iotdb.db.service.metrics.predefined.SystemMetrics;
-import org.apache.iotdb.metrics.MetricService;
+import org.apache.iotdb.metrics.AbstractMetricService;
 import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.predefined.IMetricSet;
+import org.apache.iotdb.metrics.predefined.PredefinedMetric;
 import org.apache.iotdb.metrics.predefined.jvm.JvmMetrics;
 import org.apache.iotdb.metrics.predefined.logback.LogbackMetrics;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MetricsService extends MetricService implements MetricsServiceMBean, IService {
-  private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
+public class MetricService extends AbstractMetricService implements MetricServiceMBean, IService {
+  private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
   private final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
-  private MetricsService() {}
+  private MetricService() {}
 
   @Override
   public void start() throws StartupException {
@@ -77,7 +77,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
   }
 
   @Override
-  public void enablePredefinedMetric(PredefinedMetric metric) {
+  public void enablePredefinedMetrics(PredefinedMetric metric) {
     IMetricSet metricSet;
     switch (metric) {
       case JVM:
@@ -143,16 +143,16 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
 
   @Override
   public ServiceType getID() {
-    return ServiceType.METRICS_SERVICE;
+    return ServiceType.METRIC_SERVICE;
   }
 
-  public static MetricsService getInstance() {
+  public static MetricService getInstance() {
     return MetricsServiceHolder.INSTANCE;
   }
 
   private static class MetricsServiceHolder {
 
-    private static final MetricsService INSTANCE = new MetricsService();
+    private static final MetricService INSTANCE = new MetricService();
 
     private MetricsServiceHolder() {}
   }

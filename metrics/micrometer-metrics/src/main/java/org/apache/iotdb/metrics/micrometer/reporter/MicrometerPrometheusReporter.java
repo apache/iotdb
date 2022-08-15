@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.metrics.micrometer.reporter;
 
-import org.apache.iotdb.metrics.MetricManager;
+import org.apache.iotdb.metrics.AbstractMetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.reporter.Reporter;
@@ -45,7 +45,7 @@ public class MicrometerPrometheusReporter implements Reporter {
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
 
-  private MetricManager metricManager;
+  private AbstractMetricManager metricManager;
   private DisposableServer httpServer;
 
   @Override
@@ -66,7 +66,7 @@ public class MicrometerPrometheusReporter implements Reporter {
         HttpServer.create()
             .idleTimeout(Duration.ofMillis(30_000L))
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
-            .port(Integer.parseInt(metricConfig.getPrometheusExporterPort()))
+            .port(metricConfig.getPrometheusExporterPort())
             .route(
                 routes ->
                     routes.get(
@@ -107,7 +107,7 @@ public class MicrometerPrometheusReporter implements Reporter {
   }
 
   @Override
-  public void setMetricManager(MetricManager metricManager) {
+  public void setMetricManager(AbstractMetricManager metricManager) {
     this.metricManager = metricManager;
   }
 }
