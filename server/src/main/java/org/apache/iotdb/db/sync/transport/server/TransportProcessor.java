@@ -19,6 +19,7 @@
  */
 package org.apache.iotdb.db.sync.transport.server;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IllegalPathException;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.commons.sync.SyncPathUtil;
@@ -27,11 +28,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.sync.PipeDataLoadException;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
-import org.apache.iotdb.service.transport.thrift.IdentityInfo;
-import org.apache.iotdb.service.transport.thrift.MetaInfo;
-import org.apache.iotdb.service.transport.thrift.TransportService;
-import org.apache.iotdb.service.transport.thrift.TransportStatus;
-import org.apache.iotdb.service.transport.thrift.Type;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportType;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -56,23 +57,18 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.apache.iotdb.commons.sync.SyncConstant.CONFLICT_CODE;
 import static org.apache.iotdb.commons.sync.SyncConstant.DATA_CHUNK_SIZE;
-import static org.apache.iotdb.commons.sync.SyncConstant.ERROR_CODE;
-import static org.apache.iotdb.commons.sync.SyncConstant.REBASE_CODE;
-import static org.apache.iotdb.commons.sync.SyncConstant.RETRY_CODE;
-import static org.apache.iotdb.commons.sync.SyncConstant.SUCCESS_CODE;
 
-public class TransportServiceImpl implements TransportService.Iface {
-  private static Logger logger = LoggerFactory.getLogger(TransportServiceImpl.class);
+public class TransportProcessor {
+  private static Logger logger = LoggerFactory.getLogger(TransportProcessor.class);
 
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final String RECORD_SUFFIX = ".record";
   private static final String PATCH_SUFFIX = ".patch";
-  private final ThreadLocal<IdentityInfo> identityInfoThreadLocal;
-  private final Map<IdentityInfo, Integer> identityInfoCounter;
+  private final ThreadLocal<TSyncIdentityInfo> identityInfoThreadLocal;
+  private final Map<TSyncIdentityInfo, Integer> identityInfoCounter;
 
-  public TransportServiceImpl() {
+  public TransportProcessor() {
     identityInfoThreadLocal = new ThreadLocal<>();
     identityInfoCounter = new ConcurrentHashMap<>();
   }
@@ -138,21 +134,20 @@ public class TransportServiceImpl implements TransportService.Iface {
     return new CheckResult(true, "0");
   }
 
-  @Override
-  public TransportStatus handshake(IdentityInfo identityInfo) throws TException {
+  public TSStatus handshake(TSyncIdentityInfo identityInfo) {
     logger.debug("Invoke handshake method from client ip = {}", identityInfo.address);
     identityInfoThreadLocal.set(identityInfo);
     identityInfoCounter.compute(identityInfo, (k, v) -> v == null ? 1 : v + 1);
     // check ip address
     if (!verifyIPSegment(config.getIpWhiteList(), identityInfo.address)) {
-      return new TransportStatus(
-          ERROR_CODE,
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPESERVER_ERROR,
           "Sender IP is not in the white list of receiver IP and synchronization tasks are not allowed.");
     }
     // Version check
     if (!config.getIoTDBMajorVersion(identityInfo.version).equals(config.getIoTDBMajorVersion())) {
-      return new TransportStatus(
-          ERROR_CODE,
+      return RpcUtils.getStatus(
+          TSStatusCode.PIPESERVER_ERROR,
           String.format(
               "Version mismatch: the sender <%s>, the receiver <%s>",
               identityInfo.version, config.getIoTDBVersion()));
@@ -161,7 +156,7 @@ public class TransportServiceImpl implements TransportService.Iface {
     if (!new File(SyncPathUtil.getFileDataDirPath(identityInfo)).exists()) {
       new File(SyncPathUtil.getFileDataDirPath(identityInfo)).mkdirs();
     }
-    return new TransportStatus(SUCCESS_CODE, "");
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
   /**
@@ -204,26 +199,26 @@ public class TransportServiceImpl implements TransportService.Iface {
     return ipAddressBinary.equals(ipSegmentBinary);
   }
 
-  @Override
-  public TransportStatus transportData(MetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest) {
-    IdentityInfo identityInfo = identityInfoThreadLocal.get();
+  public TSStatus transportData(
+      TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest) {
+    TSyncIdentityInfo identityInfo = identityInfoThreadLocal.get();
     logger.debug("Invoke transportData method from client ip = {}", identityInfo.address);
 
     String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
-    Type type = metaInfo.type;
+    TSyncTransportType type = metaInfo.type;
     String fileName = metaInfo.fileName;
     long startIndex = metaInfo.startIndex;
 
     // Check file start index valid
-    if (type == Type.FILE) {
+    if (type == TSyncTransportType.FILE) {
       try {
         CheckResult result = checkStartIndexValid(new File(fileDir, fileName), startIndex);
         if (!result.isResult()) {
-          return new TransportStatus(REBASE_CODE, result.getIndex());
+          return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_REBASE, result.getIndex());
         }
       } catch (IOException e) {
         logger.error(e.getMessage());
-        return new TransportStatus(ERROR_CODE, e.getMessage());
+        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
       }
     }
 
@@ -234,23 +229,23 @@ public class TransportServiceImpl implements TransportService.Iface {
       messageDigest = MessageDigest.getInstance("SHA-256");
     } catch (NoSuchAlgorithmException e) {
       logger.error(e.getMessage());
-      return new TransportStatus(ERROR_CODE, e.getMessage());
+      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
     }
     messageDigest.update(buff);
     byte[] digestBytes = new byte[digest.capacity()];
     digest.get(digestBytes);
     if (!Arrays.equals(messageDigest.digest(), digestBytes)) {
-      return new TransportStatus(RETRY_CODE, "Data digest check error, retry.");
+      return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_RETRY, "Data digest check error");
     }
 
-    if (type != Type.FILE) {
+    if (type != TSyncTransportType.FILE) {
       buff.position(pos);
       int length = buff.capacity();
       byte[] byteArray = new byte[length];
       buff.get(byteArray);
       try {
         PipeData pipeData = PipeData.createPipeData(byteArray);
-        if (type == Type.TSFILE) {
+        if (type == TSyncTransportType.TSFILE) {
           // Do with file
           handleTsFilePipeData((TsFilePipeData) pipeData, fileDir);
         }
@@ -264,10 +259,12 @@ public class TransportServiceImpl implements TransportService.Iface {
             "Load pipeData with serialize number {} successfully.", pipeData.getSerialNumber());
       } catch (IOException | IllegalPathException e) {
         logger.error("Pipe data transport error, {}", e.getMessage());
-        return new TransportStatus(RETRY_CODE, "Data digest transport error " + e.getMessage());
+        return RpcUtils.getStatus(
+            TSStatusCode.SYNC_FILE_RETRY, "Data digest transport error " + e.getMessage());
       } catch (PipeDataLoadException e) {
         logger.error("Fail to load pipeData because {}.", e.getMessage());
-        return new TransportStatus(ERROR_CODE, "Fail to load pipeData because " + e.getMessage());
+        return RpcUtils.getStatus(
+            TSStatusCode.SYNC_FILE_ERROR, "Fail to load pipeData because " + e.getMessage());
       }
     } else {
       // Write buff to {file}.patch
@@ -290,15 +287,15 @@ public class TransportServiceImpl implements TransportService.Iface {
                 + " is done.");
       } catch (IOException e) {
         logger.error(e.getMessage());
-        return new TransportStatus(ERROR_CODE, e.getMessage());
+        return RpcUtils.getStatus(TSStatusCode.SYNC_FILE_ERROR, e.getMessage());
       }
     }
-    return new TransportStatus(SUCCESS_CODE, "");
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
   }
 
-  @Override
-  public TransportStatus checkFileDigest(MetaInfo metaInfo, ByteBuffer digest) throws TException {
-    IdentityInfo identityInfo = identityInfoThreadLocal.get();
+  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
+      throws TException {
+    TSyncIdentityInfo identityInfo = identityInfoThreadLocal.get();
     logger.debug("Invoke checkFileDigest method from client ip = {}", identityInfo.address);
     String fileDir = SyncPathUtil.getFileDataDirPath(identityInfo);
     synchronized (fileDir.intern()) {
@@ -308,7 +305,7 @@ public class TransportServiceImpl implements TransportService.Iface {
         messageDigest = MessageDigest.getInstance("SHA-256");
       } catch (NoSuchAlgorithmException e) {
         logger.error(e.getMessage());
-        return new TransportStatus(ERROR_CODE, e.getMessage());
+        return RpcUtils.getStatus(TSStatusCode.PIPESERVER_ERROR, e.getMessage());
       }
 
       try (InputStream inputStream =
@@ -330,14 +327,14 @@ public class TransportServiceImpl implements TransportService.Iface {
               localDigest,
               digest);
           new File(fileDir, fileName + RECORD_SUFFIX).delete();
-          return new TransportStatus(CONFLICT_CODE, "File digest check error.");
+          return RpcUtils.getStatus(TSStatusCode.PIPESERVER_ERROR, "File digest check error.");
         }
       } catch (IOException e) {
         logger.error(e.getMessage());
-        return new TransportStatus(ERROR_CODE, e.getMessage());
+        return RpcUtils.getStatus(TSStatusCode.PIPESERVER_ERROR, e.getMessage());
       }
 
-      return new TransportStatus(SUCCESS_CODE, "");
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "");
     }
   }
 
@@ -354,7 +351,7 @@ public class TransportServiceImpl implements TransportService.Iface {
    */
   public void handleClientExit() {
     // Handle client exit here.
-    IdentityInfo identityInfo = identityInfoThreadLocal.get();
+    TSyncIdentityInfo identityInfo = identityInfoThreadLocal.get();
     if (identityInfo != null) {
       // if all connections exit, stop pipe
       identityInfoThreadLocal.remove();

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sync.transport.client;
 
+import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.sync.SyncConstant;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -25,9 +26,9 @@ import org.apache.iotdb.db.exception.SyncConnectionException;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.TConfigurationConst;
-import org.apache.iotdb.service.transport.thrift.IdentityInfo;
-import org.apache.iotdb.service.transport.thrift.TransportService;
-import org.apache.iotdb.service.transport.thrift.TransportStatus;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.IClientRPCService;
+import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -38,14 +39,12 @@ import org.apache.thrift.transport.TTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.iotdb.commons.sync.SyncConstant.SUCCESS_CODE;
-
 public class ClientWrapper {
   private static final Logger logger = LoggerFactory.getLogger(ClientWrapper.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private TTransport transport = null;
-  private volatile TransportService.Client serviceClient = null;
+  private volatile IClientRPCService.Client serviceClient = null;
 
   /* remote IP address*/
   private final String ipAddress;
@@ -63,7 +62,7 @@ public class ClientWrapper {
     this.localIP = localIP;
   }
 
-  public TransportService.Client getClient() {
+  public IClientRPCService.Client getClient() {
     return serviceClient;
   }
 
@@ -93,19 +92,19 @@ public class ClientWrapper {
       } else {
         protocol = new TBinaryProtocol(transport);
       }
-      serviceClient = new TransportService.Client(protocol);
+      serviceClient = new IClientRPCService.Client(protocol);
 
       // Underlay socket open.
       if (!transport.isOpen()) {
         transport.open();
       }
 
-      IdentityInfo identityInfo =
-          new IdentityInfo(
+      TSyncIdentityInfo identityInfo =
+          new TSyncIdentityInfo(
               localIP, pipe.getName(), pipe.getCreateTime(), config.getIoTDBMajorVersion());
-      TransportStatus status = serviceClient.handshake(identityInfo);
-      if (status.code != SUCCESS_CODE) {
-        logger.error("The receiver rejected the synchronization task because {}", status.msg);
+      TSStatus status = serviceClient.handshake(identityInfo);
+      if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        logger.error("The receiver rejected the synchronization task because {}", status.message);
         return false;
       }
     } catch (TException e) {

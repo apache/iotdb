@@ -31,9 +31,9 @@ import org.apache.thrift.transport.TTransport;
 
 public class TransportServerThriftHandler implements TServerEventHandler {
 
-  private TransportServiceImpl serviceImpl;
+  private TransportProcessor serviceImpl;
 
-  public TransportServerThriftHandler(TransportServiceImpl serviceImpl) {
+  public TransportServerThriftHandler(TransportProcessor serviceImpl) {
     this.serviceImpl = serviceImpl;
   }
 

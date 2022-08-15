@@ -50,7 +50,6 @@ import org.apache.iotdb.db.sync.sender.pipe.PipeInfo;
 import org.apache.iotdb.db.sync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.sender.service.TransportHandler;
-import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
 import org.apache.iotdb.db.utils.sync.SyncPipeUtil;
 import org.apache.iotdb.pipe.external.api.IExternalPipeSinkWriterFactory;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -132,15 +131,15 @@ public class SyncService implements IService {
     if (syncInfoFetcher.isPipeServerEnable() && !isRecovery) {
       return;
     }
-    try {
-      TransportServerManager.getInstance().startService();
-      TSStatus status = syncInfoFetcher.startPipeServer();
-      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        throw new PipeServerException("Failed to start pipe server because " + status.getMessage());
-      }
-    } catch (StartupException e) {
-      throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
+    //    try {
+    //      TransportServerManager.getInstance().startService();
+    TSStatus status = syncInfoFetcher.startPipeServer();
+    if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new PipeServerException("Failed to start pipe server because " + status.getMessage());
     }
+    //    } catch (StartupException e) {
+    //      throw new PipeServerException("Failed to start pipe server because " + e.getMessage());
+    //    }
   }
 
   /** stop receiver service */
@@ -148,7 +147,7 @@ public class SyncService implements IService {
     if (!syncInfoFetcher.isPipeServerEnable()) {
       return;
     }
-    TransportServerManager.getInstance().stopService();
+    //    TransportServerManager.getInstance().stopService();
     TSStatus status = syncInfoFetcher.stopPipeServer();
     if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       throw new PipeServerException("Failed to stop pipe server because " + status.getMessage());

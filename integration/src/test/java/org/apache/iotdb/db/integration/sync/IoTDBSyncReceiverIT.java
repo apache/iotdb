@@ -51,7 +51,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -94,15 +93,9 @@ public class IoTDBSyncReceiverIT {
     FileUtils.moveDirectory(srcDir, tmpDir);
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.envSetUp();
-    try {
-      SyncService.getInstance().startPipeServer(true);
-      new Socket("localhost", 6670).close();
-    } catch (Exception e) {
-      Assert.fail("Failed to start pipe server because " + e.getMessage());
-    }
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
     remoteIp1 = "127.0.0.1";
-    client = new IoTDBSInkTransportClient(pipe, remoteIp1, 6670, "127.0.0.1");
+    client = new IoTDBSInkTransportClient(pipe, remoteIp1, 6667, "127.0.0.1");
     client.handshake();
   }
 

@@ -74,6 +74,7 @@ import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Operation;
+import org.apache.iotdb.db.sync.transport.server.TransportProcessor;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -122,6 +123,8 @@ import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSyncIdentityInfo;
+import org.apache.iotdb.service.rpc.thrift.TSyncTransportMetaInfo;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -305,9 +308,12 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
 
   protected final ServiceProvider serviceProvider;
 
+  private final TransportProcessor transportService;
+
   public TSServiceImpl() {
     super();
     serviceProvider = IoTDB.serviceProvider;
+    transportService = new TransportProcessor();
   }
 
   @Override
@@ -2101,6 +2107,23 @@ public class TSServiceImpl implements IClientRPCServiceWithHandler {
     DropTemplatePlan plan = new DropTemplatePlan(req.templateName);
     TSStatus status = SESSION_MANAGER.checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
+  }
+
+  @Override
+  public TSStatus handshake(TSyncIdentityInfo info) throws TException {
+    return transportService.handshake(info);
+  }
+
+  @Override
+  public TSStatus transportData(TSyncTransportMetaInfo metaInfo, ByteBuffer buff, ByteBuffer digest)
+      throws TException {
+    return transportService.transportData(metaInfo, buff, digest);
+  }
+
+  @Override
+  public TSStatus checkFileDigest(TSyncTransportMetaInfo metaInfo, ByteBuffer digest)
+      throws TException {
+    return transportService.checkFileDigest(metaInfo, digest);
   }
 
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {

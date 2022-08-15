@@ -32,7 +32,6 @@ import org.apache.iotdb.db.sync.pipedata.TsFilePipeData;
 import org.apache.iotdb.db.sync.sender.pipe.Pipe;
 import org.apache.iotdb.db.sync.sender.pipe.TsFilePipe;
 import org.apache.iotdb.db.sync.transport.client.IoTDBSInkTransportClient;
-import org.apache.iotdb.db.sync.transport.server.TransportServerManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
@@ -131,7 +130,7 @@ public class TransportServiceTest {
     pipeDataList.add(new DeletionPipeData(deletion, serialNum++));
 
     // 3. start server
-    TransportServerManager.getInstance().startService();
+    //    TransportServerManager.getInstance().startService();
 
     // 4. start client
     Pipe pipe = new TsFilePipe(createdTime1, pipeName1, null, 0, false);
