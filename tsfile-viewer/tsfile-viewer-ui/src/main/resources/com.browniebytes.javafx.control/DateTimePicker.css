@@ -1,3 +1,13 @@
+/**
+ * This class includes code from taipeiben's DataTimePicker project.
+ *
+ * <p>Copyright: 2014-2015 taipeiben and/or other contributors
+ *
+ * <p>Project page: https://github.com/burmanm/gorilla-tsc
+ *
+ * <p>License: http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 #DateTimePicker_TextField {
 	-fx-background-radius:3 0 0 3
 }
