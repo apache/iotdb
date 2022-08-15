@@ -24,6 +24,7 @@ import org.apache.iotdb.udf.api.access.RowWindow;
 import org.apache.iotdb.udf.api.collector.PointCollector;
 import org.apache.iotdb.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.udf.api.customizer.parameter.UDFParameters;
+import org.apache.iotdb.udf.api.customizer.strategy.SessionTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.customizer.strategy.SlidingTimeWindowAccessStrategy;
 import org.apache.iotdb.udf.api.type.Type;
@@ -44,7 +45,8 @@ public class WindowStartEnd implements UDTF {
                   parameters.getInt(ExampleUDFConstant.SLIDING_STEP_KEY))
               : new SlidingSizeWindowAccessStrategy(
                   parameters.getInt(ExampleUDFConstant.WINDOW_SIZE_KEY)));
-    } else {
+    } else if (ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_TIME.equals(
+        parameters.getString(ExampleUDFConstant.ACCESS_STRATEGY_KEY))) {
       configurations.setAccessStrategy(
           parameters.hasAttribute(ExampleUDFConstant.SLIDING_STEP_KEY)
                   && parameters.hasAttribute(ExampleUDFConstant.DISPLAY_WINDOW_BEGIN_KEY)
@@ -56,6 +58,18 @@ public class WindowStartEnd implements UDTF {
                   parameters.getLong(ExampleUDFConstant.DISPLAY_WINDOW_END_KEY))
               : new SlidingTimeWindowAccessStrategy(
                   parameters.getLong(ExampleUDFConstant.TIME_INTERVAL_KEY)));
+    } else if (ExampleUDFConstant.ACCESS_STRATEGY_SESSION.equals(
+        parameters.getString(ExampleUDFConstant.ACCESS_STRATEGY_KEY))) {
+      configurations.setAccessStrategy(
+          parameters.hasAttribute(ExampleUDFConstant.SESSION_GAP_KEY)
+                  && parameters.hasAttribute(ExampleUDFConstant.DISPLAY_WINDOW_BEGIN_KEY)
+                  && parameters.hasAttribute(ExampleUDFConstant.DISPLAY_WINDOW_END_KEY)
+              ? new SessionTimeWindowAccessStrategy(
+                  parameters.getLong(ExampleUDFConstant.DISPLAY_WINDOW_BEGIN_KEY),
+                  parameters.getLong(ExampleUDFConstant.DISPLAY_WINDOW_END_KEY),
+                  parameters.getLong(ExampleUDFConstant.SESSION_GAP_KEY))
+              : new SessionTimeWindowAccessStrategy(
+                  parameters.getLong(ExampleUDFConstant.SESSION_GAP_KEY)));
     }
   }
 
