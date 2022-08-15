@@ -1529,7 +1529,7 @@ public class IoTDBConfig {
         System.exit(-1);
       }
     } else {
-      logger.warn("Set system mode from {} to {}.", status, newStatus);
+      logger.info("Set system mode from {} to NORMAL.", status);
     }
     this.status = newStatus;
   }
