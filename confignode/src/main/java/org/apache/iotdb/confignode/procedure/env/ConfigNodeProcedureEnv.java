@@ -21,7 +21,9 @@ package org.apache.iotdb.confignode.procedure.env;
 
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TDataNodeConfiguration;
+import org.apache.iotdb.common.rpc.thrift.TDataNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
+import org.apache.iotdb.commons.cluster.NodeStatus;
 import org.apache.iotdb.confignode.client.ConfigNodeRequestType;
 import org.apache.iotdb.confignode.client.DataNodeRequestType;
 import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool;
@@ -34,6 +36,7 @@ import org.apache.iotdb.confignode.exception.AddConsensusGroupException;
 import org.apache.iotdb.confignode.exception.AddPeerException;
 import org.apache.iotdb.confignode.manager.ConfigManager;
 import org.apache.iotdb.confignode.manager.ConsensusManager;
+import org.apache.iotdb.confignode.manager.load.heartbeat.DataNodeHeartbeatCache;
 import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.scheduler.LockQueue;
 import org.apache.iotdb.confignode.procedure.scheduler.ProcedureScheduler;
@@ -286,6 +289,20 @@ public class ConfigNodeProcedureEnv {
         .broadCastTheLatestConfigNodeGroup(
             configManager.getNodeManager().getRegisteredDataNodeLocations(),
             configManager.getNodeManager().getRegisteredConfigNodes());
+  }
+
+  /**
+   * Mark the given datanode as removing status, and broadcast the region map, to avoid read or
+   * write request routing to this node.
+   *
+   * @param dataNodeLocation the datanode to be marked as removing status
+   */
+  public void markDataNodeAsRemovingAndBroadCast(TDataNodeLocation dataNodeLocation) {
+    int dataNodeId = dataNodeLocation.getDataNodeId();
+    DataNodeHeartbeatCache c =
+        (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
+    c.setNodeStatus(NodeStatus.Removing);
+    configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 
   public LockQueue getNodeLock() {

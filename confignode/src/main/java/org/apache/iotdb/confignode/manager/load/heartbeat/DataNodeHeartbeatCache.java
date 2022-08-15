@@ -28,7 +28,7 @@ public class DataNodeHeartbeatCache implements INodeCache {
   // TODO: This class might be split into DataNodeCache and ConfigNodeCache
 
   // Cache heartbeat samples
-  private static final int maximumWindowSize = 100;
+  private static final int MAXIMUM_WINDOW_SIZE = 100;
   private final LinkedList<NodeHeartbeatSample> slidingWindow;
 
   // For guiding queries, the higher the score the higher the load
@@ -43,6 +43,10 @@ public class DataNodeHeartbeatCache implements INodeCache {
     this.status = NodeStatus.Unknown;
   }
 
+  public void setNodeStatus(NodeStatus status) {
+    this.status = status;
+  }
+
   @Override
   public void cacheHeartbeatSample(NodeHeartbeatSample newHeartbeatSample) {
     synchronized (slidingWindow) {
@@ -53,7 +57,7 @@ public class DataNodeHeartbeatCache implements INodeCache {
         slidingWindow.add(newHeartbeatSample);
       }
 
-      if (slidingWindow.size() > maximumWindowSize) {
+      if (slidingWindow.size() > MAXIMUM_WINDOW_SIZE) {
         slidingWindow.removeFirst();
       }
     }
