@@ -54,7 +54,6 @@ public class SyncInfoTest {
   public void testOperatePipe() throws Exception {
     SyncInfo syncInfo = new SyncInfo();
     try {
-      syncInfo.startServer();
       CreatePipeSinkPlan createPipeSinkPlan = new CreatePipeSinkPlan("demo", "iotdb");
       createPipeSinkPlan.addPipeSinkAttribute("ip", "127.0.0.1");
       createPipeSinkPlan.addPipeSinkAttribute("port", "6670");

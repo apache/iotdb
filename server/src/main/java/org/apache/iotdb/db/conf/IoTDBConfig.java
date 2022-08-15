@@ -494,9 +494,6 @@ public class IoTDBConfig {
    */
   private int externalSortThreshold = 1000;
 
-  /** If this IoTDB instance is a receiver of sync, set the server port. */
-  private int pipeServerPort = 6670;
-
   /** White list for sync */
   private String ipWhiteList = "0.0.0.0/0";
 
@@ -1421,14 +1418,6 @@ public class IoTDBConfig {
 
   public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
     this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
-  }
-
-  public int getPipeServerPort() {
-    return pipeServerPort;
-  }
-
-  public void setPipeServerPort(int pipeServerPort) {
-    this.pipeServerPort = pipeServerPort;
   }
 
   public int getMaxNumberOfSyncFileRetry() {

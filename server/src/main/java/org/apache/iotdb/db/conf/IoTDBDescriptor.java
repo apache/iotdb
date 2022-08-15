@@ -417,11 +417,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "session_timeout_threshold",
                   Integer.toString(conf.getSessionTimeoutThreshold()))));
-      conf.setPipeServerPort(
-          Integer.parseInt(
-              properties
-                  .getProperty("pipe_server_port", Integer.toString(conf.getPipeServerPort()))
-                  .trim()));
       conf.setMaxNumberOfSyncFileRetry(
           Integer.parseInt(
               properties
@@ -1410,10 +1405,6 @@ public class IoTDBDescriptor {
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
       // update sync config
-      conf.setPipeServerPort(
-          Integer.parseInt(
-              properties.getProperty(
-                  "pipe_server_port", String.valueOf(conf.getPipeServerPort()))));
       conf.setMaxNumberOfSyncFileRetry(
           Integer.parseInt(
               properties
