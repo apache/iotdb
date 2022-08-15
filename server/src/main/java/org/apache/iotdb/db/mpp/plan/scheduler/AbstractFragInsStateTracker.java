@@ -24,6 +24,7 @@ import org.apache.iotdb.commons.client.IClientManager;
 import org.apache.iotdb.commons.client.sync.SyncDataNodeInternalServiceClient;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.mpp.execution.QueryStateMachine;
+import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceInfo;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceManager;
 import org.apache.iotdb.db.mpp.execution.fragment.FragmentInstanceState;
 import org.apache.iotdb.db.mpp.plan.planner.plan.FragmentInstance;
@@ -69,7 +70,13 @@ public abstract class AbstractFragInsStateTracker implements IFragInstanceStateT
       throws TException, IOException {
     TEndPoint endPoint = instance.getHostDataNode().internalEndPoint;
     if (isInstanceRunningLocally(endPoint)) {
-      return FragmentInstanceManager.getInstance().getInstanceInfo(instance.getId()).getState();
+      FragmentInstanceInfo info =
+          FragmentInstanceManager.getInstance().getInstanceInfo(instance.getId());
+      if (info != null) {
+        return info.getState();
+      } else {
+        return FragmentInstanceState.NO_SUCH_INSTANCE;
+      }
     } else {
       try (SyncDataNodeInternalServiceClient client =
           internalServiceClientManager.borrowClient(endPoint)) {
