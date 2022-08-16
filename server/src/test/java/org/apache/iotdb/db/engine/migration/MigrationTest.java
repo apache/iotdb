@@ -31,6 +31,7 @@ import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
@@ -59,6 +60,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -74,7 +76,7 @@ public class MigrationTest {
   private final String sg1 = "root.MIGRATE_SG1";
   private final String sg2 = "root.MIGRATE_SG2";
   private final long ttl = 12345;
-  private final long startTime = 1672502400000L; // 2023-01-01
+  private long startTime; // 2023-01-01
   private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
   private final String s1 = "s1";
   private final String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
@@ -82,13 +84,16 @@ public class MigrationTest {
   private File targetDir;
 
   @Before
-  public void setUp() throws MetadataException, StorageGroupProcessorException {
+  public void setUp()
+      throws MetadataException, StorageGroupProcessorException, LogicalOperatorException {
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();
     targetDir = new File("data", "separated_test");
     targetDir.mkdirs();
+
+    startTime = DatetimeUtils.convertDatetimeStrToLong("2023-01-01", ZoneId.systemDefault());
   }
 
   @After
@@ -265,7 +270,7 @@ public class MigrationTest {
                     "SET MIGRATION TO " + sg1 + " 2023-01-01 10000 '%s'", targetDir.getPath()));
     assertEquals(sg1, plan.getStorageGroup().getFullPath());
     assertEquals(10000, plan.getTTL());
-    assertEquals(1672502400000L, plan.getStartTime());
+    assertEquals(startTime, plan.getStartTime());
     assertEquals(targetDir.getPath(), plan.getTargetDir().getPath());
 
     plan = (SetMigrationPlan) planner.parseSQLToPhysicalPlan("UNSET MIGRATION ON " + sg2);
