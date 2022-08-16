@@ -138,7 +138,7 @@ public class DataNode implements DataNodeMBean {
 
   /** initialize the current node and its services */
   public boolean initLocalEngines() {
-    IoTDB.setClusterMode();
+    config.setClusterMode(true);
     return true;
   }
 
