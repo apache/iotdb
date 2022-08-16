@@ -90,7 +90,7 @@ public class QueryExecution implements IQueryExecution {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final int MAX_RETRY_COUNT = 3;
-  private static final long RETRY_INTERVAL_IN_MS = 10_000;
+  private static final long RETRY_INTERVAL_IN_MS = 2_000;
   private int retryCount = 0;
   private final MPPQueryContext context;
   private IScheduler scheduler;
