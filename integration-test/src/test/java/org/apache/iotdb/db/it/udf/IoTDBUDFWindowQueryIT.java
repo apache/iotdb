@@ -499,8 +499,11 @@ public class IoTDBUDFWindowQueryIT {
 
     sql =
         String.format(
-            "select window_start_end(s1, '%s'='%s') from root.vehicle.d1",
-            UDFTestConstant.TIME_INTERVAL_KEY, timeInterval);
+            "select window_start_end(s1, '%s'='%s', '%s'='%s') from root.vehicle.d1",
+            UDFTestConstant.ACCESS_STRATEGY_KEY,
+            UDFTestConstant.ACCESS_STRATEGY_SLIDING_TIME,
+            UDFTestConstant.TIME_INTERVAL_KEY,
+            timeInterval);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
         Statement statement = conn.createStatement();
