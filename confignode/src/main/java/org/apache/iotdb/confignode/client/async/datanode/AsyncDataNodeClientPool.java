@@ -316,7 +316,9 @@ public class AsyncDataNodeClientPool {
         for (TDataNodeLocation dataNodeLocation : regionReplicaSet.getDataNodeLocations()) {
           if (dataNodeLocationMap.containsKey(index)) {
             failedRegions
-                .computeIfAbsent(regionReplicaSet.getRegionId(), empty -> new TRegionReplicaSet())
+                .computeIfAbsent(
+                    regionReplicaSet.getRegionId(),
+                    empty -> new TRegionReplicaSet().setRegionId(regionReplicaSet.getRegionId()))
                 .addToDataNodeLocations(dataNodeLocation);
           }
           index += 1;

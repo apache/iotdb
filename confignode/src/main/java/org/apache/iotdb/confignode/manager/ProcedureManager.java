@@ -164,7 +164,8 @@ public class ProcedureManager {
     if (isSucceed) {
       return RpcUtils.SUCCESS_STATUS;
     } else {
-      return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode());
+      return new TSStatus(TSStatusCode.CREATE_REGION_ERROR.getStatusCode())
+          .setMessage(statusList.get(0).getMessage());
     }
   }
 

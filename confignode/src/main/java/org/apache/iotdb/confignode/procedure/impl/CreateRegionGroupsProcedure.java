@@ -23,6 +23,7 @@ import org.apache.iotdb.common.rpc.thrift.TRegionReplicaSet;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
 import org.apache.iotdb.confignode.procedure.env.ConfigNodeProcedureEnv;
+import org.apache.iotdb.confignode.procedure.exception.ProcedureException;
 import org.apache.iotdb.confignode.procedure.state.CreateRegionGroupsState;
 
 import java.util.Map;
@@ -30,6 +31,7 @@ import java.util.Map;
 public class CreateRegionGroupsProcedure extends AbstractNodeProcedure<CreateRegionGroupsState> {
 
   private final CreateRegionGroupsPlan createRegionGroupsPlan;
+  // Map<TConsensusGroupId, Failed RegionReplicas>
   private Map<TConsensusGroupId, TRegionReplicaSet> failedRegions;
 
   public CreateRegionGroupsProcedure(CreateRegionGroupsPlan createRegionGroupsPlan) {
@@ -67,7 +69,7 @@ public class CreateRegionGroupsProcedure extends AbstractNodeProcedure<CreateReg
         break;
       case DELETE_FAILED_REGION_GROUPS:
         DeleteRegionGroupsPlan deletePlan = new DeleteRegionGroupsPlan();
-        // We don't need to wipe the PartitionTable
+        // We don't need to wipe the PartitionTable here
         // since the failed RegionGroups are not recorded
         deletePlan.setNeedsDeleteInPartitionTable(false);
         createRegionGroupsPlan
@@ -77,10 +79,29 @@ public class CreateRegionGroupsProcedure extends AbstractNodeProcedure<CreateReg
                     regionReplicaSets.forEach(
                         regionReplicaSet -> {
                           if (failedRegions.containsKey(regionReplicaSet.getRegionId())) {
-                            deletePlan.addRegionGroup(storageGroup, regionReplicaSet);
+                            TRegionReplicaSet failedReplicaSet =
+                                failedRegions.get(regionReplicaSet.getRegionId());
+                            TRegionReplicaSet redundantReplicaSet =
+                                new TRegionReplicaSet().setRegionId(regionReplicaSet.getRegionId());
+                            regionReplicaSet
+                                .getDataNodeLocations()
+                                .forEach(
+                                    dataNodeLocation -> {
+                                      if (!failedReplicaSet
+                                          .getDataNodeLocations()
+                                          .contains(dataNodeLocation)) {
+                                        redundantReplicaSet.addToDataNodeLocations(
+                                            dataNodeLocation);
+                                      }
+                                    });
+                            deletePlan.addRegionGroup(storageGroup, redundantReplicaSet);
                           }
                         }));
-        break;
+        env.submitFailedRegionReplicas(deletePlan);
+        setFailure(
+            new ProcedureException(
+                "There are some RegionGroups failed to create, please check former logs in ConfigNode-leader."));
+        return Flow.NO_MORE_STATE;
       case CREATE_REGION_GROUPS_FINISH:
         return Flow.NO_MORE_STATE;
     }

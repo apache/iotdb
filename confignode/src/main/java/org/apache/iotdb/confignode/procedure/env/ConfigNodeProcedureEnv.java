@@ -30,6 +30,7 @@ import org.apache.iotdb.confignode.client.async.datanode.AsyncDataNodeClientPool
 import org.apache.iotdb.confignode.client.sync.confignode.SyncConfigNodeClientPool;
 import org.apache.iotdb.confignode.client.sync.datanode.SyncDataNodeClientPool;
 import org.apache.iotdb.confignode.consensus.request.write.CreateRegionGroupsPlan;
+import org.apache.iotdb.confignode.consensus.request.write.DeleteRegionGroupsPlan;
 import org.apache.iotdb.confignode.consensus.request.write.DeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.PreDeleteStorageGroupPlan;
 import org.apache.iotdb.confignode.consensus.request.write.RemoveConfigNodePlan;
@@ -322,6 +323,11 @@ public class ConfigNodeProcedureEnv {
     getConsensusManager().write(createRegionGroupsPlan);
     // Broadcast the latest RegionRouteMap
     getLoadManager().broadcastLatestRegionRouteMap();
+  }
+
+  /** Submit the RegionReplicas to the RegionCleaner when there are creation failures */
+  public void submitFailedRegionReplicas(DeleteRegionGroupsPlan deleteRegionGroupsPlan) {
+    getConsensusManager().write(deleteRegionGroupsPlan);
   }
 
   public LockQueue getNodeLock() {
