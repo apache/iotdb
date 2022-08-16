@@ -104,6 +104,7 @@ public class TimeSeriesOperand extends LeafOperand {
   public void bindInputLayerColumnIndexWithExpression(
       Map<String, List<InputLocation>> inputLocations) {
     final String digest = toString();
+
     if (inputLocations.containsKey(digest)) {
       inputColumnIndex = inputLocations.get(digest).get(0).getValueColumnIndex();
     }

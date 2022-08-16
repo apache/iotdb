@@ -31,6 +31,7 @@ import org.apache.iotdb.consensus.IStateMachine;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.request.ByteBufferConsensusRequest;
 import org.apache.iotdb.consensus.common.request.IConsensusRequest;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.slf4j.Logger;
@@ -162,5 +163,10 @@ public class PartitionRegionStateMachine implements IStateMachine, IStateMachine
   @Override
   public void stop() {
     // do nothing
+  }
+
+  @Override
+  public boolean isReadOnly() {
+    return IoTDBDescriptor.getInstance().getConfig().isReadOnly();
   }
 }

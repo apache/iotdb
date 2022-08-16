@@ -207,7 +207,7 @@ public class IDTableHashmapImpl implements IDTable {
           }
         }
       } catch (MetadataException e) {
-        if (IoTDB.isClusterMode()) {
+        if (config.isClusterMode()) {
           logger.debug(
               "meet error when check {}.{}, message: {}",
               devicePath,

@@ -67,7 +67,6 @@ public class IoTDB implements IoTDBMBean {
   public static LocalSchemaProcessor schemaProcessor = LocalSchemaProcessor.getInstance();
   public static LocalConfigNode configManager = LocalConfigNode.getInstance();
   public static ServiceProvider serviceProvider;
-  private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
@@ -94,11 +93,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public static void setClusterMode() {
-    IoTDB.clusterMode = true;
-  }
-
-  public static boolean isClusterMode() {
-    return IoTDB.clusterMode;
+    config.setClusterMode(true);
   }
 
   public void active() {
@@ -173,7 +168,7 @@ public class IoTDB implements IoTDBMBean {
     initProtocols();
     // in cluster mode, InfluxDBMManager has been initialized, so there is no need to init again to
     // avoid wasting time.
-    if (!isClusterMode()
+    if (!config.isClusterMode()
         && IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
       initInfluxDBMManager();
     }
@@ -199,6 +194,7 @@ public class IoTDB implements IoTDBMBean {
     // start reporter
     MetricService.getInstance().startAllReporter();
 
+    logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 
@@ -207,7 +203,7 @@ public class IoTDB implements IoTDBMBean {
   }
 
   private void initServiceProvider() throws QueryProcessException {
-    if (!clusterMode) {
+    if (!config.isClusterMode()) {
       serviceProvider = new StandaloneServiceProvider();
     }
   }
