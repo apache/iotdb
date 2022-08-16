@@ -299,9 +299,9 @@ public class ConfigNodeProcedureEnv {
    */
   public void markDataNodeAsRemovingAndBroadCast(TDataNodeLocation dataNodeLocation) {
     int dataNodeId = dataNodeLocation.getDataNodeId();
-    DataNodeHeartbeatCache c =
+    DataNodeHeartbeatCache cache =
         (DataNodeHeartbeatCache) configManager.getNodeManager().getNodeCacheMap().get(dataNodeId);
-    c.setNodeStatus(NodeStatus.Removing);
+    cache.setNodeStatus(NodeStatus.Removing);
     configManager.getLoadManager().broadcastLatestRegionRouteMap();
   }
 

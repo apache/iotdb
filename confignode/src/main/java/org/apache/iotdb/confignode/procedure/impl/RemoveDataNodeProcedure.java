@@ -63,7 +63,7 @@ public class RemoveDataNodeProcedure extends AbstractNodeProcedure<RemoveDataNod
     try {
       switch (state) {
         case REMOVE_DATA_NODE_PREPARE:
-          // mark the datanode as removing status and broadcast
+          // mark the datanode as removing status and broadcast region route map
           env.markDataNodeAsRemovingAndBroadCast(disableDataNodeLocation);
           execDataNodeRegionIds =
               env.getDataNodeRemoveHandler().getDataNodeRegionIds(disableDataNodeLocation);
