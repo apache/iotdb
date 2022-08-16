@@ -153,7 +153,8 @@
         <guava.version>24.1.1</guava.version>
         <jline.version>3.21.0</jline.version>
         <jetty.version>9.4.48.v20220622</jetty.version>
-        <metrics.version>4.2.7</metrics.version>
+        <dropwizard.metrics.version>4.2.7</dropwizard.metrics.version>
+        <micrometer.metrics.version>1.6.2</micrometer.metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
         <felix.version>5.1.7</felix.version>
         <snappy.version>1.1.8.4</snappy.version>
@@ -210,14 +211,13 @@
         <commons-beanutils.version>1.9.4</commons-beanutils.version>
         <commons-compress.version>1.21</commons-compress.version>
         <error_prone_annotations.version>2.7.1</error_prone_annotations.version>
-        <testcontainers.version>1.15.2</testcontainers.version>
+        <testcontainers.version>1.15.3</testcontainers.version>
         <eclipse-collections.version>10.4.0</eclipse-collections.version>
         <awaitility.version>4.0.3</awaitility.version>
         <!-- JDK1.8 only support google java format 1.7-->
         <google.java.format.version>1.7</google.java.format.version>
         <!-- caffeine cache -->
         <caffeine>2.9.1</caffeine>
-        <jackson-databind.version>2.12.6.1</jackson-databind.version>
         <commons-csv.version>1.9.0</commons-csv.version>
         <commons-lang.version>2.6</commons-lang.version>
         <influxdb-java.version>2.21</influxdb-java.version>
@@ -615,11 +615,6 @@
                 <groupId>com.github.ben-manes.caffeine</groupId>
                 <artifactId>caffeine</artifactId>
                 <version>${caffeine}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson-databind.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.awaitility</groupId>

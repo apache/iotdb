@@ -35,6 +35,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.apache.iotdb.db.it.utils.TestUtils.resultSetEqualTest;
+import static org.apache.iotdb.itbase.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -84,8 +86,8 @@ public class IoTDBUDTFBuiltinFunctionIT {
   private static void insertData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String dataGenerationSql : INSERTION_SQLS) {
-        statement.execute(dataGenerationSql);
+      for (String dataGenerationSQL : INSERTION_SQLS) {
+        statement.execute(dataGenerationSQL);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -384,8 +386,8 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String dataGenerationSql : ZERO_ONE_SQL) {
-        statement.execute(dataGenerationSql);
+      for (String dataGenerationSQL : ZERO_ONE_SQL) {
+        statement.execute(dataGenerationSQL);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -743,8 +745,8 @@ public class IoTDBUDTFBuiltinFunctionIT {
     int[] ANSWER1 = new int[] {1, 2, 39, 40, 41, 42, 79, 80, 81, 82, 99, 100};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      for (String dataGenerationSql : SQL_FOR_SAMPLE) {
-        statement.execute(dataGenerationSql);
+      for (String dataGenerationSQL : SQL_FOR_SAMPLE) {
+        statement.execute(dataGenerationSQL);
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -1041,14 +1043,14 @@ public class IoTDBUDTFBuiltinFunctionIT {
 
   @Test
   public void testStringFunctions() {
-    String[] createSqls =
+    String[] createSQLs =
         new String[] {
           "SET STORAGE GROUP TO root.testStringFunctions",
           "CREATE TIMESERIES root.testStringFunctions.d1.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
           "CREATE TIMESERIES root.testStringFunctions.d1.s2 WITH DATATYPE=TEXT, ENCODING=PLAIN",
         };
 
-    String[] insertSqls =
+    String[] insertSQLs =
         new String[] {
           "INSERT INTO root.testStringFunctions.d1(timestamp,s1,s2) values(1, \"1111test1111\", \"  1111test1111 \")",
           "INSERT INTO root.testStringFunctions.d1(timestamp,s1) values(2, \"2222test2222\")"
@@ -1057,13 +1059,13 @@ public class IoTDBUDTFBuiltinFunctionIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
-      for (String createSql : createSqls) {
-        statement.execute(createSql);
+      for (String createSQL : createSQLs) {
+        statement.execute(createSQL);
       }
 
-      for (String insertSql : insertSqls) {
-        // TODO statement.addBatch(insertSql);
-        statement.execute(insertSql);
+      for (String insertSQL : insertSQLs) {
+        // TODO statement.addBatch(insertSQL);
+        statement.execute(insertSQL);
       }
       // TODO statement.executeBatch();
 
@@ -1227,6 +1229,237 @@ public class IoTDBUDTFBuiltinFunctionIT {
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testMasterRepair() {
+    // create time series with master data
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.testMasterRepair");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.s1 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.s2 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.s3 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.m1 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.m2 with datatype=FLOAT,encoding=PLAIN");
+      statement.execute(
+          "CREATE TIMESERIES root.testMasterRepair.d1.m3 with datatype=FLOAT,encoding=PLAIN");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    String[] INSERT_SQL = {
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (1,1704,1154.55,0.195,1704,1154.55,0.195)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (2,1702,1152.30,0.193,1702,1152.30,0.193)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (3,1702,1148.65,0.192,1702,1148.65,0.192)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (4,1701,1145.20,0.194,1701,1145.20,0.194)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (7,1703,1150.55,0.195,1703,1150.55,0.195)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (8,1694,1151.55,0.193,1704,1151.55,0.193)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (9,1705,1153.55,0.194,1705,1153.55,0.194)",
+      "insert into root.testMasterRepair.d1(time, s1, s2, s3, m1, m2, m3) values (10,1706,1152.30,0.190,1706,1152.30,0.190)",
+    };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (String dataGenerationSql : INSERT_SQL) {
+        statement.execute(dataGenerationSql);
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      int[] timestamps = {1, 2, 3, 4, 7, 8, 9, 10};
+
+      // test 1
+      double[] r1 = {1704.0, 1702.0, 1702.0, 1701.0, 1703.0, 1702.0, 1705.0, 1706.0};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3) from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+          double expectedResult = r1[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // test 2
+      double[] r2 = {1154.55, 1152.30, 1148.65, 1145.20, 1150.55, 1152.30, 1153.55, 1152.30};
+
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3,'output_column'='2') from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = r2[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // test 3
+      double[] r3 = {0.195, 0.193, 0.192, 0.194, 0.195, 0.193, 0.194, 0.190};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3,'output_column'='3') from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = r3[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // test 4
+      double[] r4 = {1704.0, 1702.0, 1702.0, 1701.0, 1703.0, 1704.0, 1705.0, 1706.0};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3,'omega'='2','eta'='3.0','k'='5') from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = r4[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // test 5
+      double[] r5 = {1154.55, 1152.30, 1148.65, 1145.20, 1150.55, 1151.55, 1153.55, 1152.30};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3,'omega'='2','eta'='3.0','k'='5','output_column'='2') from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = r5[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+
+      // test 6
+      double[] r6 = {0.195, 0.193, 0.192, 0.194, 0.195, 0.193, 0.194, 0.190};
+      try (ResultSet resultSet =
+          statement.executeQuery(
+              "select master_repair(s1,s2,s3,m1,m2,m3,'omega'='2','eta'='3.0','k'='5','output_column'='3') from root.testMasterRepair.d1")) {
+        int columnCount = resultSet.getMetaData().getColumnCount();
+        assertEquals(1 + 1, columnCount);
+        for (int i = 0; i < timestamps.length; i++) {
+          resultSet.next();
+          long expectedTimestamp = timestamps[i];
+          long actualTimestamp = Long.parseLong(resultSet.getString(1));
+          assertEquals(expectedTimestamp, actualTimestamp);
+
+          double expectedResult = r6[i];
+          double actualResult = resultSet.getDouble(2);
+          double delta = 0.001;
+          assertEquals(expectedResult, actualResult, delta);
+        }
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testChangePoints() {
+    String[] createSQLs =
+        new String[] {
+          "SET STORAGE GROUP TO root.testChangePoints",
+          "CREATE TIMESERIES root.testChangePoints.d1.s1 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s2 WITH DATATYPE=INT32, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s3 WITH DATATYPE=INT64, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s4 WITH DATATYPE=FLOAT, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s5 WITH DATATYPE=DOUBLE, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.testChangePoints.d1.s6 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        };
+
+    String[] insertSQLs =
+        new String[] {
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(1, true, 1, 1, 1.0, 1.0, \"1test1\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(2, true, 2, 2, 2.0, 1.0, \"2test2\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(3, false, 1, 2, 1.0, 1.0, \"2test2\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(4, true, 1, 3, 1.0, 1.0, \"1test1\")",
+          "INSERT INTO root.testChangePoints.d1(timestamp, s1, s2, s3, s4, s5, s6) values(5, true, 1, 3, 1.0, 1.0, \"1test1\")"
+        };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      for (String createSQL : createSQLs) {
+        statement.execute(createSQL);
+      }
+
+      for (String insertSQL : insertSQLs) {
+        statement.execute(insertSQL);
+      }
+
+      String[] expectedHeader =
+          new String[] {
+            TIMESTAMP_STR,
+            "change_points(root.testChangePoints.d1.s1)",
+            "change_points(root.testChangePoints.d1.s2)",
+            "change_points(root.testChangePoints.d1.s3)",
+            "change_points(root.testChangePoints.d1.s4)",
+            "change_points(root.testChangePoints.d1.s5)",
+            "change_points(root.testChangePoints.d1.s6)"
+          };
+
+      String[] retArray =
+          new String[] {
+            "1,true,1,1,1.0,1.0,1test1,",
+            "2,null,2,2,2.0,null,2test2,",
+            "3,false,1,null,1.0,null,null,",
+            "4,true,null,3,null,null,1test1,"
+          };
+
+      resultSetEqualTest(
+          "select change_points(s1), change_points(s2), change_points(s3), change_points(s4), change_points(s5), change_points(s6) from root.testChangePoints.d1",
+          expectedHeader,
+          retArray);
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 }

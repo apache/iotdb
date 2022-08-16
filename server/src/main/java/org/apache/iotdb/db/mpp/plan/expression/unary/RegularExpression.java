@@ -23,13 +23,7 @@ import org.apache.iotdb.db.exception.sql.SemanticException;
 import org.apache.iotdb.db.mpp.plan.analyze.TypeProvider;
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.unary.RegularColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.RegularTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import org.apache.commons.lang3.Validate;
@@ -68,17 +62,6 @@ public class RegularExpression extends UnaryExpression {
 
   public Pattern getPattern() {
     return pattern;
-  }
-
-  @Override
-  protected Transformer constructTransformer(LayerPointReader pointReader) {
-    return new RegularTransformer(pointReader, pattern);
-  }
-
-  @Override
-  protected ColumnTransformer getConcreteUnaryColumnTransformer(
-      ColumnTransformer childColumnTransformer, Type returnType) {
-    return new RegularColumnTransformer(returnType, childColumnTransformer, pattern);
   }
 
   @Override

@@ -240,10 +240,6 @@ public class IoTDBConfig {
           + File.separator
           + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
-  /** Sync directory, including the log and hardlink tsfiles */
-  private String syncDir =
-      IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
-
   /** Performance tracing directory, stores performance tracing files */
   private String tracingDir =
       IoTDBConstant.DEFAULT_BASE_DIR + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
@@ -300,7 +296,7 @@ public class IoTDBConfig {
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = 16;
+  private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
 
   /** How many queries can be concurrently executed. When <= 0, use 1000. */
   private int maxAllowedConcurrentQueries = 1000;
@@ -718,7 +714,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 32;
 
   /** whether enable data partition. If disabled, all data belongs to partition 0 */
-  private boolean enablePartition = false;
+  private boolean enablePartition = true;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second. Default time is
@@ -735,8 +731,6 @@ public class IoTDBConfig {
   // just for test
   // wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
-
-  private int queryCacheSizeInMetric = 50;
 
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
@@ -931,7 +925,7 @@ public class IoTDBConfig {
   private int triggerForwardMQTTPoolSize = 4;
 
   /** ThreadPool size for read operation in coordinator */
-  private int coordinatorReadExecutorSize = 50;
+  private int coordinatorReadExecutorSize = 20;
 
   /** ThreadPool size for write operation in coordinator */
   private int coordinatorWriteExecutorSize = 50;
@@ -953,6 +947,9 @@ public class IoTDBConfig {
   /** Maximum execution time of a DriverTask */
   /** Maximum execution time of a DriverTask */
   private int driverTaskExecutionTimeSliceInMs = 100;
+
+  /** Maximum size of wal buffer used in MultiLeader consensus. Unit: byte */
+  private long throttleDownThreshold = 50 * 1024 * 1024 * 1024L;
 
   IoTDBConfig() {}
 
@@ -1054,7 +1051,6 @@ public class IoTDBConfig {
   private void formulateFolders() {
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
-    syncDir = addHomeDir(syncDir);
     tracingDir = addHomeDir(tracingDir);
     consensusDir = addHomeDir(consensusDir);
     dataRegionConsensusDir = addHomeDir(dataRegionConsensusDir);
@@ -1211,14 +1207,6 @@ public class IoTDBConfig {
 
   public void setSchemaDir(String schemaDir) {
     this.schemaDir = schemaDir;
-  }
-
-  public String getSyncDir() {
-    return syncDir;
-  }
-
-  void setSyncDir(String syncDir) {
-    this.syncDir = syncDir;
   }
 
   public String getTracingDir() {
@@ -3030,5 +3018,13 @@ public class IoTDBConfig {
 
   public void setDriverTaskExecutionTimeSliceInMs(int driverTaskExecutionTimeSliceInMs) {
     this.driverTaskExecutionTimeSliceInMs = driverTaskExecutionTimeSliceInMs;
+  }
+
+  public long getThrottleDownThreshold() {
+    return throttleDownThreshold;
+  }
+
+  public void setThrottleDownThreshold(long throttleDownThreshold) {
+    this.throttleDownThreshold = throttleDownThreshold;
   }
 }

@@ -56,6 +56,8 @@ import org.apache.iotdb.db.metadata.rescon.TimeseriesStatistics;
 import org.apache.iotdb.db.metadata.tag.TagManager;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.mpp.common.schematree.DeviceSchemaInfo;
+import org.apache.iotdb.db.mpp.common.schematree.MeasurementSchemaInfo;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -85,6 +87,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -104,6 +107,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -1742,6 +1746,52 @@ public class SchemaRegionMemoryImpl implements ISchemaRegion {
       compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
     createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
+  }
+
+  @Override
+  public DeviceSchemaInfo getDeviceSchemaInfoWithAutoCreate(
+      PartialPath devicePath,
+      String[] measurements,
+      Function<Integer, TSDataType> getDataType,
+      boolean aligned)
+      throws MetadataException {
+    try {
+      List<MeasurementSchemaInfo> measurementSchemaInfoList = new ArrayList<>(measurements.length);
+      IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
+      IMeasurementMNode measurementMNode;
+      for (int i = 0; i < measurements.length; i++) {
+        measurementMNode = getMeasurementMNode(deviceMNode, measurements[i]);
+        if (measurementMNode == null) {
+          if (config.isAutoCreateSchemaEnabled()) {
+            if (aligned) {
+              internalAlignedCreateTimeseries(
+                  devicePath,
+                  Collections.singletonList(measurements[i]),
+                  Collections.singletonList(getDataType.apply(i)));
+
+            } else {
+              internalCreateTimeseries(
+                  devicePath.concatNode(measurements[i]), getDataType.apply(i));
+            }
+            // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
+            deviceMNode = mtree.getNodeByPath(devicePath);
+            measurementMNode = getMeasurementMNode(deviceMNode, measurements[i]);
+          } else {
+            throw new PathNotExistException(devicePath + PATH_SEPARATOR + measurements[i]);
+          }
+        }
+        measurementSchemaInfoList.add(
+            new MeasurementSchemaInfo(
+                measurementMNode.getName(),
+                (MeasurementSchema) measurementMNode.getSchema(),
+                measurementMNode.getAlias()));
+      }
+
+      return new DeviceSchemaInfo(
+          devicePath, deviceMNode.getAsEntityMNode().isAligned(), measurementSchemaInfoList);
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   // endregion

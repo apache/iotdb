@@ -80,10 +80,9 @@ public class ClusterScheduler implements IScheduler {
     if (queryType == QueryType.READ) {
       this.stateTracker =
           new FixedRateFragInsStateTracker(
-              stateMachine, executor, scheduledExecutor, instances, internalServiceClientManager);
+              stateMachine, scheduledExecutor, instances, internalServiceClientManager);
       this.queryTerminator =
           new SimpleQueryTerminator(
-              executor,
               scheduledExecutor,
               queryContext.getQueryId(),
               instances,
@@ -107,7 +106,7 @@ public class ClusterScheduler implements IScheduler {
       FragInstanceDispatchResult result = dispatchResultFuture.get();
       if (!result.isSuccessful()) {
         if (needRetry(result.getFailureStatus())) {
-          stateMachine.transitionToRetrying(result.getFailureStatus());
+          stateMachine.transitionToPendingRetry(result.getFailureStatus());
         } else {
           stateMachine.transitionToFailed(result.getFailureStatus());
         }

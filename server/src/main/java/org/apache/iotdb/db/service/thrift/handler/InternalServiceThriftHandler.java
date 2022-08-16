@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.service.thrift.handler;
 
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.service.metrics.enums.Metric;
 import org.apache.iotdb.db.service.metrics.enums.Tag;
 import org.apache.iotdb.metrics.utils.MetricLevel;
@@ -36,8 +36,7 @@ public class InternalServiceThriftHandler implements TServerEventHandler {
 
   @Override
   public ServerContext createContext(TProtocol tProtocol, TProtocol tProtocol1) {
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "Internal")
         .incr(1L);
@@ -47,8 +46,7 @@ public class InternalServiceThriftHandler implements TServerEventHandler {
   @Override
   public void deleteContext(
       ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
-    MetricsService.getInstance()
-        .getMetricManager()
+    MetricService.getInstance()
         .getOrCreateGauge(
             Metric.THRIFT_CONNECTIONS.toString(), MetricLevel.CORE, Tag.NAME.toString(), "Internal")
         .decr(1L);

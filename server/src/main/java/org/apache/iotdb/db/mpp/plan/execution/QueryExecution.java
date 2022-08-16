@@ -98,7 +98,7 @@ public class QueryExecution implements IQueryExecution {
 
   private final List<PlanOptimizer> planOptimizers;
 
-  private Statement rawStatement;
+  private final Statement rawStatement;
   private Analysis analysis;
   private LogicalQueryPlan logicalPlan;
   private DistributedQueryPlan distributedPlan;
@@ -144,10 +144,6 @@ public class QueryExecution implements IQueryExecution {
     stateMachine.addStateChangeListener(
         state -> {
           try (SetThreadName queryName = new SetThreadName(context.getQueryId().getId())) {
-            if (state == QueryState.RETRYING) {
-              retry();
-              return;
-            }
             if (!state.isDone()) {
               return;
             }
@@ -179,17 +175,18 @@ public class QueryExecution implements IQueryExecution {
 
     doLogicalPlan();
     doDistributedPlan();
+    stateMachine.transitionToPlanned();
     if (context.getQueryType() == QueryType.READ) {
       initResultHandle();
     }
     schedule();
   }
 
-  private void retry() {
+  private ExecutionResult retry() {
     if (retryCount >= MAX_RETRY_COUNT) {
       logger.error("reach max retry count. transit query to failed");
       stateMachine.transitionToFailed();
-      return;
+      return getStatus();
     }
     logger.warn("error when executing query. {}", stateMachine.getFailureMessage());
     // stop and clean up resources the QueryExecution used
@@ -203,13 +200,14 @@ public class QueryExecution implements IQueryExecution {
     }
     retryCount++;
     logger.info("start to retry. Retry count is: {}", retryCount);
-
+    stateMachine.transitionToQueued();
     // force invalid PartitionCache
     partitionFetcher.invalidAllCache();
     // re-analyze the query
     this.analysis = analyze(rawStatement, context, partitionFetcher, schemaFetcher);
     // re-start the QueryExecution
     this.start();
+    return getStatus();
   }
 
   private boolean skipExecute() {
@@ -252,7 +250,6 @@ public class QueryExecution implements IQueryExecution {
                 stateMachine,
                 distributedPlan.getInstances(),
                 context.getQueryType(),
-                executor,
                 scheduledExecutor,
                 internalServiceClientManager);
     this.scheduler.start();
@@ -408,11 +405,20 @@ public class QueryExecution implements IQueryExecution {
       SettableFuture<QueryState> future = SettableFuture.create();
       stateMachine.addStateChangeListener(
           state -> {
-            if (state == QueryState.RUNNING || state.isDone()) {
+            if (state == QueryState.RUNNING
+                || state.isDone()
+                || state == QueryState.PENDING_RETRY) {
               future.set(state);
             }
           });
       QueryState state = future.get();
+      if (state == QueryState.PENDING_RETRY) {
+        // That we put retry() here is aimed to leverage the ClientRPC thread rather than
+        // create another new thread to do the retry() logic.
+        // This way will lead to recursive call because retry() calls getStatus() inside.
+        // The max depths of recursive call is equal to the max retry count.
+        return retry();
+      }
       // TODO: (xingtanzjr) use more TSStatusCode if the QueryState isn't FINISHED
       return getExecutionResult(state);
     } catch (InterruptedException | ExecutionException e) {

@@ -56,6 +56,9 @@ public class FilterAndProjectOperator implements ProcessOperator {
 
   private final OperatorContext operatorContext;
 
+  // false when we only need to do projection
+  private final boolean hasFilter;
+
   public FilterAndProjectOperator(
       OperatorContext operatorContext,
       Operator inputOperator,
@@ -65,7 +68,8 @@ public class FilterAndProjectOperator implements ProcessOperator {
       List<ColumnTransformer> commonTransformerList,
       List<LeafColumnTransformer> projectLeafColumnTransformerList,
       List<ColumnTransformer> projectOutputTransformerList,
-      boolean hasNonMappableUDF) {
+      boolean hasNonMappableUDF,
+      boolean hasFilter) {
     this.operatorContext = operatorContext;
     this.inputOperator = inputOperator;
     this.filterLeafColumnTransformerList = filterLeafColumnTransformerList;
@@ -75,6 +79,7 @@ public class FilterAndProjectOperator implements ProcessOperator {
     this.projectOutputTransformerList = projectOutputTransformerList;
     this.hasNonMappableUDF = hasNonMappableUDF;
     this.filterTsBlockBuilder = new TsBlockBuilder(8, filterOutputDataTypes);
+    this.hasFilter = hasFilter;
   }
 
   @Override
@@ -87,6 +92,10 @@ public class FilterAndProjectOperator implements ProcessOperator {
     TsBlock input = inputOperator.next();
     if (input == null) {
       return null;
+    }
+
+    if (!hasFilter) {
+      return getTransformedTsBlock(input);
     }
 
     TsBlock filterResult = getFilterTsBlock(input);

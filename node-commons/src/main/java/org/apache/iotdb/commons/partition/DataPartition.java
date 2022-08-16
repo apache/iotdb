@@ -78,6 +78,7 @@ public class DataPartition extends Partition {
     // TODO: (xingtanzjr) the timePartitionIdList is ignored
     return dataPartitionMap.get(storageGroup).get(seriesPartitionSlot).values().stream()
         .flatMap(Collection::stream)
+        .distinct()
         .collect(Collectors.toList());
   }
 

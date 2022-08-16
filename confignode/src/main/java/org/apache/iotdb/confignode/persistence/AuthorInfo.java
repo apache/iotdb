@@ -50,6 +50,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -145,7 +147,7 @@ public class AuthorInfo implements SnapshotProcessor {
     String password = authorPlan.getPassword();
     String newPassword = authorPlan.getNewPassword();
     Set<Integer> permissions = authorPlan.getPermissions();
-    String nodeName = authorPlan.getNodeName();
+    List<String> nodeNameList = authorPlan.getNodeNameList();
     try {
       switch (authorType) {
         case UpdateUser:
@@ -165,12 +167,16 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case GrantRole:
           for (int i : permissions) {
-            authorizer.grantPrivilegeToRole(roleName, nodeName, i);
+            for (String path : nodeNameList) {
+              authorizer.grantPrivilegeToRole(roleName, path, i);
+            }
           }
           break;
         case GrantUser:
           for (int i : permissions) {
-            authorizer.grantPrivilegeToUser(userName, nodeName, i);
+            for (String path : nodeNameList) {
+              authorizer.grantPrivilegeToUser(userName, path, i);
+            }
           }
           break;
         case GrantRoleToUser:
@@ -178,12 +184,16 @@ public class AuthorInfo implements SnapshotProcessor {
           break;
         case RevokeUser:
           for (int i : permissions) {
-            authorizer.revokePrivilegeFromUser(userName, nodeName, i);
+            for (String path : nodeNameList) {
+              authorizer.revokePrivilegeFromUser(userName, path, i);
+            }
           }
           break;
         case RevokeRole:
           for (int i : permissions) {
-            authorizer.revokePrivilegeFromRole(roleName, nodeName, i);
+            for (String path : nodeNameList) {
+              authorizer.revokePrivilegeFromRole(roleName, path, i);
+            }
           }
           break;
         case RevokeRoleFromUser:
@@ -198,78 +208,66 @@ public class AuthorInfo implements SnapshotProcessor {
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
-  public PermissionInfoResp executeListRole() {
+  public PermissionInfoResp executeListUsers(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
-    List<String> roleList = authorizer.listAllRoles();
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
-    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    result.setPermissionInfo(permissionInfo);
-    return result;
-  }
-
-  public PermissionInfoResp executeListUser() {
-    PermissionInfoResp result = new PermissionInfoResp();
     List<String> userList = authorizer.listAllUsers();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
+    if (!plan.getRoleName().isEmpty()) {
+      Role role;
+      try {
+        role = authorizer.getRole(plan.getRoleName());
+        if (role == null) {
+          result.setStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.ROLE_NOT_EXIST_ERROR, "No such role : " + plan.getRoleName()));
+          result.setPermissionInfo(permissionInfo);
+          return result;
+        }
+      } catch (AuthException e) {
+        throw new AuthException(e);
+      }
+      Iterator<String> itr = userList.iterator();
+      while (itr.hasNext()) {
+        User userObj = authorizer.getUser(itr.next());
+        if (userObj == null || !userObj.hasRole(plan.getRoleName())) {
+          itr.remove();
+        }
+      }
+    }
+
     permissionInfo.put(IoTDBConstant.COLUMN_USER, userList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
   }
 
-  public PermissionInfoResp executeListRoleUsers(AuthorPlan plan) throws AuthException {
+  public PermissionInfoResp executeListRoles(AuthorPlan plan) throws AuthException {
     PermissionInfoResp result = new PermissionInfoResp();
     Map<String, List<String>> permissionInfo = new HashMap<>();
-    Role role;
-    try {
-      role = authorizer.getRole(plan.getRoleName());
-      if (role == null) {
-        result.setStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.ROLE_NOT_EXIST_ERROR, "No such role : " + plan.getRoleName()));
-        result.setPermissionInfo(permissionInfo);
-        return result;
+    List<String> roleList = new ArrayList<>();
+    ;
+    if (plan.getUserName().isEmpty()) {
+      roleList.addAll(authorizer.listAllRoles());
+    } else {
+      User user;
+      try {
+        user = authorizer.getUser(plan.getUserName());
+        if (user == null) {
+          result.setStatus(
+              RpcUtils.getStatus(
+                  TSStatusCode.USER_NOT_EXIST_ERROR, "No such user : " + plan.getUserName()));
+          result.setPermissionInfo(permissionInfo);
+          return result;
+        }
+      } catch (AuthException e) {
+        throw new AuthException(e);
       }
-    } catch (AuthException e) {
-      throw new AuthException(e);
-    }
-    List<String> roleUsersList = new ArrayList<>();
-    List<String> userList = authorizer.listAllUsers();
-    for (String userN : userList) {
-      User userObj = authorizer.getUser(userN);
-      if (userObj != null && userObj.hasRole(plan.getRoleName())) {
-        roleUsersList.add(userN);
+      for (String roleN : user.getRoleList()) {
+        roleList.add(roleN);
       }
-    }
-    permissionInfo.put(IoTDBConstant.COLUMN_USER, roleUsersList);
-    result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    result.setPermissionInfo(permissionInfo);
-    return result;
-  }
-
-  public PermissionInfoResp executeListUserRoles(AuthorPlan plan) throws AuthException {
-    PermissionInfoResp result = new PermissionInfoResp();
-    Map<String, List<String>> permissionInfo = new HashMap<>();
-    User user;
-    try {
-      user = authorizer.getUser(plan.getUserName());
-      if (user == null) {
-        result.setStatus(
-            RpcUtils.getStatus(
-                TSStatusCode.USER_NOT_EXIST_ERROR, "No such user : " + plan.getUserName()));
-        result.setPermissionInfo(permissionInfo);
-        return result;
-      }
-    } catch (AuthException e) {
-      throw new AuthException(e);
-    }
-    List<String> userRoleList = new ArrayList<>();
-    for (String roleN : user.getRoleList()) {
-      userRoleList.add(roleN);
     }
 
-    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, userRoleList);
+    permissionInfo.put(IoTDBConstant.COLUMN_ROLE, roleList);
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
@@ -291,15 +289,20 @@ public class AuthorInfo implements SnapshotProcessor {
     } catch (AuthException e) {
       throw new AuthException(e);
     }
-    List<String> rolePrivilegesList = new ArrayList<>();
+    Set<String> rolePrivilegesSet = new HashSet<>();
     for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-      if (plan.getNodeName().equals("")
-          || AuthUtils.pathOrBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
-        rolePrivilegesList.add(pathPrivilege.toString());
+      if (plan.getNodeNameList().isEmpty()) {
+        rolePrivilegesSet.add(pathPrivilege.toString());
+        continue;
+      }
+      for (String path : plan.getNodeNameList()) {
+        if (AuthUtils.pathOrBelongsTo(path, pathPrivilege.getPath())) {
+          rolePrivilegesSet.add(pathPrivilege.toString());
+        }
       }
     }
 
-    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, rolePrivilegesList);
+    permissionInfo.put(IoTDBConstant.COLUMN_PRIVILEGE, new ArrayList<>(rolePrivilegesSet));
     result.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
     result.setPermissionInfo(permissionInfo);
     return result;
@@ -329,25 +332,45 @@ public class AuthorInfo implements SnapshotProcessor {
       }
     } else {
       List<String> rolePrivileges = new ArrayList<>();
+      Set<String> userPrivilegeSet = new HashSet<>();
       for (PathPrivilege pathPrivilege : user.getPrivilegeList()) {
-        if (plan.getNodeName().equals("")
-            || AuthUtils.pathOrBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
+        if (plan.getNodeNameList().isEmpty()
+            && !userPrivilegeSet.contains(pathPrivilege.toString())) {
           rolePrivileges.add("");
-          userPrivilegesList.add(pathPrivilege.toString());
+          userPrivilegeSet.add(pathPrivilege.toString());
+          continue;
+        }
+        for (String path : plan.getNodeNameList()) {
+          if (AuthUtils.pathOrBelongsTo(path, pathPrivilege.getPath())
+              && !userPrivilegeSet.contains(pathPrivilege.toString())) {
+            rolePrivileges.add("");
+            userPrivilegeSet.add(pathPrivilege.toString());
+          }
         }
       }
+      userPrivilegesList.addAll(userPrivilegeSet);
       for (String roleN : user.getRoleList()) {
         Role role = authorizer.getRole(roleN);
         if (roleN == null) {
           continue;
         }
+        Set<String> rolePrivilegeSet = new HashSet<>();
         for (PathPrivilege pathPrivilege : role.getPrivilegeList()) {
-          if (plan.getNodeName().equals("")
-              || AuthUtils.pathOrBelongsTo(plan.getNodeName(), pathPrivilege.getPath())) {
+          if (plan.getNodeNameList().isEmpty()
+              && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
             rolePrivileges.add(roleN);
-            userPrivilegesList.add(pathPrivilege.toString());
+            rolePrivilegeSet.add(pathPrivilege.toString());
+            continue;
+          }
+          for (String path : plan.getNodeNameList()) {
+            if (AuthUtils.pathOrBelongsTo(path, pathPrivilege.getPath())
+                && !rolePrivilegeSet.contains(pathPrivilege.toString())) {
+              rolePrivileges.add(roleN);
+              rolePrivilegeSet.add(pathPrivilege.toString());
+            }
           }
         }
+        userPrivilegesList.addAll(rolePrivilegeSet);
       }
       permissionInfo.put(IoTDBConstant.COLUMN_ROLE, rolePrivileges);
     }

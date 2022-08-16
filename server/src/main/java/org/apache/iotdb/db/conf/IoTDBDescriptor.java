@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.compaction.constant.InnerUnsequenceCompactionS
 import org.apache.iotdb.db.exception.BadNodeUrlFormatException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricService;
 import org.apache.iotdb.db.wal.WALManager;
 import org.apache.iotdb.db.wal.utils.WALMode;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
@@ -146,8 +146,6 @@ public class IoTDBDescriptor {
 
       conf.setRpcAddress(properties.getProperty(IoTDBConstant.RPC_ADDRESS, conf.getRpcAddress()));
 
-      loadClusterProps(properties);
-
       // TODO: Use FQDN  to identify our nodes afterwards
       try {
         replaceHostnameWithIP();
@@ -253,8 +251,6 @@ public class IoTDBDescriptor {
       conf.setTracingDir(properties.getProperty("tracing_dir", conf.getTracingDir()));
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0]).split(","));
-
-      conf.setSyncDir(properties.getProperty("sync_dir", conf.getSyncDir()));
 
       conf.setConsensusDir(properties.getProperty("consensus_dir", conf.getConsensusDir()));
 
@@ -888,6 +884,17 @@ public class IoTDBDescriptor {
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
+      conf.setCoordinatorReadExecutorSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "coordinator_read_executor_size",
+                  Integer.toString(conf.getCoordinatorReadExecutorSize()))));
+      conf.setCoordinatorWriteExecutorSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "coordinator_write_executor_size",
+                  Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
+
       // commons
       commonDescriptor.loadCommonProps(properties);
       commonDescriptor.initCommonConfigDir(conf.getSystemDir());
@@ -1065,6 +1072,15 @@ public class IoTDBDescriptor {
                 Long.toString(conf.getDeleteWalFilesPeriodInMs())));
     if (deleteWalFilesPeriod > 0) {
       conf.setDeleteWalFilesPeriodInMs(deleteWalFilesPeriod);
+    }
+
+    long throttleDownThresholdInByte =
+        Long.parseLong(
+            properties.getProperty(
+                "multi_leader_throttle_down_threshold_in_byte",
+                Long.toString(conf.getThrottleDownThreshold())));
+    if (throttleDownThresholdInByte > 0) {
+      conf.setThrottleDownThreshold(throttleDownThresholdInByte);
     }
   }
 
@@ -1435,8 +1451,8 @@ public class IoTDBDescriptor {
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
-    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProperties();
-    MetricsService.getInstance().reloadProperties(reloadLevel);
+    ReloadLevel reloadLevel = MetricConfigDescriptor.getInstance().loadHotProps();
+    MetricService.getInstance().reloadProperties(reloadLevel);
   }
 
   private void initMemoryAllocate(Properties properties) {
@@ -1640,16 +1656,6 @@ public class IoTDBDescriptor {
             properties.getProperty(
                 "trigger_forward_mqtt_pool_size",
                 Integer.toString(conf.getTriggerForwardMQTTPoolSize()))));
-    conf.setCoordinatorReadExecutorSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "coordinator_read_executor_size",
-                Integer.toString(conf.getCoordinatorReadExecutorSize()))));
-    conf.setCoordinatorWriteExecutorSize(
-        Integer.parseInt(
-            properties.getProperty(
-                "coordinator_write_executor_size",
-                Integer.toString(conf.getCoordinatorWriteExecutorSize()))));
   }
 
   private void loadCQProps(Properties properties) {
@@ -1770,6 +1776,7 @@ public class IoTDBDescriptor {
     conf.setSeriesPartitionExecutorClass(globalConfig.getSeriesPartitionExecutorClass());
     conf.setSeriesPartitionSlotNum(globalConfig.getSeriesPartitionSlotNum());
     conf.setPartitionInterval(globalConfig.timePartitionInterval);
+    conf.setReadConsistencyLevel(globalConfig.getReadConsistencyLevel());
   }
 
   private static class IoTDBDescriptorHolder {

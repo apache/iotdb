@@ -22,6 +22,7 @@ import org.apache.iotdb.commons.path.PartialPath;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkTypePlan;
+import org.apache.iotdb.db.sync.common.LocalSyncInfoFetcher;
 import org.apache.iotdb.db.sync.pipedata.DeletionPipeData;
 import org.apache.iotdb.db.sync.pipedata.PipeData;
 import org.apache.iotdb.db.sync.pipedata.SchemaPipeData;
@@ -92,6 +93,7 @@ public class IoTDBSyncSenderIT {
     transportClient = new TransportClientMock(pipe, pipeSink.getIp(), pipeSink.getPort());
     handler = new TransportHandlerMock(pipe, pipeSink, transportClient);
     TransportHandler.setDebugTransportHandler(handler);
+    LocalSyncInfoFetcher.getInstance().reset();
   }
 
   @After

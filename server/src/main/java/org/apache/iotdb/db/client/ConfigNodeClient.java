@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.client;
 
-import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TConfigNodeLocation;
 import org.apache.iotdb.common.rpc.thrift.TEndPoint;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
@@ -31,13 +30,14 @@ import org.apache.iotdb.commons.client.ClientManager;
 import org.apache.iotdb.commons.client.ClientPoolProperty;
 import org.apache.iotdb.commons.client.sync.SyncThriftClient;
 import org.apache.iotdb.commons.client.sync.SyncThriftClientWithErrorHandler;
+import org.apache.iotdb.commons.conf.CommonDescriptor;
 import org.apache.iotdb.commons.consensus.PartitionRegionId;
 import org.apache.iotdb.confignode.rpc.thrift.IConfigNodeRPCService;
+import org.apache.iotdb.confignode.rpc.thrift.TAddConsensusGroupReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerReq;
 import org.apache.iotdb.confignode.rpc.thrift.TAuthorizerResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCheckUserPrivilegesReq;
 import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterReq;
-import org.apache.iotdb.confignode.rpc.thrift.TConfigNodeRegisterResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCountStorageGroupResp;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateFunctionReq;
 import org.apache.iotdb.confignode.rpc.thrift.TCreateSchemaTemplateReq;
@@ -130,7 +130,7 @@ public class ConfigNodeClient
     // Read config nodes from configuration
     configNodes = ConfigNodeInfo.getInstance().getLatestConfigNodes();
     protocolFactory =
-        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()
+        CommonDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()
             ? new TCompactProtocol.Factory()
             : new TBinaryProtocol.Factory();
 
@@ -703,12 +703,12 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TConfigNodeRegisterResp registerConfigNode(TConfigNodeRegisterReq req) throws TException {
+  public TSStatus registerConfigNode(TConfigNodeRegisterReq req) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support registerConfigNode.");
   }
 
   @Override
-  public TSStatus addConsensusGroup(TConfigNodeRegisterResp registerResp) throws TException {
+  public TSStatus addConsensusGroup(TAddConsensusGroupReq registerResp) throws TException {
     throw new TException("DataNode to ConfigNode client doesn't support addConsensusGroup.");
   }
 
@@ -749,6 +749,22 @@ public class ConfigNodeClient
   }
 
   @Override
+  public TSStatus merge() throws TException {
+    for (int i = 0; i < RETRY_NUM; i++) {
+      try {
+        TSStatus status = client.merge();
+        if (!updateConfigNodeLeader(status)) {
+          return status;
+        }
+      } catch (TException e) {
+        configLeader = null;
+      }
+      reconnect();
+    }
+    throw new TException(MSG_RECONNECTION_FAIL);
+  }
+
+  @Override
   public TSStatus flush(TFlushReq req) throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
@@ -765,10 +781,10 @@ public class ConfigNodeClient
   }
 
   @Override
-  public TSStatus clearCache(TClearCacheReq req) throws TException {
+  public TSStatus clearCache() throws TException {
     for (int i = 0; i < RETRY_NUM; i++) {
       try {
-        TSStatus status = client.clearCache(req);
+        TSStatus status = client.clearCache();
         if (!updateConfigNodeLeader(status)) {
           return status;
         }

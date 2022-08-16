@@ -21,12 +21,6 @@ package org.apache.iotdb.db.mpp.plan.expression.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.binary.ArithmeticMultiplicationColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.ArithmeticBinaryTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.ArithmeticMultiplicationTransformer;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import java.nio.ByteBuffer;
 
@@ -38,22 +32,6 @@ public class MultiplicationExpression extends ArithmeticBinaryExpression {
 
   public MultiplicationExpression(ByteBuffer byteBuffer) {
     super(byteBuffer);
-  }
-
-  @Override
-  protected ColumnTransformer getConcreteBinaryColumnTransformer(
-      ColumnTransformer leftColumnTransformer,
-      ColumnTransformer rightColumnTransformer,
-      Type type) {
-    return new ArithmeticMultiplicationColumnTransformer(
-        type, leftColumnTransformer, rightColumnTransformer);
-  }
-
-  @Override
-  protected ArithmeticBinaryTransformer constructTransformer(
-      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader) {
-    return new ArithmeticMultiplicationTransformer(
-        leftParentLayerPointReader, rightParentLayerPointReader);
   }
 
   @Override

@@ -21,12 +21,6 @@ package org.apache.iotdb.db.mpp.plan.expression.binary;
 
 import org.apache.iotdb.db.mpp.plan.expression.Expression;
 import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.binary.CompareGreaterThanColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.CompareBinaryTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.binary.CompareGreaterThanTransformer;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 
 import java.nio.ByteBuffer;
 
@@ -38,22 +32,6 @@ public class GreaterThanExpression extends CompareBinaryExpression {
 
   public GreaterThanExpression(ByteBuffer byteBuffer) {
     super(byteBuffer);
-  }
-
-  @Override
-  protected CompareBinaryTransformer constructTransformer(
-      LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader) {
-    return new CompareGreaterThanTransformer(
-        leftParentLayerPointReader, rightParentLayerPointReader);
-  }
-
-  @Override
-  protected ColumnTransformer getConcreteBinaryColumnTransformer(
-      ColumnTransformer leftColumnTransformer,
-      ColumnTransformer rightColumnTransformer,
-      Type type) {
-    return new CompareGreaterThanColumnTransformer(
-        type, leftColumnTransformer, rightColumnTransformer);
   }
 
   @Override

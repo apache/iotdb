@@ -49,7 +49,9 @@ import org.apache.iotdb.confignode.consensus.response.SchemaPartitionResp;
 import org.apache.iotdb.confignode.exception.NotEnoughDataNodeException;
 import org.apache.iotdb.confignode.exception.StorageGroupNotExistsException;
 import org.apache.iotdb.confignode.manager.load.LoadManager;
+import org.apache.iotdb.confignode.manager.load.heartbeat.IRegionGroupCache;
 import org.apache.iotdb.confignode.persistence.partition.PartitionInfo;
+import org.apache.iotdb.consensus.ConsensusFactory;
 import org.apache.iotdb.consensus.common.DataSet;
 import org.apache.iotdb.consensus.common.response.ConsensusReadResponse;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -65,6 +67,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /** The PartitionManager Manages cluster PartitionTable read and write requests. */
@@ -85,15 +88,19 @@ public class PartitionManager {
   private final ScheduledExecutorService regionCleaner;
   private Future<?> currentRegionCleanerFuture;
 
+  // Map<RegionId, RegionGroupCache>
+  private final Map<TConsensusGroupId, IRegionGroupCache> regionGroupCacheMap;
+
   public PartitionManager(IManager configManager, PartitionInfo partitionInfo) {
     this.configManager = configManager;
     this.partitionInfo = partitionInfo;
     this.regionCleaner =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("IoTDB-Region-Cleaner");
+    this.regionGroupCacheMap = new ConcurrentHashMap<>();
     setSeriesPartitionExecutor();
   }
 
-  /** Construct SeriesPartitionExecutor by iotdb-confignode.propertis */
+  /** Construct SeriesPartitionExecutor by iotdb-confignode.properties */
   private void setSeriesPartitionExecutor() {
     ConfigNodeConfig conf = ConfigNodeDescriptor.getInstance().getConf();
     this.executor =
@@ -131,9 +138,8 @@ public class PartitionManager {
    *
    * @param req SchemaPartitionPlan with partitionSlotsMap
    * @return SchemaPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
-   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
-   *     StorageGroup doesn't exist.
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
+   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public DataSet getOrCreateSchemaPartition(GetOrCreateSchemaPartitionPlan req) {
     // After all the SchemaPartitions are allocated,
@@ -189,9 +195,8 @@ public class PartitionManager {
    * @param req DataPartitionPlan with Map<StorageGroupName, Map<SeriesPartitionSlot,
    *     List<TimePartitionSlot>>>
    * @return DataPartitionResp with DataPartition and TSStatus. SUCCESS_STATUS if all process
-   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions. TIME_OUT
-   *     if waiting other threads to create Regions for too long. STORAGE_GROUP_NOT_EXIST if some
-   *     StorageGroup doesn't exist.
+   *     finish. NOT_ENOUGH_DATA_NODE if the DataNodes is not enough to create new Regions.
+   *     STORAGE_GROUP_NOT_EXIST if some StorageGroup don't exist.
    */
   public DataSet getOrCreateDataPartition(GetOrCreateDataPartitionPlan req) {
     // After all the DataPartitions are allocated,
@@ -218,9 +223,16 @@ public class PartitionManager {
       // Map<StorageGroup, unassigned SeriesPartitionSlot count>
       Map<String, Integer> unassignedDataPartitionSlotsCountMap = new ConcurrentHashMap<>();
       unassignedDataPartitionSlotsMap.forEach(
-          (storageGroup, unassignedDataPartitionSlots) ->
-              unassignedDataPartitionSlotsCountMap.put(
-                  storageGroup, unassignedDataPartitionSlots.size()));
+          (storageGroup, unassignedDataPartitionSlots) -> {
+            AtomicInteger unassignedDataPartitionSlotsCount = new AtomicInteger(0);
+            unassignedDataPartitionSlots
+                .values()
+                .forEach(
+                    timePartitionSlots ->
+                        unassignedDataPartitionSlotsCount.getAndAdd(timePartitionSlots.size()));
+            unassignedDataPartitionSlotsCountMap.put(
+                storageGroup, unassignedDataPartitionSlotsCount.get());
+          });
       TSStatus status =
           extendRegionsIfNecessary(
               unassignedDataPartitionSlotsCountMap, TConsensusGroupType.DataRegion);
@@ -286,9 +298,8 @@ public class PartitionManager {
           continue;
         }
 
-        // 2. The average number of partitions held by each Region is greater than the expected
-        // average
-        //    when the partition allocation is complete
+        // 2. The average number of partitions held by each Region will be greater than the
+        // expected average number after the partition allocation is completed
         if (allocatedRegionCount < maxRegionCount
             && slotCount / allocatedRegionCount > maxSlotCount / maxRegionCount) {
           // The delta is equal to the smallest integer solution that satisfies the inequality:
@@ -306,8 +317,10 @@ public class PartitionManager {
       }
 
       // TODO: Use procedure to protect the following process
-      // Do Region allocation and creation for StorageGroups based on the allotment
-      getLoadManager().doRegionCreation(allotmentMap, consensusGroupType);
+      if (!allotmentMap.isEmpty()) {
+        // Do Region allocation and creation for StorageGroups based on the allotment
+        getLoadManager().doRegionCreation(allotmentMap, consensusGroupType);
+      }
 
       result.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
     } catch (NotEnoughDataNodeException e) {
@@ -319,6 +332,25 @@ public class PartitionManager {
     }
 
     return result;
+  }
+
+  /**
+   * Only leader use this interface. Checks whether the specified DataPartition has a predecessor
+   * and returns if it does
+   *
+   * @param storageGroup StorageGroupName
+   * @param seriesPartitionSlot Corresponding SeriesPartitionSlot
+   * @param timePartitionSlot Corresponding TimePartitionSlot
+   * @param timePartitionInterval Time partition interval
+   * @return The specific DataPartition's predecessor if exists, null otherwise
+   */
+  public TConsensusGroupId getPrecededDataPartition(
+      String storageGroup,
+      TSeriesPartitionSlot seriesPartitionSlot,
+      TTimePartitionSlot timePartitionSlot,
+      long timePartitionInterval) {
+    return partitionInfo.getPrecededDataPartition(
+        storageGroup, seriesPartitionSlot, timePartitionSlot, timePartitionInterval);
   }
 
   /**
@@ -381,7 +413,7 @@ public class PartitionManager {
    *
    * @param physicalPlan GetNodesPathsPartitionReq
    * @return SchemaNodeManagementPartitionDataSet that contains only existing matched
-   *     SchemaPartition and matched child paths aboveMtree
+   *     SchemaPartition and matched child paths aboveMTree
    */
   public DataSet getNodePathsPartition(GetNodePathsPartitionPlan physicalPlan) {
     SchemaNodeManagementResp schemaNodeManagementResp;
@@ -475,9 +507,47 @@ public class PartitionManager {
         /* Stop the RegionCleaner service */
         currentRegionCleanerFuture.cancel(false);
         currentRegionCleanerFuture = null;
+        regionGroupCacheMap.clear();
         LOGGER.info("RegionCleaner is stopped successfully.");
       }
     }
+  }
+
+  public Map<TConsensusGroupId, IRegionGroupCache> getRegionGroupCacheMap() {
+    return regionGroupCacheMap;
+  }
+
+  /**
+   * Get the leadership of each RegionGroup
+   *
+   * @return Map<RegionGroupId, leader location>
+   */
+  public Map<TConsensusGroupId, Integer> getAllLeadership() {
+    Map<TConsensusGroupId, Integer> result = new ConcurrentHashMap<>();
+    if (ConfigNodeDescriptor.getInstance()
+        .getConf()
+        .getDataRegionConsensusProtocolClass()
+        .equals(ConsensusFactory.MultiLeaderConsensus)) {
+      regionGroupCacheMap.forEach(
+          (consensusGroupId, regionGroupCache) -> {
+            if (consensusGroupId.getType().equals(TConsensusGroupType.SchemaRegion)) {
+              result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId());
+            }
+          });
+      getLoadManager()
+          .getRouteBalancer()
+          .getRouteMap()
+          .forEach(
+              (consensusGroupId, regionReplicaSet) ->
+                  result.put(
+                      consensusGroupId,
+                      regionReplicaSet.getDataNodeLocations().get(0).getDataNodeId()));
+    } else {
+      regionGroupCacheMap.forEach(
+          (consensusGroupId, regionGroupCache) ->
+              result.put(consensusGroupId, regionGroupCache.getLeaderDataNodeId()));
+    }
+    return result;
   }
 
   public ScheduledExecutorService getRegionCleaner() {
@@ -486,10 +556,6 @@ public class PartitionManager {
 
   private ConsensusManager getConsensusManager() {
     return configManager.getConsensusManager();
-  }
-
-  private NodeManager getNodeManager() {
-    return configManager.getNodeManager();
   }
 
   private ClusterSchemaManager getClusterSchemaManager() {

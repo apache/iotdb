@@ -139,6 +139,15 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
     return dataTypes;
   }
 
+  @Override
+  public TSDataType getDataType(int index) {
+    if (isNeedInferType) {
+      return TypeInferenceUtils.getPredictedDataType(values[index], true);
+    } else {
+      return dataTypes[index];
+    }
+  }
+
   public Object[] getValues() {
     return values;
   }
@@ -179,10 +188,13 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
         deviceSchemaInfo.getMeasurementSchemaList().toArray(new MeasurementSchema[0]);
 
     // transfer data types from string values when necessary
-    try {
-      transferType();
-    } catch (QueryProcessException e) {
-      return false;
+    if (isNeedInferType) {
+      try {
+        transferType();
+        return true;
+      } catch (QueryProcessException e) {
+        return false;
+      }
     }
 
     // validate whether data types are matched
@@ -195,9 +207,6 @@ public class InsertRowNode extends InsertNode implements WALEntryValue {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   private void transferType() throws QueryProcessException {
-    if (!isNeedInferType) {
-      return;
-    }
 
     for (int i = 0; i < measurementSchemas.length; i++) {
       // null when time series doesn't exist

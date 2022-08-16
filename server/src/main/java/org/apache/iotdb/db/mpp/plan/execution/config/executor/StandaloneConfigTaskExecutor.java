@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.mpp.plan.execution.config.executor;
 
-import org.apache.iotdb.common.rpc.thrift.TClearCacheReq;
 import org.apache.iotdb.common.rpc.thrift.TFlushReq;
 import org.apache.iotdb.common.rpc.thrift.TSStatus;
 import org.apache.iotdb.commons.exception.IoTDBException;
@@ -31,9 +30,9 @@ import org.apache.iotdb.confignode.rpc.thrift.TStorageGroupSchema;
 import org.apache.iotdb.db.localconfignode.LocalConfigNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.mpp.plan.execution.config.ConfigTaskResult;
-import org.apache.iotdb.db.mpp.plan.execution.config.CountStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowStorageGroupTask;
-import org.apache.iotdb.db.mpp.plan.execution.config.ShowTTLTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.CountStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowStorageGroupTask;
+import org.apache.iotdb.db.mpp.plan.execution.config.metadata.ShowTTLTask;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.CountStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.DeleteStorageGroupStatement;
 import org.apache.iotdb.db.mpp.plan.statement.metadata.SetStorageGroupStatement;
@@ -224,10 +223,9 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq) {
+  public SettableFuture<ConfigTaskResult> merge(boolean isCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
-    TSStatus tsStatus = localConfigNode.executeFlushOperation(tFlushReq);
+    TSStatus tsStatus = LocalConfigNode.getInstance().executeMergeOperation();
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
@@ -237,10 +235,21 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
   }
 
   @Override
-  public SettableFuture<ConfigTaskResult> clearCache(TClearCacheReq tclearCacheReq) {
+  public SettableFuture<ConfigTaskResult> flush(TFlushReq tFlushReq, boolean isCluster) {
     SettableFuture<ConfigTaskResult> future = SettableFuture.create();
-    LocalConfigNode localConfigNode = LocalConfigNode.getInstance();
-    TSStatus tsStatus = localConfigNode.executeClearCacheOperation();
+    TSStatus tsStatus = LocalConfigNode.getInstance().executeFlushOperation(tFlushReq);
+    if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
+    } else {
+      future.setException(new StatementExecutionException(tsStatus));
+    }
+    return future;
+  }
+
+  @Override
+  public SettableFuture<ConfigTaskResult> clearCache(boolean isCluster) {
+    SettableFuture<ConfigTaskResult> future = SettableFuture.create();
+    TSStatus tsStatus = LocalConfigNode.getInstance().executeClearCacheOperation();
     if (tsStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       future.set(new ConfigTaskResult(TSStatusCode.SUCCESS_STATUS));
     } else {
@@ -268,11 +277,15 @@ public class StandaloneConfigTaskExecutor implements IConfigTaskExecutor {
     try {
       Map<PartialPath, Long> allStorageGroupToTTL =
           LocalConfigNode.getInstance().getStorageGroupsTTL();
-      for (PartialPath storageGroupPath : storageGroupPaths) {
-        if (showTTLStatement.isAll()) {
-          storageGroupToTTL.put(
-              storageGroupPath.getFullPath(), allStorageGroupToTTL.get(storageGroupPath));
-        } else {
+      if (showTTLStatement.isAll()) {
+        allStorageGroupToTTL
+            .entrySet()
+            .forEach(
+                (entry) -> {
+                  storageGroupToTTL.put(entry.getKey().getFullPath(), entry.getValue());
+                });
+      } else {
+        for (PartialPath storageGroupPath : storageGroupPaths) {
           List<PartialPath> matchedStorageGroupPaths =
               LocalConfigNode.getInstance()
                   .getMatchedStorageGroups(storageGroupPath, showTTLStatement.isPrefixPath());

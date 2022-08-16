@@ -56,7 +56,6 @@ dclStatement
     : createUser | createRole | alterUser | grantUser | grantRole | grantRoleToUser
     | revokeUser |  revokeRole | revokeRoleFromUser | dropUser | dropRole
     | listUser | listRole | listPrivilegesUser | listPrivilegesRole
-    | listUserPrivileges | listRolePrivileges | listAllRoleOfUser | listAllUserOfRole
     ;
 
 utilityStatement
@@ -385,9 +384,9 @@ intoPath
 specialClause
     : specialLimit #specialLimitStatement
     | orderByClause specialLimit? #orderByTimeStatement
-    | groupByTimeClause orderByClause? specialLimit? #groupByTimeStatement
-    | groupByFillClause orderByClause? specialLimit? #groupByFillStatement
-    | groupByLevelClause orderByClause? specialLimit? #groupByLevelStatement
+    | groupByTimeClause havingClause? orderByClause? specialLimit? #groupByTimeStatement
+    | groupByFillClause havingClause? orderByClause? specialLimit? #groupByFillStatement
+    | groupByLevelClause havingClause? orderByClause? specialLimit? #groupByLevelStatement
     | fillClause orderByClause? specialLimit? #fillStatement
     ;
 
@@ -396,6 +395,10 @@ specialLimit
     | slimitClause limitClause? alignByDeviceClauseOrDisableAlign? #slimitStatement
     | withoutNullClause limitClause? slimitClause? alignByDeviceClauseOrDisableAlign? #withoutNullStatement
     | alignByDeviceClauseOrDisableAlign #alignByDeviceClauseOrDisableAlignStatement
+    ;
+
+havingClause
+    : HAVING expression
     ;
 
 alignByDeviceClauseOrDisableAlign
@@ -530,12 +533,12 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
+    : GRANT USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
+    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath (COMMA prefixPath)*
     ;
 
 // Grant User Role
@@ -545,12 +548,12 @@ grantRoleToUser
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath)?
+    : REVOKE USER userName=identifier PRIVILEGES privileges (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
+    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath (COMMA prefixPath)*
     ;
 
 // Revoke Role From User
@@ -570,42 +573,22 @@ dropRole
 
 // List Users
 listUser
-    : LIST USER
+    : LIST USER (OF ROLE roleName=identifier)?
     ;
 
 // List Roles
 listRole
-    : LIST ROLE
+    : LIST ROLE (OF USER userName=usernameWithRoot)?
     ;
 
-// List Privileges
+// List Privileges of Users On Specific Path
 listPrivilegesUser
-    : LIST PRIVILEGES USER userName=usernameWithRoot ON prefixPath
+    : LIST PRIVILEGES USER userName=usernameWithRoot (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 // List Privileges of Roles On Specific Path
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=identifier ON prefixPath
-    ;
-
-// List Privileges of Users
-listUserPrivileges
-    : LIST USER PRIVILEGES userName=usernameWithRoot
-    ;
-
-// List Privileges of Roles
-listRolePrivileges
-    : LIST ROLE PRIVILEGES roleName=identifier
-    ;
-
-// List Roles of Users
-listAllRoleOfUser
-    : LIST ALL ROLE OF USER userName=usernameWithRoot
-    ;
-
-// List Users of Role
-listAllUserOfRole
-    : LIST ALL USER OF ROLE roleName=identifier
+    : LIST PRIVILEGES ROLE roleName=identifier (ON prefixPath (COMMA prefixPath)*)?
     ;
 
 privileges
@@ -629,12 +612,12 @@ usernameWithRoot
 
 // Merge
 merge
-    : MERGE
+    : MERGE (ON (LOCAL | CLUSTER))?
     ;
 
 // Full Merge
 fullMerge
-    : FULL MERGE
+    : FULL MERGE (ON (LOCAL | CLUSTER))?
     ;
 
 // Flush
@@ -859,7 +842,7 @@ realLiteral
 timeValue
     : datetimeLiteral
     | dateExpression
-    | INTEGER_LITERAL
+    | (PLUS | MINUS)? INTEGER_LITERAL
     ;
 
 // Expression & Predicate

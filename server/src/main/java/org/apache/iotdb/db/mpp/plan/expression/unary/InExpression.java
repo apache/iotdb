@@ -25,13 +25,7 @@ import org.apache.iotdb.db.mpp.plan.expression.ExpressionType;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.ConstantOperand;
 import org.apache.iotdb.db.mpp.plan.expression.leaf.TimeSeriesOperand;
 import org.apache.iotdb.db.mpp.plan.expression.multi.FunctionExpression;
-import org.apache.iotdb.db.mpp.transformation.api.LayerPointReader;
-import org.apache.iotdb.db.mpp.transformation.dag.column.ColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.column.unary.InColumnTransformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.Transformer;
-import org.apache.iotdb.db.mpp.transformation.dag.transformer.unary.InTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.type.Type;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.DataOutputStream;
@@ -103,17 +97,6 @@ public class InExpression extends UnaryExpression {
   @Override
   public ExpressionType getExpressionType() {
     return ExpressionType.IN;
-  }
-
-  @Override
-  protected Transformer constructTransformer(LayerPointReader pointReader) {
-    return new InTransformer(pointReader, isNotIn, values);
-  }
-
-  @Override
-  protected ColumnTransformer getConcreteUnaryColumnTransformer(
-      ColumnTransformer childColumnTransformer, Type returnType) {
-    return new InColumnTransformer(returnType, childColumnTransformer, isNotIn, values);
   }
 
   @Override
