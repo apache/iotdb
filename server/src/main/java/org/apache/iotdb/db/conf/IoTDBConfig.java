@@ -3055,8 +3055,7 @@ public class IoTDBConfig {
         } else {
           configContent = configField.get(this).toString();
         }
-        configMessage =
-            configMessage + configField.getName() + "=" + configContent + "; ";
+        configMessage = configMessage + configField.getName() + "=" + configContent + "; ";
       } catch (Exception e) {
         e.printStackTrace();
       }
