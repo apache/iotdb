@@ -3032,6 +3032,7 @@ public class IoTDBConfig {
 
   public String getConfigMessage() {
     String configMessage = "";
+    String configContent;
     String[] notShowArray = {
       "NODE_NAME_MATCHER",
       "PARTIAL_NODE_MATCHER",
@@ -3047,8 +3048,15 @@ public class IoTDBConfig {
         if (notShowStrings.contains(configFieldString)) {
           continue;
         }
+        String configType = configField.getGenericType().getTypeName();
+        if (configType.contains("java.lang.String[]")) {
+          String[] configList = (String[]) configField.get(this);
+          configContent = Arrays.asList(configList).toString();
+        } else {
+          configContent = configField.get(this).toString();
+        }
         configMessage =
-            configMessage + configField.getName() + "=" + configField.get(this).toString() + ';';
+            configMessage + configField.getName() + "=" + configContent + "; ";
       } catch (Exception e) {
         e.printStackTrace();
       }

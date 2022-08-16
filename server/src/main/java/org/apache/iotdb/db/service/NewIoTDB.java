@@ -179,6 +179,7 @@ public class NewIoTDB implements NewIoTDBMBean {
     // start reporter
     MetricsService.getInstance().startAllReporter();
 
+    logger.info("IoTDB configuration: " + config.getConfigMessage());
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 
