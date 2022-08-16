@@ -1,29 +1,29 @@
 <!--
 
-​    Licensed to the Apache Software Foundation (ASF) under one
-​    or more contributor license agreements.  See the NOTICE file
-​    distributed with this work for additional information
-​    regarding copyright ownership.  The ASF licenses this file
-​    to you under the Apache License, Version 2.0 (the
-​    "License"); you may not use this file except in compliance
-​    with the License.  You may obtain a copy of the License at
-​    
-​        http://www.apache.org/licenses/LICENSE-2.0
-​    
-​    Unless required by applicable law or agreed to in writing,
-​    software distributed under the License is distributed on an
-​    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-​    KIND, either express or implied.  See the License for the
-​    specific language governing permissions and limitations
-​    under the License.
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
 
 -->
 
-# 字符串处理
+## 字符串处理
 
-## RegexMatch
+### RegexMatch
 
-### 函数简介
+#### 函数简介
 
 本函数用于正则表达式匹配文本中的具体内容并返回。
 
@@ -41,7 +41,7 @@
 
 **提示：** 空值或无法匹配给定的正则表达式的数据点没有输出结果。
 
-### 使用示例
+#### 使用示例
 
 
 输入序列：
@@ -78,9 +78,9 @@ select regexmatch(s1, "regex"="\d+\.\d+\.\d+\.\d+", "group"="0") from root.test.
 +-----------------------------+----------------------------------------------------------------------+
 ```
 
-## RegexReplace
+### RegexReplace
 
-### 函数简介
+#### 函数简介
 
 本函数用于将文本中符合正则表达式的匹配结果替换为指定的字符串。
 
@@ -99,7 +99,7 @@ select regexmatch(s1, "regex"="\d+\.\d+\.\d+\.\d+", "group"="0") from root.test.
 
 **输出序列：** 输出单个序列，类型为 TEXT。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
@@ -136,9 +136,9 @@ select regexreplace(s1, "regex"="192\.168\.0\.(\d+)", "replace"="cluster-$1", "l
 +-----------------------------+-----------------------------------------------------------+
 ```
 
-## RegexSplit
+### RegexSplit
 
-### 函数简介
+#### 函数简介
 
 本函数用于使用给定的正则表达式切分文本，并返回指定的项。
 
@@ -155,7 +155,7 @@ select regexreplace(s1, "regex"="192\.168\.0\.(\d+)", "replace"="cluster-$1", "l
 
 **提示：** 如果`index`超出了切分后结果数组的秩范围，例如使用`,`切分`0,1,2`时输入`index`为 3，则该数据点没有输出结果。
 
-### 使用示例
+#### 使用示例
 
 
 输入序列：
@@ -211,9 +211,9 @@ select regexsplit(s1, "regex"=",", "index"="3") from root.test.d1
 +-----------------------------+-----------------------------------------------------+
 ```
 
-## StrReplace
+### StrReplace
 
-### 函数简介
+#### 函数简介
 
 本函数用于将文本中的子串替换为指定的字符串。
 
@@ -231,7 +231,7 @@ select regexsplit(s1, "regex"=",", "index"="3") from root.test.d1
 
 **输出序列：** 输出单个序列，类型为 TEXT。
 
-### 使用示例
+#### 使用示例
 
 输入序列：
 
