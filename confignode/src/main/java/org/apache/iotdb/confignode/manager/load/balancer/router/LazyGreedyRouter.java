@@ -40,8 +40,9 @@ import java.util.stream.Collectors;
  */
 public class LazyGreedyRouter implements IRouter {
 
-  // Set<DataNodeId>
+  /** Set<DataNodeId> which stores the unknown and removing datanodes */
   private final Set<Integer> unknownDataNodes;
+
   private final Map<TConsensusGroupId, TRegionReplicaSet> routeMap;
 
   public LazyGreedyRouter() {

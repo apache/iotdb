@@ -22,10 +22,16 @@ import org.apache.iotdb.commons.cluster.NodeStatus;
 
 import java.util.LinkedList;
 
-/** DataNodeHeartbeatCache caches and maintains all the heartbeat data */
+/**
+ * DataNodeHeartbeatCache caches and maintains all the heartbeat data
+ *
+ * <p>TODO: This class might be split into DataNodeCache and ConfigNodeCache
+ */
 public class DataNodeHeartbeatCache implements INodeCache {
 
-  // TODO: This class might be split into DataNodeCache and ConfigNodeCache
+  // when the response time of heartbeat is more than 20s,
+  // the datanode is considered as down
+  private static final int HEARTBEAT_TIMEOUT_TIME = 20_000;
 
   // Cache heartbeat samples
   private static final int MAXIMUM_WINDOW_SIZE = 100;
@@ -89,7 +95,7 @@ public class DataNodeHeartbeatCache implements INodeCache {
     }
 
     // TODO: Optimize judge logic
-    if (System.currentTimeMillis() - lastSendTime > 20_000) {
+    if (System.currentTimeMillis() - lastSendTime > HEARTBEAT_TIMEOUT_TIME) {
       status = NodeStatus.Unknown;
     } else {
       status = NodeStatus.Running;

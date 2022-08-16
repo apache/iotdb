@@ -63,6 +63,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -544,13 +545,14 @@ public class NodeManager {
    * @param status The specific NodeStatus
    * @return Filtered DataNodes with the specific NodeStatus
    */
-  public List<TDataNodeConfiguration> filterDataNodeThroughStatus(NodeStatus status) {
+  public List<TDataNodeConfiguration> filterDataNodeThroughStatus(NodeStatus... status) {
     return getRegisteredDataNodes().stream()
         .filter(
             registeredDataNode -> {
               int id = registeredDataNode.getLocation().getDataNodeId();
               return nodeCacheMap.containsKey(id)
-                  && status.equals(nodeCacheMap.get(id).getNodeStatus());
+                  && Arrays.stream(status)
+                      .anyMatch(s -> s.equals(nodeCacheMap.get(id).getNodeStatus()));
             })
         .collect(Collectors.toList());
   }
