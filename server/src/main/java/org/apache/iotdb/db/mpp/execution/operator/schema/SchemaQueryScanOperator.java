@@ -30,7 +30,7 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   protected OperatorContext operatorContext;
   protected TsBlock tsBlock;
-  private boolean hasCachedTsBlock;
+  protected boolean isFinished = false;
 
   protected int limit;
   protected int offset;
@@ -87,7 +87,7 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   @Override
   public TsBlock next() {
-    hasCachedTsBlock = false;
+    isFinished = true;
     TsBlock result = tsBlock;
     tsBlock = null;
     return result;
@@ -95,13 +95,17 @@ public abstract class SchemaQueryScanOperator implements SourceOperator {
 
   @Override
   public boolean hasNext() {
+    if (isFinished) {
+      return false;
+    }
     if (tsBlock == null) {
       tsBlock = createTsBlock();
-      if (tsBlock.getPositionCount() > 0) {
-        hasCachedTsBlock = true;
+      if (tsBlock.getPositionCount() == 0) {
+        isFinished = true;
+        return false;
       }
     }
-    return hasCachedTsBlock;
+    return true;
   }
 
   @Override
