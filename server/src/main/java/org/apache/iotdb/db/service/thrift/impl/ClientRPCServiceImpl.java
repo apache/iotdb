@@ -725,7 +725,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      for (List<String> measurements : req.getMeasurementsList()) {
+        PathUtils.isLegalSingleMeasurements(measurements);
+      }
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
@@ -775,7 +777,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      for (List<String> measurements : req.getMeasurementsList()) {
+        PathUtils.isLegalSingleMeasurements(measurements);
+      }
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -826,7 +830,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      for (List<String> measurements : req.getMeasurementsList()) {
+        PathUtils.isLegalSingleMeasurements(measurements);
+      }
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertRowsOfOneDeviceStatement statement =
@@ -917,7 +923,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
         return getNotLoggedInStatus();
       }
 
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      for (List<String> measurements : req.getMeasurementsList()) {
+        PathUtils.isLegalSingleMeasurements(measurements);
+      }
 
       // Step 1: TODO(INSERT) transfer from TSInsertTabletsReq to Statement
       InsertMultiTabletsStatement statement =
@@ -1010,7 +1018,9 @@ public class ClientRPCServiceImpl implements IClientRPCServiceWithHandler {
       }
 
       // check whether measurement is legal according to syntax convention
-      PathUtils.isLegalSingleMeasurementLists(req.getMeasurementsList());
+      for (List<String> measurements : req.getMeasurementsList()) {
+        PathUtils.isLegalSingleMeasurements(measurements);
+      }
 
       InsertRowsStatement statement = (InsertRowsStatement) StatementGenerator.createStatement(req);
 
