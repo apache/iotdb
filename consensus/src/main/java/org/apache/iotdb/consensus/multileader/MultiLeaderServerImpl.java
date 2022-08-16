@@ -117,55 +117,53 @@ public class MultiLeaderServerImpl {
   public TSStatus write(IConsensusRequest request) {
     stateMachineLock.lock();
     try {
-      synchronized (stateMachine) {
-        if (needToThrottleDown()) {
-          logger.info(
-              "[Throttle Down] index:{}, safeIndex:{}",
-              getIndex(),
-              getCurrentSafelyDeletedSearchIndex());
-          try {
-            boolean timeout =
-                !stateMachineCondition.await(
-                    config.getReplication().getThrottleTimeOutMs(), TimeUnit.MILLISECONDS);
-            if (timeout) {
-              return RpcUtils.getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR);
-            }
-          } catch (InterruptedException e) {
-            logger.error("Failed to throttle down because ", e);
-            Thread.currentThread().interrupt();
+      if (needToThrottleDown()) {
+        logger.info(
+            "[Throttle Down] index:{}, safeIndex:{}",
+            getIndex(),
+            getCurrentSafelyDeletedSearchIndex());
+        try {
+          boolean timeout =
+              !stateMachineCondition.await(
+                  config.getReplication().getThrottleTimeOutMs(), TimeUnit.MILLISECONDS);
+          if (timeout) {
+            return RpcUtils.getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR);
           }
+        } catch (InterruptedException e) {
+          logger.error("Failed to throttle down because ", e);
+          Thread.currentThread().interrupt();
         }
-        IndexedConsensusRequest indexedConsensusRequest =
-            buildIndexedConsensusRequestForLocalRequest(request);
-        if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
-          logger.info(
-              "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
-              thisNode.getGroupId(),
-              getCurrentSafelyDeletedSearchIndex(),
-              indexedConsensusRequest.getSearchIndex());
-        }
-        // TODO wal and memtable
-        TSStatus result = stateMachine.write(indexedConsensusRequest);
-        if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          // The index is used when constructing batch in LogDispatcher. If its value
-          // increases but the corresponding request does not exist or is not put into
-          // the queue, the dispatcher will try to find the request in WAL. This behavior
-          // is not expected and will slow down the preparation speed for batch.
-          // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
-          // in one transaction.
-          synchronized (index) {
-            logDispatcher.offer(indexedConsensusRequest);
-            index.incrementAndGet();
-          }
-        } else {
-          logger.debug(
-              "{}: write operation failed. searchIndex: {}. Code: {}",
-              thisNode.getGroupId(),
-              indexedConsensusRequest.getSearchIndex(),
-              result.getCode());
-        }
-        return result;
       }
+      IndexedConsensusRequest indexedConsensusRequest =
+          buildIndexedConsensusRequestForLocalRequest(request);
+      if (indexedConsensusRequest.getSearchIndex() % 1000 == 0) {
+        logger.info(
+            "DataRegion[{}]: index after build: safeIndex:{}, searchIndex: {}",
+            thisNode.getGroupId(),
+            getCurrentSafelyDeletedSearchIndex(),
+            indexedConsensusRequest.getSearchIndex());
+      }
+      // TODO wal and memtable
+      TSStatus result = stateMachine.write(indexedConsensusRequest);
+      if (result.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // The index is used when constructing batch in LogDispatcher. If its value
+        // increases but the corresponding request does not exist or is not put into
+        // the queue, the dispatcher will try to find the request in WAL. This behavior
+        // is not expected and will slow down the preparation speed for batch.
+        // So we need to use the lock to ensure the `offer()` and `incrementAndGet()` are
+        // in one transaction.
+        synchronized (index) {
+          logDispatcher.offer(indexedConsensusRequest);
+          index.incrementAndGet();
+        }
+      } else {
+        logger.debug(
+            "{}: write operation failed. searchIndex: {}. Code: {}",
+            thisNode.getGroupId(),
+            indexedConsensusRequest.getSearchIndex(),
+            result.getCode());
+      }
+      return result;
     } finally {
       stateMachineLock.unlock();
     }
