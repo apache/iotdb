@@ -1077,10 +1077,10 @@ public class IoTDBDescriptor {
     long throttleDownThresholdInByte =
         Long.parseLong(
             properties.getProperty(
-                "multi_leader_throttle_down_threshold_in_byte",
-                Long.toString(conf.getThrottleDownThreshold())));
+                "multi_leader_throttle_threshold_in_byte",
+                Long.toString(conf.getThrottleThreshold())));
     if (throttleDownThresholdInByte > 0) {
-      conf.setThrottleDownThreshold(throttleDownThresholdInByte);
+      conf.setThrottleThreshold(throttleDownThresholdInByte);
     }
   }
 

@@ -224,9 +224,7 @@ public class LogDispatcher {
       reader.setSafelyDeletedSearchIndex(impl.getCurrentSafelyDeletedSearchIndex());
       // notify
       if (impl.needToThrottleUp()) {
-        synchronized (impl.getStateMachine()) {
-          impl.getStateMachine().notifyAll();
-        }
+        impl.signal();
       }
     }
 
