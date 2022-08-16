@@ -21,6 +21,7 @@ package org.apache.iotdb.db.conf.directories;
 import org.apache.iotdb.commons.conf.IoTDBConstant;
 import org.apache.iotdb.commons.utils.TestOnly;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.SystemStatus;
 import org.apache.iotdb.db.conf.directories.strategy.DirectoryStrategy;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -133,54 +134,27 @@ public class DirectoryManager {
   }
 
   public String getNextFolderForSequenceFile() throws DiskSpaceInsufficientException {
-    return getSequenceFileFolder(getNextFolderIndexForSequenceFile());
-  }
-
-  /**
-   * get next folder index for TsFile.
-   *
-   * @return next folder index
-   */
-  public int getNextFolderIndexForSequenceFile() throws DiskSpaceInsufficientException {
-    return sequenceStrategy.nextFolderIndex();
-  }
-
-  public String getSequenceFileFolder(int index) {
-    return sequenceFileFolders.get(index);
+    try {
+      return sequenceFileFolders.get(sequenceStrategy.nextFolderIndex());
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error("All disks of wal folders are full, change system mode to read-only.", e);
+      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+      throw e;
+    }
   }
 
   public List<String> getAllSequenceFileFolders() {
     return new ArrayList<>(sequenceFileFolders);
   }
 
-  private static class DirectoriesHolder {
-
-    private static DirectoryManager INSTANCE = new DirectoryManager();
-  }
-
-  public String getIndexRootFolder() {
-    return IoTDBDescriptor.getInstance().getConfig().getIndexRootFolder();
-  }
-
   public String getNextFolderForUnSequenceFile() throws DiskSpaceInsufficientException {
-    return getUnSequenceFileFolder(getNextFolderIndexForUnSequenceFile());
-  }
-
-  /**
-   * get next folder index for OverflowFile.
-   *
-   * @return next folder index
-   */
-  public int getNextFolderIndexForUnSequenceFile() throws DiskSpaceInsufficientException {
-    return unsequenceStrategy.nextFolderIndex();
-  }
-
-  public String getUnSequenceFileFolder(int index) {
-    return unsequenceFileFolders.get(index);
-  }
-
-  public int getUnSequenceFileFolderIndex(String folder) {
-    return unsequenceFileFolders.indexOf(folder);
+    try {
+      return unsequenceFileFolders.get(unsequenceStrategy.nextFolderIndex());
+    } catch (DiskSpaceInsufficientException e) {
+      logger.error("All disks of wal folders are full, change system mode to read-only.", e);
+      IoTDBDescriptor.getInstance().getConfig().setSystemStatus(SystemStatus.READ_ONLY);
+      throw e;
+    }
   }
 
   public List<String> getAllUnSequenceFileFolders() {
@@ -207,5 +181,9 @@ public class DirectoryManager {
       unsequenceFileFolders.set(
           i, unsequenceFileFolders.get(i) + File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME);
     }
+  }
+
+  private static class DirectoriesHolder {
+    private static final DirectoryManager INSTANCE = new DirectoryManager();
   }
 }
