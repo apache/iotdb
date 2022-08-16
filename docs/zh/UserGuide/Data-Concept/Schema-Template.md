@@ -19,9 +19,9 @@
 
 -->
 
-# 元数据模板
+## 元数据模板
 
-## 问题背景
+### 问题背景
 
 对于大量的同类型的实体，每一个实体下的物理量都相同，为每个序列注册时间序列一方面时间序列的元数据将占用较多的内存资源，另一方面，大量序列的维护工作也会十分复杂。
 
@@ -31,7 +31,7 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_without_template.png?raw=true" alt="example without template">
 
-## 概念定义
+### 概念定义
 
 元数据模板（Schema template）
 
@@ -47,7 +47,7 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_with_template.png?raw=true" alt="example with template">
 
-## 使用
+### 使用
 
 目前，用户可以通过 Session 编程接口或 IoTDB-SQL 来使用元数据模板，包括模板的创建、修改、挂载与卸载等。Session 编程接口的详细文档可参见[此处](../API/Programming-Java-Native-API.md)，IoTDB-SQL 的详细文档可参加[此处](../Operate-Metadata/Template.md)。下文将以 Session 中使用方法为例，进行简要介绍。
 
